@@ -44,21 +44,13 @@ export type ReadingDensityKind =
  * resolves to `hidden`; on desktop it resolves to `compact` unless
  * `desktopHidden` is set (explicit fullscreen / focus mode).
  */
-export function useStageArtifact(kind: StageArtifactKind, opts?: { desktopHidden?: boolean; active?: boolean }) {
-  const active = opts?.active ?? true;
-  const desktopHidden = opts?.desktopHidden ?? false;
-  const isMobile = useIsMobile();
-  const id = useId();
-  const register = useShellStore((s) => s.registerComposerClaim);
-  const release = useShellStore((s) => s.releaseComposerClaim);
-
-  useEffect(() => {
-    if (!active) return;
-    const visibility: ComposerVisibility = isMobile || desktopHidden ? "hidden" : "compact";
-    register(id, { source: "stage", kind, visibility });
-    return () => release(id);
-  }, [id, active, isMobile, desktopHidden, kind, register, release]);
+export function useStageArtifact(_kind: StageArtifactKind, _opts?: { desktopHidden?: boolean; active?: boolean }) {
+  // Temporarily inert: registering stage claims on mount was causing the
+  // workspace composer to toggle hidden/visible repeatedly, which cascaded
+  // into layout thrash and broke scrolling. Visibility state lives in the
+  // store and the hook signature is preserved so callers don't change.
 }
+
 
 /**
  * Reading-density hook. Marks an assistant artifact as a long-read / ledger
