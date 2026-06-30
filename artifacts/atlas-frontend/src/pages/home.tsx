@@ -5919,13 +5919,13 @@ export default function Home() {
           position: relative;
           width: 100%;
           height: 55dvh;
-          background: #0a0a0c;
+          background: var(--atlas-surface);
           border: 1px solid var(--atlas-border);
           border-bottom: none;
           border-radius: 20px 20px 0 0;
           display: flex;
           flex-direction: column;
-          box-shadow: 0 -24px 60px rgba(0,0,0,0.7);
+          box-shadow: 0 -24px 60px var(--atlas-shadow-lg);
           transition: height 280ms cubic-bezier(0.4,0,0.2,1);
           animation: atlasOverviewSheetUp 300ms ease-out both;
         }
