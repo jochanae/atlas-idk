@@ -353,7 +353,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           )}
 
           {/* TOOLS — collapsed by default */}
-          {(onOpenSpecify || onOpenWrite) && (
+          {(onOpenSpecify || onOpenWrite || onOpenComposer) && (
             <>
               <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
               <CollapsibleHeader
@@ -364,12 +364,22 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               />
               {toolsExpanded && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 4 }}>
+                  {onOpenComposer && (
+                    <NavRow
+                      icon={<Sparkles size={14} strokeWidth={1.6} />}
+                      label="Atlas Composer"
+                      sublabel={activeRunsCount > 0 ? `${activeRunsCount} running` : undefined}
+                      badge={activeRunsCount}
+                      onClick={() => { onOpenComposer(); onClose(); }}
+                    />
+                  )}
                   {onOpenSpecify && <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify Change" onClick={() => { onOpenSpecify(); onClose(); }} />}
                   {onOpenWrite && <NavRow icon={<PenLine size={14} strokeWidth={1.6} />} label="Write" onClick={() => { onOpenWrite(); onClose(); }} />}
                 </div>
               )}
             </>
           )}
+
         </div>
 
         {/* User footer */}
