@@ -704,7 +704,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   title="Sessions — resume or start new"
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: 32, height: 32, borderRadius: 999,
+                    width: isCompact ? 26 : 32, height: isCompact ? 26 : 32, borderRadius: 999,
                     background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
                     border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
                     color: "var(--atlas-gold)",
