@@ -1765,9 +1765,9 @@ export function AxiomFlow({
                     animation: "axiomFlowSpin 0.8s linear infinite",
                     flexShrink: 0,
                   }} />
-                  Hydrating…
+                  Analyzing…
                 </>
-              ) : "Hydrate Flow"}
+              ) : "Analyze Project"}
             </button>
           )}
 
