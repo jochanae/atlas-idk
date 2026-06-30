@@ -52,6 +52,18 @@ export function AskAtlasOverlay({
     projectContext: null,
   });
 
+  // Mount/unmount with exit animation
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      const r = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(r);
+    }
+    setVisible(false);
+    const t = window.setTimeout(() => setMounted(false), 220);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
   // ESC closes
   useEffect(() => {
     if (!open) return;
@@ -63,7 +75,7 @@ export function AskAtlasOverlay({
   // Autofocus composer when the overlay opens
   useEffect(() => {
     if (!open) return;
-    const t = window.setTimeout(() => textareaRef.current?.focus(), 60);
+    const t = window.setTimeout(() => textareaRef.current?.focus(), 80);
     return () => window.clearTimeout(t);
   }, [open]);
 
