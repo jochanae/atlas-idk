@@ -602,6 +602,7 @@ export function useChatStream(
           const placeholderId = -Date.now();
           streamingId = placeholderId;
           let streamedText = "";
+          let tokenLineBuffer = "";
           let sawFirstToken = false;
           let githubAutoLinkStatus: string | null = null;
           let githubAutoLinkPromise: Promise<string> | null = null;
@@ -707,9 +708,28 @@ export function useChatStream(
                     onFirstStreamingToken?.();
                   }
                   // Strip token-protocol lines that leaked through the live stream
-                  // before finishStream could remove them (IMAGE_GEN, CONV_STATE, etc.)
+                  // before finishStream could remove them (IMAGE_GEN, CONV_STATE, etc.).
+                  // Buffer at line boundaries so prefixes split across SSE chunks
+                  // (e.g. "CONV" + "_STATE:active") are still detected.
+                  tokenLineBuffer += chunk;
                   const TOKEN_LINE_RE = /^(IMAGE_GEN|CONV_STATE|PROJECT_READY|BROWSER_VISIT|MEMORY_T\d+|MEMORY_UPDATE):[^\n]*/gm;
-                  const visibleChunk = chunk.replace(TOKEN_LINE_RE, "").replace(/\n{3,}/g, "\n\n");
+                  const TOKEN_PREFIX_RE = /(^|\n)(I|II|IM|IMA|IMAG|IMAGE|IMAGE_|IMAGE_G|IMAGE_GE|IMAGE_GEN|C|CO|CON|CONV|CONV_|CONV_S|CONV_ST|CONV_STA|CONV_STAT|CONV_STATE|P|PR|PRO|PROJ|PROJE|PROJEC|PROJECT|PROJECT_|PROJECT_R|PROJECT_RE|PROJECT_REA|PROJECT_READ|PROJECT_READY|B|BR|BRO|BROW|BROWS|BROWSE|BROWSER|BROWSER_|BROWSER_V|BROWSER_VI|BROWSER_VIS|BROWSER_VISI|BROWSER_VISIT|M|ME|MEM|MEMO|MEMOR|MEMORY|MEMORY_|MEMORY_T\d*|MEMORY_U|MEMORY_UP|MEMORY_UPD|MEMORY_UPDA|MEMORY_UPDAT|MEMORY_UPDATE)$/;
+                  // Split into safe portion (everything up to last newline) and a tail to keep buffering.
+                  const lastNl = tokenLineBuffer.lastIndexOf("\n");
+                  let safe: string;
+                  if (lastNl === -1) {
+                    safe = "";
+                  } else {
+                    safe = tokenLineBuffer.slice(0, lastNl + 1);
+                    tokenLineBuffer = tokenLineBuffer.slice(lastNl + 1);
+                  }
+                  // If the tail itself looks like the start of a token-protocol line, hold it back too.
+                  if (!TOKEN_PREFIX_RE.test((safe.endsWith("\n") ? "\n" : "") + tokenLineBuffer)) {
+                    // tail is plain text — release it now
+                    safe += tokenLineBuffer;
+                    tokenLineBuffer = "";
+                  }
+                  const visibleChunk = safe.replace(TOKEN_LINE_RE, "").replace(/\n{3,}/g, "\n\n");
                   streamedText += visibleChunk;
                   triggerGithubAutoLink(streamedText);
                   // Feed the pacer instead of writing to React state directly.
