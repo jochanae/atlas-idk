@@ -44,6 +44,14 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
     return input;
   };
 
+  const isViteInternal = (input: RequestInfo | URL): boolean => {
+    try {
+      const s = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      return s.startsWith("/@vite") || s.startsWith("/__vite") || s.startsWith("/@fs") || s.startsWith("/@id");
+    } catch {}
+    return false;
+  };
+
   const isApiTarget = (input: RequestInfo | URL): boolean => {
     try {
       if (typeof input === "string") {
@@ -83,6 +91,7 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
   };
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (isViteInternal(input)) return originalFetch(input as RequestInfo, init);
     const target = rewriteUrl(input);
     let nextInit = init;
     if (isApiTarget(target)) {
