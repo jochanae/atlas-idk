@@ -40,6 +40,8 @@ export function AskAtlasOverlay({
   onContinueInWorkspace,
 }: AskAtlasOverlayProps) {
   const [draft, setDraft] = useState("");
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const seededRef = useRef<string | null>(null);
 
@@ -49,6 +51,18 @@ export function AskAtlasOverlay({
     conversationId: null,
     projectContext: null,
   });
+
+  // Mount/unmount with exit animation
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      const r = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(r);
+    }
+    setVisible(false);
+    const t = window.setTimeout(() => setMounted(false), 220);
+    return () => window.clearTimeout(t);
+  }, [open]);
 
   // ESC closes
   useEffect(() => {
@@ -61,7 +75,7 @@ export function AskAtlasOverlay({
   // Autofocus composer when the overlay opens
   useEffect(() => {
     if (!open) return;
-    const t = window.setTimeout(() => textareaRef.current?.focus(), 60);
+    const t = window.setTimeout(() => textareaRef.current?.focus(), 80);
     return () => window.clearTimeout(t);
   }, [open]);
 
@@ -104,7 +118,9 @@ export function AskAtlasOverlay({
     void chat.send({ text });
   };
 
-  if (!open || typeof document === "undefined") return null;
+  if (!mounted || typeof document === "undefined") return null;
+
+  const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
   return createPortal(
     <>
@@ -115,12 +131,17 @@ export function AskAtlasOverlay({
           background: "rgba(4,3,6,0.78)",
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
-          animation: "askAtlasScrimIn 200ms ease",
+          opacity: visible ? 1 : 0,
+          transition: "opacity 200ms ease",
         }}
       />
       <style>{`
-        @keyframes askAtlasScrimIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes askAtlasSheetIn { from { transform: translateY(24px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        @keyframes askAtlasDot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0) } 40% { opacity: 1; transform: translateY(-2px) } }
+        @keyframes askAtlasMsgIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
+        .ask-atlas-msg { animation: askAtlasMsgIn 220ms ${EASE} both; }
+        .ask-atlas-chip { transition: background 160ms, border-color 160ms, transform 160ms; }
+        .ask-atlas-chip:hover { background: rgba(212,175,55,0.10); border-color: rgba(212,175,55,0.32); }
+        .ask-atlas-chip:active { transform: scale(0.97); }
       `}</style>
       <div
         role="dialog"
@@ -128,7 +149,9 @@ export function AskAtlasOverlay({
         style={{
           position: "fixed",
           left: "50%", bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-          transform: "translateX(-50%)",
+          transform: `translateX(-50%) translateY(${visible ? "0" : "16px"})`,
+          opacity: visible ? 1 : 0,
+          transition: `transform 260ms ${EASE}, opacity 220ms ease`,
           zIndex: 2401,
           width: "min(560px, calc(100vw - 24px))",
           maxHeight: "min(78vh, 720px)",
@@ -139,7 +162,7 @@ export function AskAtlasOverlay({
           boxShadow: "0 28px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
           overflow: "hidden",
           fontFamily: "var(--app-font-sans)",
-          animation: "askAtlasSheetIn 260ms cubic-bezier(0.22, 1, 0.36, 1)",
+          willChange: "transform, opacity",
         }}
       >
         {/* Header */}
@@ -210,13 +233,60 @@ export function AskAtlasOverlay({
         }}>
           {chat.messages.length === 0 && (
             <div style={{
-              padding: "24px 12px",
-              color: "rgba(255,255,255,0.55)",
-              fontSize: 14, lineHeight: 1.55,
+              padding: "28px 8px 16px",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
               textAlign: "center",
             }}>
-              Think out loud. Atlas won't build anything here — when an idea is
-              ready to ship, you'll see <em>Continue in Workspace</em>.
+              <div style={{
+                width: 44, height: 44, borderRadius: 14,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                background: "radial-gradient(circle at 50% 35%, rgba(212,175,55,0.32), rgba(212,175,55,0.06) 70%)",
+                border: "1px solid rgba(212,175,55,0.28)",
+                color: "rgba(255,232,170,0.98)",
+                fontFamily: "var(--app-font-serif, Georgia, serif)",
+                fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em",
+                filter: "drop-shadow(0 0 10px rgba(212,175,55,0.25))",
+              }}>A</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 340 }}>
+                <div style={{
+                  fontFamily: "var(--app-font-mono)", fontSize: 10,
+                  letterSpacing: "0.2em", textTransform: "uppercase",
+                  color: "rgba(212,175,55,0.8)",
+                }}>I am thinking</div>
+                <div style={{ color: "rgba(255,255,255,0.78)", fontSize: 14.5, lineHeight: 1.55 }}>
+                  Think out loud. Nothing here gets built or saved to a project.
+                </div>
+                <div style={{ color: "rgba(255,255,255,0.42)", fontSize: 12.5, lineHeight: 1.5 }}>
+                  When an idea is ready to ship, you'll see <em>Continue in Workspace</em>.
+                </div>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 4 }}>
+                {[
+                  "What should I work on next?",
+                  "Help me name this idea",
+                  "Pressure-test this decision",
+                ].map((sample) => (
+                  <button
+                    key={sample}
+                    type="button"
+                    className="ask-atlas-chip"
+                    onClick={() => {
+                      setDraft(sample);
+                      window.setTimeout(() => textareaRef.current?.focus(), 0);
+                    }}
+                    style={{
+                      padding: "6px 10px", borderRadius: 999,
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      color: "rgba(255,255,255,0.72)",
+                      fontSize: 12, cursor: "pointer",
+                      fontFamily: "var(--app-font-sans)",
+                    }}
+                  >
+                    {sample}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {chat.messages.map((m, i) => {
@@ -224,8 +294,9 @@ export function AskAtlasOverlay({
             const lastAssistant = !isUser && i === chat.messages.length - 1;
             const showHandoff =
               !isUser && hasBuildIntent(m.content) && !chat.isStreaming;
+            const isWaiting = lastAssistant && chat.isStreaming && !m.content;
             return (
-              <div key={m.id ?? i} style={{
+              <div key={m.id ?? i} className="ask-atlas-msg" style={{
                 display: "flex", flexDirection: "column", gap: 8,
                 alignItems: isUser ? "flex-end" : "flex-start",
               }}>
@@ -239,7 +310,18 @@ export function AskAtlasOverlay({
                   fontSize: 14.5, lineHeight: 1.6,
                   whiteSpace: "pre-wrap", wordBreak: "break-word",
                 }}>
-                  {m.content || (lastAssistant && chat.isStreaming ? "…" : "")}
+                  {isWaiting ? (
+                    <span aria-label="Atlas is thinking" style={{ display: "inline-flex", gap: 4, alignItems: "center", height: 18 }}>
+                      {[0, 1, 2].map((n) => (
+                        <span key={n} style={{
+                          width: 5, height: 5, borderRadius: 999,
+                          background: "rgba(212,175,55,0.85)",
+                          display: "inline-block",
+                          animation: `askAtlasDot 1100ms ${EASE} ${n * 140}ms infinite`,
+                        }} />
+                      ))}
+                    </span>
+                  ) : m.content}
                 </div>
                 {showHandoff && (
                   <button
@@ -266,7 +348,7 @@ export function AskAtlasOverlay({
             );
           })}
           {chat.isPending && chat.messages.length > 0 && !chat.isStreaming && (
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontFamily: "var(--app-font-mono)" }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
               Capturing intent…
             </div>
           )}
