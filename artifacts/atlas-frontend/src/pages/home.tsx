@@ -6149,6 +6149,15 @@ export default function Home() {
           backdrop-filter: blur(6px);
           -webkit-backdrop-filter: blur(6px);
         }
+        /* Parchment / light mode: heavy black scrim feels like the lights got turned off.
+           Use a warm-neutral wash with a softer blur instead. */
+        :global([data-theme="parchment"]) .atlas-overview-scrim,
+        [data-theme="parchment"] .atlas-overview-scrim {
+          background: rgba(60, 42, 20, 0.18);
+          backdrop-filter: blur(3px) saturate(105%);
+          -webkit-backdrop-filter: blur(3px) saturate(105%);
+        }
+
         .atlas-overview-bottom-sheet {
           position: relative;
           width: 100%;
