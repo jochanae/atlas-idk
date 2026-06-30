@@ -264,6 +264,18 @@ html, body {
   color-scheme: light;
   /* Frosted Ice — cool desaturated neutrals, gold accent preserved */
   --atlas-gold-rgb: 139, 94, 60;
+
+  /* Semantic warm-ivory tokens (light mode only) */
+  --bg-primary:       #F7F4ED;
+  --bg-surface:       #FFFDF8;
+  --bg-elevated:      #F2EDE3;
+  --text-primary:     #1F2430;
+  --text-secondary:   #68707C;
+  --text-muted:       #9AA1AA;
+  --border-soft:      rgba(115, 92, 60, 0.18);
+  --accent-gold:      #A87832;
+  --accent-gold-soft: rgba(168, 120, 50, 0.14);
+  --shadow-soft:      0 18px 45px rgba(68, 55, 35, 0.14);
   --atlas-bg-rgb: 248, 250, 252;
   --atlas-surface-rgb: 255, 255, 255;
   --atlas-muted-rgb: 100, 116, 139;
@@ -336,6 +348,19 @@ html, body {
   --sidebar-border: 220 13% 91%;
   --sidebar-accent: 210 40% 96%;
   --sidebar-accent-foreground: 222 47% 11%;
+}
+
+/* HistoryBookmarksSheet checkpoint input — parchment override */
+[data-theme="parchment"] .atlas-checkpoint-input {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="parchment"] .atlas-checkpoint-input::placeholder {
+  color: var(--text-muted) !important;
+}
+[data-theme="parchment"] .atlas-checkpoint-input:focus {
+  border-color: rgba(115, 92, 60, 0.55) !important;
 }
 
 /* Frosted glass on overlays and sheet surfaces in light mode */

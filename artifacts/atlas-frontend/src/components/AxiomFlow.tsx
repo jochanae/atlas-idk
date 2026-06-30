@@ -1607,7 +1607,7 @@ export function AxiomFlow({
       {drillLoading && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 28,
-          background: "rgba(8,6,10,0.70)",
+          background: theme === "parchment" ? "rgba(247,244,237,0.88)" : "rgba(8,6,10,0.70)",
           backdropFilter: "blur(3px)",
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
@@ -1638,7 +1638,7 @@ export function AxiomFlow({
       {hydrateLoading && !flowEmpty && nodes.length > 0 && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 28,
-          background: "rgba(8,6,10,0.82)",
+          background: theme === "parchment" ? "rgba(247,244,237,0.88)" : "rgba(8,6,10,0.82)",
           backdropFilter: "blur(3px)",
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",

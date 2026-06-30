@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
+import { useThemeMode } from "@/lib/theme";
 
 // ── Local Atlas profile (mirrors workspace.tsx UserProfile for localStorage) ──
 interface AtlasProfile {
@@ -268,6 +269,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
   const queryClient = useQueryClient();
   const logout = useLogout();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isParchment = useThemeMode() === "parchment";
 
   // ── Name & avatar (DB) ────────────────────────────────────────────────────
   const [name, setName] = useState(authUser?.name ?? "");
@@ -521,7 +523,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
       {/* Backdrop */}
       <div
         onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.62)", backdropFilter: "blur(7px)" }}
+        style={{ position: "absolute", inset: 0, background: isParchment ? "rgba(31,36,48,0.38)" : "rgba(0,0,0,0.62)", backdropFilter: "blur(7px)" }}
       />
 
       {/* Panel */}
@@ -529,10 +531,10 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
         position: "relative", zIndex: 1,
         width: isMobile ? "100%" : 340,
         height: "100%",
-        background: "rgba(18,16,14,0.88)",
-        backdropFilter: "blur(28px)",
-        borderLeft: "1px solid rgba(201,162,76,0.16)",
-        boxShadow: "-12px 0 48px rgba(0,0,0,0.55), inset 1px 0 0 rgba(201,162,76,0.06)",
+        background: isParchment ? "var(--bg-surface)" : "rgba(18,16,14,0.88)",
+        backdropFilter: isParchment ? "none" : "blur(28px)",
+        borderLeft: isParchment ? "1px solid var(--border-soft)" : "1px solid rgba(201,162,76,0.16)",
+        boxShadow: isParchment ? "var(--shadow-soft)" : "-12px 0 48px rgba(0,0,0,0.55), inset 1px 0 0 rgba(201,162,76,0.06)",
         display: "flex", flexDirection: "column",
         animation: "accountHubIn 240ms cubic-bezier(0.2,0.8,0.2,1)",
       }}>
@@ -540,7 +542,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
         {/* Header */}
         <div style={{
           padding: "16px 18px 14px", flexShrink: 0,
-          borderBottom: "1px solid rgba(201,162,76,0.08)",
+          borderBottom: isParchment ? "1px solid var(--border-soft)" : "1px solid rgba(201,162,76,0.08)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.16em", color: "var(--atlas-gold)", opacity: 0.8, textTransform: "uppercase" }}>

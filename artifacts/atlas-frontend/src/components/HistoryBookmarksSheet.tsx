@@ -35,6 +35,7 @@ import {
   useCheckpoints,
 } from "@/lib/atlas-history";
 import { toast } from "sonner";
+import { useThemeMode } from "@/lib/theme";
 
 const OVERLAY: React.CSSProperties = {
   position: "fixed",
@@ -63,7 +64,7 @@ const SHEET: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
-  color: "rgba(244,236,220,0.92)",
+  color: "var(--atlas-fg)",
 };
 
 const TAB_BAR: React.CSSProperties = {
@@ -157,6 +158,24 @@ export function HistoryBookmarksSheet({
     [bookmarks],
   );
 
+  const isParchment = useThemeMode() === "parchment";
+
+  // Light-mode color palette for sheet surfaces
+  const fgPrimary   = isParchment ? "#1F2430"              : "rgba(244,236,220,0.94)";
+  const fgMuted     = isParchment ? "#68707C"              : "rgba(244,236,220,0.45)";
+  const fgDim       = isParchment ? "#9AA1AA"              : "rgba(244,236,220,0.38)";
+  const fgSub       = isParchment ? "rgba(31,36,48,0.55)"  : "rgba(244,236,220,0.42)";
+  const rowBg       = isParchment ? "rgba(115,92,60,0.05)" : "rgba(255,255,255,0.02)";
+  const rowBgHover  = isParchment ? "rgba(115,92,60,0.10)" : "rgba(196,160,80,0.07)";
+  const rowBorder   = isParchment ? "rgba(115,92,60,0.15)" : "rgba(196,160,80,0.08)";
+  const rowBorderHover = isParchment ? "rgba(115,92,60,0.28)" : "rgba(196,160,80,0.22)";
+  const iconBg      = isParchment ? "rgba(115,92,60,0.10)" : "rgba(196,160,80,0.10)";
+  const iconColor   = isParchment ? "rgba(115,92,60,0.85)" : "rgba(228,196,128,0.85)";
+  const menuBg      = isParchment ? "#FFFDF8"              : "rgba(20,18,14,0.98)";
+  const menuBorder  = isParchment ? "rgba(115,92,60,0.22)" : "rgba(196,160,80,0.28)";
+  const autoTagBg   = isParchment ? "rgba(115,92,60,0.08)" : "rgba(255,255,255,0.05)";
+  const autoTagColor= isParchment ? "rgba(31,36,48,0.45)"  : "rgba(244,236,220,0.32)";
+
   if (!open) return null;
 
   const handleRollback = (id: string, messageId: number) => {
@@ -191,20 +210,20 @@ export function HistoryBookmarksSheet({
         gap: 10,
         padding: "10px 12px",
         borderRadius: 10,
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(196,160,80,0.08)",
+        background: rowBg,
+        border: `1px solid ${rowBorder}`,
         opacity: opts?.dim ? 0.55 : 1,
         cursor: "pointer",
         transition: "background 140ms ease, border-color 140ms ease",
       }}
       onClick={() => handleRollback(item.id, item.associated_message_id)}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = "rgba(196,160,80,0.07)";
-        e.currentTarget.style.borderColor = "rgba(196,160,80,0.22)";
+        e.currentTarget.style.background = rowBgHover;
+        e.currentTarget.style.borderColor = rowBorderHover;
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = "rgba(255,255,255,0.02)";
-        e.currentTarget.style.borderColor = "rgba(196,160,80,0.08)";
+        e.currentTarget.style.background = rowBg;
+        e.currentTarget.style.borderColor = rowBorder;
       }}
     >
       <span
@@ -214,8 +233,8 @@ export function HistoryBookmarksSheet({
           display: "grid",
           placeItems: "center",
           borderRadius: 6,
-          background: "rgba(196,160,80,0.10)",
-          color: "rgba(228,196,128,0.85)",
+          background: iconBg,
+          color: iconColor,
         }}
       >
         {lensGlyph(item.lens)}
@@ -225,7 +244,7 @@ export function HistoryBookmarksSheet({
           style={{
             fontSize: 13.5,
             fontWeight: 500,
-            color: "rgba(244,236,220,0.94)",
+            color: fgPrimary,
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -236,7 +255,7 @@ export function HistoryBookmarksSheet({
         <div
           style={{
             fontSize: 11,
-            color: "rgba(244,236,220,0.45)",
+            color: fgMuted,
             marginTop: 2,
             letterSpacing: "0.02em",
           }}
@@ -266,7 +285,7 @@ export function HistoryBookmarksSheet({
           ...iconBtnStyle,
           color: item.isBookmarked
             ? "rgba(228,196,128,0.95)"
-            : "rgba(244,236,220,0.55)",
+            : "var(--atlas-muted)",
         }}
       >
         {item.isBookmarked ? (
@@ -294,12 +313,12 @@ export function HistoryBookmarksSheet({
               right: 0,
               top: 28,
               minWidth: 180,
-              background: "rgba(20,18,14,0.98)",
-              border: "1px solid rgba(196,160,80,0.28)",
+              background: menuBg,
+              border: `1px solid ${menuBorder}`,
               borderRadius: 10,
               padding: 6,
               zIndex: 5,
-              boxShadow: "0 14px 36px -10px rgba(0,0,0,0.8)",
+              boxShadow: "0 14px 36px -10px rgba(0,0,0,0.4)",
             }}
           >
             <MenuRow
@@ -353,7 +372,7 @@ export function HistoryBookmarksSheet({
           gap: 10,
           padding: "12px 14px",
           borderRadius: 12,
-          background: "rgba(255,255,255,0.025)",
+          background: isParchment ? "rgba(115,92,60,0.04)" : "rgba(255,255,255,0.025)",
           border: `1px solid ${bg.replace("0.14", "0.25").replace("0.10", "0.20")}`,
           transition: "background 140ms ease, border-color 140ms ease",
           cursor: "pointer",
@@ -365,7 +384,7 @@ export function HistoryBookmarksSheet({
           e.currentTarget.style.borderColor = color.replace("0.85", "0.4").replace("0.75", "0.35").replace("0.95", "0.45");
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = "rgba(255,255,255,0.025)";
+          e.currentTarget.style.background = isParchment ? "rgba(115,92,60,0.04)" : "rgba(255,255,255,0.025)";
           e.currentTarget.style.borderColor = bg.replace("0.14", "0.25").replace("0.10", "0.20");
         }}
       >
@@ -403,7 +422,7 @@ export function HistoryBookmarksSheet({
             style={{
               fontSize: 13.5,
               fontWeight: 500,
-              color: "rgba(244,236,220,0.94)",
+              color: fgPrimary,
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -415,7 +434,7 @@ export function HistoryBookmarksSheet({
             <div
               style={{
                 fontSize: 12,
-                color: "rgba(244,236,220,0.5)",
+                color: fgMuted,
                 marginTop: 3,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
@@ -436,7 +455,7 @@ export function HistoryBookmarksSheet({
             <span
               style={{
                 fontSize: 10.5,
-                color: "rgba(244,236,220,0.38)",
+                color: fgDim,
                 letterSpacing: "0.02em",
               }}
             >
@@ -446,8 +465,8 @@ export function HistoryBookmarksSheet({
               <span
                 style={{
                   fontSize: 10,
-                  color: "rgba(244,236,220,0.32)",
-                  background: "rgba(255,255,255,0.05)",
+                  color: autoTagColor,
+                  background: autoTagBg,
                   borderRadius: 4,
                   padding: "1px 5px",
                   letterSpacing: "0.06em",
@@ -462,8 +481,30 @@ export function HistoryBookmarksSheet({
     );
   };
 
+  const overlayStyle: React.CSSProperties = {
+    ...OVERLAY,
+    background: isParchment ? "rgba(31,36,48,0.38)" : "rgba(8, 8, 12, 0.72)",
+    backdropFilter: isParchment ? "blur(4px)" : "blur(8px)",
+  };
+
+  const sheetStyle: React.CSSProperties = {
+    ...SHEET,
+    background: isParchment
+      ? "linear-gradient(180deg, #FFFDF8 0%, #F7F4ED 100%)"
+      : SHEET.background as string,
+    border: isParchment ? "1px solid rgba(115,92,60,0.22)" : SHEET.border as string,
+    boxShadow: isParchment ? "0 -12px 40px rgba(68,55,35,0.12)" : SHEET.boxShadow as string,
+    color: isParchment ? "#1F2430" : SHEET.color as string,
+  };
+
+  const tabBarStyle: React.CSSProperties = {
+    ...TAB_BAR,
+    background: isParchment ? "rgba(115,92,60,0.06)" : TAB_BAR.background as string,
+    border: isParchment ? "1px solid rgba(115,92,60,0.18)" : TAB_BAR.border as string,
+  };
+
   return (
-    <div style={OVERLAY} onClick={onClose}>
+    <div style={overlayStyle} onClick={onClose}>
       <style>{`
         @keyframes atlasHistoryFade {
           from { opacity: 0; }
@@ -493,7 +534,7 @@ export function HistoryBookmarksSheet({
         .atlas-checkpoint-input:focus { border-color: rgba(196,160,80,0.55); }
       `}</style>
       <div
-        style={{ ...SHEET, animation: "atlasHistorySlide 220ms ease" }}
+        style={{ ...sheetStyle, animation: "atlasHistorySlide 220ms ease" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -516,7 +557,7 @@ export function HistoryBookmarksSheet({
                 fontSize: 13,
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                color: "rgba(244,236,220,0.62)",
+                color: fgSub,
                 fontWeight: 600,
               }}
             >
@@ -529,7 +570,7 @@ export function HistoryBookmarksSheet({
         </div>
 
         {/* Tabs */}
-        <div style={TAB_BAR}>
+        <div style={tabBarStyle}>
           <TabButton
             active={tab === "history"}
             onClick={() => setTab("history")}
@@ -608,7 +649,7 @@ export function HistoryBookmarksSheet({
                         fontSize: 11.5,
                         letterSpacing: "0.12em",
                         textTransform: "uppercase",
-                        color: "rgba(244,236,220,0.42)",
+                        color: fgSub,
                         padding: "4px 2px 8px",
                       }}
                     >
@@ -650,7 +691,7 @@ export function HistoryBookmarksSheet({
                       fontSize: 11.5,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      color: "rgba(244,236,220,0.55)",
+                      color: "var(--atlas-muted)",
                       fontWeight: 600,
                     }}
                   >
@@ -682,8 +723,8 @@ export function HistoryBookmarksSheet({
                         background: "rgba(196,160,80,0.16)",
                         color:
                           checkpointTitle.trim()
-                            ? "rgba(244,224,176,0.98)"
-                            : "rgba(244,236,220,0.4)",
+                            ? (isParchment ? "rgba(115,72,14,0.98)" : "rgba(244,224,176,0.98)")
+                            : "var(--atlas-muted)",
                         fontSize: 12.5,
                         fontWeight: 600,
                         cursor:
@@ -711,9 +752,9 @@ export function HistoryBookmarksSheet({
                       style={{
                         padding: "7px 12px",
                         borderRadius: 7,
-                        border: "1px solid rgba(255,255,255,0.08)",
+                        border: isParchment ? "1px solid var(--border-soft)" : "1px solid rgba(255,255,255,0.08)",
                         background: "transparent",
-                        color: "rgba(244,236,220,0.5)",
+                        color: "var(--atlas-muted)",
                         fontSize: 12.5,
                         cursor: "pointer",
                         fontFamily: "inherit",
@@ -770,7 +811,7 @@ export function HistoryBookmarksSheet({
                     justifyContent: "center",
                     gap: 8,
                     padding: "32px 16px",
-                    color: "rgba(244,236,220,0.38)",
+                    color: "var(--atlas-muted)",
                     fontSize: 13,
                   }}
                 >
@@ -825,7 +866,7 @@ const iconBtnStyle: React.CSSProperties = {
   width: 28,
   height: 28,
   borderRadius: 6,
-  color: "rgba(244,236,220,0.6)",
+  color: "var(--atlas-muted)",
   transition: "background 120ms ease, color 120ms ease",
 };
 
@@ -864,7 +905,7 @@ function TabButton({
         background: active ? accentBg : "transparent",
         color: active
           ? accentColor
-          : "rgba(244,236,220,0.55)",
+          : "var(--atlas-muted)",
         border: active
           ? `1px solid ${accentBorder}`
           : "1px solid transparent",
@@ -893,7 +934,7 @@ function DayLabel({ children }: { children: React.ReactNode }) {
         fontSize: 10.5,
         letterSpacing: "0.16em",
         textTransform: "uppercase",
-        color: "rgba(244,236,220,0.4)",
+        color: "var(--atlas-muted)",
         padding: "2px 2px 8px",
         fontWeight: 600,
       }}
@@ -926,11 +967,11 @@ function MenuRow({
         fontSize: 12.5,
         color: danger
           ? "rgba(232,120,110,0.95)"
-          : "rgba(244,236,220,0.88)",
+          : "var(--atlas-fg)",
         transition: "background 120ms ease",
       }}
       onMouseEnter={(e) =>
-        (e.currentTarget.style.background = "rgba(255,255,255,0.05)")
+        (e.currentTarget.style.background = "rgba(128,100,60,0.08)")
       }
       onMouseLeave={(e) =>
         (e.currentTarget.style.background = "transparent")
@@ -999,13 +1040,13 @@ function CheckpointInspectPanel({
           alignItems: "center",
           gap: 4,
           fontSize: 12,
-          color: "rgba(244,236,220,0.5)",
+          color: "var(--atlas-muted)",
           padding: "0 2px 14px",
           letterSpacing: "0.04em",
           transition: "color 120ms ease",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(244,236,220,0.85)")}
-        onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(244,236,220,0.5)")}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-fg)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--atlas-muted)")}
       >
         <ChevronLeft size={13} strokeWidth={2} />
         Back to checkpoints
@@ -1053,7 +1094,7 @@ function CheckpointInspectPanel({
               style={{
                 fontSize: 15,
                 fontWeight: 600,
-                color: "rgba(244,236,220,0.96)",
+                color: "var(--atlas-fg)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -1065,15 +1106,15 @@ function CheckpointInspectPanel({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: "rgba(244,236,220,0.45)" }}>
+          <span style={{ fontSize: 11, color: "var(--atlas-muted)" }}>
             {formatSnapshotTimestamp(cp.created_at)}
           </span>
           {cp.created_by === "system" ? (
             <span
               style={{
                 fontSize: 10.5,
-                color: "rgba(244,236,220,0.35)",
-                background: "rgba(255,255,255,0.06)",
+                color: "var(--atlas-muted)",
+                background: "rgba(128,100,60,0.08)",
                 borderRadius: 4,
                 padding: "1px 6px",
                 letterSpacing: "0.06em",
@@ -1085,8 +1126,8 @@ function CheckpointInspectPanel({
             <span
               style={{
                 fontSize: 10.5,
-                color: "rgba(244,236,220,0.35)",
-                background: "rgba(255,255,255,0.06)",
+                color: "var(--atlas-muted)",
+                background: "rgba(128,100,60,0.08)",
                 borderRadius: 4,
                 padding: "1px 6px",
                 letterSpacing: "0.06em",
@@ -1102,7 +1143,7 @@ function CheckpointInspectPanel({
             style={{
               marginTop: 10,
               fontSize: 12,
-              color: "rgba(244,236,220,0.55)",
+              color: "var(--atlas-muted)",
               lineHeight: 1.5,
             }}
           >
@@ -1126,7 +1167,7 @@ function CheckpointInspectPanel({
                 }}
               >
                 {creativePrinciples.map((p, i) => (
-                  <li key={i} style={{ fontSize: 12.5, color: "rgba(244,236,220,0.78)", lineHeight: 1.45 }}>
+                  <li key={i} style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45 }}>
                     {String(p)}
                   </li>
                 ))}
@@ -1145,14 +1186,14 @@ function CheckpointInspectPanel({
                         fontWeight: 600,
                         textTransform: "capitalize",
                         letterSpacing: "0.06em",
-                        color: "rgba(244,236,220,0.42)",
+                        color: "var(--atlas-muted)",
                         paddingTop: 1,
                         minWidth: 72,
                       }}
                     >
                       {k.replace(/_/g, " ")}
                     </span>
-                    <span style={{ fontSize: 12.5, color: "rgba(244,236,220,0.78)", lineHeight: 1.45 }}>
+                    <span style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45 }}>
                       {typeof v === "object" ? JSON.stringify(v) : String(v ?? "—")}
                     </span>
                   </div>
@@ -1169,44 +1210,44 @@ function CheckpointInspectPanel({
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {amName && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   Name
                 </span>
-                <span style={{ fontSize: 12.5, color: "rgba(244,236,220,0.78)" }}>{amName}</span>
+                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)" }}>{amName}</span>
               </div>
             )}
             {amIntent && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   Intent
                 </span>
-                <span style={{ fontSize: 12.5, color: "rgba(244,236,220,0.78)", lineHeight: 1.45 }}>{amIntent}</span>
+                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45 }}>{amIntent}</span>
               </div>
             )}
             {amDesc && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   About
                 </span>
-                <span style={{ fontSize: 12.5, color: "rgba(244,236,220,0.78)", lineHeight: 1.45 }}>{amDesc}</span>
+                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45 }}>{amDesc}</span>
               </div>
             )}
             {amPages !== null && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   Pages
                 </span>
-                <span style={{ fontSize: 12.5, color: "rgba(244,236,220,0.78)" }}>
+                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)" }}>
                   {amPages} defined
                 </span>
               </div>
             )}
             {amEntities !== null && amEntities > 0 && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   Entities
                 </span>
-                <span style={{ fontSize: 12.5, color: "rgba(244,236,220,0.78)" }}>
+                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)" }}>
                   {amEntities} defined
                 </span>
               </div>
@@ -1219,7 +1260,7 @@ function CheckpointInspectPanel({
         <div
           style={{
             fontSize: 12,
-            color: "rgba(244,236,220,0.38)",
+            color: "var(--atlas-muted)",
             padding: "12px 2px",
             lineHeight: 1.5,
           }}
@@ -1240,9 +1281,9 @@ function InspectSection({ title, children }: { title: string; children: React.Re
           fontWeight: 700,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
-          color: "rgba(244,236,220,0.35)",
+          color: "var(--atlas-muted)",
           padding: "0 2px 8px",
-          borderBottom: "1px solid rgba(244,236,220,0.07)",
+          borderBottom: "1px solid var(--border-soft)",
           marginBottom: 10,
         }}
       >
@@ -1262,7 +1303,7 @@ function InspectBlock({ label, children }: { label: string; children: React.Reac
         style={{
           fontSize: 11,
           fontWeight: 600,
-          color: "rgba(244,236,220,0.48)",
+          color: "var(--atlas-muted)",
           letterSpacing: "0.06em",
           marginBottom: 6,
         }}
@@ -1292,7 +1333,7 @@ function EmptyState({
         justifyContent: "center",
         gap: 8,
         padding: "48px 16px",
-        color: "rgba(244,236,220,0.55)",
+        color: "var(--atlas-muted)",
         textAlign: "center",
       }}
     >
@@ -1315,7 +1356,7 @@ function EmptyState({
         <div
           style={{
             fontSize: 12,
-            color: "rgba(244,236,220,0.4)",
+            color: "var(--atlas-muted)",
             maxWidth: 280,
           }}
         >
