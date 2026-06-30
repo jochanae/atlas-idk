@@ -5830,6 +5830,19 @@ export default function Home() {
         }}
       />
 
+      {/* Quick-park sheet — opened from the composer Park icon. Mirrors workspace behavior. */}
+      {showParkSheet && (
+        <ParkSheet
+          projectId={homeFocus ?? null}
+          projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
+          onClose={() => setShowParkSheet(false)}
+          onOpenFull={() => {
+            setShowParkSheet(false);
+            setLocation("/parking" + (homeFocus != null ? `?project=${homeFocus}` : ""));
+          }}
+        />
+      )}
+
 
 
       <div className="atlas-home-bottom-nav">
