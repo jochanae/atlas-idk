@@ -4428,37 +4428,91 @@ export default function Home() {
                           ) : m.content}
                         </div>
                         {showHandoff && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const seed = askAtlasHandoffSeed;
-                              askAtlasChat.abort();
-                              askAtlasChat.clearMessages();
-                              setSendTo("workspace");
-                              sendToRef.current = "workspace";
-                              setInput(seed);
-                              window.setTimeout(() => { void handleSubmit(seed); }, 40);
-                            }}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              padding: "7px 12px",
-                              borderRadius: 999,
-                              background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
-                              color: "var(--atlas-gold)",
-                              border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
-                              cursor: "pointer",
-                              fontFamily: "var(--app-font-mono)",
-                              fontSize: 10.5,
-                              letterSpacing: "0.1em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Continue in Workspace
-                            <ArrowRight size={12} strokeWidth={2} />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => { void performAskAtlasHandoff(i); }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "7px 12px",
+                                borderRadius: 999,
+                                background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
+                                color: "var(--atlas-gold)",
+                                border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+                                cursor: "pointer",
+                                fontFamily: "var(--app-font-mono)",
+                                fontSize: 10.5,
+                                letterSpacing: "0.1em",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              Continue in Workspace
+                              <ArrowRight size={12} strokeWidth={2} />
+                            </button>
+                            {handoffPicker && handoffPicker.messageIndex === i && (
+                              <div style={{
+                                marginTop: 6,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 6,
+                                maxWidth: "92%",
+                              }}>
+                                <div style={{
+                                  fontFamily: "var(--app-font-mono)",
+                                  fontSize: 10,
+                                  letterSpacing: "0.08em",
+                                  textTransform: "uppercase",
+                                  color: "var(--atlas-muted)",
+                                  opacity: 0.75,
+                                }}>
+                                  Atlas mentioned a few projects — which one?
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                  {handoffPicker.options.map((opt) => (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => { void performAskAtlasHandoff(i, opt.id); }}
+                                      style={{
+                                        padding: "6px 10px",
+                                        borderRadius: 999,
+                                        background: "transparent",
+                                        color: "var(--atlas-fg)",
+                                        border: "1px solid color-mix(in oklab, var(--atlas-gold) 36%, transparent)",
+                                        cursor: "pointer",
+                                        fontFamily: "var(--app-font-mono)",
+                                        fontSize: 10.5,
+                                        letterSpacing: "0.06em",
+                                      }}
+                                    >
+                                      {opt.name}
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => setHandoffPicker(null)}
+                                    style={{
+                                      padding: "6px 10px",
+                                      borderRadius: 999,
+                                      background: "transparent",
+                                      color: "var(--atlas-muted)",
+                                      border: "1px dashed var(--atlas-border)",
+                                      cursor: "pointer",
+                                      fontFamily: "var(--app-font-mono)",
+                                      fontSize: 10.5,
+                                      letterSpacing: "0.06em",
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
+
                       </div>
                     );
                   })}
