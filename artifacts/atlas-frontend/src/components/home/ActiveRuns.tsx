@@ -32,13 +32,15 @@ export interface ActiveRun {
   completedAt: number | null;
   error?: string;
   attachmentNames: string[];
+  streamedContent?: string;
 }
 
 // ── Module-level store ────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "atlas:active-runs";
 const STALE_THRESHOLD_MS = 10 * 60 * 1000;  // 10 min: running→failed on load
-const AUTO_DISMISS_MS = 3_000;              // 3s flash, then remove from Active Runs
+const AUTO_DISMISS_COMPLETED_MS = 30_000;   // 30s — enough time to read the response
+const AUTO_DISMISS_FAILED_MS = 60_000;      // 60s — failed runs stay visible longer
 
 type Listener = () => void;
 let _listeners: Listener[] = [];
@@ -103,8 +105,9 @@ function _removeRun(id: string) {
   _notify();
 }
 
-function _scheduleAutoDismiss(id: string) {
-  setTimeout(() => _removeRun(id), AUTO_DISMISS_MS);
+function _scheduleAutoDismiss(id: string, failed = false) {
+  const delay = failed ? AUTO_DISMISS_FAILED_MS : AUTO_DISMISS_COMPLETED_MS;
+  setTimeout(() => _removeRun(id), delay);
 }
 
 // ── Intent helpers ────────────────────────────────────────────────────────────
@@ -224,13 +227,47 @@ async function _startRun(
       throw new Error(msg);
     }
 
-    // Consume the SSE stream to completion
+    // Consume the SSE stream — parse token events and surface them live
     const reader = chatRes.body?.getReader();
     if (reader) {
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulated = "";
       try {
         while (true) {
-          const { done } = await reader.read();
+          const { done, value } = await reader.read();
           if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() ?? "";
+          for (const block of blocks) {
+            const dataLine = block.split("\n").find((l) => l.startsWith("data: "));
+            if (!dataLine) continue;
+            try {
+              const parsed = JSON.parse(dataLine.slice(6)) as { type?: string; content?: string };
+              if (parsed.type === "token" && parsed.content) {
+                accumulated += parsed.content;
+                _patchRun(run.id, { streamedContent: accumulated });
+              } else if (parsed.type === "done" && parsed.content) {
+                // Use the full done content as the final answer (more complete than accumulated tokens)
+                accumulated = parsed.content;
+                _patchRun(run.id, { streamedContent: accumulated });
+              }
+            } catch { /* malformed SSE line — skip */ }
+          }
+        }
+        // Flush any trailing buffer
+        if (buffer.trim()) {
+          const dataLine = buffer.split("\n").find((l) => l.startsWith("data: "));
+          if (dataLine) {
+            try {
+              const parsed = JSON.parse(dataLine.slice(6)) as { type?: string; content?: string };
+              if ((parsed.type === "token" || parsed.type === "done") && parsed.content) {
+                accumulated = parsed.type === "done" ? parsed.content : accumulated + parsed.content;
+                _patchRun(run.id, { streamedContent: accumulated });
+              }
+            } catch { /* noop */ }
+          }
         }
       } finally {
         reader.releaseLock();
@@ -238,14 +275,14 @@ async function _startRun(
     }
 
     _patchRun(run.id, { status: "completed", completedAt: Date.now() });
-    _scheduleAutoDismiss(run.id);
+    _scheduleAutoDismiss(run.id, false);
   } catch (err) {
     _patchRun(run.id, {
       status: "failed",
       error: err instanceof Error ? err.message : "Unexpected error",
       completedAt: Date.now(),
     });
-    _scheduleAutoDismiss(run.id);
+    _scheduleAutoDismiss(run.id, true);
   }
 }
 
@@ -287,6 +324,7 @@ export function ActiveRuns({ projects }: Props) {
       <style>{`
         @keyframes ar-spin { to { transform: rotate(360deg); } }
         @keyframes ar-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.85; } }
+        @keyframes ar-cursor-blink { 0%, 100% { opacity: 0.85; } 50% { opacity: 0; } }
       `}</style>
       <_ActiveRunsInner projects={projects} setLocation={setLocation} />
     </>
@@ -699,7 +737,7 @@ function _ActiveRunsInner({ projects, setLocation }: Props & { setLocation: (to:
       </div>
 
       {/* Run cards */}
-      {activeRuns.length === 0 ? (
+      {activeRuns.length === 0 && doneRuns.length === 0 ? (
         <div style={{
           padding: "16px 4px 4px",
           display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3,
@@ -721,6 +759,26 @@ function _ActiveRunsInner({ projects, setLocation }: Props & { setLocation: (to:
               onDismiss={() => _removeRun(run.id)}
             />
           ))}
+          {doneRuns.length > 0 && (
+            <>
+              {activeRuns.length > 0 && (
+                <div style={{
+                  height: 1,
+                  background: "var(--atlas-border)",
+                  margin: "2px 0",
+                  opacity: 0.5,
+                }} />
+              )}
+              {doneRuns.map((run) => (
+                <RunCard
+                  key={run.id}
+                  run={run}
+                  onEnter={() => setLocation(`/project/${run.projectId}`)}
+                  onDismiss={() => _removeRun(run.id)}
+                />
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -893,6 +951,46 @@ function RunCard({
               {name}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Streaming / final response content */}
+      {run.streamedContent && (
+        <div style={{
+          marginTop: 4,
+          paddingLeft: 17,
+          paddingRight: 4,
+          borderTop: "1px solid var(--atlas-border)",
+          paddingTop: 8,
+        }}>
+          <div style={{
+            fontSize: 12,
+            lineHeight: 1.6,
+            color: "var(--atlas-fg)",
+            opacity: run.status === "running" ? 0.75 : 0.9,
+            fontFamily: "var(--app-font-sans)",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            maxHeight: run.status === "completed" ? 220 : 120,
+            overflowY: "auto",
+          }}>
+            {run.streamedContent}
+            {run.status === "running" && (
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 7,
+                  height: 13,
+                  marginLeft: 2,
+                  verticalAlign: "text-bottom",
+                  background: INTENT_COLOR[run.intent],
+                  opacity: 0.85,
+                  borderRadius: 1,
+                  animation: "ar-cursor-blink 0.9s step-end infinite",
+                }}
+              />
+            )}
+          </div>
         </div>
       )}
 
