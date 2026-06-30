@@ -342,7 +342,7 @@ html, body {
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
   --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;  /* #64748B */
+  --muted-foreground: 215 19% 38%;  /* #4D5A6E — AA on parchment */
   --accent: 26 40% 39%;
   --accent-foreground: 0 0% 100%;
   --sidebar: 0 0% 100%;
