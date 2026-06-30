@@ -474,8 +474,14 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
       .where(eq(sessionsTable.projectId, projectId))
       .limit(1);
 
+    // Conversation-first projects (created via POST /api/conversations and identified
+    // by a conversationId) start fresh — the user's first message IS the project start.
+    // Skip seeding a placeholder "Session 1" / "Project activated." for them; those
+    // records only add chat-stream noise with no informational value.
+    const isConversationFirst = Boolean(project.conversationId);
+
     let seedSessionId = existingSession?.id ?? null;
-    if (!seedSessionId) {
+    if (!seedSessionId && !isConversationFirst) {
       const [newSession] = await db
         .insert(sessionsTable)
         .values({ projectId, title: "Session 1", status: "active" })
@@ -483,24 +489,26 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
       seedSessionId = newSession?.id ?? null;
     }
 
-    const [existingEntry] = await db
-      .select({ id: entriesTable.id })
-      .from(entriesTable)
-      .where(eq(entriesTable.projectId, projectId))
-      .limit(1);
+    if (!isConversationFirst) {
+      const [existingEntry] = await db
+        .select({ id: entriesTable.id })
+        .from(entriesTable)
+        .where(eq(entriesTable.projectId, projectId))
+        .limit(1);
 
-    if (!existingEntry && seedSessionId) {
-      await db.insert(entriesTable).values({
-        projectId,
-        sessionId: seedSessionId,
-        title: "Project activated.",
-        summary: project.linkedRepo
-          ? `Workspace opened from GitHub repo: ${project.linkedRepo.replace(/^github:\/\//, "")}`
-          : "Workspace initialized.",
-        status: "committed",
-        severity: "committed",
-        mode: "decide",
-      });
+      if (!existingEntry && seedSessionId) {
+        await db.insert(entriesTable).values({
+          projectId,
+          sessionId: seedSessionId,
+          title: "Project activated.",
+          summary: project.linkedRepo
+            ? `Workspace opened from GitHub repo: ${project.linkedRepo.replace(/^github:\/\//, "")}`
+            : "Workspace initialized.",
+          status: "committed",
+          severity: "committed",
+          mode: "decide",
+        });
+      }
     }
 
     const [updated] = await db

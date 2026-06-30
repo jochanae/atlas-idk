@@ -465,7 +465,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
     if (!isTitlePending || !projectId) return;
     const interval = window.setInterval(() => {
       void ps.refresh();
-    }, 3000);
+    }, 4000);
     return () => window.clearInterval(interval);
   }, [isTitlePending, projectId, ps.refresh]);
 
