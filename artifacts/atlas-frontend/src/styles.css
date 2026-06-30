@@ -190,8 +190,8 @@ html, body {
   --atlas-bg:           #0B0A0F;
   --atlas-surface:      #121115;
   --atlas-surface-alt:  #16151B;
-  --atlas-fg:           rgba(255, 255, 255, 0.92);
-  --atlas-muted:        rgba(255, 255, 255, 0.72);
+  --atlas-fg:           rgba(255, 255, 255, 0.94);
+  --atlas-muted:        rgba(255, 255, 255, 0.82);
   --atlas-ember:        #C4521A;
   --atlas-ember-glow:   rgba(196, 82, 26, 0.40);
   --atlas-gold:         #E6C687;
