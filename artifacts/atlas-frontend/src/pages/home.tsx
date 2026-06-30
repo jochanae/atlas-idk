@@ -4839,11 +4839,94 @@ export default function Home() {
                 <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
               </button>
 
-
-
-
+              {/* Send to — routes the next message to Workspace (build),
+                  Ask Atlas (think), or Parking Lot (save for later). */}
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button
+                  type="button"
+                  title="Send to"
+                  aria-label={`Send to: ${sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking Lot" : "Workspace"}`}
+                  aria-expanded={showSendToPicker}
+                  onPointerDown={(e) => { e.preventDefault(); }}
+                  onMouseDown={(e) => { e.preventDefault(); }}
+                  onClick={(e) => { e.stopPropagation(); setShowSendToPicker((o) => !o); }}
+                  style={{
+                    height: 34,
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "0 10px", borderRadius: 999,
+                    background: sendTo === "workspace"
+                      ? "color-mix(in oklab, var(--atlas-gold) 8%, transparent)"
+                      : "color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
+                    border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                    color: "var(--atlas-gold)",
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  <span style={{ opacity: 0.7 }}>Send to</span>
+                  <span>·</span>
+                  <span>
+                    {sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking" : "Workspace"}
+                  </span>
+                  <ChevronDown size={12} strokeWidth={1.8} style={{ opacity: 0.75 }} />
+                </button>
+                {showSendToPicker && (
+                  <>
+                    <div
+                      onClick={() => setShowSendToPicker(false)}
+                      style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+                    />
+                    <div
+                      role="menu"
+                      style={{
+                        position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                        zIndex: 9999, minWidth: 220,
+                        background: "rgba(18,16,22,0.98)",
+                        border: "1px solid rgba(212,175,55,0.22)",
+                        borderRadius: 12,
+                        boxShadow: "0 12px 32px rgba(0,0,0,0.55)",
+                        padding: 6,
+                        fontFamily: "var(--app-font-sans)",
+                      }}
+                    >
+                      {([
+                        { id: "workspace" as const, label: "Workspace", hint: "I am building" },
+                        { id: "ask-atlas" as const, label: "Ask Atlas", hint: "I am thinking" },
+                        { id: "parking" as const, label: "Parking Lot", hint: "Save for later" },
+                      ]).map((opt) => {
+                        const active = sendTo === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            onClick={() => { setSendTo(opt.id); setShowSendToPicker(false); }}
+                            style={{
+                              width: "100%", display: "flex", alignItems: "center",
+                              justifyContent: "space-between", gap: 12,
+                              padding: "8px 10px", borderRadius: 8,
+                              background: active ? "rgba(212,175,55,0.12)" : "transparent",
+                              border: "none", cursor: "pointer",
+                              color: "var(--atlas-fg)", textAlign: "left",
+                            }}
+                          >
+                            <span style={{ fontSize: 13.5 }}>{opt.label}</span>
+                            <span style={{
+                              fontFamily: "var(--app-font-mono)", fontSize: 10,
+                              letterSpacing: "0.08em", textTransform: "uppercase",
+                              color: "rgba(255,255,255,0.45)",
+                            }}>{opt.hint}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
 
               </div>
+
 
               {/* Mic + Send — pinned to right via auto left margin */}
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
