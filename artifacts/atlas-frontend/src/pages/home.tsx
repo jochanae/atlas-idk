@@ -1895,22 +1895,30 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
-  // "Send to" routing: workspace (default), ask-atlas (overlay), parking (capture lot).
-  // Each surface answers a different intent — building / thinking / saving.
-  type SendTarget = "workspace" | "ask-atlas" | "parking";
+  // Composer mode: workspace (default) or ask-atlas (toggled on composer).
+  // Toggle lives inline on the home composer — no routing sheet, no second
+  // composer. AskAtlasOverlay only appears as the response surface AFTER a
+  // send while the toggle is ON.
+  type SendTarget = "workspace" | "ask-atlas";
   const [sendTo, setSendTo] = useState<SendTarget>("workspace");
-  const [showSendToPicker, setShowSendToPicker] = useState(false);
-  
   const sendToRef = useRef<SendTarget>("workspace");
   useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
   const [askAtlasOpen, setAskAtlasOpen] = useState(false);
   const [askAtlasSeed, setAskAtlasSeed] = useState<string | null>(null);
-  // Radial menu "Ask Atlas" → open the ephemeral overlay.
+  // One-time helper line on first Ask Atlas activation.
+  const [askAtlasHelperVisible, setAskAtlasHelperVisible] = useState(false);
+  // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
+  const [showParkSheet, setShowParkSheet] = useState(false);
+  // Radial menu "Ask Atlas" → shortcut: flip toggle ON + focus composer.
+  // Does NOT auto-open the overlay; overlay is reached only by sending.
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
-      setAskAtlasSeed(detail?.seed ?? null);
-      setAskAtlasOpen(true);
+      setSendTo("ask-atlas");
+      sendToRef.current = "ask-atlas";
+      if (detail?.seed) setInput(detail.seed);
+      // Defer focus to after the toggle/render flush.
+      window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
     };
     window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
     return () => window.removeEventListener("axiom:ask-atlas", onAsk as EventListener);
