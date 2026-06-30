@@ -33,6 +33,7 @@ export interface ActiveRun {
   error?: string;
   attachmentNames: string[];
   streamedContent?: string;
+  appliedFiles?: string[];
 }
 
 // ── Module-level store ────────────────────────────────────────────────────────
@@ -160,6 +161,41 @@ function formatAgo(ms: number): string {
   return `${m}m ago`;
 }
 
+// ── FILE_EDIT block parser ────────────────────────────────────────────────────
+// Parses FILE_EDIT_START...FILE_EDIT_END blocks from the streamed content and
+// returns an array of {path, content} pairs ready for POST /api/github/apply-local.
+
+function extractFileEdits(content: string): Array<{ path: string; content: string }> {
+  const edits: Array<{ path: string; content: string }> = [];
+  let searchFrom = 0;
+  while (true) {
+    const startIdx = content.indexOf("FILE_EDIT_START", searchFrom);
+    if (startIdx === -1) break;
+    const endIdx = content.indexOf("FILE_EDIT_END", startIdx + 15);
+    if (endIdx === -1) break;
+    const block = content.slice(startIdx + 15, endIdx);
+    const contentIdx = block.indexOf("FILE_EDIT_CONTENT");
+    if (contentIdx !== -1) {
+      const header = block.slice(0, contentIdx).trim();
+      let fileContent = block.slice(contentIdx + 17);
+      if (fileContent.startsWith("\n")) fileContent = fileContent.slice(1);
+      if (fileContent.endsWith("\n")) fileContent = fileContent.slice(0, -1);
+      let path = "";
+      for (const line of header.split("\n")) {
+        const ci = line.indexOf(":");
+        if (ci === -1) continue;
+        if (line.slice(0, ci).trim() === "path") {
+          path = line.slice(ci + 1).trim();
+          break;
+        }
+      }
+      if (path && fileContent) edits.push({ path, content: fileContent });
+    }
+    searchFrom = endIdx + 13;
+  }
+  return edits;
+}
+
 // ── file → base64 ────────────────────────────────────────────────────────────
 
 async function fileToBase64(
@@ -274,6 +310,27 @@ async function _startRun(
       }
     }
 
+    // For BUILD runs — parse and apply FILE_EDIT blocks
+    if (run.intent === "build") {
+      const currentRun = _getRuns().find((r) => r.id === run.id);
+      const fullContent = currentRun?.streamedContent ?? "";
+      const fileEdits = extractFileEdits(fullContent);
+      if (fileEdits.length > 0) {
+        try {
+          const applyRes = await fetch("/api/github/apply-local", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ files: fileEdits, projectId: run.projectId }),
+          });
+          if (applyRes.ok) {
+            const result = (await applyRes.json()) as { applied?: string[] };
+            _patchRun(run.id, { appliedFiles: result.applied ?? fileEdits.map((f) => f.path) });
+          }
+        } catch { /* apply failure — surface in card via missing appliedFiles */ }
+      }
+    }
+
     _patchRun(run.id, { status: "completed", completedAt: Date.now() });
     _scheduleAutoDismiss(run.id, false);
   } catch (err) {
@@ -313,11 +370,12 @@ const PLACEHOLDERS: Record<Intent, string[]> = {
 
 interface Props {
   projects: QuickEditProjectOption[];
+  onClose?: () => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ActiveRuns({ projects }: Props) {
+export function ActiveRuns({ projects, onClose }: Props) {
   const [, setLocation] = useLocation();
   return (
     <>
@@ -326,12 +384,12 @@ export function ActiveRuns({ projects }: Props) {
         @keyframes ar-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.85; } }
         @keyframes ar-cursor-blink { 0%, 100% { opacity: 0.85; } 50% { opacity: 0; } }
       `}</style>
-      <_ActiveRunsInner projects={projects} setLocation={setLocation} />
+      <_ActiveRunsInner projects={projects} setLocation={setLocation} onClose={onClose} />
     </>
   );
 }
 
-function _ActiveRunsInner({ projects, setLocation }: Props & { setLocation: (to: string) => void }) {
+function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocation: (to: string) => void }) {
 
   // form state
   const [intent, setIntent] = useState<Intent>("decide");
@@ -387,7 +445,16 @@ function _ActiveRunsInner({ projects, setLocation }: Props & { setLocation: (to:
     setSubmitting(true);
 
     try {
-      // Encode attachments before calling module-level startRun
+      // DECIDE / THINK → open workspace with the prompt pre-filled and close the sheet
+      if (intent === "decide" || intent === "think") {
+        setPrompt("");
+        setAttachments([]);
+        onClose?.();
+        setLocation(`/project/${projectId}?msg=${encodeURIComponent(trimmed)}`);
+        return;
+      }
+
+      // BUILD → background run with live streaming + automatic file apply
       const encodedAttachments = attachments.length > 0
         ? await Promise.all(attachments.map(fileToBase64))
         : [];
@@ -414,7 +481,7 @@ function _ActiveRunsInner({ projects, setLocation }: Props & { setLocation: (to:
       setSubmitting(false);
       textareaRef.current?.focus();
     }
-  }, [canSubmit, prompt, attachments, projectId, projects, intent]);
+  }, [canSubmit, prompt, attachments, projectId, projects, intent, onClose, setLocation]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -991,6 +1058,35 @@ function RunCard({
               />
             )}
           </div>
+        </div>
+      )}
+
+      {/* Applied files (BUILD intent) */}
+      {run.appliedFiles && run.appliedFiles.length > 0 && (
+        <div style={{
+          paddingLeft: 17, paddingTop: 6,
+          display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center",
+        }}>
+          <span style={{
+            fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+            textTransform: "uppercase", color: "rgba(74,222,128,0.7)", marginRight: 2,
+          }}>
+            Applied
+          </span>
+          {run.appliedFiles.map((f) => {
+            const name = f.split("/").pop() ?? f;
+            return (
+              <span key={f} title={f} style={{
+                fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em",
+                padding: "2px 6px", borderRadius: 4,
+                background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)",
+                color: "rgba(74,222,128,0.85)",
+                maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {name}
+              </span>
+            );
+          })}
         </div>
       )}
 

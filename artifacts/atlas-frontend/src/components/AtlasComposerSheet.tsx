@@ -115,7 +115,7 @@ export function AtlasComposerSheet({ open, onClose, projects }: Props) {
           overscrollBehavior: "contain",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
         }}>
-          <ActiveRuns projects={projects} />
+          <ActiveRuns projects={projects} onClose={onClose} />
         </div>
       </aside>
 
