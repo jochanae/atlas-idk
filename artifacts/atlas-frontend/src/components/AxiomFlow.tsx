@@ -1222,7 +1222,13 @@ export function AxiomFlow({
   const centerOnPoint = useCallback((cx: number, cy: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    setPan({ x: rect.width / 2 / zoom - cx, y: rect.height / 2 / zoom - cy });
+    const TOP_INSET = 56;
+    const BOTTOM_INSET = 52;
+    const availH = Math.max(120, rect.height - TOP_INSET - BOTTOM_INSET);
+    setPan({
+      x: rect.width / 2 / zoom - cx,
+      y: (TOP_INSET + availH / 2) / zoom - cy,
+    });
   }, [zoom]);
 
   const fitMap = useCallback(() => {
