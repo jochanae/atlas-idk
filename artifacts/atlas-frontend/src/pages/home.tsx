@@ -4614,7 +4614,7 @@ export default function Home() {
                       <button
                         key={opt.id}
                         type="button"
-                        onClick={() => setSendTo(opt.id)}
+                        onClick={() => { setSendTo(opt.id); setShowSendToPicker(false); }}
                         style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", background: active ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
                       >
                         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -4629,13 +4629,13 @@ export default function Home() {
                   {/* divider */}
                   <div style={{ height: 1, background: "var(--atlas-border)", opacity: 0.5, margin: "10px 16px" }} />
 
-                  {/* ABOUT */}
-                  <div style={{ padding: "4px 16px 8px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>About</div>
+                  {/* ABOUT (context scope) */}
+                  <div style={{ padding: "4px 16px 8px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Context</div>
 
                   {/* All projects */}
                   <button
                     type="button"
-                    onClick={handleHomeFocusAllProjects}
+                    onClick={() => { handleHomeFocusAllProjects(); setShowSendToPicker(false); }}
                     style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
                   >
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
@@ -4646,7 +4646,7 @@ export default function Home() {
                   {detectedFocusProject && (
                     <button
                       type="button"
-                      onClick={() => handleHomeFocusSelect(detectedFocusProject.id)}
+                      onClick={() => { handleHomeFocusSelect(detectedFocusProject.id); setShowSendToPicker(false); }}
                       style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px", background: homeFocus === detectedFocusProject.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
                     >
                       <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -4657,23 +4657,48 @@ export default function Home() {
                     </button>
                   )}
 
-                  {/* Choose project */}
+                  {/* Choose a project... — opens secondary sheet */}
                   {selectableFocusProjects.length > 0 && (
-                    <>
-                      <div style={{ padding: "10px 16px 6px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.55 }}>Choose project</div>
-                      {selectableFocusProjects.map((p: Project) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => handleHomeFocusSelect(p.id)}
-                          style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-                        >
-                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                          {p.name}
-                        </button>
-                      ))}
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => setShowProjectSubPicker(true)}
+                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px", background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus != null && homeFocus !== detectedFocusProject?.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+                        {(() => {
+                          if (homeFocus != null && homeFocus !== detectedFocusProject?.id) {
+                            const p = selectableFocusProjects.find((pp: Project) => pp.id === homeFocus);
+                            if (p) return p.name;
+                          }
+                          return "Choose a project…";
+                        })()}
+                      </span>
+                      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 16, lineHeight: 1 }}>›</span>
+                    </button>
                   )}
+                </div>
+              </>,
+              document.body
+            )}
+
+            {/* Secondary project picker — full project list */}
+            {showProjectSubPicker && createPortal(
+              <>
+                <div onClick={() => setShowProjectSubPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10001, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 calc(env(safe-area-inset-bottom, 0px) + 32px)", maxHeight: "72vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
+                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Choose project</div>
+                  {selectableFocusProjects.map((p: Project) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => { handleHomeFocusSelect(p.id); setShowProjectSubPicker(false); setShowSendToPicker(false); }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+                    >
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+                      {p.name}
+                    </button>
+                  ))}
                 </div>
               </>,
               document.body
