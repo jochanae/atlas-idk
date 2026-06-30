@@ -1,18 +1,16 @@
-// ActiveRuns — command center for starting and tracking Atlas work sessions.
+// ActiveRuns — command center for starting and tracking Atlas build sessions.
 //
-// Replaces the old QuickActionV2 launcher inside ActivityHubCard.
-// The form (intent + project + prompt + attach) is always visible at the top.
-// On submit: creates a session, fires the chat API in the background, and
-// displays a live run card with status/elapsed time. Multiple concurrent runs
-// across different projects are supported.
+// BUILD-only composer: type a prompt, pick a project, fire it. The run streams
+// live, and when complete the card expands inline to show Chat + Diff tabs.
+// If the run produced a GitHub PR, a PR pill appears on the card immediately.
 //
 // Store: module-level singleton backed by localStorage so run state survives
 // component remounts. Stale "running" entries (> 10 min) are auto-failed on
-// load. Completed/failed cards auto-dismiss after 2 minutes.
+// load. Completed/failed cards auto-dismiss after 2 minutes (PR runs: never).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { X, ChevronDown, Paperclip, ArrowRight, Loader } from "lucide-react";
+import { X, ChevronDown, Paperclip, ArrowRight, Loader, GitPullRequest, ChevronUp, FileCode } from "lucide-react";
 import type { QuickEditProjectOption } from "./QuickEditRow";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -34,14 +32,17 @@ export interface ActiveRun {
   attachmentNames: string[];
   streamedContent?: string;
   appliedFiles?: string[];
+  fileEdits?: Array<{ path: string; content: string }>;
+  prUrl?: string;
+  summaryLine?: string;
 }
 
 // ── Module-level store ────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "atlas:active-runs";
 const STALE_THRESHOLD_MS = 10 * 60 * 1000;  // 10 min: running→failed on load
-const AUTO_DISMISS_COMPLETED_MS = 30_000;   // 30s — enough time to read the response
-const AUTO_DISMISS_FAILED_MS = 60_000;      // 60s — failed runs stay visible longer
+const AUTO_DISMISS_COMPLETED_MS = 120_000;  // 2 min — enough time to read the response
+const AUTO_DISMISS_FAILED_MS = 120_000;     // 2 min — failed runs stay visible longer
 
 type Listener = () => void;
 let _listeners: Listener[] = [];
@@ -107,6 +108,9 @@ function _removeRun(id: string) {
 }
 
 function _scheduleAutoDismiss(id: string, failed = false) {
+  const run = _getRuns().find((r) => r.id === id);
+  // Never auto-dismiss runs that created a PR — user must dismiss manually
+  if (run?.prUrl) return;
   const delay = failed ? AUTO_DISMISS_FAILED_MS : AUTO_DISMISS_COMPLETED_MS;
   setTimeout(() => _removeRun(id), delay);
 }
@@ -194,6 +198,29 @@ function extractFileEdits(content: string): Array<{ path: string; content: strin
     searchFrom = endIdx + 13;
   }
   return edits;
+}
+
+// ── PR URL extractor ──────────────────────────────────────────────────────────
+// Finds the first GitHub PR URL in streamed content.
+
+function extractPrUrl(content: string): string | null {
+  const m = content.match(/https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/\d+/);
+  return m ? m[0] : null;
+}
+
+// ── Summary line extractor ────────────────────────────────────────────────────
+// Extracts a short 1-line summary from the end of completed content.
+// Looks for a "Summary:" label first, then falls back to the last non-empty sentence.
+
+function extractSummaryLine(content: string): string {
+  const summaryMatch = content.match(/(?:summary|done|completed)[:\s]+([^\n.!?]{10,120})/i);
+  if (summaryMatch?.[1]) return summaryMatch[1].trim();
+  const sentences = content
+    .replace(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "")
+    .split(/[.!?\n]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 20 && s.length < 140);
+  return sentences[sentences.length - 1] ?? "";
 }
 
 // ── file → base64 ────────────────────────────────────────────────────────────
@@ -310,12 +337,16 @@ async function _startRun(
       }
     }
 
-    // For BUILD runs — parse and apply FILE_EDIT blocks
+    // For BUILD runs — parse FILE_EDIT blocks, store them for the Diff tab, then apply
     if (run.intent === "build") {
       const currentRun = _getRuns().find((r) => r.id === run.id);
       const fullContent = currentRun?.streamedContent ?? "";
       const fileEdits = extractFileEdits(fullContent);
+      const prUrl = extractPrUrl(fullContent);
+      const summaryLine = extractSummaryLine(fullContent);
+
       if (fileEdits.length > 0) {
+        _patchRun(run.id, { fileEdits });
         try {
           const applyRes = await fetch("/api/github/apply-local", {
             method: "POST",
@@ -329,6 +360,9 @@ async function _startRun(
           }
         } catch { /* apply failure — surface in card via missing appliedFiles */ }
       }
+
+      if (prUrl) _patchRun(run.id, { prUrl });
+      if (summaryLine) _patchRun(run.id, { summaryLine });
     }
 
     _patchRun(run.id, { status: "completed", completedAt: Date.now() });
@@ -345,26 +379,14 @@ async function _startRun(
 
 // ── Placeholder cycling ───────────────────────────────────────────────────────
 
-const PLACEHOLDERS: Record<Intent, string[]> = {
-  decide: [
-    "Should pricing live above the fold?",
-    "Should we ship the v2 onboarding now?",
-    "Should we keep the trial or move to freemium?",
-    "Should the CTA say 'Start free' or 'Get started'?",
-  ],
-  think: [
-    "Summarize what this project is for.",
-    "Why is activation dropping after sign-up?",
-    "What does 'done' mean for the MVP?",
-    "What is the riskiest assumption in this plan?",
-  ],
-  build: [
-    "Change the hero headline and update the CTA.",
-    "Add a settings panel for notification preferences.",
-    "Build the empty state for first-time users.",
-    "Refactor the onboarding flow to skip step 2.",
-  ],
-};
+const BUILD_PLACEHOLDERS = [
+  "Change the hero headline and update the CTA.",
+  "Add a settings panel for notification preferences.",
+  "Build the empty state for first-time users.",
+  "Refactor the onboarding flow to skip step 2.",
+  "Fix the mobile nav overflow on small screens.",
+  "Update the pricing table copy and highlight the Pro tier.",
+];
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -391,8 +413,8 @@ export function ActiveRuns({ projects, onClose }: Props) {
 
 function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocation: (to: string) => void }) {
 
-  // form state
-  const [intent, setIntent] = useState<Intent>("decide");
+  // form state — BUILD-only, no intent selector
+  const intent: Intent = "build";
   const [projectId, setProjectId] = useState<number>(() => projects[0]?.id ?? 0);
   const [prompt, setPrompt] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -426,11 +448,10 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
   // Placeholder rotation
   useEffect(() => {
     setPlaceholderIdx(0);
-    const list = PLACEHOLDERS[intent];
-    if (list.length <= 1) return;
-    const t = setInterval(() => setPlaceholderIdx((i) => (i + 1) % list.length), 4200);
+    if (BUILD_PLACEHOLDERS.length <= 1) return;
+    const t = setInterval(() => setPlaceholderIdx((i) => (i + 1) % BUILD_PLACEHOLDERS.length), 4200);
     return () => clearInterval(t);
-  }, [intent]);
+  }, []);
 
   const activeProjectName = useMemo(
     () => projects.find((p) => p.id === projectId)?.name ?? "Project",
@@ -445,15 +466,6 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
     setSubmitting(true);
 
     try {
-      // DECIDE / THINK → open workspace with the prompt pre-filled and close the sheet
-      if (intent === "decide" || intent === "think") {
-        setPrompt("");
-        setAttachments([]);
-        onClose?.();
-        setLocation(`/project/${projectId}?msg=${encodeURIComponent(trimmed)}`);
-        return;
-      }
-
       // BUILD → background run with live streaming + automatic file apply
       const encodedAttachments = attachments.length > 0
         ? await Promise.all(attachments.map(fileToBase64))
@@ -541,56 +553,19 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
         transition: "border-color 200ms ease, box-shadow 200ms ease",
         marginBottom: runs.length > 0 ? 12 : 0,
       }}>
-        {/* Intent + Project row */}
+        {/* Project row */}
         <div style={{
-          display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+          display: "flex", alignItems: "center", gap: 8,
           paddingBottom: 10, borderBottom: "1px solid var(--atlas-border)",
         }}>
-          {/* Intent tabs */}
-          <div role="tablist" aria-label="Intent" style={{ display: "inline-flex", gap: 12, paddingLeft: 2 }}>
-            {(["decide", "build", "think"] as Intent[]).map((i) => {
-              const active = intent === i;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setIntent(i)}
-                  style={{
-                    position: "relative",
-                    background: "transparent",
-                    border: 0,
-                    padding: "4px 0",
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-mono)",
-                    fontSize: 10.5,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    fontWeight: active ? 500 : 400,
-                    color: active ? INTENT_COLOR[i] : "var(--atlas-muted)",
-                    opacity: active ? 1 : 0.65,
-                    transition: "color 160ms ease, opacity 160ms ease",
-                  }}
-                >
-                  {i}
-                  {active && (
-                    <span
-                      aria-hidden
-                      style={{
-                        position: "absolute",
-                        left: 0, right: 0, bottom: -6,
-                        height: 1.5,
-                        background: INTENT_COLOR[i],
-                        boxShadow: `0 0 8px ${INTENT_COLOR[i]}88`,
-                        borderRadius: 1,
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <span style={{
+            fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em",
+            textTransform: "uppercase", fontWeight: 600,
+            color: INTENT_COLOR.build, opacity: 0.9,
+            paddingLeft: 2,
+          }}>
+            Build
+          </span>
 
           <div style={{ flex: 1 }} />
 
@@ -659,7 +634,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
           {!prompt && (
             <div
               aria-hidden
-              key={`${intent}-${placeholderIdx}`}
+              key={placeholderIdx}
               style={{
                 position: "absolute", inset: "10px 8px auto 8px",
                 pointerEvents: "none",
@@ -667,7 +642,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
                 fontFamily: "var(--app-font-sans)", fontSize: 14, lineHeight: 1.55,
               }}
             >
-              {PLACEHOLDERS[intent][placeholderIdx]}
+              {BUILD_PLACEHOLDERS[placeholderIdx]}
             </div>
           )}
           <textarea
@@ -853,94 +828,104 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
 }
 
 // ── RunCard ───────────────────────────────────────────────────────────────────
+// Collapsed: status + project + prompt preview + PR pill
+// Running: streaming view auto-shown inline
+// Expanded (tap): Chat tab (full response) + Diff tab (file changes) + PR link
 
 function RunCard({
   run,
-  onEnter,
   onDismiss,
 }: {
   run: ActiveRun;
-  onEnter: () => void;
+  onEnter: () => void;  // kept in props for call-site compat, unused here
   onDismiss: () => void;
 }) {
+  const isLive = run.status === "running" || run.status === "queued";
+  // Auto-expand while running so you see the stream; collapse when done
+  const [expanded, setExpanded] = useState(isLive);
+  const [activeTab, setActiveTab] = useState<"chat" | "diff">("chat");
   const [hovered, setHovered] = useState(false);
+
+  // Keep expanded=true while running, but don't force-collapse when it finishes
+  // (let the user decide)
+  const prevIsLive = useRef(isLive);
+  useEffect(() => {
+    if (!prevIsLive.current && isLive) setExpanded(true);
+    prevIsLive.current = isLive;
+  }, [isLive]);
+
   const now = Date.now();
   const elapsed = run.completedAt
     ? run.completedAt - run.createdAt
     : now - run.createdAt;
 
-  const isLive = run.status === "running" || run.status === "queued";
-  const statusLabel: Record<RunStatus, string> = {
-    queued: "queued",
-    running: "running",
-    completed: "done",
-    failed: "failed",
-  };
+  const hasFiles = (run.fileEdits?.length ?? 0) > 0;
+  const hasPr = !!run.prUrl;
+  const prNum = run.prUrl?.match(/\/pull\/(\d+)/)?.[1];
+
+  // Clean streamedContent: strip FILE_EDIT blocks for Chat tab display
+  const chatContent = (run.streamedContent ?? "")
+    .replace(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "")
+    .trim();
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={`${run.intent} run for ${run.projectName} — ${statusLabel[run.status]}. Press Enter to open.`}
-      onClick={onEnter}
-      onKeyDown={(e) => e.key === "Enter" && onEnter()}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       style={{
         position: "relative",
-        display: "flex", flexDirection: "column", gap: 5,
-        padding: "10px 12px",
         borderRadius: 10,
-        background: hovered ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.015)",
-        border: hovered
-          ? `1px solid ${INTENT_BORDER[run.intent]}`
-          : "1px solid var(--atlas-border)",
-        cursor: "pointer",
-        transition: "background 140ms ease, border-color 140ms ease",
+        background: "rgba(255,255,255,0.015)",
+        border: `1px solid ${expanded ? INTENT_BORDER[run.intent] : "var(--atlas-border)"}`,
+        overflow: "hidden",
+        transition: "border-color 160ms ease",
       }}
     >
-      {/* Top row: status dot + intent + project + dismiss */}
-      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+      {/* ── Header row (always visible, tap to expand/collapse) ── */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-label={`Build run for ${run.projectName} — ${run.status}. ${expanded ? "Collapse" : "Expand"}.`}
+        onClick={() => !isLive && setExpanded((v) => !v)}
+        onKeyDown={(e) => e.key === "Enter" && !isLive && setExpanded((v) => !v)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap",
+          padding: "10px 12px",
+          cursor: isLive ? "default" : "pointer",
+          background: hovered && !isLive ? "rgba(255,255,255,0.015)" : "transparent",
+          transition: "background 120ms ease",
+        }}
+      >
         {/* Status dot / spinner */}
         <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center" }}>
           {run.status === "running" ? (
-            <Loader
-              size={10}
-              strokeWidth={2}
-              color="hsl(217,80%,64%)"
-              style={{ animation: "ar-spin 1s linear infinite" }}
-            />
+            <Loader size={10} strokeWidth={2} color="hsl(217,80%,64%)"
+              style={{ animation: "ar-spin 1s linear infinite" }} />
           ) : (
             <span style={{
-              width: 7, height: 7, borderRadius: "50%", flexShrink: 0, display: "inline-block",
+              width: 7, height: 7, borderRadius: "50%", display: "inline-block",
               background: STATUS_DOT_COLOR[run.status],
-              boxShadow: run.status === "queued"
-                ? "0 0 5px rgba(201,162,76,0.45)"
-                : run.status === "completed"
-                ? "0 0 6px rgba(74,222,128,0.5)"
-                : run.status === "failed"
-                ? "0 0 6px rgba(248,113,113,0.5)"
+              boxShadow: run.status === "queued" ? "0 0 5px rgba(201,162,76,0.45)"
+                : run.status === "completed" ? "0 0 6px rgba(74,222,128,0.5)"
+                : run.status === "failed" ? "0 0 6px rgba(248,113,113,0.5)"
                 : "none",
               animation: run.status === "queued" ? "ar-pulse 2s ease-in-out infinite" : "none",
             }} />
           )}
         </span>
 
-        {/* Intent badge + status */}
+        {/* BUILD badge */}
         <span style={{
-          display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0,
           fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
           textTransform: "uppercase", fontWeight: 600,
           padding: "2px 7px", borderRadius: 4,
           background: INTENT_BG[run.intent],
           border: `1px solid ${INTENT_BORDER[run.intent]}`,
           color: INTENT_COLOR[run.intent],
+          flexShrink: 0,
         }}>
           {run.intent}
-          <span style={{ opacity: 0.5, letterSpacing: "0.05em" }}>·</span>
-          <span style={{ opacity: 0.75, fontWeight: 500 }}>
-            {run.status === "running" ? "Running" : "Queued"}
-          </span>
         </span>
 
         {/* Project name */}
@@ -948,30 +933,66 @@ function RunCard({
           fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
           color: "var(--atlas-muted)", opacity: 0.65,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          maxWidth: 120, flexShrink: 1,
+          maxWidth: 100, flexShrink: 1,
         }}>
           {run.projectName}
         </span>
 
+        {/* Prompt preview (collapsed only) */}
+        {!expanded && (
+          <span style={{
+            fontSize: 11, color: "var(--atlas-fg)", opacity: 0.7, lineHeight: 1,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            fontFamily: "var(--app-font-sans)", flexShrink: 1, minWidth: 0,
+          }}>
+            {run.prompt}
+          </span>
+        )}
+
         <div style={{ flex: 1 }} />
 
-        {/* Elapsed time */}
+        {/* PR pill — shown when a PR was created */}
+        {hasPr && (
+          <a
+            href={run.prUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title={`Open PR #${prNum} on GitHub`}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "2px 8px", borderRadius: 999,
+              background: "rgba(201,162,76,0.10)",
+              border: "1px solid rgba(201,162,76,0.35)",
+              color: "var(--atlas-gold)",
+              fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+              fontWeight: 600, textDecoration: "none", flexShrink: 0,
+              transition: "background 140ms ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.18)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
+          >
+            <GitPullRequest size={9} strokeWidth={2} />
+            #{prNum}
+          </a>
+        )}
+
+        {/* Elapsed / ago */}
         <span style={{
-          fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
+          fontSize: 9, fontFamily: "var(--app-font-mono)",
           color: "var(--atlas-muted)", opacity: 0.5, flexShrink: 0,
         }}>
           {isLive ? formatElapsed(elapsed) : formatAgo(now - (run.completedAt ?? run.createdAt))}
         </span>
 
-        {/* Dismiss button (shown on hover for done runs) */}
+        {/* Dismiss (done/failed runs only) */}
         {!isLive && (
-          <button
-            type="button"
+          <button type="button"
             onClick={(e) => { e.stopPropagation(); onDismiss(); }}
             aria-label="Dismiss run"
             style={{
-              background: "transparent", border: 0, padding: 2,
-              color: "var(--atlas-muted)", cursor: "pointer",
+              background: "transparent", border: 0, padding: 2, cursor: "pointer",
+              color: "var(--atlas-muted)",
               opacity: hovered ? 0.7 : 0,
               transition: "opacity 120ms ease",
               display: "inline-flex", flexShrink: 0,
@@ -981,122 +1002,259 @@ function RunCard({
           </button>
         )}
 
-        {/* Enter arrow */}
-        <span style={{
-          display: "inline-flex", flexShrink: 0,
-          color: hovered ? "var(--atlas-gold)" : "var(--atlas-muted)",
-          opacity: hovered ? 1 : 0.35,
-          transition: "color 140ms ease, opacity 140ms ease",
-        }}>
-          <ArrowRight size={12} strokeWidth={1.8} />
-        </span>
+        {/* Expand chevron (done runs) */}
+        {!isLive && (
+          <span style={{
+            display: "inline-flex", flexShrink: 0,
+            color: hovered ? "var(--atlas-gold)" : "var(--atlas-muted)",
+            opacity: hovered ? 1 : 0.35,
+            transition: "color 140ms ease, opacity 140ms ease",
+          }}>
+            {expanded ? <ChevronUp size={12} strokeWidth={1.8} /> : <ChevronDown size={12} strokeWidth={1.8} />}
+          </span>
+        )}
       </div>
 
-      {/* Prompt summary */}
-      <div style={{
-        fontSize: 12, color: "var(--atlas-fg)", opacity: 0.78, lineHeight: 1.45,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        fontFamily: "var(--app-font-sans)", paddingLeft: 17,
-      }}>
-        {run.prompt}
-      </div>
-
-      {/* Attachment names (if any) */}
-      {run.attachmentNames.length > 0 && (
+      {/* ── Streaming content (running only, no tabs) ── */}
+      {isLive && run.streamedContent && (
         <div style={{
-          display: "flex", flexWrap: "wrap", gap: 4, paddingLeft: 17,
-        }}>
-          {run.attachmentNames.map((name) => (
-            <span key={name} style={{
-              display: "inline-flex", alignItems: "center", gap: 3,
-              fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em",
-              color: "rgba(165,180,252,0.75)",
-              padding: "1px 5px", borderRadius: 3,
-              background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)",
-            }}>
-              <Paperclip size={8} />
-              {name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Streaming / final response content */}
-      {run.streamedContent && (
-        <div style={{
-          marginTop: 4,
-          paddingLeft: 17,
-          paddingRight: 4,
           borderTop: "1px solid var(--atlas-border)",
-          paddingTop: 8,
+          padding: "8px 12px 10px 17px",
+          maxHeight: 140, overflowY: "auto",
         }}>
           <div style={{
-            fontSize: 12,
-            lineHeight: 1.6,
-            color: "var(--atlas-fg)",
-            opacity: run.status === "running" ? 0.75 : 0.9,
-            fontFamily: "var(--app-font-sans)",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            maxHeight: run.status === "completed" ? 220 : 120,
-            overflowY: "auto",
+            fontSize: 12, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.8,
+            fontFamily: "var(--app-font-sans)", whiteSpace: "pre-wrap", wordBreak: "break-word",
           }}>
-            {run.streamedContent}
-            {run.status === "running" && (
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 7,
-                  height: 13,
-                  marginLeft: 2,
-                  verticalAlign: "text-bottom",
-                  background: INTENT_COLOR[run.intent],
-                  opacity: 0.85,
-                  borderRadius: 1,
-                  animation: "ar-cursor-blink 0.9s step-end infinite",
-                }}
-              />
-            )}
+            {chatContent}
+            <span style={{
+              display: "inline-block", width: 7, height: 13, marginLeft: 2,
+              verticalAlign: "text-bottom",
+              background: INTENT_COLOR[run.intent], opacity: 0.85,
+              borderRadius: 1, animation: "ar-cursor-blink 0.9s step-end infinite",
+            }} />
           </div>
         </div>
       )}
 
-      {/* Applied files (BUILD intent) */}
-      {run.appliedFiles && run.appliedFiles.length > 0 && (
-        <div style={{
-          paddingLeft: 17, paddingTop: 6,
-          display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center",
-        }}>
-          <span style={{
-            fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-            textTransform: "uppercase", color: "rgba(74,222,128,0.7)", marginRight: 2,
-          }}>
-            Applied
-          </span>
-          {run.appliedFiles.map((f) => {
-            const name = f.split("/").pop() ?? f;
-            return (
-              <span key={f} title={f} style={{
-                fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em",
-                padding: "2px 6px", borderRadius: 4,
-                background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)",
-                color: "rgba(74,222,128,0.85)",
-                maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {name}
-              </span>
-            );
-          })}
-        </div>
-      )}
+      {/* ── Expanded body (completed/failed, with Chat + Diff tabs) ── */}
+      {expanded && !isLive && (
+        <div style={{ borderTop: "1px solid var(--atlas-border)" }}>
 
-      {/* Error message */}
-      {run.status === "failed" && run.error && (
-        <div style={{
-          fontSize: 11, color: "rgba(248,113,113,0.8)", lineHeight: 1.4,
-          paddingLeft: 17, fontFamily: "var(--app-font-sans)",
-        }}>
-          {run.error}
+          {/* Prompt (full, now shown in expanded) */}
+          <div style={{
+            padding: "8px 12px 0 17px",
+            fontSize: 12, color: "var(--atlas-fg)", opacity: 0.75,
+            fontFamily: "var(--app-font-sans)", lineHeight: 1.5,
+          }}>
+            {run.prompt}
+          </div>
+
+          {/* Tab bar */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 0,
+            padding: "8px 12px 0",
+            borderBottom: "1px solid var(--atlas-border)",
+          }}>
+            {(["chat", "diff"] as const).map((tab) => {
+              const isActive = activeTab === tab;
+              const label = tab === "chat" ? "Chat" : `Diff${hasFiles ? ` · ${run.fileEdits!.length}` : ""}`;
+              return (
+                <button key={tab} type="button"
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    position: "relative",
+                    background: "transparent", border: 0,
+                    padding: "6px 12px",
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-mono)", fontSize: 10,
+                    letterSpacing: "0.10em", textTransform: "uppercase",
+                    fontWeight: isActive ? 600 : 400,
+                    color: isActive ? "var(--atlas-fg)" : "var(--atlas-muted)",
+                    opacity: isActive ? 1 : 0.55,
+                    transition: "color 140ms ease, opacity 140ms ease",
+                  }}
+                >
+                  {label}
+                  {isActive && (
+                    <span aria-hidden style={{
+                      position: "absolute", left: 8, right: 8, bottom: -1,
+                      height: 1.5, background: "var(--atlas-gold)",
+                      boxShadow: "0 0 6px rgba(201,162,76,0.5)", borderRadius: 1,
+                    }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Chat tab */}
+          {activeTab === "chat" && (
+            <div style={{ padding: "10px 12px 12px 17px" }}>
+              {run.status === "failed" && run.error ? (
+                <div style={{
+                  fontSize: 12, color: "rgba(248,113,113,0.85)", lineHeight: 1.5,
+                  fontFamily: "var(--app-font-sans)",
+                }}>
+                  {run.error}
+                </div>
+              ) : chatContent ? (
+                <div style={{
+                  fontSize: 12, lineHeight: 1.65, color: "var(--atlas-fg)", opacity: 0.88,
+                  fontFamily: "var(--app-font-sans)", whiteSpace: "pre-wrap",
+                  wordBreak: "break-word", maxHeight: 280, overflowY: "auto",
+                }}>
+                  {chatContent}
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5, fontStyle: "italic" }}>
+                  No response content.
+                </div>
+              )}
+
+              {/* Summary line */}
+              {run.summaryLine && (
+                <div style={{
+                  marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--atlas-border)",
+                  fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
+                  color: "rgba(74,222,128,0.8)", lineHeight: 1.4,
+                }}>
+                  ✓ {run.summaryLine}
+                </div>
+              )}
+
+              {/* PR link in chat tab */}
+              {hasPr && (
+                <a
+                  href={run.prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    marginTop: 10,
+                    padding: "7px 12px", borderRadius: 7,
+                    background: "rgba(201,162,76,0.08)",
+                    border: "1px solid rgba(201,162,76,0.28)",
+                    color: "var(--atlas-gold)",
+                    fontSize: 11, fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.06em", fontWeight: 600,
+                    textDecoration: "none",
+                    transition: "background 140ms ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.15)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
+                >
+                  <GitPullRequest size={12} strokeWidth={2} />
+                  View PR #{prNum} on GitHub
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Diff tab */}
+          {activeTab === "diff" && (
+            <div style={{ padding: "10px 12px 12px" }}>
+              {hasFiles ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {run.fileEdits!.map((fe) => {
+                    const filename = fe.path.split("/").pop() ?? fe.path;
+                    const lineCount = fe.content.split("\n").length;
+                    return (
+                      <div key={fe.path} style={{
+                        borderRadius: 6, overflow: "hidden",
+                        border: "1px solid rgba(74,222,128,0.18)",
+                      }}>
+                        {/* File header */}
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          padding: "5px 10px",
+                          background: "rgba(74,222,128,0.05)",
+                          borderBottom: "1px solid rgba(74,222,128,0.12)",
+                        }}>
+                          <FileCode size={10} strokeWidth={2} color="rgba(74,222,128,0.7)" />
+                          <span style={{
+                            fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
+                            color: "rgba(74,222,128,0.85)", fontWeight: 600,
+                          }}>
+                            {filename}
+                          </span>
+                          <span style={{
+                            fontSize: 9, fontFamily: "var(--app-font-mono)",
+                            color: "var(--atlas-muted)", opacity: 0.55, marginLeft: "auto",
+                          }}>
+                            {lineCount} lines
+                          </span>
+                          <span style={{
+                            fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            padding: "1px 5px", borderRadius: 3,
+                            background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)",
+                            color: "rgba(74,222,128,0.75)",
+                          }}>
+                            changed
+                          </span>
+                        </div>
+                        {/* File content */}
+                        <div style={{
+                          maxHeight: 180, overflowY: "auto",
+                          padding: "6px 8px",
+                          background: "rgba(0,0,0,0.25)",
+                        }}>
+                          <pre style={{
+                            margin: 0, fontSize: 10.5, lineHeight: 1.55,
+                            fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)",
+                            opacity: 0.85, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                          }}>
+                            {fe.content}
+                          </pre>
+                        </div>
+                        {/* Full path */}
+                        <div style={{
+                          padding: "3px 10px",
+                          background: "rgba(0,0,0,0.15)",
+                          fontSize: 9, fontFamily: "var(--app-font-mono)",
+                          color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.02em",
+                        }}>
+                          {fe.path}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Applied chips */}
+                  {run.appliedFiles && run.appliedFiles.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center", paddingTop: 2 }}>
+                      <span style={{
+                        fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+                        textTransform: "uppercase", color: "rgba(74,222,128,0.7)", marginRight: 2,
+                      }}>
+                        Applied
+                      </span>
+                      {run.appliedFiles.map((f) => (
+                        <span key={f} title={f} style={{
+                          fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em",
+                          padding: "2px 6px", borderRadius: 4,
+                          background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)",
+                          color: "rgba(74,222,128,0.85)",
+                          maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {f.split("/").pop() ?? f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{
+                  fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5,
+                  fontStyle: "italic", fontFamily: "var(--app-font-sans)",
+                  padding: "4px 4px",
+                }}>
+                  No file changes in this run.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1110,7 +1268,6 @@ function RunCard({
             height: "100%",
             background: `linear-gradient(90deg, transparent, ${INTENT_COLOR[run.intent]}, transparent)`,
             animation: "ar-pulse 2s ease-in-out infinite",
-            backgroundSize: "200% 100%",
           }} />
         </div>
       )}
