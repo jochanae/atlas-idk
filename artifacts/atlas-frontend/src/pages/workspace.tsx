@@ -70,7 +70,7 @@ import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
-import type { Plan, PlanExecution, StructuredPlanArtifact } from "../lib/plan";
+import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../lib/plan";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjectResume } from "@/hooks/useProjectResume";
 import { useProjectIntelligence } from "@/hooks/useProjectIntelligence";
@@ -224,6 +224,9 @@ export interface ChatMessage {
   intentType?: string | null;
   plan?: Plan;
   planArtifact?: StructuredPlanArtifact;
+  decisionGate?: StructuredDecisionGate;
+  decisionGateResolved?: boolean;
+  decisionGateSelectedValue?: string;
   awaitingPlan?: boolean;
   planFromHome?: boolean;
   planMode?: boolean;
@@ -4339,6 +4342,12 @@ export default function Workspace() {
           const planEntry = ra?.find((a) => a.type === "plan");
           if (!planEntry?.meta) return undefined;
           try { return JSON.parse(planEntry.meta) as StructuredPlanArtifact; } catch { return undefined; }
+        })(),
+        decisionGate: (() => {
+          const ra = (m as unknown as { runArtifacts?: Array<{ type: string; meta?: string }> | null }).runArtifacts;
+          const gateEntry = ra?.find((a) => a.type === "decision_gate");
+          if (!gateEntry?.meta) return undefined;
+          try { return JSON.parse(gateEntry.meta) as StructuredDecisionGate; } catch { return undefined; }
         })(),
         // Infer planMode from persisted runArtifacts so restored messages behave correctly.
         planMode: (m as unknown as { runArtifacts?: Array<{ type: string }> | null }).runArtifacts?.some((a) => a.type === "plan") ?? false,

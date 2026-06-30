@@ -765,6 +765,12 @@ export function useChatStream(
                   setMessages((prev) =>
                     prev.map((m) => m.id === placeholderId ? { ...m, planArtifact: planPayload, awaitingPlan: false } : m)
                   );
+                } else if (evtName === "decision_gate") {
+                  // Atlas reached a genuine implementation fork — halt stream and show gate card.
+                  const gatePayload = (typeEmbedded ?? JSON.parse(evtData)) as import("../lib/plan").StructuredDecisionGate;
+                  setMessages((prev) =>
+                    prev.map((m) => m.id === placeholderId ? { ...m, decisionGate: gatePayload } : m)
+                  );
                 } else if (evtName === "image") {
                   // Async image delivery — server sends this AFTER the done event
                   // once Gemini image generation completes. Update the last assistant message.

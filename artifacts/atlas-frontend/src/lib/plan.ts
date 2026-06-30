@@ -36,6 +36,13 @@ export type Plan = {
 
 export type PlanStepStatus = "pending" | "completed" | "current" | "failed";
 
+export type StructuredDecisionGate = {
+  type: "decision_gate";
+  question: string;
+  reason: string;
+  options: Array<{ label: string; value: string }>;
+};
+
 export type PlanExecution = {
   currentStepOrder?: number;
   completedStepOrders?: number[];

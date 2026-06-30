@@ -3348,6 +3348,28 @@ You are now in THINK mode. This changes how you respond:
   };
   systemPrompt += modeInstructions[activeMode] ?? modeInstructions.think;
 
+  systemPrompt += `\n\n--- DECISION GATES ---
+A Decision Gate pauses the response at a genuine implementation fork — a point where two or more paths are equally valid and the wrong choice would be expensive or confusing to reverse.
+
+Hard rule: If Atlas can make a reasonable product-safe decision, proceed and explain the choice afterward. Only emit a DECISION_GATE when the choice truly cannot be inferred from AM/DNA/prior conversation and reversing it later would require real rework.
+
+When a gate is warranted, stop your prose response and emit on a new line:
+DECISION_GATE:{"question":"One clear question","reason":"This choice determines [concrete downstream consequence].","options":[{"label":"Option A","value":"option_a"},{"label":"Option B","value":"option_b"}]}
+
+Nothing should follow the DECISION_GATE line — the response ends there. Emit at most one gate per turn.
+
+Legitimate gates:
+- Auth scope: adding roles vs. basic login vs. no auth when the AM is completely silent on it
+- Data persistence: client-side vs. server-persisted when both are architecturally valid and the choice affects schema
+- Project handoff: resume last session vs. create new when no prior signal exists
+
+NOT gates — Atlas decides these alone:
+- Framework or library choice (infer from AM/DNA)
+- File naming, folder structure, code style
+- Color palette, typography, visual style (infer from DNA)
+- Anything you can explain after the fact at zero cost to the user
+--- END DECISION GATES ---`;
+
   if (isFlowMode && !buildMode) {
     const existingNodes = (body.flowNodes ?? []);
     const nodeList = existingNodes.length > 0
@@ -3724,13 +3746,29 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   writeStep(res, { verb: "Analyzing", target: "your request", phase: "analyze" });
   let modelResult: Awaited<ReturnType<typeof callModel>>;
   try {
+    let gateHalted = false;
+    let streamAccum = "";
     modelResult = await callModel(
       activeModel,
       systemPrompt,
       dispatchMessages,
       allAttachments[0],
-      // Stream tokens to the client as they arrive — eliminates the 15-60s blank wait
+      // Stream tokens — halt mid-stream if a DECISION_GATE marker is detected
       (chunk: string) => {
+        if (gateHalted) return; // swallow all tokens after gate marker
+        streamAccum += chunk;
+        const gateIdx = streamAccum.indexOf("\nDECISION_GATE:");
+        if (gateIdx !== -1) {
+          // Emit only the text strictly before the gate marker
+          const beforeGate = streamAccum.slice(0, gateIdx);
+          const prevLen = streamAccum.length - chunk.length;
+          const toEmit = beforeGate.slice(prevLen);
+          if (toEmit) {
+            try { res.write(`data: ${JSON.stringify({ type: "token", content: toEmit })}\n\n`); } catch { /* client gone */ }
+          }
+          gateHalted = true;
+          return;
+        }
         try { res.write(`data: ${JSON.stringify({ type: "token", content: chunk })}\n\n`); } catch { /* client gone */ }
       },
     );
@@ -3745,6 +3783,32 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     return;
   }
   let rawContent = modelResult.content;
+
+  // ── Decision Gate extraction ───────────────────────────────────────────────
+  // Strip DECISION_GATE block from rawContent; parse gate JSON for SSE emit later.
+  type DecisionGate = { type: "decision_gate"; question: string; reason: string; options: Array<{ label: string; value: string }> };
+  let decisionGate: DecisionGate | null = null;
+  const gateMarkerIdx = rawContent.indexOf("\nDECISION_GATE:");
+  if (gateMarkerIdx !== -1) {
+    const afterMarker = rawContent.slice(gateMarkerIdx + "\nDECISION_GATE:".length).trimStart();
+    const jsonMatch = afterMarker.match(/^\{[\s\S]*?\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+        if (parsed.question && parsed.reason && Array.isArray(parsed.options) && (parsed.options as unknown[]).length >= 2) {
+          decisionGate = {
+            type: "decision_gate",
+            question: String(parsed.question),
+            reason: String(parsed.reason),
+            options: parsed.options as Array<{ label: string; value: string }>,
+          };
+        }
+      } catch { /* malformed gate JSON — ignore */ }
+    }
+    // Strip the gate block from rawContent regardless of parse success
+    rawContent = rawContent.slice(0, gateMarkerIdx).trim();
+  }
+
   let assistantUsage = modelResult.usage;
   let modelUsed = modelResult.model;
   let terminalCmd: ChatTerminalCommand | null = null;
@@ -4331,12 +4395,13 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
       ? (firstImage.imageUrl.startsWith("data:image/jpeg") ? "image/jpeg" : "image/png")
       : null;
     const baseRunMetadata = runMetadataInsertValues(persistContent, fileChangesAllowed ? fileEdits : []);
-    const runMetadata = structuredPlanArtifact
+    const runMetadata = structuredPlanArtifact || decisionGate
       ? {
           ...baseRunMetadata,
           runArtifacts: [
             ...(baseRunMetadata.runArtifacts ?? []),
-            { type: "plan" as const, label: structuredPlanArtifact.title, meta: JSON.stringify(structuredPlanArtifact) },
+            ...(structuredPlanArtifact ? [{ type: "plan" as const, label: structuredPlanArtifact.title, meta: JSON.stringify(structuredPlanArtifact) }] : []),
+            ...(decisionGate ? [{ type: "decision_gate" as const, label: decisionGate.question, meta: JSON.stringify(decisionGate) }] : []),
           ],
         }
       : baseRunMetadata;
@@ -4450,6 +4515,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     fileMoves: fileMoves.length > 0 ? fileMoves : undefined,
     plan: responsePlan ?? undefined,
     ...(structuredPlanArtifact ? { planArtifact: structuredPlanArtifact } : {}),
+    ...(decisionGate ? { decisionGate } : {}),
     resolvedNodes: resolvedNodes.length > 0 ? resolvedNodes : undefined,
     autoFetchedFiles: autoFetchedFiles.length > 0 ? autoFetchedFiles : undefined,
     ...(flowNodes.length > 0 ? { flowNodes } : {}),
@@ -4557,6 +4623,10 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   if (structuredPlanArtifact) {
     const { type: _planType, ...planRest } = structuredPlanArtifact;
     res.write(`data: ${JSON.stringify({ type: "plan", ...planRest })}\n\n`);
+  }
+  // Emit decision gate SSE event (before done) so the client renders the card immediately.
+  if (decisionGate) {
+    res.write(`data: ${JSON.stringify(decisionGate)}\n\n`);
   }
   const inputTokenCount = assistantUsage.inputTokens;
   res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel: "claude-sonnet-4-6", provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
