@@ -4,7 +4,7 @@ import { atlasIncidentsTable, connectionsTable, db, entriesTable, projectsTable 
 import { getProjectDNA } from "../lib/projectDNA";
 import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
 import { spawn } from "child_process";
-import { writeFile, mkdir, rm, unlink, rename } from "fs/promises";
+import { readFile, writeFile, mkdir, rm, unlink, rename } from "fs/promises";
 import { randomBytes } from "crypto";
 import * as nodePath from "path";
 import { decryptToken } from "../lib/tokenCrypto";
@@ -1509,6 +1509,65 @@ router.post("/github/apply-local", async (req, res): Promise<void> => {
     requiresServerBuild,
     projectWorkspace: useProjectWorkspace,
   });
+});
+
+// GET /api/github/fs-stat — return line count of an existing file in the project workspace
+// Used by the partial-file guard in the frontend to detect when Claude outputs a stub.
+router.get("/github/fs-stat", async (req, res): Promise<void> => {
+  const { path: filePath, projectId: rawProjectId } = req.query as { path?: string; projectId?: string };
+  if (!filePath) { res.status(400).json({ error: "Missing path" }); return; }
+
+  const userId = (req as any).authUser?.id as number | undefined;
+  const projectId = rawProjectId ? Number(rawProjectId) : null;
+
+  let resolvedPath: string;
+
+  if (projectId && userId) {
+    const isOwner = await assertProjectOwner(projectId, userId);
+    if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
+
+    const [project] = await db
+      .select({ linkedRepo: projectsTable.linkedRepo })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+
+    const hasLinkedRepo = !!(project?.linkedRepo);
+    if (!hasLinkedRepo) {
+      const workspaceDir = projectWorkspaceDir(projectId);
+      try {
+        resolvedPath = resolveWorkspacePath(workspaceDir, filePath);
+      } catch {
+        res.status(400).json({ error: "Disallowed path" }); return;
+      }
+    } else {
+      try {
+        resolvedPath = nodePath.resolve("/home/runner/workspace", filePath);
+        if (!resolvedPath.startsWith("/home/runner/workspace/")) {
+          res.status(400).json({ error: "Disallowed path" }); return;
+        }
+      } catch {
+        res.status(400).json({ error: "Disallowed path" }); return;
+      }
+    }
+  } else {
+    try {
+      resolvedPath = nodePath.resolve("/home/runner/workspace", filePath);
+      if (!resolvedPath.startsWith("/home/runner/workspace/")) {
+        res.status(400).json({ error: "Disallowed path" }); return;
+      }
+    } catch {
+      res.status(400).json({ error: "Disallowed path" }); return;
+    }
+  }
+
+  try {
+    const content = await readFile(resolvedPath, "utf-8");
+    const lineCount = content.split("\n").length;
+    res.json({ exists: true, lineCount });
+  } catch {
+    res.json({ exists: false, lineCount: 0 });
+  }
 });
 
 // POST /api/github/typecheck — syntax-check a proposed file before pushing

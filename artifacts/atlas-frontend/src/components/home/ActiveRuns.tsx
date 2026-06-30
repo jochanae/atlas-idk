@@ -39,8 +39,10 @@ export interface ActiveRun {
   // Apply trust fields
   applyErrors?: Array<{
     path: string;
-    reason: "typecheck";
+    reason: "typecheck" | "partial";
     errors: Array<{ line: number; col: number; message: string }>;
+    existingLines?: number;
+    proposedLines?: number;
   }>;
   applyError?: string;
 }
@@ -385,6 +387,49 @@ async function _startRun(
       if (fileEdits.length > 0) {
         _patchRun(run.id, { fileEdits });
 
+        // ── Phase 0: partial-file guard ───────────────────────────────────────
+        // Block any TS/JS file whose proposed content is <40% of the existing
+        // file's line count — this catches Claude returning a stub instead of
+        // the full file.  Net-new files and non-TS files are exempt.
+        const PARTIAL_THRESHOLD = 0.40;
+        const partialBlocked: Array<{ path: string; existingLines: number; proposedLines: number }> = [];
+
+        await Promise.all(
+          fileEdits.map(async (fe) => {
+            const ext = fe.path.split(".").pop()?.toLowerCase() ?? "";
+            if (!new Set(["ts", "tsx", "js", "jsx"]).has(ext)) return;
+            const proposedLines = fe.content.split("\n").length;
+            try {
+              const statUrl = `/api/github/fs-stat?path=${encodeURIComponent(fe.path)}&projectId=${run.projectId}`;
+              const statRes = await fetch(statUrl, { credentials: "include" });
+              if (!statRes.ok) return;
+              const statData = (await statRes.json()) as { exists?: boolean; lineCount?: number };
+              if (!statData.exists) return; // net-new file — exempt
+              const existingLines = statData.lineCount ?? 0;
+              if (existingLines > 0 && proposedLines / existingLines < PARTIAL_THRESHOLD) {
+                partialBlocked.push({ path: fe.path, existingLines, proposedLines });
+              }
+            } catch {
+              // stat failure → allow
+            }
+          })
+        );
+
+        if (partialBlocked.length > 0) {
+          _patchRun(run.id, {
+            applyErrors: [
+              ...((_getRuns().find((r) => r.id === run.id)?.applyErrors) ?? []),
+              ...partialBlocked.map((pb) => ({
+                path: pb.path,
+                reason: "partial" as const,
+                errors: [] as Array<{ line: number; col: number; message: string }>,
+                existingLines: pb.existingLines,
+                proposedLines: pb.proposedLines,
+              })),
+            ],
+          });
+        }
+
         // ── Phase 1: typecheck all TS/JS files before writing anything ─────────
         const TC_EXTS = new Set(["ts", "tsx", "js", "jsx"]);
         const tcResults = await Promise.all(
@@ -408,18 +453,26 @@ async function _startRun(
           })
         );
 
+        const partialPaths = new Set(partialBlocked.map((pb) => pb.path));
         const blockedEdits = tcResults.filter((r) => !r.clean);
         const cleanEdits = fileEdits.filter((fe) =>
+          !partialPaths.has(fe.path) &&
           tcResults.find((r) => r.path === fe.path)?.clean !== false
         );
 
         if (blockedEdits.length > 0) {
+          const existingErrors = _getRuns().find((r) => r.id === run.id)?.applyErrors ?? [];
           _patchRun(run.id, {
-            applyErrors: blockedEdits.map((b) => ({
-              path: b.path,
-              reason: "typecheck" as const,
-              errors: b.errors,
-            })),
+            applyErrors: [
+              ...existingErrors,
+              ...blockedEdits
+                .filter((b) => !partialPaths.has(b.path))
+                .map((b) => ({
+                  path: b.path,
+                  reason: "typecheck" as const,
+                  errors: b.errors,
+                })),
+            ],
           });
         }
 
@@ -1290,38 +1343,41 @@ function RunCard({
                 </a>
               )}
 
-              {/* ── Typecheck failures — files that were blocked from applying ── */}
+              {/* ── Apply errors — typecheck failures and partial-file warnings ── */}
               {(run.applyErrors?.length ?? 0) > 0 && (
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                   {run.applyErrors!.map((ae) => {
                     const retryKey = `${run.id}:${ae.path}`;
                     const isRetrying = retryingFiles.has(retryKey);
                     const retryError = retryErrors.get(retryKey);
+                    const isPartial = ae.reason === "partial";
+                    // partial → amber palette; typecheck → red palette
+                    const accent = isPartial ? "201,162,76" : "248,113,113";
                     return (
                     <div key={ae.path} style={{
                       borderRadius: 7,
-                      border: "1px solid rgba(248,113,113,0.28)",
+                      border: `1px solid rgba(${accent},0.28)`,
                       overflow: "hidden",
                     }}>
                       {/* Header */}
                       <div style={{
                         display: "flex", alignItems: "center", gap: 6,
                         padding: "5px 10px",
-                        background: "rgba(248,113,113,0.07)",
-                        borderBottom: "1px solid rgba(248,113,113,0.15)",
+                        background: `rgba(${accent},0.07)`,
+                        borderBottom: `1px solid rgba(${accent},0.15)`,
                       }}>
                         <span style={{
                           fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
                           textTransform: "uppercase", fontWeight: 600,
-                          color: "rgba(248,113,113,0.85)",
+                          color: `rgba(${accent},0.85)`,
                           padding: "1px 5px", borderRadius: 3,
-                          background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
+                          background: `rgba(${accent},0.1)`, border: `1px solid rgba(${accent},0.2)`,
                         }}>
-                          blocked
+                          {isPartial ? "partial" : "blocked"}
                         </span>
                         <span style={{
                           fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em",
-                          color: "rgba(248,113,113,0.7)", flex: 1, minWidth: 0,
+                          color: `rgba(${accent},0.7)`, flex: 1, minWidth: 0,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {ae.path}
@@ -1336,14 +1392,14 @@ function RunCard({
                             fontSize: 9, fontFamily: "var(--app-font-mono)",
                             letterSpacing: "0.06em", fontWeight: 600,
                             textTransform: "uppercase",
-                            background: isRetrying ? "rgba(248,113,113,0.05)" : "rgba(248,113,113,0.10)",
-                            border: "1px solid rgba(248,113,113,0.28)",
-                            color: isRetrying ? "rgba(248,113,113,0.4)" : "rgba(248,113,113,0.8)",
+                            background: isRetrying ? `rgba(${accent},0.05)` : `rgba(${accent},0.10)`,
+                            border: `1px solid rgba(${accent},0.28)`,
+                            color: isRetrying ? `rgba(${accent},0.4)` : `rgba(${accent},0.8)`,
                             cursor: isRetrying ? "not-allowed" : "pointer",
                             transition: "background 140ms ease, color 140ms ease",
                           }}
-                          onMouseEnter={(e) => { if (!isRetrying) e.currentTarget.style.background = "rgba(248,113,113,0.18)"; }}
-                          onMouseLeave={(e) => { if (!isRetrying) e.currentTarget.style.background = "rgba(248,113,113,0.10)"; }}
+                          onMouseEnter={(e) => { if (!isRetrying) e.currentTarget.style.background = `rgba(${accent},0.18)`; }}
+                          onMouseLeave={(e) => { if (!isRetrying) e.currentTarget.style.background = `rgba(${accent},0.10)`; }}
                         >
                           {isRetrying
                             ? <><Loader size={9} style={{ animation: "ar-spin 0.8s linear infinite" }} /> applying…</>
@@ -1351,39 +1407,50 @@ function RunCard({
                           }
                         </button>
                       </div>
-                      {/* Error list */}
+                      {/* Body: partial warning or typecheck errors */}
                       <div style={{ padding: "6px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
-                        {ae.errors.slice(0, 6).map((e, i) => (
-                          <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                            <span style={{
-                              flexShrink: 0, fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-                              color: "rgba(248,113,113,0.5)",
-                              minWidth: 50,
-                            }}>
-                              L{e.line}:{e.col}
-                            </span>
-                            <span style={{
-                              fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
-                              color: "rgba(248,113,113,0.85)",
-                              wordBreak: "break-word",
-                            }}>
-                              {e.message}
-                            </span>
-                          </div>
-                        ))}
-                        {ae.errors.length > 6 && (
-                          <div style={{ fontSize: 10, color: "rgba(248,113,113,0.45)", fontFamily: "var(--app-font-mono)" }}>
-                            +{ae.errors.length - 6} more errors
-                          </div>
+                        {isPartial ? (
+                          <span style={{
+                            fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.6,
+                            color: `rgba(${accent},0.85)`,
+                          }}>
+                            ⚠ Partial file suspected — existing: {ae.existingLines} lines, proposed: {ae.proposedLines} lines
+                          </span>
+                        ) : (
+                          <>
+                            {ae.errors.slice(0, 6).map((e, i) => (
+                              <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                                <span style={{
+                                  flexShrink: 0, fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+                                  color: `rgba(${accent},0.5)`,
+                                  minWidth: 50,
+                                }}>
+                                  L{e.line}:{e.col}
+                                </span>
+                                <span style={{
+                                  fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                                  color: `rgba(${accent},0.85)`,
+                                  wordBreak: "break-word",
+                                }}>
+                                  {e.message}
+                                </span>
+                              </div>
+                            ))}
+                            {ae.errors.length > 6 && (
+                              <div style={{ fontSize: 10, color: `rgba(${accent},0.45)`, fontFamily: "var(--app-font-mono)" }}>
+                                +{ae.errors.length - 6} more errors
+                              </div>
+                            )}
+                          </>
                         )}
                         {retryError && (
                           <div style={{
                             marginTop: 4,
                             padding: "4px 7px", borderRadius: 4,
-                            background: "rgba(248,113,113,0.08)",
-                            border: "1px solid rgba(248,113,113,0.22)",
+                            background: `rgba(${accent},0.08)`,
+                            border: `1px solid rgba(${accent},0.22)`,
                             fontSize: 10, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
-                            color: "rgba(248,113,113,0.8)", wordBreak: "break-word",
+                            color: `rgba(${accent},0.8)`, wordBreak: "break-word",
                           }}>
                             {retryError}
                           </div>
