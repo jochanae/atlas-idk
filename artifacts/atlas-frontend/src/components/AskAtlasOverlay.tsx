@@ -190,7 +190,7 @@ export function AskAtlasOverlay({
             <span style={{
               fontSize: 11, color: "rgba(255,255,255,0.45)",
               letterSpacing: "0.01em",
-            }}>Portfolio thinking · not a workspace</span>
+            }}>Thinking across your portfolio</span>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
             {onOpenHistory && (
