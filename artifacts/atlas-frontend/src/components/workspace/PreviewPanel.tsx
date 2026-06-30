@@ -138,6 +138,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [detectMenuOpen, setDetectMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
+  const [contentFullscreen, setContentFullscreen] = useState(false);
   useEffect(() => {
     if (!mobileFullscreen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileFullscreen(false); };
@@ -149,6 +150,18 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
       window.removeEventListener("keydown", onKey);
     };
   }, [mobileFullscreen]);
+
+  useEffect(() => {
+    if (!contentFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setContentFullscreen(false); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [contentFullscreen]);
 
   // ── Devserver state ──────────────────────────────────────────────────────────
   type DsStatus = "idle" | "cloning" | "installing" | "starting" | "running" | "error";
@@ -707,9 +720,9 @@ ${t}
       {/* Mode toggle */}
       <div style={{ position: "relative", flexShrink: 0, borderBottom: "1px solid var(--atlas-border)" }}>
         {/* left fade */}
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to right, var(--atlas-bg, #0e0d0b), transparent)" }} />
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to right, #0e0d0b, transparent)" }} />
         {/* right fade */}
-        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, var(--atlas-bg, #0e0d0b), transparent)" }} />
+        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, #0e0d0b, transparent)" }} />
         <div style={{ display: "flex", overflowX: "auto", scrollbarWidth: "none" }}>
         {(["url", "sandbox", "stackblitz", "local", "generated"] as const).map((m) => (
           <button
@@ -1514,13 +1527,22 @@ ${t}
 
               {/* Live iframe when running — split with optional console panel */}
               {wsDsStatus === "running" && wsDsPort && (
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
                   <iframe
                     key={`ws-${projectId}-${wsDsPort}`}
                     src={`/api/preview/workspace/${projectId}/`}
                     title="Local Dev Preview"
                     style={{ flex: 1, border: "none", width: "100%", display: "block", background: "var(--atlas-bg)" }}
                   />
+                  {/* Expand to fullscreen */}
+                  <button
+                    onClick={() => setContentFullscreen(true)}
+                    title="Expand to fullscreen"
+                    aria-label="Expand to fullscreen"
+                    style={{ position: "absolute", top: 8, right: 8, zIndex: 5, padding: "5px 8px", borderRadius: 6, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(201,162,76,0.3)", color: "rgba(201,162,76,0.9)", fontSize: 13, cursor: "pointer", lineHeight: 1, opacity: 0.7, transition: "opacity 160ms ease" }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = "0.7")}
+                  >⛶</button>
                   {/* Console toggle bar */}
                   <div
                     onClick={() => setShowLogsWhileRunning(v => !v)}
@@ -1532,7 +1554,7 @@ ${t}
                   </div>
                   {/* Collapsible log + browser error panel */}
                   {showLogsWhileRunning && (
-                    <div style={{ flexShrink: 0, height: 140, overflow: "auto", padding: "6px 10px", background: "rgba(0,0,0,0.28)", borderTop: "1px solid var(--atlas-border)" }}>
+                    <div style={{ flexShrink: 0, height: 140, overflow: "auto", padding: "6px 10px", background: "#0a0a0c", borderTop: "1px solid var(--atlas-border)" }}>
                       {[...wsDsLogs, ...browserErrors].map((line, i) => {
                         const isBrowserErr = line.startsWith("[browser]");
                         const isError = isBrowserErr || /\b(error|fail|403|SyntaxError|TypeError|ReferenceError)\b/i.test(line);
@@ -1567,7 +1589,7 @@ ${t}
                     </div>
                   )}
                   {/* Boot logs */}
-                  <div style={{ flex: 1, overflow: "auto", padding: "8px 10px", background: "rgba(0,0,0,0.22)" }}>
+                  <div style={{ flex: 1, overflow: "auto", padding: "8px 10px", background: "#0e0d0b" }}>
                     {wsDsLogs.length === 0 ? (
                       <div style={{ fontSize: 10, ...sMono, color: "var(--atlas-muted)", opacity: 0.3, textAlign: "center", marginTop: "20%" }}>
                         {wsDsStatus === "idle" ? "Press Run Project to start the dev server." : "Waiting for output…"}
@@ -1689,7 +1711,7 @@ ${t}
               )}
 
               {/* Logs */}
-              <div style={{ flex: 1, overflow: "auto", padding: "8px 10px", background: "rgba(0,0,0,0.22)" }}>
+              <div style={{ flex: 1, overflow: "auto", padding: "8px 10px", background: "#0e0d0b" }}>
                 {dsLogs.length === 0 ? (
                   <div style={{ fontSize: 10, ...sMono, color: "var(--atlas-muted)", opacity: 0.3, textAlign: "center", marginTop: "20%" }}>
                     {dsStatus === "idle" ? "Dev server idle. Press Start to clone and run." : "Waiting for logs…"}
@@ -1747,6 +1769,14 @@ ${t}
                 >
                   GitHub →
                 </a>
+                <button
+                  onClick={() => setContentFullscreen(true)}
+                  title="Expand to fullscreen"
+                  aria-label="Expand to fullscreen"
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 13, opacity: 0.55, padding: "2px 4px", lineHeight: 1, transition: "opacity 160ms ease" }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "0.55")}
+                >⛶</button>
               </div>
               <iframe
                 key={linkedRepo.fullName}
@@ -1759,6 +1789,52 @@ ${t}
           )}
         </div>
       )}
+      {/* Content fullscreen portal — Local Dev and StackBlitz expand */}
+      {contentFullscreen && typeof document !== "undefined" && createPortal(
+        <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "#000", display: "flex", flexDirection: "column" }}>
+          {previewMode === "local" && sessionId && !linkedRepo && wsDsPort && (
+            <iframe
+              key={`cfs-ws-${projectId}-${wsDsPort}`}
+              src={`/api/preview/workspace/${projectId}/`}
+              title="Local Dev fullscreen"
+              style={{ border: "none", flex: 1, width: "100%", background: "#fff" }}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+            />
+          )}
+          {previewMode === "stackblitz" && linkedRepo && (
+            <iframe
+              key={`cfs-sbz-${linkedRepo.fullName}`}
+              src={`https://stackblitz.com/github/${linkedRepo.fullName}?embed=1&theme=dark&terminalHeight=0&hideNavigation=0`}
+              title="StackBlitz fullscreen"
+              style={{ border: "none", flex: 1, width: "100%", height: "100%" }}
+              allow="cross-origin-isolated"
+            />
+          )}
+          <button
+            onClick={() => setContentFullscreen(false)}
+            aria-label="Exit fullscreen"
+            style={{
+              position: "fixed",
+              top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+              right: "calc(env(safe-area-inset-right, 0px) + 12px)",
+              zIndex: 100000,
+              padding: "8px 14px", borderRadius: 999,
+              background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
+              border: "1px solid rgba(201,162,76,0.35)",
+              color: "var(--atlas-gold, #c9a24c)",
+              fontSize: 12, fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.08em", cursor: "pointer",
+              display: "inline-flex", alignItems: "center", gap: 6,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            }}
+          >
+            <span style={{ fontSize: 14, lineHeight: 1 }}>✕</span>
+            <span>EXIT</span>
+          </button>
+        </div>,
+        document.body
+      )}
+
       {/* Shared device popover — portaled so it floats above iframes and isn't clipped */}
       {deviceMenuOpen && deviceMenuPos && typeof document !== "undefined" && createPortal(
         <>

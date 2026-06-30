@@ -207,7 +207,7 @@ export default function Login() {
   if (isLoading) return (
     <div style={{
       position: "fixed", inset: 0, display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center", background: "var(--atlas-bg)", gap: 18,
+      alignItems: "center", justifyContent: "center", background: "#09090b", gap: 18,
     }}>
       <div style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.35em", color: "var(--atlas-gold)", opacity: 0.5, textTransform: "uppercase" }}>Axiom</div>
       <div style={{
@@ -230,15 +230,23 @@ export default function Login() {
       WebkitOverflowScrolling: "touch",
       touchAction: "pan-y",
       overscrollBehaviorY: "contain",
-      background: "var(--atlas-bg)",
-    }}>
+      background: "#09090b",
+      // Force all atlas CSS variables to dark values for this page
+      "--atlas-bg": "#09090b",
+      "--atlas-fg": "#e7e5e2",
+      "--atlas-muted": "#78716c",
+      "--atlas-gold": "#c9a24c",
+      "--atlas-border": "rgba(255,255,255,0.07)",
+      "--atlas-surface": "rgba(255,255,255,0.04)",
+      "--atlas-glass-bg": "rgba(255,255,255,0.05)",
+    } as React.CSSProperties}>
       <div style={{
         minHeight: "100dvh",
         width: "100%",
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "center",
-        background: "var(--atlas-bg)",
+        background: "#09090b",
         padding: "40px 16px calc(112px + env(safe-area-inset-bottom, 0px))",
         position: "relative",
         boxSizing: "border-box",
