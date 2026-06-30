@@ -2282,7 +2282,7 @@ export function AxiomFlow({
         {!flowLoading && projectId && (
           <button
             type="button"
-            title={hydrateLoading ? "Hydrating…" : "Refresh flow from conversations"}
+            title={hydrateLoading ? "Analyzing…" : "Update — Atlas re-reads decisions, ledger, and architecture"}
             onClick={(e) => { e.stopPropagation(); void hydrateFlow(); }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
