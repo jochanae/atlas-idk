@@ -2048,6 +2048,15 @@ export default function Home() {
     () => buildAskAtlasHandoffSeed(askAtlasChat.messages, input),
     [askAtlasChat.messages, input],
   );
+  const updateProjectName = useUpdateProject();
+  // When Atlas mentions >1 of the user's projects, show an inline picker
+  // instead of guessing. Keyed by message index where the handoff button
+  // lives so it only shows under that specific message.
+  const [handoffPicker, setHandoffPicker] = useState<{
+    messageIndex: number;
+    options: ProjectLike[];
+  } | null>(null);
+
   useEffect(() => {
     if (!askAtlasConversationActive) return;
     const el = askAtlasScrollRef.current;
