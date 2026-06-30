@@ -152,6 +152,10 @@ export interface ArchNode {
   moscow?: FlowNodeMeta;
   question?: string;
   strategicAnswer?: string;
+  /** Optional analyzer-supplied confidence (0–1 or 0–100). Rendered if present. */
+  confidence?: number;
+  /** Optional analyzer-supplied reasoning bullets. Rendered if present. */
+  reasons?: string[];
 }
 
 export function isNodeDefined(node: ArchNode): boolean {
