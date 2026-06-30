@@ -412,7 +412,7 @@ export function ChatComposer(props: ChatComposerProps) {
           transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           overflow: "hidden",
         } : {
-          padding: isCompact ? "6px 14px 8px" : "12px 14px 14px",
+          padding: isCompact ? "2px 12px 4px" : "12px 14px 14px",
           flexShrink: 0,
           position: "sticky",
           bottom: 0,
@@ -691,7 +691,7 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
 
 
-          <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: isCompact ? 6 : 20, flexWrap: "nowrap", gap: 4 }}>
+          <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: isCompact ? 2 : 20, flexWrap: "nowrap", gap: 4 }}>
 
 
             {/* Universal composer actions: [clock] + [+] + [...] */}
@@ -704,7 +704,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   title="Sessions — resume or start new"
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: 32, height: 32, borderRadius: 999,
+                    width: isCompact ? 26 : 32, height: isCompact ? 26 : 32, borderRadius: 999,
                     background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
                     border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
                     color: "var(--atlas-gold)",
@@ -855,7 +855,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}
                 title={chatPending ? "Stop" : "Send"}
                 style={{
-                  minWidth: 44, minHeight: 44, padding: 3,
+                  minWidth: isCompact ? 30 : 44, minHeight: isCompact ? 30 : 44, padding: 3,
                   background: chatPending
                     ? "var(--atlas-ember)"
                     : ((hasInput || hasAttachments) && !sendPreparingSession ? "var(--atlas-ember)" : "transparent"),

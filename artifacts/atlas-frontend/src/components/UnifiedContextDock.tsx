@@ -699,10 +699,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               action: () => { setShowAtlasHub(false); props.onYou?.(); },
             },
             {
-              label: "Conversations",
+              label: "Ask Atlas",
               angleDeg: 150,
-              color: "#06B6D4",
-              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+              color: "#D4AF37",
+              icon: <span style={{ fontFamily: "var(--app-font-serif, Georgia, serif)", fontWeight: 600, fontSize: 18, lineHeight: 1, letterSpacing: "-0.02em", filter: "drop-shadow(0 0 4px rgba(212,175,55,0.45))" }}>A</span>,
               action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:launcher-conversations")); },
             },
             {
