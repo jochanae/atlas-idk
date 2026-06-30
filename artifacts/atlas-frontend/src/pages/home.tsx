@@ -5592,6 +5592,7 @@ export default function Home() {
           if (target != null) setWriteOverlayProjectId(target);
         }}
         onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
+        onOpenShell={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-shell")); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
       />
 

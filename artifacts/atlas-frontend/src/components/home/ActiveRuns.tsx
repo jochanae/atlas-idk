@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { X, ChevronDown, Paperclip, ArrowRight, Loader, GitPullRequest, ChevronUp, FileCode } from "lucide-react";
+import { X, ChevronDown, Paperclip, ArrowRight, Loader, GitPullRequest, ChevronUp, FileCode, Terminal } from "lucide-react";
 import type { QuickEditProjectOption } from "./QuickEditRow";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -35,6 +35,7 @@ export interface ActiveRun {
   fileEdits?: Array<{ path: string; content: string }>;
   prUrl?: string;
   summaryLine?: string;
+  shellLines?: Array<{ kind: "cmd" | "out" | "err"; text: string }>;
 }
 
 // ── Module-level store ────────────────────────────────────────────────────────
@@ -223,6 +224,35 @@ function extractSummaryLine(content: string): string {
   return sentences[sentences.length - 1] ?? "";
 }
 
+// ── Shell lines extractor ─────────────────────────────────────────────────────
+// Parses terminal-style output from streamed content.
+// Supports explicit SHELL_OUTPUT_START/END blocks (future backend) and
+// falls back to heuristic line detection (lines starting with $, %, >, #!).
+
+function extractShellLines(
+  content: string,
+): Array<{ kind: "cmd" | "out" | "err"; text: string }> {
+  // Explicit block takes priority
+  const blockMatch = content.match(/SHELL_OUTPUT_START\n([\s\S]*?)SHELL_OUTPUT_END/);
+  if (blockMatch) {
+    return blockMatch[1].split("\n").filter(Boolean).map((line) => {
+      if (line.startsWith("$ ") || line.startsWith("% ")) return { kind: "cmd" as const, text: line };
+      if (line.startsWith("! ") || line.toLowerCase().startsWith("error")) return { kind: "err" as const, text: line };
+      return { kind: "out" as const, text: line };
+    });
+  }
+  // Heuristic: pick lines that look like shell commands
+  const lines = content
+    .replace(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "")
+    .split("\n")
+    .filter((l) => /^(\$|%|>\s|#!|npm |npx |git |tsc |node |pnpm |yarn |bun )/.test(l.trim()));
+  if (lines.length === 0) return [];
+  return lines.map((line) => ({
+    kind: line.trim().startsWith("$") || line.trim().startsWith("%") ? ("cmd" as const) : ("out" as const),
+    text: line.trim(),
+  }));
+}
+
 // ── file → base64 ────────────────────────────────────────────────────────────
 
 async function fileToBase64(
@@ -363,6 +393,8 @@ async function _startRun(
 
       if (prUrl) _patchRun(run.id, { prUrl });
       if (summaryLine) _patchRun(run.id, { summaryLine });
+      const shellLines = extractShellLines(fullContent);
+      if (shellLines.length > 0) _patchRun(run.id, { shellLines });
     }
 
     _patchRun(run.id, { status: "completed", completedAt: Date.now() });
@@ -843,7 +875,7 @@ function RunCard({
   const isLive = run.status === "running" || run.status === "queued";
   // Auto-expand while running so you see the stream; collapse when done
   const [expanded, setExpanded] = useState(isLive);
-  const [activeTab, setActiveTab] = useState<"chat" | "diff">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "diff" | "shell">("chat");
   const [hovered, setHovered] = useState(false);
 
   // Keep expanded=true while running, but don't force-collapse when it finishes
@@ -1056,9 +1088,12 @@ function RunCard({
             padding: "8px 12px 0",
             borderBottom: "1px solid var(--atlas-border)",
           }}>
-            {(["chat", "diff"] as const).map((tab) => {
+            {(["chat", "diff", "shell"] as const).map((tab) => {
               const isActive = activeTab === tab;
-              const label = tab === "chat" ? "Chat" : `Diff${hasFiles ? ` · ${run.fileEdits!.length}` : ""}`;
+              const hasShell = (run.shellLines?.length ?? 0) > 0;
+              const label = tab === "chat" ? "Chat"
+                : tab === "diff" ? `Diff${hasFiles ? ` · ${run.fileEdits!.length}` : ""}`
+                : `Shell${hasShell ? ` · ${run.shellLines!.length}` : ""}`;
               return (
                 <button key={tab} type="button"
                   onClick={() => setActiveTab(tab)}
@@ -1251,6 +1286,80 @@ function RunCard({
                   padding: "4px 4px",
                 }}>
                   No file changes in this run.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Shell tab */}
+          {activeTab === "shell" && (
+            <div style={{ padding: "10px 12px 12px" }}>
+              {(run.shellLines?.length ?? 0) > 0 ? (
+                <div style={{
+                  borderRadius: 6, overflow: "hidden",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(0,0,0,0.35)",
+                }}>
+                  {/* Terminal header bar */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    padding: "5px 10px",
+                    background: "rgba(0,0,0,0.3)",
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  }}>
+                    <Terminal size={9} strokeWidth={2} color="rgba(255,255,255,0.3)" />
+                    <span style={{
+                      fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                      color: "rgba(255,255,255,0.3)", textTransform: "uppercase",
+                    }}>
+                      shell output
+                    </span>
+                    <span style={{
+                      marginLeft: "auto",
+                      fontSize: 9, fontFamily: "var(--app-font-mono)",
+                      color: "rgba(255,255,255,0.2)",
+                    }}>
+                      {run.shellLines!.length} lines
+                    </span>
+                  </div>
+                  {/* Lines */}
+                  <div style={{ maxHeight: 200, overflowY: "auto", padding: "8px 10px" }}>
+                    {run.shellLines!.map((line, i) => (
+                      <div key={i} style={{
+                        display: "flex", gap: 6, alignItems: "flex-start",
+                        marginBottom: 3,
+                      }}>
+                        <span style={{
+                          flexShrink: 0, fontSize: 10,
+                          color: line.kind === "cmd" ? "rgba(201,162,76,0.85)"
+                            : line.kind === "err" ? "rgba(248,113,113,0.8)"
+                            : "rgba(74,222,128,0.6)",
+                          fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                          userSelect: "none",
+                        }}>
+                          {line.kind === "cmd" ? "›" : line.kind === "err" ? "✕" : " "}
+                        </span>
+                        <pre style={{
+                          margin: 0, fontSize: 10.5, lineHeight: 1.5,
+                          fontFamily: "var(--app-font-mono)",
+                          color: line.kind === "cmd" ? "rgba(255,255,255,0.9)"
+                            : line.kind === "err" ? "rgba(248,113,113,0.85)"
+                            : "rgba(255,255,255,0.6)",
+                          whiteSpace: "pre-wrap", wordBreak: "break-all",
+                        }}>
+                          {line.text}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5,
+                  fontStyle: "italic", fontFamily: "var(--app-font-sans)",
+                  padding: "4px 4px",
+                }}>
+                  No shell output captured for this run.
                 </div>
               )}
             </div>

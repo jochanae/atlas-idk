@@ -3,7 +3,7 @@ import { useParkedCount } from "@/hooks/useParkedCount";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Sparkles } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Sparkles, Terminal } from "lucide-react";
 import { useActiveRunsCount } from "./home/ActiveRuns";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
@@ -31,10 +31,11 @@ type Props = {
   onOpenSpecify?: () => void;
   onOpenWrite?: () => void;
   onOpenComposer?: () => void;
+  onOpenShell?: () => void;
   userLabel?: string | null;
 };
 
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenComposer, userLabel }: Props) {
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenComposer, onOpenShell, userLabel }: Props) {
   const activeRunsCount = useActiveRunsCount();
   const parkedCount = useParkedCount();
   const [, setLocation] = useLocation();
@@ -369,6 +370,9 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                       badge={activeRunsCount}
                       onClick={() => { onOpenComposer(); onClose(); }}
                     />
+                  )}
+                  {onOpenShell && (
+                    <NavRow icon={<Terminal size={14} strokeWidth={1.6} />} label="Shell" onClick={() => { onOpenShell(); onClose(); }} />
                   )}
                   {onOpenSpecify && <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify Change" onClick={() => { onOpenSpecify(); onClose(); }} />}
                   {onOpenWrite && <NavRow icon={<PenLine size={14} strokeWidth={1.6} />} label="Write" onClick={() => { onOpenWrite(); onClose(); }} />}
