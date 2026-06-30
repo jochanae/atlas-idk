@@ -691,7 +691,7 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
 
 
-          <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: isCompact ? 6 : 20, flexWrap: "nowrap", gap: 4 }}>
+          <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: isCompact ? 2 : 20, flexWrap: "nowrap", gap: 4 }}>
 
 
             {/* Universal composer actions: [clock] + [+] + [...] */}
