@@ -4139,6 +4139,21 @@ export default function Workspace() {
     setSandboxCode(code);
     openPreviewPanel();
   }, [openPreviewPanel]);
+  // Listen for cross-page request to open the Write surface (dispatched from
+  // home → ProjectsDrawer → Tools → "Write" after navigating to a project).
+  useEffect(() => {
+    const openWrite = () => {
+      if (isMobile) {
+        setMobileTab("write");
+        setRightOpen(true);
+      } else {
+        setDesktopForceTab("write" as RightTab);
+        setTimeout(() => setDesktopForceTab(undefined), 120);
+      }
+    };
+    window.addEventListener("axiom:open-write", openWrite);
+    return () => window.removeEventListener("axiom:open-write", openWrite);
+  }, [isMobile]);
   const [latestRun, setLatestRun] = useState<any | null>(null);
   const [previewReady, setPreviewReady] = useState(false);
   const workspaceMountedAtRef = useRef<number>(Date.now());
