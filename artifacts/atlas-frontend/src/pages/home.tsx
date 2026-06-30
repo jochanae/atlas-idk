@@ -1901,6 +1901,16 @@ export default function Home() {
   useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
   const [askAtlasOpen, setAskAtlasOpen] = useState(false);
   const [askAtlasSeed, setAskAtlasSeed] = useState<string | null>(null);
+  // Radial menu "Ask Atlas" → open the ephemeral overlay.
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const detail = (e as CustomEvent<{ seed?: string }>).detail;
+      setAskAtlasSeed(detail?.seed ?? null);
+      setAskAtlasOpen(true);
+    };
+    window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
+    return () => window.removeEventListener("axiom:ask-atlas", onAsk as EventListener);
+  }, []);
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
