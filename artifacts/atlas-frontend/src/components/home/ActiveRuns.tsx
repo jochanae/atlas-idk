@@ -1036,6 +1036,7 @@ function RunCard({
   const [expanded, setExpanded] = useState(isLive);
   const [activeTab, setActiveTab] = useState<"chat" | "diff" | "shell">("chat");
   const [hovered, setHovered] = useState(false);
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
 
   // Keep expanded=true while running, but don't force-collapse when it finishes
   // (let the user decide)
@@ -1343,253 +1344,253 @@ function RunCard({
                 </a>
               )}
 
-              {/* ── Apply errors — typecheck failures and partial-file warnings ── */}
-              {(run.applyErrors?.length ?? 0) > 0 && (
-                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {run.applyErrors!.map((ae) => {
-                    const retryKey = `${run.id}:${ae.path}`;
-                    const isRetrying = retryingFiles.has(retryKey);
-                    const retryError = retryErrors.get(retryKey);
-                    const isPartial = ae.reason === "partial";
-                    // partial → amber palette; typecheck → red palette
-                    const accent = isPartial ? "201,162,76" : "248,113,113";
-                    return (
-                    <div key={ae.path} style={{
-                      borderRadius: 7,
-                      border: `1px solid rgba(${accent},0.28)`,
-                      overflow: "hidden",
-                    }}>
-                      {/* Header */}
-                      <div style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        padding: "5px 10px",
-                        background: `rgba(${accent},0.07)`,
-                        borderBottom: `1px solid rgba(${accent},0.15)`,
-                      }}>
-                        <span style={{
-                          fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
-                          textTransform: "uppercase", fontWeight: 600,
-                          color: `rgba(${accent},0.85)`,
-                          padding: "1px 5px", borderRadius: 3,
-                          background: `rgba(${accent},0.1)`, border: `1px solid rgba(${accent},0.2)`,
-                        }}>
-                          {isPartial ? "partial" : "blocked"}
-                        </span>
-                        <span style={{
-                          fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em",
-                          color: `rgba(${accent},0.7)`, flex: 1, minWidth: 0,
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        }}>
-                          {ae.path}
-                        </span>
-                        <button
-                          disabled={isRetrying}
-                          onClick={() => onForceApply(run, ae.path)}
-                          style={{
-                            flexShrink: 0,
-                            display: "flex", alignItems: "center", gap: 4,
-                            padding: "2px 7px", borderRadius: 4,
-                            fontSize: 9, fontFamily: "var(--app-font-mono)",
-                            letterSpacing: "0.06em", fontWeight: 600,
-                            textTransform: "uppercase",
-                            background: isRetrying ? `rgba(${accent},0.05)` : `rgba(${accent},0.10)`,
-                            border: `1px solid rgba(${accent},0.28)`,
-                            color: isRetrying ? `rgba(${accent},0.4)` : `rgba(${accent},0.8)`,
-                            cursor: isRetrying ? "not-allowed" : "pointer",
-                            transition: "background 140ms ease, color 140ms ease",
-                          }}
-                          onMouseEnter={(e) => { if (!isRetrying) e.currentTarget.style.background = `rgba(${accent},0.18)`; }}
-                          onMouseLeave={(e) => { if (!isRetrying) e.currentTarget.style.background = `rgba(${accent},0.10)`; }}
-                        >
-                          {isRetrying
-                            ? <><Loader size={9} style={{ animation: "ar-spin 0.8s linear infinite" }} /> applying…</>
-                            : <>force apply</>
-                          }
-                        </button>
-                      </div>
-                      {/* Body: partial warning or typecheck errors */}
-                      <div style={{ padding: "6px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
-                        {isPartial ? (
-                          <span style={{
-                            fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.6,
-                            color: `rgba(${accent},0.85)`,
-                          }}>
-                            ⚠ Partial file suspected — existing: {ae.existingLines} lines, proposed: {ae.proposedLines} lines
-                          </span>
-                        ) : (
-                          <>
-                            {ae.errors.slice(0, 6).map((e, i) => (
-                              <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                                <span style={{
-                                  flexShrink: 0, fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-                                  color: `rgba(${accent},0.5)`,
-                                  minWidth: 50,
-                                }}>
-                                  L{e.line}:{e.col}
-                                </span>
-                                <span style={{
-                                  fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
-                                  color: `rgba(${accent},0.85)`,
-                                  wordBreak: "break-word",
-                                }}>
-                                  {e.message}
-                                </span>
-                              </div>
-                            ))}
-                            {ae.errors.length > 6 && (
-                              <div style={{ fontSize: 10, color: `rgba(${accent},0.45)`, fontFamily: "var(--app-font-mono)" }}>
-                                +{ae.errors.length - 6} more errors
-                              </div>
-                            )}
-                          </>
-                        )}
-                        {retryError && (
-                          <div style={{
-                            marginTop: 4,
-                            padding: "4px 7px", borderRadius: 4,
-                            background: `rgba(${accent},0.08)`,
-                            border: `1px solid rgba(${accent},0.22)`,
-                            fontSize: 10, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
-                            color: `rgba(${accent},0.8)`, wordBreak: "break-word",
-                          }}>
-                            {retryError}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    );
-                  })}
-                </div>
-              )}
+            </div>
+          )}
 
-              {/* ── General apply error (network / server failure) ── */}
+          {/* Diff tab — unified Apply Report */}
+          {activeTab === "diff" && (
+            <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 5 }}>
+
+              {/* Network/server apply error banner */}
               {run.applyError && (
                 <div style={{
-                  marginTop: 10,
-                  padding: "8px 10px",
-                  borderRadius: 7,
+                  display: "flex", alignItems: "flex-start", gap: 7,
+                  padding: "7px 10px", borderRadius: 6,
                   background: "rgba(248,113,113,0.06)",
                   border: "1px solid rgba(248,113,113,0.22)",
-                  display: "flex", alignItems: "flex-start", gap: 7,
+                  marginBottom: 2,
                 }}>
                   <span style={{
-                    flexShrink: 0, fontSize: 9, fontFamily: "var(--app-font-mono)",
+                    flexShrink: 0, fontSize: 8.5, fontFamily: "var(--app-font-mono)",
                     letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600,
-                    color: "rgba(248,113,113,0.8)", marginTop: 1,
+                    color: "rgba(248,113,113,0.8)",
                     padding: "1px 5px", borderRadius: 3,
                     background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
+                    marginTop: 1,
                   }}>
                     apply error
                   </span>
                   <span style={{
-                    fontSize: 11, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                    fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
                     color: "rgba(248,113,113,0.8)", wordBreak: "break-word",
                   }}>
                     {run.applyError}
                   </span>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Diff tab */}
-          {activeTab === "diff" && (
-            <div style={{ padding: "10px 12px 12px" }}>
               {hasFiles ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {run.fileEdits!.map((fe) => {
-                    const filename = fe.path.split("/").pop() ?? fe.path;
-                    const lineCount = fe.content.split("\n").length;
-                    return (
-                      <div key={fe.path} style={{
-                        borderRadius: 6, overflow: "hidden",
-                        border: "1px solid rgba(74,222,128,0.18)",
-                      }}>
-                        {/* File header */}
-                        <div style={{
-                          display: "flex", alignItems: "center", gap: 6,
-                          padding: "5px 10px",
-                          background: "rgba(74,222,128,0.05)",
-                          borderBottom: "1px solid rgba(74,222,128,0.12)",
-                        }}>
-                          <FileCode size={10} strokeWidth={2} color="rgba(74,222,128,0.7)" />
-                          <span style={{
-                            fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
-                            color: "rgba(74,222,128,0.85)", fontWeight: 600,
-                          }}>
-                            {filename}
-                          </span>
-                          <span style={{
-                            fontSize: 9, fontFamily: "var(--app-font-mono)",
-                            color: "var(--atlas-muted)", opacity: 0.55, marginLeft: "auto",
-                          }}>
-                            {lineCount} lines
-                          </span>
-                          <span style={{
-                            fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
-                            textTransform: "uppercase",
-                            padding: "1px 5px", borderRadius: 3,
-                            background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)",
-                            color: "rgba(74,222,128,0.75)",
-                          }}>
-                            changed
-                          </span>
-                        </div>
-                        {/* File content */}
-                        <div style={{
-                          maxHeight: 180, overflowY: "auto",
-                          padding: "6px 8px",
-                          background: "rgba(0,0,0,0.25)",
-                        }}>
-                          <pre style={{
-                            margin: 0, fontSize: 10.5, lineHeight: 1.55,
-                            fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)",
-                            opacity: 0.85, whiteSpace: "pre-wrap", wordBreak: "break-word",
-                          }}>
-                            {fe.content}
-                          </pre>
-                        </div>
-                        {/* Full path */}
-                        <div style={{
-                          padding: "3px 10px",
-                          background: "rgba(0,0,0,0.15)",
-                          fontSize: 9, fontFamily: "var(--app-font-mono)",
-                          color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.02em",
-                        }}>
-                          {fe.path}
-                        </div>
-                      </div>
-                    );
-                  })}
+                run.fileEdits!.map((fe) => {
+                  const filename = fe.path.split("/").pop() ?? fe.path;
+                  const lineCount = fe.content.split("\n").length;
+                  const isApplied = (run.appliedFiles ?? []).includes(fe.path);
+                  const blockInfo = (run.applyErrors ?? []).find((ae) => ae.path === fe.path);
+                  const isBlocked = !!blockInfo;
+                  const isPartial = blockInfo?.reason === "partial";
+                  const isExpanded = expandedPaths.has(fe.path);
+                  const retryKey = `${run.id}:${fe.path}`;
+                  const isRetrying = retryingFiles.has(retryKey);
+                  const retryError = retryErrors.get(retryKey);
 
-                  {/* Applied chips */}
-                  {run.appliedFiles && run.appliedFiles.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center", paddingTop: 2 }}>
-                      <span style={{
-                        fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-                        textTransform: "uppercase", color: "rgba(74,222,128,0.7)", marginRight: 2,
-                      }}>
-                        Applied
-                      </span>
-                      {run.appliedFiles.map((f) => (
-                        <span key={f} title={f} style={{
-                          fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em",
-                          padding: "2px 6px", borderRadius: 4,
-                          background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)",
-                          color: "rgba(74,222,128,0.85)",
-                          maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  // Color: green=applied, amber=partial, red=typecheck-blocked, muted=pending
+                  const accent = isApplied
+                    ? "74,222,128"
+                    : isPartial
+                      ? "201,162,76"
+                      : isBlocked
+                        ? "248,113,113"
+                        : "120,120,150";
+
+                  const statusLabel = isApplied
+                    ? "applied"
+                    : isPartial
+                      ? "partial"
+                      : isBlocked
+                        ? "blocked"
+                        : "pending";
+
+                  const toggleExpand = () =>
+                    setExpandedPaths((prev) => {
+                      const next = new Set(prev);
+                      next.has(fe.path) ? next.delete(fe.path) : next.add(fe.path);
+                      return next;
+                    });
+
+                  return (
+                    <div key={fe.path} style={{
+                      borderRadius: 7, overflow: "hidden",
+                      border: `1px solid rgba(${accent},0.2)`,
+                    }}>
+                      {/* ── Row header — always visible ── */}
+                      <div
+                        role="button"
+                        onClick={toggleExpand}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          padding: "6px 10px",
+                          background: `rgba(${accent},0.05)`,
+                          cursor: "pointer",
+                          userSelect: "none",
+                        }}
+                      >
+                        {/* Status badge */}
+                        <span style={{
+                          flexShrink: 0,
+                          fontSize: 8.5, fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600,
+                          padding: "1px 5px", borderRadius: 3,
+                          background: `rgba(${accent},0.1)`, border: `1px solid rgba(${accent},0.25)`,
+                          color: `rgba(${accent},0.9)`,
                         }}>
-                          {f.split("/").pop() ?? f}
+                          {statusLabel}
                         </span>
-                      ))}
+
+                        {/* Filename */}
+                        <span style={{
+                          flex: 1, minWidth: 0,
+                          fontSize: 10.5, fontFamily: "var(--app-font-mono)", fontWeight: 600,
+                          color: `rgba(${accent},0.85)`,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {filename}
+                        </span>
+
+                        {/* Line count */}
+                        <span style={{
+                          flexShrink: 0,
+                          fontSize: 9, fontFamily: "var(--app-font-mono)",
+                          color: "var(--atlas-muted)", opacity: 0.5,
+                        }}>
+                          {lineCount}L
+                        </span>
+
+                        {/* Force apply (blocked only) */}
+                        {isBlocked && (
+                          <button
+                            disabled={isRetrying}
+                            onClick={(e) => { e.stopPropagation(); onForceApply(run, fe.path); }}
+                            style={{
+                              flexShrink: 0,
+                              display: "flex", alignItems: "center", gap: 4,
+                              padding: "2px 7px", borderRadius: 4,
+                              fontSize: 8.5, fontFamily: "var(--app-font-mono)",
+                              letterSpacing: "0.06em", fontWeight: 600, textTransform: "uppercase",
+                              background: isRetrying ? `rgba(${accent},0.04)` : `rgba(${accent},0.10)`,
+                              border: `1px solid rgba(${accent},0.28)`,
+                              color: isRetrying ? `rgba(${accent},0.35)` : `rgba(${accent},0.8)`,
+                              cursor: isRetrying ? "not-allowed" : "pointer",
+                              transition: "background 120ms ease",
+                            }}
+                            onMouseEnter={(e) => { if (!isRetrying) e.currentTarget.style.background = `rgba(${accent},0.18)`; }}
+                            onMouseLeave={(e) => { if (!isRetrying) e.currentTarget.style.background = `rgba(${accent},0.10)`; }}
+                          >
+                            {isRetrying
+                              ? <><Loader size={8} style={{ animation: "ar-spin 0.8s linear infinite" }} /> applying…</>
+                              : "force apply"
+                            }
+                          </button>
+                        )}
+
+                        {/* Expand chevron */}
+                        <span style={{
+                          flexShrink: 0,
+                          color: `rgba(${accent},0.5)`,
+                          display: "inline-flex",
+                        }}>
+                          {isExpanded
+                            ? <ChevronUp size={11} strokeWidth={1.8} />
+                            : <ChevronDown size={11} strokeWidth={1.8} />
+                          }
+                        </span>
+                      </div>
+
+                      {/* ── Block details — always visible when blocked ── */}
+                      {isBlocked && (
+                        <div style={{
+                          padding: "5px 10px 6px",
+                          borderTop: `1px solid rgba(${accent},0.12)`,
+                          background: `rgba(${accent},0.03)`,
+                          display: "flex", flexDirection: "column", gap: 3,
+                        }}>
+                          {isPartial ? (
+                            <span style={{
+                              fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.55,
+                              color: `rgba(${accent},0.8)`,
+                            }}>
+                              ⚠ Partial file — existing: {blockInfo.existingLines} lines, proposed: {blockInfo.proposedLines} lines
+                            </span>
+                          ) : (
+                            <>
+                              {blockInfo.errors.slice(0, 5).map((e, i) => (
+                                <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                                  <span style={{
+                                    flexShrink: 0, fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+                                    color: `rgba(${accent},0.45)`, minWidth: 48,
+                                  }}>
+                                    L{e.line}:{e.col}
+                                  </span>
+                                  <span style={{
+                                    fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                                    color: `rgba(${accent},0.85)`, wordBreak: "break-word",
+                                  }}>
+                                    {e.message}
+                                  </span>
+                                </div>
+                              ))}
+                              {blockInfo.errors.length > 5 && (
+                                <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: `rgba(${accent},0.4)` }}>
+                                  +{blockInfo.errors.length - 5} more
+                                </span>
+                              )}
+                            </>
+                          )}
+                          {retryError && (
+                            <div style={{
+                              marginTop: 3, padding: "3px 7px", borderRadius: 4,
+                              background: `rgba(${accent},0.08)`, border: `1px solid rgba(${accent},0.2)`,
+                              fontSize: 10, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                              color: `rgba(${accent},0.8)`, wordBreak: "break-word",
+                            }}>
+                              {retryError}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── Expanded: proposed file content ── */}
+                      {isExpanded && (
+                        <div style={{ borderTop: `1px solid rgba(${accent},0.1)` }}>
+                          <div style={{
+                            maxHeight: 200, overflowY: "auto",
+                            padding: "6px 8px",
+                            background: "rgba(0,0,0,0.28)",
+                          }}>
+                            <pre style={{
+                              margin: 0, fontSize: 10, lineHeight: 1.55,
+                              fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)",
+                              opacity: 0.8, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                            }}>
+                              {fe.content}
+                            </pre>
+                          </div>
+                          <div style={{
+                            padding: "3px 10px",
+                            background: "rgba(0,0,0,0.15)",
+                            fontSize: 8.5, fontFamily: "var(--app-font-mono)",
+                            color: "var(--atlas-muted)", opacity: 0.4, letterSpacing: "0.02em",
+                          }}>
+                            {fe.path}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })
               ) : (
                 <div style={{
                   fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5,
                   fontStyle: "italic", fontFamily: "var(--app-font-sans)",
-                  padding: "4px 4px",
+                  padding: "4px 0",
                 }}>
                   No file changes in this run.
                 </div>
