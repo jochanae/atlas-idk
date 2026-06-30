@@ -492,16 +492,16 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         }
       `}</style>
 
-      {/* Corner tap targets — always present so user can collapse/expand the
-          dock with a tap when there's nothing to scroll. When hidden, the
-          targets sit at the bottom corners to expand the dock. When visible,
-          they sit just ABOVE the dock so they don't intercept taps on the
-          CHAT / MAP icons in the dock's own bottom corners. */}
-      {[ "left", "right" ].map((side) => (
+      {/* Corner tap targets — only when the dock is hidden, so the user can
+          expand it on surfaces with nothing to scroll. When visible, we do
+          NOT add tap zones near the dock — they intercept taps meant for the
+          CHAT / MAP / center icons. To collapse: swipe up, or tap the
+          background content area. */}
+      {!dockVisible && ["left", "right"].map((side) => (
         <button
           key={side}
           type="button"
-          aria-label={dockVisible ? "Collapse navigation dock" : "Expand navigation dock"}
+          aria-label="Expand navigation dock"
           onClick={(e) => {
             e.stopPropagation();
             try { (navigator as any).vibrate?.(10); } catch {}
@@ -509,7 +509,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           }}
           style={{
             position: "fixed",
-            bottom: dockVisible ? 96 : 0,
+            bottom: 0,
             [side]: 0,
             width: 56,
             height: 56,
