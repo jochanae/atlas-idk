@@ -48,7 +48,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2, Globe } from "lucide-react";
+import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2, Globe, ArrowRight } from "lucide-react";
 import { ParkSheet } from "@/components/ParkSheet";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
@@ -65,7 +65,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { AskAtlasOverlay } from "@/components/AskAtlasOverlay";
+import { buildAskAtlasHandoffSeed, hasBuildIntent } from "@/components/AskAtlasOverlay";
 
 
 const PLACEHOLDERS = [
@@ -1897,20 +1897,17 @@ export default function Home() {
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   // Composer mode: workspace (default) or ask-atlas (toggled on composer).
   // Toggle lives inline on the home composer — no routing sheet, no second
-  // composer. AskAtlasOverlay only appears as the response surface AFTER a
-  // send while the toggle is ON.
+  // composer. Ask Atlas replies render inline in the hero area after send.
   type SendTarget = "workspace" | "ask-atlas";
   const [sendTo, setSendTo] = useState<SendTarget>("workspace");
   const sendToRef = useRef<SendTarget>("workspace");
   useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
-  const [askAtlasOpen, setAskAtlasOpen] = useState(false);
-  const [askAtlasSeed, setAskAtlasSeed] = useState<string | null>(null);
   // One-time helper line on first Ask Atlas activation.
   const [askAtlasHelperVisible, setAskAtlasHelperVisible] = useState(false);
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   // Radial menu "Ask Atlas" → shortcut: flip toggle ON + focus composer.
-  // Does NOT auto-open the overlay; overlay is reached only by sending.
+  // Does NOT auto-send; inline conversation starts only after Send.
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
@@ -1965,6 +1962,25 @@ export default function Home() {
       decisions: homeProjectState.decisions,
     } : null,
   });
+  const askAtlasChat = useNexusChatStream({
+    focusProjectId: null,
+    model: "claude",
+    conversationId: null,
+    projectContext: null,
+  });
+  const askAtlasScrollRef = useRef<HTMLDivElement | null>(null);
+  const askAtlasConversationActive = askAtlasChat.messages.length > 0;
+  const askAtlasBusy = sendTo === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending);
+  const askAtlasHandoffSeed = useMemo(
+    () => buildAskAtlasHandoffSeed(askAtlasChat.messages, input),
+    [askAtlasChat.messages, input],
+  );
+  useEffect(() => {
+    if (!askAtlasConversationActive) return;
+    const el = askAtlasScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [askAtlasConversationActive, askAtlasChat.messages, askAtlasChat.isStreaming]);
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
   // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
@@ -2906,17 +2922,18 @@ export default function Home() {
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
+    if (sendToRef.current === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending)) return;
     submitInFlightRef.current = true;
-    // Composer-mode routing — Ask Atlas opens overlay; workspace falls through
+    // Composer-mode routing — Ask Atlas streams inline; workspace falls through
     // to the standard create/inline-send fork below.
     const routeTarget = sendToRef.current;
     if (routeTarget === "ask-atlas" && text) {
-      setAskAtlasSeed(text);
-      setAskAtlasOpen(true);
       setInput("");
       setAttachedFiles([]);
       setAskAtlasHelperVisible(false);
-      submitInFlightRef.current = false;
+      void askAtlasChat.send({ text }).finally(() => {
+        submitInFlightRef.current = false;
+      });
       return;
     }
     const shouldStayOnHome = options?.forceStayOnHome ?? false;
@@ -3077,6 +3094,9 @@ export default function Home() {
     projects,
     queryClient,
     nexusChat.send,
+    askAtlasChat.send,
+    askAtlasChat.isStreaming,
+    askAtlasChat.isPending,
     resolveFocusProjectIdForTurn,
     setActiveProjectId,
     setLocation,
@@ -3964,7 +3984,7 @@ export default function Home() {
           <div style={{
             minHeight: globalInsightOpen
               ? 0
-              : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance) - env(safe-area-inset-bottom, 0px))"),
+              : ((nexusChat.messages.length > 0 || askAtlasConversationActive) ? 0 : "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance) - env(safe-area-inset-bottom, 0px))"),
             height: globalInsightOpen ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
@@ -3989,89 +4009,220 @@ export default function Home() {
               zIndex: 0,
             }} />
 
-            {/* Greeting — same in ambient + Global Insight. GI is signaled
-                only by the subheader "● Global Insight" pill, so the home shell
-                stays visually identical. */}
+            {/* Greeting + inline Ask Atlas conversation — crossfade in the hero slot */}
             {nexusChat.messages.length === 0 && !showOverviewSheet && (
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
-                marginTop: 72,
+                marginTop: askAtlasConversationActive ? 24 : 72,
                 position: "relative",
                 zIndex: 1,
-                transform: inputFocused ? "translateY(-12px)" : "translateY(0)",
-                opacity: inputFocused ? 0.3 : 1,
-                transition: "transform 200ms ease-in-out, opacity 200ms ease-in-out",
+                minHeight: askAtlasConversationActive ? 120 : undefined,
+                transition: "margin-top 280ms cubic-bezier(0.22, 1, 0.36, 1)",
               }}>
-                <h1 style={{
-                  fontSize: "var(--ts-display-xl)", fontWeight: 300,
-                  letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                  color: globalInsightOpen ? undefined : "var(--atlas-fg)",
-                  opacity: globalInsightOpen ? 1 : 0.85,
-                  background: globalInsightOpen
-                    ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
-                    : undefined,
-                  WebkitBackgroundClip: globalInsightOpen ? "text" : undefined,
-                  WebkitTextFillColor: globalInsightOpen ? "transparent" : undefined,
-                  backgroundClip: globalInsightOpen ? "text" : undefined,
-                  filter: globalInsightOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
+                <div style={{
+                  opacity: askAtlasConversationActive ? 0 : (inputFocused ? 0.3 : 1),
+                  transform: askAtlasConversationActive
+                    ? "translateY(-10px)"
+                    : (inputFocused ? "translateY(-12px)" : "translateY(0)"),
+                  transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  position: askAtlasConversationActive ? "absolute" : "relative",
+                  width: "100%",
+                  pointerEvents: askAtlasConversationActive ? "none" : "auto",
+                  top: 0,
+                  left: 0,
                 }}>
-                  {globalInsightOpen ? "Global Insight." : greetingRef.current?.head}
-                </h1>
-                <p style={{
-                  fontSize: "var(--ts-body)" as any,
-                  color: globalInsightOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  opacity: globalInsightOpen ? 0.75 : 0.55,
-                  margin: 0,
-                  fontStyle: "italic",
-                }}>
-                  {globalInsightOpen ? "Ask across every thread." : (() => {
-                    const activeProjects = ((projects ?? []) as Project[]).filter((p: Project) => p.status !== "archived");
-                    const mostRecent = [...activeProjects].sort((a, b) => {
-                      const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
-                      const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
-                      return bt - at;
-                    })[0] ?? null;
+                  <h1 style={{
+                    fontSize: "var(--ts-display-xl)", fontWeight: 300,
+                    letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
+                    color: globalInsightOpen ? undefined : "var(--atlas-fg)",
+                    opacity: globalInsightOpen ? 1 : 0.85,
+                    background: globalInsightOpen
+                      ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
+                      : undefined,
+                    WebkitBackgroundClip: globalInsightOpen ? "text" : undefined,
+                    WebkitTextFillColor: globalInsightOpen ? "transparent" : undefined,
+                    backgroundClip: globalInsightOpen ? "text" : undefined,
+                    filter: globalInsightOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
+                  }}>
+                    {globalInsightOpen ? "Global Insight." : greetingRef.current?.head}
+                  </h1>
+                  <p style={{
+                    fontSize: "var(--ts-body)" as any,
+                    color: globalInsightOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    opacity: globalInsightOpen ? 0.75 : 0.55,
+                    margin: 0,
+                    fontStyle: "italic",
+                  }}>
+                    {globalInsightOpen ? "Ask across every thread." : (() => {
+                      const activeProjects = ((projects ?? []) as Project[]).filter((p: Project) => p.status !== "archived");
+                      const mostRecent = [...activeProjects].sort((a, b) => {
+                        const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
+                        const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
+                        return bt - at;
+                      })[0] ?? null;
+                      return (
+                        <ResumeSubtitle
+                          mostRecent={mostRecent}
+                          fallback={greetingRef.current?.sub ?? ""}
+                          onResume={(id) => setLocation(`/project/${id}`)}
+                        />
+                      );
+                    })()}
+                  </p>
+                  {!globalInsightOpen && projects && projects.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={openOverviewSheet}
+                      aria-label="Open project briefcase"
+                      title="Open workspace"
+                      className="atlas-briefcase-toggle"
+                      style={{
+                        position: "absolute",
+                        top: -14,
+                        right: 8,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 999,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+                        border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
+                        color: "var(--atlas-gold)",
+                        cursor: "pointer",
+                        backdropFilter: "blur(10px)",
+                        WebkitBackdropFilter: "blur(10px)",
+                        boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+                        transition: "transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      <Briefcase size={17} strokeWidth={1.5} />
+                    </button>
+                  )}
+                </div>
+
+                <div
+                  ref={askAtlasScrollRef}
+                  aria-live="polite"
+                  style={{
+                    opacity: askAtlasConversationActive ? 1 : 0,
+                    transform: askAtlasConversationActive ? "translateY(0)" : "translateY(10px)",
+                    transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+                    position: askAtlasConversationActive ? "relative" : "absolute",
+                    width: "100%",
+                    top: 0,
+                    left: 0,
+                    pointerEvents: askAtlasConversationActive ? "auto" : "none",
+                    textAlign: "left",
+                    maxHeight: "min(52vh, 480px)",
+                    overflowY: "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                    padding: "0 4px",
+                    scrollbarWidth: "none",
+                    msOverflowStyle: "none",
+                  }}
+                >
+                  {askAtlasChat.messages.map((m, i) => {
+                    const isUser = m.role === "user";
+                    const lastAssistant = !isUser && i === askAtlasChat.messages.length - 1;
+                    const showHandoff =
+                      !isUser && hasBuildIntent(m.content) && !askAtlasChat.isStreaming;
+                    const isWaiting = lastAssistant && askAtlasChat.isStreaming && !m.content;
                     return (
-                      <ResumeSubtitle
-                        mostRecent={mostRecent}
-                        fallback={greetingRef.current?.sub ?? ""}
-                        onResume={(id) => setLocation(`/project/${id}`)}
-                      />
+                      <div
+                        key={m.id ?? i}
+                        className="ask-atlas-inline-msg"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                          alignItems: isUser ? "flex-end" : "flex-start",
+                        }}
+                      >
+                        <div style={{
+                          maxWidth: "92%",
+                          padding: isUser ? "9px 12px" : "2px 0",
+                          borderRadius: isUser ? 12 : 0,
+                          background: isUser ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)" : "transparent",
+                          color: isUser ? "var(--atlas-fg)" : "var(--atlas-fg)",
+                          border: isUser ? "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)" : "none",
+                          fontSize: "var(--ts-body)",
+                          lineHeight: 1.6,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          opacity: isUser ? 0.96 : 0.92,
+                        }}>
+                          {isWaiting ? (
+                            <span aria-label="Atlas is thinking" style={{ display: "inline-flex", gap: 4, alignItems: "center", height: 18 }}>
+                              {[0, 1, 2].map((n) => (
+                                <span
+                                  key={n}
+                                  className="ask-atlas-inline-dot"
+                                  style={{
+                                    width: 5,
+                                    height: 5,
+                                    borderRadius: 999,
+                                    background: "var(--atlas-gold)",
+                                    display: "inline-block",
+                                    animationDelay: `${n * 140}ms`,
+                                  }}
+                                />
+                              ))}
+                            </span>
+                          ) : m.content}
+                        </div>
+                        {showHandoff && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const seed = askAtlasHandoffSeed;
+                              askAtlasChat.abort();
+                              askAtlasChat.clearMessages();
+                              setSendTo("workspace");
+                              sendToRef.current = "workspace";
+                              setInput(seed);
+                              window.setTimeout(() => { void handleSubmit(seed); }, 40);
+                            }}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "7px 12px",
+                              borderRadius: 999,
+                              background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
+                              color: "var(--atlas-gold)",
+                              border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+                              cursor: "pointer",
+                              fontFamily: "var(--app-font-mono)",
+                              fontSize: 10.5,
+                              letterSpacing: "0.1em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            Continue in Workspace
+                            <ArrowRight size={12} strokeWidth={2} />
+                          </button>
+                        )}
+                      </div>
                     );
-                  })()}
-                </p>
-                {!globalInsightOpen && projects && projects.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={openOverviewSheet}
-                    aria-label="Open project briefcase"
-                    title="Open workspace"
-                    className="atlas-briefcase-toggle"
-                    style={{
-                      position: "absolute",
-                      top: -14,
-                      right: 8,
-                      width: 40,
-                      height: 40,
-                      borderRadius: 999,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
-                      border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
-                      color: "var(--atlas-gold)",
-                      cursor: "pointer",
-                      backdropFilter: "blur(10px)",
-                      WebkitBackdropFilter: "blur(10px)",
-                      boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
-                      transition: "transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease",
-                      WebkitTapHighlightColor: "transparent",
-                    }}
-                  >
-                    <Briefcase size={17} strokeWidth={1.5} />
-                  </button>
-                )}
+                  })}
+                  {askAtlasChat.isPending && askAtlasChat.messages.length > 0 && !askAtlasChat.isStreaming && (
+                    <div style={{
+                      fontSize: "var(--ts-caption)",
+                      color: "var(--atlas-muted)",
+                      fontFamily: "var(--app-font-mono)",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      opacity: 0.6,
+                    }}>
+                      Capturing intent…
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -4091,7 +4242,7 @@ export default function Home() {
                   <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
                 </div>
               )}
-            {nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading ? (
+            {nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading && !askAtlasConversationActive ? (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
                 <button
                   type="button"
@@ -4102,7 +4253,7 @@ export default function Home() {
                   <LoadingSpinner size="sm" color="atlas" />
                 </button>
               </div>
-            ) : nexusChat.messages.length === 0 && !isAtlasStreaming ? (
+            ) : nexusChat.messages.length === 0 && !isAtlasStreaming && !askAtlasConversationActive ? (
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <button
                   type="button"
@@ -4678,7 +4829,7 @@ export default function Home() {
               backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
-              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || globalInsightOpen) && (
+              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || globalInsightOpen) && !askAtlasConversationActive && (
                 <div
                   style={{
                     position: "absolute",
@@ -4808,8 +4959,8 @@ export default function Home() {
 
 
               {/* Ask Atlas toggle — inline mode switch on the home composer.
-                  OFF = Workspace (default); ON = composer routes to AskAtlasOverlay
-                  on Send. Inspired by the workspace Plan Mode button. */}
+                  OFF = Workspace (default); ON = composer routes to inline Ask
+                  Atlas on Send. Inspired by the workspace Plan Mode button. */}
               <button
                 type="button"
                 title={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
@@ -4830,6 +4981,8 @@ export default function Home() {
                       } catch { /* noop */ }
                     } else {
                       setAskAtlasHelperVisible(false);
+                      askAtlasChat.abort();
+                      askAtlasChat.clearMessages();
                     }
                     return next;
                   });
@@ -4928,27 +5081,27 @@ export default function Home() {
                   onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (!isSending && canSubmitNow()) void handleSubmit();
+                    if (!isSending && !askAtlasBusy && canSubmitNow()) void handleSubmit();
                   }}
                   onClick={(e) => {
                     // Desktop fallback (no pointer events / keyboard activation)
                     if (e.detail === 0) void handleSubmit();
                   }}
-                  disabled={isSending}
+                  disabled={isSending || askAtlasBusy}
                   style={{
                     width: 40, height: 40, flexShrink: 0,
                     background: "transparent",
                     border: "none",
                     boxShadow: "none",
                     padding: 0,
-                    opacity: isSending ? 0.5 : 1,
+                    opacity: (isSending || askAtlasBusy) ? 0.5 : 1,
                     touchAction: "none",
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  {isSending ? (
+                  {isSending || askAtlasBusy ? (
                     <LoadingSpinner size="sm" color="ember" />
                   ) : (
                     <svg viewBox="0 0 20 20" width={18} height={18}
@@ -5522,6 +5675,10 @@ export default function Home() {
         @keyframes ptr-spin { to { transform: rotate(360deg); } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes askAtlasInlineDot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0) } 40% { opacity: 1; transform: translateY(-2px) } }
+        @keyframes askAtlasInlineMsgIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
+        .ask-atlas-inline-msg { animation: askAtlasInlineMsgIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .ask-atlas-inline-dot { animation: askAtlasInlineDot 1100ms cubic-bezier(0.22, 1, 0.36, 1) infinite; }
         @keyframes ping {
           75%, 100% { transform: scale(1.8); opacity: 0; }
         }
@@ -5808,25 +5965,6 @@ export default function Home() {
       </div>
 
       <HandoffCinemaOverlay />
-
-      <AskAtlasOverlay
-        open={askAtlasOpen}
-        onClose={() => { setAskAtlasOpen(false); setAskAtlasSeed(null); }}
-        seedMessage={askAtlasSeed}
-        onOpenHistory={() => {
-          window.dispatchEvent(new CustomEvent("axiom:launcher-conversations"));
-        }}
-        onContinueInWorkspace={(seed) => {
-          // Hand off to the real workspace flow — closes overlay, seeds the
-          // home composer, and triggers the standard project-create submit.
-          setAskAtlasOpen(false);
-          setAskAtlasSeed(null);
-          setSendTo("workspace");
-          sendToRef.current = "workspace";
-          setInput(seed);
-          window.setTimeout(() => { void handleSubmit(seed); }, 40);
-        }}
-      />
 
       {/* Quick-park sheet — opened from the composer Park icon. Mirrors workspace behavior. */}
       {showParkSheet && (
