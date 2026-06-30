@@ -36,6 +36,13 @@ export interface ActiveRun {
   prUrl?: string;
   summaryLine?: string;
   shellLines?: Array<{ kind: "cmd" | "out" | "err"; text: string }>;
+  // Apply trust fields
+  applyErrors?: Array<{
+    path: string;
+    reason: "typecheck";
+    errors: Array<{ line: number; col: number; message: string }>;
+  }>;
+  applyError?: string;
 }
 
 // ── Module-level store ────────────────────────────────────────────────────────
@@ -377,18 +384,69 @@ async function _startRun(
 
       if (fileEdits.length > 0) {
         _patchRun(run.id, { fileEdits });
-        try {
-          const applyRes = await fetch("/api/github/apply-local", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ files: fileEdits, projectId: run.projectId }),
+
+        // ── Phase 1: typecheck all TS/JS files before writing anything ─────────
+        const TC_EXTS = new Set(["ts", "tsx", "js", "jsx"]);
+        const tcResults = await Promise.all(
+          fileEdits.map(async (fe) => {
+            const ext = fe.path.split(".").pop()?.toLowerCase() ?? "";
+            if (!TC_EXTS.has(ext)) return { path: fe.path, clean: true, errors: [] as Array<{line:number;col:number;message:string}> };
+            try {
+              const tcRes = await fetch("/api/github/typecheck", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ content: fe.content, path: fe.path }),
+              });
+              if (!tcRes.ok) return { path: fe.path, clean: true, errors: [] }; // service unavailable → allow
+              const data = (await tcRes.json()) as { errors?: Array<{line:number;col:number;message:string}>; clean?: boolean; skipped?: boolean };
+              const isClean = data.skipped === true || (data.clean ?? true);
+              return { path: fe.path, clean: isClean, errors: data.errors ?? [] };
+            } catch {
+              return { path: fe.path, clean: true, errors: [] }; // network failure → allow
+            }
+          })
+        );
+
+        const blockedEdits = tcResults.filter((r) => !r.clean);
+        const cleanEdits = fileEdits.filter((fe) =>
+          tcResults.find((r) => r.path === fe.path)?.clean !== false
+        );
+
+        if (blockedEdits.length > 0) {
+          _patchRun(run.id, {
+            applyErrors: blockedEdits.map((b) => ({
+              path: b.path,
+              reason: "typecheck" as const,
+              errors: b.errors,
+            })),
           });
-          if (applyRes.ok) {
-            const result = (await applyRes.json()) as { applied?: string[] };
-            _patchRun(run.id, { appliedFiles: result.applied ?? fileEdits.map((f) => f.path) });
+        }
+
+        // ── Phase 2: apply only the clean files ───────────────────────────────
+        if (cleanEdits.length > 0) {
+          try {
+            const applyRes = await fetch("/api/github/apply-local", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ files: cleanEdits, projectId: run.projectId }),
+            });
+            if (applyRes.ok) {
+              const result = (await applyRes.json()) as { applied?: string[] };
+              _patchRun(run.id, { appliedFiles: result.applied ?? cleanEdits.map((f) => f.path) });
+            } else {
+              const errBody = await applyRes.json().catch(() => ({})) as { error?: string };
+              _patchRun(run.id, {
+                applyError: `Apply failed (${applyRes.status}): ${errBody.error ?? "Server error"}`,
+              });
+            }
+          } catch (err) {
+            _patchRun(run.id, {
+              applyError: `Apply failed: ${err instanceof Error ? err.message : String(err)}`,
+            });
           }
-        } catch { /* apply failure — surface in card via missing appliedFiles */ }
+        }
       }
 
       if (prUrl) _patchRun(run.id, { prUrl });
@@ -1182,6 +1240,104 @@ function RunCard({
                   <GitPullRequest size={12} strokeWidth={2} />
                   View PR #{prNum} on GitHub
                 </a>
+              )}
+
+              {/* ── Typecheck failures — files that were blocked from applying ── */}
+              {(run.applyErrors?.length ?? 0) > 0 && (
+                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {run.applyErrors!.map((ae) => (
+                    <div key={ae.path} style={{
+                      borderRadius: 7,
+                      border: "1px solid rgba(248,113,113,0.28)",
+                      overflow: "hidden",
+                    }}>
+                      {/* Header */}
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        padding: "5px 10px",
+                        background: "rgba(248,113,113,0.07)",
+                        borderBottom: "1px solid rgba(248,113,113,0.15)",
+                      }}>
+                        <span style={{
+                          fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                          textTransform: "uppercase", fontWeight: 600,
+                          color: "rgba(248,113,113,0.85)",
+                          padding: "1px 5px", borderRadius: 3,
+                          background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
+                        }}>
+                          blocked
+                        </span>
+                        <span style={{
+                          fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em",
+                          color: "rgba(248,113,113,0.7)", flex: 1, minWidth: 0,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {ae.path}
+                        </span>
+                        <span style={{
+                          fontSize: 9, fontFamily: "var(--app-font-mono)",
+                          color: "rgba(248,113,113,0.5)", flexShrink: 0,
+                        }}>
+                          typecheck failed · not written
+                        </span>
+                      </div>
+                      {/* Error list */}
+                      <div style={{ padding: "6px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+                        {ae.errors.slice(0, 6).map((e, i) => (
+                          <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                            <span style={{
+                              flexShrink: 0, fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+                              color: "rgba(248,113,113,0.5)",
+                              minWidth: 50,
+                            }}>
+                              L{e.line}:{e.col}
+                            </span>
+                            <span style={{
+                              fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                              color: "rgba(248,113,113,0.85)",
+                              wordBreak: "break-word",
+                            }}>
+                              {e.message}
+                            </span>
+                          </div>
+                        ))}
+                        {ae.errors.length > 6 && (
+                          <div style={{ fontSize: 10, color: "rgba(248,113,113,0.45)", fontFamily: "var(--app-font-mono)" }}>
+                            +{ae.errors.length - 6} more errors
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── General apply error (network / server failure) ── */}
+              {run.applyError && (
+                <div style={{
+                  marginTop: 10,
+                  padding: "8px 10px",
+                  borderRadius: 7,
+                  background: "rgba(248,113,113,0.06)",
+                  border: "1px solid rgba(248,113,113,0.22)",
+                  display: "flex", alignItems: "flex-start", gap: 7,
+                }}>
+                  <span style={{
+                    flexShrink: 0, fontSize: 9, fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600,
+                    color: "rgba(248,113,113,0.8)", marginTop: 1,
+                    padding: "1px 5px", borderRadius: 3,
+                    background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
+                  }}>
+                    apply error
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                    color: "rgba(248,113,113,0.8)", wordBreak: "break-word",
+                  }}>
+                    {run.applyError}
+                  </span>
+                </div>
               )}
             </div>
           )}
