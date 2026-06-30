@@ -82,6 +82,10 @@ export function GitHubPushModal({
   const currentFile = fileEdits[selectedIdx] ?? fileEdits[0];
   const currentOriginal = originalContents[selectedIdx] ?? null;
 
+  const proposedLines = currentFile.content.split("\n").length;
+  const originalLines = currentOriginal !== null ? currentOriginal.split("\n").length : null;
+  const isPartialWarning = originalLines !== null && originalLines >= 50 && proposedLines < originalLines * 0.4;
+
   const handlePush = async () => {
     if (!linkedRepo || !token) {
       setError("No linked repo or GitHub token found. Open the Files tab and link a repo first.");
@@ -307,19 +311,38 @@ export function GitHubPushModal({
               {/* File tabs (multiple files) */}
               {fileEdits.length > 1 && (
                 <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
-                  {fileEdits.map((fe, idx) => (
-                    <button key={fe.path} onClick={() => setSelectedIdx(idx)} style={{ padding: "5px 11px", borderRadius: 5, fontSize: 10, fontFamily: "var(--app-font-mono)", whiteSpace: "nowrap" as const, background: idx === selectedIdx ? "rgba(201,162,76,0.1)" : "transparent", border: `1px solid ${idx === selectedIdx ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`, color: idx === selectedIdx ? "var(--atlas-gold)" : "var(--atlas-muted)", cursor: "pointer", transition: "all 140ms ease", flexShrink: 0 }}>
-                      {fe.path.split("/").pop()}
-                    </button>
-                  ))}
+                  {fileEdits.map((fe, idx) => {
+                    const tabProposed = fe.content.split("\n").length;
+                    const tabOriginal = originalContents[idx] !== null ? (originalContents[idx] ?? "").split("\n").length : null;
+                    const tabWarn = tabOriginal !== null && tabOriginal >= 50 && tabProposed < tabOriginal * 0.4;
+                    return (
+                      <button key={fe.path} onClick={() => setSelectedIdx(idx)} style={{ padding: "5px 11px", borderRadius: 5, fontSize: 10, fontFamily: "var(--app-font-mono)", whiteSpace: "nowrap" as const, background: idx === selectedIdx ? (tabWarn ? "rgba(251,191,36,0.08)" : "rgba(201,162,76,0.1)") : "transparent", border: `1px solid ${idx === selectedIdx ? (tabWarn ? "rgba(251,191,36,0.4)" : "rgba(201,162,76,0.35)") : (tabWarn ? "rgba(251,191,36,0.2)" : "var(--atlas-border)")}`, color: idx === selectedIdx ? (tabWarn ? "rgba(251,191,36,0.9)" : "var(--atlas-gold)") : (tabWarn ? "rgba(251,191,36,0.6)" : "var(--atlas-muted)"), cursor: "pointer", transition: "all 140ms ease", flexShrink: 0, display: "flex", alignItems: "center", gap: 5 }}>
+                        {tabWarn && <span style={{ fontSize: 8, lineHeight: 1 }}>⚠</span>}
+                        {fe.path.split("/").pop()}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
               {/* Diff / Full view */}
               <div style={{ padding: "10px 13px", borderRadius: 7, background: "rgba(0,0,0,0.25)", border: "1px solid var(--atlas-border)", marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-fg)" }}>{currentFile.path}</span>
-                  <div style={{ display: "flex", gap: 4 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-fg)" }}>{currentFile.path}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                      <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-muted)", opacity: 0.55 }}>
+                        {proposedLines}L proposed
+                        {originalLines !== null && ` · ${originalLines}L on disk`}
+                      </span>
+                      {isPartialWarning && (
+                        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", fontWeight: 600, color: "rgba(251,191,36,0.85)", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 3, padding: "1px 5px" }}>
+                          ⚠ partial file
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                     {(["diff", "full"] as const).map((m) => (
                       <button key={m} onClick={() => setViewMode(m)} style={{ padding: "3px 9px", borderRadius: 4, fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", background: viewMode === m ? "rgba(201,162,76,0.1)" : "transparent", border: `1px solid ${viewMode === m ? "rgba(201,162,76,0.3)" : "var(--atlas-border)"}`, color: viewMode === m ? "var(--atlas-gold)" : "var(--atlas-muted)", cursor: "pointer" }}>
                         {m === "diff" ? "Diff" : "Full"}
@@ -327,6 +350,11 @@ export function GitHubPushModal({
                     ))}
                   </div>
                 </div>
+                {isPartialWarning && (
+                  <div style={{ marginBottom: 10, padding: "7px 10px", borderRadius: 5, background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.2)", fontSize: 11, color: "rgba(251,191,36,0.8)", lineHeight: 1.5 }}>
+                    This file is {proposedLines}L but the existing version is {originalLines}L. The proposed content may be a stub — review carefully before pushing.
+                  </div>
+                )}
                 {viewMode === "diff" ? (
                   loadingOriginals ? (
                     <div style={{ padding: "12px 0", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5, fontFamily: "var(--app-font-mono)" }}>Loading original…</div>
