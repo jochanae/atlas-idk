@@ -69,6 +69,7 @@ interface Props {
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
   onCreateProject?: (nameOverride?: string) => void;
+  onNavigateTo?: (projectId: number, route: string) => void;
   onAddAsset?: () => void;
   onMore?: () => void;
   onFiles?: (files: File[]) => void;
@@ -224,6 +225,7 @@ export function GlobalInsightSurface({
   toggleVoice,
   onOpenHistory,
   onCreateProject,
+  onNavigateTo,
   onAddAsset,
   onMore,
   onFiles,
@@ -648,7 +650,14 @@ export function GlobalInsightSurface({
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                     <button
                       type="button"
-                      onClick={() => setLocation(msg.navigateTo!.route)}
+                      onClick={() => {
+                        const nav = msg.navigateTo!;
+                        if (nav.projectId && onNavigateTo) {
+                          onNavigateTo(nav.projectId, nav.route);
+                        } else {
+                          setLocation(nav.route);
+                        }
+                      }}
                       style={{
                         background: "transparent",
                         border: "1px solid var(--atlas-gold)",

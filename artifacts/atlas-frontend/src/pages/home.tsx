@@ -5524,6 +5524,10 @@ export default function Home() {
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
         onCreateProject={handleGlobalInsightCreateProject}
+        onNavigateTo={(projectId, route) => {
+          setActiveProjectId(projectId);
+          setLocation(route);
+        }}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => {

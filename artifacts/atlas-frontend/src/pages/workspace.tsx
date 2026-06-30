@@ -3976,6 +3976,12 @@ export default function Workspace() {
   const { projectId, conversationId } = useParams<{ projectId?: string; conversationId?: string }>();
   const [, setLocation] = useLocation();
 
+  // Clear any home shaping state (e.g. "opening") so the workspace always
+  // starts clean — prevents home loading indicators from leaking across the nav.
+  useEffect(() => {
+    useShellStore.getState().setShapingStatus("idle");
+  }, []);
+
   // conversationId-based routing: resolve UUID → numeric project ID.
   // For navigations from home.tsx the mapping is pre-cached in sessionStorage (instant, no loading).
   // For deep links the API resolves it once, caches the result, then re-renders.
@@ -5292,7 +5298,8 @@ export default function Workspace() {
   const { data: fallbackProject, isLoading: fallbackProjectLoading } = useGetProject(id, {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getGetProjectQueryKey(id) },
   });
-  const project = projectState.project ?? fallbackProject;
+  const projectFromList = allProjects?.find((p) => p.id === id) ?? null;
+  const project = projectState.project ?? fallbackProject ?? projectFromList;
   const addLocalMessage = useCallback((role: "user" | "assistant", content: string) => {
     setMessages((prev) => [
       ...prev,
