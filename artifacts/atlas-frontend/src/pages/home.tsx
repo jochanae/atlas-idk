@@ -4789,7 +4789,6 @@ export default function Home() {
                 globalContext={true}
                 borderless={true}
                 hasAttachments={attachedFiles.length > 0}
-                hidePark={nexusChat.messages.length === 0 && !globalInsightOpen}
                 onFiles={(files) => {
                   const combined = [...attachedFiles, ...files].slice(0, 10);
                   if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
@@ -4797,6 +4796,7 @@ export default function Home() {
                 }}
                 onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
                 onMenuAction={(action) => {
+                  if (action === "park") { setShowParkSheet(true); return; }
                   if (action === "history") { setShowTimeTravel(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
                   if (action === "code") { setLocation("/code"); return; }
@@ -4809,48 +4809,77 @@ export default function Home() {
               />
 
 
-              {/* Unified "Send to · <target>" pill — opens one grouped sheet
-                  with WHERE (workspace/ask-atlas/parking) + ABOUT (focus scope).
-                  Replaces the previous two-pill design on mobile. */}
+              {/* Ask Atlas toggle — inline mode switch on the home composer.
+                  OFF = Workspace (default); ON = composer routes to AskAtlasOverlay
+                  on Send. Inspired by the workspace Plan Mode button. */}
               <button
                 type="button"
-                title="Send to"
-                aria-label={`Send to: ${sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking Lot" : "Workspace"} · ${focusChipLabel}`}
-                aria-expanded={showSendToPicker}
+                title={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
+                aria-label={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
+                aria-pressed={sendTo === "ask-atlas"}
                 onPointerDown={(e) => { e.preventDefault(); }}
                 onMouseDown={(e) => { e.preventDefault(); }}
-                onClick={(e) => { e.stopPropagation(); setShowSendToPicker((o) => !o); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSendTo((prev) => {
+                    const next: SendTarget = prev === "ask-atlas" ? "workspace" : "ask-atlas";
+                    if (next === "ask-atlas") {
+                      try {
+                        if (!localStorage.getItem("atlas-ask-atlas-helped")) {
+                          setAskAtlasHelperVisible(true);
+                          localStorage.setItem("atlas-ask-atlas-helped", "1");
+                        }
+                      } catch { /* noop */ }
+                    } else {
+                      setAskAtlasHelperVisible(false);
+                    }
+                    return next;
+                  });
+                }}
                 style={{
                   height: 34,
                   display: "inline-flex", alignItems: "center", gap: 6,
                   padding: "0 10px", borderRadius: 999,
-                  background: sendTo === "workspace"
-                    ? "color-mix(in oklab, var(--atlas-gold) 8%, transparent)"
-                    : "color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
-                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                  color: "var(--atlas-gold)",
+                  background: sendTo === "ask-atlas"
+                    ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
+                    : "transparent",
+                  border: `1px solid ${sendTo === "ask-atlas" ? "rgba(201,162,76,0.55)" : "rgba(255,255,255,0.10)"}`,
+                  boxShadow: sendTo === "ask-atlas"
+                    ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)"
+                    : "none",
+                  color: sendTo === "ask-atlas" ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer",
                   fontFamily: "var(--app-font-mono)",
-                  fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase",
+                  fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
                   whiteSpace: "nowrap",
                   minWidth: 0,
                   flexShrink: 1,
                   WebkitTapHighlightColor: "transparent",
+                  transition: "all 180ms ease",
                 }}
               >
-                <span style={{ opacity: 0.7 }}>Send to</span>
-                <span>·</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-                  {sendTo === "ask-atlas"
-                    ? "Ask Atlas"
-                    : sendTo === "parking"
-                    ? "Parking"
-                    : homeFocus != null
-                    ? (selectableFocusProjects.find((p: Project) => p.id === homeFocus)?.name ?? "Workspace")
-                    : "Workspace"}
-                </span>
-                <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
+                <Globe
+                  size={13}
+                  strokeWidth={1.8}
+                  style={{
+                    flexShrink: 0,
+                    filter: sendTo === "ask-atlas"
+                      ? "drop-shadow(0 0 4px rgba(201,162,76,0.75))"
+                      : "none",
+                    transition: "filter 180ms ease",
+                  }}
+                />
+                <span>Ask Atlas</span>
+                {sendTo === "ask-atlas" && (
+                  <span style={{
+                    width: 5, height: 5, borderRadius: "50%",
+                    background: "var(--atlas-gold)",
+                    boxShadow: "0 0 6px rgba(201,162,76,0.85)",
+                    flexShrink: 0,
+                  }} />
+                )}
               </button>
+
 
               </div>
 
