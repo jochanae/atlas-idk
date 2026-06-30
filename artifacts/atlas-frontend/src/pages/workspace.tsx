@@ -35,6 +35,7 @@ import { ManifestPanel } from "../components/ManifestPanel";
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
+import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { PreviewPanel, type ManifestDecision } from "../components/workspace/PreviewPanel";
