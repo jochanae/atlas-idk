@@ -4067,7 +4067,7 @@ export default function Home() {
           <div style={{
             minHeight: globalInsightOpen
               ? 0
-              : ((nexusChat.messages.length > 0 || askAtlasConversationActive) ? 0 : "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance) - env(safe-area-inset-bottom, 0px))"),
+              : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance) - env(safe-area-inset-bottom, 0px))"),
             height: globalInsightOpen ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
@@ -4097,10 +4097,9 @@ export default function Home() {
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
-                marginTop: askAtlasConversationActive ? 24 : 72,
+                marginTop: 72,
                 position: "relative",
                 zIndex: 1,
-                minHeight: askAtlasConversationActive ? 120 : undefined,
                 transition: "margin-top 280ms cubic-bezier(0.22, 1, 0.36, 1)",
               }}>
                 <div style={{
