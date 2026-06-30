@@ -1830,6 +1830,7 @@ export default function Home() {
   const [showProjectsSheet, setShowProjectsSheet] = useState(false);
   const [showOverviewSheet, setShowOverviewSheet] = useState(false);
   const [isOverviewSheetClosing, setIsOverviewSheetClosing] = useState(false);
+  const [writeOverlayProjectId, setWriteOverlayProjectId] = useState<number | null>(null);
   const overviewCloseTimerRef = useRef<number | null>(null);
   useEffect(() => {
     const open = () => {
