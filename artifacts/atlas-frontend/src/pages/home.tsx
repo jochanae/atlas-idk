@@ -1904,6 +1904,18 @@ export default function Home() {
   useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
   // One-time helper line on first Ask Atlas activation.
   const [askAtlasHelperVisible, setAskAtlasHelperVisible] = useState(false);
+  // Brief portfolio-thinking transition before the first inline stream appears.
+  const ASK_ATLAS_PORTFOLIO_STATUS_LINES = [
+    "Reviewing your portfolio…",
+    "Thinking across your portfolio…",
+  ] as const;
+  const ASK_ATLAS_PORTFOLIO_TRANSITION_MIN_MS = 900;
+  const ASK_ATLAS_PORTFOLIO_TRANSITION_FADE_MS = 480;
+  type AskAtlasPortfolioStatus = { phase: "visible" | "fading"; message: string };
+  const [askAtlasPortfolioStatus, setAskAtlasPortfolioStatus] = useState<AskAtlasPortfolioStatus | null>(null);
+  const askAtlasPortfolioTransitionStartedRef = useRef<number | null>(null);
+  const askAtlasPortfolioTransitionFadeTimerRef = useRef<number | null>(null);
+  const askAtlasPortfolioTransitionActive = askAtlasPortfolioStatus?.phase === "visible";
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   // Radial menu "Ask Atlas" → shortcut: flip toggle ON + focus composer.
@@ -1971,6 +1983,60 @@ export default function Home() {
   const askAtlasScrollRef = useRef<HTMLDivElement | null>(null);
   const askAtlasConversationActive = askAtlasChat.messages.length > 0;
   const askAtlasBusy = sendTo === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending);
+  const clearAskAtlasPortfolioTransition = useCallback(() => {
+    if (askAtlasPortfolioTransitionFadeTimerRef.current != null) {
+      window.clearTimeout(askAtlasPortfolioTransitionFadeTimerRef.current);
+      askAtlasPortfolioTransitionFadeTimerRef.current = null;
+    }
+    askAtlasPortfolioTransitionStartedRef.current = null;
+    setAskAtlasPortfolioStatus(null);
+  }, []);
+  const finishAskAtlasPortfolioTransition = useCallback(() => {
+    setAskAtlasPortfolioStatus((prev) => {
+      if (!prev || prev.phase === "fading") return prev;
+      return { ...prev, phase: "fading" };
+    });
+    if (askAtlasPortfolioTransitionFadeTimerRef.current != null) {
+      window.clearTimeout(askAtlasPortfolioTransitionFadeTimerRef.current);
+    }
+    askAtlasPortfolioTransitionFadeTimerRef.current = window.setTimeout(() => {
+      askAtlasPortfolioTransitionFadeTimerRef.current = null;
+      askAtlasPortfolioTransitionStartedRef.current = null;
+      setAskAtlasPortfolioStatus(null);
+    }, ASK_ATLAS_PORTFOLIO_TRANSITION_FADE_MS);
+  }, []);
+  useEffect(() => {
+    if (!askAtlasPortfolioTransitionActive) return;
+
+    const lastAssistant = [...askAtlasChat.messages].reverse().find((m) => m.role === "assistant");
+    const hasStreamContent = !!lastAssistant?.content?.trim();
+    const startedAt = askAtlasPortfolioTransitionStartedRef.current ?? Date.now();
+    const elapsed = Date.now() - startedAt;
+
+    if (hasStreamContent && elapsed >= ASK_ATLAS_PORTFOLIO_TRANSITION_MIN_MS) {
+      finishAskAtlasPortfolioTransition();
+      return;
+    }
+
+    if (elapsed >= ASK_ATLAS_PORTFOLIO_TRANSITION_MIN_MS) {
+      finishAskAtlasPortfolioTransition();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      finishAskAtlasPortfolioTransition();
+    }, ASK_ATLAS_PORTFOLIO_TRANSITION_MIN_MS - elapsed);
+    return () => window.clearTimeout(timer);
+  }, [
+    askAtlasPortfolioTransitionActive,
+    askAtlasChat.messages,
+    finishAskAtlasPortfolioTransition,
+  ]);
+  useEffect(() => () => {
+    if (askAtlasPortfolioTransitionFadeTimerRef.current != null) {
+      window.clearTimeout(askAtlasPortfolioTransitionFadeTimerRef.current);
+    }
+  }, []);
   const askAtlasHandoffSeed = useMemo(
     () => buildAskAtlasHandoffSeed(askAtlasChat.messages, input),
     [askAtlasChat.messages, input],
@@ -2928,6 +2994,15 @@ export default function Home() {
     // to the standard create/inline-send fork below.
     const routeTarget = sendToRef.current;
     if (routeTarget === "ask-atlas" && text) {
+      const isFirstAskAtlasSubmit = askAtlasChat.messages.length === 0;
+      if (isFirstAskAtlasSubmit) {
+        const statusLine =
+          ASK_ATLAS_PORTFOLIO_STATUS_LINES[
+            Math.floor(Math.random() * ASK_ATLAS_PORTFOLIO_STATUS_LINES.length)
+          ];
+        askAtlasPortfolioTransitionStartedRef.current = Date.now();
+        setAskAtlasPortfolioStatus({ phase: "visible", message: statusLine });
+      }
       setInput("");
       setAttachedFiles([]);
       setAskAtlasHelperVisible(false);
@@ -3095,6 +3170,7 @@ export default function Home() {
     queryClient,
     nexusChat.send,
     askAtlasChat.send,
+    askAtlasChat.messages.length,
     askAtlasChat.isStreaming,
     askAtlasChat.isPending,
     resolveFocusProjectIdForTurn,
@@ -4131,7 +4207,12 @@ export default function Home() {
                     const lastAssistant = !isUser && i === askAtlasChat.messages.length - 1;
                     const showHandoff =
                       !isUser && hasBuildIntent(m.content) && !askAtlasChat.isStreaming;
-                    const isWaiting = lastAssistant && askAtlasChat.isStreaming && !m.content;
+                    const isWaiting =
+                      lastAssistant
+                      && askAtlasChat.isStreaming
+                      && !m.content
+                      && !askAtlasPortfolioTransitionActive;
+                    if (!isUser && askAtlasPortfolioTransitionActive && lastAssistant) return null;
                     return (
                       <div
                         key={m.id ?? i}
@@ -4801,6 +4882,36 @@ export default function Home() {
               }} />
               Portfolio Thinking · Not Building
             </div>
+            {sendTo === "ask-atlas" && askAtlasPortfolioStatus && (
+              <div
+                role="status"
+                aria-live="polite"
+                className={
+                  askAtlasPortfolioStatus.phase === "visible"
+                    ? "ask-atlas-portfolio-status"
+                    : "ask-atlas-portfolio-status is-fading"
+                }
+                style={{
+                  textAlign: "center",
+                  marginBottom: 8,
+                  fontFamily: "var(--app-font-sans)",
+                  fontSize: 12.5,
+                  lineHeight: 1.45,
+                  fontStyle: "italic",
+                  color: "var(--atlas-muted)",
+                  opacity: askAtlasPortfolioStatus.phase === "visible" ? 0.78 : 0,
+                  transform: askAtlasPortfolioStatus.phase === "visible"
+                    ? "translateY(0)"
+                    : "translateY(-2px)",
+                  transition: askAtlasPortfolioStatus.phase === "fading"
+                    ? `opacity ${ASK_ATLAS_PORTFOLIO_TRANSITION_FADE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), transform ${ASK_ATLAS_PORTFOLIO_TRANSITION_FADE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
+                    : undefined,
+                  pointerEvents: "none",
+                }}
+              >
+                {askAtlasPortfolioStatus.message}
+              </div>
+            )}
             {sendTo === "ask-atlas" && askAtlasHelperVisible && (
               <div style={{
                 textAlign: "center", marginBottom: 6,
@@ -4981,6 +5092,7 @@ export default function Home() {
                       } catch { /* noop */ }
                     } else {
                       setAskAtlasHelperVisible(false);
+                      clearAskAtlasPortfolioTransition();
                       askAtlasChat.abort();
                       askAtlasChat.clearMessages();
                     }
@@ -5094,14 +5206,14 @@ export default function Home() {
                     border: "none",
                     boxShadow: "none",
                     padding: 0,
-                    opacity: (isSending || askAtlasBusy) ? 0.5 : 1,
+                    opacity: (isSending || (askAtlasBusy && !askAtlasPortfolioTransitionActive)) ? 0.5 : 1,
                     touchAction: "none",
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  {isSending || askAtlasBusy ? (
+                  {isSending || (askAtlasBusy && !askAtlasPortfolioTransitionActive) ? (
                     <LoadingSpinner size="sm" color="ember" />
                   ) : (
                     <svg viewBox="0 0 20 20" width={18} height={18}
@@ -5677,8 +5789,28 @@ export default function Home() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes askAtlasInlineDot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0) } 40% { opacity: 1; transform: translateY(-2px) } }
         @keyframes askAtlasInlineMsgIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes askAtlasPortfolioStatusGlow {
+          0%, 100% {
+            text-shadow: 0 0 10px rgba(201,162,76,0.06);
+          }
+          50% {
+            text-shadow: 0 0 16px rgba(201,162,76,0.16);
+          }
+        }
+        @keyframes askAtlasPortfolioStatusIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         .ask-atlas-inline-msg { animation: askAtlasInlineMsgIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
         .ask-atlas-inline-dot { animation: askAtlasInlineDot 1100ms cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+        .ask-atlas-portfolio-status {
+          animation:
+            askAtlasPortfolioStatusIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both,
+            askAtlasPortfolioStatusGlow 2.8s ease-in-out 320ms infinite;
+        }
+        .ask-atlas-portfolio-status.is-fading {
+          animation: none;
+        }
         @keyframes ping {
           75%, 100% { transform: scale(1.8); opacity: 0; }
         }
