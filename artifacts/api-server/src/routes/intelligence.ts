@@ -264,6 +264,14 @@ export async function computeProjectIntelligence(projectId: number) {
     // Entries — typed lists for Master Map, Ledger, and HUD
     entries: entryGroups,
 
+    // Analysis metadata — derived from genome extraction timestamps
+    analysis: {
+      hasAnalysis: genome?.lastExtractedAt != null,
+      lastAnalyzedAt: genome?.lastExtractedAt?.toISOString() ?? null,
+      analyzedAt: genome?.lastExtractedAt?.toISOString() ?? null,
+      analysisVersion: genome?.lastExtractedAt ? "1" : null,
+    },
+
     computedAt: new Date().toISOString(),
   };
 }
@@ -313,6 +321,7 @@ router.get("/portfolio/intelligence", async (req, res): Promise<void> => {
             health: { clarity: 0, confidence: "Low" as const, momentum: "Low" as const, atlasState: "Discovering" as AtlasState, risk: null, nextAction: "Start shaping your core idea", evidence: { conversationsLast7Days: 0, openBlockers: 0, openConstraints: 0, openQuestions: 0, confidenceScore: 0 } },
             readiness: { overall: 0, label: "Getting started", projectKind: "general" as const, dimensions: {}, warnings: [], sourceBreakdown: null },
             entries: { decisions: [], blockers: [], goals: [], ideas: [], features: [], risks: [], openQuestionEntries: [] },
+            analysis: { hasAnalysis: false, lastAnalyzedAt: null, analyzedAt: null, analysisVersion: null },
             computedAt: new Date().toISOString(),
           };
         }

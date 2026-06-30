@@ -31,6 +31,12 @@ type MapNode = {
   subType: "SPRINT" | "DECISION" | "BLOCKER" | "OPEN_QUESTION" | "OPPORTUNITY" | "RISK" | "BLUEPRINT" | "NEXT_STEP";
   status?: string;
   description?: string;
+  /** 0–1 float — how strongly this node's data is established */
+  confidence?: number;
+  /** Short explanation bullets for why this node exists / was surfaced */
+  reasons?: string[];
+  /** Supporting references (entry IDs, conversation excerpts, etc.) */
+  evidence?: string[];
 };
 
 type BlueprintContent = {
@@ -296,24 +302,36 @@ router.get("/projects/:id/map-nodes", async (req, res): Promise<void> => {
         label: entry.title,
         subType: "SPRINT",
         status: entry.status,
+        confidence: entry.status === "completed" ? 1.0 : entry.status === "active" ? 0.85 : 0.6,
+        reasons: ["Build-mode sprint tracked in ledger"],
+        evidence: [`entry:${entry.id}`],
       })),
       ...decisions.map((entry): MapNode => ({
         id: `decision-${entry.id}`,
         label: entry.title,
         subType: "DECISION",
         status: "completed",
+        confidence: 0.85,
+        reasons: ["Committed decision recorded in ledger"],
+        evidence: [`entry:${entry.id}`],
       })),
       ...blockers.map((entry): MapNode => ({
         id: `blocker-${entry.id}`,
         label: entry.title,
         subType: "BLOCKER",
         status: entry.status,
+        confidence: 0.9,
+        reasons: ["Active blocker requires resolution before progress"],
+        evidence: [`entry:${entry.id}`],
       })),
       ...openQuestions.map((entry): MapNode => ({
         id: `open-question-${entry.id}`,
         label: entry.title,
         subType: "OPEN_QUESTION",
         status: "backlog",
+        confidence: 0.3,
+        reasons: ["Parked — outcome not yet determined"],
+        evidence: [`entry:${entry.id}`],
       })),
     );
   } else {
@@ -332,6 +350,9 @@ router.get("/projects/:id/map-nodes", async (req, res): Promise<void> => {
           label: "The Opportunity",
           subType: "OPPORTUNITY",
           description: content.opportunity,
+          confidence: 0.7,
+          reasons: ["Core opportunity identified in blueprint"],
+          evidence: [`blueprint:${blueprint.id}`],
         });
       }
 
@@ -341,24 +362,36 @@ router.get("/projects/:id/map-nodes", async (req, res): Promise<void> => {
           label: risk,
           subType: "RISK",
           status: "active",
+          confidence: 0.65,
+          reasons: ["Risk surfaced during blueprint analysis"],
+          evidence: [`blueprint:${blueprint.id}`],
         })),
         ...stringArray(content.openQuestions).map((question, index): MapNode => ({
           id: `oq-${index}`,
           label: question,
           subType: "OPEN_QUESTION",
           status: "backlog",
+          confidence: 0.3,
+          reasons: ["Open question from blueprint — outcome unresolved"],
+          evidence: [`blueprint:${blueprint.id}`],
         })),
         {
           id: `bp-${blueprint.id}`,
           label: blueprint.title,
           subType: "BLUEPRINT",
           status: "completed",
+          confidence: 0.9,
+          reasons: ["Blueprint generated and stored"],
+          evidence: [`blueprint:${blueprint.id}`],
         },
         ...stringArray(content.nextSteps).map((step, index): MapNode => ({
           id: `ns-${index}`,
           label: step,
           subType: "NEXT_STEP",
           status: "backlog",
+          confidence: 0.6,
+          reasons: ["Planned action step from blueprint"],
+          evidence: [`blueprint:${blueprint.id}`],
         })),
       );
     }
