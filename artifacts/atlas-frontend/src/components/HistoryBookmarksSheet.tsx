@@ -318,7 +318,7 @@ export function HistoryBookmarksSheet({
               borderRadius: 10,
               padding: 6,
               zIndex: 5,
-              boxShadow: "0 14px 36px -10px rgba(0,0,0,0.4)",
+              boxShadow: isParchment ? "0 14px 36px -10px rgba(0,0,0,0.18)" : "0 14px 36px -10px rgba(0,0,0,0.8)",
             }}
           >
             <MenuRow
@@ -866,7 +866,7 @@ const iconBtnStyle: React.CSSProperties = {
   width: 28,
   height: 28,
   borderRadius: 6,
-  color: "var(--atlas-muted)",
+  color: "rgba(244,236,220,0.6)",
   transition: "background 120ms ease, color 120ms ease",
 };
 
