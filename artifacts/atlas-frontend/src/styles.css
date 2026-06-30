@@ -280,6 +280,7 @@ html, body {
   --atlas-bg-rgb: 247, 244, 237;
   --atlas-surface-rgb: 255, 253, 248;
   --atlas-muted-rgb: 100, 116, 139;
+  --atlas-fg-rgb: 15, 23, 42;
   --atlas-flow-pane-bg: #FFFDF8;
 
   /* Home page theme overrides */
