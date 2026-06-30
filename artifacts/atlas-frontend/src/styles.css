@@ -257,6 +257,7 @@ html, body {
   --atlas-bg-rgb: 13, 11, 9;
   --atlas-surface-rgb: 20, 18, 14;
   --atlas-muted-rgb: 166, 160, 154;
+  --atlas-fg-rgb: 245, 243, 238;
   --atlas-flow-pane-bg: oklch(0.11 0.01 60);
 }
 
