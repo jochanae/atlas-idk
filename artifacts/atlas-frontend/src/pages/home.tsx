@@ -7,7 +7,7 @@ import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 import { HistoryBookmarksSheet } from "@/components/HistoryBookmarksSheet";
 import { useQueryClient } from "@tanstack/react-query";
-import { useListProjects } from "@workspace/api-client-react";
+import { useListProjects, useUpdateProject } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
