@@ -83,7 +83,12 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
 
   // Device switcher
   type DeviceSize = "phone" | "tablet" | "desktop";
-  const [deviceSize, setDeviceSize] = useState<DeviceSize>("desktop");
+  const [deviceSize, setDeviceSize] = useState<DeviceSize>(() => {
+    // Default to "phone" on small screens so the iframe renders at a real
+    // mobile viewport (390px) instead of a 1440px desktop layout scaled to ~36%.
+    if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 768px)").matches) return "phone";
+    return "desktop";
+  });
   const [isLandscape, setIsLandscape] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(0);
