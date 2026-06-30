@@ -759,7 +759,18 @@ This doesn't have a name yet — or maybe it does. What do you want to call this
 
 Never ask the user to re-explain anything already captured in memory or prior conversation. Never repeat questions that were already answered. Carry the context forward as if you were in the room for the whole conversation. You have portfolio-level awareness — when asked about other projects, cross-project patterns, or the big picture, answer from the portfolio context injected below without routing the user elsewhere.
 
-You are Atlas. Just be it.`;
+You are Atlas. Just be it.
+
+CONFIDENCE_ASSESSMENT (emit when proposing FILE_EDIT or LINE_PATCH blocks):
+At the very end of your response — after all FILE_EDIT blocks — emit on its own line:
+CONFIDENCE_ASSESSMENT:{"confidence":"high","blast_radius":"narrow","summary":"one-sentence reason","files_affected":["path/to/file.ts"]}
+
+confidence: "high" (you have read the full file and the change is surgical), "medium" (partial context or moderate scope), "low" (guessing at context or wide-scope refactor)
+blast_radius: "narrow" (isolated change, no downstream effects), "moderate" (touching shared utilities or types), "wide" (schema change, global state, or 5+ files)
+summary: one sentence explaining the scope and confidence level
+files_affected: array of file paths changed by this response
+
+Only emit when there are actual FILE_EDIT or LINE_PATCH blocks. Never emit for explanation-only responses.`;
 
 const FOUNDATION_SYSTEM_PROMPT = `${ATLAS_IDENTITY}
 
@@ -3328,7 +3339,8 @@ You are now in BUILD mode. This changes how you respond:
   - [BUILD_VERIFY: max_attempts_reached] — stop auto-fixing. Show the user the last error in a plain summary and ask for their strategic direction.
   - [BUILD_VERIFY: check_failed] — verify couldn't run. Acknowledge the push briefly and continue.
   - No [BUILD_VERIFY] at all — non-StackBlitz project. Acknowledge the push briefly ("Pushed.") and move to the next step.
-• When you receive DEPLOY_READY_VISIT: — the Vercel deploy is confirmed live. Say nothing (the health check result appears automatically in the chat). Do not comment on it or summarize it.`,
+• When you receive DEPLOY_READY_VISIT: — the Vercel deploy is confirmed live. Say nothing (the health check result appears automatically in the chat). Do not comment on it or summarize it.
+• Before finishing any response that writes UI components or modifies existing UI: verify (1) every interactive element has a visible label or accessible name, (2) no new navigation route duplicates an existing one, (3) async operations have error handling. Fix problems in the same FILE_EDIT — do not note them separately.`,
     plan: `\n\n--- ACTIVE MODE: PLAN ---
 You are now in PLAN mode. This changes how you respond:
 • Focus on structure, architecture, and sequence — not implementation.
@@ -3424,6 +3436,7 @@ You are in LOOK lens. This means:
 • Think in CSS custom properties, Framer Motion, transitions, color systems, spacing rhythm, and typography.
 • Use FILE_EDIT blocks for visual changes. No unstyled utility code — everything must look intentional.
 • Reference the project's design tokens (--atlas-bg, --atlas-gold, --atlas-ember, etc.) when applicable.
+• UX and accessibility check before every FILE_EDIT: does the change maintain visual consistency with the existing design system? Does every interactive element have a clear affordance and visible focus indicator? Every interactive non-button element needs role + aria-label; images need alt text; color must not be the only indicator of state.
 • If the conversation shifts away from visual/CSS/animation topics, end your response with: LENS_DRIFT: build`,
     scenario: `\n\n--- LENS: SCENARIO ---
 You are in SCENARIO lens. This is exploratory "what if" territory. No commitments.
@@ -4109,6 +4122,38 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     linePatches,
     repoFiles,
   });
+
+  // Builder review — quick Haiku pass on proposed file edits to catch common issues
+  let reviewNotes: string[] = [];
+  if (fileEdits.length > 0 || linePatches.length > 0) {
+    try {
+      const editsForReview = [
+        ...fileEdits.map(e => `=== FILE: ${e.path} ===\n${e.content.slice(0, 2500)}`),
+        ...linePatches.map(p => `=== PATCH: ${p.path} ===\nREPLACE:\n${p.replace.slice(0, 500)}`),
+      ].join("\n\n");
+      const reviewResp = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 300,
+        system: `You are a rapid code reviewer. Review these proposed file changes and flag ONLY:
+- Duplicate navigation routes or components that already exist in the same file
+- Missing error handling on async operations (unhandled promises, no try/catch on awaits)
+- Accessibility gaps: interactive non-button/non-anchor elements without role + aria-label, images without alt text
+- Function or prop signature changes that could silently break existing callers
+- Naming inconsistencies within the same file (camelCase mixed with kebab-case for the same concept)
+
+For each issue found: one short, specific sentence naming the exact element. Be blunt.
+If there are no issues, respond with exactly: clean
+Do not suggest style improvements or preferences. Only flag genuine problems.`,
+        messages: [{ role: "user", content: editsForReview }],
+      });
+      const reviewText = ((reviewResp.content[0] as { type: string; text?: string })?.text ?? "").trim();
+      if (reviewText && reviewText.toLowerCase() !== "clean") {
+        reviewNotes = reviewText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+      }
+    } catch {
+      // non-fatal — review skipped if it fails
+    }
+  }
   const { content: afterMemory, newFacts } = extractMemoryLines(visibleContent);
   const { content: afterNodeResolved, resolvedNodes } = extractNodeResolved(afterMemory);
   const { content: afterIntent, intentType: detectedIntentType } = extractIntentType(afterNodeResolved);
@@ -4508,6 +4553,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     messageId: savedMsgId,
     memoryUpdated: newFacts.length > 0,
     confidenceAssessment: confidenceAssessment ?? undefined,
+    reviewNotes: reviewNotes.length > 0 ? reviewNotes : undefined,
     fileEdits: responseFileEdits.length > 0 ? responseFileEdits : undefined,
     fileEdit: responseFileEdits.length > 0 ? responseFileEdits[0] : undefined,
     linePatches: responseLinePatches.length > 0 ? responseLinePatches : undefined,

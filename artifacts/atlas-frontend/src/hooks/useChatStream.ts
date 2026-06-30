@@ -917,6 +917,8 @@ export function useChatStream(
             inputTokens: res.inputTokens ?? null,
             outputTokens: res.outputTokens ?? null,
             costUsd: res.costUsd != null ? Number(res.costUsd) : null,
+            ...(res.confidenceAssessment ? { confidenceAssessment: res.confidenceAssessment } : {}),
+            ...(res.reviewNotes?.length ? { reviewNotes: res.reviewNotes } : {}),
           }]);
           setActivityStream({ active: false, content: "" });
           if (isScenario) {

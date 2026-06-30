@@ -1385,6 +1385,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
 
   const userId = (req as any).authUser.id as number;
   const authUser = (req as any).authUser;
+  const resolvedGhToken = await getGithubTokenForUser(userId) ?? process.env.GITHUB_TOKEN ?? null;
   // history from the client body is accepted in the schema for API compatibility.
   // The Living Thread in nexus_messages remains authoritative for model context.
   const { userProfile = "", focusProjectId: requestedFocusProjectId = null, mode = "strategic", model = "claude", conversationId } = body;
@@ -1600,7 +1601,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   const recentActivity = await (async () => {
     if (ideaMode || projectIds.length === 0) return null;
     try {
-      const ghToken = process.env.GITHUB_TOKEN ?? null;
+      const ghToken = resolvedGhToken;
       const linkedProjects = projects.filter(p => p.linkedRepo);
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -1733,7 +1734,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       if (focusProject?.linkedRepo) {
         try {
           const repoFull = parseRepo(focusProject.linkedRepo ?? null);
-          const ghToken = process.env.GITHUB_TOKEN ?? null;
+          const ghToken = resolvedGhToken;
           if (repoFull && ghToken) {
             const treeResp = await fetch(
               `https://api.github.com/repos/${repoFull}/git/trees/main?recursive=1`,
@@ -1770,7 +1771,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       if (focusProject.linkedRepo) {
         try {
           const repoFull = parseRepo(focusProject.linkedRepo ?? null);
-          const ghToken = process.env.GITHUB_TOKEN ?? null;
+          const ghToken = resolvedGhToken;
           if (repoFull && ghToken) {
             const commitsResp = await fetch(
               `https://api.github.com/repos/${repoFull}/commits?per_page=7`,

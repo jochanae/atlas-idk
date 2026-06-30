@@ -2109,6 +2109,40 @@ export function AssistantBubble({
           />
         )}
 
+        {message.reviewNotes && message.reviewNotes.length > 0 && (
+          <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 text-xs">
+            <div className="mb-1.5 flex items-center gap-1.5 font-medium text-amber-400/90">
+              <span className="text-amber-400">⚠</span>
+              Atlas flagged {message.reviewNotes.length === 1 ? "an issue" : `${message.reviewNotes.length} issues`} in this change
+            </div>
+            <ul className="space-y-0.5 text-[11px] text-amber-200/70">
+              {message.reviewNotes.map((note, i) => (
+                <li key={i} className="leading-relaxed">— {note}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {message.confidenceAssessment && (message.fileEdits?.length ?? 0) > 0 && (
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground/60">
+            <span className={
+              message.confidenceAssessment.confidence === "high" ? "text-emerald-400/70" :
+              message.confidenceAssessment.confidence === "medium" ? "text-amber-400/70" :
+              "text-red-400/70"
+            }>●</span>
+            <span>
+              {message.confidenceAssessment.confidence === "high" ? "High" :
+               message.confidenceAssessment.confidence === "medium" ? "Medium" : "Low"} confidence
+              {message.confidenceAssessment.blast_radius && (
+                <span className="ml-1 opacity-60">· {message.confidenceAssessment.blast_radius} blast radius</span>
+              )}
+            </span>
+            {message.confidenceAssessment.summary && (
+              <span className="opacity-50">— {message.confidenceAssessment.summary}</span>
+            )}
+          </div>
+        )}
+
         {message.imageGen?.images?.map((img, i) => (
           <SketchReveal
             key={i}

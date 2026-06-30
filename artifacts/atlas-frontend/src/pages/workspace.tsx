@@ -227,6 +227,8 @@ export interface ChatMessage {
   decisionGate?: StructuredDecisionGate;
   decisionGateResolved?: boolean;
   decisionGateSelectedValue?: string;
+  confidenceAssessment?: { confidence: "high" | "medium" | "low"; blast_radius?: "narrow" | "moderate" | "wide"; files_affected?: string[]; summary?: string };
+  reviewNotes?: string[];
   awaitingPlan?: boolean;
   planFromHome?: boolean;
   planMode?: boolean;
