@@ -3,7 +3,8 @@ import { useParkedCount } from "@/hooks/useParkedCount";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Sparkles } from "lucide-react";
+import { useActiveRunsCount } from "./home/ActiveRuns";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
 
@@ -29,10 +30,12 @@ type Props = {
   onOpenParking?: () => void;
   onOpenSpecify?: () => void;
   onOpenWrite?: () => void;
+  onOpenComposer?: () => void;
   userLabel?: string | null;
 };
 
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, userLabel }: Props) {
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenComposer, userLabel }: Props) {
+  const activeRunsCount = useActiveRunsCount();
   const parkedCount = useParkedCount();
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
@@ -350,7 +353,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           )}
 
           {/* TOOLS — collapsed by default */}
-          {(onOpenSpecify || onOpenWrite) && (
+          {(onOpenSpecify || onOpenWrite || onOpenComposer) && (
             <>
               <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
               <CollapsibleHeader
@@ -361,12 +364,22 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               />
               {toolsExpanded && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 4 }}>
+                  {onOpenComposer && (
+                    <NavRow
+                      icon={<Sparkles size={14} strokeWidth={1.6} />}
+                      label="Atlas Composer"
+                      sublabel={activeRunsCount > 0 ? `${activeRunsCount} running` : undefined}
+                      badge={activeRunsCount}
+                      onClick={() => { onOpenComposer(); onClose(); }}
+                    />
+                  )}
                   {onOpenSpecify && <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify Change" onClick={() => { onOpenSpecify(); onClose(); }} />}
                   {onOpenWrite && <NavRow icon={<PenLine size={14} strokeWidth={1.6} />} label="Write" onClick={() => { onOpenWrite(); onClose(); }} />}
                 </div>
               )}
             </>
           )}
+
         </div>
 
         {/* User footer */}

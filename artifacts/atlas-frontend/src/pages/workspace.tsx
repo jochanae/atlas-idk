@@ -35,6 +35,7 @@ import { ManifestPanel } from "../components/ManifestPanel";
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
+import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { PreviewPanel, type ManifestDecision } from "../components/workspace/PreviewPanel";
@@ -4879,6 +4880,7 @@ export default function Workspace() {
     flow: false,
   });
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showComposerSheet, setShowComposerSheet] = useState(false);
   useEffect(() => {
     // The project-name chevron dispatches `open-projects-drawer` and opens the
     // full project dropdown (switch / rename / settings / clone / ledger /
@@ -8805,8 +8807,16 @@ export default function Workspace() {
         onOpenParking={() => { setLocation(`/parking?project=${id}`); setShowDrawer(false); }}
         onOpenSpecify={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-specify", { detail: { projectName: project?.name ?? "" } })); }}
         onOpenWrite={() => { setShowDrawer(false); if (isMobile) { setMobileTab("write"); setRightOpen(true); } else { setDesktopForceTab("write" as never); setTimeout(() => setDesktopForceTab(undefined), 120); } }}
+        onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
         userLabel={loadProfile().name || null}
       />
+
+      <AtlasComposerSheet
+        open={showComposerSheet}
+        onClose={() => setShowComposerSheet(false)}
+        projects={(allProjects ?? []).map((p: any) => ({ id: p.id, name: p.name }))}
+      />
+
 
       <NewProjectModal
         open={showNewProjectModal}

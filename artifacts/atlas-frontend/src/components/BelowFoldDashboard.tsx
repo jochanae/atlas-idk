@@ -3,7 +3,7 @@ import { PortfolioHealthDashboard } from "./PortfolioHealthDashboard";
 import { CognitiveMomentumCard } from "./home/CognitiveMomentumCard";
 import { useProjectState } from "../hooks/useProjectState";
 import { QuickEditRow, type QuickEditProjectOption } from "./home/QuickEditRow";
-import { ActiveRuns } from "./home/ActiveRuns";
+// ActiveRuns moved into AtlasComposerSheet (opened from project drawer)
 import { Resume } from "./Resume";
 import { useAuth } from "../hooks/useAuth";
 
@@ -451,12 +451,8 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <PortfolioHealthDashboard onOpenProject={onOpenProject} />
       </RevealOnScroll>
 
-      {/* ACTIVE RUNS */}
-      <RevealOnScroll delayMs={80} className="bfd-col-left">
-        <ActiveRuns
-          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-        />
-      </RevealOnScroll>
+      {/* ACTIVE RUNS moved to the project drawer → Tools → Atlas Composer */}
+
 
       {/* RECENT ACTIVITY */}
       <RevealOnScroll delayMs={100} className="bfd-col-left">

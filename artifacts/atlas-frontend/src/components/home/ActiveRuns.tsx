@@ -923,3 +923,18 @@ function RunCard({
     </div>
   );
 }
+
+// Public hook — count of in-flight runs (queued + running). Used by the
+// project drawer to surface a badge on the "Atlas Composer" entry.
+export function useActiveRunsCount(): number {
+  const [n, setN] = useState(() =>
+    _getRuns().filter((r) => r.status === "queued" || r.status === "running").length
+  );
+  useEffect(
+    () => _subscribeToRuns(() =>
+      setN(_getRuns().filter((r) => r.status === "queued" || r.status === "running").length)
+    ),
+    []
+  );
+  return n;
+}

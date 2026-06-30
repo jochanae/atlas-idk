@@ -11,6 +11,7 @@ import { useListProjects } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
+import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
 import { ParkingBadgeIcon } from "@/components/ParkingBadgeIcon";
 import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
@@ -1795,6 +1796,7 @@ export default function Home() {
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showComposerSheet, setShowComposerSheet] = useState(false);
   useEffect(() => {
     const open = () => setShowDrawer(true);
     window.addEventListener("axiom:open-projects-drawer", open);
@@ -5357,8 +5359,16 @@ export default function Home() {
         onOpenParking={() => setLocation("/parking")}
         onOpenSpecify={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-specify")); }}
         onOpenWrite={() => { setShowDrawer(false); if (homeFocus) setLocation(`/project/${homeFocus}`); setTimeout(() => window.dispatchEvent(new CustomEvent("axiom:open-write")), 350); }}
+        onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
       />
+
+      <AtlasComposerSheet
+        open={showComposerSheet}
+        onClose={() => setShowComposerSheet(false)}
+        projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name }))}
+      />
+
 
       {showVault && (
         <VisualVault
