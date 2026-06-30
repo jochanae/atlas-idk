@@ -5687,7 +5687,7 @@ export default function Home() {
           border: 1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent);
           color: var(--atlas-gold);
           cursor: pointer;
-          z-index: 2;
+          z-index: 1000;
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
           transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
@@ -5710,7 +5710,7 @@ export default function Home() {
           border: 1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent);
           color: var(--atlas-gold);
           cursor: pointer;
-          z-index: 2;
+          z-index: 1000;
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
           transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
