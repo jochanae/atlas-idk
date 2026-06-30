@@ -1,103 +1,101 @@
+# Run inspection surface — pass 1 (frontend-only)
 
-## Goal
+Frontend-only. No backend persistence, no shell stream, no new retry API, no chrome/rail/top-bar changes. Existing builder pipeline and chat output stay untouched.
 
-Home composer becomes the single entry point for both Workspace and Ask Atlas. No routing sheet, no second composer. The composer itself toggles modes; `AskAtlasOverlay` is only the response surface that appears *after* a send in Ask Atlas mode.
+## What we're building
 
-No backend work. Frontend-only inside `artifacts/atlas-frontend/`.
+1. A `Run` type + in-memory adapter that derives a Run from existing builder output.
+2. A compact **RunCard** rendered inline in chat *below* the existing builder output (additive).
+3. A full **/runs/:id** inspection page: status header, counters, View diff, `CHAT | SHELL | FILES` tabs, per-file blocked cards.
 
----
+## Explicitly out of scope (this pass)
+- Backend persistence (separate handoff packet — user has it).
+- Replacing the current builder output in chat.
+- Persistent left icon rail, repo pill, top-bar redesign.
+- Shell streaming.
+- New retry endpoints. Reuse existing retry only; otherwise render Retry disabled with tooltip "Retry coming in next pass" + TODO log.
 
-## Scope of files
+## Data shape
 
-- `artifacts/atlas-frontend/src/pages/home.tsx` — remove Send-to pill + sheet, add Ask Atlas toggle, wire Park button to `ParkSheet`, handle radial-menu Ask Atlas event as a "turn toggle ON + focus composer" shortcut.
-- `artifacts/atlas-frontend/src/components/composer/ComposerActions.tsx` — no behavior change; just stop hiding Park on home (drop `hidePark`).
+```ts
+// src/features/runs/types.ts
+export type RunStatus = "running" | "applied" | "partial" | "failed";
 
-Workspace composer, Plan button, and `AskAtlasOverlay` internals are not touched.
+export interface RunFileError { line: number; col: number; message: string; }
 
----
+export interface RunFile {
+  path: string;
+  state: "applied" | "blocked";
+  reason?: string;          // "Typecheck failed · not written"
+  errors?: RunFileError[];
+}
 
-## Changes
+export interface RunApplyError { code: number; message: string; }
 
-### 1. Kill the "Send to" pill and its sheet
-
-In `home.tsx`:
-
-- Delete the `Send to · <target>` pill button (≈ 4834–4875).
-- Delete the `showSendToPicker` portal sheet (≈ 4599–4657).
-- Delete the `parking` branch in `handleSubmit` (≈ 2914–2922). Parking is no longer a send target.
-- Narrow `sendTo` to `"workspace" | "ask-atlas"`; remove all `"parking"` references.
-- Workspace focus selection (`homeFocus`) is no longer surfaced via that pill — it stays driven by whatever existing focus UI / launcher you already have. No new focus UI added.
-
-### 2. Add a glowing "Ask Atlas" toggle on the composer (Plan-button-inspired)
-
-Placed where the killed pill sat (right side of action row, before mic/Send):
-
-- Pill button labeled **Ask Atlas** with a small dot/glyph (use `Globe` from `lucide-react` so it's visually distinct from the workspace Plan checklist).
-- **OFF:** transparent background, muted border, muted text.
-- **ON:** gold gradient (`linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))`), gold border, gold text, outer glow `0 0 14px -4px rgba(201,162,76,0.55)` + inset highlight, glyph with `drop-shadow(0 0 4px rgba(201,162,76,0.75))`. Mirrors workspace Plan button exactly.
-- Click flips `sendTo` between `"workspace"` and `"ask-atlas"`. Toggle stays ON across sends until the user turns it off.
-
-When ON:
-
-- Textarea **placeholder** swaps to `"Ask Atlas anything…"` (overrides rotating placeholder).
-- A small animated banner above the composer fades in (mono, 10px, gold, uppercase, same height-collapse pattern as `Plan Mode · Active` in `ChatComposer.tsx` 570–597):
-  > `Portfolio Thinking · Not Building`
-- **First-activation helper** (one-time, gated by `localStorage["atlas-ask-atlas-helped"]`): a one-line caption appears under the banner the first time the toggle is turned on:
-  > `Think freely across your portfolio. Nothing here modifies a project until you continue in a workspace.`
-  Dismisses on next toggle / next send and never shows again.
-
-### 3. Send routing (simpler logic, single Send button)
-
-In `handleSubmit`:
-
-- If `sendTo === "ask-atlas"` → existing path: `setAskAtlasSeed(text); setAskAtlasOpen(true);` (overlay opens as the response surface). Do not reset `sendTo` after sending.
-- Else → existing workspace-create / inline-send fork, unchanged.
-
-### 4. Parking Lot on the home composer
-
-- Remove the `hidePark` prop on the home `<ComposerActions>` call (currently hides it before any conversation). Park button shows always.
-- Wire `onMenuAction("park")` on home to open a `ParkSheet`, mirroring workspace:
-  - Add `const [showParkSheet, setShowParkSheet] = useState(false);`
-  - Render `<ParkSheet projectId={homeFocus ?? undefined} projects={selectableFocusProjects.map(p => ({ id: p.id, name: p.name }))} onClose={() => setShowParkSheet(false)} onOpenFull={() => { setShowParkSheet(false); setLocation("/parking" + (homeFocus ? `?project=${homeFocus}` : "")); }} />` next to the existing portals.
-- `parkedCount` on home stays `0` for this round (no portfolio aggregation yet; badge already hides at 0).
-
-### 5. Radial menu "Ask Atlas" → shortcut, not separate surface
-
-Today the radial-menu Ask Atlas dispatches an event that sets `askAtlasSeed` and opens `AskAtlasOverlay` directly (home.tsx ≈ 1911–1912). Change the listener to:
-
-1. `setSendTo("ask-atlas")` — flip the home composer's toggle ON.
-2. Scroll/focus the home composer textarea (`textareaRef.current?.focus()`).
-3. If the event carries a `seed` string, prefill the textarea (`setInput(seed)`) but **do not** auto-send and **do not** open `AskAtlasOverlay`. The overlay only appears after the user taps Send.
-
-This makes the radial menu a true shortcut into the same composer rather than a separate entry surface.
-
-### 6. History clock — unchanged
-
-Out of scope this turn.
-
----
-
-## AskAtlasOverlay status
-
-Kept as-is. It is now strictly the response surface for Ask Atlas mode, only reachable by sending from the home composer while the toggle is ON.
-
----
-
-## Visual sketch (target)
-
-```text
-🕘   +   …   🅿️                 [ Ask Atlas ● ]   🎙  ➤
-──────────────────────────────────────────────────────
-| Ask Atlas anything...                              |
-|____________________________________________________|
-       Portfolio Thinking · Not Building   (banner, gold, mono)
+export interface Run {
+  id: string;               // client uuid until backend persists
+  intent: string;
+  createdAt: string;
+  status: RunStatus;
+  counts: { applied: number; blocked: number };
+  files: RunFile[];
+  applyError?: RunApplyError;
+  diffRef?: string;         // pointer the existing diff viewer consumes
+  sourceMessageId?: string; // originating chat message
+}
 ```
 
----
+## New files
 
-## Out of scope (explicit)
+```text
+src/features/runs/
+  types.ts
+  adaptRun.ts              // builder result -> Run
+  runStore.ts              // zustand: Map<id, Run>, addRun, getRun
+  useRun.ts                // hook wrapper
+  components/
+    RunCard.tsx            // compact inline-in-chat card
+    RunHeader.tsx          // status pill + intent + counters + View diff
+    RunTabs.tsx            // CHAT | SHELL | FILES
+    BlockedFileCard.tsx    // path · line:col errors · Retry (disabled unless existing API)
+    AppliedFileRow.tsx     // compact applied row
+    ApplyErrorCard.tsx     // 403 etc · Retry apply (disabled unless existing API)
+src/pages/RunPage.tsx
+```
 
-- Killing `AskAtlasOverlay` entirely.
-- Splitting clock history into Workspace vs Ask Atlas.
-- Portfolio-wide parked-count badge.
-- Any workspace-composer changes.
+## Files edited (minimal)
+
+- Router file — add `<Route path="/runs/:id" element={<RunPage />} />`.
+- Chat message renderer that shows builder output — append `<RunCard runId={…} />` below existing output. Existing output unchanged.
+- Builder completion handler — `runStore.addRun(adaptRun(result, message))` once per build.
+
+## Behavior
+
+**RunCard (in chat)**
+- One line: status dot · `Run #abcd · FAILED · 2 blocked · 1 applied` · `View →` → `/runs/:id`.
+- No expansion in chat.
+
+**/runs/:id**
+- `getRun(id)` miss → small empty state ("Run not available in this session. Persistence coming in next pass."). No fetch, no spinner.
+- Layout: `RunHeader` → optional `ApplyErrorCard` → `RunTabs`.
+  - `CHAT`: read-only excerpt of originating user message + Atlas reply, keyed by `sourceMessageId`.
+  - `FILES`: `AppliedFileRow` list for applied; `BlockedFileCard` list for blocked (path mono, `line:col error msg` rows mono, Retry button per spec above).
+  - `SHELL`: placeholder ("No shell output captured for this run").
+- `View diff` reuses existing diff viewer route/drawer — no new diff impl.
+
+## State
+- Zustand, in-memory, session-scoped. No localStorage (avoids stale records once backend lands).
+
+## Visual
+- Existing workspace tokens (obsidian + amber accent). Status pill: applied=emerald, partial=amber, failed=destructive, running=muted-foreground.
+- Mono for path + error rows; sans elsewhere. Density matches existing chat cards.
+
+## Verification before claiming done
+1. Trigger a build → existing builder output unchanged + RunCard appears below.
+2. Click RunCard → `/runs/:id` renders header, tabs, blocked cards with real `line:col` rows.
+3. Failing build with 403 push → ApplyErrorCard renders above tabs, status=FAILED, counters correct.
+4. Direct reload of `/runs/:id` → clean empty state, no crash.
+5. `tsgo` clean.
+
+## After this pass
+User hands off the persistence packet to backend (Cursor). Once `/api/runs/:id` exists, swap `runStore.getRun` for a fetch and drop the empty-state copy — no other changes needed.
