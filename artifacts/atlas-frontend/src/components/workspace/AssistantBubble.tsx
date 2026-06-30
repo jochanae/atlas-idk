@@ -31,6 +31,7 @@ import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGat
 import { DecisionGateCard } from "./DecisionGateCard";
 import { haptic } from "@/lib/long-press-tip";
 import { runLinePatchTrustChecks, formatTrustErrors, type TrustCheckInput } from "./linePatchTrust";
+import { MessageFeedback } from "./MessageFeedback";
 
 
 import type {
