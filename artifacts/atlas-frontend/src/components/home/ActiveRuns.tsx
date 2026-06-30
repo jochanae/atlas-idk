@@ -1384,6 +1384,14 @@ function RunCard({
   );
 }
 
+// Public hook — all runs, reactive. Used by ShellLogSheet to aggregate
+// shell output across all runs.
+export function useAllRuns(): ActiveRun[] {
+  const [runs, setRuns] = useState<ActiveRun[]>(() => _getRuns());
+  useEffect(() => _subscribeToRuns(() => setRuns([..._getRuns()])), []);
+  return runs;
+}
+
 // Public hook — count of in-flight runs (queued + running). Used by the
 // project drawer to surface a badge on the "Atlas Composer" entry.
 export function useActiveRunsCount(): number {

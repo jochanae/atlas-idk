@@ -12,6 +12,7 @@ import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } 
 import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
+import { ShellLogSheet } from "../components/ShellLogSheet";
 import { ParkingBadgeIcon } from "@/components/ParkingBadgeIcon";
 import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
@@ -1800,6 +1801,12 @@ export default function Home() {
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showComposerSheet, setShowComposerSheet] = useState(false);
+  const [showShellSheet, setShowShellSheet] = useState(false);
+  useEffect(() => {
+    const open = () => setShowShellSheet(true);
+    window.addEventListener("axiom:open-shell", open);
+    return () => window.removeEventListener("axiom:open-shell", open);
+  }, []);
   useEffect(() => {
     const open = () => setShowDrawer(true);
     window.addEventListener("axiom:open-projects-drawer", open);
@@ -5600,6 +5607,11 @@ export default function Home() {
         open={showComposerSheet}
         onClose={() => setShowComposerSheet(false)}
         projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name }))}
+      />
+
+      <ShellLogSheet
+        open={showShellSheet}
+        onClose={() => setShowShellSheet(false)}
       />
 
       {writeOverlayProjectId != null && createPortal(
