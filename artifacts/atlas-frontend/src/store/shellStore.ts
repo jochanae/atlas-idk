@@ -51,10 +51,18 @@ export interface ComposerClaim {
   visibility: ComposerVisibility;
 }
 
-function resolveVisibility(claims: Record<string, ComposerClaim>): ComposerVisibility {
-  let best: ComposerVisibility = 'full';
+function resolveVisibility(
+  claims: Record<string, ComposerClaim>,
+  userPref: ComposerVisibility | null,
+): ComposerVisibility {
+  // Stage `hidden` always wins (artifact owns the screen).
   for (const c of Object.values(claims)) {
     if (c.visibility === 'hidden') return 'hidden';
+  }
+  // User preference outranks reading-density auto-claims.
+  if (userPref) return userPref;
+  let best: ComposerVisibility = 'full';
+  for (const c of Object.values(claims)) {
     if (c.visibility === 'compact') best = 'compact';
   }
   return best;
@@ -83,9 +91,14 @@ interface ShellStore {
   // Composer visibility
   composerClaims: Record<string, ComposerClaim>;
   composerVisibility: ComposerVisibility;
+  /** User-controlled collapse preference. Null = auto (claim-driven). */
+  userComposerPreference: ComposerVisibility | null;
+  setUserComposerPreference: (pref: ComposerVisibility | null) => void;
+  /** Convenience toggle: full ↔ compact. */
+  toggleComposerCollapsed: () => void;
   registerComposerClaim: (id: string, claim: ComposerClaim) => void;
   releaseComposerClaim: (id: string) => void;
-  /** Forces composer back to `full` and drops all stage claims.
+  /** Forces composer back to `full` and drops all stage claims + user pref.
    *  Wired to the gold "A" (atlas:focus-composer) and to send. */
   restoreComposer: () => void;
 }
@@ -132,18 +145,57 @@ export const useShellStore = create<ShellStore>((set, get) => ({
   clearThread: () => set({ activeThread: emptyThread, shellMode: 'ambient' }),
   composerClaims: {},
   composerVisibility: 'full',
+  userComposerPreference: (() => {
+    try {
+      const v = typeof sessionStorage !== 'undefined'
+        ? sessionStorage.getItem('atlas-composer-pref')
+        : null;
+      return v === 'compact' || v === 'full' ? v : null;
+    } catch { return null; }
+  })(),
+  setUserComposerPreference: (pref) =>
+    set((state) => {
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          if (pref) sessionStorage.setItem('atlas-composer-pref', pref);
+          else sessionStorage.removeItem('atlas-composer-pref');
+        }
+      } catch {}
+      return {
+        userComposerPreference: pref,
+        composerVisibility: resolveVisibility(state.composerClaims, pref),
+      };
+    }),
+  toggleComposerCollapsed: () =>
+    set((state) => {
+      const next: ComposerVisibility = state.composerVisibility === 'compact' ? 'full' : 'compact';
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('atlas-composer-pref', next);
+        }
+      } catch {}
+      return {
+        userComposerPreference: next,
+        composerVisibility: resolveVisibility(state.composerClaims, next),
+      };
+    }),
   registerComposerClaim: (id, claim) =>
     set((state) => {
       const next = { ...state.composerClaims, [id]: claim };
-      return { composerClaims: next, composerVisibility: resolveVisibility(next) };
+      return { composerClaims: next, composerVisibility: resolveVisibility(next, state.userComposerPreference) };
     }),
   releaseComposerClaim: (id) =>
     set((state) => {
       if (!(id in state.composerClaims)) return state;
       const next = { ...state.composerClaims };
       delete next[id];
-      return { composerClaims: next, composerVisibility: resolveVisibility(next) };
+      return { composerClaims: next, composerVisibility: resolveVisibility(next, state.userComposerPreference) };
     }),
-  restoreComposer: () => set({ composerClaims: {}, composerVisibility: 'full' }),
-}));
+  restoreComposer: () => {
+    try {
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('atlas-composer-pref');
+    } catch {}
+    set({ composerClaims: {}, composerVisibility: 'full', userComposerPreference: null });
+  },
 
+}));

@@ -93,6 +93,50 @@ function flowPaletteFor(theme: ThemeMode): FlowPalette {
   };
 }
 
+/** Staged "Atlas is reviewing…" checklist used by the hydrate loading overlay.
+ *  Purely visual cadence — does not reflect actual backend pipeline steps. */
+function AnalyzeChecklist({ goldRgb, mutedText }: { goldRgb: string; mutedText: string }) {
+  const steps = ["decisions", "architecture", "unresolved tension", "dependencies"];
+  const [done, setDone] = useState(0);
+  useEffect(() => {
+    setDone(0);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i < steps.length; i++) {
+      timers.push(setTimeout(() => setDone(i), i * 700));
+    }
+    return () => { timers.forEach(clearTimeout); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", gap: 6,
+      fontFamily: "var(--app-font-mono)", fontSize: 11, lineHeight: 1.6,
+      minWidth: 180,
+    }}>
+      {steps.map((label, i) => {
+        const isDone = i < done;
+        const isActive = i === done;
+        return (
+          <div key={label} style={{
+            display: "flex", alignItems: "center", gap: 8,
+            color: isDone ? `rgba(${goldRgb},0.85)` : isActive ? `rgba(${goldRgb},0.7)` : mutedText,
+            opacity: isDone || isActive ? 1 : 0.5,
+            transition: "color 240ms ease, opacity 240ms ease",
+          }}>
+            <span style={{
+              width: 10, display: "inline-flex", justifyContent: "center",
+              animation: isActive ? "axiomFlowSpin 1.6s linear infinite" : "none",
+            }}>
+              {isDone ? "✓" : "•"}
+            </span>
+            <span>{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export type FlowNodeMeta = "must" | "should" | "could" | "wont";
 
 export interface ArchNode {
@@ -108,6 +152,10 @@ export interface ArchNode {
   moscow?: FlowNodeMeta;
   question?: string;
   strategicAnswer?: string;
+  /** Optional analyzer-supplied confidence (0–1 or 0–100). Rendered if present. */
+  confidence?: number;
+  /** Optional analyzer-supplied reasoning bullets. Rendered if present. */
+  reasons?: string[];
 }
 
 export function isNodeDefined(node: ArchNode): boolean {
@@ -1590,27 +1638,22 @@ export function AxiomFlow({
       {hydrateLoading && !flowEmpty && nodes.length > 0 && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 28,
-          background: "rgba(8,6,10,0.78)",
+          background: "rgba(8,6,10,0.82)",
           backdropFilter: "blur(3px)",
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
-          gap: 14, pointerEvents: "all",
+          gap: 10, pointerEvents: "all", padding: 20,
         }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: "50%",
-            border: `2px solid rgba(${palette.goldRgb},0.15)`,
-            borderTopColor: `rgba(${palette.goldRgb},0.72)`,
-            animation: "axiomFlowSpin 0.8s linear infinite",
-            flexShrink: 0,
-          }} />
           <span style={{
             fontFamily: "var(--app-font-mono)",
-            fontSize: 10, letterSpacing: "0.14em",
+            fontSize: 10, letterSpacing: "0.16em",
             textTransform: "uppercase",
-            color: `rgba(${palette.goldRgb},0.65)`,
+            color: `rgba(${palette.goldRgb},0.75)`,
+            marginBottom: 4,
           }}>
-            Atlas is mapping your project…
+            Atlas is reviewing…
           </span>
+          <AnalyzeChecklist goldRgb={palette.goldRgb} mutedText={palette.mutedText} />
           {hydrateError && (
             <div style={{
               maxWidth: 260, padding: "7px 12px", borderRadius: 7,
@@ -1726,9 +1769,9 @@ export function AxiomFlow({
                     animation: "axiomFlowSpin 0.8s linear infinite",
                     flexShrink: 0,
                   }} />
-                  Hydrating…
+                  Analyzing…
                 </>
-              ) : "Hydrate Flow"}
+              ) : "Analyze Project"}
             </button>
           )}
 
@@ -2159,6 +2202,36 @@ export function AxiomFlow({
             {getPivotQuestion(activeCardNode)}
           </div>
 
+          {/* Optional analyzer confidence + reasons — render only if backend supplied them. */}
+          {(typeof activeCardNode.confidence === "number" || (activeCardNode.reasons && activeCardNode.reasons.length > 0)) && (
+            <div style={{
+              marginBottom: 12, paddingBottom: 10,
+              borderBottom: `1px solid rgba(${palette.goldRgb},0.10)`,
+              fontFamily: "var(--app-font-sans)",
+            }}>
+              {typeof activeCardNode.confidence === "number" && (
+                <div style={{
+                  fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: `rgba(${palette.goldRgb},0.75)`, marginBottom: 6,
+                }}>
+                  Atlas believes · {activeCardNode.confidence <= 1
+                    ? Math.round(activeCardNode.confidence * 100)
+                    : Math.round(activeCardNode.confidence)}%
+                </div>
+              )}
+              {activeCardNode.reasons && activeCardNode.reasons.length > 0 && (
+                <ul style={{
+                  margin: 0, paddingLeft: 14,
+                  fontSize: 11, lineHeight: 1.55,
+                  color: `rgba(${palette.fgRgb},0.72)`,
+                }}>
+                  {activeCardNode.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+
           {/* Lock In Answer — replaces the legacy Mark resolved toggle */}
           <AnswerCapture
             key={activeCardNode.id}
@@ -2243,7 +2316,7 @@ export function AxiomFlow({
         {!flowLoading && projectId && (
           <button
             type="button"
-            title={hydrateLoading ? "Hydrating…" : "Refresh flow from conversations"}
+            title={hydrateLoading ? "Analyzing…" : "Update — Atlas re-reads decisions, ledger, and architecture"}
             onClick={(e) => { e.stopPropagation(); void hydrateFlow(); }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
