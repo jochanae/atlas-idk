@@ -64,6 +64,39 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Fetch recent Ask Atlas conversations (same source as the gold-clock history sheet).
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch("/api/nexus/conversations", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { conversations: [] }))
+      .then((data) => {
+        if (cancelled) return;
+        const list = (data?.conversations ?? []) as ConversationItem[];
+        setConversations(
+          list.filter((c) => {
+            const t = (c.title ?? "").trim();
+            return t !== "" && t !== "Session" && t !== "Session 1";
+          }),
+        );
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const handleConversationClick = (id: string) => {
+    if (onSelectConversation) {
+      onSelectConversation(id);
+      onClose();
+      return;
+    }
+    // Fallback: stash resume marker and navigate home; home reads on mount.
+    try { sessionStorage.setItem("atlas-resume-conversation-id", id); } catch {}
+    setLocation("/");
+    onClose();
+  };
+
+
   if (!open) return null;
 
   const filtered = projects.filter((p) => {
