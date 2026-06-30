@@ -3981,7 +3981,21 @@ export default function Home() {
                   margin: 0,
                   fontStyle: "italic",
                 }}>
-                  {globalInsightOpen ? "Ask across every thread." : greetingRef.current?.sub}
+                  {globalInsightOpen ? "Ask across every thread." : (() => {
+                    const activeProjects = ((projects ?? []) as Project[]).filter((p: Project) => p.status !== "archived");
+                    const mostRecent = [...activeProjects].sort((a, b) => {
+                      const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
+                      const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
+                      return bt - at;
+                    })[0] ?? null;
+                    return (
+                      <ResumeSubtitle
+                        mostRecent={mostRecent}
+                        fallback={greetingRef.current?.sub ?? ""}
+                        onResume={(id) => setLocation(`/project/${id}`)}
+                      />
+                    );
+                  })()}
                 </p>
                 {!globalInsightOpen && projects && projects.length > 0 && (
                   <button
