@@ -451,12 +451,8 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <PortfolioHealthDashboard onOpenProject={onOpenProject} />
       </RevealOnScroll>
 
-      {/* ACTIVE RUNS */}
-      <RevealOnScroll delayMs={80} className="bfd-col-left">
-        <ActiveRuns
-          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-        />
-      </RevealOnScroll>
+      {/* ACTIVE RUNS moved to the project drawer → Tools → Atlas Composer */}
+
 
       {/* RECENT ACTIVITY */}
       <RevealOnScroll delayMs={100} className="bfd-col-left">
