@@ -1037,6 +1037,43 @@ function RunCard({
   const [activeTab, setActiveTab] = useState<"chat" | "diff" | "shell">("chat");
   const [hovered, setHovered] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
+  const [retryingApply, setRetryingApply] = useState(false);
+  const [retryApplyError, setRetryApplyError] = useState<string | null>(null);
+
+  const handleRetryApply = async () => {
+    // Re-post every file that wasn't blocked by typecheck/partial
+    const cleanEdits = (run.fileEdits ?? []).filter(
+      (fe) => !(run.applyErrors ?? []).some((ae) => ae.path === fe.path)
+    );
+    if (cleanEdits.length === 0) return;
+    setRetryingApply(true);
+    setRetryApplyError(null);
+    try {
+      const res = await fetch("/api/github/apply-local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ files: cleanEdits, projectId: run.projectId }),
+      });
+      if (res.ok) {
+        const result = (await res.json()) as { applied?: string[] };
+        _patchRun(run.id, {
+          applyError: undefined,
+          appliedFiles: [
+            ...(run.appliedFiles ?? []),
+            ...(result.applied ?? cleanEdits.map((f) => f.path)),
+          ],
+        });
+      } else {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        setRetryApplyError(`Retry failed (${res.status}): ${body.error ?? "Server error"}`);
+      }
+    } catch (err) {
+      setRetryApplyError(`Retry failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setRetryingApply(false);
+    }
+  };
 
   // Keep expanded=true while running, but don't force-collapse when it finishes
   // (let the user decide)
@@ -1354,28 +1391,74 @@ function RunCard({
               {/* Network/server apply error banner */}
               {run.applyError && (
                 <div style={{
-                  display: "flex", alignItems: "flex-start", gap: 7,
-                  padding: "7px 10px", borderRadius: 6,
-                  background: "rgba(248,113,113,0.06)",
+                  borderRadius: 6, overflow: "hidden",
                   border: "1px solid rgba(248,113,113,0.22)",
                   marginBottom: 2,
                 }}>
-                  <span style={{
-                    flexShrink: 0, fontSize: 8.5, fontFamily: "var(--app-font-mono)",
-                    letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600,
-                    color: "rgba(248,113,113,0.8)",
-                    padding: "1px 5px", borderRadius: 3,
-                    background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
-                    marginTop: 1,
+                  {/* Banner row */}
+                  <div style={{
+                    display: "flex", alignItems: "flex-start", gap: 7,
+                    padding: "7px 10px",
+                    background: "rgba(248,113,113,0.06)",
                   }}>
-                    apply error
-                  </span>
-                  <span style={{
-                    fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
-                    color: "rgba(248,113,113,0.8)", wordBreak: "break-word",
-                  }}>
-                    {run.applyError}
-                  </span>
+                    <span style={{
+                      flexShrink: 0, fontSize: 8.5, fontFamily: "var(--app-font-mono)",
+                      letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600,
+                      color: "rgba(248,113,113,0.8)",
+                      padding: "1px 5px", borderRadius: 3,
+                      background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
+                      marginTop: 1,
+                    }}>
+                      apply error
+                    </span>
+                    <span style={{
+                      flex: 1, fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                      color: "rgba(248,113,113,0.8)", wordBreak: "break-word",
+                    }}>
+                      {run.applyError}
+                    </span>
+                    {/* Retry button */}
+                    {(run.fileEdits ?? []).some(
+                      (fe) => !(run.applyErrors ?? []).some((ae) => ae.path === fe.path)
+                    ) && (
+                      <button
+                        disabled={retryingApply}
+                        onClick={handleRetryApply}
+                        style={{
+                          flexShrink: 0,
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                          padding: "2px 8px", borderRadius: 4,
+                          fontSize: 8.5, fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.06em", fontWeight: 600, textTransform: "uppercase",
+                          background: retryingApply ? "rgba(248,113,113,0.04)" : "rgba(248,113,113,0.12)",
+                          border: "1px solid rgba(248,113,113,0.3)",
+                          color: retryingApply ? "rgba(248,113,113,0.35)" : "rgba(248,113,113,0.85)",
+                          cursor: retryingApply ? "not-allowed" : "pointer",
+                          transition: "background 120ms ease",
+                          marginTop: 1,
+                        }}
+                        onMouseEnter={(e) => { if (!retryingApply) e.currentTarget.style.background = "rgba(248,113,113,0.2)"; }}
+                        onMouseLeave={(e) => { if (!retryingApply) e.currentTarget.style.background = "rgba(248,113,113,0.12)"; }}
+                      >
+                        {retryingApply
+                          ? <><Loader size={8} style={{ animation: "ar-spin 0.8s linear infinite" }} /> retrying…</>
+                          : "retry apply"
+                        }
+                      </button>
+                    )}
+                  </div>
+                  {/* Retry-level error (if the retry itself fails) */}
+                  {retryApplyError && (
+                    <div style={{
+                      padding: "5px 10px",
+                      borderTop: "1px solid rgba(248,113,113,0.15)",
+                      background: "rgba(248,113,113,0.03)",
+                      fontSize: 10, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                      color: "rgba(248,113,113,0.7)", wordBreak: "break-word",
+                    }}>
+                      {retryApplyError}
+                    </div>
+                  )}
                 </div>
               )}
 
