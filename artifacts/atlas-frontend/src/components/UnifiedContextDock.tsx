@@ -175,15 +175,23 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const [showAtlasHub, setShowAtlasHub] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
 
-  // Layout reservation is STABLE. The dock's visible state animates via
-  // transform/opacity on the dock element itself (see render below) — it must
-  // never change `--atlas-dock-height`, because consumers use that var for
-  // padding-bottom, and any change there shifts scrollHeight, fires a
-  // synthetic scroll, which feeds back into useDockVisibility and oscillates.
+  // `--atlas-dock-height` stays STABLE at 64px (consumers that float ABOVE the
+  // dock — overlays, action sheets — anchor to it and must not oscillate).
+  // `--atlas-dock-reserved` tracks the dock's currently-occupied vertical
+  // space: 64px when visible, 18px (peek crescent) when collapsed. Workspace
+  // content uses this for padding-bottom so freed space collapses naturally
+  // when the dock hides, instead of leaving a dead void above the footer.
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.documentElement.style.setProperty("--atlas-dock-height", "64px");
   }, []);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.style.setProperty(
+      "--atlas-dock-reserved",
+      dockVisible ? "64px" : "18px",
+    );
+  }, [dockVisible]);
 
   useEffect(() => {
     if (showAtlasHub) {
