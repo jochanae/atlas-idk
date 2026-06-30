@@ -1,12 +1,3 @@
-## Decision: Leave Homepage Sketch as-is (Option A)
-
-No code changes. Just record the decision and long-term direction so we don't relitigate it next session.
-
-### What to save
-
-Create `mem://design/sketch-direction.md`:
-
-```
 ---
 name: Sketch direction
 description: Sketch is a design-synthesis tool, not a drawing app. Homepage Sketch stays as-is for now; long-term it becomes conversation-driven (Atlas infers type).
@@ -23,16 +14,3 @@ type: design
 **Framing rule:** Sketch is not "draw something." It is "turn this conversation into a visual design direction." Copy and affordances should eventually reflect that, but only after the Workspace synthesis capability matures.
 
 **Do not propose:** removing homepage Sketch, adding a category sheet on tap, renaming Sketch to "Visualize this project" yet, or any other reshuffle until the Workspace version is mature.
-```
-
-### Index update
-
-Add one line under `## Memories` in `mem://index.md`:
-
-```
-- [Sketch direction](mem://design/sketch-direction) — Sketch = design synthesis, not drawing. Homepage Sketch stays as-is; long-term conversation-driven (Atlas infers type). No category pickers.
-```
-
-### Out of scope
-
-No edits to `ComposerActions.tsx`, `home.tsx`, `workspace.tsx`, or `SketchComposerSheet.tsx`.
