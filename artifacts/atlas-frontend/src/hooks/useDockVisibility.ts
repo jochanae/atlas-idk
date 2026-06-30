@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
  * top of the gold "A" remains visible. peek() force-restores on tap.
  */
 
-const SCROLL_THRESH = 8;
+const SCROLL_THRESH = 24;
 const TOP_EPS = 8;
 
 type Listener = () => void;
