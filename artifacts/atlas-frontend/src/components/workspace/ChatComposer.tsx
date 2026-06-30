@@ -855,7 +855,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}
                 title={chatPending ? "Stop" : "Send"}
                 style={{
-                  minWidth: 44, minHeight: 44, padding: 3,
+                  minWidth: isCompact ? 30 : 44, minHeight: isCompact ? 30 : 44, padding: 3,
                   background: chatPending
                     ? "var(--atlas-ember)"
                     : ((hasInput || hasAttachments) && !sendPreparingSession ? "var(--atlas-ember)" : "transparent"),
