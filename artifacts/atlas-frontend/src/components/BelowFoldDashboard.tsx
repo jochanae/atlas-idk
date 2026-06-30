@@ -3,7 +3,7 @@ import { PortfolioHealthDashboard } from "./PortfolioHealthDashboard";
 import { CognitiveMomentumCard } from "./home/CognitiveMomentumCard";
 import { useProjectState } from "../hooks/useProjectState";
 import { QuickEditRow, type QuickEditProjectOption } from "./home/QuickEditRow";
-import { ActiveRuns } from "./home/ActiveRuns";
+// ActiveRuns moved into AtlasComposerSheet (opened from project drawer)
 import { Resume } from "./Resume";
 import { useAuth } from "../hooks/useAuth";
 
