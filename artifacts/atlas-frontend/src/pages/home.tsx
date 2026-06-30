@@ -1899,7 +1899,7 @@ export default function Home() {
   type SendTarget = "workspace" | "ask-atlas" | "parking";
   const [sendTo, setSendTo] = useState<SendTarget>("workspace");
   const [showSendToPicker, setShowSendToPicker] = useState(false);
-  const [showProjectSubPicker, setShowProjectSubPicker] = useState(false);
+  
   const sendToRef = useRef<SendTarget>("workspace");
   useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
   const [askAtlasOpen, setAskAtlasOpen] = useState(false);
