@@ -4627,6 +4627,42 @@ export default function Home() {
               </div>
             )}
 
+            {/* Ask Atlas mode banner — fades in while toggle is ON.
+                Mirrors the workspace Plan Mode banner pattern. */}
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
+                marginBottom: sendTo === "ask-atlas" ? 6 : 0,
+                height: sendTo === "ask-atlas" ? "auto" : 0,
+                overflow: "hidden",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
+                color: "var(--atlas-gold)",
+                opacity: sendTo === "ask-atlas" ? 0.85 : 0,
+                transition: "opacity 1.2s ease-out, margin-bottom 200ms ease",
+                pointerEvents: "none",
+              }}
+            >
+              <span style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: "var(--atlas-gold)",
+                boxShadow: "0 0 6px rgba(201,162,76,0.7)",
+              }} />
+              Portfolio Thinking · Not Building
+            </div>
+            {sendTo === "ask-atlas" && askAtlasHelperVisible && (
+              <div style={{
+                textAlign: "center", marginBottom: 6,
+                fontFamily: "var(--app-font-sans)", fontSize: 11, lineHeight: 1.4,
+                color: "var(--atlas-muted)", opacity: 0.8,
+                padding: "0 12px",
+              }}>
+                Think freely across your portfolio. Nothing here modifies a project until you continue in a workspace.
+              </div>
+            )}
+
             <div style={{
               position: "relative",
               borderRadius: 14,
