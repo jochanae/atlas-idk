@@ -7072,7 +7072,7 @@ export default function Workspace() {
       )}
       {!showIntake && (
     <div
-      style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "var(--atlas-bg)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(var(--atlas-dock-height) + env(safe-area-inset-bottom, 0px))" : 0 }}
+      style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "var(--atlas-bg)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(var(--atlas-dock-reserved, var(--atlas-dock-height)) + env(safe-area-inset-bottom, 0px))" : 0, transition: "padding-bottom 240ms var(--ease-standard, ease)" }}
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }}
       onDrop={async (e) => {
