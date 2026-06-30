@@ -5078,25 +5078,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Resume Conversation — conversation-first, single card, signal-gated.
-              Replaces the old "last touched · N open" pill + scroll chevron.
-              Only renders when the most-recent project has genuine unfinished
-              work (active session, parked items, or fresh activity <6h). */}
-          {!globalInsightOpen && projects && projects.length > 0 && (() => {
-            const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
-            const mostRecent = [...activeProjects].sort((a, b) => {
-              const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
-              const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
-              return bt - at;
-            })[0] ?? null;
-            return (
-              <ResumeConversationCard
-                mostRecent={mostRecent}
-                isParchment={isParchment}
-                onResume={(id) => setLocation(`/project/${id}`)}
-              />
-            );
-          })()}
+          {/* Resume surfacing moved into the hero subtitle (see ResumeSubtitle). */}
+
 
 
 
