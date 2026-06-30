@@ -2178,13 +2178,40 @@ export function AxiomFlow({
         {!flowLoading && !flowEmpty && nodes.length > 0 && (
           <button
             type="button"
-            title="Center map (double-tap also works)"
+            title="Tap: center map · Long-press: reset to Atlas's auto layout"
             onClick={(e) => {
               e.stopPropagation();
+              if (longPressFiredRef.current) {
+                // Long-press already handled this gesture — swallow the click.
+                longPressFiredRef.current = false;
+                return;
+              }
               haptics.tap();
               setCenterFlash(true);
               setTimeout(() => setCenterFlash(false), 350);
               resetView();
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              longPressFiredRef.current = false;
+              if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+              longPressTimerRef.current = setTimeout(() => {
+                longPressFiredRef.current = true;
+                resetLayoutToAuto();
+              }, 600);
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
+            }}
+            onPointerLeave={() => {
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
@@ -2210,6 +2237,7 @@ export function AxiomFlow({
           >
             ⊙ Center
           </button>
+
         )}
         {/* Refresh / re-hydrate button — always accessible even in drill-down mode */}
         {!flowLoading && projectId && (
