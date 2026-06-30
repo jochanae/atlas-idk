@@ -20,6 +20,7 @@ import CodePage from "./pages/code";
 import ConnectorsPage from "./pages/connectors";
 import Vault from "./pages/vault";
 import MasterMap from "./pages/master-map";
+import RunPage from "./pages/run";
 
 import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
@@ -229,6 +230,7 @@ function Router() {
           <Route path="/map" component={MasterMap} />
           <Route path="/master-map" component={MasterMap} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
+          <Route path="/runs/:id" component={RunPage} />
           <Route component={NotFound} />
         </Switch>
       )}
