@@ -524,6 +524,16 @@ body[data-axiom-thread="active"] .atlas-input-shell {
   }
 }
 
+.atlas-home-chat-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  align-items: center;
+}
+
 body[data-axiom-global-insight="true"] .atlas-home-chat-column,
 body[data-axiom-global-insight="true"] .atlas-home-chat-inner {
   min-height: 0;
