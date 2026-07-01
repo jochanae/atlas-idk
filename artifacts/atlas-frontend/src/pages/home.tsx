@@ -4582,7 +4582,25 @@ export default function Home() {
                   <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
                 </div>
               )}
-            {nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading && !askAtlasConversationActive ? (
+            {threadLoading && activeConversationId ? (
+              <div aria-busy="true" aria-label="Loading conversation" style={{ display: "flex", flexDirection: "column", gap: 12, padding: "16px 4px" }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{
+                    display: "flex",
+                    justifyContent: i % 2 === 0 ? "flex-start" : "flex-end",
+                  }}>
+                    <div style={{
+                      width: i === 1 ? "62%" : i === 2 ? "40%" : "78%",
+                      height: i === 1 ? 44 : 60,
+                      borderRadius: 12,
+                      background: "linear-gradient(90deg, rgba(201,162,76,0.06) 0%, rgba(201,162,76,0.14) 50%, rgba(201,162,76,0.06) 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "atlasSkeletonShimmer 1400ms ease-in-out infinite",
+                    }} />
+                  </div>
+                ))}
+              </div>
+            ) : nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading && !askAtlasConversationActive ? (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
                 <button
                   type="button"
