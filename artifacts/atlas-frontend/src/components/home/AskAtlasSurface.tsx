@@ -867,14 +867,34 @@ export function AskAtlasSurface({
       )}
       </div>
 
-      {/* Composer — minimal, transparent. Cursor + action row only. Hidden when home dock acts as composer. */}
+      {/* Composer — transparent. Label above, textarea in middle, action row below. Hidden when home dock acts as composer. */}
       {!hideComposer && <div
         style={{
           flexShrink: 0,
           padding: "12px 14px calc(14px + env(safe-area-inset-bottom, 0px))",
           background: "transparent",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
         }}
       >
+        {/* Portfolio Thinking · Not Building label */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: isParchment ? "rgba(146,64,14,0.75)" : "rgba(212,175,55,0.72)",
+            paddingBottom: 2,
+          }}
+        >
+          <span>Portfolio Thinking · Not Building</span>
+        </div>
         <div
           className="atlas-composer-live"
           style={{
@@ -882,21 +902,14 @@ export function AskAtlasSurface({
             display: "flex",
             flexDirection: "column",
             gap: 8,
-            background: isParchment
-              ? "rgba(255,255,255,0.55)"
-              : "rgba(20,17,14,0.55)",
+            background: "transparent",
             border: isParchment
               ? "1px solid rgba(180,83,9,0.30)"
               : "1px solid rgba(212,175,55,0.32)",
             borderRadius: 16,
-            padding: "10px 12px 8px",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            boxShadow: isParchment
-              ? "0 2px 12px rgba(146,64,14,0.08)"
-              : "0 2px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,175,55,0.06) inset",
+            padding: "10px 12px",
             transition: "border-color 200ms ease, box-shadow 200ms ease",
-            minHeight: 96,
+            minHeight: 72,
             ...getAuraVars("axiom", isParchment),
           } as CSSProperties}
         >
