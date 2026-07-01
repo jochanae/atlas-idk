@@ -69,6 +69,20 @@ interface Intelligence {
     openQuestionEntries: { id: number; title: string; summary: string | null; type: string; createdAt: string }[];
   };
   hasFlow: boolean;
+  stack?: ProjectStackSummary | null;
+}
+
+interface ProjectStackSummary {
+  frontend: string | null;
+  backend: string | null;
+  database: string | null;
+  hosting: string | null;
+  auth: string | null;
+  integrations: string[];
+  repo: string | null;
+  language: string | null;
+  packageManager: string | null;
+  lastUpdatedAt: string | null;
 }
 
 // Map readiness dimensions → user-facing labels
