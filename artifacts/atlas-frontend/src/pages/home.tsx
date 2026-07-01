@@ -2328,6 +2328,11 @@ export default function Home() {
     setDepth("ambient");
   }, [activeConversationId, callGlobalInsightMode, clearAskAtlasPortfolioTransition, nexusChat, setDepth]);
 
+  useEffect(() => {
+    if (!globalInsightOpen || !activeConversationId) return;
+    void callGlobalInsightMode(true);
+  }, [activeConversationId, callGlobalInsightMode, globalInsightOpen]);
+
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (globalInsightOpen) {
