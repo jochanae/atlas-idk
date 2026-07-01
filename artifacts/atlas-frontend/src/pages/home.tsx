@@ -1988,6 +1988,10 @@ export default function Home() {
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [askAtlasConversationActive, askAtlasChat.messages, askAtlasChat.isStreaming]);
+  // When entering ask-atlas mode, wipe any nexus messages so the layouts don't conflict.
+  useEffect(() => {
+    if (sendTo === "ask-atlas") nexusChat.clearMessages();
+  }, [sendTo, nexusChat.clearMessages]);
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
   // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
@@ -4022,27 +4026,18 @@ export default function Home() {
             }} />
 
             {/* Greeting + inline Ask Atlas conversation — crossfade in the hero slot */}
-            {nexusChat.messages.length === 0 && !showOverviewSheet && (
+            {nexusChat.messages.length === 0 && !showOverviewSheet && !askAtlasConversationActive && (
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
-                marginTop: askAtlasConversationActive ? 24 : 72,
+                marginTop: 72,
                 position: "relative",
                 zIndex: 1,
-                minHeight: askAtlasConversationActive ? 120 : undefined,
-                transition: "margin-top 280ms cubic-bezier(0.22, 1, 0.36, 1)",
               }}>
                 <div style={{
-                  opacity: askAtlasConversationActive ? 0 : (inputFocused ? 0.3 : 1),
-                  transform: askAtlasConversationActive
-                    ? "translateY(-10px)"
-                    : (inputFocused ? "translateY(-12px)" : "translateY(0)"),
+                  opacity: inputFocused ? 0.3 : 1,
+                  transform: inputFocused ? "translateY(-12px)" : "translateY(0)",
                   transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
-                  position: askAtlasConversationActive ? "absolute" : "relative",
-                  width: "100%",
-                  pointerEvents: askAtlasConversationActive ? "none" : "auto",
-                  top: 0,
-                  left: 0,
                 }}>
                   <h1 style={{
                     fontSize: "var(--ts-display-xl)", fontWeight: 300,
@@ -4115,126 +4110,125 @@ export default function Home() {
                   )}
                 </div>
 
-                <div
-                  ref={askAtlasScrollRef}
-                  aria-live="polite"
-                  style={{
-                    opacity: askAtlasConversationActive ? 1 : 0,
-                    transform: askAtlasConversationActive ? "translateY(0)" : "translateY(10px)",
-                    transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
-                    position: askAtlasConversationActive ? "relative" : "absolute",
-                    width: "100%",
-                    top: 0,
-                    left: 0,
-                    pointerEvents: askAtlasConversationActive ? "auto" : "none",
-                    textAlign: "left",
-                    maxHeight: "min(52vh, 480px)",
-                    overflowY: "auto",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 12,
-                    padding: "0 4px",
-                    scrollbarWidth: "none",
-                    msOverflowStyle: "none",
-                  }}
-                >
-                  {askAtlasChat.messages.map((m, i) => {
-                    const isUser = m.role === "user";
-                    const lastAssistant = !isUser && i === askAtlasChat.messages.length - 1;
-                    const showHandoff =
-                      !isUser && hasBuildIntent(m.content) && !askAtlasChat.isStreaming;
-                    const isWaiting = lastAssistant && askAtlasChat.isStreaming && !m.content;
-                    return (
-                      <div
-                        key={m.id ?? i}
-                        className="ask-atlas-inline-msg"
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                          alignItems: isUser ? "flex-end" : "flex-start",
-                        }}
-                      >
-                        <div style={{
-                          maxWidth: "92%",
-                          padding: isUser ? "9px 12px" : "2px 0",
-                          borderRadius: isUser ? 12 : 0,
-                          background: isUser ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)" : "transparent",
-                          color: isUser ? "var(--atlas-fg)" : "var(--atlas-fg)",
-                          border: isUser ? "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)" : "none",
-                          fontSize: "var(--ts-body)",
-                          lineHeight: 1.6,
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          opacity: isUser ? 0.96 : 0.92,
-                        }}>
-                          {isWaiting ? (
-                            <span aria-label="Atlas is thinking" style={{ display: "inline-flex", gap: 4, alignItems: "center", height: 18 }}>
-                              {[0, 1, 2].map((n) => (
-                                <span
-                                  key={n}
-                                  className="ask-atlas-inline-dot"
-                                  style={{
-                                    width: 5,
-                                    height: 5,
-                                    borderRadius: 999,
-                                    background: "var(--atlas-gold)",
-                                    display: "inline-block",
-                                    animationDelay: `${n * 140}ms`,
-                                  }}
-                                />
-                              ))}
-                            </span>
-                          ) : m.content}
-                        </div>
-                        {showHandoff && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const seed = askAtlasHandoffSeed;
-                              askAtlasChat.abort();
-                              askAtlasChat.clearMessages();
-                              setSendTo("workspace");
-                              sendToRef.current = "workspace";
-                              setInput(seed);
-                              window.setTimeout(() => { void handleSubmit(seed); }, 40);
-                            }}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              padding: "7px 12px",
-                              borderRadius: 999,
-                              background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
-                              color: "var(--atlas-gold)",
-                              border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
-                              cursor: "pointer",
-                              fontFamily: "var(--app-font-mono)",
-                              fontSize: 10.5,
-                              letterSpacing: "0.1em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Continue in Workspace
-                            <ArrowRight size={12} strokeWidth={2} />
-                          </button>
-                        )}
+              </div>
+            )}
+
+            {/* Ask Atlas inline conversation — independent of nexusChat state */}
+            {askAtlasConversationActive && !showOverviewSheet && (
+              <div
+                ref={askAtlasScrollRef}
+                aria-live="polite"
+                style={{
+                  textAlign: "left",
+                  maxHeight: "min(52vh, 480px)",
+                  overflowY: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                  padding: "24px 4px 8px",
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  marginBottom: 24,
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                {askAtlasChat.messages.map((m, i) => {
+                  const isUser = m.role === "user";
+                  const lastAssistant = !isUser && i === askAtlasChat.messages.length - 1;
+                  const showHandoff =
+                    !isUser && hasBuildIntent(m.content) && !askAtlasChat.isStreaming;
+                  const isWaiting = lastAssistant && askAtlasChat.isStreaming && !m.content;
+                  return (
+                    <div
+                      key={m.id ?? i}
+                      className="ask-atlas-inline-msg"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                        alignItems: isUser ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <div style={{
+                        maxWidth: "92%",
+                        padding: isUser ? "9px 12px" : "2px 0",
+                        borderRadius: isUser ? 12 : 0,
+                        background: isUser ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)" : "transparent",
+                        color: "var(--atlas-fg)",
+                        border: isUser ? "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)" : "none",
+                        fontSize: "var(--ts-body)",
+                        lineHeight: 1.6,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        opacity: isUser ? 0.96 : 0.92,
+                      }}>
+                        {isWaiting ? (
+                          <span aria-label="Atlas is thinking" style={{ display: "inline-flex", gap: 4, alignItems: "center", height: 18 }}>
+                            {[0, 1, 2].map((n) => (
+                              <span
+                                key={n}
+                                className="ask-atlas-inline-dot"
+                                style={{
+                                  width: 5,
+                                  height: 5,
+                                  borderRadius: 999,
+                                  background: "var(--atlas-gold)",
+                                  display: "inline-block",
+                                  animationDelay: `${n * 140}ms`,
+                                }}
+                              />
+                            ))}
+                          </span>
+                        ) : m.content}
                       </div>
-                    );
-                  })}
-                  {askAtlasChat.isPending && askAtlasChat.messages.length > 0 && !askAtlasChat.isStreaming && (
-                    <div style={{
-                      fontSize: "var(--ts-caption)",
-                      color: "var(--atlas-muted)",
-                      fontFamily: "var(--app-font-mono)",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      opacity: 0.6,
-                    }}>
-                      Capturing intent…
+                      {showHandoff && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const seed = askAtlasHandoffSeed;
+                            askAtlasChat.abort();
+                            askAtlasChat.clearMessages();
+                            setSendTo("workspace");
+                            sendToRef.current = "workspace";
+                            setInput(seed);
+                            window.setTimeout(() => { void handleSubmit(seed); }, 40);
+                          }}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "7px 12px",
+                            borderRadius: 999,
+                            background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
+                            color: "var(--atlas-gold)",
+                            border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+                            cursor: "pointer",
+                            fontFamily: "var(--app-font-mono)",
+                            fontSize: 10.5,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Continue in Workspace
+                          <ArrowRight size={12} strokeWidth={2} />
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })}
+                {askAtlasChat.isPending && askAtlasChat.messages.length > 0 && !askAtlasChat.isStreaming && (
+                  <div style={{
+                    fontSize: "var(--ts-caption)",
+                    color: "var(--atlas-muted)",
+                    fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    opacity: 0.6,
+                  }}>
+                    Capturing intent…
+                  </div>
+                )}
               </div>
             )}
 
@@ -4978,13 +4972,12 @@ export default function Home() {
                 title={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
                 aria-label={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
                 aria-pressed={sendTo === "ask-atlas"}
-                onPointerDown={(e) => { e.preventDefault(); }}
-                onMouseDown={(e) => { e.preventDefault(); }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSendTo((prev) => {
                     const next: SendTarget = prev === "ask-atlas" ? "workspace" : "ask-atlas";
                     if (next === "ask-atlas") {
+                      nexusChat.clearMessages();
                       try {
                         if (!localStorage.getItem("atlas-ask-atlas-helped")) {
                           setAskAtlasHelperVisible(true);
