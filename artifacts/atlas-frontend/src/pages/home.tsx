@@ -97,7 +97,7 @@ const GLOBAL_INSIGHT_PORTFOLIO_SEED =
 
 function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
   // Header title rotation stripped (Pass 1). Header is permanently
-  // "Global Insight"; the project name lives in the CommitPill only.
+  // "Ask Atlas"; the project name lives in the CommitPill only.
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
       <span
@@ -112,7 +112,7 @@ function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
         }}
       />
       <span
-        title="Global Insight"
+        title="Ask Atlas"
         style={{
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -128,7 +128,7 @@ function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
           opacity: 0.92,
         }}
       >
-        Global Insight
+        Ask Atlas
       </span>
     </div>
   );
@@ -1989,7 +1989,7 @@ export default function Home() {
     projectContext: null,
   });
   const askAtlasScrollRef = useRef<HTMLDivElement | null>(null);
-  const askAtlasConversationActive = sendTo === "ask-atlas" && askAtlasChat.messages.length > 0;
+  const askAtlasConversationActive = false;
   const askAtlasBusy = sendTo === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending);
   const dockVisible = useDockVisibility();
   const clearAskAtlasPortfolioTransition = useCallback(() => {
@@ -2130,7 +2130,7 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
-  // ── Global Insight mode ────────────────────────────────────────────────────────
+  // ── Ask Atlas mode ────────────────────────────────────────────────────────
   const [globalInsightOpen, setGlobalInsightOpen] = useState(false);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
@@ -2284,34 +2284,49 @@ export default function Home() {
     } catch {}
   }, [activeConversationId]);
 
+  const enterAskAtlasMode = useCallback(() => {
+    setShowOverviewSheet(false);
+    setShowHistory(false);
+    setShowFocusPicker(false);
+    setSendTo("ask-atlas");
+    sendToRef.current = "ask-atlas";
+    setGlobalInsightOpen(true);
+    setDepth("active");
+    void callGlobalInsightMode(true);
+    window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
+  }, [callGlobalInsightMode, setDepth]);
+
+  const exitAskAtlasMode = useCallback(() => {
+    void callGlobalInsightMode(false);
+    setGlobalInsightOpen(false);
+    setSendTo("workspace");
+    sendToRef.current = "workspace";
+    setShowFocusPicker(false);
+    setAskAtlasHelperVisible(false);
+    clearAskAtlasPortfolioTransition();
+    try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+    try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+    conversationThreadRequestRef.current = null;
+    thinkOutLoudInlineRef.current = false;
+    setActiveConversationId(null);
+    nexusChat.setMessages([]);
+    setEarnedTitle(null);
+    setDepth("ambient");
+  }, [callGlobalInsightMode, clearAskAtlasPortfolioTransition, nexusChat.setMessages, setDepth]);
+
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (globalInsightOpen) {
-      // Exit Global Insight → return to the ambient homepage, NOT a stranded
-      // "Untitled conversation" view. Clear the active thread and message
-      // stream so the hero/quick-actions come back.
-      void callGlobalInsightMode(false);
-      setGlobalInsightOpen(false);
-      try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
-      try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
-      conversationThreadRequestRef.current = null;
-      thinkOutLoudInlineRef.current = false;
-      setActiveConversationId(null);
-      nexusChat.setMessages([]);
-      setEarnedTitle(null);
-      setDepth("ambient");
+      // Exit Ask Atlas → return to the ambient homepage, not a stranded thread.
+      exitAskAtlasMode();
     } else {
-      setShowOverviewSheet(false);
-      setShowHistory(false);
-      setShowFocusPicker(false);
-      setGlobalInsightOpen(true);
-      window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
-      toast("Global Insight · Strategic view", {
+      enterAskAtlasMode();
+      toast("Ask Atlas · Strategic view", {
         className: "atlas-toast-premium",
         description: "Macro view across every project.",
       });
     }
-  }, [globalInsightOpen, vibrate, callGlobalInsightMode, nexusChat.setMessages, setDepth]);
+  }, [globalInsightOpen, vibrate, enterAskAtlasMode, exitAskAtlasMode]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
@@ -3008,12 +3023,14 @@ export default function Home() {
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
     if (sendToRef.current === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending)) return;
     submitInFlightRef.current = true;
-    // Composer-mode routing — Ask Atlas streams inline; workspace falls through
-    // to the standard create/inline-send fork below.
+    // Composer-mode routing — Ask Atlas uses the Nexus thread surface.
     const routeTarget = sendToRef.current;
-    if (routeTarget === "ask-atlas" && text) {
-      const isFirstAskAtlasSubmit = askAtlasChat.messages.length === 0;
-      if (isFirstAskAtlasSubmit) {
+    const shouldStayOnHome = options?.forceStayOnHome ?? routeTarget === "ask-atlas";
+    if (shouldStayOnHome && routeTarget === "ask-atlas") {
+      if (!globalInsightOpen) {
+        enterAskAtlasMode();
+      }
+      if (nexusChat.messages.length === 0) {
         const statusLine =
           ASK_ATLAS_PORTFOLIO_STATUS_LINES[
             Math.floor(Math.random() * ASK_ATLAS_PORTFOLIO_STATUS_LINES.length)
@@ -3021,15 +3038,8 @@ export default function Home() {
         askAtlasPortfolioTransitionStartedRef.current = Date.now();
         setAskAtlasPortfolioStatus({ phase: "visible", message: statusLine });
       }
-      setInput("");
-      setAttachedFiles([]);
       setAskAtlasHelperVisible(false);
-      void askAtlasChat.send({ text }).finally(() => {
-        submitInFlightRef.current = false;
-      });
-      return;
     }
-    const shouldStayOnHome = options?.forceStayOnHome ?? false;
     if (shouldStayOnHome && !globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
     }
@@ -3187,11 +3197,13 @@ export default function Home() {
     projects,
     queryClient,
     nexusChat.send,
+    nexusChat.messages.length,
     askAtlasChat.send,
     askAtlasChat.messages.length,
     askAtlasChat.isStreaming,
     askAtlasChat.isPending,
     resolveFocusProjectIdForTurn,
+    enterAskAtlasMode,
     setActiveProjectId,
     setLocation,
   ]);
@@ -4326,7 +4338,7 @@ export default function Home() {
                     backgroundClip: globalInsightOpen ? "text" : undefined,
                     filter: globalInsightOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                   }}>
-                    {globalInsightOpen ? "Global Insight." : greetingRef.current?.head}
+                    {globalInsightOpen ? "Ask Atlas." : greetingRef.current?.head}
                   </h1>
                   <p style={{
                     fontSize: "var(--ts-body)" as any,
@@ -5243,7 +5255,7 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {sendTo === "ask-atlas" ? "Ask Atlas anything..." : globalInsightOpen ? "Ask the global view..." : placeholder}
+                  {sendTo === "ask-atlas" ? "Ask Atlas anything..." : globalInsightOpen ? "Ask Atlas anything..." : placeholder}
                   {!globalInsightOpen && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
@@ -5365,6 +5377,7 @@ export default function Home() {
                   setSendTo((prev) => {
                     const next: SendTarget = prev === "ask-atlas" ? "workspace" : "ask-atlas";
                     if (next === "ask-atlas") {
+                      enterAskAtlasMode();
                       try {
                         if (!localStorage.getItem("atlas-ask-atlas-helped")) {
                           setAskAtlasHelperVisible(true);
@@ -5375,9 +5388,7 @@ export default function Home() {
                       // Toggle OFF: hide the Ask Atlas thread but preserve it
                       // so toggling back ON restores the conversation. Abort
                       // any in-flight stream so it doesn't ghost-complete.
-                      setAskAtlasHelperVisible(false);
-                      clearAskAtlasPortfolioTransition();
-                      askAtlasChat.abort();
+                      exitAskAtlasMode();
                     }
                     return next;
                   });
@@ -5816,56 +5827,53 @@ export default function Home() {
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={homeUnifiedSubheader}
         focusChip={
-          /* FOCUS chip: one job only — "where is Atlas focused?"
-             Memory is the HUD's responsibility, not this chip's. */
           <button
             type="button"
-            title="Focus scope"
-            aria-label={`Focus scope: ${focusChipLabel}`}
-            aria-expanded={showFocusPicker}
-            onClick={() => setShowFocusPicker((open) => !open)}
+            title="Exit Ask Atlas mode"
+            aria-label="Exit Ask Atlas mode"
+            aria-pressed={globalInsightOpen}
+            onClick={exitAskAtlasMode}
             style={{
               height: 34,
-              maxWidth: 178,
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
               padding: "0 10px",
               borderRadius: 999,
-              background: resolvedPortfolioFocus === "project"
-                ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
-                : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-              border: resolvedPortfolioFocus === "project"
-                ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
-                : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-              color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
+              background: "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))",
+              border: "1px solid rgba(201,162,76,0.55)",
+              boxShadow: "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)",
+              color: "var(--atlas-gold)",
               cursor: "pointer",
               fontFamily: "var(--app-font-mono)",
               fontSize: 10,
-              letterSpacing: "0.06em",
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
               whiteSpace: "nowrap",
               minWidth: 0,
               flexShrink: 1,
               WebkitTapHighlightColor: "transparent",
-              transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+              transition: "all 180ms ease",
             }}
           >
-            <Crosshair
+            <Globe
               size={13}
-              strokeWidth={resolvedPortfolioFocus === "project" ? 2.2 : 1.6}
+              strokeWidth={1.8}
               style={{
                 flexShrink: 0,
-                filter: resolvedPortfolioFocus === "project"
-                  ? "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-phosphor) 60%, transparent))"
-                  : "none",
-                transition: "stroke-width 160ms ease, filter 160ms ease",
+                filter: "drop-shadow(0 0 4px rgba(201,162,76,0.75))",
+                transition: "filter 180ms ease",
               }}
             />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-              {focusChipLabel}
+              Ask Atlas
             </span>
-            <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
+            <span style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: "var(--atlas-gold)",
+              boxShadow: "0 0 6px rgba(201,162,76,0.85)",
+              flexShrink: 0,
+            }} />
           </button>
         }
         onMenuAction={(action) => {
@@ -5879,34 +5887,6 @@ export default function Home() {
           toast("Open a project to use that");
         }}
       />
-
-      {globalInsightOpen && showFocusPicker && (
-        <>
-          <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-            <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus scope</div>
-            <button
-              type="button"
-              onClick={handleHomeFocusAllProjects}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-              All Projects
-            </button>
-            {selectableFocusProjects.map((p: Project) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleHomeFocusSelect(p.id)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
 
       {/* Below-the-fold workspace — now lives inside the Briefcase drawer. */}
       {showOverviewSheet && (
