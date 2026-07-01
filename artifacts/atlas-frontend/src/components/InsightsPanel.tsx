@@ -563,4 +563,214 @@ function QuestionRow({ text }: { text: string }) {
   );
 }
 
+
+// ── Explain Build Readiness drawer ───────────────────────────────────────────
+
+function ReadinessDrawer({
+  row,
+  intel,
+  onClose,
+}: {
+  row: ExplainRow;
+  intel: Intelligence;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  const isOverall = row.key === "__overall";
+  const observations = isOverall ? buildOverallObservations(intel) : buildDimensionObservations(row, intel);
+  const missing = isOverall ? buildOverallMissing(intel) : buildDimensionMissing(row, intel);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "color-mix(in oklab, #000 55%, transparent)",
+        zIndex: 200,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Explain ${row.label}`}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(560px, 100%)",
+          maxHeight: "82vh",
+          background: "var(--atlas-bg)",
+          borderTop: `1px solid ${BORDER}`,
+          borderTopLeftRadius: 18,
+          borderTopRightRadius: 18,
+          boxShadow: "0 -12px 40px rgba(0,0,0,0.35)",
+          display: "flex",
+          flexDirection: "column",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "color-mix(in oklab, var(--atlas-fg) 18%, transparent)" }} />
+        </div>
+
+        <div style={{ padding: "8px 20px 14px", borderBottom: `1px solid ${BORDER}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: MUTED, fontFamily: MONO, marginBottom: 4 }}>
+                Why this score
+              </div>
+              <div style={{ fontSize: 16, color: FG, fontFamily: SANS, fontWeight: 500 }}>{row.label}</div>
+            </div>
+            <div style={{ fontSize: 22, color: GOLD, fontFamily: MONO, fontVariantNumeric: "tabular-nums" }}>
+              {Math.round(row.score)}%
+            </div>
+          </div>
+          {row.note && (
+            <div style={{ fontSize: 12, color: MUTED, fontFamily: SANS, marginTop: 6 }}>{row.note}</div>
+          )}
+        </div>
+
+        <div style={{ overflowY: "auto", padding: "16px 20px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+          <DrawerBlock title="What Atlas is seeing" items={observations} emptyText="No observations recorded yet." />
+          <DrawerBlock title="What would raise this" items={missing} emptyText="Nothing missing — this dimension is solid." accent="warn" />
+        </div>
+
+        <div style={{ padding: "10px 20px 14px", borderTop: `1px solid ${BORDER}`, display: "flex", justifyContent: "flex-end" }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: `1px solid ${BORDER}`,
+              color: FG,
+              fontFamily: SANS,
+              fontSize: 12.5,
+              padding: "8px 14px",
+              borderRadius: 8,
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DrawerBlock({
+  title,
+  items,
+  emptyText,
+  accent,
+}: {
+  title: string;
+  items: string[];
+  emptyText: string;
+  accent?: "warn";
+}) {
+  const dotColor = accent === "warn" ? "rgba(201,162,76,0.9)" : "color-mix(in oklab, var(--atlas-fg) 50%, transparent)";
+  return (
+    <div>
+      <div style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: MUTED, fontFamily: MONO, marginBottom: 8 }}>
+        {title}
+      </div>
+      {items.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: MUTED, fontFamily: SANS, fontStyle: "italic" }}>{emptyText}</div>
+      ) : (
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+          {items.map((t, i) => (
+            <li key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: FG, fontFamily: SANS, lineHeight: 1.5 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0, marginTop: 7 }} />
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function buildDimensionObservations(row: ExplainRow, intel: Intelligence): string[] {
+  const out: string[] = [];
+  if (row.evidence) out.push(row.evidence);
+  const ev = intel.health.evidence;
+  if (row.key === "activity" && ev) {
+    out.push(`${ev.conversationsLast7Days} conversation${ev.conversationsLast7Days === 1 ? "" : "s"} in the last 7 days.`);
+    if (ev.openBlockers > 0) out.push(`${ev.openBlockers} open blocker${ev.openBlockers === 1 ? "" : "s"} in the ledger.`);
+  }
+  if (row.key === "strategy") {
+    out.push(`DNA clarity score: ${intel.dna.confidenceScore}%.`);
+    const filled = [intel.dna.purpose, intel.dna.audience, intel.dna.wedge, intel.dna.identity, intel.dna.differentiator].filter(Boolean).length;
+    out.push(`${filled} of 5 core DNA fields captured.`);
+  }
+  if (row.key === "delivery") {
+    out.push(`${intel.entries.decisions.length} committed decision${intel.entries.decisions.length === 1 ? "" : "s"} in the ledger.`);
+    const openQ = intel.dna.openQuestions.length + intel.entries.openQuestionEntries.length;
+    out.push(`${openQ} open question${openQ === 1 ? "" : "s"} still in tension.`);
+  }
+  if (row.key === "build") {
+    out.push(intel.hasFlow ? "Flow map exists — architecture is being tracked." : "No flow map yet — architecture hasn't been sketched.");
+  }
+  return out;
+}
+
+function buildDimensionMissing(row: ExplainRow, intel: Intelligence): string[] {
+  const out: string[] = [];
+  if (row.key === "strategy") {
+    if (!intel.dna.purpose) out.push("Purpose isn't captured yet.");
+    if (!intel.dna.audience) out.push("Audience isn't defined.");
+    if (!intel.dna.wedge) out.push("The wedge (what makes this different) isn't articulated.");
+    if (!intel.dna.identity) out.push("Project identity is still forming.");
+    if (!intel.dna.differentiator) out.push("Differentiator isn't stated.");
+  }
+  if (row.key === "activity") {
+    const ev = intel.health.evidence;
+    if (ev && ev.conversationsLast7Days < 3) out.push("More recent conversation would strengthen momentum signal.");
+    if (ev && ev.openBlockers > 0) out.push("Resolve or park open blockers.");
+  }
+  if (row.key === "delivery") {
+    if (intel.entries.decisions.length < 3) out.push("Commit more decisions from the ledger.");
+    const openQ = intel.dna.openQuestions.length + intel.entries.openQuestionEntries.length;
+    if (openQ > 0) out.push("Resolve open questions or move them to committed.");
+  }
+  if (row.key === "build") {
+    if (!intel.hasFlow) out.push("Sketch the flow map so Atlas can track architecture.");
+  }
+  return out;
+}
+
+function buildOverallObservations(intel: Intelligence): string[] {
+  const out: string[] = [];
+  out.push(`Overall readiness: ${intel.readiness.overall}% (${intel.readiness.label}).`);
+  const dims = intel.readiness.dimensions;
+  (["strategy", "build", "activity", "delivery"] as const).forEach((k) => {
+    const d = dims[k];
+    if (d?.applicable) out.push(`${DIMENSION_LABEL[k]}: ${Math.round(d.score)}% — ${d.label}.`);
+  });
+  return out;
+}
+
+function buildOverallMissing(intel: Intelligence): string[] {
+  const gaps: string[] = [];
+  const dims = intel.readiness.dimensions;
+  (["strategy", "build", "activity", "delivery"] as const).forEach((k) => {
+    const d = dims[k];
+    if (d?.applicable && d.score < 70) gaps.push(`Raise ${DIMENSION_LABEL[k]} (${Math.round(d.score)}%) — tap the row to see how.`);
+  });
+  return gaps;
+}
+
 export default InsightsPanel;
+
