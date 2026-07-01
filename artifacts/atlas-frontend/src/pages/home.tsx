@@ -3966,6 +3966,10 @@ export default function Home() {
         className="atlas-home-responsive-shell"
         style={{
           display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+          width: "100%",
           justifyContent: "center",
           padding: "0 24px",
         }}
@@ -4119,10 +4123,18 @@ export default function Home() {
               margin: askAtlasSurfaceOpen
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
                 : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
+<<<<<<< HEAD
               minHeight: askAtlasSurfaceOpen ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
               flex: askAtlasSurfaceOpen ? 1 : undefined,
               display: askAtlasSurfaceOpen ? "flex" : undefined,
               flexDirection: askAtlasSurfaceOpen ? "column" : undefined,
+=======
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+>>>>>>> 0632fad63e24c5d3ec3374c0d20abbf6dc92f5f1
               minWidth: 0,
             }}>
               {nexusChat.messages.length > 0 && (
