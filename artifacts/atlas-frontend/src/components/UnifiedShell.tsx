@@ -2072,6 +2072,33 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
     }
   }, [location]);
 
+  useEffect(() => {
+    const projectId = projectIdFromPath(location);
+    if (projectId != null) {
+      setCurrentDepth("operational");
+      setActiveProjectIdState(projectId);
+      setActiveConversationTitleState(null);
+      return;
+    }
+    if (location.startsWith("/workspace/")) {
+      // Conversation-id route without a cached numeric id yet — keep operational
+      // depth and poll sessionStorage briefly while workspace.tsx resolves it.
+      setCurrentDepth("operational");
+      let cancelled = false;
+      const start = Date.now();
+      const tick = () => {
+        if (cancelled) return;
+        const resolved = projectIdFromPath(location);
+        if (resolved != null) { setActiveProjectIdState(resolved); return; }
+        if (Date.now() - start > 8000) return;
+        window.setTimeout(tick, 200);
+      };
+      tick();
+      return () => { cancelled = true; };
+    }
+    setActiveProjectIdState(null);
+  }, [location]);
+
   const setDepth = useCallback((depth: ShellDepth) => {
     setCurrentDepth(depth);
   }, []);
