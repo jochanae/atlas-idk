@@ -3628,9 +3628,10 @@ router.post("/nexus/visualize", async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/nexus/name — generate a short project name from a message or conversation transcript
-// Body: { message?: string } | { messages?: Array<{ role: string; content: string }> }
-router.post("/nexus/name", async (req, res): Promise<void> => {
+// Shared handler: generate a short project/conversation title from a message or transcript.
+// Stateless NLP utility — no surface dependency. Registered at both /atlas/name (canonical)
+// and /nexus/name (legacy alias, kept for backwards compatibility).
+const handleGenerateName: import("express").RequestHandler = async (req, res): Promise<void> => {
   const body = req.body as { message?: string; messages?: Array<{ role: string; content: string }> };
 
   // Build context string — prefer full transcript over single message
@@ -3662,7 +3663,14 @@ router.post("/nexus/name", async (req, res): Promise<void> => {
   } catch {
     res.json({ name: "" });
   }
-});
+};
+
+// POST /api/atlas/name — canonical path (surface-neutral title generator)
+router.post("/atlas/name", handleGenerateName);
+
+// POST /api/nexus/name — legacy alias; kept so old call sites and Cloud Run proxy
+// routes continue to work without a flag day. Remove after all clients migrate.
+router.post("/nexus/name", handleGenerateName);
 
 // POST /api/nexus/write-file — nexus-layer file write (auth + ownership validated here)
 // Body: { projectId: number, path: string, content: string }

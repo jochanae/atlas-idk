@@ -3292,7 +3292,7 @@ export default function Home() {
           .filter(m => m.content.trim());
         if (conversationMessages.length > 0) {
           try {
-            const nameRes = await fetch("/api/nexus/name", {
+            const nameRes = await fetch("/api/atlas/name", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
