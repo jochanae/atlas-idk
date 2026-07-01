@@ -131,6 +131,7 @@ type Project = {
   updatedAt: string;
   entryCount?: number;
   latestEntryAt?: string | null;
+  readinessScore?: number | null;
   latestSnapshotScore?: number | null;
   status?: "shaping" | "committed" | "archived";
   surfaceMode?: "ambient" | "operational";
