@@ -36,7 +36,6 @@ import {
 } from "@/lib/atlas-history";
 import { toast } from "sonner";
 import { useThemeMode } from "@/lib/theme";
-import { MemoryTab } from "./workspace/MemoryTab";
 
 const OVERLAY: React.CSSProperties = {
   position: "fixed",
@@ -119,7 +118,7 @@ export function HistoryBookmarksSheet({
   onClose: () => void;
   onJumpToMessage?: (messageId: number) => void;
 }) {
-  const [tab, setTab] = useState<"history" | "checkpoints" | "bookmarks" | "memory">(
+  const [tab, setTab] = useState<"history" | "checkpoints" | "bookmarks">(
     "history",
   );
   const [revertedOpen, setRevertedOpen] = useState(false);
@@ -591,11 +590,6 @@ export function HistoryBookmarksSheet({
             label="Bookmarks"
             count={bookmarks.length}
           />
-          <TabButton
-            active={tab === "memory"}
-            onClick={() => setTab("memory")}
-            label="Memory"
-          />
         </div>
 
         {/* Body */}
@@ -856,10 +850,6 @@ export function HistoryBookmarksSheet({
                 )}
               </div>
             )
-          ) : tab === "memory" && projectId !== null ? (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", margin: "-14px -16px -20px" }}>
-              <MemoryTab projectId={projectId} />
-            </div>
           ) : null}
           </div>
         </div>
