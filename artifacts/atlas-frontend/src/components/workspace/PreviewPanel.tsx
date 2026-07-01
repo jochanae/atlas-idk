@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useIsMobile } from "@/hooks/useBreakpoints";
 import { useStageArtifact } from "@/hooks/useComposerVisibility";
+import { useApplicationModel } from "@/hooks/useApplicationModel";
 
 export type ManifestDecision = {
   firstArtifact: { name: string; description: string; steps: string[] };
@@ -15,6 +16,29 @@ export type ManifestDecision = {
   complexity: "low" | "medium" | "high";
   deploymentRequired: boolean;
 };
+
+type PreviewRoute = { label: string; path: string; description?: string };
+
+function normalizeRoutePath(route?: string | null, fallbackName?: string): string {
+  const raw = route?.trim();
+  if (raw) return raw.startsWith("/") ? raw : `/${raw}`;
+  const name = fallbackName?.trim().toLowerCase() ?? "";
+  if (!name || name === "home" || name === "index" || name === "landing") return "/";
+  return `/${name.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+function withPreviewRoute(base: string, route: string): string {
+  if (!base) return base;
+  const path = route.startsWith("/") ? route : `/${route}`;
+  if (path === "/") return base;
+  try {
+    const url = new URL(base, window.location.origin);
+    url.pathname = `${url.pathname.replace(/\/$/, "")}${path}`;
+    return url.toString();
+  } catch {
+    return `${base.replace(/\/$/, "")}${path}`;
+  }
+}
 
 export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, rebuildTrigger, onWsRunningChange, sessionId, onSwitchToFiles, manifestDecision, manifestPreviewHtml }: {
   projectId: number;
@@ -34,6 +58,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
 
   const queryClient = useQueryClient();
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
+  const { model: applicationModel } = useApplicationModel(projectId);
   const updateProject = useUpdateProject();
 
   // Mode toggle
@@ -109,6 +134,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const storageKey = `atlas-preview-${projectId}`;
   const [urlInput, setUrlInput] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
+  const [selectedRoute, setSelectedRoute] = useState("/");
   const [iframeError, setIframeError] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(false);
   const [detecting, setDetecting] = useState(false);
@@ -139,6 +165,22 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const isMobile = useIsMobile();
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
   const [contentFullscreen, setContentFullscreen] = useState(false);
+  const previewRoutes = useMemo<PreviewRoute[]>(() => {
+    const seen = new Set<string>();
+    const routes: PreviewRoute[] = [{ label: "Home", path: "/" }];
+    seen.add("/");
+    for (const page of applicationModel?.pages ?? []) {
+      const path = normalizeRoutePath(page.route, page.name);
+      if (seen.has(path)) continue;
+      seen.add(path);
+      routes.push({ label: page.name || path, path, description: page.description });
+    }
+    return routes;
+  }, [applicationModel?.pages]);
+
+  useEffect(() => {
+    if (!previewRoutes.some((route) => route.path === selectedRoute)) setSelectedRoute("/");
+  }, [previewRoutes, selectedRoute]);
   useEffect(() => {
     if (!mobileFullscreen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileFullscreen(false); };
@@ -549,6 +591,46 @@ ${t}
   const normalize = (raw: string) =>
     raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
 
+  const routedLiveUrl = liveUrl ? withPreviewRoute(liveUrl, selectedRoute) : "";
+  const routedWorkspacePreviewUrl = withPreviewRoute(`/api/preview/workspace/${projectId}/`, selectedRoute);
+
+  const routePicker = (context: "url" | "local") => previewRoutes.length > 1 ? (
+    <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: context === "url" ? "0 10px 7px" : "6px 10px", borderBottom: context === "local" ? "1px solid var(--atlas-border)" : undefined, overflowX: "auto", scrollbarWidth: "none" }}>
+      <span style={{ fontSize: 9, ...sMono, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.42, flexShrink: 0 }}>
+        Pages
+      </span>
+      {previewRoutes.map((route) => {
+        const active = selectedRoute === route.path;
+        return (
+          <button
+            key={route.path}
+            type="button"
+            title={route.description || route.path}
+            onClick={() => { setSelectedRoute(route.path); setIframeError(false); setIframeLoading(true); setReloadKey((k) => k + 1); }}
+            style={{
+              flexShrink: 0,
+              padding: "4px 8px",
+              borderRadius: 999,
+              background: active ? "rgba(201,162,76,0.12)" : "transparent",
+              border: `1px solid ${active ? "rgba(201,162,76,0.32)" : "var(--atlas-border)"}`,
+              color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+              cursor: "pointer",
+              fontSize: 9.5,
+              ...sMono,
+              letterSpacing: "0.04em",
+              maxWidth: 140,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {route.label}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   const applyUrl = (url: string) => {
     const u = normalize(url);
     setUrlInput(u);
@@ -872,6 +954,8 @@ ${t}
               )}
             </div>
 
+            {liveUrl && routePicker("url")}
+
             {/* Row 2 — status strip (auto-hides after 4s) */}
             {(autoDetected || (linkedRepo && token) || detectResults.length > 0 || (liveUrl && !autoDetected)) && (
               <div style={{
@@ -944,7 +1028,7 @@ ${t}
                     <div style={{ fontSize: 9.5, ...sMono, color: "var(--atlas-muted)", opacity: 0.4 }}>Loading preview…</div>
                   </div>
                 )}
-                <iframe key={`${liveUrl}-${reloadKey}`} src={liveUrl} title="Preview"
+                <iframe key={`${routedLiveUrl}-${reloadKey}`} src={routedLiveUrl} title="Preview"
                   style={{ border: "none", width: "100%", height: "100%", display: "block", background: "#fff" }}
                   sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
                   onLoad={() => setIframeLoading(false)}
@@ -983,8 +1067,8 @@ ${t}
               display: "flex", flexDirection: "column",
             }}>
               <iframe
-                key={`fs-${liveUrl}-${reloadKey}`}
-                src={liveUrl}
+                  key={`fs-${routedLiveUrl}-${reloadKey}`}
+                  src={routedLiveUrl}
                 title="Preview fullscreen"
                 style={{ border: "none", flex: 1, width: "100%", background: "#fff" }}
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
@@ -1518,6 +1602,8 @@ ${t}
                 )}
               </div>
 
+              {wsDsStatus === "running" && wsDsPort && routePicker("local")}
+
               {/* Error banner */}
               {wsDsErrorMsg && (
                 <div style={{ flexShrink: 0, padding: "6px 10px", background: "rgba(248,113,113,0.08)", borderBottom: "1px solid rgba(248,113,113,0.18)", color: "rgba(248,113,113,0.85)", fontSize: 10, ...sMono, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
@@ -1530,7 +1616,7 @@ ${t}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
                   <iframe
                     key={`ws-${projectId}-${wsDsPort}`}
-                    src={`/api/preview/workspace/${projectId}/`}
+                    src={routedWorkspacePreviewUrl}
                     title="Local Dev Preview"
                     style={{ flex: 1, border: "none", width: "100%", display: "block", background: "var(--atlas-bg)" }}
                   />
