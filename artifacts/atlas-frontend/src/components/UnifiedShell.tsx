@@ -2068,7 +2068,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
       setCurrentDepth("operational");
       setActiveProjectIdState(projectId);
       setActiveConversationTitleState(null);
-      return;
+      return undefined;
     }
     if (location.startsWith("/workspace/")) {
       // Conversation-id route without a cached numeric id yet — keep operational
@@ -2087,6 +2087,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
       return () => { cancelled = true; };
     }
     setActiveProjectIdState(null);
+    return undefined;
   }, [location]);
 
   const setDepth = useCallback((depth: ShellDepth) => {
