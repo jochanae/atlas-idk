@@ -6051,7 +6051,7 @@ function ProjectsGridSheet({
         style={{
           position: "fixed", left: 0, right: 0, bottom: 0,
           zIndex: 9991,
-          background: "var(--atlas-surface)",
+          background: "transparent",
           borderTop: "1px solid rgba(212,175,55,0.18)",
           borderRadius: "20px 20px 0 0",
           maxHeight: "80dvh",
