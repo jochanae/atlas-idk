@@ -305,13 +305,23 @@ html, body {
   --atlas-fg:           #0F172A;
   --atlas-muted:        #475569;
 
-  /* Signature gold accent — locked, brand-critical */
+  /* Signature gold accent — reserved for priority/interactive fills only.
+     Structural borders/dividers/glows are demoted to neutrals in parchment
+     (Phase 2 rebalance: 85% neutral / 15% accent). Dark mode untouched. */
   --atlas-ember:        #6f4a30;
   --atlas-ember-glow:   rgba(139, 94, 60, 0.20);
-  --atlas-gold:         #8B5E3C;
-  --atlas-gold-glow:    rgba(139, 94, 60, 0.20);
-  --atlas-gold-dim:     rgba(139, 94, 60, 0.10);
-  --atlas-gold-border:  rgba(139, 94, 60, 0.30);
+  --atlas-gold:         #8B5E3C;                    /* fills — priority only */
+  --atlas-gold-dim:     rgba(139, 94, 60, 0.10);    /* selected/armed fill */
+  /* Demoted: gold-border + gold-glow now neutral slate in parchment.
+     Any component that reads these gets a neutral border in light mode
+     without any per-component edits. */
+  --atlas-gold-border:  rgba(15, 23, 42, 0.10);
+  --atlas-gold-glow:    rgba(15, 23, 42, 0.06);
+  /* Intelligence status accent — purple, reserved for Ask Atlas idle dot,
+     streaming pulse, live AI signals. Never a theme fill. */
+  --atlas-intel:        #6D5EF5;
+  --atlas-intel-glow:   rgba(109, 94, 245, 0.28);
+  --atlas-intel-dim:    rgba(109, 94, 245, 0.10);
   --atlas-phosphor:     #0284C7;
 
   /* Search rail trigger — bronze on ice */
