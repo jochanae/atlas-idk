@@ -27,6 +27,11 @@ export interface ProductArchetype {
    * points before the Application Model is finalized.
    */
   impliedRequirements: string[];
+  /**
+   * Entity names typical for this product type.
+   * Used by R003 to suggest what might be missing from the AM.
+   */
+  typicalEntities: string[];
 }
 
 // ── Classification result ─────────────────────────────────────────────────────
@@ -38,6 +43,7 @@ export interface ProductIntelligenceResult {
   score: number;
   impliedRequirements: string[];
   matchedSignals: string[];
+  typicalEntities: string[];
 }
 
 // ── Archetype library ─────────────────────────────────────────────────────────
@@ -65,6 +71,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "SSO / enterprise auth (SAML or OAuth)",
       "Usage metrics and account health dashboard",
     ],
+    typicalEntities: ["Organization", "User", "Role", "Permission", "Workspace", "Invitation", "Subscription", "AuditLog"],
   },
   {
     id: "marketplace",
@@ -85,6 +92,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "Reviews and trust signals",
       "Dispute resolution flow",
     ],
+    typicalEntities: ["Listing", "Buyer", "Seller", "Transaction", "Review", "Category", "Order", "Payout"],
   },
   {
     id: "social_network",
@@ -105,6 +113,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "Privacy controls (public/private/friends-only)",
       "Search and discovery (people, content, hashtags)",
     ],
+    typicalEntities: ["User", "Post", "Comment", "Like", "Follow", "Profile", "Notification", "Media"],
   },
   {
     id: "scheduling",
@@ -125,6 +134,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "Provider / staff profiles and working hours",
       "Timezone handling",
     ],
+    typicalEntities: ["Appointment", "User", "Provider", "Service", "Availability", "Booking", "Reminder", "Calendar"],
   },
   {
     id: "ecommerce",
@@ -146,6 +156,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "Discount codes and promotions",
       "Returns and refund policy",
     ],
+    typicalEntities: ["Product", "Order", "Cart", "Customer", "Payment", "Category", "Inventory", "Discount"],
   },
   {
     id: "developer_tool",
@@ -166,6 +177,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "Sandbox / test environment",
       "Error logging and developer observability",
     ],
+    typicalEntities: ["ApiKey", "Webhook", "Project", "User", "Integration", "Log", "Environment", "RateLimit"],
   },
   {
     id: "dashboard_analytics",
@@ -186,6 +198,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "Real-time or scheduled data refresh",
       "Role-based visibility of sensitive metrics",
     ],
+    typicalEntities: ["Metric", "Report", "DataSource", "Filter", "User", "Category", "Alert", "ExportJob"],
   },
   {
     id: "fintech",
@@ -207,6 +220,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "Export to CSV for taxes / reconciliation",
       "Multi-currency support",
     ],
+    typicalEntities: ["Account", "Transaction", "Portfolio", "Asset", "Balance", "Category", "Transfer", "Budget"],
   },
   {
     id: "iot_hardware",
@@ -227,6 +241,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "Offline mode and local buffering",
       "Device health and alert system",
     ],
+    typicalEntities: ["Device", "Sensor", "Reading", "Alert", "Gateway", "User", "Firmware", "Location"],
   },
   {
     id: "content_platform",
@@ -247,6 +262,7 @@ export const ARCHETYPES: ProductArchetype[] = [
       "RSS or newsletter subscription",
       "Media library for images and files",
     ],
+    typicalEntities: ["Post", "Author", "Category", "Tag", "Comment", "Media", "User", "Subscription"],
   },
 ];
 
@@ -309,5 +325,6 @@ export function classifyProductArchetype(
     score: Math.round(bestScore * 100) / 100,
     impliedRequirements: bestArchetype.impliedRequirements,
     matchedSignals: bestMatched,
+    typicalEntities: bestArchetype.typicalEntities,
   };
 }

@@ -49,6 +49,8 @@ export interface ProductIntelligenceState {
   score: number | null;
   impliedRequirements: string[];
   matchedSignals: string[];
+  /** Entity names typical for this archetype — used by R003 to suggest AM gaps */
+  typicalEntities: string[];
 }
 
 export interface SketchState {
@@ -233,14 +235,43 @@ const ORCHESTRATOR_RULES: OrchestratorRule[] = [
     confidence: "threshold",
     evaluate: (state) => {
       const piClassified = state.productIntelligence?.classified === true;
-      const amReady = (state.applicationModel?.completeness ?? 0) >= 0.5;
+      const p = state.applicationModel?.pageCount ?? 0;
+      const e = state.applicationModel?.entityCount ?? 0;
+      const r = state.applicationModel?.relationshipCount ?? 0;
+      const currentScore = state.applicationModel?.completeness ?? 0;
+      const amReady = currentScore >= 0.5;
       const sketchMissing = state.sketch === null || !state.sketch.exists;
       const triggered = piClassified && amReady && sketchMissing;
+
+      // Compute cheapest path to 50% if not there yet
+      const amGapMessage = (() => {
+        if (amReady) return null;
+        const score = (dp: number, de: number) =>
+          ((p + dp) / 5) * 0.4 + ((e + de) / 8) * 0.4 + (r / 10) * 0.2;
+        let pPath = 0;
+        for (let dp = 1; dp <= 5; dp++) {
+          if (score(dp, 0) >= 0.5) { pPath = dp; break; }
+        }
+        let ePath = 0;
+        for (let de = 1; de <= 8; de++) {
+          if (score(0, de) >= 0.5) { ePath = de; break; }
+        }
+        const pPart = pPath > 0 ? `add ${pPath} page${pPath > 1 ? "s" : ""}` : null;
+        const ePart = ePath > 0 ? `add ${ePath} ${ePath > 1 ? "entities" : "entity"}` : null;
+        const pathHint = [pPart, ePart].filter(Boolean).join(" OR ");
+
+        // Suggest specific entities from the archetype that are not yet in the AM
+        const suggestions = state.productIntelligence?.typicalEntities?.slice(0, 3) ?? [];
+        const suggestionHint = suggestions.length > 0 ? ` (e.g. ${suggestions.join(", ")})` : "";
+
+        return `am_completeness ${Math.round(currentScore * 100)}% < 50% — ${pathHint}${suggestionHint} to unlock Sketch`;
+      })();
+
       return {
         triggered,
         missingInputs: [
-          ...(!piClassified ? ["product_intelligence_classified"] : []),
-          ...(!amReady ? [`am_completeness < 50% (current: ${Math.round((state.applicationModel?.completeness ?? 0) * 100)}%)`] : []),
+          ...(!piClassified ? ["product_intelligence_not_classified"] : []),
+          ...(amGapMessage ? [amGapMessage] : []),
         ],
         proposedAction: {
           type: "generate_artifact",
@@ -439,10 +470,17 @@ async function loadProjectArtifactState(projectId: number): Promise<ProjectArtif
     );
     amState = { completeness, pageCount, entityCount, relationshipCount: relCount };
     // Extract names + descriptions for classifier
+    // Relationships use `label` not `name` — use label as fallback
     amPageNames = pages.map((p: unknown) => (p as { name?: string }).name ?? "").filter(Boolean);
     amEntityNames = entities.map((e: unknown) => (e as { name?: string }).name ?? "").filter(Boolean);
     amPageDescriptions = pages.map((p: unknown) => (p as { description?: string }).description ?? "").filter(Boolean);
     amEntityDescriptions = entities.map((e: unknown) => (e as { description?: string }).description ?? "").filter(Boolean);
+    // Fix: relationship objects use `label`, not `name` — remap for classifier corpus
+    const relLabels = relationships.map(
+      (r: unknown) =>
+        (r as { label?: string }).label ?? (r as { name?: string }).name ?? ""
+    ).filter(Boolean);
+    amPageDescriptions = [...amPageDescriptions, ...relLabels];
   }
 
   // ── Design Plan ──
@@ -502,6 +540,11 @@ async function loadProjectArtifactState(projectId: number): Promise<ProjectArtif
       [...amPageDescriptions, ...amEntityDescriptions],
     );
     if (piResult) {
+      // Filter typicalEntities against what the AM already has
+      const existingEntityNamesLower = new Set(amEntityNames.map((n) => n.toLowerCase()));
+      const missingTypicalEntities = piResult.typicalEntities.filter(
+        (e) => !existingEntityNamesLower.has(e.toLowerCase())
+      );
       productIntelligenceState = {
         classified: true,
         archetypeId: piResult.archetypeId,
@@ -509,6 +552,7 @@ async function loadProjectArtifactState(projectId: number): Promise<ProjectArtif
         score: piResult.score,
         impliedRequirements: piResult.impliedRequirements,
         matchedSignals: piResult.matchedSignals,
+        typicalEntities: missingTypicalEntities,
       };
     }
   }
