@@ -2146,7 +2146,7 @@ function RightPanel({
       {/* Tab content */}
       {tab === "ledger" && (
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <LedgerPanel projectId={projectId} entries={entries} pushHistory={pushHistory} onRollbackPush={onRollbackPush} messages={messagesProp} />
+          <LedgerPanel projectId={projectId} entries={entries} />
         </div>
       )}
       {tab === "artifacts" && <ArtifactsPanel projectId={projectId} />}

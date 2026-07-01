@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useParkedCount } from "@/hooks/useParkedCount";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
@@ -41,7 +40,6 @@ type ConversationItem = { id: string; title: string; createdAt?: string; message
 
 export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenComposer, onOpenShell, onSelectConversation, userLabel }: Props) {
   const activeRunsCount = useActiveRunsCount();
-  const parkedCount = useParkedCount();
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [conversationsExpanded, setConversationsExpanded] = useState(true);
@@ -430,7 +428,6 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             icon={<Inbox size={14} strokeWidth={1.6} />}
             label="Parking Lot"
             sublabel="All projects"
-            badge={parkedCount}
             onClick={() => { navigate("/parking"); onClose(); }}
           />
 

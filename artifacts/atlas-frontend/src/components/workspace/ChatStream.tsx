@@ -6,7 +6,7 @@ import { AssistantBubble, type BuildGroupInfo } from "@/components/workspace/Ass
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
-import { ExecutionJournal, LedgerSurface, isExecutionStream } from "@/components/workspace/ExecutionJournal";
+import { ExecutionJournal, isExecutionStream } from "@/components/workspace/ExecutionJournal";
 import { TimelineRail } from "../TimelineRail";
 import { WriteFileCard } from "@/components/workspace/WriteFileCard";
 import { SystemActivityCard, BatchedActivityCard } from "@/components/workspace/SystemActivityCard";
@@ -41,10 +41,7 @@ function isLedgerContent(content: string): boolean {
   return content.startsWith("[FILE_COMMITTED]") || content.startsWith("[LOCAL_APPLY_SUCCESS]");
 }
 
-function AutoVerifyMessage({ content, executionTimeMs }: { content: string; executionTimeMs?: number | null }) {
-  if (isLedgerContent(content)) {
-    return <LedgerSurface content={content} executionTimeMs={executionTimeMs} />;
-  }
+function AutoVerifyMessage({ content }: { content: string; executionTimeMs?: number | null }) {
   return (
     <div
       style={{
@@ -576,19 +573,13 @@ export function ChatStream(props: ChatStreamProps) {
       {renderActivityForAnchor(-1)}
       {messages.map((msg, i) => {
 
-        // When a LOCAL_APPLY_SUCCESS follows an assistant message, we render
-        // the LedgerSurface *after* that assistant bubble (sentence first, then
-        // the APPLIED block).  Skip it here so it isn't double-rendered.
         const nextMsg = messages[i + 1];
-        const prevMsg = messages[i - 1];
         const isLedgerMsg = msg.role === "user" && isLedgerContent(msg.content);
-        const prevWasAssistant = prevMsg?.role === "assistant";
-        // Skip ledger messages that follow an assistant (hoisted below its bubble instead)
-        // Also skip any user message tagged for full suppression as part of a build chain
-        if ((isLedgerMsg && prevWasAssistant) || suppressedLedgerSet.has(i)) {
+        // Skip all ledger messages from the chat stream — they belong in the Ledger panel.
+        // Also skip any user message tagged for full suppression as part of a build chain.
+        if (isLedgerMsg || suppressedLedgerSet.has(i)) {
           return null;
         }
-        const nextIsLedger = nextMsg?.role === "user" && isLedgerContent(nextMsg.content);
 
         return (
         <Fragment key={i}>
@@ -676,15 +667,6 @@ export function ChatStream(props: ChatStreamProps) {
                 )
               )}
             </div>
-          )}
-          {/* LedgerSurface hoisted above: show AFTER the assistant sentence.
-              Suppress it when it is an intermediate inter-round message in a
-              multi-round build chain (suppressedLedgerSet tracks those indices). */}
-          {msg.role === "assistant" && nextIsLedger && nextMsg && !suppressedLedgerSet.has(i + 1) && (
-            <AutoVerifyMessage
-              content={nextMsg.content}
-              executionTimeMs={nextMsg.executionTimeMs}
-            />
           )}
           {renderActivityForAnchor(i)}
         </Fragment>

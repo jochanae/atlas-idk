@@ -5,9 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { StatusGlyph } from "../StatusGlyph";
 import { CapsuleTag } from "../CapsuleTag";
 
-import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
-import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
-import { type PushRecord } from "../../pages/workspace";
 
 interface VaultSave {
   id: number;
@@ -136,17 +133,10 @@ function LedgerEntry({ entry }: { entry: Entry }) {
 export function LedgerPanel({
   projectId,
   entries,
-  pushHistory,
-  onRollbackPush,
-  messages = [],
 }: {
   projectId: number;
   entries: Entry[];
-  pushHistory: PushRecord[];
-  onRollbackPush: (record: PushRecord) => Promise<void>;
-  messages?: TimelineMessage[];
 }) {
-  const parked = entries.filter((e) => e.status === "parked");
 
   const allCommitted = entries.filter((e) => e.status === "committed");
   const committedClean = allCommitted.filter((e) => !e.deviation);
@@ -379,42 +369,8 @@ export function LedgerPanel({
                   )}
                 </div>
 
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6, padding: "0 2px" }}>
-                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10.5, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: parked.length > 0 ? "var(--atlas-fg)" : "var(--atlas-muted)", fontWeight: 600 }}>
-                      Parking Lot
-                    </span>
-                    {parked.length > 0 && (
-                      <span style={{ fontSize: 10, color: "rgba(var(--atlas-muted-rgb),0.45)", fontFamily: "var(--app-font-mono)" }}>
-                        {parked.length} waiting · 0 resolved
-                      </span>
-                    )}
-                  </div>
-                  {parked.length > 0 ? (
-                    <div style={{ paddingTop: 4 }}>
-                      {parked.map((e) => <ParkingLotEntry key={e.id} entry={e} />)}
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "6px 2px", borderTop: "1px solid rgba(201,162,76,0.1)" }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block", boxShadow: "0 0 6px rgba(201,162,76,0.4)" }} />
-                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "rgba(201,162,76,0.6)", letterSpacing: "0.06em" }}>
-                          {parked.length} {parked.length === 1 ? "ITEM" : "ITEMS"}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.35, padding: "6px 2px", lineHeight: 1.65 }}>
-                      Tap <strong style={{ opacity: 0.6 }}>Park</strong> on any Atlas response to save a thought here without breaking your flow.
-                    </div>
-                  )}
-                </div>
               </>
             )}
-
-            <SessionTimeline
-              messages={messages}
-              pushHistory={pushHistory}
-              onRollbackPush={onRollbackPush}
-              projectId={projectId}
-            />
           </div>
 
           <div style={{ padding: "8px 12px", borderTop: "1px solid var(--atlas-border)", display: "flex", flexDirection: "column", gap: 6 }}>

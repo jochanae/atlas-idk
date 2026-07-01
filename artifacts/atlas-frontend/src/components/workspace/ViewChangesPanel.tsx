@@ -15,9 +15,8 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, ChevronDown, FolderGit2, Github, Sparkles } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderGit2, Sparkles } from "lucide-react";
 import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
-import { CommitHistoryCard, CommitHistorySkeleton, type GhCommitSummary } from "@/components/workspace/CommitHistory";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 
 // ── Shared badge logic (mirrors WorkspaceFilesPanel) ─────────────────────────
@@ -172,53 +171,6 @@ function WorkspaceSection({ projectId, open }: { projectId: number; open: boolea
   );
 }
 
-// ── Section 2: GitHub commits ─────────────────────────────────────────────────
-
-function GitHubSection({ projectId, open }: { projectId: number; open: boolean }) {
-  const { data, isLoading, error } = useQuery<{ commits?: GhCommitSummary[]; reason?: string }>({
-    queryKey: ["vcp-commits", projectId],
-    queryFn: () =>
-      fetch(`/api/projects/${projectId}/commits`, { credentials: "include" }).then((r) => r.json()),
-    staleTime: 60_000,
-    enabled: open,
-  });
-
-  if (!open) return null;
-
-  const commits = data?.commits ?? [];
-  const reason = data?.reason;
-
-  return (
-    <div style={{ padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-      {isLoading && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {[0, 1, 2].map((i) => <CommitHistorySkeleton key={i} />)}
-        </div>
-      )}
-      {error && (
-        <div style={{ fontSize: 11.5, color: "rgba(220,80,80,0.8)" }}>
-          {error instanceof Error ? error.message : "Could not load commits"}
-        </div>
-      )}
-      {!isLoading && !error && commits.length === 0 && (
-        <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.45, lineHeight: 1.55 }}>
-          {reason === "no_repo"
-            ? "No repo linked. Connect a GitHub repo in the Files tab."
-            : "No commits yet."}
-        </div>
-      )}
-      {commits.map((commit, i) => (
-        <CommitHistoryCard
-          key={commit.sha}
-          commit={commit}
-          projectId={projectId}
-          canRevert={i !== commits.length - 1}
-        />
-      ))}
-    </div>
-  );
-}
-
 // ── Root component ────────────────────────────────────────────────────────────
 
 interface Props {
@@ -237,7 +189,6 @@ export function ViewChangesPanel({
   onRollbackPush,
 }: Props) {
   const [workspaceOpen, setWorkspaceOpen] = useState(true);
-  const [githubOpen, setGithubOpen] = useState(true);
   const [atlasOpen, setAtlasOpen] = useState(true);
 
   const { data: wsStatus } = useQuery<{ files: Record<string, string> }>({
@@ -287,16 +238,6 @@ export function ViewChangesPanel({
         />
       )}
 
-      <div style={{ borderTop: "1px solid rgba(201,162,76,0.06)" }} />
-
-      {/* ── Section 3: GitHub Commits ── */}
-      <SectionHeader
-        icon={<Github size={11} strokeWidth={1.7} />}
-        label="GitHub Commits"
-        expanded={githubOpen}
-        onToggle={() => setGithubOpen((o) => !o)}
-      />
-      <GitHubSection projectId={projectId} open={githubOpen} />
 
     </div>
   );
