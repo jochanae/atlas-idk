@@ -582,7 +582,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
               projectId={projectId}
               projectName={name || "Project"}
               status={(project?.status as "shaping" | "committed" | "built" | "archived" | undefined) ?? undefined}
-              readinessScore={project?.latestSnapshotScore ?? null}
+              readinessScore={canonicalReadiness}
               decisionCount={ps.decisions?.length ?? 0}
               hasRepo={Boolean(project?.linkedRepo)}
               size={isTinyMobile ? 10 : 13}
