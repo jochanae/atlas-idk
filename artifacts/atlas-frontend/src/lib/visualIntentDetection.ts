@@ -34,5 +34,5 @@ export function detectVisualIntent(text: string): VisualIntent {
     if (lower.includes(cue)) matched.push(cue);
   }
   const score = matched.length;
-  return { shouldOffer: score >= 1, score, matched };
+  return { shouldOffer: score >= 3, score, matched };
 }

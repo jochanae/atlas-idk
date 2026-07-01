@@ -81,9 +81,9 @@ export default function InlineSketchOffer({ text, onSend, iconOnly = true }: Inl
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: highlight ? "var(--atlas-gold, #c9a24c)" : "var(--atlas-muted, rgba(255,255,255,0.55))",
-            opacity: highlight ? 0.95 : 0.55,
-            filter: highlight ? "drop-shadow(0 0 4px rgba(201,162,76,0.45))" : "none",
+            color: "var(--atlas-muted, rgba(255,255,255,0.55))",
+            opacity: highlight ? 0.75 : 0.45,
+            filter: "none",
             transition: "opacity 180ms ease, color 180ms ease",
             WebkitTapHighlightColor: "transparent",
           }}
