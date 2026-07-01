@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { updateProject, useUpdateProject, getGetProjectQueryKey, Session, ProjectNodeState, Project, useGetProjectReadiness, type ProjectReadiness } from "@workspace/api-client-react";
@@ -251,6 +252,21 @@ function ShellAvatar() {
   })();
   const name = user?.name || user?.email?.split("@")[0] || "Account";
   const isAdmin = isSuperAdmin(user);
+  const avatarFrameStyle = useMemo<CSSProperties>(() => ({
+    width: 36,
+    height: 36,
+    borderRadius: "22%",
+    borderTop: "none",
+    borderBottom: "none",
+    borderLeft: "2px solid var(--atlas-avatar-frame, rgba(212,175,55,0.65))",
+    borderRight: "2px solid var(--atlas-avatar-frame, rgba(212,175,55,0.65))",
+    background: photoUrl ? "transparent" : "var(--atlas-bg)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    flexShrink: 0,
+  }), [photoUrl]);
 
   const openAccount = useCallback(() => {
     window.dispatchEvent(new CustomEvent("axiom:open-account-hub"));
@@ -281,21 +297,7 @@ function ShellAvatar() {
         title={name}
         aria-label={name}
         className="atlas-avatar-ring"
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: "22%",
-          borderTop: "none",
-          borderBottom: "none",
-          borderLeft: "2px solid rgba(212,175,55,0.65)",
-          borderRight: "2px solid rgba(212,175,55,0.65)",
-          background: photoUrl ? "transparent" : "var(--atlas-bg)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          flexShrink: 0,
-        }}
+        style={avatarFrameStyle}
       >
         {photoUrl ? (
           <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "20%" }} />
