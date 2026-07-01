@@ -3364,8 +3364,14 @@ function MobileTabBar({
         display: "flex",
         alignItems: "stretch",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        // Promote to its own compositor layer so mobile URL-bar resize
+        // doesn't cause a repaint/flicker mid-scroll.
+        transform: "translateZ(0)",
+        willChange: "transform",
+        backfaceVisibility: "hidden",
       }}
     >
+
       {mainTabs.map(({ id, label, icon, badge, alert }) => {
         const active = activeTab === id;
         return (
