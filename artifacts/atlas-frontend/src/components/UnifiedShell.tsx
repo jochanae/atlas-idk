@@ -2072,6 +2072,54 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
   const [activeConversationTitle, setActiveConversationTitleState] = useState<string | null>(null);
   const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
 
+  const [scrolled, setScrolled] = useState(false);
+
+  // Keep `--atlas-shell-h` synced with the actually-visible viewport so shells
+  // that anchor to it (workspace, home) fill the space Chrome's URL bar frees
+  // up when it collapses — instead of leaving a dead sliver above the dock.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    const apply = () => {
+      const h = vv?.height ?? window.innerHeight;
+      document.documentElement.style.setProperty("--atlas-shell-h", `${Math.round(h)}px`);
+    };
+    apply();
+    if (vv) {
+      vv.addEventListener("resize", apply);
+      vv.addEventListener("scroll", apply);
+    }
+    window.addEventListener("resize", apply);
+    window.addEventListener("orientationchange", apply);
+    return () => {
+      if (vv) {
+        vv.removeEventListener("resize", apply);
+        vv.removeEventListener("scroll", apply);
+      }
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("orientationchange", apply);
+    };
+  }, []);
+
+  // Any scroll surface anywhere in the app past ~4px puts a hairline shadow
+  // under the fixed header — subtle presence without collapsing into glass.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let raf = 0;
+    const onScroll = (e: Event) => {
+      const t = e.target as (HTMLElement | Document | null);
+      let top = 0;
+      if (t && (t as Document).documentElement) top = window.scrollY || document.documentElement.scrollTop || 0;
+      else if (t && "scrollTop" in (t as HTMLElement)) top = (t as HTMLElement).scrollTop;
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setScrolled(top > 4));
+    };
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true } as any);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   useEffect(() => {
     const projectId = projectIdFromPath(location);
