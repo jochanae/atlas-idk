@@ -399,42 +399,69 @@ function EmptyLine({ children }: { children: React.ReactNode }) {
   return <p style={{ color: MUTED, fontSize: 12.5, fontFamily: SANS, margin: 0, fontStyle: "italic" }}>{children}</p>;
 }
 
+type ExplainRow = { key: string; label: string; score: number; note: string; evidence: string; applicable: boolean };
+
 function ConfidenceGrid({
   dimensions,
   clarity,
+  onExplain,
 }: {
   dimensions: Intelligence["readiness"]["dimensions"];
   clarity: number;
+  onExplain: (row: ExplainRow) => void;
 }) {
-  const rows: { key: string; label: string; score: number; note: string }[] = [];
+  const rows: ExplainRow[] = [];
 
-  // Add clarity first as Vision if strategy dimension is missing
   const strategyDim = dimensions.strategy;
   const buildDim = dimensions.build;
   const activityDim = dimensions.activity;
   const deliveryDim = dimensions.delivery;
 
   if (strategyDim?.applicable) {
-    rows.push({ key: "strategy", label: DIMENSION_LABEL.strategy, score: strategyDim.score, note: strategyDim.label });
+    rows.push({ key: "strategy", label: DIMENSION_LABEL.strategy, score: strategyDim.score, note: strategyDim.label, evidence: strategyDim.evidence ?? "", applicable: true });
   } else {
-    rows.push({ key: "strategy", label: DIMENSION_LABEL.strategy, score: clarity, note: clarity >= 70 ? "Stable" : clarity >= 35 ? "Taking shape" : "Forming" });
+    rows.push({ key: "strategy", label: DIMENSION_LABEL.strategy, score: clarity, note: clarity >= 70 ? "Stable" : clarity >= 35 ? "Taking shape" : "Forming", evidence: `Clarity score ${clarity}% from Project DNA.`, applicable: true });
   }
   if (buildDim?.applicable) {
-    rows.push({ key: "build", label: DIMENSION_LABEL.build, score: buildDim.score, note: buildDim.label });
+    rows.push({ key: "build", label: DIMENSION_LABEL.build, score: buildDim.score, note: buildDim.label, evidence: buildDim.evidence ?? "", applicable: true });
   }
   if (activityDim?.applicable) {
-    rows.push({ key: "activity", label: DIMENSION_LABEL.activity, score: activityDim.score, note: activityDim.label });
+    rows.push({ key: "activity", label: DIMENSION_LABEL.activity, score: activityDim.score, note: activityDim.label, evidence: activityDim.evidence ?? "", applicable: true });
   }
   if (deliveryDim?.applicable) {
-    rows.push({ key: "delivery", label: DIMENSION_LABEL.delivery, score: deliveryDim.score, note: deliveryDim.label });
+    rows.push({ key: "delivery", label: DIMENSION_LABEL.delivery, score: deliveryDim.score, note: deliveryDim.label, evidence: deliveryDim.evidence ?? "", applicable: true });
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {rows.map((r) => (
-        <div key={r.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <button
+          key={r.key}
+          onClick={() => onExplain(r)}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            padding: "8px 10px",
+            margin: "0 -10px",
+            background: "transparent",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: SANS,
+            color: FG,
+            WebkitTapHighlightColor: "transparent",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-fg) 4%, transparent)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          aria-label={`Explain ${r.label}`}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <span style={{ fontSize: 12.5, color: FG, fontFamily: SANS }}>{r.label}</span>
+            <span style={{ fontSize: 12.5, color: FG, fontFamily: SANS, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {r.label}
+              <span style={{ fontSize: 10, color: MUTED, fontFamily: MONO }}>ⓘ</span>
+            </span>
             <span style={{ fontSize: 12, color: GOLD, fontFamily: MONO, fontVariantNumeric: "tabular-nums" }}>
               {Math.round(r.score)}%
             </span>
@@ -453,11 +480,13 @@ function ConfidenceGrid({
             }} />
           </div>
           <span style={{ fontSize: 11, color: MUTED, fontFamily: SANS }}>{r.note}</span>
-        </div>
+        </button>
       ))}
     </div>
   );
 }
+
+
 
 function DnaGrid({ dna }: { dna: Intelligence["dna"] }) {
   const items: { label: string; value: string | null }[] = [
