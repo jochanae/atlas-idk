@@ -2,7 +2,7 @@
  * SessionHistorySheet — unified "sessions / threads" surface.
  *
  * Single bottom-sheet used by:
- *   • Global Insight composer's gold-clock  →  GLOBAL INSIGHT · HISTORY
+ *   • Ask Atlas composer's gold-clock       →  ASK ATLAS · HISTORY
  *   • Workspace composer's gold-clock       →  [PROJECT] · SESSIONS
  *
  * One mental model: time = "where was I." New + Resume + Delete all live
@@ -22,7 +22,7 @@ export interface SessionHistoryItem {
 export interface SessionHistorySheetProps {
   open: boolean;
   onClose: () => void;
-  /** e.g. "GLOBAL INSIGHT · HISTORY" or "PROJECT · SESSIONS" */
+  /** e.g. "ASK ATLAS · HISTORY" or "PROJECT · SESSIONS" */
   title: string;
   items: SessionHistoryItem[];
   loading?: boolean;
