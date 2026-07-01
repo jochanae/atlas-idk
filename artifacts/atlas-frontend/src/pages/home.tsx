@@ -2948,12 +2948,14 @@ export default function Home() {
       setGlobalInsightOpen(true);
     }
     if (!shouldStayOnHome && !backendReady) {
+      submitInFlightRef.current = false;
       setCreateError(
         "Project creation is unavailable in this preview because the backend API URL is not configured.",
       );
       return;
     }
     if (!shouldStayOnHome && isFree && (projects?.length ?? 0) >= 1) {
+      submitInFlightRef.current = false;
       setShowUpgrade(true);
       return;
     }
@@ -3271,6 +3273,10 @@ export default function Home() {
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
     if (!nexusChat.messages.length) return;
+    if (isFree && (projects?.length ?? 0) >= 1) {
+      setShowUpgrade(true);
+      return;
+    }
     setIsHandoffReady(false);
     setHandoffLoading(true);
     setHandoffStage("Setting up your workspace...");
@@ -3421,7 +3427,7 @@ export default function Home() {
       setHandoffLoading(false);
       setHandoffStage("");
     }
-  }, [nexusChat.messages, queryClient, setActiveProjectId, setLocation, setShapingStatus]);
+  }, [isFree, nexusChat.messages, projects, queryClient, setActiveProjectId, setLocation, setShapingStatus, setShowUpgrade]);
 
   const handledProjectReadyAutoHandoffRef = useRef(0);
   useEffect(() => {
