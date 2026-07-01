@@ -4397,7 +4397,7 @@ export default function Home() {
                     left: 0,
                     pointerEvents: askAtlasConversationActive ? "auto" : "none",
                     textAlign: "left",
-                    maxHeight: "min(52vh, 480px)",
+                    maxHeight: "min(38svh, 360px)",
                     overflowY: "auto",
                     display: "flex",
                     flexDirection: "column",
