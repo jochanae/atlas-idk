@@ -937,14 +937,82 @@ function SovereignReadinessSheet({
     }));
   })();
 
-  const hasNodes = nodeState != null && Object.keys(nodeState as Record<string, unknown>).length > 0;
-  const guidance = !hasNodes
+  // ── Client-side fallback from project.nodeState (used when server layerMix/phases absent) ──
+  const ARCH_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
+  const FRONTEND_ARCH = new Set(["ui", "state"]);
+  const BACKEND_ARCH = new Set(["auth", "db", "api"]);
+  const FRONTEND_FLOW = new Set(["goal", "requirement"]);
+  const BACKEND_FLOW = new Set(["decision"]);
+
+  type Bucket = { total: number; resolved: number };
+  const buckets: Record<"frontend" | "backend" | "context", Bucket> = {
+    frontend: { total: 0, resolved: 0 },
+    backend: { total: 0, resolved: 0 },
+    context: { total: 0, resolved: 0 },
+  };
+  const ns = (nodeState ?? {}) as Record<string, unknown>;
+  Object.entries(ns).forEach(([nid, raw]) => {
+    let category: "frontend" | "backend" | "context" = "context";
+    let resolved = false;
+    if (ARCH_IDS.has(nid)) {
+      resolved = raw === true || (typeof raw === "object" && raw !== null && (raw as { resolved?: unknown }).resolved === true);
+      if (FRONTEND_ARCH.has(nid)) category = "frontend";
+      else if (BACKEND_ARCH.has(nid)) category = "backend";
+      else category = "context";
+    } else if (typeof raw === "object" && raw !== null) {
+      const obj = raw as { resolved?: unknown; type?: unknown };
+      resolved = obj.resolved === true;
+      const t = typeof obj.type === "string" ? obj.type : "";
+      if (FRONTEND_FLOW.has(t)) category = "frontend";
+      else if (BACKEND_FLOW.has(t)) category = "backend";
+      else category = "context";
+    } else {
+      return;
+    }
+    buckets[category].total += 1;
+    if (resolved) buckets[category].resolved += 1;
+  });
+  const totalNodes = buckets.frontend.total + buckets.backend.total + buckets.context.total;
+  const sharePct = (n: number) => totalNodes === 0 ? 0 : Math.round((n / totalNodes) * 100);
+  const fbFrontend = sharePct(buckets.frontend.total);
+  const fbBackend = sharePct(buckets.backend.total);
+  const fbContext = totalNodes === 0 ? 0 : Math.max(0, 100 - fbFrontend - fbBackend);
+
+  const archCoreIds = ["auth", "db", "api", "state"];
+  const archCoreTotal = archCoreIds.filter(k => k in ns).length;
+  const archCoreResolved = archCoreIds.filter(k => {
+    const v = ns[k];
+    return v === true || (typeof v === "object" && v !== null && (v as { resolved?: unknown }).resolved === true);
+  }).length;
+  const foundationalPct = archCoreTotal === 0 ? 0 : Math.round((archCoreResolved / archCoreTotal) * 100);
+
+  let flowTotal = 0, flowResolved = 0;
+  Object.entries(ns).forEach(([nid, raw]) => {
+    if (ARCH_IDS.has(nid)) return;
+    if (typeof raw !== "object" || raw === null) return;
+    flowTotal += 1;
+    if ((raw as { resolved?: unknown }).resolved === true) flowResolved += 1;
+  });
+  const funnelPct = flowTotal === 0 ? 0 : Math.round((flowResolved / flowTotal) * 100);
+
+  const fallbackPhases: PhaseRow[] = [
+    { key: "foundational", label: "Foundational Data Layer", pct: foundationalPct,
+      tone: foundationalPct >= 80 ? "ok" : foundationalPct >= 40 ? "warn" : "block",
+      note: archCoreTotal === 0 ? "No core architecture nodes mapped yet." : `${archCoreResolved}/${archCoreTotal} core nodes resolved.` },
+    { key: "funnel", label: "Core Lead Funnel System", pct: funnelPct,
+      tone: funnelPct >= 80 ? "ok" : funnelPct >= 40 ? "warn" : "block",
+      note: flowTotal === 0 ? "No flow nodes mapped — run The Forge to seed." : `${flowResolved}/${flowTotal} flow nodes resolved.` },
+    { key: "sync", label: "Multi-Repo Synchronization", pct: 0, tone: "block",
+      note: "Repository connection not linked yet." },
+  ];
+
+  const guidance = totalNodes === 0
     ? `Unscored — no architecture nodes mapped yet. Run The Forge or open the System Map to seed the spine, then commit decisions in the Ledger (${decisionsCount} so far).`
     : score >= 90
     ? "You're in the green. The remaining gap is polish — wire any uncommitted decisions into the ledger and ship."
     : score >= 60
-    ? `Core mechanics are production-ready. Close the remaining open items to push past ${score}%.`
-    : `Foundations are still forming. ${decisionsCount} decision${decisionsCount === 1 ? "" : "s"} committed. Resolve the open items before adding more surface area.`;
+    ? `Core mechanics are production-ready. ${flowTotal - flowResolved} flow node${(flowTotal - flowResolved) === 1 ? "" : "s"} still unresolved — close them to push past ${score}%.`
+    : `Foundations are still forming. ${totalNodes} node${totalNodes === 1 ? "" : "s"} mapped, ${decisionsCount} decision${decisionsCount === 1 ? "" : "s"} committed. Resolve the open architectural nodes before adding more surface area.`;
 
 
 
