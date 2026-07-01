@@ -2061,16 +2061,6 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
   const [activeConversationTitle, setActiveConversationTitleState] = useState<string | null>(null);
   const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
 
-  useEffect(() => {
-    const projectId = projectIdFromPath(location);
-    if (projectId != null) {
-      setCurrentDepth("operational");
-      setActiveProjectIdState(projectId);
-      setActiveConversationTitleState(null);
-    } else {
-      setActiveProjectIdState(null);
-    }
-  }, [location]);
 
   useEffect(() => {
     const projectId = projectIdFromPath(location);
