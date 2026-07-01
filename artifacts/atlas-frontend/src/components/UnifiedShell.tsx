@@ -479,9 +479,9 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
   const { data: intelligence } = useProjectIntelligence(projectId);
   const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; readinessScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
-  // Canonical readiness: prefer the blended intelligence score so the lifecycle
-  // glyph and pulse card agree with the workspace header ring.
-  const canonicalReadiness = intelligence?.readiness?.overall ?? project?.latestSnapshotScore ?? null;
+  // Canonical readiness: intelligence.readiness.overall is the single source of truth.
+  // No fallbacks — stale snapshot scores were the drift source (see audit F2).
+  const canonicalReadiness = intelligence?.readiness?.overall ?? null;
   // Avoid the "Untitled" flash while the project state is still loading for the first time.
   const hydrating = ps.loading && !ps.project;
   const resolvedName = project?.name?.trim();
