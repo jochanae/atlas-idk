@@ -19,6 +19,14 @@ export type ManifestDecision = {
 
 type PreviewRoute = { label: string; path: string; description?: string };
 
+function routeLabelFromPath(path: string): string {
+  if (path === "/") return "Home";
+  const last = path.split("/").filter(Boolean).pop() ?? path;
+  return last
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function normalizeRoutePath(route?: string | null, fallbackName?: string): string {
   const raw = route?.trim();
   if (raw) return raw.startsWith("/") ? raw : `/${raw}`;
@@ -165,6 +173,20 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const isMobile = useIsMobile();
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
   const [contentFullscreen, setContentFullscreen] = useState(false);
+  const [cachedScanRoutes, setCachedScanRoutes] = useState<PreviewRoute[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`atlas-scan-${projectId}`);
+      const scan = raw ? JSON.parse(raw) as { routes?: string[]; pages?: string[] } : null;
+      const routes = Array.isArray(scan?.routes) ? scan.routes : [];
+      setCachedScanRoutes(routes.map((route) => {
+        const path = normalizeRoutePath(route);
+        return { label: routeLabelFromPath(path), path, description: path };
+      }));
+    } catch {
+      setCachedScanRoutes([]);
+    }
+  }, [projectId, previewMode]);
   const previewRoutes = useMemo<PreviewRoute[]>(() => {
     const seen = new Set<string>();
     const routes: PreviewRoute[] = [{ label: "Home", path: "/" }];
@@ -175,8 +197,13 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
       seen.add(path);
       routes.push({ label: page.name || path, path, description: page.description });
     }
+    for (const route of cachedScanRoutes) {
+      if (seen.has(route.path)) continue;
+      seen.add(route.path);
+      routes.push(route);
+    }
     return routes;
-  }, [applicationModel?.pages]);
+  }, [applicationModel?.pages, cachedScanRoutes]);
 
   useEffect(() => {
     if (!previewRoutes.some((route) => route.path === selectedRoute)) setSelectedRoute("/");
@@ -595,7 +622,7 @@ ${t}
   const routedLiveUrl = liveUrl ? withPreviewRoute(liveUrl, selectedRoute) : "";
   const routedWorkspacePreviewUrl = withPreviewRoute(`/api/preview/workspace/${projectId}/`, selectedRoute);
 
-  const routePicker = (context: "url" | "local") => previewRoutes.length > 1 ? (
+  const routePicker = (context: "url" | "local") => (
     <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: context === "url" ? "0 10px 7px" : "6px 10px", borderBottom: context === "local" ? "1px solid var(--atlas-border)" : undefined, overflowX: "auto", scrollbarWidth: "none" }}>
       <span style={{ fontSize: 9, ...sMono, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.42, flexShrink: 0 }}>
         Pages
@@ -607,7 +634,7 @@ ${t}
             key={route.path}
             type="button"
             title={route.description || route.path}
-            onClick={() => { setSelectedRoute(route.path); setIframeError(false); setIframeLoading(true); setReloadKey((k) => k + 1); }}
+            onClick={() => { setSelectedRoute(route.path); setIframeError(false); if (liveUrl || wsDsStatus === "running") setIframeLoading(true); setReloadKey((k) => k + 1); }}
             style={{
               flexShrink: 0,
               padding: "4px 8px",
@@ -630,7 +657,7 @@ ${t}
         );
       })}
     </div>
-  ) : null;
+  );
 
   const applyUrl = (url: string) => {
     const u = normalize(url);
@@ -801,9 +828,9 @@ ${t}
       {/* Mode toggle */}
       <div style={{ position: "relative", flexShrink: 0, borderBottom: "1px solid var(--atlas-border)" }}>
         {/* left fade */}
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to right, #0e0d0b, transparent)" }} />
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to right, var(--atlas-bg), transparent)" }} />
         {/* right fade */}
-        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, #0e0d0b, transparent)" }} />
+        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, var(--atlas-bg), transparent)" }} />
         <div style={{ display: "flex", overflowX: "auto", scrollbarWidth: "none" }}>
         {(["url", "sandbox", "stackblitz", "local", "generated"] as const).map((m) => (
           <button
@@ -953,7 +980,7 @@ ${t}
               )}
             </div>
 
-            {liveUrl && routePicker("url")}
+            {routePicker("url")}
 
             {/* Row 2 — status strip (auto-hides after 4s) */}
             {(autoDetected || (linkedRepo && token) || detectResults.length > 0 || (liveUrl && !autoDetected)) && (
@@ -1601,7 +1628,7 @@ ${t}
                 )}
               </div>
 
-              {wsDsStatus === "running" && wsDsPort && routePicker("local")}
+              {routePicker("local")}
 
               {/* Error banner */}
               {wsDsErrorMsg && (
@@ -1787,6 +1814,8 @@ ${t}
                   ))}
                 </div>
               )}
+
+              {routePicker("local")}
 
               {/* Error banner */}
               {devError && (
