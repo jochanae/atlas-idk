@@ -8930,7 +8930,7 @@ export default function Workspace() {
       <ProjectsDrawer
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
-        projects={(allProjects ?? []).map((p: any) => ({ id: p.id, name: p.name, description: p.description, latestSnapshotScore: p.latestSnapshotScore ?? null }))}
+        projects={(allProjects ?? []).map((p: any) => ({ id: p.id, name: p.name, description: p.description, readinessScore: p.readinessScore ?? null, latestSnapshotScore: p.latestSnapshotScore ?? null }))}
         activeProjectId={id}
         onOpenProject={(projectId) => { setLocation(`/project/${projectId}`); setShowDrawer(false); }}
         onNewProject={() => {
