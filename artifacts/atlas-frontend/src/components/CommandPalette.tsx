@@ -47,10 +47,6 @@ export function CommandPalette() {
         action: () => { window.open(window.location.origin, "_blank", "noopener,noreferrer"); setOpen(false); },
       },
 
-      // Atlas surfaces
-      { id: "open-design-center",  label: "Open Design Center",  description: "Theme tokens, components, and states", keywords: ["design","tokens","components","showcase","studio","ui"], section: "Atlas", action: () => go("/design") },
-      { id: "open-route-explorer", label: "Open Route Explorer", description: "Inspect and navigate all app routes",  keywords: ["routes","pages","paths","explorer"],                     section: "Atlas", action: () => go("/routes") },
-
       // Launcher actions (wired to existing event handlers in UnifiedContextDock etc.)
       { id: "launcher-search",        label: "Search",        description: "Find anything across Axiom",      keywords: ["search","find"],              section: "Launcher", action: () => fire("axiom:open-search") },
       { id: "launcher-capture",       label: "Capture",       description: "Drop a thought into the Parking Lot", keywords: ["capture","parking","idea"], section: "Launcher", action: () => fire("axiom:launcher-capture") },
