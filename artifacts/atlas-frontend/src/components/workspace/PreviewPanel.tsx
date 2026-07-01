@@ -595,7 +595,7 @@ ${t}
   const routedLiveUrl = liveUrl ? withPreviewRoute(liveUrl, selectedRoute) : "";
   const routedWorkspacePreviewUrl = withPreviewRoute(`/api/preview/workspace/${projectId}/`, selectedRoute);
 
-  const routePicker = (context: "url" | "local") => previewRoutes.length > 1 ? (
+  const routePicker = (context: "url" | "local") => (
     <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: context === "url" ? "0 10px 7px" : "6px 10px", borderBottom: context === "local" ? "1px solid var(--atlas-border)" : undefined, overflowX: "auto", scrollbarWidth: "none" }}>
       <span style={{ fontSize: 9, ...sMono, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.42, flexShrink: 0 }}>
         Pages
@@ -607,7 +607,7 @@ ${t}
             key={route.path}
             type="button"
             title={route.description || route.path}
-            onClick={() => { setSelectedRoute(route.path); setIframeError(false); setIframeLoading(true); setReloadKey((k) => k + 1); }}
+            onClick={() => { setSelectedRoute(route.path); setIframeError(false); if (liveUrl || wsDsStatus === "running") setIframeLoading(true); setReloadKey((k) => k + 1); }}
             style={{
               flexShrink: 0,
               padding: "4px 8px",
@@ -630,7 +630,7 @@ ${t}
         );
       })}
     </div>
-  ) : null;
+  );
 
   const applyUrl = (url: string) => {
     const u = normalize(url);
@@ -801,9 +801,9 @@ ${t}
       {/* Mode toggle */}
       <div style={{ position: "relative", flexShrink: 0, borderBottom: "1px solid var(--atlas-border)" }}>
         {/* left fade */}
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to right, #0e0d0b, transparent)" }} />
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to right, var(--atlas-bg), transparent)" }} />
         {/* right fade */}
-        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, #0e0d0b, transparent)" }} />
+        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, var(--atlas-bg), transparent)" }} />
         <div style={{ display: "flex", overflowX: "auto", scrollbarWidth: "none" }}>
         {(["url", "sandbox", "stackblitz", "local", "generated"] as const).map((m) => (
           <button
@@ -953,7 +953,7 @@ ${t}
               )}
             </div>
 
-            {liveUrl && routePicker("url")}
+            {routePicker("url")}
 
             {/* Row 2 — status strip (auto-hides after 4s) */}
             {(autoDetected || (linkedRepo && token) || detectResults.length > 0 || (liveUrl && !autoDetected)) && (
@@ -1601,7 +1601,7 @@ ${t}
                 )}
               </div>
 
-              {wsDsStatus === "running" && wsDsPort && routePicker("local")}
+              {routePicker("local")}
 
               {/* Error banner */}
               {wsDsErrorMsg && (
@@ -1787,6 +1787,8 @@ ${t}
                   ))}
                 </div>
               )}
+
+              {routePicker("local")}
 
               {/* Error banner */}
               {devError && (
