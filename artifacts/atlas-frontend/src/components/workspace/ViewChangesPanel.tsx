@@ -248,6 +248,7 @@ function WorkspaceRunCards({
   const runs = useAllRuns();
   const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
   const [retryErrors, setRetryErrors] = useState<Map<string, string>>(new Map());
+  const [dismissedRunIds, setDismissedRunIds] = useState<Set<string>>(new Set());
 
   const visibleRuns = useMemo(() => {
     const composerRuns = runs.filter((r) => r.projectId === projectId);
@@ -255,10 +256,16 @@ function WorkspaceRunCards({
     const messageRuns = synthesizeRunsFromMessages(messages, projectId, projectName)
       .filter((r) => !composerIds.has(r.id));
     const projectRuns = [...composerRuns, ...messageRuns]
+      .filter((r) => !dismissedRunIds.has(r.id))
       .sort((a, b) => b.createdAt - a.createdAt);
     if (runId) return projectRuns.filter((r) => r.id === runId);
     return projectRuns.slice(0, 3);
-  }, [messages, projectId, projectName, runId, runs]);
+  }, [dismissedRunIds, messages, projectId, projectName, runId, runs]);
+
+  const handleDismiss = useCallback((run: ActiveRun) => {
+    setDismissedRunIds((prev) => new Set(prev).add(run.id));
+    dismissActiveRun(run.id);
+  }, []);
 
   const handleForceApply = useCallback(async (run: ActiveRun, filePath: string) => {
     const fileEdit = run.fileEdits?.find((fe) => fe.path === filePath);
@@ -305,7 +312,7 @@ function WorkspaceRunCards({
           key={run.id}
           run={run}
           onEnter={() => {}}
-          onDismiss={() => dismissActiveRun(run.id)}
+          onDismiss={() => handleDismiss(run)}
           retryingFiles={retryingFiles}
           retryErrors={retryErrors}
           onForceApply={handleForceApply}
