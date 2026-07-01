@@ -2633,6 +2633,15 @@ export function AssistantBubble({
                     </svg>
                   </button>
                 </div>
+                <MenuItem
+                  icon={commitDone
+                    ? <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
+                    : <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="1.5" width="10" height="11" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" /></svg>
+                  }
+                  label={commitDone ? "Saved to Ledger" : "Save to Ledger"}
+                  disabled={commitDone}
+                  onClick={() => { setMenuOpen(false); if (!commitDone) { onCommit(message.content); setCommitDone(true); } }}
+                />
                 {snapshotForMsg && (
                   <MenuItem
                     icon={snapshotForMsg.isBookmarked ? <BookmarkCheck size={13} strokeWidth={1.7} /> : <Bookmark size={13} strokeWidth={1.6} />}
