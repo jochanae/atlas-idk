@@ -4141,7 +4141,7 @@ export default function Workspace() {
     return "chat";
   });
   const [subheaderOpen, setSubheaderOpen] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
+  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "insights" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [rightOpen, setRightOpen] = useState(() =>
