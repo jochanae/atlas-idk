@@ -152,6 +152,9 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
   const [intel, setIntel] = useState<Intelligence | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [explainDim, setExplainDim] = useState<null | { key: string; label: string; score: number; note: string; evidence: string; applicable: boolean }>(null);
+
+
 
   useEffect(() => {
     if (!projectId) return;
