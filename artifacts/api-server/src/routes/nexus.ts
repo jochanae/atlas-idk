@@ -1443,7 +1443,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // When conversationId is absent the caller is starting a brand-new thread —
   // return no DB history so stale messages from previous conversations never
   // bleed into the fresh context (the old fallback loaded every message for
-  // the user, which caused old workspace sessions to pollute new Global Insight
+  // the user, which caused old workspace sessions to pollute new Ask Atlas
   // conversations).
   const [projects, dbMessages] = await Promise.all([
     db
@@ -1673,7 +1673,7 @@ One pattern per line starting with "·". Short and specific. If nothing meaningf
     .orderBy(desc(projectsTable.updatedAt))
     .limit(20);
 
-  // Recent activity across portfolio — recent commits + sessions for Global Insight context
+  // Recent activity across portfolio — recent commits + sessions for Ask Atlas context
   const recentActivity = await (async () => {
     if (ideaMode || projectIds.length === 0) return null;
     try {
@@ -3397,7 +3397,7 @@ ${decisionsContext}
 SESSIONS IN LAST 48H:
 ${sessionsContext}
 
-RECENT GLOBAL INSIGHT CONVERSATION:
+RECENT ASK ATLAS CONVERSATION:
 ${messagesContext}
 
 Generate a structured JSON object with exactly these four fields:

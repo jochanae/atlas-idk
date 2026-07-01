@@ -2,7 +2,7 @@
  * ATLAS_IDENTITY
  *
  * Shared voice and identity foundation injected into both Workspace Atlas and
- * Global Insight prompts. Keep surface-specific capabilities and protocols out
+ * Ask Atlas prompts. Keep surface-specific capabilities and protocols out
  * of this block.
  */
 

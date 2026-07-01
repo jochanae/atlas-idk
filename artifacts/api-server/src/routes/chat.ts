@@ -3116,7 +3116,7 @@ HARD RULE: Never answer from the context of a different project unless the user 
   }
 
   // ── Portfolio Intelligence (always injected when portfolio context exists) ──────────
-  // Replaces Global Insights as a separate surface. Atlas carries this awareness into
+  // Replaces Ask Atlas as a separate surface. Atlas carries this awareness into
   // every workspace conversation — no need to route the user to another page.
   if (!isSelfContainedBuild && userId && portfolioRows.length > 0) {
     // 1. Aggregated memory across all projects (zero extra DB queries)

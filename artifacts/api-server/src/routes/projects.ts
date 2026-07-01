@@ -533,7 +533,7 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
 });
 
 // POST /api/projects/create-and-activate — create a committed workspace in one shot
-// Used by Atlas when the user makes an explicit "Build X" request from Global Insight.
+// Used by Atlas when the user makes an explicit "Build X" request from Ask Atlas.
 // Returns a fully committed project (genome + session seeded) so NAVIGATE_TO can fire
 // immediately without any secondary activation step.
 router.post("/projects/create-and-activate", async (req, res): Promise<void> => {
