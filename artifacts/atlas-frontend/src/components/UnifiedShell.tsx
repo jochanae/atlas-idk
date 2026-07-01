@@ -275,6 +275,7 @@ function ShellAvatar() {
       <div
         title={name}
         aria-label={name}
+        className="atlas-avatar-ring"
         style={{
           width: 36,
           height: 36,
@@ -295,11 +296,12 @@ function ShellAvatar() {
           <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "20%" }} />
         ) : (
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <circle cx="10" cy="7.5" r="3.2" stroke="#C9A24C" strokeWidth="1.2" />
-            <path d="M3 18.5c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="#C9A24C" strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="10" cy="7.5" r="3.2" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M3 18.5c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
         )}
       </div>
+
       {isAdmin && (
         <div
           style={{
