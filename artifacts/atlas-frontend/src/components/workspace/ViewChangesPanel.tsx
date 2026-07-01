@@ -12,10 +12,11 @@
 // we show the pill + an honest "No entries tagged for this run yet." hint
 // above the unfiltered list rather than pretending the view is filtered.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FolderGit2, X, FileCode2 } from "lucide-react";
 import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
+import { RunCard, dismissActiveRun, patchActiveRun, useAllRuns, type ActiveRun } from "@/components/home/ActiveRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 
 // ── Shared badge logic (mirrors WorkspaceFilesPanel) ─────────────────────────
@@ -182,6 +183,74 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
   );
 }
 
+// ── Run receipt: existing RunCard mounted on the Changes surface ─────────────
+
+function WorkspaceRunCards({ projectId, runId }: { projectId: number; runId?: string | null }) {
+  const runs = useAllRuns();
+  const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
+  const [retryErrors, setRetryErrors] = useState<Map<string, string>>(new Map());
+
+  const visibleRuns = useMemo(() => {
+    const projectRuns = runs.filter((r) => r.projectId === projectId);
+    if (runId) return projectRuns.filter((r) => r.id === runId);
+    return projectRuns.slice(0, 3);
+  }, [projectId, runId, runs]);
+
+  const handleForceApply = useCallback(async (run: ActiveRun, filePath: string) => {
+    const fileEdit = run.fileEdits?.find((fe) => fe.path === filePath);
+    if (!fileEdit) return;
+    const key = `${run.id}:${filePath}`;
+
+    setRetryingFiles((prev) => new Set(prev).add(key));
+    setRetryErrors((prev) => { const m = new Map(prev); m.delete(key); return m; });
+
+    try {
+      const res = await fetch("/api/github/apply-local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ files: [fileEdit], projectId: run.projectId }),
+      });
+
+      if (res.ok) {
+        patchActiveRun(run.id, {
+          applyErrors: (run.applyErrors ?? []).filter((ae) => ae.path !== filePath),
+          appliedFiles: [...(run.appliedFiles ?? []), filePath],
+        });
+      } else {
+        const errBody = await res.json().catch(() => ({})) as { error?: string };
+        setRetryErrors((prev) => new Map(prev).set(key, `Apply failed (${res.status}): ${errBody.error ?? "Server error"}`));
+      }
+    } catch (err) {
+      setRetryErrors((prev) => new Map(prev).set(key, `Apply failed: ${err instanceof Error ? err.message : String(err)}`));
+    } finally {
+      setRetryingFiles((prev) => { const s = new Set(prev); s.delete(key); return s; });
+    }
+  }, []);
+
+  if (visibleRuns.length === 0) return null;
+
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", gap: 6,
+      padding: "10px 14px",
+      borderBottom: "1px solid rgba(201,162,76,0.08)",
+    }}>
+      {visibleRuns.map((run) => (
+        <RunCard
+          key={run.id}
+          run={run}
+          onEnter={() => {}}
+          onDismiss={() => dismissActiveRun(run.id)}
+          retryingFiles={retryingFiles}
+          retryErrors={retryErrors}
+          onForceApply={handleForceApply}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ── Root component ────────────────────────────────────────────────────────────
 
 interface Props {
@@ -264,6 +333,8 @@ export function ViewChangesPanel({
           ><X size={10} strokeWidth={1.8} /> Clear</button>
         </div>
       )}
+
+      <WorkspaceRunCards projectId={projectId} runId={runId} />
 
       {/* ── Toggle ── */}
       <div style={{
