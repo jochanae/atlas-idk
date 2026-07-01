@@ -4845,6 +4845,7 @@ export default function Home() {
                 hasProjectContext={false}
                 globalContext={true}
                 borderless={true}
+                compact={isTiny}
                 hasAttachments={attachedFiles.length > 0}
                 onFiles={(files) => {
                   const combined = [...attachedFiles, ...files].slice(0, 10);
