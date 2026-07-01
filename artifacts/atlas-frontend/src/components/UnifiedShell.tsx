@@ -1050,40 +1050,50 @@ function SovereignReadinessSheet({
           </div>
         )}
 
-        {/* Mix bar */}
-        <SectionLabel>Core Mix</SectionLabel>
-        <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
-          <div style={{ width: `${frontend}%`, background: "var(--atlas-gold)" }} />
-          <div style={{ width: `${backend}%`, background: "rgba(201,162,76,0.55)" }} />
-          <div style={{ width: `${context}%`, background: "rgba(201,162,76,0.28)" }} />
-        </div>
-        <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
-          <MixLegend dot="var(--atlas-gold)" label="Frontend" pct={frontend} />
-          <MixLegend dot="rgba(201,162,76,0.55)" label="Backend" pct={backend} />
-          <MixLegend dot="rgba(201,162,76,0.28)" label="Context" pct={context} />
-        </div>
-
-        {/* Phases */}
-        <SectionLabel>Architectural Phases</SectionLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
-          {phases.map((p) => (
-            <div key={p.label}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: 999, background: toneColor(p.tone) }} />
-                  <span style={{ fontSize: 13, color: "var(--atlas-fg)" }}>{p.label}</span>
-                </div>
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: toneColor(p.tone) }}>
-                  {p.pct}%
-                </span>
-              </div>
-              <div style={{ height: 3, borderRadius: 999, background: "rgba(201,162,76,0.08)", overflow: "hidden" }}>
-                <div style={{ width: `${p.pct}%`, height: "100%", background: toneColor(p.tone) }} />
-              </div>
-              <div style={{ fontSize: 11, color: "var(--atlas-muted)", marginTop: 3 }}>{p.note}</div>
+        {/* Core Mix — server-authoritative from readiness.layerMix. Hidden when unavailable. */}
+        {hasLayerMix && layerMix && (
+          <>
+            <SectionLabel>Core Mix</SectionLabel>
+            <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ width: `${layerMix.strategy}%`, background: "var(--atlas-gold)" }} />
+              <div style={{ width: `${layerMix.build}%`, background: "rgba(201,162,76,0.7)" }} />
+              <div style={{ width: `${layerMix.activity}%`, background: "rgba(201,162,76,0.45)" }} />
+              <div style={{ width: `${layerMix.delivery}%`, background: "rgba(201,162,76,0.25)" }} />
             </div>
-          ))}
-        </div>
+            <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
+              <MixLegend dot="var(--atlas-gold)" label="Strategy" pct={layerMix.strategy} />
+              <MixLegend dot="rgba(201,162,76,0.7)" label="Build" pct={layerMix.build} />
+              <MixLegend dot="rgba(201,162,76,0.45)" label="Activity" pct={layerMix.activity} />
+              <MixLegend dot="rgba(201,162,76,0.25)" label="Delivery" pct={layerMix.delivery} />
+            </div>
+          </>
+        )}
+
+        {/* Phases — server-authoritative from readiness.phases. Hidden when unavailable. */}
+        {phases.length > 0 && (
+          <>
+            <SectionLabel>Lifecycle Phases</SectionLabel>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+              {phases.map((p) => (
+                <div key={p.key}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 999, background: toneColor(p.tone) }} />
+                      <span style={{ fontSize: 13, color: "var(--atlas-fg)" }}>{p.label}</span>
+                    </div>
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: toneColor(p.tone) }}>
+                      {p.pct}%
+                    </span>
+                  </div>
+                  <div style={{ height: 3, borderRadius: 999, background: "rgba(201,162,76,0.08)", overflow: "hidden" }}>
+                    <div style={{ width: `${p.pct}%`, height: "100%", background: toneColor(p.tone) }} />
+                  </div>
+                  {p.note && <div style={{ fontSize: 11, color: "var(--atlas-muted)", marginTop: 3 }}>{p.note}</div>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Atlas guidance */}
         <SectionLabel>Atlas Strategic Assessment</SectionLabel>
