@@ -57,6 +57,7 @@ import { useShellStore } from "../store/shellStore";
 import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { useDockVisibility } from "@/hooks/useDockVisibility";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
@@ -1988,8 +1989,9 @@ export default function Home() {
     projectContext: null,
   });
   const askAtlasScrollRef = useRef<HTMLDivElement | null>(null);
-  const askAtlasConversationActive = askAtlasChat.messages.length > 0;
+  const askAtlasConversationActive = sendTo === "ask-atlas" && askAtlasChat.messages.length > 0;
   const askAtlasBusy = sendTo === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending);
+  const dockVisible = useDockVisibility();
   const clearAskAtlasPortfolioTransition = useCallback(() => {
     if (askAtlasPortfolioTransitionFadeTimerRef.current != null) {
       window.clearTimeout(askAtlasPortfolioTransitionFadeTimerRef.current);
@@ -3749,7 +3751,29 @@ export default function Home() {
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.clearMessages]);
+    // Reset transient Home state so a fresh conversation starts clean.
+    setShapingStatus("idle");
+    setPendingWorkspace(null, "");
+    setGlobalInsightOpen(false);
+    void callGlobalInsightMode(false);
+    setSendTo("workspace");
+    sendToRef.current = "workspace";
+    setAskAtlasHelperVisible(false);
+    clearAskAtlasPortfolioTransition();
+    setAskAtlasPortfolioStatus(null);
+    askAtlasChat.abort();
+    askAtlasChat.clearMessages();
+    setHandoffCardDismissed(false);
+    setHandoffProjectName("");
+  }, [
+    nexusChat.clearMessages,
+    setShapingStatus,
+    setPendingWorkspace,
+    callGlobalInsightMode,
+    askAtlasChat.abort,
+    askAtlasChat.clearMessages,
+    clearAskAtlasPortfolioTransition,
+  ]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
@@ -4268,7 +4292,7 @@ export default function Home() {
             }} />
 
             {/* Greeting + inline Ask Atlas conversation — crossfade in the hero slot */}
-            {nexusChat.messages.length === 0 && !showOverviewSheet && (
+            {nexusChat.messages.length === 0 && !showOverviewSheet && !(threadLoading && activeConversationId) && (
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
@@ -4558,7 +4582,25 @@ export default function Home() {
                   <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
                 </div>
               )}
-            {nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading && !askAtlasConversationActive ? (
+            {threadLoading && activeConversationId ? (
+              <div aria-busy="true" aria-label="Loading conversation" style={{ display: "flex", flexDirection: "column", gap: 12, padding: "16px 4px" }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{
+                    display: "flex",
+                    justifyContent: i % 2 === 0 ? "flex-start" : "flex-end",
+                  }}>
+                    <div style={{
+                      width: i === 1 ? "62%" : i === 2 ? "40%" : "78%",
+                      height: i === 1 ? 44 : 60,
+                      borderRadius: 12,
+                      background: "linear-gradient(90deg, rgba(201,162,76,0.06) 0%, rgba(201,162,76,0.14) 50%, rgba(201,162,76,0.06) 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "atlasSkeletonShimmer 1400ms ease-in-out infinite",
+                    }} />
+                  </div>
+                ))}
+              </div>
+            ) : nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading && !askAtlasConversationActive ? (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
                 <button
                   type="button"
@@ -5030,7 +5072,11 @@ export default function Home() {
             position: globalInsightOpen ? "relative" : "sticky",
             left: globalInsightOpen ? undefined : 0,
             right: globalInsightOpen ? undefined : 0,
-            bottom: globalInsightOpen ? undefined : "calc(64px + env(safe-area-inset-bottom, 0px))",
+            bottom: globalInsightOpen
+              ? undefined
+              : dockVisible
+                ? "calc(64px + env(safe-area-inset-bottom, 0px))"
+                : "env(safe-area-inset-bottom, 0px)",
             padding: globalInsightOpen
               ? "12px 0 0"
               : "14px 20px 14px",
@@ -5326,10 +5372,12 @@ export default function Home() {
                         }
                       } catch { /* noop */ }
                     } else {
+                      // Toggle OFF: hide the Ask Atlas thread but preserve it
+                      // so toggling back ON restores the conversation. Abort
+                      // any in-flight stream so it doesn't ghost-complete.
                       setAskAtlasHelperVisible(false);
                       clearAskAtlasPortfolioTransition();
                       askAtlasChat.abort();
-                      askAtlasChat.clearMessages();
                     }
                     return next;
                   });
