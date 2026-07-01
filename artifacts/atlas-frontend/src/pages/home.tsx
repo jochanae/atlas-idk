@@ -4894,15 +4894,15 @@ export default function Home() {
                   });
                 }}
                 style={{
-                  height: 34,
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "0 10px", borderRadius: 999,
+                  height: isMobile ? 32 : 34,
+                  display: "inline-flex", alignItems: "center", gap: isMobile ? 4 : 6,
+                  padding: isMobile ? "0 8px" : "0 10px", borderRadius: 999,
                   background: sendTo === "ask-atlas"
-                    ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
+                    ? "color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
                     : "transparent",
-                  border: `1px solid ${sendTo === "ask-atlas" ? "rgba(201,162,76,0.55)" : "rgba(255,255,255,0.10)"}`,
+                  border: `1px solid ${sendTo === "ask-atlas" ? "var(--atlas-gold-border)" : "var(--atlas-border, rgba(120,113,108,0.18))"}`,
                   boxShadow: sendTo === "ask-atlas"
-                    ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)"
+                    ? "0 0 14px -4px var(--atlas-gold-glow), inset 0 0 0 1px var(--atlas-gold-border)"
                     : "none",
                   color: sendTo === "ask-atlas" ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer",
@@ -4910,7 +4910,7 @@ export default function Home() {
                   fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
                   whiteSpace: "nowrap",
                   minWidth: 0,
-                  flexShrink: 1,
+                  flexShrink: 0,
                   WebkitTapHighlightColor: "transparent",
                   transition: "all 180ms ease",
                 }}
@@ -4921,17 +4921,17 @@ export default function Home() {
                   style={{
                     flexShrink: 0,
                     filter: sendTo === "ask-atlas"
-                      ? "drop-shadow(0 0 4px rgba(201,162,76,0.75))"
+                      ? "drop-shadow(0 0 4px var(--atlas-gold-glow))"
                       : "none",
                     transition: "filter 180ms ease",
                   }}
                 />
-                <span>Ask Atlas</span>
+                {!isMobile && <span>Ask Atlas</span>}
                 {sendTo === "ask-atlas" && (
                   <span style={{
                     width: 5, height: 5, borderRadius: "50%",
                     background: "var(--atlas-gold)",
-                    boxShadow: "0 0 6px rgba(201,162,76,0.85)",
+                    boxShadow: "0 0 6px var(--atlas-gold-glow)",
                     flexShrink: 0,
                   }} />
                 )}
