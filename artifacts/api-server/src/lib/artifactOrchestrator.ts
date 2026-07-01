@@ -22,6 +22,7 @@ import {
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+import { classifyProductArchetype } from "./productIntelligence";
 
 // ── State types ───────────────────────────────────────────────────────────────
 
@@ -41,10 +42,13 @@ export interface ApplicationModelState {
 }
 
 export interface ProductIntelligenceState {
-  /** true once a product archetype has been classified — not built yet, always null in v1 */
   classified: boolean;
   archetypeId: string | null;
+  archetypeLabel: string | null;
+  /** Normalized 0–1 classifier confidence score */
+  score: number | null;
   impliedRequirements: string[];
+  matchedSignals: string[];
 }
 
 export interface SketchState {
@@ -153,6 +157,9 @@ export interface OrchestratorResult {
     amEntityCount: number | null;
     amRelationshipCount: number | null;
     productIntelligenceClassified: boolean | null;
+    productIntelligenceArchetypeId: string | null;
+    productIntelligenceScore: number | null;
+    productIntelligenceMatchedSignals: string[] | null;
     sketchExists: boolean | null;
     sketchApprovedCount: number | null;
     designPlanStatus: string | null;
@@ -194,27 +201,26 @@ const ORCHESTRATOR_RULES: OrchestratorRule[] = [
 
   {
     id: "R002_AM_TRIGGERS_PRODUCT_INTEL",
-    description: "Application Model is shaped enough to classify a product archetype",
+    description: "AM exists but archetype classifier could not identify a product type — more semantic detail needed",
     pillar: "think",
     confidence: "automatic",
     evaluate: (state) => {
-      const am = state.applicationModel;
-      const hasEnoughShape = (am?.pageCount ?? 0) >= 2 && (am?.entityCount ?? 0) >= 3;
-      const piMissing = state.productIntelligence === null;
-      const triggered = hasEnoughShape && piMissing;
+      const amExists = state.applicationModel !== null;
+      const piNotClassified = state.productIntelligence === null;
+      const triggered = amExists && piNotClassified;
       return {
         triggered,
-        missingInputs: [
-          ...(!am ? ["application_model"] : []),
-          ...(am && (am.pageCount < 2) ? [`am_page_count < 2 (current: ${am.pageCount})`] : []),
-          ...(am && (am.entityCount < 3) ? [`am_entity_count < 3 (current: ${am.entityCount})`] : []),
-          "product_intelligence_subsystem_not_built",
-        ],
+        missingInputs: amExists
+          ? ["classifier_no_match — add richer page names, entity names, or genome purpose/audience text"]
+          : ["application_model"],
         proposedAction: {
           type: "classify",
           artifact: "product_intelligence",
-          reason: "AM has ≥ 2 pages and ≥ 3 entities — sufficient shape to classify a product archetype and surface implied requirements",
-          metadata: { pageCount: am?.pageCount, entityCount: am?.entityCount },
+          reason: "AM exists but keyword signals are too thin to match a product archetype — richer descriptions will unlock downstream rules",
+          metadata: {
+            amPageCount: state.applicationModel?.pageCount,
+            amEntityCount: state.applicationModel?.entityCount,
+          },
         },
       };
     },
@@ -319,22 +325,28 @@ const ORCHESTRATOR_RULES: OrchestratorRule[] = [
   },
 
   {
-    id: "R007_AM_STALLED_WITHOUT_PRODUCT_INTEL",
-    description: "AM exists but pipeline is blocked because Product Intelligence is not built",
+    id: "R007_AM_RICH_BUT_UNCLASSIFIED",
+    description: "AM is well-shaped (≥3 pages, ≥3 entities) but classifier still cannot determine archetype — semantic signals are missing",
     pillar: "think",
     confidence: "automatic",
     evaluate: (state) => {
-      const amExists = state.applicationModel !== null;
-      const amShaped = (state.applicationModel?.pageCount ?? 0) >= 2 && (state.applicationModel?.entityCount ?? 0) >= 3;
-      const piMissing = state.productIntelligence === null;
-      const triggered = amExists && amShaped && piMissing;
+      const amRich = (state.applicationModel?.pageCount ?? 0) >= 3 && (state.applicationModel?.entityCount ?? 0) >= 3;
+      const piNotClassified = state.productIntelligence === null;
+      const triggered = amRich && piNotClassified;
       return {
         triggered,
-        missingInputs: ["product_intelligence_subsystem_not_built"],
+        missingInputs: [
+          "archetype_unresolvable — AM has shape but page/entity names are too generic for keyword matching; add descriptions or genome purpose text",
+        ],
         proposedAction: {
-          type: "noop",
-          reason: "AM is shaped and ready for archetype classification, but Product Intelligence subsystem has not been built yet — pipeline is blocked at R002",
-          metadata: { blockedAt: "R002_AM_TRIGGERS_PRODUCT_INTEL" },
+          type: "classify",
+          artifact: "product_intelligence",
+          reason: "AM is structurally complete but archetype is still unknown — this blocks Sketch generation and Design Plan seeding",
+          metadata: {
+            pageCount: state.applicationModel?.pageCount,
+            entityCount: state.applicationModel?.entityCount,
+            blockedDownstream: ["R003_PRODUCT_INTEL_UNLOCKS_SKETCH"],
+          },
         },
       };
     },
@@ -407,6 +419,11 @@ async function loadProjectArtifactState(projectId: number): Promise<ProjectArtif
 
   // ── Application Model ──
   let amState: ApplicationModelState | null = null;
+  // Lifted for classifier — populated when AM row exists
+  let amPageNames: string[] = [];
+  let amEntityNames: string[] = [];
+  let amPageDescriptions: string[] = [];
+  let amEntityDescriptions: string[] = [];
   if (amRow.length > 0) {
     const pages = Array.isArray(amRow[0].pages) ? amRow[0].pages : [];
     const data = (amRow[0].data ?? {}) as { entities?: unknown[]; relationships?: unknown[] };
@@ -421,6 +438,11 @@ async function loadProjectArtifactState(projectId: number): Promise<ProjectArtif
       (pageCount / 5) * 0.40 + (entityCount / 8) * 0.40 + (relCount / 10) * 0.20
     );
     amState = { completeness, pageCount, entityCount, relationshipCount: relCount };
+    // Extract names + descriptions for classifier
+    amPageNames = pages.map((p: unknown) => (p as { name?: string }).name ?? "").filter(Boolean);
+    amEntityNames = entities.map((e: unknown) => (e as { name?: string }).name ?? "").filter(Boolean);
+    amPageDescriptions = pages.map((p: unknown) => (p as { description?: string }).description ?? "").filter(Boolean);
+    amEntityDescriptions = entities.map((e: unknown) => (e as { description?: string }).description ?? "").filter(Boolean);
   }
 
   // ── Design Plan ──
@@ -468,11 +490,34 @@ async function loadProjectArtifactState(projectId: number): Promise<ProjectArtif
     } catch { /* non-fatal */ }
   }
 
+  // ── Product Intelligence — keyword classifier (no LLM, synchronous) ──
+  let productIntelligenceState: ProductIntelligenceState | null = null;
+  if (genomeState || amState) {
+    const genomeRow0 = genomeRow[0] as { purpose?: string | null; audience?: string | null } | undefined;
+    const piResult = classifyProductArchetype(
+      genomeRow0?.purpose,
+      genomeRow0?.audience,
+      amPageNames,
+      amEntityNames,
+      [...amPageDescriptions, ...amEntityDescriptions],
+    );
+    if (piResult) {
+      productIntelligenceState = {
+        classified: true,
+        archetypeId: piResult.archetypeId,
+        archetypeLabel: piResult.archetypeLabel,
+        score: piResult.score,
+        impliedRequirements: piResult.impliedRequirements,
+        matchedSignals: piResult.matchedSignals,
+      };
+    }
+  }
+
   return {
     projectId,
     genome: genomeState,
     applicationModel: amState,
-    productIntelligence: null, // Not built yet — always null in v1
+    productIntelligence: productIntelligenceState,
     sketch: sketchState,
     designPlan: dpState,
     flow: flowState,
@@ -530,6 +575,9 @@ export async function runArtifactOrchestrator(projectId: number): Promise<Orches
       amEntityCount: state.applicationModel?.entityCount ?? null,
       amRelationshipCount: state.applicationModel?.relationshipCount ?? null,
       productIntelligenceClassified: state.productIntelligence?.classified ?? null,
+      productIntelligenceArchetypeId: state.productIntelligence?.archetypeId ?? null,
+      productIntelligenceScore: state.productIntelligence?.score ?? null,
+      productIntelligenceMatchedSignals: state.productIntelligence?.matchedSignals ?? null,
       sketchExists: state.sketch?.exists ?? null,
       sketchApprovedCount: state.sketch?.approvedCount ?? null,
       designPlanStatus: state.designPlan?.status ?? null,
