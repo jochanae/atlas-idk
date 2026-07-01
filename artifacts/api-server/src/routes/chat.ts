@@ -26,7 +26,7 @@ import { runBuildCheck, runWorkspaceBuildCheck } from "./devserver";
 import fsPromises from "node:fs/promises";
 import nodePath from "node:path";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath } from "../lib/projectWorkspace";
-import { runArtifactOrchestrator } from "../lib/artifactOrchestrator";
+import { runArtifactOrchestrator, loadProjectArtifactState } from "../lib/artifactOrchestrator";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3035,6 +3035,64 @@ HARD RULE: Never answer from the context of a different project unless the user 
   } else if (!isFoundationMode && projectId && !committedDesignPlan) {
     // No committed Design Plan — note that design decisions are unconstrained
     systemPrompt += `\n\n[No committed Design Plan for this project — design decisions are unconstrained. Apply the Project DNA and your best judgment.]`;
+  }
+
+  // ── Artifact Pipeline Nudge ──────────────────────────────────────────────────
+  // Read the current artifact state synchronously and inject a compact hint when
+  // something actionable is close (Sketch almost unlocked, archetype classified,
+  // etc.).  Non-fatal — a failed read silently skips the block.
+  if (!isFoundationMode && projectId) {
+    try {
+      const pipelineState = await loadProjectArtifactState(projectId);
+      const pi = pipelineState.productIntelligence;
+      const am = pipelineState.applicationModel;
+      const sketch = pipelineState.sketch;
+
+      const nudgeLines: string[] = [];
+
+      // Always surface the product archetype when classified
+      if (pi?.classified && pi.archetypeId) {
+        nudgeLines.push(`Product type: ${pi.archetypeLabel} (classified from AM signals)`);
+      }
+
+      // R003 near-miss — sketch almost unlocked
+      if (pi?.classified && am && am.completeness >= 0.35 && am.completeness < 0.5) {
+        const p = am.pageCount;
+        const e = am.entityCount;
+        const r = am.relationshipCount;
+        const score = (dp: number, de: number) =>
+          ((p + dp) / 5) * 0.4 + ((e + de) / 8) * 0.4 + (r / 10) * 0.2;
+        let pPath = 0;
+        for (let dp = 1; dp <= 5; dp++) { if (score(dp, 0) >= 0.5) { pPath = dp; break; } }
+        let ePath = 0;
+        for (let de = 1; de <= 8; de++) { if (score(0, de) >= 0.5) { ePath = de; break; } }
+        const pPart = pPath > 0 ? `${pPath} more page${pPath > 1 ? "s" : ""}` : null;
+        const ePart = ePath > 0 ? `${ePath} more ${ePath > 1 ? "entities" : "entity"}` : null;
+        const suggestions = pi.typicalEntities?.slice(0, 3) ?? [];
+        const suggestionHint = suggestions.length > 0 ? ` like ${suggestions.join(", ")}` : "";
+        const pathStr = [pPart, ePart].filter(Boolean).join(" or ");
+        nudgeLines.push(`Sketch: almost ready — needs ${pathStr}${suggestionHint}.`);
+      }
+
+      // R003 ready but no sketch yet — Sketch can be generated
+      if (pi?.classified && am && am.completeness >= 0.5 && (!sketch || !sketch.exists)) {
+        nudgeLines.push(`Sketch: pipeline is unblocked — enough AM structure to generate one now.`);
+      }
+
+      // Sketch exists but nothing approved yet
+      if (sketch?.exists && (sketch.approvedCount ?? 0) === 0) {
+        nudgeLines.push(`Sketch: exists but not yet approved — approving it unlocks the Design Plan.`);
+      }
+
+      // AM exists but archetype unknown — classifier needs richer signals
+      if (am && !pi?.classified) {
+        nudgeLines.push(`Product type: unclassified — AM page/entity names are too generic for auto-detection; richer descriptions would help.`);
+      }
+
+      if (nudgeLines.length > 0) {
+        systemPrompt += `\n\n--- ARTIFACT PIPELINE STATE ---\n${nudgeLines.join("\n")}\nUse this naturally when relevant — never recite it unprompted. If the user asks about next steps, sketches, or what Atlas can produce, surface the specific gap in one conversational sentence.\n--- END ARTIFACT PIPELINE STATE ---`;
+      }
+    } catch { /* non-fatal — pipeline state is additive context only */ }
   }
 
   systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;

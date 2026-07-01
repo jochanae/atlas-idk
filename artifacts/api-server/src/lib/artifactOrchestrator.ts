@@ -410,7 +410,7 @@ const ORCHESTRATOR_RULES: OrchestratorRule[] = [
 
 // ── State loader ──────────────────────────────────────────────────────────────
 
-async function loadProjectArtifactState(projectId: number): Promise<ProjectArtifactState> {
+export async function loadProjectArtifactState(projectId: number): Promise<ProjectArtifactState> {
   type GenomeRow = typeof projectGenomeTable.$inferSelect;
   type AmRow = { pages: unknown; data: unknown };
   type DpRow = { status: string };
