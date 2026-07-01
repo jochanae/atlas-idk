@@ -205,6 +205,10 @@ html, body {
   --atlas-gold-dim:     rgba(230, 198, 135, 0.12);
   --atlas-gold-border:  rgba(230, 198, 135, 0.22);
   --atlas-phosphor:     #06B6D4;
+  /* Intelligence status accent — purple, AI signals only. */
+  --atlas-intel:        #A79BFF;
+  --atlas-intel-glow:   rgba(167, 155, 255, 0.35);
+  --atlas-intel-dim:    rgba(167, 155, 255, 0.14);
   --atlas-border:       rgba(230, 198, 135, 0.15);
   --atlas-glass-bg:     rgba(11, 10, 15, 0.72);
   --atlas-glass-border: rgba(230, 198, 135, 0.1);
