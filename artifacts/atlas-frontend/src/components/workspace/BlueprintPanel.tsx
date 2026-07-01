@@ -7,8 +7,9 @@ import { useProjectDNA } from "@/hooks/useProjectDNA";
 import type { ProjectDNAPatch } from "@/hooks/useProjectDNA";
 import { ExperienceIntentCard } from "./ExperienceIntentCard";
 import { DesignPlanPanel } from "./DesignPlanPanel";
+import { PipelineSketchPanel } from "./PipelineSketchPanel";
 
-type BPTab = "spec" | "components" | "data" | "logic" | "soul" | "design";
+type BPTab = "spec" | "components" | "data" | "logic" | "soul" | "design" | "sketch";
 
 const MONO = "var(--app-font-mono)";
 const GOLD = "var(--atlas-gold, #C9A24C)";
@@ -492,6 +493,7 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
     { id: "data", label: "Data Model" },
     { id: "logic", label: "Logic" },
     { id: "soul", label: "Soul", dot: hasSoul },
+    { id: "sketch", label: "Sketch" },
     { id: "design", label: "Design" },
   ];
 
@@ -603,6 +605,7 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
         {!loading && activeTab === "soul" && !dna && (
           <EmptySlot message="Share how you want this product to feel — Axiom will capture it here." />
         )}
+        {activeTab === "sketch" && <PipelineSketchPanel projectId={projectId} />}
         {activeTab === "design" && <DesignPlanPanel projectId={projectId} />}
       </div>
 

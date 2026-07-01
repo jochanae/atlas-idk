@@ -55,7 +55,7 @@ export interface ProductIntelligenceState {
 
 export interface SketchState {
   exists: boolean;
-  /** Number of visual_sketch project artifacts that have been approved/confirmed */
+  /** Number of pipeline_sketch project artifacts that have been approved/confirmed */
   approvedCount: number;
 }
 
@@ -493,9 +493,9 @@ export async function loadProjectArtifactState(projectId: number): Promise<Proje
     dpState = { exists: true, status };
   }
 
-  // ── Sketch (from project_artifacts table, type = 'visual_sketch') ──
+  // ── Sketch (from project_artifacts table, type = 'pipeline_sketch') ──
   let sketchState: SketchState | null = null;
-  const sketchArtifacts = sketchRows.filter((r) => r.type === "visual_sketch");
+  const sketchArtifacts = sketchRows.filter((r) => r.type === "pipeline_sketch");
   if (sketchArtifacts.length > 0) {
     const approvedCount = sketchArtifacts.filter((r) => r.metadata?.approved === true).length;
     sketchState = { exists: true, approvedCount };
