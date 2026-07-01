@@ -388,7 +388,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       },
     ];
     right = [
-      { id: "manifest", label: "Manifest", icon: ICONS.manifest, onClick: props.onManifest, active: at === "manifest" },
+      { id: "insights", label: "Insights", icon: ICONS.insights, onClick: props.onInsights ?? props.onManifest, active: at === "insights" },
       { id: "flow", label: "Map", icon: ICONS.map, onClick: props.onFlow, active: at === "map" },
     ];
   }
