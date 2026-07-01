@@ -727,42 +727,16 @@ ${t}
   const routedLiveUrl = liveUrl ? withPreviewRoute(liveUrl, selectedRoute) : "";
   const routedWorkspacePreviewUrl = withPreviewRoute(`/api/preview/workspace/${projectId}/`, selectedRoute);
 
-  const routePicker = (context: "url" | "local") => (
-    <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: context === "url" ? "0 10px 7px" : "6px 10px", borderBottom: context === "local" ? "1px solid var(--atlas-border)" : undefined, overflowX: "auto", scrollbarWidth: "none" }}>
-      <span style={{ fontSize: 9, ...sMono, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.42, flexShrink: 0 }}>
-        Pages
-      </span>
-      {previewRoutes.map((route) => {
-        const active = selectedRoute === route.path;
-        return (
-          <button
-            key={route.path}
-            type="button"
-            title={route.description || route.path}
-            onClick={() => { setSelectedRoute(route.path); setIframeError(false); if (liveUrl || wsDsStatus === "running") setIframeLoading(true); setReloadKey((k) => k + 1); }}
-            style={{
-              flexShrink: 0,
-              padding: "4px 8px",
-              borderRadius: 999,
-              background: active ? "rgba(201,162,76,0.12)" : "transparent",
-              border: `1px solid ${active ? "rgba(201,162,76,0.32)" : "var(--atlas-border)"}`,
-              color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
-              cursor: "pointer",
-              fontSize: 9.5,
-              ...sMono,
-              letterSpacing: "0.04em",
-              maxWidth: 140,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {route.label}
-          </button>
-        );
-      })}
-    </div>
+  const handleRouteSelect = (path: string) => {
+    setSelectedRoute(path);
+    setIframeError(false);
+    if (liveUrl || wsDsStatus === "running") setIframeLoading(true);
+    setReloadKey((k) => k + 1);
+  };
+  const routePickerButton = (
+    <RoutePickerButton routes={previewRoutes} selected={selectedRoute} onSelect={handleRouteSelect} />
   );
+
 
   const applyUrl = (url: string) => {
     const u = normalize(url);
