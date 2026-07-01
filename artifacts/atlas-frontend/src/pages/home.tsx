@@ -2930,11 +2930,11 @@ export default function Home() {
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
     if (sendToRef.current === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending)) return;
-    submitInFlightRef.current = true;
     // Composer-mode routing — Ask Atlas streams inline; workspace falls through
     // to the standard create/inline-send fork below.
     const routeTarget = sendToRef.current;
     if (routeTarget === "ask-atlas" && text) {
+      submitInFlightRef.current = true;
       setInput("");
       setAttachedFiles([]);
       setAskAtlasHelperVisible(false);
@@ -2947,19 +2947,20 @@ export default function Home() {
     if (shouldStayOnHome && !globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
     }
+    // All blocking gates — nothing above this line mutates project/send state.
+    // Each gate is a clean exit: no flags set, no API calls made.
     if (!shouldStayOnHome && !backendReady) {
-      submitInFlightRef.current = false;
       setCreateError(
         "Project creation is unavailable in this preview because the backend API URL is not configured.",
       );
       return;
     }
     if (!shouldStayOnHome && isFree && (projects?.length ?? 0) >= 1) {
-      submitInFlightRef.current = false;
       setShowUpgrade(true);
       return;
     }
-    // Block PTR and double-sends immediately — before any async work
+    // All gates cleared — commit to the operation now.
+    submitInFlightRef.current = true;
     setIsSending(true);
     document.body.dataset.voiceActive = "true";
     setInput("");
