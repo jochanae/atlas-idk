@@ -780,8 +780,8 @@ export function AxiomFlow({
       .then(r => (r.ok ? r.json() : null))
       .then((data: { nodes: ArchNode[]; edges: ArchEdge[] } | null) => {
         if (data && Array.isArray(data.nodes) && data.nodes.length > 0) {
-          // DB has real data — use it directly
-          setNodes(data.nodes);
+          // DB has real data — use it directly (sanitized against stray positions)
+          setNodes(sanitizeNodePositions(data.nodes));
           setEdges(data.edges ?? []);
           dbLoadedRef.current = true;
           setFlowLoading(false);
