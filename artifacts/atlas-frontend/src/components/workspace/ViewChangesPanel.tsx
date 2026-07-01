@@ -342,7 +342,10 @@ export function ViewChangesPanel({
   // filter honestly. Otherwise show the pill + hint and render unfiltered.
   const { filteredMessages, filteredActive, showEmptyHint } = useMemo(() => {
     if (!runId) return { filteredMessages: messages, filteredActive: false, showEmptyHint: false };
-    const hits = messages.filter((m) => (m as { runId?: string }).runId === runId);
+    const hits = messages.filter((m) => {
+      const tagged = (m as { runId?: string; run_id?: string }).runId ?? (m as { runId?: string; run_id?: string }).run_id;
+      return tagged === runId || messageRunId(m) === runId;
+    });
     if (hits.length > 0) return { filteredMessages: hits, filteredActive: true, showEmptyHint: false };
     return { filteredMessages: messages, filteredActive: false, showEmptyHint: true };
   }, [messages, runId]);
