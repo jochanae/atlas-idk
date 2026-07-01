@@ -78,6 +78,8 @@ interface Props {
   onRemoveFile?: (index: number) => void;
   focusChip?: ReactNode;
   subheader?: ReactNode;
+  /** When true, hides the surface's own composer so the home dock acts as the sole input. */
+  hideComposer?: boolean;
 }
 
 const ASK_ATLAS_PLACEHOLDERS = [
@@ -233,6 +235,7 @@ export function AskAtlasSurface({
   onRemoveFile,
   focusChip,
   subheader,
+  hideComposer = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -864,8 +867,8 @@ export function AskAtlasSurface({
       )}
       </div>
 
-      {/* Composer — minimal, transparent. Cursor + action row only. */}
-      <div
+      {/* Composer — minimal, transparent. Cursor + action row only. Hidden when home dock acts as composer. */}
+      {!hideComposer && <div
         style={{
           flexShrink: 0,
           padding: "12px 14px calc(14px + env(safe-area-inset-bottom, 0px))",
@@ -1112,7 +1115,7 @@ export function AskAtlasSurface({
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       <DeepDiveSheet
         open={showDeepDive}
