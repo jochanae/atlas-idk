@@ -8366,8 +8366,10 @@ export default function Workspace() {
         </>
       </UnifiedConversationSurface>
 
+      <ActiveRunsStrip bottomOffset={isMobile ? 76 : 24} />
 
       {isMobile && mobileTab !== "map" && (
+
         <UnifiedContextDock
           mode="operational"
           activeOperationalTab={(["chat","ledger","insights","manifest","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "insights" | "manifest" | "map" | "files" | undefined}
