@@ -1310,7 +1310,7 @@ function ProjectCard({ project, onSelect }: { project: Project; onSelect: () => 
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <CompactReadinessRing score={project.latestSnapshotScore ?? computeScoreFromNodeState(project.nodeState)} />
+        <CompactReadinessRing score={(project as { readinessScore?: number | null }).readinessScore ?? project.latestSnapshotScore ?? computeScoreFromNodeState(project.nodeState)} />
         <span
           style={{
             fontFamily: "var(--app-font-mono)",
