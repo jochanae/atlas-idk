@@ -1061,7 +1061,7 @@ ${t}
               )}
             </div>
 
-            {routePicker("url")}
+            
 
             {/* Row 2 — status strip (auto-hides after 4s) */}
             {(autoDetected || (linkedRepo && token) || detectResults.length > 0 || (liveUrl && !autoDetected)) && (
