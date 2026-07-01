@@ -3969,14 +3969,13 @@ export default function Home() {
                   width: "100%",
                   maxWidth: 560,
                   paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
-                  display: globalInsightOpen ? "flex" : undefined,
-                  flexDirection: globalInsightOpen ? "column" : undefined,
+                  display: "flex",
+                  flexDirection: "column",
+                  flex: 1,
                   height: globalInsightOpen
                     ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
                     : undefined,
-                  minHeight: globalInsightOpen
-                    ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
-                    : undefined,
+                  minHeight: 0,
                   minWidth: 0,
                 }}
               >
@@ -3989,13 +3988,12 @@ export default function Home() {
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
           <div style={{
-            minHeight: globalInsightOpen
-              ? 0
-              : ((nexusChat.messages.length > 0 || askAtlasConversationActive) ? 0 : "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance) - env(safe-area-inset-bottom, 0px))"),
+            flex: 1,
+            minHeight: 0,
             height: globalInsightOpen ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
-            justifyContent: globalInsightOpen ? "flex-start" : "center",
+            justifyContent: globalInsightOpen ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
             position: "relative",
             paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
             paddingTop: globalInsightOpen ? 0 : 0,
