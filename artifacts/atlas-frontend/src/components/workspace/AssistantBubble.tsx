@@ -1437,6 +1437,18 @@ export function AssistantBubble({
   const [imageExpanded, setImageExpanded] = useState(false);
   const activeEdits = message.fileEdits ?? (message.fileEdit ? [message.fileEdit] : []);
   const planMessageId = message.id ?? 0;
+  const labeledActionStyle = {
+    ...ICON_TOUCH_TARGET_STYLE,
+    width: "auto",
+    minWidth: 34,
+    height: 28,
+    padding: "0 8px",
+    gap: 5,
+    fontFamily: "var(--app-font-mono)",
+    fontSize: 10,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+  };
 
   // Derive a Plan from structured planArtifact (plan-mode responses) so PlanCard
   // can render from typed data instead of regex-parsed text.
@@ -2482,7 +2494,7 @@ export function AssistantBubble({
 
         {/* Action row — feedback + primary cockpit + overflow menu */}
         {!message.streaming && (
-        <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", transition: "opacity 180ms ease" }}>
+        <div style={{ position: "relative", display: "flex", flexWrap: "wrap", gap: 3, marginTop: 6, marginLeft: -6, alignItems: "center", transition: "opacity 180ms ease" }}>
 
           {/* Feedback — only persistent on the newest Atlas response */}
           {isLatestAssistant && (
@@ -2502,7 +2514,7 @@ export function AssistantBubble({
               className="atlas-icon-action"
               title="Roll back to here"
               aria-label="Roll back to here"
-              style={{ ...ICON_TOUCH_TARGET_STYLE, color: "var(--atlas-gold)" }}
+              style={{ ...labeledActionStyle, color: "var(--atlas-gold)" }}
               onClick={() => {
                 if (typeof window !== "undefined" &&
                     !window.confirm("Roll back to this message? Newer responses will move to Reverted edits.")) return;
@@ -2510,40 +2522,44 @@ export function AssistantBubble({
               }}
             >
               <CornerUpLeft size={13} strokeWidth={1.8} />
+              <span>Rollback</span>
             </button>
           )}
 
           <button
             className={`atlas-icon-action${copied ? " copy-done" : ""}`}
-            title={copied ? "Copied!" : "Copy response"}
-            aria-label="Copy message"
-            style={ICON_TOUCH_TARGET_STYLE}
+            title={copied ? "Copied response" : "Copy response"}
+            aria-label={copied ? "Copied response" : "Copy response"}
+            style={labeledActionStyle}
             onClick={() => { navigator.clipboard.writeText(message.content).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
           >
             {copied
               ? <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
               : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="8" rx="1.5" /><path d="M9 5V3a1 1 0 00-1-1H3a1 1 0 00-1 1v5a1 1 0 001 1h2" /></svg>
             }
+            <span>{copied ? "Copied" : "Copy"}</span>
           </button>
 
-          <button className="atlas-icon-action" title="Regenerate / pivot" aria-label="Retry" onClick={onRegenerate} style={ICON_TOUCH_TARGET_STYLE}>
+          <button className="atlas-icon-action" title="Regenerate response" aria-label="Regenerate response" onClick={onRegenerate} style={labeledActionStyle}>
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M1.5 7a5.5 5.5 0 005.5 5.5 5.5 5.5 0 005.5-5.5 5.5 5.5 0 00-5.5-5.5 5.5 5.5 0 00-3.9 1.6" />
               <polyline points="1.5 1.5 1.5 4 4 4" />
             </svg>
+            <span>Retry</span>
           </button>
 
           <button
             className={`atlas-icon-action${commitDone ? " done" : ""}`}
-            title={commitDone ? "Committed to ledger" : "Commit to ledger"}
-            aria-label="Save to ledger"
-            style={ICON_TOUCH_TARGET_STYLE}
+            title={commitDone ? "Saved to Ledger" : "Save response to Ledger"}
+            aria-label={commitDone ? "Saved to Ledger" : "Save response to Ledger"}
+            style={labeledActionStyle}
             onClick={() => { if (!commitDone) { onCommit(message.content); setCommitDone(true); } }}
           >
             {commitDone
               ? <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
               : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="1.5" width="10" height="11" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" /></svg>
             }
+            <span>{commitDone ? "Saved" : "Save to Ledger"}</span>
           </button>
 
           {/* Sketch this — icon-only, popover with style presets */}
