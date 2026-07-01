@@ -1983,12 +1983,7 @@ export default function Home() {
       decisions: homeProjectState.decisions,
     } : null,
   });
-  const askAtlasChat = useNexusChatStream({
-    focusProjectId: null,
-    model: "claude",
-    conversationId: null,
-    projectContext: null,
-  });
+  const askAtlasChat = nexusChat;
   const askAtlasScrollRef = useRef<HTMLDivElement | null>(null);
   const askAtlasConversationActive = false;
   const askAtlasBusy = sendTo === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending);
