@@ -4126,6 +4126,16 @@ export default function Workspace() {
   } = useChatLens(id);
   const [leftTab, setLeftTab] = useState<WorkspaceLeftTab>(() => {
     try {
+      const urlTab = new URLSearchParams(window.location.search).get("leftTab");
+      if (
+        urlTab === "chat" ||
+        urlTab === "diff" ||
+        urlTab === "blueprints" ||
+        urlTab === "artifacts" ||
+        urlTab === "terminal"
+      ) {
+        return urlTab;
+      }
       const stored = sessionStorage.getItem("atlas-open-left-tab");
       if (
         stored === "chat" ||
@@ -4140,6 +4150,9 @@ export default function Workspace() {
     } catch {}
     return "chat";
   });
+  const focusedRunId = (() => {
+    try { return new URLSearchParams(window.location.search).get("runId"); } catch { return null; }
+  })();
   const [subheaderOpen, setSubheaderOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "insights" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
@@ -7813,6 +7826,7 @@ export default function Workspace() {
                 messages={messages}
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
+                runId={focusedRunId}
               />
             </div>
           ) : leftTab === "terminal" ? (

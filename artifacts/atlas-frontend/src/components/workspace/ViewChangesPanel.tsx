@@ -1,21 +1,20 @@
 // ViewChangesPanel — unified "What changed?" surface.
 //
-// Three sections, all collapsible, newest data at top:
+// Layout:
+//   [run pill]  (only when runId prop is set)
+//   Toggle:  Timeline | Changes
+//   Body:
+//     • Timeline lens → SessionTimeline (filtered when runId tags match)
+//     • Changes lens  → per-file rows built from message fileEdits/linePatches
+//   GitHub / Workspace block (unchanged behavior)
 //
-//   1. Workspace   — local git status (modified/untracked files) from our
-//                    own API. No actions here — actions live in Files tab.
-//   2. GitHub      — full commit history from Cloud Run / GitHub API, using
-//                    the same CommitHistoryCard (SHA, files, revert) that the
-//                    Files tab already shows.
-//   3. Atlas       — SessionTimeline: prompts → thoughts → file edits (with
-//                    inline diff) → push records, for the current session.
-//
-// Data is fetched lazily per section (only when that section is open).
-// No new storage model — each section reads from its own existing source.
+// Frontend-only. No new transport. If runId is set but no messages carry it,
+// we show the pill + an honest "No entries tagged for this run yet." hint
+// above the unfiltered list rather than pretending the view is filtered.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, ChevronDown, FolderGit2, Sparkles } from "lucide-react";
+import { FolderGit2, X, FileCode2 } from "lucide-react";
 import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 
@@ -33,93 +32,37 @@ function gitBadge(code: string): { label: string; color: string } | null {
   return { label: code.trim().slice(0, 1) || "~", color: "rgba(180,180,180,0.7)" };
 }
 
-// ── Section header ────────────────────────────────────────────────────────────
+// ── Workspace (local git status) ─────────────────────────────────────────────
 
-function SectionHeader({
-  icon,
-  label,
-  count,
-  expanded,
-  onToggle,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  count?: number;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      style={{
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        gap: 7,
-        padding: "9px 14px 8px",
-        background: "transparent",
-        border: "none",
-        borderBottom: "1px solid rgba(201,162,76,0.1)",
-        cursor: "pointer",
-        textAlign: "left",
-      }}
-    >
-      <span style={{ color: "rgba(201,162,76,0.55)", flexShrink: 0, display: "flex" }}>
-        {icon}
-      </span>
-      <span style={{
-        fontSize: 9.5,
-        fontFamily: "var(--app-font-mono)",
-        color: "var(--atlas-gold)",
-        letterSpacing: "0.14em",
-        textTransform: "uppercase",
-        opacity: 0.8,
-        flex: 1,
-      }}>
-        {label}
-      </span>
-      {count !== undefined && count > 0 && (
-        <span style={{
-          fontSize: 9,
-          fontFamily: "var(--app-font-mono)",
-          background: "rgba(201,162,76,0.14)",
-          color: "rgba(201,162,76,0.9)",
-          border: "1px solid rgba(201,162,76,0.22)",
-          borderRadius: 3,
-          padding: "1px 5px",
-          flexShrink: 0,
-        }}>
-          {count}
-        </span>
-      )}
-      <span style={{ color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0, display: "flex" }}>
-        {expanded
-          ? <ChevronDown size={11} strokeWidth={1.8} />
-          : <ChevronRight size={11} strokeWidth={1.8} />}
-      </span>
-    </button>
-  );
-}
-
-// ── Section 1: Workspace (local git status) ───────────────────────────────────
-
-function WorkspaceSection({ projectId, open }: { projectId: number; open: boolean }) {
+function WorkspaceBlock({ projectId }: { projectId: number }) {
   const { data, isLoading } = useQuery<{ files: Record<string, string>; hasRemote?: boolean }>({
     queryKey: ["vcp-gitstatus", projectId],
     queryFn: () =>
       fetch(`/api/fs/${projectId}/gitstatus`, { credentials: "include" }).then((r) => r.json()),
     staleTime: 10_000,
-    enabled: open,
   });
-
-  if (!open) return null;
 
   const files = data?.files ?? {};
   const entries = Object.entries(files);
 
   return (
-    <div style={{ padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+    <div style={{ padding: "10px 14px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+        color: "var(--atlas-gold)", letterSpacing: "0.14em",
+        textTransform: "uppercase", opacity: 0.7, paddingBottom: 4,
+      }}>
+        <FolderGit2 size={11} strokeWidth={1.7} />
+        <span>Workspace</span>
+        {entries.length > 0 && (
+          <span style={{
+            fontSize: 9, background: "rgba(201,162,76,0.14)",
+            color: "rgba(201,162,76,0.9)", border: "1px solid rgba(201,162,76,0.22)",
+            borderRadius: 3, padding: "1px 5px",
+          }}>{entries.length}</span>
+        )}
+      </div>
       {isLoading && (
         <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5 }}>
           Checking workspace…
@@ -144,15 +87,10 @@ function WorkspaceSection({ projectId, open }: { projectId: number; open: boolea
                   {badge && (
                     <span style={{
                       color: badge.color, flexShrink: 0,
-                      width: 10, textAlign: "center", fontWeight: 700,
-                      fontSize: 11,
-                    }}>
-                      {badge.label}
-                    </span>
+                      width: 10, textAlign: "center", fontWeight: 700, fontSize: 11,
+                    }}>{badge.label}</span>
                   )}
-                  <span style={{
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {filePath}
                   </span>
                 </div>
@@ -171,6 +109,79 @@ function WorkspaceSection({ projectId, open }: { projectId: number; open: boolea
   );
 }
 
+// ── Changes lens: per-file rows from messages ────────────────────────────────
+
+interface FileRow {
+  path: string;
+  summary: string;
+  messageId: number | string;
+  projectId: number;
+}
+
+function collectFileRows(messages: TimelineMessage[]): FileRow[] {
+  const rows: FileRow[] = [];
+  for (const m of messages) {
+    if (m.role !== "assistant") continue;
+    const mid = m.id ?? `${m.sentAt ?? Math.random()}`;
+    if (m.fileEdit?.path) {
+      rows.push({ path: m.fileEdit.path, summary: "rewrote file", messageId: mid, projectId: 0 });
+    }
+    if (m.fileEdits) {
+      for (const fe of m.fileEdits) rows.push({ path: fe.path, summary: "rewrote file", messageId: mid, projectId: 0 });
+    }
+    if (m.linePatches) {
+      for (const lp of m.linePatches) rows.push({ path: lp.path, summary: "patched lines", messageId: mid, projectId: 0 });
+    }
+  }
+  return rows.reverse(); // newest first
+}
+
+function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }) {
+  if (rows.length === 0) {
+    return (
+      <div style={{ padding: "18px 14px", fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5 }}>
+        No file changes recorded for this session yet.
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+      {rows.map((r, i) => (
+        <div key={`${r.messageId}-${r.path}-${i}`} style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "8px 10px", borderRadius: 5,
+          border: "1px solid rgba(201,162,76,0.08)",
+          background: "rgba(255,255,255,0.015)",
+        }}>
+          <FileCode2 size={12} strokeWidth={1.6} style={{ color: "rgba(201,162,76,0.6)", flexShrink: 0 }} />
+          <span style={{
+            flex: 1, minWidth: 0,
+            fontFamily: "var(--app-font-mono)", fontSize: 11.5,
+            color: "var(--atlas-fg)", opacity: 0.9,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>{r.path}</span>
+          <span style={{
+            fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.6,
+            fontFamily: "var(--app-font-sans)", flexShrink: 0,
+          }}>{r.summary}</span>
+          <a
+            href={`/api/fs/${projectId}/preview?path=${encodeURIComponent(r.path)}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              padding: "3px 7px", borderRadius: 3,
+              border: "1px solid rgba(201,162,76,0.3)",
+              color: "rgba(201,162,76,0.9)", textDecoration: "none",
+              flexShrink: 0,
+            }}
+          >Open</a>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Root component ────────────────────────────────────────────────────────────
 
 interface Props {
@@ -179,6 +190,7 @@ interface Props {
   messages: TimelineMessage[];
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
+  runId?: string | null;
 }
 
 export function ViewChangesPanel({
@@ -187,58 +199,127 @@ export function ViewChangesPanel({
   messages,
   pushHistory,
   onRollbackPush,
+  runId,
 }: Props) {
-  const [workspaceOpen, setWorkspaceOpen] = useState(true);
-  const [atlasOpen, setAtlasOpen] = useState(true);
+  const [lens, setLens] = useState<"timeline" | "changes">("timeline");
 
-  const { data: wsStatus } = useQuery<{ files: Record<string, string> }>({
-    queryKey: ["vcp-gitstatus-badge", projectId],
-    queryFn: () =>
-      fetch(`/api/fs/${projectId}/gitstatus`, { credentials: "include" }).then((r) => r.json()),
-    staleTime: 10_000,
-  });
-  const wsChangedCount = Object.keys(wsStatus?.files ?? {}).length;
-  const atlasCount = pushHistory.length + messages.filter((m) => m.role === "assistant" && (m.fileEdits?.length || m.fileEdit || m.linePatches?.length)).length;
+  // Filter contract: if runId is set AND at least one message carries it,
+  // filter honestly. Otherwise show the pill + hint and render unfiltered.
+  const { filteredMessages, filteredActive, showEmptyHint } = useMemo(() => {
+    if (!runId) return { filteredMessages: messages, filteredActive: false, showEmptyHint: false };
+    const hits = messages.filter((m) => (m as { runId?: string }).runId === runId);
+    if (hits.length > 0) return { filteredMessages: hits, filteredActive: true, showEmptyHint: false };
+    return { filteredMessages: messages, filteredActive: false, showEmptyHint: true };
+  }, [messages, runId]);
+
+  const changeRows = useMemo(() => collectFileRows(filteredMessages), [filteredMessages]);
+
+  const clearRunFilter = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("runId");
+      window.history.replaceState({}, "", url.toString());
+      // Nudge a re-render by forcing local state change; parent re-reads on next nav.
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } catch {}
+  };
 
   return (
     <div style={{
-      display: "flex",
-      flexDirection: "column",
+      display: "flex", flexDirection: "column",
       minHeight: "100%",
-      fontFamily: "var(--app-font-sans)",
-      color: "var(--atlas-fg)",
+      fontFamily: "var(--app-font-sans)", color: "var(--atlas-fg)",
     }}>
+      {/* ── Run pill ── */}
+      {runId && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "10px 14px",
+          borderBottom: "1px solid rgba(201,162,76,0.1)",
+          background: "rgba(201,162,76,0.04)",
+        }}>
+          <span style={{
+            fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            color: "var(--atlas-gold)", opacity: 0.75,
+          }}>Viewing run</span>
+          <span style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 11,
+            color: "var(--atlas-fg)", opacity: 0.85,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            flex: 1, minWidth: 0,
+          }}>{runId}</span>
+          <button
+            type="button"
+            onClick={clearRunFilter}
+            aria-label="Clear run filter"
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              background: "transparent", border: "1px solid rgba(201,162,76,0.25)",
+              color: "var(--atlas-muted)", cursor: "pointer",
+              padding: "3px 7px", borderRadius: 3,
+              fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+              letterSpacing: "0.08em", textTransform: "uppercase",
+            }}
+          ><X size={10} strokeWidth={1.8} /> Clear</button>
+        </div>
+      )}
 
-      {/* ── Section 1: Workspace ── */}
-      <SectionHeader
-        icon={<FolderGit2 size={11} strokeWidth={1.7} />}
-        label="Workspace"
-        count={wsChangedCount}
-        expanded={workspaceOpen}
-        onToggle={() => setWorkspaceOpen((o) => !o)}
-      />
-      <WorkspaceSection projectId={projectId} open={workspaceOpen} />
+      {/* ── Toggle ── */}
+      <div style={{
+        display: "flex", padding: "10px 14px 8px", gap: 4,
+        borderBottom: "1px solid rgba(201,162,76,0.08)",
+      }}>
+        {(["timeline", "changes"] as const).map((k) => {
+          const active = lens === k;
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setLens(k)}
+              style={{
+                fontFamily: "var(--app-font-mono)", fontSize: 10,
+                letterSpacing: "0.12em", textTransform: "uppercase",
+                padding: "5px 11px", borderRadius: 4,
+                background: active ? "rgba(201,162,76,0.14)" : "transparent",
+                border: `1px solid ${active ? "rgba(201,162,76,0.35)" : "rgba(201,162,76,0.12)"}`,
+                color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                cursor: "pointer",
+              }}
+            >{k}</button>
+          );
+        })}
+      </div>
 
-      <div style={{ borderTop: "1px solid rgba(201,162,76,0.06)" }} />
+      {/* ── Honest fallback hint ── */}
+      {showEmptyHint && (
+        <div style={{
+          padding: "8px 14px",
+          fontSize: 11, color: "var(--atlas-muted)", opacity: 0.65,
+          fontFamily: "var(--app-font-sans)", lineHeight: 1.5,
+          borderBottom: "1px solid rgba(201,162,76,0.06)",
+          background: "rgba(255,255,255,0.01)",
+        }}>
+          No entries tagged for this run yet. Showing all recent activity.
+        </div>
+      )}
 
-      {/* ── Section 2: Atlas Activity ── */}
-      <SectionHeader
-        icon={<Sparkles size={11} strokeWidth={1.7} />}
-        label="Atlas Activity"
-        count={atlasCount > 0 ? atlasCount : undefined}
-        expanded={atlasOpen}
-        onToggle={() => setAtlasOpen((o) => !o)}
-      />
-      {atlasOpen && (
+      {/* ── Body ── */}
+      {lens === "timeline" ? (
         <SessionTimeline
-          messages={messages}
-          pushHistory={pushHistory}
+          messages={filteredMessages}
+          pushHistory={filteredActive ? [] : pushHistory}
           onRollbackPush={onRollbackPush}
           projectId={projectId}
         />
+      ) : (
+        <ChangesLens rows={changeRows} projectId={projectId} />
       )}
 
-
+      {/* ── Workspace / GitHub block ── */}
+      <div style={{ borderTop: "1px solid rgba(201,162,76,0.08)", marginTop: "auto" }}>
+        <WorkspaceBlock projectId={projectId} />
+      </div>
     </div>
   );
 }
