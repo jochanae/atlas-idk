@@ -3793,6 +3793,8 @@ export default function Home() {
     setAskAtlasPortfolioStatus(null);
     askAtlasChat.abort();
     askAtlasChat.clearMessages();
+    askAtlasHiddenMessagesRef.current = [];
+    askAtlasHiddenConversationIdRef.current = null;
     setHandoffCardDismissed(false);
     setHandoffProjectName("");
   }, [
