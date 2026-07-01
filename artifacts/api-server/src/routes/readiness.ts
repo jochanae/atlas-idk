@@ -279,6 +279,12 @@ router.get("/projects/:id/readiness", async (req, res): Promise<void> => {
 
   try {
     const readiness = await computeProjectReadiness(projectId);
+    // Write a fresh snapshot so home-card scores stay in sync with the header ring.
+    try {
+      await db.insert(readinessSnapshotsTable).values({ projectId, score: readiness.overallScore });
+    } catch {
+      // Non-fatal — home card will fall back to nodeState computation.
+    }
     res.json(readiness);
   } catch (err) {
     req.log.error({ err }, "Failed to compute project readiness");

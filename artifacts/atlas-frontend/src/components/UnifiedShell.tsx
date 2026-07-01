@@ -1107,18 +1107,29 @@ function SovereignReadinessSheet({
           </div>
         )}
 
-        {/* Mix bar */}
-        <SectionLabel>Core Mix</SectionLabel>
-        <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
-          <div style={{ width: `${frontend}%`, background: "var(--atlas-gold)" }} />
-          <div style={{ width: `${backend}%`, background: "rgba(201,162,76,0.55)" }} />
-          <div style={{ width: `${context}%`, background: "rgba(201,162,76,0.28)" }} />
-        </div>
-        <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
-          <MixLegend dot="var(--atlas-gold)" label="Frontend" pct={frontend} />
-          <MixLegend dot="rgba(201,162,76,0.55)" label="Backend" pct={backend} />
-          <MixLegend dot="rgba(201,162,76,0.28)" label="Context" pct={context} />
-        </div>
+        {/* Mix bar — only shown once flow nodes exist */}
+        {totalNodes > 0 ? (
+          <>
+            <SectionLabel>Core Mix</SectionLabel>
+            <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ width: `${frontend}%`, background: "var(--atlas-gold)" }} />
+              <div style={{ width: `${backend}%`, background: "rgba(201,162,76,0.55)" }} />
+              <div style={{ width: `${context}%`, background: "rgba(201,162,76,0.28)" }} />
+            </div>
+            <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
+              <MixLegend dot="var(--atlas-gold)" label="Frontend" pct={frontend} />
+              <MixLegend dot="rgba(201,162,76,0.55)" label="Backend" pct={backend} />
+              <MixLegend dot="rgba(201,162,76,0.28)" label="Context" pct={context} />
+            </div>
+          </>
+        ) : (
+          <div style={{ marginBottom: 22 }}>
+            <SectionLabel>Core Mix</SectionLabel>
+            <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
+              No flow nodes mapped yet — run The Forge or open the System Map to seed the architecture spine.
+            </div>
+          </div>
+        )}
 
         {/* Phases */}
         <SectionLabel>Architectural Phases</SectionLabel>
