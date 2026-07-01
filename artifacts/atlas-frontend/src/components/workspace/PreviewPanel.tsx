@@ -1024,6 +1024,8 @@ ${t}
                 letterSpacing: "0.08em", cursor: "pointer", flexShrink: 0,
               }}>Go</button>
 
+              {routePickerButton}
+
               {liveUrl && (
                 <>
                   <button
