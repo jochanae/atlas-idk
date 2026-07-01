@@ -318,12 +318,12 @@ function ShellAvatar() {
             width: 14,
             height: 14,
             borderRadius: "50%",
-            background: "linear-gradient(135deg,#D4AF37,#A07820)",
+            background: "var(--atlas-avatar-frame, linear-gradient(135deg,#D4AF37,#A07820))",
             border: "1.5px solid var(--atlas-bg)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 0 6px rgba(212,175,55,0.5)",
+            boxShadow: "0 0 6px color-mix(in oklab, var(--atlas-avatar-frame, rgba(212,175,55,0.5)) 65%, transparent)",
             pointerEvents: "none",
             zIndex: 3,
           }}
@@ -346,9 +346,9 @@ function ShellAvatar() {
           width: 36,
           height: 36,
           borderRadius: "22%",
-          border: "1.5px dashed rgba(212,175,55,0.55)",
+          border: "1.5px dashed var(--atlas-avatar-frame, rgba(212,175,55,0.55))",
           background: "transparent",
-          color: "rgba(212,175,55,0.75)",
+          color: "var(--atlas-avatar-frame, rgba(212,175,55,0.75))",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
@@ -357,8 +357,8 @@ function ShellAvatar() {
           transition: "border-color 140ms ease, color 140ms ease, background 140ms ease",
           flexShrink: 0,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.9)"; e.currentTarget.style.color = "rgba(212,175,55,1)"; e.currentTarget.style.background = "rgba(212,175,55,0.06)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; e.currentTarget.style.color = "rgba(212,175,55,0.75)"; e.currentTarget.style.background = "transparent"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--atlas-avatar-frame, rgba(212,175,55,0.9))"; e.currentTarget.style.color = "var(--atlas-avatar-frame, rgba(212,175,55,1))"; e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-avatar-frame, rgba(212,175,55,1)) 10%, transparent)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--atlas-avatar-frame, rgba(212,175,55,0.55))"; e.currentTarget.style.color = "var(--atlas-avatar-frame, rgba(212,175,55,0.75))"; e.currentTarget.style.background = "transparent"; }}
 
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
