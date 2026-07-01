@@ -1126,8 +1126,8 @@ export function AskAtlasSurface({
               </button>
             </div>
           </div>
-        </div>
       </div>}
+
 
       <DeepDiveSheet
         open={showDeepDive}
