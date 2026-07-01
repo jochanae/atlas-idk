@@ -1,5 +1,5 @@
 /**
- * GlobalInsightSurface — standalone Global Insight chat surface.
+ * GlobalInsightSurface — standalone Ask Atlas chat surface.
  *
  * Owns its own fixed-overlay layout, isolated scroll container, and a
  * minimal composer. No `globalInsightOpen` ternaries, no shared scroll
@@ -82,7 +82,7 @@ interface Props {
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
-  "Ask the global view…",
+  "Ask Atlas anything…",
   "What's conflicting across projects…",
   "Which project is most worth doing next…",
   "Where are decisions stalling…",
@@ -358,7 +358,7 @@ export function GlobalInsightSurface({
     <div
       className="atlas-global-insight-surface"
       role="dialog"
-      aria-label="Global Insight"
+      aria-label="Ask Atlas"
       style={{
         position: "fixed",
         top: "var(--atlas-header-height, 56px)",
@@ -416,7 +416,7 @@ export function GlobalInsightSurface({
             gap: 6,
           }}
         >
-          <span>Global Insight · All projects</span>
+          <span>Ask Atlas · All projects</span>
           {messages.length > 0 && (
             <button
               type="button"
@@ -427,13 +427,13 @@ export function GlobalInsightSurface({
                   .join("\n");
                 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
                 const blob = new Blob(
-                  [`GLOBAL INSIGHT · ALL PROJECTS\n${stamp}\n\n${lines}`],
+                  [`ASK ATLAS · ALL PROJECTS\n${stamp}\n\n${lines}`],
                   { type: "text/plain;charset=utf-8" },
                 );
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `global-insight-${stamp}.txt`;
+                a.download = `ask-atlas-${stamp}.txt`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
