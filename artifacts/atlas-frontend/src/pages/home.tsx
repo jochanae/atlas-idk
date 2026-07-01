@@ -49,7 +49,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2, Globe, ArrowRight } from "lucide-react";
+import { FolderClosed, Briefcase, X, Maximize2, Minimize2, Globe, ArrowRight } from "lucide-react";
 import { ParkSheet } from "@/components/ParkSheet";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
@@ -2207,6 +2207,8 @@ export default function Home() {
   const previousHomeMessageCountRef = useRef(0);
   const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
   const globalInsightSeedPendingRef = useRef(false);
+  const askAtlasHiddenMessagesRef = useRef<any[]>([]);
+  const askAtlasHiddenConversationIdRef = useRef<string | null>(null);
 
   // NAVIGATE_TO auto-navigation removed — navigation is now user-initiated via the
   // suggestion card rendered on the message. The done event carries navigateTo as
@@ -2290,13 +2292,25 @@ export default function Home() {
     setShowFocusPicker(false);
     setSendTo("ask-atlas");
     sendToRef.current = "ask-atlas";
+    if (nexusChat.messages.length === 0 && askAtlasHiddenMessagesRef.current.length > 0) {
+      nexusChat.setMessages(askAtlasHiddenMessagesRef.current as any);
+      if (askAtlasHiddenConversationIdRef.current) {
+        rememberActiveConversationId(askAtlasHiddenConversationIdRef.current);
+        setActiveConversationId(askAtlasHiddenConversationIdRef.current);
+      }
+    }
     setGlobalInsightOpen(true);
     setDepth("active");
     void callGlobalInsightMode(true);
     window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
-  }, [callGlobalInsightMode, setDepth]);
+  }, [callGlobalInsightMode, nexusChat.messages.length, nexusChat.setMessages, rememberActiveConversationId, setDepth]);
 
   const exitAskAtlasMode = useCallback(() => {
+    if (nexusChat.messages.length > 0) {
+      askAtlasHiddenMessagesRef.current = nexusChat.messages as any[];
+      askAtlasHiddenConversationIdRef.current = activeConversationId;
+    }
+    nexusChat.abort();
     void callGlobalInsightMode(false);
     setGlobalInsightOpen(false);
     setSendTo("workspace");
@@ -2312,7 +2326,7 @@ export default function Home() {
     nexusChat.setMessages([]);
     setEarnedTitle(null);
     setDepth("ambient");
-  }, [callGlobalInsightMode, clearAskAtlasPortfolioTransition, nexusChat.setMessages, setDepth]);
+  }, [activeConversationId, callGlobalInsightMode, clearAskAtlasPortfolioTransition, nexusChat, setDepth]);
 
   const handleLockTap = useCallback(() => {
     vibrate(50);
