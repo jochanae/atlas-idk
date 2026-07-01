@@ -48,6 +48,111 @@ function withPreviewRoute(base: string, route: string): string {
   }
 }
 
+function RoutePickerButton({ routes, selected, onSelect }: {
+  routes: PreviewRoute[];
+  selected: string;
+  onSelect: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const current = routes.find((r) => r.path === selected) ?? routes[0];
+  const label = current ? current.label : "Home";
+  const sMono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
+  return (
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Choose page"
+        aria-label="Choose page"
+        aria-expanded={open}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "5px 8px", borderRadius: 5,
+          background: "transparent",
+          border: "1px solid var(--atlas-border)",
+          color: "var(--atlas-muted)",
+          fontSize: 9.5, ...sMono, letterSpacing: "0.04em",
+          cursor: "pointer", maxWidth: 140, whiteSpace: "nowrap",
+          overflow: "hidden", textOverflow: "ellipsis",
+        }}
+      >
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2 4h12M2 8h12M2 12h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
+      </button>
+      {open && (
+        <div
+          ref={menuRef}
+          role="menu"
+          style={{
+            position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 40,
+            minWidth: 160, maxHeight: 240, overflowY: "auto",
+            background: "var(--atlas-surface)",
+            border: "1px solid var(--atlas-border)",
+            borderRadius: 6,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            padding: 4,
+          }}
+        >
+          <div style={{ padding: "4px 8px", fontSize: 8.5, ...sMono, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.45 }}>
+            Pages
+          </div>
+          {routes.length === 0 && (
+            <div style={{ padding: "6px 8px", fontSize: 10, ...sMono, color: "var(--atlas-muted)", opacity: 0.55 }}>
+              No pages detected
+            </div>
+          )}
+          {routes.map((route) => {
+            const active = route.path === selected;
+            return (
+              <button
+                key={route.path}
+                role="menuitem"
+                type="button"
+                onClick={() => { onSelect(route.path); setOpen(false); }}
+                title={route.description || route.path}
+                style={{
+                  display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                  gap: 8, padding: "6px 8px", borderRadius: 4,
+                  background: active ? "rgba(201,162,76,0.12)" : "transparent",
+                  border: "none",
+                  color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                  cursor: "pointer", fontSize: 10.5, ...sMono, letterSpacing: "0.02em",
+                  textAlign: "left",
+                }}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{route.label}</span>
+                <span style={{ fontSize: 9, opacity: 0.5 }}>{route.path}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, rebuildTrigger, onWsRunningChange, sessionId, onSwitchToFiles, manifestDecision, manifestPreviewHtml }: {
   projectId: number;
   sandboxCode?: string | null;
