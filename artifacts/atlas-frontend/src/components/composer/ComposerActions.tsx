@@ -240,7 +240,7 @@ export function ComposerActions({
           setShowMore(false);
           setShowPlus(true);
         }}
-        style={iconBtnStyle(showPlus, hasAttachments, borderless)}
+        style={iconBtnStyle(showPlus, hasAttachments, borderless, compact)}
       >
         <Plus size={17} strokeWidth={1.7} />
       </button>
