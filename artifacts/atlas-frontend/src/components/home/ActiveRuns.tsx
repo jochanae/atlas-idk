@@ -1128,6 +1128,52 @@ function RunCard({
     .replace(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "")
     .trim();
 
+  // ── Receipt-style derivations ──────────────────────────────────────────────
+  // Kicker color/label reflects run outcome — border echoes it.
+  const hasBlocked = (run.applyErrors?.length ?? 0) > 0 || !!run.applyError;
+  const outcome: "running" | "success" | "partial" | "failed" =
+    isLive ? "running"
+    : run.status === "failed" ? "failed"
+    : hasBlocked ? "partial"
+    : "success";
+
+  const KICKER: Record<typeof outcome, { label: string; color: string; soft: string }> = {
+    running: { label: "Running",       color: "hsl(217,80%,64%)",     soft: "rgba(96,165,250,0.35)" },
+    success: { label: "Run Complete",  color: "rgba(74,222,128,0.95)", soft: "rgba(74,222,128,0.35)" },
+    partial: { label: "Needs Input",   color: "rgba(251,191,36,0.95)", soft: "rgba(251,191,36,0.35)" },
+    failed:  { label: "Run Failed",    color: "rgba(248,113,113,0.95)", soft: "rgba(248,113,113,0.35)" },
+  };
+  const kicker = KICKER[outcome];
+
+  // Title = summaryLine when available, else prompt. Chat explanation lives elsewhere.
+  const titleLine = (run.summaryLine || run.prompt || "").trim();
+
+  // Meta line: N files · elapsed
+  const touchedCount = new Set([
+    ...(run.appliedFiles ?? []),
+    ...((run.fileEdits ?? []).map((f) => f.path)),
+  ]).size;
+  const metaBits: string[] = [];
+  if (touchedCount > 0) metaBits.push(`${touchedCount} file${touchedCount === 1 ? "" : "s"}`);
+  metaBits.push(isLive ? formatElapsed(elapsed) : formatAgo(now - (run.completedAt ?? run.createdAt)));
+
+  // Produced = user-facing artifacts only. Conservative: .html/.pdf/.md/images.
+  const producedExt = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
+  const producedPaths = Array.from(
+    new Set([
+      ...(run.appliedFiles ?? []),
+      ...((run.fileEdits ?? []).map((f) => f.path)),
+    ])
+  ).filter((p) => producedExt.test(p));
+
+  const iconFor = (p: string) => {
+    if (/\.(png|jpe?g|gif|svg|webp)$/i.test(p)) return "🖼";
+    if (/\.pdf$/i.test(p)) return "📑";
+    if (/\.md$/i.test(p)) return "📋";
+    return "📄";
+  };
+  const shortName = (p: string) => p.split("/").pop() || p;
+
   return (
     <div
       style={{
@@ -1135,168 +1181,250 @@ function RunCard({
         borderRadius: 10,
         background: "rgba(255,255,255,0.015)",
         border: `1px solid ${expanded ? INTENT_BORDER[run.intent] : "var(--atlas-border)"}`,
+        boxShadow: !isLive ? `inset 3px 0 0 ${kicker.color}` : undefined,
         overflow: "hidden",
-        transition: "border-color 160ms ease",
+        transition: "border-color 160ms ease, box-shadow 400ms ease",
       }}
     >
-      {/* ── Header row (always visible, tap to expand/collapse) ── */}
+      {/* ── Bookmark (top-right, future: Saved Runs) ── */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); /* saved-runs: future */ }}
+        aria-label="Save run"
+        title="Save run"
+        style={{
+          position: "absolute", top: 8, right: 10,
+          background: "transparent", border: 0, padding: 4, cursor: "pointer",
+          color: "var(--atlas-muted)", opacity: 0.5,
+          display: "inline-flex", borderRadius: 4,
+          transition: "color 140ms ease, opacity 140ms ease, background 140ms ease",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.opacity = "1"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.opacity = "0.5"; }}
+      >
+        <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round">
+          <path d="M5 3 h10 v14 l-5 -3.5 l-5 3.5 z" />
+        </svg>
+      </button>
+
+      {/* ── Receipt body (tap to expand/collapse when done) ── */}
       <div
         role="button"
         tabIndex={0}
         aria-expanded={expanded}
-        aria-label={`Build run for ${run.projectName} — ${run.status}. ${expanded ? "Collapse" : "Expand"}.`}
+        aria-label={`Build run for ${run.projectName} — ${outcome}. ${expanded ? "Collapse" : "Expand"}.`}
         onClick={() => !isLive && setExpanded((v) => !v)}
         onKeyDown={(e) => e.key === "Enter" && !isLive && setExpanded((v) => !v)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
-          display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap",
-          padding: "10px 12px",
+          display: "flex", alignItems: "flex-start", gap: 10,
+          padding: "12px 40px 10px 14px", /* right room for bookmark */
           cursor: isLive ? "default" : "pointer",
           background: hovered && !isLive ? "rgba(255,255,255,0.015)" : "transparent",
           transition: "background 120ms ease",
         }}
       >
-        {/* Status dot / spinner */}
-        <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center" }}>
-          {run.status === "running" ? (
-            <Loader size={10} strokeWidth={2} color="hsl(217,80%,64%)"
+        {/* Status glyph */}
+        <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", marginTop: 2 }}>
+          {isLive ? (
+            <Loader size={13} strokeWidth={2} color={kicker.color}
               style={{ animation: "ar-spin 1s linear infinite" }} />
+          ) : outcome === "success" ? (
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke={kicker.color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="4,11 8,15 16,6" />
+            </svg>
+          ) : outcome === "failed" ? (
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke={kicker.color} strokeWidth={2.2} strokeLinecap="round">
+              <line x1="5" y1="5" x2="15" y2="15" /><line x1="15" y1="5" x2="5" y2="15" />
+            </svg>
           ) : (
-            <span style={{
-              width: 7, height: 7, borderRadius: "50%", display: "inline-block",
-              background: STATUS_DOT_COLOR[run.status],
-              boxShadow: run.status === "queued" ? "0 0 5px rgba(201,162,76,0.45)"
-                : run.status === "completed" ? "0 0 6px rgba(74,222,128,0.5)"
-                : run.status === "failed" ? "0 0 6px rgba(248,113,113,0.5)"
-                : "none",
-              animation: run.status === "queued" ? "ar-pulse 2s ease-in-out infinite" : "none",
-            }} />
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke={kicker.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 3 L18 17 L2 17 Z" /><line x1="10" y1="9" x2="10" y2="12" />
+              <circle cx="10" cy="14.5" r="0.6" fill={kicker.color} />
+            </svg>
           )}
         </span>
 
-        {/* BUILD badge */}
-        <span style={{
-          fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-          textTransform: "uppercase", fontWeight: 600,
-          padding: "2px 7px", borderRadius: 4,
-          background: INTENT_BG[run.intent],
-          border: `1px solid ${INTENT_BORDER[run.intent]}`,
-          color: INTENT_COLOR[run.intent],
-          flexShrink: 0,
-        }}>
-          {run.intent}
-        </span>
-
-        {/* Project name */}
-        <span style={{
-          fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
-          color: "var(--atlas-muted)", opacity: 0.65,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          maxWidth: 100, flexShrink: 1,
-        }}>
-          {run.projectName}
-        </span>
-
-        {/* Prompt preview (collapsed only) */}
-        {!expanded && (
-          <span style={{
-            fontSize: 11, color: "var(--atlas-fg)", opacity: 0.7, lineHeight: 1,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            fontFamily: "var(--app-font-sans)", flexShrink: 1, minWidth: 0,
+        {/* Titles */}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            color: kicker.color, fontWeight: 600, opacity: 0.9,
           }}>
-            {run.prompt}
-          </span>
-        )}
+            {kicker.label}
+            <span style={{
+              marginLeft: 8, color: "var(--atlas-muted)", opacity: 0.55,
+              fontWeight: 400, letterSpacing: "0.04em",
+            }}>
+              {run.projectName}
+            </span>
+          </div>
+          <div style={{
+            fontSize: 13.5, fontWeight: 500, color: "var(--atlas-fg)",
+            letterSpacing: "-0.005em", lineHeight: 1.35,
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+            overflow: "hidden", wordBreak: "break-word",
+          }}>
+            {titleLine || <span style={{ opacity: 0.5, fontStyle: "italic" }}>Working…</span>}
+          </div>
+          {metaBits.length > 0 && (
+            <div style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+              color: "var(--atlas-muted)", opacity: 0.65, marginTop: 3,
+              letterSpacing: "0.02em",
+            }}>
+              {metaBits.join(" · ")}
+            </div>
+          )}
+        </div>
+      </div>
 
-        <div style={{ flex: 1 }} />
-
-        {/* PR pill — shown when a PR was created */}
-        {hasPr && (
-          <a
-            href={run.prUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            title={`Open PR #${prNum} on GitHub`}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 4,
-              padding: "2px 8px", borderRadius: 999,
-              background: "rgba(201,162,76,0.10)",
-              border: "1px solid rgba(201,162,76,0.35)",
-              color: "var(--atlas-gold)",
-              fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
-              fontWeight: 600, textDecoration: "none", flexShrink: 0,
-              transition: "background 140ms ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.18)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
-          >
-            <GitPullRequest size={9} strokeWidth={2} />
-            #{prNum}
-          </a>
-        )}
-
-        {/* Elapsed / ago */}
-        <span style={{
-          fontSize: 9, fontFamily: "var(--app-font-mono)",
-          color: "var(--atlas-muted)", opacity: 0.5, flexShrink: 0,
+      {/* ── Produced artifacts (user-facing only) ── */}
+      {producedPaths.length > 0 && (
+        <div style={{
+          padding: "8px 14px 10px",
+          borderTop: "1px dashed var(--atlas-border)",
         }}>
-          {isLive ? formatElapsed(elapsed) : formatAgo(now - (run.completedAt ?? run.createdAt))}
-        </span>
+          <div style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 8.5,
+            letterSpacing: "0.18em", textTransform: "uppercase",
+            color: "var(--atlas-muted)", opacity: 0.55, marginBottom: 5,
+          }}>
+            {isLive ? "Producing" : "Produced"}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {producedPaths.slice(0, 5).map((p) => (
+              <a
+                key={p}
+                href={`/api/fs/${run.projectId}/preview?path=${encodeURIComponent(p)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                title={p}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "4px 6px", margin: "0 -6px", borderRadius: 5,
+                  fontSize: 12, color: "var(--atlas-fg)", opacity: 0.85,
+                  textDecoration: "none", transition: "background 120ms ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <span style={{ fontSize: 13, flexShrink: 0 }}>{iconFor(p)}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {shortName(p)}
+                </span>
+              </a>
+            ))}
+            {producedPaths.length > 5 && (
+              <div style={{
+                fontFamily: "var(--app-font-mono)", fontSize: 10,
+                color: "var(--atlas-muted)", opacity: 0.5, marginTop: 3, paddingLeft: 2,
+              }}>
+                +{producedPaths.length - 5} more
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-        {/* View full run inspection page */}
-        {!isLive && (
+      {/* ── Footer: Details · Open Preview · PR · dismiss ── */}
+      {!isLive && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
+          padding: "9px 12px 10px",
+          borderTop: "1px solid var(--atlas-border)",
+        }}>
           <a
             href={`/runs/${run.id}`}
             onClick={(e) => e.stopPropagation()}
-            aria-label="Open run inspection"
             style={{
-              fontFamily: "var(--app-font-mono)", fontSize: 9,
-              letterSpacing: "0.10em",
-              color: "var(--atlas-gold)",
-              textDecoration: "none",
-              padding: "2px 6px",
-              borderRadius: 3,
-              border: "0.5px solid var(--atlas-border)",
-              opacity: hovered ? 1 : 0.6,
-              transition: "opacity 120ms ease",
-              flexShrink: 0,
+              fontFamily: "var(--app-font-mono)", fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "5px 11px", borderRadius: 5,
+              background: "transparent",
+              border: "1px solid var(--atlas-border)",
+              color: "var(--atlas-fg)", opacity: 0.85,
+              textDecoration: "none", cursor: "pointer",
+              transition: "background 120ms ease, opacity 120ms ease",
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.opacity = "1"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.opacity = "0.85"; }}
           >
-            View →
+            Details
           </a>
-        )}
+          {producedPaths.length > 0 && (
+            <a
+              href={`/api/fs/${run.projectId}/preview?path=${encodeURIComponent(producedPaths[0])}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                fontFamily: "var(--app-font-mono)", fontSize: 10,
+                letterSpacing: "0.08em",
+                padding: "5px 11px", borderRadius: 5,
+                background: "transparent",
+                border: "1px solid var(--atlas-gold)",
+                color: "var(--atlas-gold)",
+                textDecoration: "none", cursor: "pointer",
+                transition: "background 120ms ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              Open Preview
+            </a>
+          )}
 
-        {/* Dismiss (done/failed runs only) */}
-        {!isLive && (
+          {/* PR pill preserved */}
+          {hasPr && (
+            <a
+              href={run.prUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={`Open PR #${prNum} on GitHub`}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "3px 9px", borderRadius: 999,
+                background: "rgba(201,162,76,0.10)",
+                border: "1px solid rgba(201,162,76,0.35)",
+                color: "var(--atlas-gold)",
+                fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                fontWeight: 600, textDecoration: "none",
+              }}
+            >
+              <GitPullRequest size={9} strokeWidth={2} />
+              #{prNum}
+            </a>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          {/* Expand chevron */}
+          <span style={{
+            display: "inline-flex", color: "var(--atlas-muted)",
+            opacity: hovered ? 0.7 : 0.35, transition: "opacity 140ms ease",
+          }}>
+            {expanded ? <ChevronUp size={12} strokeWidth={1.8} /> : <ChevronDown size={12} strokeWidth={1.8} />}
+          </span>
+
+          {/* Dismiss */}
           <button type="button"
             onClick={(e) => { e.stopPropagation(); onDismiss(); }}
             aria-label="Dismiss run"
             style={{
               background: "transparent", border: 0, padding: 2, cursor: "pointer",
-              color: "var(--atlas-muted)",
-              opacity: hovered ? 0.7 : 0,
-              transition: "opacity 120ms ease",
-              display: "inline-flex", flexShrink: 0,
+              color: "var(--atlas-muted)", opacity: hovered ? 0.7 : 0,
+              transition: "opacity 120ms ease", display: "inline-flex",
             }}
           >
             <X size={11} />
           </button>
-        )}
-
-        {/* Expand chevron (done runs) */}
-        {!isLive && (
-          <span style={{
-            display: "inline-flex", flexShrink: 0,
-            color: hovered ? "var(--atlas-gold)" : "var(--atlas-muted)",
-            opacity: hovered ? 1 : 0.35,
-            transition: "color 140ms ease, opacity 140ms ease",
-          }}>
-            {expanded ? <ChevronUp size={12} strokeWidth={1.8} /> : <ChevronDown size={12} strokeWidth={1.8} />}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Streaming content (running only, no tabs) ── */}
       {isLive && run.streamedContent && (
