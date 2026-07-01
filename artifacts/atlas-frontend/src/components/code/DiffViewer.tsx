@@ -46,6 +46,12 @@ export interface DiffViewerProps {
   contextLines?: number;
   /** Optional badge text (e.g. "New file"). */
   badge?: string;
+  /**
+   * When true the original content was unavailable (e.g. fetch failed, no
+   * linked repo) but this is NOT a brand-new file — show "No baseline" banner
+   * instead of "New file".
+   */
+  noBaseline?: boolean;
   /** Force a language; otherwise inferred from filename. */
   language?: ShikiLang;
 }
@@ -90,6 +96,7 @@ export function DiffViewer({
   contextLines = 3,
   badge,
   language,
+  noBaseline,
 }: DiffViewerProps) {
   const lang = language ?? langFromFilename(filename);
 
@@ -130,7 +137,10 @@ export function DiffViewer({
     return { added, removed };
   }, [annotated]);
 
-  const isNewFile = (before === undefined || before === "") && !items;
+  // null/undefined = file is genuinely new (404 from GitHub)
+  // "" or noBaseline prop = original content unavailable (no repo, fetch error)
+  const isNewFile = (before === undefined || before === null) && !items;
+  const isNoBaseline = !isNewFile && (noBaseline === true || (before === "" && !items));
 
   return (
     <div
@@ -211,6 +221,19 @@ export function DiffViewer({
             }}
           >
             New file
+          </div>
+        )}
+        {isNoBaseline && (
+          <div
+            style={{
+              padding: "5px 10px",
+              fontSize: 10,
+              color: "rgba(201,162,76,0.75)",
+              background: "rgba(201,162,76,0.04)",
+              borderBottom: "1px solid rgba(201,162,76,0.12)",
+            }}
+          >
+            No baseline — original content unavailable. Showing proposed file in full.
           </div>
         )}
         {viewMode === "inline"

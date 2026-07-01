@@ -61,7 +61,13 @@ export function GitHubPushModal({
   }, [useNewBranch]);
 
   useEffect(() => {
-    if (!linkedRepo || !token) { setLoadingOriginals(false); return; }
+    if (!linkedRepo || !token) {
+      // No repo linked — mark every file as "no baseline" (empty string sentinel)
+      // rather than null so the diff viewer doesn't label them as new files.
+      setOriginalContents(fileEdits.map(() => ""));
+      setLoadingOriginals(false);
+      return;
+    }
     let cancelled = false;
     Promise.all(
       fileEdits.map((fe) =>
@@ -69,9 +75,16 @@ export function GitHubPushModal({
           `/api/github/file?repo=${encodeURIComponent(linkedRepo.fullName)}&path=${encodeURIComponent(fe.path)}&branch=${encodeURIComponent(linkedRepo.defaultBranch)}`,
           { headers: { "x-github-token": token } }
         )
-          .then((r) => r.ok ? r.json() as Promise<{ content: string }> : null)
-          .then((d) => (d as { content: string } | null)?.content ?? null)
-          .catch(() => null)
+          .then(async (r): Promise<string | null> => {
+            if (r.ok) {
+              const d = await r.json() as { content: string };
+              return d.content ?? "";
+            }
+            // 404 = file genuinely doesn't exist in the repo → new file (null)
+            // any other status = fetch problem → no baseline ("" sentinel)
+            return r.status === 404 ? null : "";
+          })
+          .catch((): string => "")
       )
     ).then((originals) => {
       if (!cancelled) { setOriginalContents(originals); setLoadingOriginals(false); }
@@ -376,6 +389,7 @@ export function GitHubPushModal({
                     <DiffViewer
                       before={currentOriginal ?? ""}
                       after={currentFile.content}
+                      noBaseline={currentOriginal === ""}
                       viewMode="inline"
                       maxHeight={280}
                       badge={currentOriginal === null ? "New file" : undefined}

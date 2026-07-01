@@ -33,9 +33,7 @@ import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
 import { useAuth } from "@/hooks/useAuth";
-import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { useQuery } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
   defaultOptions: {
