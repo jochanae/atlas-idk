@@ -1000,19 +1000,18 @@ export function AskAtlasSurface({
               }}
             />
           </div>
+        </div>
 
-          {/* Action row — left cluster | pill (abs center) | right cluster */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              position: "relative",
-              gap: 8,
-              paddingTop: 6,
-              borderTop: "none",
-              marginTop: 2,
-            }}
-          >
+        {/* Action row — sits BELOW the composer as its own row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            position: "relative",
+            gap: 8,
+            paddingTop: 4,
+          }}
+        >
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {/* Left cluster: history, then +/⋯ from ComposerActions */}
               <UtilityButton
