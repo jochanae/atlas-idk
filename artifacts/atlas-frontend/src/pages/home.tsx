@@ -4927,7 +4927,7 @@ export default function Home() {
                     transition: "filter 180ms ease",
                   }}
                 />
-                {!isMobile && <span>Ask Atlas</span>}
+                {!isTiny && <span>Ask Atlas</span>}
                 {sendTo === "ask-atlas" && (
                   <span style={{
                     width: 5, height: 5, borderRadius: "50%",
