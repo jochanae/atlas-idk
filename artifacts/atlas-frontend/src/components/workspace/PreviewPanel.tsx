@@ -54,10 +54,16 @@ function RoutePickerButton({ routes, selected, onSelect }: {
   onSelect: (path: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!open) return;
+    const updateRect = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setRect({ top: r.bottom + 4, left: r.right, width: r.width });
+    };
+    updateRect();
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (btnRef.current?.contains(t)) return;
@@ -67,16 +73,73 @@ function RoutePickerButton({ routes, selected, onSelect }: {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
     return () => {
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
     };
   }, [open]);
   const current = routes.find((r) => r.path === selected) ?? routes[0];
   const label = current ? current.label : "Home";
   const sMono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
+  const menuWidth = 200;
+  const menu = open && rect ? createPortal(
+    <div
+      ref={menuRef}
+      role="menu"
+      style={{
+        position: "fixed",
+        top: rect.top,
+        left: Math.max(8, Math.min(rect.left - menuWidth, window.innerWidth - menuWidth - 8)),
+        zIndex: 9999,
+        width: menuWidth, maxHeight: 280, overflowY: "auto",
+        background: "var(--atlas-surface)",
+        border: "1px solid var(--atlas-border)",
+        borderRadius: 6,
+        boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+        padding: 4,
+      }}
+    >
+      <div style={{ padding: "4px 8px", fontSize: 8.5, ...sMono, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.45 }}>
+        Pages
+      </div>
+      {routes.length === 0 && (
+        <div style={{ padding: "6px 8px", fontSize: 10, ...sMono, color: "var(--atlas-muted)", opacity: 0.55 }}>
+          No pages detected
+        </div>
+      )}
+      {routes.map((route) => {
+        const active = route.path === selected;
+        return (
+          <button
+            key={route.path}
+            role="menuitem"
+            type="button"
+            onClick={() => { onSelect(route.path); setOpen(false); }}
+            title={route.description || route.path}
+            style={{
+              display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+              gap: 8, padding: "6px 8px", borderRadius: 4,
+              background: active ? "rgba(201,162,76,0.12)" : "transparent",
+              border: "none",
+              color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+              cursor: "pointer", fontSize: 10.5, ...sMono, letterSpacing: "0.02em",
+              textAlign: "left",
+            }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{route.label}</span>
+            <span style={{ fontSize: 9, opacity: 0.5 }}>{route.path}</span>
+          </button>
+        );
+      })}
+    </div>,
+    document.body,
+  ) : null;
   return (
-    <div style={{ position: "relative", flexShrink: 0 }}>
+    <>
       <button
         ref={btnRef}
         type="button"
@@ -85,7 +148,7 @@ function RoutePickerButton({ routes, selected, onSelect }: {
         aria-label="Choose page"
         aria-expanded={open}
         style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
+          display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0,
           padding: "5px 8px", borderRadius: 5,
           background: "transparent",
           border: "1px solid var(--atlas-border)",
@@ -101,55 +164,8 @@ function RoutePickerButton({ routes, selected, onSelect }: {
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
         <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
       </button>
-      {open && (
-        <div
-          ref={menuRef}
-          role="menu"
-          style={{
-            position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 40,
-            minWidth: 160, maxHeight: 240, overflowY: "auto",
-            background: "var(--atlas-surface)",
-            border: "1px solid var(--atlas-border)",
-            borderRadius: 6,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
-            padding: 4,
-          }}
-        >
-          <div style={{ padding: "4px 8px", fontSize: 8.5, ...sMono, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.45 }}>
-            Pages
-          </div>
-          {routes.length === 0 && (
-            <div style={{ padding: "6px 8px", fontSize: 10, ...sMono, color: "var(--atlas-muted)", opacity: 0.55 }}>
-              No pages detected
-            </div>
-          )}
-          {routes.map((route) => {
-            const active = route.path === selected;
-            return (
-              <button
-                key={route.path}
-                role="menuitem"
-                type="button"
-                onClick={() => { onSelect(route.path); setOpen(false); }}
-                title={route.description || route.path}
-                style={{
-                  display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
-                  gap: 8, padding: "6px 8px", borderRadius: 4,
-                  background: active ? "rgba(201,162,76,0.12)" : "transparent",
-                  border: "none",
-                  color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
-                  cursor: "pointer", fontSize: 10.5, ...sMono, letterSpacing: "0.02em",
-                  textAlign: "left",
-                }}
-              >
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{route.label}</span>
-                <span style={{ fontSize: 9, opacity: 0.5 }}>{route.path}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
+      {menu}
+    </>
   );
 }
 
