@@ -66,7 +66,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { buildAskAtlasHandoffSeed, hasBuildIntent } from "@/components/AskAtlasOverlay";
+import { buildAskAtlasHandoffSeed, hasBuildIntent } from "@/lib/askAtlasHelpers";
 
 
 const PLACEHOLDERS = [
@@ -3516,10 +3516,11 @@ export default function Home() {
     thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
     nexusChat.clearMessages();
+    askAtlasChat.clearMessages();
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.clearMessages]);
+  }, [nexusChat.clearMessages, askAtlasChat.clearMessages]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
@@ -3577,17 +3578,17 @@ export default function Home() {
           })
         : [];
 
-      nexusChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
+      // Route resumed threads into askAtlasChat so AskAtlasSurface renders
+      // them — not into nexusChat which feeds the ambient homepage renderer.
+      askAtlasChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
+      nexusChat.clearMessages();
       setActiveConversationId(id);
       setReviewingPlanIds(new Set());
       try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
       try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
 
-      // The home composer's gold-clock history exclusively lists Ask Atlas
-      // threads ("ASK ATLAS · HISTORY"). Resuming one must re-enter Ask Atlas
-      // mode so the surface, reflection flag, and depth all match — not
-      // strand the thread in the ambient homepage where it tries to earn a
-      // title and reads as half-broken.
+      // Open the real AskAtlasSurface with the correct surface flag so the
+      // pinned header, scroll, composer, and message styling all match.
       setAskAtlasSurfaceOpen(true);
       setDepth("active");
       try {
@@ -3601,7 +3602,7 @@ export default function Home() {
 
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId, nexusChat.setMessages, setDepth]);
+  }, [setActiveConversationId, askAtlasChat.setMessages, nexusChat.clearMessages, setDepth]);
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
@@ -5273,7 +5274,7 @@ export default function Home() {
       </div>
 
       <AskAtlasSurface
-        open={askAtlasConversationActive}
+        open={askAtlasSurfaceOpen || askAtlasConversationActive}
         messages={askAtlasChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={activeConversationId}
