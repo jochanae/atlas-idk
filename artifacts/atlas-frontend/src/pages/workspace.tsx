@@ -34,6 +34,7 @@ import { ManifestPanel } from "../components/ManifestPanel";
 import { InsightsPanel } from "../components/InsightsPanel";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
+import { ActiveRunsStrip } from "../components/home/ActiveRunsStrip";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
