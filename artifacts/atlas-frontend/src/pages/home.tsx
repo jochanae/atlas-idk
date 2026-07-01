@@ -28,7 +28,7 @@ import { WriteTab } from "@/components/workspace/WriteTab";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
-import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
+import { AskAtlasSurface } from "@/components/home/AskAtlasSurface";
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
 import { FocusModeAura } from "@/components/FocusModeAura";
 
@@ -96,7 +96,7 @@ const GLOBAL_INSIGHT_PORTFOLIO_SEED =
 
 function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
   // Header title rotation stripped (Pass 1). Header is permanently
-  // "Global Insight"; the project name lives in the CommitPill only.
+  // "Ask Atlas"; the project name lives in the CommitPill only.
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
       <span
@@ -111,7 +111,7 @@ function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
         }}
       />
       <span
-        title="Global Insight"
+        title="Ask Atlas"
         style={{
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -127,7 +127,7 @@ function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
           opacity: 0.92,
         }}
       >
-        Global Insight
+        Ask Atlas
       </span>
     </div>
   );
@@ -2233,7 +2233,7 @@ export default function Home() {
       setShowFocusPicker(false);
       setGlobalInsightOpen(true);
       window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
-      toast("Global Insight · Strategic view", {
+      toast("Ask Atlas · Strategic view", {
         className: "atlas-toast-premium",
         description: "Macro view across every project.",
       });
@@ -3584,8 +3584,8 @@ export default function Home() {
       try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
 
       // The home composer's gold-clock history exclusively lists Global Insight
-      // threads ("GLOBAL INSIGHT · HISTORY"). Resuming one must re-enter Global
-      // Insight mode so the surface, reflection flag, and depth all match — not
+      // threads ("ASK ATLAS · HISTORY"). Resuming one must re-enter Ask Atlas
+      // mode so the surface, reflection flag, and depth all match — not
       // strand the thread in the ambient homepage where it tries to earn a
       // title and reads as half-broken.
       setGlobalInsightOpen(true);
@@ -3767,7 +3767,7 @@ export default function Home() {
       }}
     >
       {/* FocusModeAura removed — aura now lives on the composer border (see composerAura.ts) */}
-      {/* Global Insight runs inline through the ambient home shell:
+      {/* Ask Atlas runs inline through the ambient home shell:
           header title only, no overlay, no duplicate header, no separate composer. */}
 
       {globalInsightTitleSlot && globalInsightOpen && createPortal(
@@ -3899,7 +3899,7 @@ export default function Home() {
       {/* Lens chips removed from home — lenses live in the workspace only */}
 
 
-      {/* Shred-It modal removed — exit Global Insight directly via the header sparkle. */}
+      {/* Shred-It modal removed — exit Ask Atlas directly via the header sparkle. */}
 
       {showOverlay && (
         <FirstRunOverlay
@@ -4052,7 +4052,7 @@ export default function Home() {
                     backgroundClip: globalInsightOpen ? "text" : undefined,
                     filter: globalInsightOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                   }}>
-                    {globalInsightOpen ? "Global Insight." : greetingRef.current?.head}
+                    {globalInsightOpen ? "Ask Atlas." : greetingRef.current?.head}
                   </h1>
                   <p style={{
                     fontSize: "var(--ts-body)" as any,
@@ -4113,127 +4113,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Ask Atlas inline conversation — independent of nexusChat state */}
-            {askAtlasConversationActive && !showOverviewSheet && (
-              <div
-                ref={askAtlasScrollRef}
-                aria-live="polite"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  overflowY: "auto",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 12,
-                  padding: "52px 4px 24px",
-                  scrollbarWidth: "none",
-                  msOverflowStyle: "none",
-                  zIndex: 2,
-                  textAlign: "left",
-                  background: "var(--atlas-bg)",
-                }}
-              >
-                {askAtlasChat.messages.map((m, i) => {
-                  const isUser = m.role === "user";
-                  const lastAssistant = !isUser && i === askAtlasChat.messages.length - 1;
-                  const showHandoff =
-                    !isUser && hasBuildIntent(m.content) && !askAtlasChat.isStreaming;
-                  const isWaiting = lastAssistant && askAtlasChat.isStreaming && !m.content;
-                  return (
-                    <div
-                      key={m.id ?? i}
-                      className="ask-atlas-inline-msg"
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 8,
-                        alignItems: isUser ? "flex-end" : "flex-start",
-                      }}
-                    >
-                      <div style={{
-                        maxWidth: "92%",
-                        padding: isUser ? "9px 12px" : "2px 0",
-                        borderRadius: isUser ? 12 : 0,
-                        background: isUser ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)" : "transparent",
-                        color: "var(--atlas-fg)",
-                        border: isUser ? "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)" : "none",
-                        fontSize: "var(--ts-body)",
-                        lineHeight: 1.6,
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        opacity: isUser ? 0.96 : 0.92,
-                      }}>
-                        {isWaiting ? (
-                          <span aria-label="Atlas is thinking" style={{ display: "inline-flex", gap: 4, alignItems: "center", height: 18 }}>
-                            {[0, 1, 2].map((n) => (
-                              <span
-                                key={n}
-                                className="ask-atlas-inline-dot"
-                                style={{
-                                  width: 5,
-                                  height: 5,
-                                  borderRadius: 999,
-                                  background: "var(--atlas-gold)",
-                                  display: "inline-block",
-                                  animationDelay: `${n * 140}ms`,
-                                }}
-                              />
-                            ))}
-                          </span>
-                        ) : m.content}
-                      </div>
-                      {showHandoff && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const seed = askAtlasHandoffSeed;
-                            askAtlasChat.abort();
-                            askAtlasChat.clearMessages();
-                            setSendTo("workspace");
-                            sendToRef.current = "workspace";
-                            setInput(seed);
-                            window.setTimeout(() => { void handleSubmit(seed); }, 40);
-                          }}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            padding: "7px 12px",
-                            borderRadius: 999,
-                            background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
-                            color: "var(--atlas-gold)",
-                            border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
-                            cursor: "pointer",
-                            fontFamily: "var(--app-font-mono)",
-                            fontSize: 10.5,
-                            letterSpacing: "0.1em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Continue in Workspace
-                          <ArrowRight size={12} strokeWidth={2} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-                {askAtlasChat.isPending && askAtlasChat.messages.length > 0 && !askAtlasChat.isStreaming && (
-                  <div style={{
-                    fontSize: "var(--ts-caption)",
-                    color: "var(--atlas-muted)",
-                    fontFamily: "var(--app-font-mono)",
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    opacity: 0.6,
-                  }}>
-                    Capturing intent…
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Chat thread */}
             <div style={{
@@ -5392,9 +5271,9 @@ export default function Home() {
         )}
       </div>
 
-      <GlobalInsightSurface
-        open={globalInsightOpen}
-        messages={nexusChat.messages as any}
+      <AskAtlasSurface
+        open={askAtlasConversationActive}
+        messages={askAtlasChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={activeConversationId}
         input={input}
@@ -5405,10 +5284,10 @@ export default function Home() {
           setInput("");
           return result;
         }}
-        isSending={isSending}
-        isStreaming={isAtlasStreaming}
+        isSending={askAtlasBusy}
+        isStreaming={askAtlasChat.isStreaming}
         pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
-        liveStep={nexusChat.liveStep}
+        liveStep={askAtlasChat.liveStep}
         isListening={isListening}
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
@@ -5420,10 +5299,10 @@ export default function Home() {
           if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
           setAttachedFiles(combined);
         }}
-        onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
+        onSketch={(prompt) => { void askAtlasChat.send({ text: prompt }); }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-        subheader={homeUnifiedSubheader}
+        subheader={null}
         focusChip={
           /* FOCUS chip: one job only — "where is Atlas focused?"
              Memory is the HUD's responsibility, not this chip's. */
@@ -5489,7 +5368,7 @@ export default function Home() {
         }}
       />
 
-      {globalInsightOpen && showFocusPicker && (
+      {askAtlasConversationActive && showFocusPicker && (
         <>
           <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
           <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
@@ -5577,7 +5456,7 @@ export default function Home() {
         />
       )}
 
-      {/* Right-edge timeline rail — always in Global Insight, otherwise only when a thread exists. Hidden on ambient empty home. */}
+      {/* Right-edge timeline rail — always in Ask Atlas, otherwise only when a thread exists. Hidden on ambient empty home. */}
       {(globalInsightOpen || nexusChat.messages.length > 0) && (
         <TimelineRail alwaysVisible={globalInsightOpen} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
       )}

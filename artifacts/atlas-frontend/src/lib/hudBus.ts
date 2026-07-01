@@ -76,7 +76,7 @@ export function setHudEvents(nextEvents: HudEvent[]) {
 
 // ── Dock state ──────────────────────────────────────────────────────────────
 // When `docked` is true the floating HUD pill collapses into a small chip
-// rendered next to "Global Insight" in the header subheader.
+// rendered next to "Ask Atlas" in the header subheader.
 
 let docked = false;
 const dockListeners = new Set<(v: boolean) => void>();

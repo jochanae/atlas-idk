@@ -585,7 +585,7 @@ function buildInitialProjectMemory(summary: string): string {
     v: 2,
     entries: [{
       tier: 1,
-      text: `Initial project summary from Global Insight: ${summary}`,
+      text: `Initial project summary from Ask Atlas: ${summary}`,
       createdAt: now,
       retrievalCount: 0,
       lastRetrievedAt: null,
@@ -3382,7 +3382,7 @@ router.get("/nexus/resume", async (req, res): Promise<void> => {
           .reverse()
           .map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content.slice(0, 300)}`)
           .join("\n\n")
-      : "No recent Global Insight conversation.";
+      : "No recent Ask Atlas conversation.";
 
     const prompt = `${ATLAS_IDENTITY}
 

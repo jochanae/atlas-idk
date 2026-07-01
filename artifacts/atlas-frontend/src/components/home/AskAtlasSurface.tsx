@@ -1,5 +1,5 @@
 /**
- * GlobalInsightSurface — standalone Global Insight chat surface.
+ * AskAtlasSurface — standalone Ask Atlas chat surface.
  *
  * Owns its own fixed-overlay layout, isolated scroll container, and a
  * minimal composer. No `globalInsightOpen` ternaries, no shared scroll
@@ -7,7 +7,7 @@
  *
  * Layout invariants:
  *   - Fixed positioning below the page header (--atlas-header-height)
- *   - Scroll lives ONLY inside `.atlas-global-insight-scroll`
+ *   - Scroll lives ONLY inside `.atlas-ask-atlas-scroll`
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -207,7 +207,7 @@ function useTypewriter(phrases: string[], paused: boolean) {
   return display;
 }
 
-export function GlobalInsightSurface({
+export function AskAtlasSurface({
   open,
   messages,
   projects,
@@ -354,9 +354,9 @@ export function GlobalInsightSurface({
 
   return (
     <div
-      className="atlas-global-insight-surface"
+      className="atlas-ask-atlas-surface"
       role="dialog"
-      aria-label="Global Insight"
+      aria-label="Ask Atlas"
       style={{
         position: "fixed",
         top: "var(--atlas-header-height, 56px)",
@@ -376,7 +376,7 @@ export function GlobalInsightSurface({
       <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div
         ref={scrollRef}
-        className="atlas-global-insight-scroll"
+        className="atlas-ask-atlas-scroll"
         onScroll={(e) => {
           const el = e.currentTarget;
           setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
@@ -414,7 +414,7 @@ export function GlobalInsightSurface({
             gap: 6,
           }}
         >
-          <span>Global Insight · All projects</span>
+          <span>Ask Atlas</span>
           {messages.length > 0 && (
             <button
               type="button"
@@ -425,13 +425,13 @@ export function GlobalInsightSurface({
                   .join("\n");
                 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
                 const blob = new Blob(
-                  [`GLOBAL INSIGHT · ALL PROJECTS\n${stamp}\n\n${lines}`],
+                  [`ASK ATLAS\n${stamp}\n\n${lines}`],
                   { type: "text/plain;charset=utf-8" },
                 );
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `global-insight-${stamp}.txt`;
+                a.download = `ask-atlas-${stamp}.txt`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -1011,7 +1011,7 @@ export function GlobalInsightSurface({
                 </svg>
               </UtilityButton>
               <ComposerActions
-                scope="global-insight"
+                scope="ask-atlas"
                 hasProjectContext={false}
                 borderless={true}
                 globalContext={true}
@@ -1205,4 +1205,4 @@ function UtilityButton({
   );
 }
 
-export default GlobalInsightSurface;
+export default AskAtlasSurface;
