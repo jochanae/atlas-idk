@@ -5332,10 +5332,12 @@ export default function Home() {
                         }
                       } catch { /* noop */ }
                     } else {
+                      // Toggle OFF: hide the Ask Atlas thread but preserve it
+                      // so toggling back ON restores the conversation. Abort
+                      // any in-flight stream so it doesn't ghost-complete.
                       setAskAtlasHelperVisible(false);
                       clearAskAtlasPortfolioTransition();
                       askAtlasChat.abort();
-                      askAtlasChat.clearMessages();
                     }
                     return next;
                   });
