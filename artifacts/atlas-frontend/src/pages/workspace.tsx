@@ -31,6 +31,7 @@ import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
 import { ImageGenerator } from "../components/ImageGenerator";
 import { ManifestPanel } from "../components/ManifestPanel";
+import { InsightsPanel } from "../components/InsightsPanel";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
@@ -296,7 +297,7 @@ type ManifestDecisionResponse = {
   componentName?: string;
 };
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "jobs" | "mcp" | "image" | "forge" | "artifacts" | "manifest" | "write";
+type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "jobs" | "mcp" | "image" | "forge" | "artifacts" | "manifest" | "insights" | "write";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
@@ -1867,11 +1868,13 @@ function RightPanel({
       ),
     },
     {
-      id: "manifest" as RightTab,
-      label: "Manifest",
+      id: "insights" as RightTab,
+      label: "Insights",
       icon: (
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="8,1.5 10,5.5 14.5,6.2 11.5,9.2 12.2,13.5 8,11.5 3.8,13.5 4.5,9.2 1.5,6.2 6,5.5" />
+          <circle cx="8" cy="8" r="6" />
+          <path d="M8 4.5v3.5l2 1.4" />
+          <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
         </svg>
       ),
     },
@@ -2282,6 +2285,9 @@ function RightPanel({
           manifestDecision={manifestDecision}
           manifestLoading={manifestLoading}
         />
+      )}
+      {tab === "insights" && (
+        <InsightsPanel projectId={projectId} />
       )}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} onHydrated={onHydrated} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} />}
@@ -4135,7 +4141,7 @@ export default function Workspace() {
     return "chat";
   });
   const [subheaderOpen, setSubheaderOpen] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
+  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "insights" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [rightOpen, setRightOpen] = useState(() =>
@@ -7642,7 +7648,7 @@ export default function Workspace() {
             pushHistory={pushHistory}
             onRollbackPush={handleRollbackPush}
             onHomeNav={() => setLocation("/home")}
-            forceTab={isMobile && mobileTab === "manifest" ? "manifest" : isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : isMobile && mobileTab === "memory" ? "memory" : isMobile && mobileTab === "connections" ? "connections" : isMobile && mobileTab === "write" ? "write" : desktopForceTab}
+            forceTab={isMobile && mobileTab === "insights" ? "insights" : isMobile && mobileTab === "manifest" ? "manifest" : isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : isMobile && mobileTab === "memory" ? "memory" : isMobile && mobileTab === "connections" ? "connections" : isMobile && mobileTab === "write" ? "write" : desktopForceTab}
             onSendIntent={sendFromIntentCapture}
             onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
             onMapReadinessChange={setMapReadiness}
@@ -8276,6 +8282,7 @@ export default function Workspace() {
                   mobileTab === "files" ? "files" :
                   mobileTab === "preview" ? "preview" :
                   mobileTab === "manifest" ? "manifest" :
+                  mobileTab === "insights" ? "insights" :
                   mobileTab === "blueprints" ? "blueprints" :
                   mobileTab === "memory" ? "memory" :
                   mobileTab === "connections" ? "connections" :
@@ -8348,7 +8355,7 @@ export default function Workspace() {
       {isMobile && mobileTab !== "map" && (
         <UnifiedContextDock
           mode="operational"
-          activeOperationalTab={(["chat","ledger","manifest","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "manifest" | "map" | "files" | undefined}
+          activeOperationalTab={(["chat","ledger","insights","manifest","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "insights" | "manifest" | "map" | "files" | undefined}
           onAtlasCore={() => { setMobileTab("chat"); setLeftTab("chat"); setRightOpen(false); }}
           onChat={() => { setMobileTab("chat"); setLeftTab("chat"); }}
 
@@ -8356,7 +8363,8 @@ export default function Workspace() {
             setMobileTab("ledger");
             setRightOpen(true);
           }}
-          onManifest={() => { setMobileTab("manifest"); setRightOpen(true); }}
+          onInsights={() => { setMobileTab("insights"); setRightOpen(true); }}
+          onManifest={() => { setMobileTab("insights"); setRightOpen(true); }}
           onFlow={() => setLocation("/map")}
           entryCount={entryCount}
           currentProjectName={project?.name ?? ""}
