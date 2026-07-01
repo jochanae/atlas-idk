@@ -47,6 +47,7 @@ export interface UnifiedContextDockProps {
   onChat?: () => void;
   onLedger?: () => void;
   onManifest?: () => void;
+  onInsights?: () => void;
   onFlow?: () => void;
   activeOperationalTab?: OperationalTab;
 
