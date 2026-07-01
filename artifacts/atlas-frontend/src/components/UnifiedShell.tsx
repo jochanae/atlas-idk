@@ -114,6 +114,7 @@ function ShellDrawerButton() {
       type="button"
       aria-label="Open projects"
       onClick={() => window.dispatchEvent(new CustomEvent("axiom:open-nav-drawer"))}
+      className="atlas-drawer-trigger"
       style={{
         background: "transparent",
         border: "none",
@@ -137,6 +138,7 @@ function ShellDrawerButton() {
     </button>
   );
 }
+
 
 function ShellWordmark() {
   const [location, setLocation] = useLocation();
@@ -176,6 +178,7 @@ function ShellWordmark() {
           type="button"
           onClick={goHome}
           aria-label={location === "/home" ? "Return to ambient Nexus" : "Go home"}
+          className="atlas-wordmark"
           style={{
             background: "transparent",
             border: "none",
@@ -193,6 +196,7 @@ function ShellWordmark() {
           AXIOM
         </button>
       )}
+
     </div>
   );
 }
@@ -275,6 +279,7 @@ function ShellAvatar() {
       <div
         title={name}
         aria-label={name}
+        className="atlas-avatar-ring"
         style={{
           width: 36,
           height: 36,
@@ -295,11 +300,12 @@ function ShellAvatar() {
           <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "20%" }} />
         ) : (
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <circle cx="10" cy="7.5" r="3.2" stroke="#C9A24C" strokeWidth="1.2" />
-            <path d="M3 18.5c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="#C9A24C" strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="10" cy="7.5" r="3.2" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M3 18.5c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
         )}
       </div>
+
       {isAdmin && (
         <div
           style={{
@@ -331,6 +337,7 @@ function ShellAvatar() {
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openInvite(e); } }}
         title="Invite collaborators"
         aria-label="Invite collaborators"
+        className="atlas-invite-plus"
         style={{
           marginLeft: 6,
           width: 36,
@@ -349,6 +356,7 @@ function ShellAvatar() {
         }}
         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.9)"; e.currentTarget.style.color = "rgba(212,175,55,1)"; e.currentTarget.style.background = "rgba(212,175,55,0.06)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; e.currentTarget.style.color = "rgba(212,175,55,0.75)"; e.currentTarget.style.background = "transparent"; }}
+
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <line x1="12" y1="5" x2="12" y2="19" />

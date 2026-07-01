@@ -889,7 +889,7 @@ export function AskAtlasSurface({
             fontSize: 10,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
-            color: isParchment ? "rgba(146,64,14,0.75)" : "rgba(212,175,55,0.72)",
+            color: isParchment ? "rgba(15,23,42,0.45)" : "rgba(212,175,55,0.72)",
             paddingBottom: 2,
           }}
         >
@@ -904,10 +904,11 @@ export function AskAtlasSurface({
             gap: 8,
             background: "transparent",
             border: isParchment
-              ? "1px solid rgba(180,83,9,0.30)"
+              ? "1px solid rgba(15,23,42,0.10)"
               : "1px solid rgba(212,175,55,0.32)",
             borderRadius: 16,
             padding: "10px 12px",
+
             transition: "border-color 200ms ease, box-shadow 200ms ease",
             minHeight: 72,
             ...getAuraVars("axiom", isParchment),
