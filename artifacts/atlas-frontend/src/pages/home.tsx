@@ -3006,21 +3006,30 @@ export default function Home() {
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
+    if (sendToRef.current === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending)) return;
     submitInFlightRef.current = true;
-    // Composer-mode routing — Ask Atlas reuses the stable global-insight
-    // conversation surface (single layout engine, single scroll container,
-    // single composer height math). No second inline hero renderer.
+    // Composer-mode routing — Ask Atlas streams inline; workspace falls through
+    // to the standard create/inline-send fork below.
     const routeTarget = sendToRef.current;
-    let effectiveOptions = options;
     if (routeTarget === "ask-atlas" && text) {
-      setAskAtlasHelperVisible(false);
-      if (!globalInsightOpen) {
-        void callGlobalInsightMode(true);
-        setGlobalInsightOpen(true);
+      const isFirstAskAtlasSubmit = askAtlasChat.messages.length === 0;
+      if (isFirstAskAtlasSubmit) {
+        const statusLine =
+          ASK_ATLAS_PORTFOLIO_STATUS_LINES[
+            Math.floor(Math.random() * ASK_ATLAS_PORTFOLIO_STATUS_LINES.length)
+          ];
+        askAtlasPortfolioTransitionStartedRef.current = Date.now();
+        setAskAtlasPortfolioStatus({ phase: "visible", message: statusLine });
       }
-      effectiveOptions = { ...(options ?? {}), forceStayOnHome: true };
+      setInput("");
+      setAttachedFiles([]);
+      setAskAtlasHelperVisible(false);
+      void askAtlasChat.send({ text }).finally(() => {
+        submitInFlightRef.current = false;
+      });
+      return;
     }
-    const shouldStayOnHome = effectiveOptions?.forceStayOnHome ?? false;
+    const shouldStayOnHome = options?.forceStayOnHome ?? false;
     if (shouldStayOnHome && !globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
     }
@@ -3178,7 +3187,10 @@ export default function Home() {
     projects,
     queryClient,
     nexusChat.send,
-    callGlobalInsightMode,
+    askAtlasChat.send,
+    askAtlasChat.messages.length,
+    askAtlasChat.isStreaming,
+    askAtlasChat.isPending,
     resolveFocusProjectIdForTurn,
     setActiveProjectId,
     setLocation,
