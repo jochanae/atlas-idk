@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import { bustResumeCache } from "./nexus";
+import { computeProjectReadiness } from "./readiness";
 import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, nexusMessagesTable, applicationModelsTable } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA } from "../lib/projectDNA";
 import { encryptToken, decryptToken } from "../lib/tokenCrypto";
@@ -140,12 +141,42 @@ router.get("/projects", async (req, res): Promise<void> => {
     entryStatsMap = new Map(entryStats.map(s => [s.projectId, { entryCount: s.entryCount, latestEntryAt: s.latestEntryAt }]));
   }
 
+  // Compute live readiness for all projects so home cards match the header ring.
+  // Promise.allSettled with per-project 5 s timeout — slow projects are skipped gracefully.
+  const liveReadinessMap = new Map<number, { score: number; label: string }>();
+  if (projects.length > 0) {
+    const READINESS_TIMEOUT_MS = 5000;
+    const results = await Promise.allSettled(
+      projects.map(p =>
+        Promise.race([
+          computeProjectReadiness(p.id),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("readiness timeout")), READINESS_TIMEOUT_MS),
+          ),
+        ]),
+      ),
+    );
+    results.forEach((result, i) => {
+      if (result.status === "fulfilled") {
+        liveReadinessMap.set(projects[i].id, {
+          score: result.value.overallScore,
+          label: result.value.overallLabel,
+        });
+      }
+    });
+  }
+
   res.json(projects
     .map(p => {
       const entryStats = entryStatsMap.get(p.id);
+      const liveReadiness = liveReadinessMap.get(p.id);
       return {
         ...serializeProject(p, false),
         updatedAt: latestProjectActivityIso(p.updatedAt, entryStats?.latestEntryAt),
+        // Canonical live score — matches intelligence.readiness.overall and the header ring.
+        readinessScore: liveReadiness?.score ?? null,
+        readinessLabel: liveReadiness?.label ?? null,
+        // Deprecated: stale snapshot kept for one release for backward compat.
         latestSnapshotScore: scoreMap.get(p.id) ?? null,
         entryCount: entryStats?.entryCount ?? 0,
         latestEntryAt: entryStats?.latestEntryAt ?? null,

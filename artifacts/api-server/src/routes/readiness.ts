@@ -21,12 +21,24 @@ interface ReadinessDimension {
   evidence: string;
 }
 
+type PhaseLabel = "Not started" | "In progress" | "Complete";
+
+interface PhaseEntry {
+  score: number;
+  label: PhaseLabel;
+  evidence: string;
+}
+
 interface ProjectReadiness {
   overallScore: number;
   overallLabel: string;
   projectKind: ProjectKind;
   dimensions: Partial<Record<DimensionKey, ReadinessDimension>>;
   warnings: string[];
+  /** Weighted contribution of each dimension to overallScore (sums ≈ overallScore). */
+  layerMix: { strategy: number; build: number; activity: number; delivery: number };
+  /** Four-phase journey: Think → Decide → Build → Ship. Server-authoritative, no client math. */
+  phases: { think: PhaseEntry; decide: PhaseEntry; build: PhaseEntry; ship: PhaseEntry };
   sourceBreakdown: {
     appBuildSucceeded: boolean | null;
     appSourceFileCount: number | null;
@@ -236,12 +248,54 @@ export async function computeProjectReadiness(projectId: number): Promise<Projec
     // readiness_snapshots may not exist in all environments
   }
 
+  // ── layerMix — weighted contribution of each dimension to overallScore ──────
+  // Each value = dimension score × its normalized weight → sum ≈ overallScore.
+  const layerMix = {
+    strategy: Math.round(strategyScore * normalizedWeights.strategy),
+    build: Math.round(buildScore * normalizedWeights.build),
+    activity: Math.round(activityScore * normalizedWeights.activity),
+    delivery: Math.round(deliveryScore * normalizedWeights.delivery),
+  };
+
+  // ── phases — four-phase journey, server-authoritative ────────────────────────
+  const phaseLabel = (score: number): PhaseLabel =>
+    score >= 80 ? "Complete" : score > 0 ? "In progress" : "Not started";
+
+  const decideScore = totalEntries === 0
+    ? 0
+    : Math.round((committedEntries / totalEntries) * 100);
+
+  const phases = {
+    think: {
+      score: genomeConfidenceScore,
+      label: phaseLabel(genomeConfidenceScore),
+      evidence: `${genomeConfidenceScore}% genome clarity · ${genomeStage} stage`,
+    },
+    decide: {
+      score: decideScore,
+      label: phaseLabel(decideScore),
+      evidence: `${committedEntries} of ${totalEntries} entries committed`,
+    },
+    build: {
+      score: buildApplicable ? buildScore : 0,
+      label: phaseLabel(buildApplicable ? buildScore : 0),
+      evidence: buildApplicable ? evidenceStrings.build : "Not applicable for this project type",
+    },
+    ship: {
+      score: deliveryApplicable ? deliveryScore : 0,
+      label: phaseLabel(deliveryApplicable ? deliveryScore : 0),
+      evidence: deliveryApplicable ? evidenceStrings.delivery : "No linked repo or live URL yet",
+    },
+  };
+
   return {
     overallScore,
     overallLabel: toOverallLabel(overallScore),
     projectKind,
     dimensions,
     warnings,
+    layerMix,
+    phases,
     sourceBreakdown: {
       appBuildSucceeded: project.appBuildSucceeded ?? null,
       appSourceFileCount: project.appSourceFileCount ?? null,

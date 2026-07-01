@@ -262,6 +262,8 @@ export async function computeProjectIntelligence(projectId: number) {
       projectKind: readiness.projectKind,
       dimensions: readiness.dimensions,
       warnings: readiness.warnings,
+      layerMix: readiness.layerMix,
+      phases: readiness.phases,
       sourceBreakdown: readiness.sourceBreakdown,
     },
 
