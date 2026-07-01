@@ -335,7 +335,15 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
       </Section>
 
       <div style={{ height: 24 }} />
+      {explainDim && (
+        <ReadinessDrawer
+          row={explainDim}
+          intel={intel}
+          onClose={() => setExplainDim(null)}
+        />
+      )}
     </PanelShell>
+
   );
 }
 
