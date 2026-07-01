@@ -740,6 +740,26 @@ function buildDimensionObservations(row: ExplainRow, intel: Intelligence): strin
     out.push(`${openQ} open question${openQ === 1 ? "" : "s"} still in tension.`);
   }
   if (row.key === "build") {
+    const s = intel.stack;
+    if (s) {
+      const captured = [
+        s.frontend && "frontend",
+        s.backend && "backend",
+        s.database && "database",
+        s.hosting && "hosting",
+        s.auth && "auth",
+      ].filter(Boolean) as string[];
+      if (captured.length > 0) {
+        out.push(`Stack captured: ${captured.join(", ")}.`);
+      } else {
+        out.push("Stack row exists but no fields captured yet.");
+      }
+      if (s.integrations && s.integrations.length > 0) {
+        out.push(`Integrations tracked: ${s.integrations.join(", ")}.`);
+      }
+    } else {
+      out.push("No stack captured yet — Atlas hasn't seen this project's tech.");
+    }
     out.push(intel.hasFlow ? "Flow map exists — architecture is being tracked." : "No flow map yet — architecture hasn't been sketched.");
   }
   return out;
