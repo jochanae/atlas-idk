@@ -1380,19 +1380,4 @@ mark.atlas-search-hit.atlas-search-hit--active {
   border-color: var(--atlas-border) !important;
 }
 
-/* 9) Briefcase FAB — neutral surface, charcoal icon; bronze only when active. */
-[data-theme="parchment"] .atlas-briefcase-toggle {
-  background: rgba(255, 255, 255, 0.85) !important;
-  border-color: rgba(15, 23, 42, 0.10) !important;
-  color: var(--atlas-icon) !important;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
-}
-[data-theme="parchment"] .atlas-briefcase-toggle:hover {
-  border-color: rgba(15, 23, 42, 0.20) !important;
-  color: var(--atlas-icon) !important;
-}
-[data-theme="parchment"] .atlas-briefcase-toggle[data-active="true"] {
-  color: var(--atlas-gold) !important;
-  border-color: color-mix(in oklab, var(--atlas-gold) 40%, transparent) !important;
-}
 
