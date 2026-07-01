@@ -18,6 +18,7 @@ import { AskAtlasRenderer } from "./AskAtlasRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
+import { StepProgress, type LiveStep } from "@/components/workspace/StepProgress";
 import SketchReveal from "@/components/chat/SketchReveal";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ParkSheet } from "@/components/ParkSheet";
@@ -41,11 +42,7 @@ export type AskAtlasMessage = {
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
 };
 
-export type AskAtlasLiveStep = {
-  verb: string;
-  target?: string | null;
-  status?: "ok" | "warn" | "fail" | string;
-} | null;
+export type { LiveStep as AskAtlasLiveStep } from "@/components/workspace/StepProgress";
 
 type AskAtlasProject = {
   id: number;
@@ -64,7 +61,7 @@ interface Props {
   isSending: boolean;
   isStreaming: boolean;
   pendingPhrase: string;
-  liveStep?: AskAtlasLiveStep;
+  liveStep?: LiveStep;
   isListening: boolean;
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
@@ -793,29 +790,13 @@ export function AskAtlasSurface({
           );
         })}
 
-        {isStreaming && !messages.some((m) => m.streaming && m.content.length > 0) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.75 }}>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "var(--atlas-gold)",
-                animation: "atlas-pulse 1.4s ease-in-out infinite",
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 11,
-                letterSpacing: "0.08em",
-                color: "var(--atlas-muted)",
-              }}
-            >
-              {liveStep ? `${liveStep.verb}${liveStep.target ? " " + liveStep.target : ""}` : pendingPhrase}
-            </span>
-          </div>
-        )}
+        <StepProgress
+          mode="single"
+          isStreaming={isStreaming}
+          hasContent={messages.some((m) => m.streaming && m.content.length > 0)}
+          liveStep={liveStep}
+          pendingPhrase={pendingPhrase}
+        />
       </div>
       {showScrollBtn && (
         <button

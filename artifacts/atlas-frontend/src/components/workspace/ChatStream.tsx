@@ -1,7 +1,7 @@
 import { Fragment, useMemo, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
-import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
+import { StepProgress } from "@/components/workspace/StepProgress";
 import { AssistantBubble, type BuildGroupInfo } from "@/components/workspace/AssistantBubble";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
@@ -663,7 +663,7 @@ export function ChatStream(props: ChatStreamProps) {
                 ) : isExecutionStream(activityStream.content) ? (
                   <ExecutionJournal content={activityStream.content} isStreaming={true} />
                 ) : (
-                  <AtlasActivityBar content={activityStream.content} lens={wsLens} />
+                  <StepProgress mode="stream" content={activityStream.content} lens={wsLens} />
                 )
               )}
             </div>
@@ -725,7 +725,7 @@ export function ChatStream(props: ChatStreamProps) {
         ) : isExecutionStream(activityStream.content) ? (
           <ExecutionJournal content={activityStream.content} isStreaming={true} />
         ) : (
-          <AtlasActivityBar content={activityStream.content} lens={wsLens} />
+          <StepProgress mode="stream" content={activityStream.content} lens={wsLens} />
         )
       ) : null}
       {thinkingBlock}
