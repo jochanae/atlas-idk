@@ -119,6 +119,55 @@ interface FileRow {
   projectId: number;
 }
 
+function messageRunId(message: TimelineMessage): string {
+  const tagged = (message as TimelineMessage & { runId?: string; run_id?: string }).runId
+    ?? (message as TimelineMessage & { runId?: string; run_id?: string }).run_id;
+  return tagged ?? `message-${message.id ?? message.sentAt ?? "untagged"}`;
+}
+
+function messageTime(message: TimelineMessage, fallback: number): number {
+  const t = message.sentAt ? Date.parse(message.sentAt) : NaN;
+  return Number.isFinite(t) ? t : fallback;
+}
+
+function summarizeMessageRun(message: TimelineMessage): string {
+  const stripped = (message.content ?? "")
+    .replace(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "")
+    .replace(/LINE_PATCH_START[\s\S]*?LINE_PATCH_END/g, "")
+    .trim();
+  const firstLine = stripped.split("\n").map((line) => line.trim()).find(Boolean);
+  if (firstLine) return firstLine.slice(0, 120);
+  return "Workspace changes prepared";
+}
+
+function synthesizeRunsFromMessages(messages: TimelineMessage[], projectId: number, projectName: string): ActiveRun[] {
+  return messages
+    .filter((m) => m.role === "assistant" && ((m.fileEdits?.length ?? 0) > 0 || !!m.fileEdit || (m.linePatches?.length ?? 0) > 0 || /FILE_EDIT/i.test(m.content ?? "")))
+    .map((m, index) => {
+      const edits = m.fileEdits ?? (m.fileEdit ? [m.fileEdit] : []);
+      const patchPaths = (m.linePatches ?? []).map((p) => p.path);
+      const paths = Array.from(new Set([...edits.map((e) => e.path), ...patchPaths]));
+      const createdAt = messageTime(m, Date.now() - index);
+      return {
+        id: messageRunId(m),
+        projectId,
+        projectName,
+        intent: "build",
+        prompt: summarizeMessageRun(m),
+        sessionId: null,
+        status: m.streaming ? "running" : "completed",
+        createdAt,
+        completedAt: m.streaming ? null : createdAt,
+        attachmentNames: [],
+        streamedContent: m.content,
+        fileEdits: edits.map((e) => ({ path: e.path, content: e.content })),
+        appliedFiles: paths,
+        summaryLine: summarizeMessageRun(m),
+      } satisfies ActiveRun;
+    })
+    .reverse();
+}
+
 function collectFileRows(messages: TimelineMessage[]): FileRow[] {
   const rows: FileRow[] = [];
   for (const m of messages) {
@@ -185,16 +234,31 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
 
 // ── Run receipt: existing RunCard mounted on the Changes surface ─────────────
 
-function WorkspaceRunCards({ projectId, runId }: { projectId: number; runId?: string | null }) {
+function WorkspaceRunCards({
+  projectId,
+  projectName,
+  messages,
+  runId,
+}: {
+  projectId: number;
+  projectName: string;
+  messages: TimelineMessage[];
+  runId?: string | null;
+}) {
   const runs = useAllRuns();
   const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
   const [retryErrors, setRetryErrors] = useState<Map<string, string>>(new Map());
 
   const visibleRuns = useMemo(() => {
-    const projectRuns = runs.filter((r) => r.projectId === projectId);
+    const composerRuns = runs.filter((r) => r.projectId === projectId);
+    const composerIds = new Set(composerRuns.map((r) => r.id));
+    const messageRuns = synthesizeRunsFromMessages(messages, projectId, projectName)
+      .filter((r) => !composerIds.has(r.id));
+    const projectRuns = [...composerRuns, ...messageRuns]
+      .sort((a, b) => b.createdAt - a.createdAt);
     if (runId) return projectRuns.filter((r) => r.id === runId);
     return projectRuns.slice(0, 3);
-  }, [projectId, runId, runs]);
+  }, [messages, projectId, projectName, runId, runs]);
 
   const handleForceApply = useCallback(async (run: ActiveRun, filePath: string) => {
     const fileEdit = run.fileEdits?.find((fe) => fe.path === filePath);
@@ -260,6 +324,7 @@ interface Props {
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
   runId?: string | null;
+  projectName?: string | null;
 }
 
 export function ViewChangesPanel({
@@ -269,6 +334,7 @@ export function ViewChangesPanel({
   pushHistory,
   onRollbackPush,
   runId,
+  projectName,
 }: Props) {
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
 
@@ -334,7 +400,12 @@ export function ViewChangesPanel({
         </div>
       )}
 
-      <WorkspaceRunCards projectId={projectId} runId={runId} />
+      <WorkspaceRunCards
+        projectId={projectId}
+        projectName={projectName?.trim() || "Workspace"}
+        messages={filteredMessages}
+        runId={runId}
+      />
 
       {/* ── Toggle ── */}
       <div style={{

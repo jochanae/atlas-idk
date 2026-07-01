@@ -7827,6 +7827,7 @@ export default function Workspace() {
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 runId={focusedRunId}
+                projectName={project?.name ?? null}
               />
             </div>
           ) : leftTab === "terminal" ? (
