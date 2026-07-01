@@ -780,11 +780,37 @@ export function AxiomFlow({
       .then(r => (r.ok ? r.json() : null))
       .then((data: { nodes: ArchNode[]; edges: ArchEdge[] } | null) => {
         if (data && Array.isArray(data.nodes) && data.nodes.length > 0) {
-          // DB has real data — use it directly (sanitized against stray positions)
-          setNodes(sanitizeNodePositions(data.nodes));
+          // DB has real data — sanitize against stray positions
+          const sanitized = sanitizeNodePositions(data.nodes);
+          setNodes(sanitized);
           setEdges(data.edges ?? []);
           dbLoadedRef.current = true;
           setFlowLoading(false);
+          // One-time scoped repair: if sanitizing changed any coordinates,
+          // persist once so the DB stops carrying broken positions. Guarded by
+          // a per-project localStorage marker so reopening is a no-op even if
+          // a future edit re-introduces a stray (the runtime sanitizer catches it).
+          try {
+            const repairKey = `${storageKey}-pos-repaired`;
+            if (localStorage.getItem(repairKey) !== "1") {
+              const changed = sanitized.some((s, i) => {
+                const o = data.nodes[i];
+                return !o || s.x !== o.x || s.y !== o.y || (s.moved ?? false) !== (o.moved ?? false);
+              });
+              if (changed) {
+                fetch(`/api/projects/${projectId}/flow`, {
+                  method: "PUT",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ nodes: sanitized, edges: data.edges ?? [] }),
+                })
+                  .then(r => { if (r.ok) try { localStorage.setItem(repairKey, "1"); } catch {} })
+                  .catch(() => {});
+              } else {
+                try { localStorage.setItem(repairKey, "1"); } catch {}
+              }
+            }
+          } catch {}
           return;
         }
         // DB is empty — attempt one-time localStorage migration
