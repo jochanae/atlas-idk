@@ -60,7 +60,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
@@ -1761,6 +1761,7 @@ export default function Home() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
   const isMobile = useIsMobile();
+  const isTiny = useIsTinyMobile();
   const conversationsRequestRef = useRef(0);
   const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
   const prunedAbandonedProjectIdsRef = useRef<Set<number>>(new Set());
@@ -4812,7 +4813,7 @@ export default function Home() {
                   if ((e.target as HTMLElement).closest("input,textarea,select")) return;
                   e.preventDefault();
                 }}
-                style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
+                style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
               {/* History clock — icon only, no card. */}
@@ -4824,7 +4825,7 @@ export default function Home() {
                 onClick={() => void handleOpenHistory()}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 32, height: 32, borderRadius: 999, border: "none",
+                  width: isTiny ? 26 : 32, height: isTiny ? 26 : 32, borderRadius: 999, border: "none",
                   background: "transparent",
                   color: "rgba(201,162,76,0.85)",
                   cursor: "pointer", flexShrink: 0, padding: 0,
@@ -4844,6 +4845,7 @@ export default function Home() {
                 hasProjectContext={false}
                 globalContext={true}
                 borderless={true}
+                compact={isTiny}
                 hasAttachments={attachedFiles.length > 0}
                 onFiles={(files) => {
                   const combined = [...attachedFiles, ...files].slice(0, 10);
@@ -4894,9 +4896,9 @@ export default function Home() {
                   });
                 }}
                 style={{
-                  height: isMobile ? 32 : 34,
-                  display: "inline-flex", alignItems: "center", gap: isMobile ? 4 : 6,
-                  padding: isMobile ? "0 8px" : "0 10px", borderRadius: 999,
+                  height: isTiny ? 28 : 34,
+                  display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
+                  padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
                   background: sendTo === "ask-atlas"
                     ? "color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
                     : "transparent",
@@ -4926,7 +4928,7 @@ export default function Home() {
                     transition: "filter 180ms ease",
                   }}
                 />
-                {!isMobile && <span>Ask Atlas</span>}
+                {!isTiny && <span>Ask Atlas</span>}
                 {sendTo === "ask-atlas" && (
                   <span style={{
                     width: 5, height: 5, borderRadius: "50%",

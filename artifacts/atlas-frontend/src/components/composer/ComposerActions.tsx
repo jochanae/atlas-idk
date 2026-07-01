@@ -66,6 +66,8 @@ export interface ComposerActionsProps {
   parkedCount?: number;
   /** When true, hides the Park button entirely (e.g. ambient home before any conversation). */
   hidePark?: boolean;
+  /** Tighter 32px icon buttons for tiny mobile widths. */
+  compact?: boolean;
 }
 
 type PrimaryItem = {
@@ -171,6 +173,7 @@ export function ComposerActions({
   globalContext = false,
   onSketch,
   hidePark = false,
+  compact = false,
 }: ComposerActionsProps) {
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -237,7 +240,7 @@ export function ComposerActions({
           setShowMore(false);
           setShowPlus(true);
         }}
-        style={iconBtnStyle(showPlus, hasAttachments, borderless)}
+        style={iconBtnStyle(showPlus, hasAttachments, borderless, compact)}
       >
         <Plus size={17} strokeWidth={1.7} />
       </button>
@@ -251,7 +254,7 @@ export function ComposerActions({
           setMoreExpanded(false);
           setShowMore(true);
         }}
-        style={iconBtnStyle(showMore, false, borderless)}
+        style={iconBtnStyle(showMore, false, borderless, compact)}
       >
         <MoreHorizontal size={17} strokeWidth={1.7} />
       </button>
@@ -267,7 +270,7 @@ export function ComposerActions({
             setShowMore(false);
             onMenuAction("park");
           }}
-          style={{ ...iconBtnStyle(false, false, borderless), position: "relative" }}
+          style={{ ...iconBtnStyle(false, false, borderless, compact), position: "relative" }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <rect x="1.5" y="1.5" width="13" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
@@ -433,16 +436,17 @@ export function ComposerActions({
 }
 
 
-function iconBtnStyle(active: boolean, accent: boolean, borderless = false): React.CSSProperties {
+function iconBtnStyle(active: boolean, accent: boolean, borderless = false, compact = false): React.CSSProperties {
+  const size = compact ? 30 : 42;
   return {
-    width: 42,
-    height: 42,
-    minWidth: 42,
-    minHeight: 42,
-    maxWidth: 42,
-    maxHeight: 42,
-    flex: "0 0 42px",
-    padding: 7,
+    width: size,
+    height: size,
+    minWidth: size,
+    minHeight: size,
+    maxWidth: size,
+    maxHeight: size,
+    flex: `0 0 ${size}px`,
+    padding: compact ? 5 : 7,
     boxSizing: "border-box",
     borderRadius: 10,
     background: borderless && !active && !accent
