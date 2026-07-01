@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { projectIntelligenceQueryKey } from "@/hooks/useProjectIntelligence";
 
 /**
  * InsightsPanel — v1 read-only intelligence surface.
@@ -164,31 +166,28 @@ function briefingLines(intel: Intelligence): string[] {
 
 export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | null; onOpenFlow?: () => void }) {
   const [, setLocation] = useLocation();
-  const [intel, setIntel] = useState<Intelligence | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [explainDim, setExplainDim] = useState<null | { key: string; label: string; score: number; note: string; evidence: string; applicable: boolean }>(null);
 
-
-
-  useEffect(() => {
-    if (!projectId) return;
-    const ctrl = new AbortController();
-    setLoading(true);
-    setError(null);
-    fetch(`/api/projects/${projectId}/intelligence`, { signal: ctrl.signal })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Intelligence>;
-      })
-      .then((d) => setIntel(d))
-      .catch((e) => {
-        if ((e as Error).name === "AbortError") return;
-        setError(e instanceof Error ? e.message : "Failed to load insights");
-      })
-      .finally(() => setLoading(false));
-    return () => ctrl.abort();
-  }, [projectId]);
+  // Shared cache with useProjectIntelligence — same queryKey means both
+  // consumers dedupe to a single network call and any invalidation from
+  // one surface refreshes the other.
+  const {
+    data: intel,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery<Intelligence>({
+    queryKey: projectIntelligenceQueryKey(projectId),
+    queryFn: async () => {
+      const r = await fetch(`/api/projects/${projectId}/intelligence`, { credentials: "include" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json() as Promise<Intelligence>;
+    },
+    enabled: projectId != null && projectId > 0,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "Failed to load insights") : null;
 
   const briefing = useMemo(() => (intel ? briefingLines(intel) : []), [intel]);
 
