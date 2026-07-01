@@ -1899,8 +1899,8 @@ export default function Home() {
         : detectedPortfolioFocus.focus;
   const focusChipLabel =
     resolvedPortfolioFocus === "project"
-      ? `FOCUS · ${manualFocusProject?.name ?? detectedFocusProject?.name ?? detectedPortfolioFocus.matchedProject ?? "Project"}`
-      : "FOCUS · ALL";
+      ? `ASK ATLAS · ${manualFocusProject?.name ?? detectedFocusProject?.name ?? detectedPortfolioFocus.matchedProject ?? "Project"}`
+      : "ASK ATLAS";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   // Composer mode: workspace (default) or ask-atlas (toggled on composer).
@@ -2811,11 +2811,11 @@ export default function Home() {
       });
   }, [activeConversationId, nexusChat.setMessages]);
 
-  // Rehydrate Global Insight mode on hard refresh / initial load.
+  // Rehydrate Ask Atlas mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
   // via POST /api/sessions/:id/reflection-mode). Without this, a refresh
   // resets the in-memory `globalInsightOpen` to false and the conversation
-  // renders as the ambient/active homepage instead of the Global Insight surface.
+  // renders as the ambient/active homepage instead of the Ask Atlas surface.
   useEffect(() => {
     if (!activeConversationId) return;
     let cancelled = false;
@@ -3869,9 +3869,8 @@ export default function Home() {
       try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
       try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
 
-      // The home composer's gold-clock history exclusively lists Global Insight
-      // threads ("GLOBAL INSIGHT · HISTORY"). Resuming one must re-enter Global
-      // Insight mode so the surface, reflection flag, and depth all match — not
+      // The home composer's gold-clock history lists Ask Atlas threads.
+      // Resuming one must re-enter Ask Atlas mode so the surface, reflection flag, and depth all match — not
       // strand the thread in the ambient homepage where it tries to earn a
       // title and reads as half-broken.
       setGlobalInsightOpen(true);
@@ -4065,7 +4064,7 @@ export default function Home() {
       }}
     >
       {/* FocusModeAura removed — aura now lives on the composer border (see composerAura.ts) */}
-      {/* Global Insight runs inline through the ambient home shell:
+      {/* Ask Atlas runs inline through the ambient home shell:
           header title only, no overlay, no duplicate header, no separate composer. */}
 
       {globalInsightTitleSlot && globalInsightOpen && createPortal(
@@ -4197,7 +4196,7 @@ export default function Home() {
       {/* Lens chips removed from home — lenses live in the workspace only */}
 
 
-      {/* Shred-It modal removed — exit Global Insight directly via the header sparkle. */}
+      {/* Shred-It modal removed — exit Ask Atlas directly via the header sparkle. */}
 
       {showOverlay && (
         <FirstRunOverlay
@@ -5965,7 +5964,7 @@ export default function Home() {
         />
       )}
 
-      {/* Right-edge timeline rail — always in Global Insight, otherwise only when a thread exists. Hidden on ambient empty home. */}
+      {/* Right-edge timeline rail — always in Ask Atlas, otherwise only when a thread exists. Hidden on ambient empty home. */}
       {(globalInsightOpen || nexusChat.messages.length > 0) && (
         <TimelineRail alwaysVisible={globalInsightOpen} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
       )}
