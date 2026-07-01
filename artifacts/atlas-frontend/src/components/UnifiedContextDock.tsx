@@ -142,6 +142,13 @@ const ICONS = {
       <polygon points="12,2 15.5,9 23,10 17.5,15.5 19,23 12,19.5 5,23 6.5,15.5 1,10 8.5,9" />
     </svg>
   ),
+  insights: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  ),
 };
 
 function AxiomCenterSVG({ size = 52 }: { size?: number }) {
