@@ -114,6 +114,7 @@ function ShellDrawerButton() {
       type="button"
       aria-label="Open projects"
       onClick={() => window.dispatchEvent(new CustomEvent("axiom:open-nav-drawer"))}
+      className="atlas-drawer-trigger"
       style={{
         background: "transparent",
         border: "none",
@@ -137,6 +138,7 @@ function ShellDrawerButton() {
     </button>
   );
 }
+
 
 function ShellWordmark() {
   const [location, setLocation] = useLocation();
