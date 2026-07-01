@@ -518,7 +518,7 @@ body[data-axiom-thread="active"] .atlas-input-shell {
     margin-right: -24px;
   }
 
-  body[data-axiom-thread="active"][data-axiom-global-insight="true"] .atlas-input-shell {
+  body[data-axiom-thread="active"][data-axiom-ask-atlas="true"] .atlas-input-shell {
     margin-left: 0;
     margin-right: 0;
   }
@@ -534,20 +534,20 @@ body[data-axiom-thread="active"] .atlas-input-shell {
   align-items: center;
 }
 
-body[data-axiom-global-insight="true"] .atlas-home-chat-column,
-body[data-axiom-global-insight="true"] .atlas-home-chat-inner {
+body[data-axiom-ask-atlas="true"] .atlas-home-chat-column,
+body[data-axiom-ask-atlas="true"] .atlas-home-chat-inner {
   min-height: 0;
 }
 
-body[data-axiom-global-insight="true"] .atlas-home-chat-messages-scroll {
+body[data-axiom-ask-atlas="true"] .atlas-home-chat-messages-scroll {
   overscroll-behavior-y: contain;
   touch-action: pan-y;
 }
 
 /* GI: kill the active-thread glass/border on the composer so it matches the
    ambient home — no panel, no border, no rounded top. */
-body[data-axiom-global-insight="true"] .atlas-input-shell,
-body[data-axiom-thread="active"][data-axiom-global-insight="true"] .atlas-input-shell {
+body[data-axiom-ask-atlas="true"] .atlas-input-shell,
+body[data-axiom-thread="active"][data-axiom-ask-atlas="true"] .atlas-input-shell {
   background: transparent !important;
   backdrop-filter: none !important;
   border: none !important;
@@ -561,15 +561,15 @@ body[data-axiom-thread="active"][data-axiom-global-insight="true"] .atlas-input-
   border: none !important;
 }
 /* GI must always win — strip composer chrome in both themes */
-body[data-axiom-global-insight="true"] .atlas-input-shell,
-[data-theme="parchment"] body[data-axiom-global-insight="true"] .atlas-input-shell {
+body[data-axiom-ask-atlas="true"] .atlas-input-shell,
+[data-theme="parchment"] body[data-axiom-ask-atlas="true"] .atlas-input-shell {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
 }
-body[data-axiom-global-insight="true"] .atlas-input-shell textarea,
-body[data-axiom-global-insight="true"] .atlas-input-shell input {
+body[data-axiom-ask-atlas="true"] .atlas-input-shell textarea,
+body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;

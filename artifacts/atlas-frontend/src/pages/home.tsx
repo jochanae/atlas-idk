@@ -91,10 +91,10 @@ const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id
 const OPENING_CONVERSATION_STORAGE_KEY = "atlas-opening-conversation";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
-const GLOBAL_INSIGHT_PORTFOLIO_SEED =
+const ASK_ATLAS_PORTFOLIO_SEED =
   "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
 
-function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
+function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
   // Header title rotation stripped (Pass 1). Header is permanently
   // "Ask Atlas"; the project name lives in the CommitPill only.
   return (
@@ -2058,25 +2058,25 @@ export default function Home() {
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
-  const [globalInsightOpen, setGlobalInsightOpen] = useState(false);
+  const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(false);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
   useEffect(() => {
-    const active = globalInsightOpen || nexusChat.messages.length > 0;
+    const active = askAtlasSurfaceOpen || nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
     return () => { document.body.removeAttribute("data-axiom-thread"); };
-  }, [globalInsightOpen, nexusChat.messages.length]);
+  }, [askAtlasSurfaceOpen, nexusChat.messages.length]);
 
   useEffect(() => {
-    document.body.setAttribute("data-axiom-ask-atlas", globalInsightOpen ? "true" : "false");
+    document.body.setAttribute("data-axiom-ask-atlas", askAtlasSurfaceOpen ? "true" : "false");
     return () => { document.body.removeAttribute("data-axiom-ask-atlas"); };
-  }, [globalInsightOpen]);
+  }, [askAtlasSurfaceOpen]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
   // backlog produced while Atlas streams a reply.
-  // Also re-runs when globalInsightOpen changes so the container ref is valid
+  // Also re-runs when askAtlasSurfaceOpen changes so the container ref is valid
   // after GI mode mounts the scroll div.
   useEffect(() => {
     const attach = () => {
@@ -2099,7 +2099,7 @@ export default function Home() {
     // Give the layout a frame to settle after GI mode mounts the scroll div
     const id = window.requestAnimationFrame(() => { attach(); });
     return () => { window.cancelAnimationFrame(id); };
-  }, [nexusChat.messages.length, globalInsightOpen]);
+  }, [nexusChat.messages.length, askAtlasSurfaceOpen]);
   const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -2113,7 +2113,7 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showTimeTravel, setShowTimeTravel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const globalInsightComposerRef = useRef<HTMLDivElement>(null);
+  const askAtlasComposerRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
   const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
@@ -2132,8 +2132,8 @@ export default function Home() {
     return latest?.id ?? null;
   }, [projects]);
   const previousHomeMessageCountRef = useRef(0);
-  const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
-  const globalInsightSeedPendingRef = useRef(false);
+  const [askAtlasComposerHeight, setAskAtlasComposerHeight] = useState(148);
+  const askAtlasSeedPendingRef = useRef(false);
 
   // NAVIGATE_TO auto-navigation removed — navigation is now user-initiated via the
   // suggestion card rendered on the message. The done event carries navigateTo as
@@ -2141,7 +2141,7 @@ export default function Home() {
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
-    if (globalInsightOpen) {
+    if (askAtlasSurfaceOpen) {
       setDepth("active");
     } else if (nexusChat.messages.length === 0) {
       setDepth("ambient");
@@ -2149,7 +2149,7 @@ export default function Home() {
       setDepth("active");
     }
     previousHomeMessageCountRef.current = nexusChat.messages.length;
-  }, [globalInsightOpen, nexusChat.messages.length, setDepth]);
+  }, [askAtlasSurfaceOpen, nexusChat.messages.length, setDepth]);
 
   useEffect(() => {
     setActiveProjectId(homeFocus);
@@ -2179,7 +2179,7 @@ export default function Home() {
   const [handoffProjectName, setHandoffProjectName] = useState("");
   const [reviewingPlanIds, setReviewingPlanIds] = useState<Set<string>>(() => new Set());
 
-  const homeConversationTitle = globalInsightOpen
+  const homeConversationTitle = askAtlasSurfaceOpen
     ? null
     : homeFocus == null && nexusChat.messages.length > 0
       ? earnedTitle ?? "Untitled conversation"
@@ -2199,7 +2199,7 @@ export default function Home() {
     try { if (typeof navigator !== "undefined" && "vibrate" in navigator) (navigator as any).vibrate(pattern); } catch {}
   }, []);
 
-  const callGlobalInsightMode = useCallback(async (enabled: boolean) => {
+  const callAskAtlasMode = useCallback(async (enabled: boolean) => {
     if (!activeConversationId) return;
     try {
       await fetch(`/api/sessions/${encodeURIComponent(activeConversationId)}/reflection-mode`, {
@@ -2213,12 +2213,12 @@ export default function Home() {
 
   const handleLockTap = useCallback(() => {
     vibrate(50);
-    if (globalInsightOpen) {
+    if (askAtlasSurfaceOpen) {
       // Exit Ask Atlas → return to the ambient homepage, NOT a stranded
       // "Untitled conversation" view. Clear the active thread and message
       // stream so the hero/quick-actions come back.
-      void callGlobalInsightMode(false);
-      setGlobalInsightOpen(false);
+      void callAskAtlasMode(false);
+      setAskAtlasSurfaceOpen(false);
       try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
       try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
       conversationThreadRequestRef.current = null;
@@ -2231,20 +2231,20 @@ export default function Home() {
       setShowOverviewSheet(false);
       setShowHistory(false);
       setShowFocusPicker(false);
-      setGlobalInsightOpen(true);
+      setAskAtlasSurfaceOpen(true);
       window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
       toast("Ask Atlas · Strategic view", {
         className: "atlas-toast-premium",
         description: "Macro view across every project.",
       });
     }
-  }, [globalInsightOpen, vibrate, callGlobalInsightMode, nexusChat.setMessages, setDepth]);
+  }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, setDepth]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
     vibrate([50, 50, 50]);
-    void callGlobalInsightMode(false);
-    setGlobalInsightOpen(false);
+    void callAskAtlasMode(false);
+    setAskAtlasSurfaceOpen(false);
     setShowShredChoice(false);
     setCreateError(null);
 
@@ -2308,7 +2308,7 @@ export default function Home() {
     }
   }, [
     activeConversationId,
-    callGlobalInsightMode,
+    callAskAtlasMode,
     nexusChat.messages,
     queryClient,
     setActiveProjectId,
@@ -2318,17 +2318,17 @@ export default function Home() {
 
   const handleShredIt = useCallback(() => {
     vibrate(200);
-    void callGlobalInsightMode(false);
+    void callAskAtlasMode(false);
     setShowShredChoice(false);
     setIsShredding(true);
     setTimeout(() => {
       nexusChat.setMessages([]);
       setIsShredding(false);
-      setGlobalInsightOpen(false);
+      setAskAtlasSurfaceOpen(false);
       setShowGoneFlash(true);
       setTimeout(() => setShowGoneFlash(false), 1500);
     }, 700);
-  }, [vibrate, callGlobalInsightMode, nexusChat.setMessages]);
+  }, [vibrate, callAskAtlasMode, nexusChat.setMessages]);
 
   // Cycle pending phrases while Atlas is generating
   useEffect(() => {
@@ -2712,7 +2712,7 @@ export default function Home() {
   // Rehydrate Ask Atlas mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
   // via POST /api/sessions/:id/reflection-mode). Without this, a refresh
-  // resets the in-memory `globalInsightOpen` to false and the conversation
+  // resets the in-memory `askAtlasSurfaceOpen` to false and the conversation
   // renders as the ambient/active homepage instead of the Ask Atlas surface.
   useEffect(() => {
     if (!activeConversationId) return;
@@ -2733,7 +2733,7 @@ export default function Home() {
           session?.reflection_mode === true ||
           session?.reflectionMode === true;
         if (isReflection) {
-          setGlobalInsightOpen(true);
+          setAskAtlasSurfaceOpen(true);
           setDepth("active");
         }
       } catch {}
@@ -2948,8 +2948,8 @@ export default function Home() {
       return;
     }
     const shouldStayOnHome = options?.forceStayOnHome ?? false;
-    if (shouldStayOnHome && !globalInsightOpen && !thinkOutLoudInlineRef.current) {
-      setGlobalInsightOpen(true);
+    if (shouldStayOnHome && !askAtlasSurfaceOpen && !thinkOutLoudInlineRef.current) {
+      setAskAtlasSurfaceOpen(true);
     }
     // All blocking gates — nothing above this line mutates project/send state.
     // Each gate is a clean exit: no flags set, no API calls made.
@@ -3102,7 +3102,7 @@ export default function Home() {
     input,
     attachedFiles,
     isSending,
-    globalInsightOpen,
+    askAtlasSurfaceOpen,
     backendReady,
     isFree,
     projects,
@@ -3250,9 +3250,9 @@ export default function Home() {
 
     if (surface !== "ask-atlas") return;
 
-    setGlobalInsightOpen(true);
+    setAskAtlasSurfaceOpen(true);
     if (seed === "portfolio") {
-      globalInsightSeedPendingRef.current = true;
+      askAtlasSeedPendingRef.current = true;
     }
 
     try {
@@ -3265,14 +3265,14 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!globalInsightSeedPendingRef.current || threadLoading || isSending) return;
+    if (!askAtlasSeedPendingRef.current || threadLoading || isSending) return;
     if (nexusChat.messages.length > 0) {
-      globalInsightSeedPendingRef.current = false;
+      askAtlasSeedPendingRef.current = false;
       return;
     }
 
-    globalInsightSeedPendingRef.current = false;
-    void handleSubmit(GLOBAL_INSIGHT_PORTFOLIO_SEED, { forceStayOnHome: true });
+    askAtlasSeedPendingRef.current = false;
+    void handleSubmit(ASK_ATLAS_PORTFOLIO_SEED, { forceStayOnHome: true });
   }, [handleSubmit, isSending, nexusChat.messages.length, threadLoading]);
 
 
@@ -3524,15 +3524,15 @@ export default function Home() {
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
     const reset = () => {
-      void callGlobalInsightMode(false);
-      setGlobalInsightOpen(false);
+      void callAskAtlasMode(false);
+      setAskAtlasSurfaceOpen(false);
       handleNewConversation();
       setDepth("ambient");
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
     };
     window.addEventListener("axiom:home-reset", reset);
     return () => window.removeEventListener("axiom:home-reset", reset);
-  }, [callGlobalInsightMode, handleNewConversation, setDepth]);
+  }, [callAskAtlasMode, handleNewConversation, setDepth]);
 
 
   // Hydrate earned title when the active conversation changes.
@@ -3588,7 +3588,7 @@ export default function Home() {
       // mode so the surface, reflection flag, and depth all match — not
       // strand the thread in the ambient homepage where it tries to earn a
       // title and reads as half-broken.
-      setGlobalInsightOpen(true);
+      setAskAtlasSurfaceOpen(true);
       setDepth("active");
       try {
         await fetch(`/api/sessions/${encodeURIComponent(id)}/reflection-mode`, {
@@ -3642,20 +3642,20 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (!globalInsightOpen) return;
-    const el = globalInsightComposerRef.current;
+    if (!askAtlasSurfaceOpen) return;
+    const el = askAtlasComposerRef.current;
     if (!el) return;
 
     const recompute = () => {
       const nextHeight = Math.ceil(el.getBoundingClientRect().height);
-      if (nextHeight > 0) setGlobalInsightComposerHeight(nextHeight);
+      if (nextHeight > 0) setAskAtlasComposerHeight(nextHeight);
     };
 
     recompute();
     const ro = new ResizeObserver(recompute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [globalInsightOpen, input, attachedFiles.length, inputFocused]);
+  }, [askAtlasSurfaceOpen, input, attachedFiles.length, inputFocused]);
 
   const hasInput = input.trim().length > 0;
   const hasAttachments = attachedFiles.length > 0;
@@ -3664,7 +3664,7 @@ export default function Home() {
     const liveText = textareaRef.current?.value ?? input;
     return liveText.trim().length > 0 || attachedFiles.length > 0;
   };
-  const [globalInsightTitleSlot, setGlobalInsightTitleSlot] = useState<HTMLElement | null>(null);
+  const [askAtlasTitleSlot, setAskAtlasTitleSlot] = useState<HTMLElement | null>(null);
   const [shapingHeaderSlot, setShapingHeaderSlot] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -3681,11 +3681,11 @@ export default function Home() {
     slot.style.minWidth = "0";
 
     titleRegion.prepend(slot);
-    setGlobalInsightTitleSlot(slot);
+    setAskAtlasTitleSlot(slot);
 
     return () => {
       slot.remove();
-      setGlobalInsightTitleSlot(null);
+      setAskAtlasTitleSlot(null);
     };
   }, []);
 
@@ -3726,7 +3726,7 @@ export default function Home() {
     };
   }, []);
 
-  const homeUnifiedSubheader = globalInsightOpen ? null : (
+  const homeUnifiedSubheader = askAtlasSurfaceOpen ? null : (
     <UnifiedSubheader
       activeTab="chat"
       onTabChange={handleHomeSubheaderTabChange}
@@ -3740,7 +3740,7 @@ export default function Home() {
     />
   );
 
-  const handleGlobalInsightCreateProject = useCallback((nameOverride?: string) => {
+  const handleAskAtlasCreateProject = useCallback((nameOverride?: string) => {
     setIsHandoffReady(false);
     // Pill-stored name (from handoffSignal) wins over tapped bold text.
     const pillName = nexusChat.handoffSignal?.projectName?.trim();
@@ -3770,9 +3770,9 @@ export default function Home() {
       {/* Ask Atlas runs inline through the ambient home shell:
           header title only, no overlay, no duplicate header, no separate composer. */}
 
-      {globalInsightTitleSlot && globalInsightOpen && createPortal(
-        <GlobalInsightTitleCarousel earnedTitle={earnedTitle} />,
-        globalInsightTitleSlot
+      {askAtlasTitleSlot && askAtlasSurfaceOpen && createPortal(
+        <AskAtlasTitleCarousel earnedTitle={earnedTitle} />,
+        askAtlasTitleSlot
       )}
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
@@ -3979,11 +3979,11 @@ export default function Home() {
                 style={{
                   width: "100%",
                   maxWidth: 560,
-                  paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
+                  paddingBottom: askAtlasSurfaceOpen ? 0 : "var(--atlas-dock-clearance)",
                   display: "flex",
                   flexDirection: "column",
                   flex: 1,
-                  height: globalInsightOpen
+                  height: askAtlasSurfaceOpen
                     ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
                     : undefined,
                   minHeight: 0,
@@ -4001,15 +4001,15 @@ export default function Home() {
           <div style={{
             flex: 1,
             minHeight: 0,
-            height: globalInsightOpen ? "100%" : undefined,
+            height: askAtlasSurfaceOpen ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
-            justifyContent: globalInsightOpen ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
+            justifyContent: askAtlasSurfaceOpen ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
             position: "relative",
-            paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
+            paddingBottom: askAtlasSurfaceOpen ? 0 : "var(--atlas-dock-clearance)",
             paddingTop: 0,
             minWidth: 0,
-            overflow: globalInsightOpen ? "hidden" : "visible",
+            overflow: askAtlasSurfaceOpen ? "hidden" : "visible",
           }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
@@ -4042,26 +4042,26 @@ export default function Home() {
                   <h1 style={{
                     fontSize: "var(--ts-display-xl)", fontWeight: 300,
                     letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                    color: globalInsightOpen ? undefined : "var(--atlas-fg)",
-                    opacity: globalInsightOpen ? 1 : 0.85,
-                    background: globalInsightOpen
+                    color: askAtlasSurfaceOpen ? undefined : "var(--atlas-fg)",
+                    opacity: askAtlasSurfaceOpen ? 1 : 0.85,
+                    background: askAtlasSurfaceOpen
                       ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
                       : undefined,
-                    WebkitBackgroundClip: globalInsightOpen ? "text" : undefined,
-                    WebkitTextFillColor: globalInsightOpen ? "transparent" : undefined,
-                    backgroundClip: globalInsightOpen ? "text" : undefined,
-                    filter: globalInsightOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
+                    WebkitBackgroundClip: askAtlasSurfaceOpen ? "text" : undefined,
+                    WebkitTextFillColor: askAtlasSurfaceOpen ? "transparent" : undefined,
+                    backgroundClip: askAtlasSurfaceOpen ? "text" : undefined,
+                    filter: askAtlasSurfaceOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                   }}>
-                    {globalInsightOpen ? "Ask Atlas." : greetingRef.current?.head}
+                    {askAtlasSurfaceOpen ? "Ask Atlas." : greetingRef.current?.head}
                   </h1>
                   <p style={{
                     fontSize: "var(--ts-body)" as any,
-                    color: globalInsightOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                    opacity: globalInsightOpen ? 0.75 : 0.55,
+                    color: askAtlasSurfaceOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    opacity: askAtlasSurfaceOpen ? 0.75 : 0.55,
                     margin: 0,
                     fontStyle: "italic",
                   }}>
-                    {globalInsightOpen ? "Ask across every thread." : (() => {
+                    {askAtlasSurfaceOpen ? "Ask across every thread." : (() => {
                       const activeProjects = ((projects ?? []) as Project[]).filter((p: Project) => p.status !== "archived");
                       const mostRecent = [...activeProjects].sort((a, b) => {
                         const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
@@ -4077,7 +4077,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {!globalInsightOpen && projects && projects.length > 0 && (
+                  {!askAtlasSurfaceOpen && projects && projects.length > 0 && (
                     <button
                       type="button"
                       onClick={openOverviewSheet}
@@ -4116,13 +4116,13 @@ export default function Home() {
 
             {/* Chat thread */}
             <div style={{
-              margin: globalInsightOpen
+              margin: askAtlasSurfaceOpen
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
                 : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
-              minHeight: globalInsightOpen ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
-              flex: globalInsightOpen ? 1 : undefined,
-              display: globalInsightOpen ? "flex" : undefined,
-              flexDirection: globalInsightOpen ? "column" : undefined,
+              minHeight: askAtlasSurfaceOpen ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
+              flex: askAtlasSurfaceOpen ? 1 : undefined,
+              display: askAtlasSurfaceOpen ? "flex" : undefined,
+              flexDirection: askAtlasSurfaceOpen ? "column" : undefined,
               minWidth: 0,
             }}>
               {nexusChat.messages.length > 0 && (
@@ -4154,7 +4154,7 @@ export default function Home() {
               </div>
 
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: globalInsightOpen ? 0 : undefined }}>
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: askAtlasSurfaceOpen ? 0 : undefined }}>
                 {/* Messages */}
                 <div
                   ref={chatScrollRef}
@@ -4165,26 +4165,26 @@ export default function Home() {
                   }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 20,
-                    justifyContent: globalInsightOpen ? "flex-end" : undefined,
+                    justifyContent: askAtlasSurfaceOpen ? "flex-end" : undefined,
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     WebkitOverflowScrolling: "touch",
                     touchAction: "pan-y",
-                    paddingRight: globalInsightOpen ? 0 : 80,
-                    paddingLeft: globalInsightOpen ? 0 : 0,
+                    paddingRight: askAtlasSurfaceOpen ? 0 : 80,
+                    paddingLeft: askAtlasSurfaceOpen ? 0 : 0,
                     position: "relative",
                     border: "none",
                     borderRadius: 0,
-                    paddingTop: globalInsightOpen ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
-                    scrollPaddingTop: globalInsightOpen ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
-                    paddingBottom: globalInsightOpen
+                    paddingTop: askAtlasSurfaceOpen ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
+                    scrollPaddingTop: askAtlasSurfaceOpen ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
+                    paddingBottom: askAtlasSurfaceOpen
                       ? "calc(24px + env(safe-area-inset-bottom, 0px))"
                       : "calc(var(--atlas-composer-height, 96px) + var(--atlas-dock-clearance, 24px) + env(safe-area-inset-bottom, 0px))",
-                    WebkitMaskImage: globalInsightOpen
+                    WebkitMaskImage: askAtlasSurfaceOpen
                       ? "none"
                       : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
-                    maskImage: globalInsightOpen
+                    maskImage: askAtlasSurfaceOpen
                       ? "none"
                       : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     transition: "border-color 200ms",
@@ -4220,7 +4220,7 @@ export default function Home() {
                             <span style={{
                               fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                               textTransform: "uppercase", opacity: 0.45,
-                              color: globalInsightOpen ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
+                              color: askAtlasSurfaceOpen ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
                             }}>Atlas</span>
                             {msg.intentType && (
                               <span style={{
@@ -4370,7 +4370,7 @@ export default function Home() {
                               {formatMessageTime(msg.createdAt)}
                             </div>
                           )}
-                          {!globalInsightOpen && !msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
+                          {!askAtlasSurfaceOpen && !msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
                             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: 2 }}>
                               {formatModelUsedLabel(msg.modelUsed)}
                             </div>
@@ -4597,21 +4597,21 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: globalInsightOpen ? "none" : undefined }}>
-          <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" style={{
-            position: globalInsightOpen ? "relative" : "sticky",
-            left: globalInsightOpen ? undefined : 0,
-            right: globalInsightOpen ? undefined : 0,
-            bottom: globalInsightOpen ? undefined : "calc(64px + env(safe-area-inset-bottom, 0px))",
-            padding: globalInsightOpen
+          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: askAtlasSurfaceOpen ? "none" : undefined }}>
+          <div ref={askAtlasSurfaceOpen ? askAtlasComposerRef : null} className="atlas-input-shell" style={{
+            position: askAtlasSurfaceOpen ? "relative" : "sticky",
+            left: askAtlasSurfaceOpen ? undefined : 0,
+            right: askAtlasSurfaceOpen ? undefined : 0,
+            bottom: askAtlasSurfaceOpen ? undefined : "calc(64px + env(safe-area-inset-bottom, 0px))",
+            padding: askAtlasSurfaceOpen
               ? "12px 0 0"
               : "14px 20px 14px",
             flexShrink: 0,
-            zIndex: globalInsightOpen ? 1 : 250,
+            zIndex: askAtlasSurfaceOpen ? 1 : 250,
             pointerEvents: "auto",
             background: "transparent",
-            maxWidth: globalInsightOpen ? undefined : 680,
-            margin: globalInsightOpen ? 0 : undefined,
+            maxWidth: askAtlasSurfaceOpen ? undefined : 680,
+            margin: askAtlasSurfaceOpen ? 0 : undefined,
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
@@ -4717,7 +4717,7 @@ export default function Home() {
               backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
-              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || globalInsightOpen) && !askAtlasConversationActive && (
+              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceOpen) && !askAtlasConversationActive && (
                 <div
                   style={{
                     position: "absolute",
@@ -4739,8 +4739,8 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {sendTo === "ask-atlas" ? "Ask Atlas anything..." : globalInsightOpen ? "Ask the global view..." : placeholder}
-                  {!globalInsightOpen && !typewriterPaused && <span className="atlas-cursor" />}
+                  {sendTo === "ask-atlas" ? "Ask Atlas anything..." : askAtlasSurfaceOpen ? "Ask the global view..." : placeholder}
+                  {!askAtlasSurfaceOpen && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
               <textarea
@@ -5077,7 +5077,7 @@ export default function Home() {
                       : "0 0 0 1px rgba(212,175,55,0.32), 0 0 22px rgba(212,175,55,0.4)";
                     const restBg = isParchment ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.025)";
                     const restBorder = isParchment ? "1px solid rgba(17,17,17,0.10)" : "1px solid rgba(212,175,55,0.18)";
-                    const restColor = isParchment ? "rgba(64,64,64,0.92)" : (globalInsightOpen ? "rgba(245,215,130,1)" : "rgba(212,175,55,0.78)");
+                    const restColor = isParchment ? "rgba(64,64,64,0.92)" : (askAtlasSurfaceOpen ? "rgba(245,215,130,1)" : "rgba(212,175,55,0.78)");
                     const restColorHover = isParchment ? "rgba(23,23,23,1)" : "rgba(245,215,130,1)";
                     return (
                     <span key={it.label} style={{ display: "inline-flex", alignItems: "center", flex: "1 1 0", minWidth: 0, justifyContent: "center" }}>
@@ -5087,7 +5087,7 @@ export default function Home() {
                         style={{
                           background: premium ? premiumBg : restBg,
                           border: premium ? premiumBorder : restBorder,
-                          backdropFilter: isParchment && !premium ? "blur(8px)" : (premium && !globalInsightOpen ? "blur(8px)" : "none"),
+                          backdropFilter: isParchment && !premium ? "blur(8px)" : (premium && !askAtlasSurfaceOpen ? "blur(8px)" : "none"),
                           borderRadius: 999,
                           padding: "6px 10px",
                           width: "100%",
@@ -5160,7 +5160,7 @@ export default function Home() {
 
 
           {/* Empty state CTA — shown only when no projects exist */}
-          {!globalInsightOpen && (!projects || projects.length === 0) && (
+          {!askAtlasSurfaceOpen && (!projects || projects.length === 0) && (
             <div style={{ marginTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
               <div style={{ width: "100%", maxWidth: 340, height: 1, background: "linear-gradient(to right, transparent, rgba(212,175,55,0.18), transparent)" }} />
               <span style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", color: "rgba(120,113,108,0.5)", letterSpacing: "0.06em" }}>
@@ -5262,7 +5262,7 @@ export default function Home() {
           </>}
         />
 
-        {!globalInsightOpen && projects && projects.length > 0 && (
+        {!askAtlasSurfaceOpen && projects && projects.length > 0 && (
           <aside className="atlas-home-desktop-overview" aria-label="Overview">
             <div className="atlas-home-desktop-overview-scroll">
               {renderOverviewDashboard()}
@@ -5291,7 +5291,7 @@ export default function Home() {
         isListening={isListening}
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
-        onCreateProject={handleGlobalInsightCreateProject}
+        onCreateProject={handleAskAtlasCreateProject}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => {
@@ -5424,7 +5424,7 @@ export default function Home() {
         onNew={() => {
           setShowHistory(false);
           handleNewConversation();
-          setGlobalInsightOpen(true);
+          setAskAtlasSurfaceOpen(true);
           setDepth("active");
         }}
         onSelect={(id) => handleSwitchConversation(String(id))}
@@ -5457,8 +5457,8 @@ export default function Home() {
       )}
 
       {/* Right-edge timeline rail — always in Ask Atlas, otherwise only when a thread exists. Hidden on ambient empty home. */}
-      {(globalInsightOpen || nexusChat.messages.length > 0) && (
-        <TimelineRail alwaysVisible={globalInsightOpen} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
+      {(askAtlasSurfaceOpen || nexusChat.messages.length > 0) && (
+        <TimelineRail alwaysVisible={askAtlasSurfaceOpen} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
       )}
 
       {/* Projects Drawer (slide-in menu) */}

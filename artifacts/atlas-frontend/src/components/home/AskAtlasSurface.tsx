@@ -2,7 +2,7 @@
  * AskAtlasSurface — standalone Ask Atlas chat surface.
  *
  * Owns its own fixed-overlay layout, isolated scroll container, and a
- * minimal composer. No `globalInsightOpen` ternaries, no shared scroll
+ * minimal composer. No `askAtlasSurfaceOpen` ternaries, no shared scroll
  * with the ambient home shell. Renders only when `open` is true.
  *
  * Layout invariants:
@@ -28,7 +28,7 @@ import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 
 
-export type GlobalInsightMessage = {
+export type AskAtlasMessage = {
   role: "user" | "assistant";
   content: string;
   kind?: "genesis";
@@ -41,21 +41,21 @@ export type GlobalInsightMessage = {
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
 };
 
-export type GlobalInsightLiveStep = {
+export type AskAtlasLiveStep = {
   verb: string;
   target?: string | null;
   status?: "ok" | "warn" | "fail" | string;
 } | null;
 
-type GlobalInsightProject = {
+type AskAtlasProject = {
   id: number;
   name: string;
 };
 
 interface Props {
   open: boolean;
-  messages: GlobalInsightMessage[];
-  projects: GlobalInsightProject[];
+  messages: AskAtlasMessage[];
+  projects: AskAtlasProject[];
   conversationId?: string | null;
   input: string;
   setInput: (v: string) => void;
@@ -64,7 +64,7 @@ interface Props {
   isSending: boolean;
   isStreaming: boolean;
   pendingPhrase: string;
-  liveStep?: GlobalInsightLiveStep;
+  liveStep?: AskAtlasLiveStep;
   isListening: boolean;
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
@@ -80,7 +80,7 @@ interface Props {
   subheader?: ReactNode;
 }
 
-const GLOBAL_INSIGHT_PLACEHOLDERS = [
+const ASK_ATLAS_PLACEHOLDERS = [
   "Ask the global view…",
   "What's conflicting across projects…",
   "Which project is most worth doing next…",
@@ -91,7 +91,7 @@ const GLOBAL_INSIGHT_PLACEHOLDERS = [
 const PROJECT_OPEN_INTENT_RE = /\b(go|jump|open|workspace|inside)\b|\binto\s+that\b/i;
 const NAVIGATE_TO_RE = /\bNAVIGATE_TO:\s*(\{[^\n]+\})/;
 
-function renderMessageImages(msg: GlobalInsightMessage) {
+function renderMessageImages(msg: AskAtlasMessage) {
   const images = msg.attachments && msg.attachments.length > 0
     ? msg.attachments
     : (msg.imageUrl ? [{ mediaType: "", base64: "", name: undefined, _url: msg.imageUrl }] as Array<{
@@ -149,7 +149,7 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function findProjectOpenTarget(content: string, projects: GlobalInsightProject[]) {
+function findProjectOpenTarget(content: string, projects: AskAtlasProject[]) {
   if (!PROJECT_OPEN_INTENT_RE.test(content)) return null;
 
   for (const project of projects) {
@@ -283,7 +283,7 @@ export function AskAtlasSurface({
 
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
-  const typed = useTypewriter(GLOBAL_INSIGHT_PLACEHOLDERS, !showPlaceholder);
+  const typed = useTypewriter(ASK_ATLAS_PLACEHOLDERS, !showPlaceholder);
 
   if (!open) return null;
 
