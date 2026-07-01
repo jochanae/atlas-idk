@@ -81,7 +81,7 @@ export function useShellState(): ShellState {
 }
 
 function depthFromPath(pathname: string): ShellDepth {
-  if (pathname.startsWith("/project/")) return "operational";
+  if (pathname.startsWith("/project/") || pathname.startsWith("/workspace/")) return "operational";
   return "ambient";
 }
 
@@ -2222,7 +2222,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             ) : (
               <ShellConversationTitle title={location === "/home" ? activeConversationTitle : null} />
             )}
-            {!(location === "/home" && currentDepth === "ambient") && !location.startsWith("/project/") && <HudToggleDot />}
+            {!(location === "/home" && currentDepth === "ambient") && !isProjectRoute(location) && <HudToggleDot />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: isTinyMobile ? 3 : 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />
