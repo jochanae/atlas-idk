@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useAuth } from "./useAuth";
+import { useAuth, authHeaders } from "./useAuth";
 
 export interface SubscriptionStatus {
   subscription: Record<string, unknown> | null;
@@ -7,7 +7,10 @@ export interface SubscriptionStatus {
 }
 
 async function fetchSubscription(): Promise<SubscriptionStatus> {
-  const res = await fetch("/api/stripe/subscription", { credentials: "include" });
+  const res = await fetch("/api/stripe/subscription", {
+    credentials: "include",
+    headers: { ...authHeaders() },
+  });
   if (!res.ok) return { subscription: null, tier: "free" };
   return res.json();
 }
@@ -64,7 +67,7 @@ export function useCheckout() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ priceId }),
       });
       if (!res.ok) throw new Error("Failed to start checkout");
@@ -80,6 +83,7 @@ export function useCustomerPortal() {
       const res = await fetch("/api/stripe/portal", {
         method: "POST",
         credentials: "include",
+        headers: { ...authHeaders() },
       });
       if (!res.ok) throw new Error("Failed to open billing portal");
       const data = await res.json() as { url: string };
