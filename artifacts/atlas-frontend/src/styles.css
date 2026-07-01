@@ -300,14 +300,16 @@ html, body {
   --atlas-nav-arch-fill: rgba(247,244,237,0.92);
   --atlas-home-btn-bg: #FFFDF8;
 
-  /* Warm Ivory surfaces */
-  --atlas-bg:           #F7F4ED;
-  --atlas-surface:      #FFFDF8;
-  --atlas-surface-alt:  #F2EDE3;
+  /* Warm Ivory canvas + true-white raised surfaces
+     (contrast pass 2026-07-01: cards go true white so cream-on-cream stops
+     flattening; page bg stays warm). */
+  --atlas-bg:           #F5F1E8;
+  --atlas-surface:      #FFFFFF;
+  --atlas-surface-alt:  #FBF7EE;
 
-  /* Obsidian typography */
-  --atlas-fg:           #0F172A;
-  --atlas-muted:        #475569;
+  /* Obsidian typography — deeper headings for crisper hierarchy */
+  --atlas-fg:           #05070F;
+  --atlas-muted:        #3E4A5C;
 
   /* Signature gold accent — reserved for priority/interactive fills only.
      Structural borders/dividers/glows are demoted to neutrals in parchment
@@ -319,7 +321,7 @@ html, body {
   /* Demoted: gold-border + gold-glow now neutral slate in parchment.
      Any component that reads these gets a neutral border in light mode
      without any per-component edits. */
-  --atlas-gold-border:  rgba(15, 23, 42, 0.10);
+  --atlas-gold-border:  rgba(15, 23, 42, 0.14);
   --atlas-gold-glow:    rgba(15, 23, 42, 0.06);
   /* Intelligence status accent — purple, reserved for Ask Atlas idle dot,
      streaming pulse, live AI signals. Never a theme fill. */
@@ -334,14 +336,14 @@ html, body {
   --atlas-search-btn-fg:     #6f4a30;
 
   /* Frosted glass — translucent white over cool canvas */
-  --atlas-border:       rgba(15, 23, 42, 0.08);
-  --atlas-glass-bg:     rgba(255, 255, 255, 0.72);
-  --atlas-glass-border: rgba(255, 255, 255, 0.90);
+  --atlas-border:       rgba(15, 23, 42, 0.14);
+  --atlas-glass-bg:     rgba(255, 255, 255, 0.82);
+  --atlas-glass-border: rgba(255, 255, 255, 0.95);
 
-  /* Cool occlusion shadows */
-  --atlas-shadow-sm:    rgba(15,23,42,0.04);
-  --atlas-shadow-md:    rgba(15,23,42,0.08);
-  --atlas-shadow-lg:    rgba(15,23,42,0.12);
+  /* Cool occlusion shadows — bumped ~40% for real layer separation */
+  --atlas-shadow-sm:    rgba(15,23,42,0.06);
+  --atlas-shadow-md:    rgba(15,23,42,0.12);
+  --atlas-shadow-lg:    rgba(15,23,42,0.18);
 
   /* Obsidian Shield — gold isolation container */
   --atlas-brand-shield-bg:     #0F172A;
