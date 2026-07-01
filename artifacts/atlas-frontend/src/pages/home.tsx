@@ -5396,24 +5396,19 @@ export default function Home() {
                 onMouseDown={(e) => { e.preventDefault(); }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSendTo((prev) => {
-                    const next: SendTarget = prev === "ask-atlas" ? "workspace" : "ask-atlas";
-                    if (next === "ask-atlas") {
-                      enterAskAtlasMode();
-                      try {
-                        if (!localStorage.getItem("atlas-ask-atlas-helped")) {
-                          setAskAtlasHelperVisible(true);
-                          localStorage.setItem("atlas-ask-atlas-helped", "1");
-                        }
-                      } catch { /* noop */ }
-                    } else {
-                      // Toggle OFF: hide the Ask Atlas thread but preserve it
-                      // so toggling back ON restores the conversation. Abort
-                      // any in-flight stream so it doesn't ghost-complete.
-                      exitAskAtlasMode();
+                  if (sendToRef.current === "ask-atlas" || globalInsightOpen) {
+                    // Toggle OFF: hide the Ask Atlas thread but preserve it
+                    // so toggling back ON restores the conversation.
+                    exitAskAtlasMode();
+                    return;
+                  }
+                  enterAskAtlasMode();
+                  try {
+                    if (!localStorage.getItem("atlas-ask-atlas-helped")) {
+                      setAskAtlasHelperVisible(true);
+                      localStorage.setItem("atlas-ask-atlas-helped", "1");
                     }
-                    return next;
-                  });
+                  } catch { /* noop */ }
                 }}
                 style={{
                   height: 34,
