@@ -19,6 +19,14 @@ export type ManifestDecision = {
 
 type PreviewRoute = { label: string; path: string; description?: string };
 
+function routeLabelFromPath(path: string): string {
+  if (path === "/") return "Home";
+  const last = path.split("/").filter(Boolean).pop() ?? path;
+  return last
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function normalizeRoutePath(route?: string | null, fallbackName?: string): string {
   const raw = route?.trim();
   if (raw) return raw.startsWith("/") ? raw : `/${raw}`;
@@ -165,6 +173,20 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const isMobile = useIsMobile();
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
   const [contentFullscreen, setContentFullscreen] = useState(false);
+  const [cachedScanRoutes, setCachedScanRoutes] = useState<PreviewRoute[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`atlas-scan-${projectId}`);
+      const scan = raw ? JSON.parse(raw) as { routes?: string[]; pages?: string[] } : null;
+      const routes = Array.isArray(scan?.routes) ? scan.routes : [];
+      setCachedScanRoutes(routes.map((route) => {
+        const path = normalizeRoutePath(route);
+        return { label: routeLabelFromPath(path), path, description: path };
+      }));
+    } catch {
+      setCachedScanRoutes([]);
+    }
+  }, [projectId, previewMode]);
   const previewRoutes = useMemo<PreviewRoute[]>(() => {
     const seen = new Set<string>();
     const routes: PreviewRoute[] = [{ label: "Home", path: "/" }];
@@ -175,8 +197,13 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
       seen.add(path);
       routes.push({ label: page.name || path, path, description: page.description });
     }
+    for (const route of cachedScanRoutes) {
+      if (seen.has(route.path)) continue;
+      seen.add(route.path);
+      routes.push(route);
+    }
     return routes;
-  }, [applicationModel?.pages]);
+  }, [applicationModel?.pages, cachedScanRoutes]);
 
   useEffect(() => {
     if (!previewRoutes.some((route) => route.path === selectedRoute)) setSelectedRoute("/");
