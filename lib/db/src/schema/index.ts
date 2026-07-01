@@ -27,3 +27,4 @@ export * from "./scheduled_checks";
 export * from "./zip_imports";
 export * from "./embeddings";
 export * from "./application_model";
+export * from "./project_stack";

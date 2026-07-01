@@ -300,6 +300,28 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: project_builds table failed — server will start anyway");
   }
 
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_stack (
+        id             serial PRIMARY KEY,
+        project_id     integer NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+        frontend       text,
+        backend        text,
+        database       text,
+        hosting        text,
+        auth           text,
+        integrations   jsonb NOT NULL DEFAULT '[]'::jsonb,
+        repo           text,
+        language       text,
+        package_manager text,
+        updated_at     timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    logger.info("ensureColumns: project_stack table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: project_stack table failed — server will start anyway");
+  }
+
   // Atomic migration: verify ALL source columns exist, copy data, then drop — in one transaction.
   // The DROP only executes if the INSERT succeeds; the transaction rolls back on any error so
   // the legacy columns are never lost without a confirmed successful copy.

@@ -20,6 +20,7 @@ import {
   entriesTable,
   nexusMessagesTable,
   projectFlowCanvasTable,
+  projectStackTable,
 } from "@workspace/db";
 import { computeProjectReadiness } from "./readiness";
 import type { AtlasState } from "./genome";
@@ -106,6 +107,7 @@ export async function computeProjectIntelligence(projectId: number) {
     [msgRow],
     [objectCountRow],
     [flowCanvas],
+    [stackRow],
   ] = await Promise.all([
     getProjectDNA(projectId),
 
@@ -159,6 +161,11 @@ export async function computeProjectIntelligence(projectId: number) {
     db.select()
       .from(projectFlowCanvasTable)
       .where(eq(projectFlowCanvasTable.projectId, projectId))
+      .limit(1),
+
+    db.select()
+      .from(projectStackTable)
+      .where(eq(projectStackTable.projectId, projectId))
       .limit(1),
   ]);
 
@@ -260,6 +267,22 @@ export async function computeProjectIntelligence(projectId: number) {
 
     // Flow canvas — whether a mapped flow exists for this project
     hasFlow,
+
+    // Stack — tech stack captured for this project
+    stack: stackRow
+      ? {
+          frontend: stackRow.frontend ?? null,
+          backend: stackRow.backend ?? null,
+          database: stackRow.database ?? null,
+          hosting: stackRow.hosting ?? null,
+          auth: stackRow.auth ?? null,
+          integrations: (stackRow.integrations as string[] | null) ?? [],
+          repo: stackRow.repo ?? null,
+          language: stackRow.language ?? null,
+          packageManager: stackRow.packageManager ?? null,
+          lastUpdatedAt: stackRow.updatedAt?.toISOString() ?? null,
+        }
+      : null,
 
     // Entries — typed lists for Master Map, Ledger, and HUD
     entries: entryGroups,
