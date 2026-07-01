@@ -25,7 +25,7 @@ const LAST_PROJECT_KEY = "atlas-last-project-id";
  * decisions live here.
  */
 export type DockMode = "ambient" | "active" | "operational";
-export type OperationalTab = "chat" | "ledger" | "manifest" | "map" | "files";
+export type OperationalTab = "chat" | "ledger" | "manifest" | "insights" | "map" | "files";
 
 export interface UnifiedContextDockProps {
   mode: DockMode;
