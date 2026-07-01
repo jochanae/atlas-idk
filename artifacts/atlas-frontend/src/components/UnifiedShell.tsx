@@ -1352,11 +1352,11 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   });
   const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
   const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
-  // Intelligence endpoint is authoritative for blended score — falls back to snapshot
-  // then client-computed blend if the endpoint hasn't loaded yet.
+  // Intelligence endpoint is authoritative for blended score. Fall back to
+  // client-computed blend only when the endpoint hasn't loaded yet — stale
+  // snapshot scores were the drift source (see audit F2).
   const blendedScore =
     intelligence?.readiness.overall ??
-    proj?.latestSnapshotScore ??
     (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
 
   const repoLinked = Boolean(proj?.linkedRepo);
