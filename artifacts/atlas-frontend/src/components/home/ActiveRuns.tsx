@@ -1338,7 +1338,7 @@ function RunCard({
           borderTop: "1px solid var(--atlas-border)",
         }}>
           <a
-            href={`/runs/${run.id}`}
+            href={`/project/${run.projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}`}
             onClick={(e) => e.stopPropagation()}
             style={{
               fontFamily: "var(--app-font-mono)", fontSize: 10,
