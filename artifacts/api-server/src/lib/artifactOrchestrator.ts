@@ -347,7 +347,7 @@ const ORCHESTRATOR_RULES: OrchestratorRule[] = [
     confidence: "threshold",
     evaluate: (state) => {
       const completeness = state.genome?.completeness ?? 0;
-      const isLow = completeness < 0.2 && state.genome !== null;
+      const isLow = state.genome === null || completeness < 0.2;
       const triggered = isLow;
       return {
         triggered,
