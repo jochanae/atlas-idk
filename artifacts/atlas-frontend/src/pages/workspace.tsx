@@ -7041,6 +7041,35 @@ export default function Workspace() {
     }
   }, [messages]);
 
+  // ── Build runner — detect BUILD_RUN action in Atlas stream ───────────────
+  const buildRunFiredRef = useRef(false);
+  useEffect(() => {
+    if (!activityStream.active) { buildRunFiredRef.current = false; return; }
+    const match = activityStream.content.match(/BUILD_RUN\s*:?\s*(typecheck|build)/i);
+    if (match && !buildRunFiredRef.current) {
+      buildRunFiredRef.current = true;
+      window.dispatchEvent(
+        new CustomEvent("axiom:build-run", {
+          detail: {
+            command: match[1].toLowerCase() as "typecheck" | "build",
+            projectId: id ? Number(id) : undefined,
+          },
+        })
+      );
+    }
+  }, [activityStream.content, activityStream.active, id]);
+
+  // ── Build runner — receive errors from BuildPanel "send to atlas" ─────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ message: string }>).detail;
+      if (!sessionId || chatPending || !detail?.message) return;
+      doSend(detail.message, sessionId, messages);
+    };
+    window.addEventListener("axiom:send-build-errors", handler);
+    return () => window.removeEventListener("axiom:send-build-errors", handler);
+  }, [sessionId, chatPending, doSend, messages]);
+
   // ── Auto-promote shaping projects ────────────────────────────────────────
   // Any project opened in the workspace is committed by intent. Promote
   // "shaping" → "committed" silently so the user never hits a gate screen.

@@ -229,16 +229,30 @@ export function BuildPanel() {
           ))}
         </div>
 
-        {/* Phase 2: send to Atlas to fix — wired but disabled */}
         <button
-          disabled={true}
-          title="Coming in Phase 2 — send errors to Atlas for an automated fix"
+          disabled={!done || !result?.errorSummary || status === "success"}
+          title={
+            !done ? "Waiting for run to finish…"
+            : status === "success" ? "No errors to send"
+            : "Send errors to Atlas to diagnose and fix"
+          }
+          onClick={() => {
+            if (!result?.errorSummary) return;
+            const msg = `I just ran \`${result.command}\` and got these errors. Please diagnose and fix them:\n\n\`\`\`\n${result.errorSummary}\n\`\`\``;
+            window.dispatchEvent(
+              new CustomEvent("axiom:send-build-errors", { detail: { message: msg } })
+            );
+            setOpen(false);
+          }}
           style={{
             ...MONO, fontSize: 10, letterSpacing: "0.06em",
-            padding: "4px 10px", borderRadius: 5, cursor: "not-allowed",
+            padding: "4px 10px", borderRadius: 5,
+            cursor: (!done || !result?.errorSummary || status === "success") ? "not-allowed" : "pointer",
             background: "transparent",
             border: "1px solid rgba(212,175,55,0.15)",
-            color: "var(--atlas-gold)", opacity: 0.35,
+            color: "var(--atlas-gold)",
+            opacity: (!done || !result?.errorSummary || status === "success") ? 0.3 : 1,
+            transition: "opacity 0.15s",
           }}
         >
           send to atlas →

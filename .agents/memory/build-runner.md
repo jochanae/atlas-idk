@@ -33,3 +33,20 @@ Created via ensureColumns() in api-server/src/index.ts with raw SQL (drizzle-kit
 - This avoids touching workspace.tsx (400KB+) until Phase 2 specifically targets it
 
 **Why:** Atlas fires the event; the panel catches it globally. The workspace integration (Atlas detecting errors and proposing fixes) is Phase 2 and requires a careful line-range edit to workspace.tsx.
+
+## Phase 2 (now complete)
+
+**workspace.tsx — BUILD_RUN detection (lines ~7047-7063):**
+- Pattern: `/BUILD_RUN\s*:?\s*(typecheck|build)/i` in `activityStream.content`
+- Guard: `buildRunFiredRef` (useRef) resets on `activityStream.active === false`
+- Fires: `axiom:build-run` CustomEvent with `{ command, projectId: Number(id) }`
+
+**workspace.tsx — send-to-atlas listener (lines ~7065-7074):**
+- Listens: `axiom:send-build-errors` event
+- Calls: `doSend(detail.message, sessionId, messages)` — same as executeHomePlan
+- Guards: sessionId must exist, chatPending must be false
+
+**BuildPanel.tsx — "send to atlas →" button:**
+- Active when: `done && result?.errorSummary && status !== "success"`
+- Fires: `axiom:send-build-errors` with formatted markdown block
+- Format: "I just ran `{command}` and got these errors. Please diagnose and fix them:\n```\n{errorSummary}\n```"
