@@ -1707,9 +1707,11 @@ ${t}
                     </button>
                   </>
                 )}
+                <div style={{ flex: 1 }} />
+                {routePickerButton}
               </div>
 
-              {routePicker("local")}
+
 
               {/* Error banner */}
               {wsDsErrorMsg && (
