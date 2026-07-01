@@ -1048,7 +1048,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
 // Running: streaming view auto-shown inline
 // Expanded (tap): Chat tab (full response) + Diff tab (file changes) + PR link
 
-function RunCard({
+export function RunCard({
   run,
   onDismiss,
   retryingFiles,

@@ -34,6 +34,7 @@ import { ManifestPanel } from "../components/ManifestPanel";
 import { InsightsPanel } from "../components/InsightsPanel";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
+import { ActiveRunsStrip } from "../components/home/ActiveRunsStrip";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
@@ -8365,8 +8366,10 @@ export default function Workspace() {
         </>
       </UnifiedConversationSurface>
 
+      <ActiveRunsStrip bottomOffset={isMobile ? 76 : 24} />
 
       {isMobile && mobileTab !== "map" && (
+
         <UnifiedContextDock
           mode="operational"
           activeOperationalTab={(["chat","ledger","insights","manifest","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "insights" | "manifest" | "map" | "files" | undefined}
