@@ -2836,6 +2836,8 @@ export default function Home() {
           session?.reflectionMode === true;
         if (isReflection) {
           setGlobalInsightOpen(true);
+          setSendTo("ask-atlas");
+          sendToRef.current = "ask-atlas";
           setDepth("active");
         }
       } catch {}
@@ -3513,6 +3515,8 @@ export default function Home() {
     if (surface !== "global-insight") return;
 
     setGlobalInsightOpen(true);
+    setSendTo("ask-atlas");
+    sendToRef.current = "ask-atlas";
     if (seed === "portfolio") {
       globalInsightSeedPendingRef.current = true;
     }
@@ -3869,6 +3873,8 @@ export default function Home() {
       // strand the thread in the ambient homepage where it tries to earn a
       // title and reads as half-broken.
       setGlobalInsightOpen(true);
+      setSendTo("ask-atlas");
+      sendToRef.current = "ask-atlas";
       setDepth("active");
       try {
         await fetch(`/api/sessions/${encodeURIComponent(id)}/reflection-mode`, {
