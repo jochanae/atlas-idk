@@ -176,6 +176,7 @@ function ShellWordmark() {
           type="button"
           onClick={goHome}
           aria-label={location === "/home" ? "Return to ambient Nexus" : "Go home"}
+          className="atlas-wordmark"
           style={{
             background: "transparent",
             border: "none",
@@ -193,6 +194,7 @@ function ShellWordmark() {
           AXIOM
         </button>
       )}
+
     </div>
   );
 }
