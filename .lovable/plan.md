@@ -1,79 +1,106 @@
+## Atlas Light Mode — Visual Hierarchy Audit
 
-## Reframe
+This is not a color-token task. This is a visual hierarchy pass.
 
-Build the **Theme Showcase page first**. Don't touch parchment tokens yet. `/showcase` becomes the surface where we judge every future theme change side by side, and we'll use it to validate the neutral/bronze/purple rebalance in a follow-up pass.
+The objective is to make Atlas feel **calm, modern, premium, and intentional**.
 
-## What we're building
+Do not preserve existing color decisions simply because they already exist. Walk every visible surface and ask:
 
-A new internal page at **`/showcase`** (unlinked from nav) that renders every real component state Axiom uses, in both themes, on a single scrollable canvas.
+> Does this element deserve the user's attention?
 
-### Page structure
+If not, reduce its visual weight.
 
-Sticky top bar:
-- Theme toggle: `Obsidian` / `Parchment` (writes `document.documentElement.dataset.theme`, mirrors `useThemeMode`; reverts on unmount)
-- Side-by-side toggle: render both themes in two columns for direct comparison
-- Anchor jump-links to each section
+The goal is not to recolor Atlas. The goal is to remove visual competition until the interface naturally guides the eye.
 
-Sections (in order):
+---
 
-1. **Typography** — H1/H2/H3/subheading/body/caption/mono + editorial labels (`YOU`, `ATLAS`, `PORTFOLIO THINKING · NOT BUILDING`)
-2. **Color tokens** — swatch grid for every `--atlas-*` variable with resolved value + role label ("border-default", "gold-armed", "intel-active")
-3. **Buttons** — primary / secondary / ghost / danger / icon-only; states default / hover / focus / active / disabled / loading
-4. **Ask Atlas states** — Idle / Listening / Thinking / Streaming / Completed / Error
-5. **Inputs** — empty / focused / typing / disabled / error; single-line, textarea, composer shell
-6. **Cards** — default / hover / selected / active / dragging
-7. **Message bubbles** — user / atlas / system / streaming / with tool result
-8. **Pills & chips** — default / selected / thinking / error / success / memory chip
-9. **Icons** — idle / hover / active / armed (send)
-10. **Tables / list rows** — normal / hover / selected / with divider (mirrors History sheet)
-11. **Sheets & drawers** — header, list, empty state (mirrors HistoryBookmarksSheet, feature drawers)
-12. **Status indicators** — Committed / In Motion / Under Consideration / In Tension / Overridden
+### Visual hierarchy
 
-Each state gets a caption with the token(s) it consumes.
+**Highest attention**
+1. User content
+2. Atlas responses
+3. Primary actions
 
-## Forced-state previews (added)
+**Medium**
+4. Navigation
 
-Hover/focus/active/armed are hard to inspect at rest. Rules:
+**Lowest**
+5. Branding
+6. Decorative elements
+7. Structural chrome
 
-- Always render the **real** component. Never rebuild lookalike markup.
-- To display a non-default state, wrap the real component in a `ForcedState` primitive that applies the styling only:
-  - toggles CSS via `data-force-state="hover|focus|active|disabled"` on the wrapper, backed by matching CSS rules scoped to `[data-force-state]` in a small `showcase.css`
-  - for stateful React components, pass real props when they exist (`disabled`, `aria-selected`), and only fall back to `data-force-state` for pseudo-class states
-- Every forced state renders a small badge above it: **"Forced preview state — hover"** (or focus/active/etc.) so nothing masquerades as a live interaction.
-- Never modify the underlying component's props/markup to fake a state that isn't wired.
+If decorative chrome competes with content, it should be demoted.
 
-## TODO discipline
+---
 
-If a real component or state doesn't exist yet (e.g. "Ask Atlas Listening" has no built component), render a visible **`TODO — not yet built`** tile in that slot instead of inventing markup. The showcase stays an honest mirror of what exists.
+### Color responsibilities
 
-## Files
+Each color has exactly one job.
 
-New:
-- `artifacts/atlas-frontend/src/pages/showcase.tsx` — the page
-- `artifacts/atlas-frontend/src/pages/showcase/sections/*.tsx` — one file per section
-- `artifacts/atlas-frontend/src/pages/showcase/ForcedState.tsx` — wrapper primitive with the "Forced preview state" label
-- `artifacts/atlas-frontend/src/pages/showcase/Swatch.tsx`, `StateRow.tsx`, `SectionShell.tsx`, `TodoTile.tsx` — small shared primitives
-- `artifacts/atlas-frontend/src/pages/showcase/showcase.css` — scoped rules for `[data-force-state="…"]`
+**Charcoal** — Functional UI, icons, navigation, primary typography
+**Gray** — Borders, dividers, secondary text, supporting status
+**Bronze** — Brand, active state, primary CTA
+**Purple** — AI thinking, streaming, intelligence, processing
 
-Edited:
-- `artifacts/atlas-frontend/src/App.tsx` — add `<Route path="/showcase" component={Showcase} />` near line 219. No nav link.
+Bronze should never be used as decoration. Purple should never be used as branding.
 
-**Not touched:** `styles.css` parchment tokens, any existing components, dark mode, `/home`, `/workspace`.
+---
 
-## After `/showcase` lands (follow-up plan, not this one)
+### Audit every surface
 
-Rebalance parchment with corrected rule:
-- **Bronze** = premium/priority — focus, hover, selected borders, armed send. "This is Axiom / your action."
-- **Purple** = intelligence status only — idle Ask Atlas dot, streaming pulse, live AI signal. Never a theme fill.
-- **Neutrals** = everything structural.
-- Dark mode untouched.
+Review Header, Home, Ask Atlas, Composer, Footer, and workspace entry points. For each visible element ask:
 
-That pass ships only after we've inspected each state in `/showcase`.
+- Does it need emphasis?
+- Does it communicate interaction?
+- Is it competing with the content?
+- Can it be quieter?
 
-## Verification
+Reduce anything unnecessary.
 
-- `/showcase` loads without errors
-- Theme toggle repaints every section; obsidian and parchment look identical to today (no token changes yet)
-- Every forced-state tile carries the "Forced preview state" label
-- Missing components render as visible `TODO` tiles, not fake UI
-- No visible change on `/`, `/home`, `/workspace`, or any existing route
+---
+
+### Known examples (not the complete list)
+
+Elements that currently violate the hierarchy include:
+
+- Hamburger icon
+- Avatar ring
+- "+" affordance
+- Gold thinking dots
+- Bronze status labels
+- Decorative composer glow
+- Excessive bronze borders
+- Remaining parchment gold chrome
+
+If you find additional violations during the walk, fix them as well.
+
+---
+
+### Constraints
+
+- No layout changes.
+- No typography changes.
+- No spacing changes.
+- No dark mode changes.
+- Do not replace the parchment background yet.
+- Preserve the existing token system — demote through it, don't fork it.
+
+---
+
+### Success criteria
+
+Open Home, Ask Atlas, and the Composer. The first thing the eye should notice is:
+
+1. The conversation.
+2. The input.
+3. The current action.
+
+The UI itself should almost disappear. Bronze should only attract attention when communicating brand or interaction.
+
+---
+
+### Technical approach
+
+Work primarily through `artifacts/atlas-frontend/src/styles.css` parchment-scoped tokens so a single demotion cascades everywhere the token is consumed. Touch component files only when a hardcoded gold value bypasses the token system (audit for raw `#d4a017`, `#8b5e3c`, `rgba(212,175,55,...)` etc. in parchment context and route through tokens or charcoal/gray as the hierarchy dictates).
+
+Ready to execute on approval.
