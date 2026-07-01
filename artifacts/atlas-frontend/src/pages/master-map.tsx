@@ -852,7 +852,7 @@ export default function MasterMap() {
         projectId: proj.id,
         nodeIdx: idx,
         name: proj.name,
-        score: cached?.score ?? Math.round(proj.latestSnapshotScore ?? 0),
+        score: cached?.score ?? Math.round(proj.readinessScore ?? proj.latestSnapshotScore ?? 0),
         overallLabel: cached?.label,
         entries: [],
         loading: true,
