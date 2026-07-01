@@ -436,16 +436,17 @@ export function ComposerActions({
 }
 
 
-function iconBtnStyle(active: boolean, accent: boolean, borderless = false): React.CSSProperties {
+function iconBtnStyle(active: boolean, accent: boolean, borderless = false, compact = false): React.CSSProperties {
+  const size = compact ? 30 : 42;
   return {
-    width: 42,
-    height: 42,
-    minWidth: 42,
-    minHeight: 42,
-    maxWidth: 42,
-    maxHeight: 42,
-    flex: "0 0 42px",
-    padding: 7,
+    width: size,
+    height: size,
+    minWidth: size,
+    minHeight: size,
+    maxWidth: size,
+    maxHeight: size,
+    flex: `0 0 ${size}px`,
+    padding: compact ? 5 : 7,
     boxSizing: "border-box",
     borderRadius: 10,
     background: borderless && !active && !accent
