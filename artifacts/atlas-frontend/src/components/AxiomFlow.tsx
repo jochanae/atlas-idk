@@ -461,6 +461,21 @@ export function layoutRadial(nodes: ArchNode[]): ArchNode[] {
   });
 }
 
+// Guards against stray "top-left" nodes: any node whose persisted x/y is
+// missing, non-finite, or an obvious (0,0) placeholder gets its `moved`
+// flag cleared so layoutRadial re-assigns it a proper ring slot. Nodes
+// with real user-placed coordinates are preserved untouched.
+export function sanitizeNodePositions(nodes: ArchNode[]): ArchNode[] {
+  const cleaned = nodes.map(n => {
+    const xOk = typeof n.x === "number" && Number.isFinite(n.x);
+    const yOk = typeof n.y === "number" && Number.isFinite(n.y);
+    const isStray = !xOk || !yOk || (n.x === 0 && n.y === 0 && n.type !== "goal");
+    if (!isStray) return n;
+    return { ...n, moved: false, x: n.type === "goal" ? RADIAL_CENTER_X : 0, y: n.type === "goal" ? RADIAL_CENTER_Y : 0 };
+  });
+  return layoutRadial(cleaned);
+}
+
 function addEdgeIfMissing(edges: ArchEdge[], from: string, to: string): ArchEdge[] {
   if (from === to || edges.some(e => e.from === from && e.to === to)) return edges;
   return [...edges, { id: `e-${from}-${to}`, from, to }];
@@ -765,8 +780,8 @@ export function AxiomFlow({
       .then(r => (r.ok ? r.json() : null))
       .then((data: { nodes: ArchNode[]; edges: ArchEdge[] } | null) => {
         if (data && Array.isArray(data.nodes) && data.nodes.length > 0) {
-          // DB has real data — use it directly
-          setNodes(data.nodes);
+          // DB has real data — use it directly (sanitized against stray positions)
+          setNodes(sanitizeNodePositions(data.nodes));
           setEdges(data.edges ?? []);
           dbLoadedRef.current = true;
           setFlowLoading(false);
@@ -782,7 +797,8 @@ export function AxiomFlow({
               const parsed = JSON.parse(raw) as ArchNode[];
               const parsedEdges = edgesRaw ? (JSON.parse(edgesRaw) as ArchEdge[]) : [];
               if (Array.isArray(parsed) && parsed.length > 0 && !isLegacyDefault(parsed, parsedEdges)) {
-                setNodes(parsed);
+                const sanitized = sanitizeNodePositions(parsed);
+                setNodes(sanitized);
                 setEdges(parsedEdges);
                 dbLoadedRef.current = true;
                 setFlowLoading(false);
@@ -793,7 +809,7 @@ export function AxiomFlow({
                   method: "PUT",
                   credentials: "include",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ nodes: parsed, edges: parsedEdges }),
+                  body: JSON.stringify({ nodes: sanitized, edges: parsedEdges }),
                 })
                   .then(r => { if (r.ok) try { localStorage.setItem(migKey, "1"); } catch {} })
                   .catch(() => {});
@@ -817,7 +833,7 @@ export function AxiomFlow({
             const parsed = JSON.parse(raw) as ArchNode[];
             const parsedEdges = edgesRaw ? (JSON.parse(edgesRaw) as ArchEdge[]) : [];
             if (Array.isArray(parsed) && parsed.length > 0 && !isLegacyDefault(parsed, parsedEdges)) {
-              setNodes(parsed);
+              setNodes(sanitizeNodePositions(parsed));
               setEdges(parsedEdges);
               setFlowLoading(false);
               return;
