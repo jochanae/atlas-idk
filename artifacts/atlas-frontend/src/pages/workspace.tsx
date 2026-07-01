@@ -7826,6 +7826,7 @@ export default function Workspace() {
                 messages={messages}
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
+                runId={focusedRunId}
               />
             </div>
           ) : leftTab === "terminal" ? (
