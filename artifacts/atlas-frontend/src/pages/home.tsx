@@ -5032,7 +5032,11 @@ export default function Home() {
             position: globalInsightOpen ? "relative" : "sticky",
             left: globalInsightOpen ? undefined : 0,
             right: globalInsightOpen ? undefined : 0,
-            bottom: globalInsightOpen ? undefined : "calc(64px + env(safe-area-inset-bottom, 0px))",
+            bottom: globalInsightOpen
+              ? undefined
+              : dockVisible
+                ? "calc(64px + env(safe-area-inset-bottom, 0px))"
+                : "env(safe-area-inset-bottom, 0px)",
             padding: globalInsightOpen
               ? "12px 0 0"
               : "14px 20px 14px",
