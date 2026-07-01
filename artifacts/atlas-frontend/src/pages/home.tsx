@@ -5303,7 +5303,6 @@ export default function Home() {
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
-        hideComposer={true}
         focusChip={
           /* FOCUS chip: one job only — "where is Atlas focused?"
              Memory is the HUD's responsibility, not this chip's. */
