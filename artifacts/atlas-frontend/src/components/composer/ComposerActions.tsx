@@ -66,6 +66,8 @@ export interface ComposerActionsProps {
   parkedCount?: number;
   /** When true, hides the Park button entirely (e.g. ambient home before any conversation). */
   hidePark?: boolean;
+  /** Tighter 32px icon buttons for tiny mobile widths. */
+  compact?: boolean;
 }
 
 type PrimaryItem = {
