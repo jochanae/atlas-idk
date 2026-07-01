@@ -8355,7 +8355,7 @@ export default function Workspace() {
       {isMobile && mobileTab !== "map" && (
         <UnifiedContextDock
           mode="operational"
-          activeOperationalTab={(["chat","ledger","manifest","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "manifest" | "map" | "files" | undefined}
+          activeOperationalTab={(["chat","ledger","insights","manifest","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "insights" | "manifest" | "map" | "files" | undefined}
           onAtlasCore={() => { setMobileTab("chat"); setLeftTab("chat"); setRightOpen(false); }}
           onChat={() => { setMobileTab("chat"); setLeftTab("chat"); }}
 
@@ -8363,7 +8363,8 @@ export default function Workspace() {
             setMobileTab("ledger");
             setRightOpen(true);
           }}
-          onManifest={() => { setMobileTab("manifest"); setRightOpen(true); }}
+          onInsights={() => { setMobileTab("insights"); setRightOpen(true); }}
+          onManifest={() => { setMobileTab("insights"); setRightOpen(true); }}
           onFlow={() => setLocation("/map")}
           entryCount={entryCount}
           currentProjectName={project?.name ?? ""}
