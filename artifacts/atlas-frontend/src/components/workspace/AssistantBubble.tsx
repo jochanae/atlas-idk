@@ -2494,7 +2494,7 @@ export function AssistantBubble({
 
         {/* Action row — feedback + primary cockpit + overflow menu */}
         {!message.streaming && (
-        <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", transition: "opacity 180ms ease" }}>
+        <div style={{ position: "relative", display: "flex", flexWrap: "wrap", gap: 3, marginTop: 6, marginLeft: -6, alignItems: "center", transition: "opacity 180ms ease" }}>
 
           {/* Feedback — only persistent on the newest Atlas response */}
           {isLatestAssistant && (
