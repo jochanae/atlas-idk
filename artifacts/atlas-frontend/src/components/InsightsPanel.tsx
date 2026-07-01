@@ -498,33 +498,132 @@ function ConfidenceGrid({
 
 
 function DnaGrid({ dna }: { dna: Intelligence["dna"] }) {
-  const items: { label: string; value: string | null }[] = [
-    { label: "Purpose", value: dna.purpose },
-    { label: "Audience", value: dna.audience },
-    { label: "Identity", value: dna.identity },
-    { label: "Wedge", value: dna.wedge },
+  const items: { label: string; value: string | null; help: string; missingHint: string }[] = [
+    {
+      label: "Purpose",
+      value: dna.purpose,
+      help: "The core reason this project exists — the problem it solves and why it matters.",
+      missingHint: "Tell Atlas what problem this solves and who feels it most.",
+    },
+    {
+      label: "Audience",
+      value: dna.audience,
+      help: "Who this is built for — the specific person or group who benefits most.",
+      missingHint: "Name the audience out loud in a conversation with Atlas.",
+    },
+    {
+      label: "Identity",
+      value: dna.identity,
+      help: "What kind of product this is — the category, tone, or archetype it embodies.",
+      missingHint: "Describe how you'd introduce this project in one sentence.",
+    },
+    {
+      label: "Wedge",
+      value: dna.wedge,
+      help: "The sharp angle or insight that makes this different from anything else.",
+      missingHint: "Talk through what only you can build here, or what others get wrong.",
+    },
   ];
-  const known = items.filter((i) => i.value);
-  if (known.length === 0) return <EmptyLine>DNA still forming.</EmptyLine>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {known.map((i) => (
-        <FieldBlock key={i.label} label={i.label} value={i.value ?? ""} />
+      {items.map((i) => (
+        <FieldBlock key={i.label} label={i.label} value={i.value ?? ""} help={i.help} missingHint={i.missingHint} />
       ))}
     </div>
   );
 }
 
-function FieldBlock({ label, value }: { label: string; value: string }) {
+function FieldBlock({
+  label,
+  value,
+  help,
+  missingHint,
+}: {
+  label: string;
+  value: string;
+  help?: string;
+  missingHint?: string;
+}) {
+  const isEmpty = !value;
   return (
     <div>
-      <div style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO, marginBottom: 3 }}>
-        {label}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+        <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO }}>
+          {label}
+        </span>
+        {help && <HelpDot label={label} help={help} missingHint={isEmpty ? missingHint : undefined} />}
       </div>
-      <div style={{ fontSize: 13, color: FG, fontFamily: SANS, lineHeight: 1.5 }}>{value}</div>
+      {isEmpty ? (
+        <div style={{ fontSize: 13, color: MUTED, fontFamily: SANS, lineHeight: 1.5, fontStyle: "italic" }}>
+          Not captured yet
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, color: FG, fontFamily: SANS, lineHeight: 1.5 }}>{value}</div>
+      )}
     </div>
   );
 }
+
+function HelpDot({ label, help, missingHint }: { label: string; help: string; missingHint?: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`What is ${label}?`}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            border: `1px solid ${BORDER}`,
+            background: "transparent",
+            color: MUTED,
+            fontFamily: MONO,
+            fontSize: 10,
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          ?
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        style={{
+          width: 260,
+          padding: 12,
+          background: "var(--atlas-bg)",
+          border: `1px solid ${BORDER}`,
+          borderRadius: 10,
+          fontFamily: SANS,
+          zIndex: 220,
+        }}
+      >
+        <div style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: GOLD, fontFamily: MONO, marginBottom: 6 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 12.5, color: FG, lineHeight: 1.5 }}>{help}</div>
+        {missingHint && (
+          <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.5, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
+            <span style={{ color: GOLD, fontFamily: MONO, fontSize: 10, letterSpacing: 1, textTransform: "uppercase", display: "block", marginBottom: 4 }}>
+              How to fill this
+            </span>
+            {missingHint}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 
 function EntryRow({ title, summary, status }: { title: string; summary: string | null; status: string }) {
   return (
