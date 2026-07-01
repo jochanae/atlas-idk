@@ -357,23 +357,31 @@ function PanelShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, trailing }: { title: string; children: React.ReactNode; trailing?: React.ReactNode }) {
   return (
     <section style={{ padding: "14px 18px", borderTop: `1px solid ${BORDER}` }}>
       <div style={{
-        fontSize: 10,
-        letterSpacing: 1.2,
-        textTransform: "uppercase",
-        color: MUTED,
-        fontFamily: MONO,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "baseline",
         marginBottom: 10,
       }}>
-        {title}
+        <div style={{
+          fontSize: 10,
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+          color: MUTED,
+          fontFamily: MONO,
+        }}>
+          {title}
+        </div>
+        {trailing}
       </div>
       {children}
     </section>
   );
 }
+
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
