@@ -1,106 +1,103 @@
-## Atlas Light Mode — Visual Hierarchy Audit
 
-This is not a color-token task. This is a visual hierarchy pass.
+# Run Card Mockup — Dark + Light (v2)
 
-The objective is to make Atlas feel **calm, modern, premium, and intentional**.
+Two standalone HTML files. Visual reference only. No app code changes.
 
-Do not preserve existing color decisions simply because they already exist. Walk every visible surface and ask:
+## Deliverable
 
-> Does this element deserve the user's attention?
+- `/mnt/documents/run-card-dark.html`
+- `/mnt/documents/run-card-light.html`
 
-If not, reduce its visual weight.
+Self-contained (inline CSS, no build). Same layout, only theme tokens differ:
+- **Dark:** `--atlas-bg #0e0e0f`, `--atlas-fg #e9e6df`, gold `#c9a24c`
+- **Light (Parchment):** `--atlas-bg #f5efe4`, `--atlas-fg #2a2a2a`, gold `#8B5E3C`
 
-The goal is not to recolor Atlas. The goal is to remove visual competition until the interface naturally guides the eye.
+Geist Sans / Geist Mono to match the app. Bookmark icon in each card's top-right corner (matches your reference).
 
----
+## Interaction legend (rendered at top of each file)
 
-### Visual hierarchy
+- **Card body tap** → expand/collapse inline. Does not navigate.
+- **Details** → opens Details surface (Timeline | Changes toggle).
+- **Preview** → triggers the existing play/preview behavior.
+- Border color = run status; fades back to neutral after ~1s.
 
-**Highest attention**
-1. User content
-2. Atlas responses
-3. Primary actions
+The whole card never navigates. Three separate interactions.
 
-**Medium**
-4. Navigation
+## States shown (stacked top to bottom)
 
-**Lowest**
-5. Branding
-6. Decorative elements
-7. Structural chrome
+### 1. Running
+Spinner · title `Working…` · mono sub `Tightening tiny-mobile left spacing…` · bookmark top-right · no footer buttons yet.
 
-If decorative chrome competes with content, it should be demoted.
+### 2. Completed — success
+Green pulse border settling to neutral · check icon · title `Fixed Ask Atlas mobile spacing` · footer: `Details` · `Preview` · bookmark top-right.
 
----
+Directly below (plain Atlas text, not another card):
+> Fixed both:
+> • Light-mode gold now uses semantic tokens.
+> • Tiny-mobile overlap fixed by hiding label and tightening spacing.
 
-### Color responsibilities
+### 3. Completed — failed
+Red border · X icon · footer `Details` · `Preview`.
 
-Each color has exactly one job.
+### 4. Blocked / needs input
+Amber border · alert icon · footer `Details` · `Resolve`.
 
-**Charcoal** — Functional UI, icons, navigation, primary typography
-**Gray** — Borders, dividers, secondary text, supporting status
-**Bronze** — Brand, active state, primary CTA
-**Purple** — AI thinking, streaming, intelligence, processing
+### 5. Expanded inline (success card, tapped open)
+Same card, expanded body reveals a compact preview:
+- Last 3 timeline items (mono, muted)
+- Touched files (2)
+- "No blockers"
 
-Bronze should never be used as decoration. Purple should never be used as branding.
+Footer unchanged. Card body tap toggles this — Details / Preview do not.
 
----
+## Details surface
 
-### Audit every surface
+Rendered twice in each file so both responsive layouts are visible:
 
-Review Header, Home, Ask Atlas, Composer, Footer, and workspace entry points. For each visible element ask:
+### Mobile layout (default)
+Header `CHANGES` with segmented toggle:
 
-- Does it need emphasis?
-- Does it communicate interaction?
-- Is it competing with the content?
-- Can it be quieter?
+```text
+[ Timeline | Changes ]
+```
 
-Reduce anything unnecessary.
+Only one lens visible at a time. Tap toggles between them. Both rendered stacked in the mockup with a label ("Mobile — Timeline selected", "Mobile — Changes selected") so you can see both states.
 
----
+### Desktop / tablet layout (hint block)
+Same toggle still present at the top. Below it, a wider two-column layout renders Timeline and Changes side-by-side as an optional density hint — the toggle still owns the interaction; side-by-side is a layout affordance, not a merge.
 
-### Known examples (not the complete list)
+### Timeline lens content
+- 💭 Thought for 8s
+- 📖 Read home.tsx
+- 📖 Read ComposerActions.tsx
+- ✏️ Edited home.tsx
+- ✏️ Edited AskAtlasSurface.tsx
+- 🧪 Typecheck passed
+- ✅ Run completed
 
-Elements that currently violate the hierarchy include:
+### Changes lens content
+- Modified → `home.tsx` (bullets: tightened mobile spacing · replaced gold tokens · fixed button sizing)
+- Created → `RunSummary.tsx`
+- Deleted → `legacyTimeline.tsx`
+- One row shown in active state to reveal `View diff` / `Open file`.
 
-- Hamburger icon
-- Avatar ring
-- "+" affordance
-- Gold thinking dots
-- Bronze status labels
-- Decorative composer glow
-- Excessive bronze borders
-- Remaining parchment gold chrome
+### GitHub block (bottom of Details, single item)
+- ✓ Pushed to `main`
+- Commit `7b81ac2` · View on GitHub
 
-If you find additional violations during the walk, fix them as well.
+No historical commit list. No tokens. No cost. No model. No parked decisions.
 
----
+## Responsive strip (bottom of page)
 
-### Constraints
+Three width samples of the completed card:
+- Tiny mobile — expanded shows 2–3 timeline items + files + blockers only
+- Mobile — short timeline + changes summary
+- Desktop — expanded density hint
 
-- No layout changes.
-- No typography changes.
-- No spacing changes.
-- No dark mode changes.
-- Do not replace the parchment background yet.
-- Preserve the existing token system — demote through it, don't fork it.
+## Out of scope
 
----
+- No React component code
+- No edits to `RunCard.tsx`, `ViewChangesPanel.tsx`, chat rendering
+- No cleanup work (awaitingPlan dot, reviewNotes, PlanCard consolidation, selfEdits, StepProgress stacking) — that's the next plan after you approve the visual
 
-### Success criteria
-
-Open Home, Ask Atlas, and the Composer. The first thing the eye should notice is:
-
-1. The conversation.
-2. The input.
-3. The current action.
-
-The UI itself should almost disappear. Bronze should only attract attention when communicating brand or interaction.
-
----
-
-### Technical approach
-
-Work primarily through `artifacts/atlas-frontend/src/styles.css` parchment-scoped tokens so a single demotion cascades everywhere the token is consumed. Touch component files only when a hardcoded gold value bypasses the token system (audit for raw `#d4a017`, `#8b5e3c`, `rgba(212,175,55,...)` etc. in parchment context and route through tokens or charcoal/gray as the hierarchy dictates).
-
-Ready to execute on approval.
+Approve this and I'll produce both HTML files. Next plan after that translates the accepted layout into real components and does the cleanup list.
