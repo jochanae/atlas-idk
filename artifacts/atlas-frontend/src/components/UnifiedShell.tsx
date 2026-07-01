@@ -2215,7 +2215,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
         {/* ShellFooter intentionally not rendered — UnifiedContextDock owns the bottom nav.
             Two fixed footers at bottom:0 caused tap collisions. */}
       </div>
-      {/* Atlas Knows — Ask Atlas only (home). Live awareness snapshot. */}
+      {/* Atlas Knows — Global Insight only (home). Live awareness snapshot. */}
       {location === "/home" && (
         <AtlasMemoryHUD
           position={{ top: 64, right: 16 }}

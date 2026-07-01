@@ -104,7 +104,7 @@ export function ChatTrayHeader({
               active:scale-95 touch-manipulation
               ${active
                 ? "bg-[rgba(201,162,76,0.08)] border border-[rgba(201,162,76,0.3)] text-[var(--atlas-gold)] shadow-[0_0_12px_rgba(201,162,76,0.1)]"
-                : "bg-transparent border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                : "bg-transparent border border-transparent text-stone-500/40 hover:text-stone-400 hover:bg-stone-800/30"
               }
             `}
           >
