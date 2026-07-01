@@ -783,7 +783,26 @@ blast_radius: "narrow" (isolated change, no downstream effects), "moderate" (tou
 summary: one sentence explaining the scope and confidence level
 files_affected: array of file paths changed by this response
 
-Only emit when there are actual FILE_EDIT or LINE_PATCH blocks. Never emit for explanation-only responses.`;
+Only emit when there are actual FILE_EDIT or LINE_PATCH blocks. Never emit for explanation-only responses.
+
+BUILD_RUN (suggest when a typecheck or build run would be useful):
+When you want to suggest the user run a typecheck or build, emit on its own line:
+BUILD_RUN: typecheck
+or
+BUILD_RUN: build
+This triggers the built-in Build Runner panel automatically — do NOT tell the user to open the Console tab or run npm/pnpm commands manually. The Build Runner is always available via the Command Palette (⌘K → Build section) and from within the workspace directly.
+
+INTENT_TYPE (emit at the end of every response to declare your intent):
+On its own line at the very end of your response, emit one of:
+INTENT_TYPE: BUILD    — you wrote or proposed code/file changes
+INTENT_TYPE: PLAN     — you outlined a plan, roadmap, or set of steps (no edits)
+INTENT_TYPE: DECIDE   — you gave structured options, tradeoffs, or a decision card
+INTENT_TYPE: THINK    — you reasoned through a problem, answered a question, or gave analysis
+INTENT_TYPE: EXPLORE  — you researched, inspected files, or gathered information
+INTENT_TYPE: DEBUG    — you diagnosed an error or bug
+INTENT_TYPE: AUDIT    — you reviewed code, architecture, or decisions for quality
+
+This is critical: PLAN, DECIDE, THINK, EXPLORE, DEBUG, and AUDIT responses are never expected to include FILE_EDIT blocks. Only BUILD responses produce code edits. Do not feel pressure to add FILE_EDIT blocks to non-BUILD responses.`;
 
 const FOUNDATION_SYSTEM_PROMPT = `${ATLAS_IDENTITY}
 
@@ -4389,10 +4408,24 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   // zero FILE_EDIT or LINE_PATCH blocks, the model described changes without
   // making them. Append a [NO_FILES_WRITTEN] signal so the next session turn
   // and the user can both see that the workspace was not touched.
+  //
+  // Exempt non-build intent types — PLAN / THINK / EXPLORE / DECIDE / AUDIT
+  // are advisory by nature and must never require file edits.
+  const NON_BUILD_INTENT_SET = new Set(["PLAN", "THINK", "EXPLORE", "DECIDE", "AUDIT"]);
+  // Advisory signals in the user message — "help me decide", "what should I do", etc.
+  const ADVISORY_USER_RE = /\b(what should i|help me (decide|choose|pick|prioritize)|which (direction|option|path|route|approach)|what (do you think|would you (suggest|recommend))|should i\b|what(?:'s| is) next|not sure (what|which)|give me options|tradeoffs?|pros.{0,20}cons|walk me through|where do i start|what direction)\b/i;
+  // Advisory signals in the response — structured decision/planning content
+  const ADVISORY_RESPONSE_RE = /^(#{1,4}\s+)?(option\s+[1-9]|decision\s+card|pros\s*(and\s*)?cons|tradeoffs?|next\s+steps|which\s+focus|choose\s+a\s+(path|direction)|recommendation|what\s+resonates|strategic\s+(options?|guidance))/im;
   const isBuildIntegrityFailure =
     workspaceLens === "build" &&
     !hasProposedFileChanges &&
     persistContent.length > 200 &&
+    // Never flag non-build intent types
+    !NON_BUILD_INTENT_SET.has(detectedIntentType ?? "") &&
+    // Never flag when the user was asking for advisory/planning guidance
+    !ADVISORY_USER_RE.test(message) &&
+    // Never flag when the response is structured advisory/planning content
+    !ADVISORY_RESPONSE_RE.test(persistContent) &&
     // Don't flag genuinely short acknowledgments or confirmations
     !(/^(ok|done|got it|sure|yes|noted|confirmed|created|pushed)\b/i.test(persistContent.trim()));
   if (isBuildIntegrityFailure) {
