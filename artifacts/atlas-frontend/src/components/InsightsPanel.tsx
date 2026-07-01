@@ -643,6 +643,99 @@ function HelpDot({ label, help, missingHint }: { label: string; help: string; mi
   );
 }
 
+function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
+  const rows: { label: string; value: string | null; help: string; missingHint: string }[] = [
+    { label: "Frontend", value: stack?.frontend ?? null, help: "The UI framework and language the frontend is built with.", missingHint: "Tell Atlas what the frontend uses (e.g. React + Vite + TypeScript)." },
+    { label: "Backend", value: stack?.backend ?? null, help: "The server runtime, framework, and where it runs.", missingHint: "Describe the backend runtime and framework (e.g. Node/Express on Cloud Run)." },
+    { label: "Database", value: stack?.database ?? null, help: "The primary datastore for the project.", missingHint: "Name the database and provider (e.g. Supabase Postgres)." },
+    { label: "Hosting", value: stack?.hosting ?? null, help: "Where the frontend and backend are deployed.", missingHint: "Say where each piece runs (e.g. Vercel frontend, Cloud Run backend)." },
+    { label: "Auth", value: stack?.auth ?? null, help: "How users are authenticated.", missingHint: "Describe how auth works (provider, token/cookie strategy)." },
+    { label: "Language", value: stack?.language ?? null, help: "The dominant language across the codebase.", missingHint: "Set the primary language in Atlas (e.g. TypeScript)." },
+    { label: "Package manager", value: stack?.packageManager ?? null, help: "The package manager used to install and lock dependencies.", missingHint: "Note the package manager (pnpm, npm, bun)." },
+  ];
+
+  const hasIntegrations = !!stack?.integrations && stack.integrations.length > 0;
+  const hasRepo = !!stack?.repo;
+
+  if (!stack) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 12.5, color: MUTED, fontFamily: SANS, fontStyle: "italic", lineHeight: 1.5 }}>
+          Not captured yet — Atlas hasn't seen this project's stack.
+        </div>
+        {rows.map((r) => (
+          <FieldBlock key={r.label} label={r.label} value="" help={r.help} missingHint={r.missingHint} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {rows.map((r) => (
+        <FieldBlock key={r.label} label={r.label} value={r.value ?? ""} help={r.help} missingHint={r.missingHint} />
+      ))}
+      {hasIntegrations && (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+            <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO }}>
+              Integrations
+            </span>
+            <HelpDot label="Integrations" help="Third-party services this project talks to (APIs, providers, SDKs)." />
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {stack!.integrations.map((tag) => (
+              <span
+                key={tag}
+                style={{
+                  fontSize: 11,
+                  fontFamily: MONO,
+                  color: FG,
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  border: `1px solid ${BORDER}`,
+                  background: "color-mix(in oklab, var(--atlas-fg) 3%, transparent)",
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {hasRepo && (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+            <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO }}>
+              Repo
+            </span>
+            <HelpDot label="Repo" help="The source-of-truth code repository for this project." />
+          </div>
+          <a
+            href={stack!.repo!.startsWith("http") ? stack!.repo! : `https://${stack!.repo}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              fontFamily: MONO,
+              color: GOLD,
+              textDecoration: "none",
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: `1px solid ${BORDER}`,
+            }}
+          >
+            {stack!.repo!.replace(/^https?:\/\//, "")} <span style={{ opacity: 0.7 }}>↗</span>
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function EntryRow({ title, summary, status }: { title: string; summary: string | null; status: string }) {
   return (
