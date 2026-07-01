@@ -5936,8 +5936,7 @@ export default function Home() {
         onNew={() => {
           setShowHistory(false);
           handleNewConversation();
-          setGlobalInsightOpen(true);
-          setDepth("active");
+          enterAskAtlasMode();
         }}
         onSelect={(id) => handleSwitchConversation(String(id))}
         onDelete={(id) => handleDeleteConversation(String(id))}
