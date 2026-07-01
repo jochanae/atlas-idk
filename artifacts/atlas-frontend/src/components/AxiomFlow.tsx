@@ -2388,46 +2388,86 @@ export function AxiomFlow({
 
         )}
         {/* Refresh / re-hydrate button — always accessible even in drill-down mode */}
-        {!flowLoading && projectId && (
-          <button
-            type="button"
-            title={hydrateLoading ? "Analyzing…" : "Update — Atlas re-reads decisions, ledger, and architecture"}
-            onClick={(e) => { e.stopPropagation(); void hydrateFlow(); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
-            disabled={hydrateLoading}
-            style={{
-              width: 22, height: 22,
-              borderRadius: 6,
-              border: `1px solid ${theme === "parchment" ? "rgba(146,64,14,0.22)" : "rgba(201,162,76,0.22)"}`,
-              background: theme === "parchment" ? "rgba(255,252,245,0.70)" : "rgba(10,10,12,0.55)",
-              color: theme === "parchment" ? "rgba(146,64,14,0.72)" : "rgba(201,162,76,0.72)",
-              cursor: hydrateLoading ? "wait" : "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              backdropFilter: "blur(6px)",
-              opacity: hydrateLoading ? 0.5 : 1,
-              transition: "opacity 120ms ease",
-              flexShrink: 0,
-            }}
-          >
-            {hydrateLoading ? (
-              <div style={{
-                width: 10, height: 10, borderRadius: "50%",
-                border: `1.5px solid ${theme === "parchment" ? "rgba(146,64,14,0.2)" : "rgba(201,162,76,0.2)"}`,
-                borderTopColor: theme === "parchment" ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.8)",
-                animation: "axiomFlowSpin 0.8s linear infinite",
-              }} />
-            ) : (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-                <path d="M16 21h5v-5" />
-              </svg>
+        {!flowLoading && projectId && (() => {
+          const needsHydrateHint =
+            !hydrateLoading &&
+            nodes.length > 0 &&
+            nonWontNodes.filter(isNodeDefined).length === 0;
+          return (
+          <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+            {needsHydrateHint && (
+              <>
+                <style>{`@keyframes atlasHydrateRing { 0%{transform:scale(0.9);opacity:0.55} 70%{transform:scale(1.75);opacity:0} 100%{transform:scale(1.75);opacity:0} }`}</style>
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute", inset: -3,
+                    borderRadius: 9,
+                    border: `1.5px solid rgba(${palette.goldRgb},0.55)`,
+                    animation: "atlasHydrateRing 1.8s ease-out infinite",
+                    pointerEvents: "none",
+                  }}
+                />
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)", right: 0,
+                    padding: "3px 7px", borderRadius: 5,
+                    background: theme === "parchment" ? "rgba(255,252,245,0.96)" : "rgba(10,10,12,0.92)",
+                    border: `1px solid rgba(${palette.goldRgb},0.45)`,
+                    color: `rgba(${palette.goldRgb},0.95)`,
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase",
+                    whiteSpace: "nowrap", pointerEvents: "none",
+                    boxShadow: `0 4px 14px rgba(0,0,0,0.35)`,
+                  }}
+                >
+                  Tap to hydrate
+                </span>
+              </>
             )}
-          </button>
-        )}
+            <button
+              type="button"
+              title={hydrateLoading ? "Analyzing…" : needsHydrateHint ? "Tap to hydrate — Atlas reads decisions, ledger, and architecture" : "Update — Atlas re-reads decisions, ledger, and architecture"}
+              onClick={(e) => { e.stopPropagation(); void hydrateFlow(); }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+              disabled={hydrateLoading}
+              style={{
+                position: "relative",
+                width: 22, height: 22,
+                borderRadius: 6,
+                border: `1px solid ${needsHydrateHint ? `rgba(${palette.goldRgb},0.65)` : (theme === "parchment" ? "rgba(146,64,14,0.22)" : "rgba(201,162,76,0.22)")}`,
+                background: theme === "parchment" ? "rgba(255,252,245,0.70)" : "rgba(10,10,12,0.55)",
+                color: theme === "parchment" ? "rgba(146,64,14,0.72)" : "rgba(201,162,76,0.72)",
+                cursor: hydrateLoading ? "wait" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                backdropFilter: "blur(6px)",
+                opacity: hydrateLoading ? 0.5 : 1,
+                transition: "opacity 120ms ease, border-color 120ms ease",
+                flexShrink: 0,
+              }}
+            >
+              {hydrateLoading ? (
+                <div style={{
+                  width: 10, height: 10, borderRadius: "50%",
+                  border: `1.5px solid ${theme === "parchment" ? "rgba(146,64,14,0.2)" : "rgba(201,162,76,0.2)"}`,
+                  borderTopColor: theme === "parchment" ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.8)",
+                  animation: "axiomFlowSpin 0.8s linear infinite",
+                }} />
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                  <path d="M16 21h5v-5" />
+                </svg>
+              )}
+            </button>
+          </div>
+          );
+        })()}
         {/* Hint icon */}
         <div
           title="Tap node · Pinch to zoom · Double-tap to fit"
