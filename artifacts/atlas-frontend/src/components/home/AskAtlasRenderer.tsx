@@ -15,7 +15,7 @@ const FILE_PATH_RE = /`([^`]*\/[^`]+\.[a-z]{2,4})`|(?<!\w)((?:src|artifacts|pack
 // Matches the verbatim fallback phrase Atlas emits after workspace creation
 const FOLDER_CTA_RE = /tap the folder icon \(🗂\)[^.!?\n]*/gi;
 
-export function GlobalInsightRenderer({ content, projects, onNavigate, isParchment, onCreateProject }: Props) {
+export function AskAtlasRenderer({ content, projects, onNavigate, isParchment, onCreateProject }: Props) {
   if (!content) return null;
 
   void useLocation;

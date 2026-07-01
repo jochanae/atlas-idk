@@ -14,7 +14,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
-import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
+import { AskAtlasRenderer } from "./AskAtlasRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
@@ -610,7 +610,7 @@ export function AskAtlasSurface({
                       style={{ marginTop: 0, marginBottom: displayContent ? 10 : 0 }}
                     />
                   )}
-                  <GlobalInsightRenderer
+                  <AskAtlasRenderer
                     content={displayContent}
                     projects={projects}
                     onNavigate={(id) => void handleProjectOpen(id)}
