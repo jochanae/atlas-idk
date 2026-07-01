@@ -350,6 +350,10 @@ html, body {
   --atlas-shadow-md:    rgba(15,23,42,0.12);
   --atlas-shadow-lg:    rgba(15,23,42,0.18);
 
+  /* Hairline shadow, parchment tuning — cool slate wash over warm bg. */
+  --atlas-header-shadow: 0 1px 0 rgba(15,23,42,0.06), 0 6px 14px rgba(15,23,42,0.08);
+
+
   /* Obsidian Shield — gold isolation container */
   --atlas-brand-shield-bg:     #0F172A;
   --atlas-brand-shield-border: rgba(255, 255, 255, 0.15);
