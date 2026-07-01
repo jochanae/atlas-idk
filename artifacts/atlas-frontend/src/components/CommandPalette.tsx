@@ -8,7 +8,7 @@ import {
   type Command as Cmd,
 } from "@/lib/commandRegistry";
 
-const SECTION_ORDER = ["Navigation", "Atlas", "Launcher", "System"];
+const SECTION_ORDER = ["Navigation", "Atlas", "Launcher", "Build", "System"];
 
 function groupBySection(cmds: Cmd[]): [string, Cmd[]][] {
   const map = new Map<string, Cmd[]>();
@@ -54,6 +54,30 @@ export function CommandPalette() {
       { id: "launcher-conversations", label: "Conversations", description: "Browse projects and threads",     keywords: ["conversations","threads"],    section: "Launcher", action: () => fire("axiom:launcher-conversations") },
       { id: "launcher-files",         label: "Files",         description: "Open the file tree",              keywords: ["files","tree"],               section: "Launcher", action: () => fire("axiom:launcher-files") },
       { id: "launcher-settings",      label: "Settings",      description: "Account and preferences",         keywords: ["settings","account","prefs"], section: "Launcher", action: () => fire("axiom:launcher-settings") },
+
+      // Build
+      {
+        id: "build-typecheck",
+        label: "Run Typecheck",
+        description: "Type-check the frontend codebase",
+        keywords: ["typecheck", "tsc", "typescript", "errors", "build", "check"],
+        section: "Build",
+        action: () => {
+          window.dispatchEvent(new CustomEvent("axiom:build-run", { detail: { command: "typecheck" } }));
+          setOpen(false);
+        },
+      },
+      {
+        id: "build-build",
+        label: "Run Build",
+        description: "Full production build of the frontend",
+        keywords: ["build", "compile", "bundle", "vite", "production"],
+        section: "Build",
+        action: () => {
+          window.dispatchEvent(new CustomEvent("axiom:build-run", { detail: { command: "build" } }));
+          setOpen(false);
+        },
+      },
 
       // System
       {

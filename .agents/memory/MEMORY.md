@@ -38,3 +38,4 @@
 - [ComposerActions menu items](composer-actions-structure.md) — Write removed from ComposerMenuAction type + MORE_ITEMS; always grep ComposerActions.tsx + workspace.tsx more sheet together when removing menu items
 - [ShellNavMenu event routing](shell-nav-menu-events.md) — axiom:open-nav-drawer opens drawer everywhere; axiom:open-projects-drawer opens project switcher in workspace (wrong for global nav); dashboard dispatches axiom:open-dashboard → home OverviewBottomSheet
 - [Conversation-first routing](conversation-first-routing.md) — POST /api/conversations creates project+UUID; homepage Send navigates to workspace (shouldStayOnHome now defaults false); pre-model writeStep removed from chat.ts for faster first token
+- [Build Runner Architecture](build-runner.md) — SSE POST /api/builds, project_builds table, BuildPanel overlay via axiom:build-run event, Phase 2 = workspace BUILD_RUN action

@@ -42,6 +42,7 @@ import applicationModelRouter from "./applicationModel";
 import projectDnaRouter from "./projectDna";
 import designPlanRouter from "./designPlan";
 import checkpointsRouter from "./checkpoints";
+import buildsRouter from "./builds";
 import readinessRouter from "./readiness";
 import intelligenceRouter from "./intelligence";
 import fsRouter from "./fs";
@@ -130,6 +131,7 @@ router.use(requireAuth, applicationModelRouter);
 router.use(requireAuth, projectDnaRouter);
 router.use(requireAuth, designPlanRouter);
 router.use(requireAuth, checkpointsRouter);
+router.use(requireAuth, buildsRouter);
 router.use(requireAuth, readinessRouter);
 router.use(requireAuth, intelligenceRouter);
 

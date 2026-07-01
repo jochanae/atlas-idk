@@ -23,6 +23,7 @@ import AtlasMemoryHUD from "@/components/workspace/AtlasMemoryHUD";
 import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { SpecifySheet } from "@/components/SpecifySheet";
 import { CommandPalette } from "@/components/CommandPalette";
+import { BuildPanel } from "@/features/builds/BuildPanel";
 import { CaptureLauncher } from "@/components/CaptureLauncher";
 import { SearchLauncher } from "@/components/SearchLauncher";
 import { FilesLauncher } from "@/components/FilesLauncher";
@@ -2266,6 +2267,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
       )}
       <SpecifySheet />
       <CommandPalette />
+      <BuildPanel />
       <CaptureLauncher />
       <SearchLauncher />
       <FilesLauncher />

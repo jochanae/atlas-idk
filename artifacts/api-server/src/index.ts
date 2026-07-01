@@ -278,6 +278,28 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: ledger tables failed — server will start anyway");
   }
 
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_builds (
+        id          text PRIMARY KEY,
+        project_id  integer REFERENCES projects(id) ON DELETE SET NULL,
+        command     text NOT NULL,
+        status      text NOT NULL DEFAULT 'running',
+        output      text,
+        error_summary text,
+        started_at  timestamptz NOT NULL DEFAULT now(),
+        finished_at timestamptz
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS project_builds_project_id_idx
+        ON project_builds (project_id, started_at DESC)
+    `);
+    logger.info("ensureColumns: project_builds table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: project_builds table failed — server will start anyway");
+  }
+
   // Atomic migration: verify ALL source columns exist, copy data, then drop — in one transaction.
   // The DROP only executes if the INSERT succeeds; the transaction rolls back on any error so
   // the legacy columns are never lost without a confirmed successful copy.
