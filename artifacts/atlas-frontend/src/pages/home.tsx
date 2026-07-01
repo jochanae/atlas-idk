@@ -4270,7 +4270,7 @@ export default function Home() {
             height: globalInsightOpen ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
-            justifyContent: globalInsightOpen ? "flex-start" : "center",
+            justifyContent: (globalInsightOpen || askAtlasConversationActive) ? "flex-start" : "center",
             position: "relative",
             paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
             paddingTop: globalInsightOpen ? 0 : 0,
