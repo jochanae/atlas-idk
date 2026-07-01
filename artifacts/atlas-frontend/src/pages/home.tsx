@@ -3582,6 +3582,14 @@ export default function Home() {
       // them — not into nexusChat which feeds the ambient homepage renderer.
       askAtlasChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
       nexusChat.clearMessages();
+
+      // Pre-mark the thread-request ref with the new id BEFORE calling
+      // setActiveConversationId so the load useEffect's guard at line ~2678
+      // sees the id already handled and skips — preventing nexusChat from
+      // being re-populated with the same messages and activating the ambient
+      // home surface behind AskAtlasSurface.
+      conversationThreadRequestRef.current = { conversationId: id, requestId: Date.now() };
+
       setActiveConversationId(id);
       setReviewingPlanIds(new Set());
       try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
@@ -5488,6 +5496,7 @@ export default function Home() {
         }}
         onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
         onOpenShell={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-shell")); }}
+        onSelectConversation={(id) => { setShowDrawer(false); void handleSwitchConversation(id); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
       />
 
