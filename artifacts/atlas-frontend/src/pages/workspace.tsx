@@ -297,7 +297,7 @@ type ManifestDecisionResponse = {
   componentName?: string;
 };
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "jobs" | "mcp" | "image" | "forge" | "artifacts" | "manifest" | "write";
+type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "jobs" | "mcp" | "image" | "forge" | "artifacts" | "manifest" | "insights" | "write";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
