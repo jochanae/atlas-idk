@@ -173,6 +173,7 @@ export function ComposerActions({
   globalContext = false,
   onSketch,
   hidePark = false,
+  compact = false,
 }: ComposerActionsProps) {
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
