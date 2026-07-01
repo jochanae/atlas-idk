@@ -4895,9 +4895,9 @@ export default function Home() {
                   });
                 }}
                 style={{
-                  height: isMobile ? 32 : 34,
-                  display: "inline-flex", alignItems: "center", gap: isMobile ? 4 : 6,
-                  padding: isMobile ? "0 8px" : "0 10px", borderRadius: 999,
+                  height: isTiny ? 28 : 34,
+                  display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
+                  padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
                   background: sendTo === "ask-atlas"
                     ? "color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
                     : "transparent",
