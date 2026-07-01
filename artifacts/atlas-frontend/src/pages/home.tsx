@@ -60,7 +60,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
