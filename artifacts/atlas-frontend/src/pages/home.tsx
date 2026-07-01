@@ -3751,7 +3751,7 @@ export default function Home() {
         backgroundColor: "var(--atlas-bg)",
         display: "flex",
         flexDirection: "column",
-        overflowY: globalInsightOpen ? "hidden" : "auto",
+        overflowY: "hidden",
         overflowX: "hidden",
       }}
     >
@@ -4283,7 +4283,7 @@ export default function Home() {
                     setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
                   }}
                   style={{
-                    display: "flex", flexDirection: "column", gap: 12,
+                    display: "flex", flexDirection: "column", gap: 20,
                     justifyContent: globalInsightOpen ? "flex-end" : undefined,
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
@@ -4295,11 +4295,11 @@ export default function Home() {
                     position: "relative",
                     border: "none",
                     borderRadius: 0,
-                    paddingTop: globalInsightOpen ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
-                    scrollPaddingTop: globalInsightOpen ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
+                    paddingTop: globalInsightOpen ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
+                    scrollPaddingTop: globalInsightOpen ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
                     paddingBottom: globalInsightOpen
                       ? "calc(24px + env(safe-area-inset-bottom, 0px))"
-                      : 96,
+                      : "calc(var(--atlas-composer-height, 96px) + var(--atlas-dock-clearance, 24px) + env(safe-area-inset-bottom, 0px))",
                     WebkitMaskImage: globalInsightOpen
                       ? "none"
                       : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
