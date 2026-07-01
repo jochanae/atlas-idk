@@ -5454,7 +5454,7 @@ export default function Home() {
 
       {showProjectsSheet && (
         <ProjectsGridSheet
-          projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name, description: p.description, latestSnapshotScore: p.latestSnapshotScore ?? null }))}
+          projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name, description: p.description, readinessScore: (p as { readinessScore?: number | null }).readinessScore ?? null, latestSnapshotScore: p.latestSnapshotScore ?? null }))}
           onOpenProject={(id) => { setShowProjectsSheet(false); navigateToProject(id); }}
           onNewProject={() => {
             setShowProjectsSheet(false);
