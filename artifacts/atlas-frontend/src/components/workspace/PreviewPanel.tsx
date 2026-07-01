@@ -1865,6 +1865,8 @@ ${t}
                 >
                   {showEnvVars ? "Hide Env" : "Env Vars"}
                 </button>
+                <div style={{ flex: 1 }} />
+                {routePickerButton}
               </div>
 
               {/* Env vars editor */}
