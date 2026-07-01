@@ -4128,11 +4128,12 @@ export default function Home() {
                   display: "flex",
                   flexDirection: "column",
                   gap: 12,
-                  padding: "52px 4px 16px",
+                  padding: "52px 4px 24px",
                   scrollbarWidth: "none",
                   msOverflowStyle: "none",
-                  zIndex: 1,
+                  zIndex: 2,
                   textAlign: "left",
+                  background: "var(--atlas-bg)",
                 }}
               >
                 {askAtlasChat.messages.map((m, i) => {
