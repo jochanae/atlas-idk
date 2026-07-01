@@ -1184,7 +1184,11 @@ export function AxiomFlow({
         return;
       }
       // Apply radial layout (x/y returned by AI are ignored)
-      const positioned = layoutRadial(data.nodes ?? []);
+      const laidOut = layoutRadial(data.nodes ?? []);
+      // Normalize `resolved` so every surface reading nodeState agrees with
+      // AxiomFlow's strategicAnswer-based definition. Fixes the "I hydrated
+      // but the header ring / pulse didn't update" bug.
+      const positioned = laidOut.map(n => ({ ...n, resolved: isNodeDefined(n) }));
       const hydratedEdges = data.edges ?? [];
       setNodes(positioned);
       setEdges(hydratedEdges);
