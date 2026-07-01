@@ -860,6 +860,10 @@ ${t}
   const deviceWrapperStyle: React.CSSProperties = {
     flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center",
     overflow: "auto",
+    // Contain the scroll so mobile swipes don't propagate to the browser chrome
+    // and trigger the URL-bar show/hide (which flickers the fixed tab bar).
+    overscrollBehavior: "contain",
+    WebkitOverflowScrolling: "touch",
     padding: deviceSize === "desktop" ? "8px 6px" : "12px 8px",
     background: "rgba(0,0,0,0.18)",
   };
