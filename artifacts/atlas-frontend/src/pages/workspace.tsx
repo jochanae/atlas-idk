@@ -7184,7 +7184,7 @@ export default function Workspace() {
   return (
     <>
       {/* FocusModeAura removed — aura now lives on the composer border (see composerAura.ts) */}
-      <ShellViewportSync />
+
       {showIntake && (
         <ForgeIntake
           projectId={id}
