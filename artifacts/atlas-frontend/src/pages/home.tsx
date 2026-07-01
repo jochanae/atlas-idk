@@ -4825,7 +4825,7 @@ export default function Home() {
                 onClick={() => void handleOpenHistory()}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 32, height: 32, borderRadius: 999, border: "none",
+                  width: isTiny ? 26 : 32, height: isTiny ? 26 : 32, borderRadius: 999, border: "none",
                   background: "transparent",
                   color: "rgba(201,162,76,0.85)",
                   cursor: "pointer", flexShrink: 0, padding: 0,
