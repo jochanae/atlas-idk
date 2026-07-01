@@ -6721,6 +6721,7 @@ export default function Workspace() {
 
   const handleReviewPushSuccess = useCallback((records: PushRecord[]) => {
     haptic.double();
+    window.dispatchEvent(new CustomEvent("axiom:patch-applied"));
     setPushHistory((prev) => {
       const next = [...prev, ...records].slice(-20);
       updateProjectHeader.mutate({ id, data: { pushHistory: next } });
@@ -6793,6 +6794,7 @@ export default function Workspace() {
           undefined,
           { displayAs: "autoVerify" },
         );
+        window.dispatchEvent(new CustomEvent("axiom:patch-applied"));
         // If the workspace was already running, trigger an auto-rebuild with the new files
         if (wsWasRunningRef.current) {
           setRebuildTrigger(t => t + 1);
