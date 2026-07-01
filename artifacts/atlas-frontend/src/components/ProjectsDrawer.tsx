@@ -389,7 +389,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                               projectId={p.id}
                               projectName={p.name}
                               status={p.status}
-                              readinessScore={p.latestSnapshotScore ?? null}
+                              readinessScore={p.readinessScore ?? p.latestSnapshotScore ?? null}
                               size={12}
                             />
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
