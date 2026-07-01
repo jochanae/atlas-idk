@@ -4247,10 +4247,11 @@ export default function Home() {
               margin: globalInsightOpen
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
                 : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
-              minHeight: globalInsightOpen ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
-              flex: globalInsightOpen ? 1 : undefined,
-              display: globalInsightOpen ? "flex" : undefined,
-              flexDirection: globalInsightOpen ? "column" : undefined,
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
               minWidth: 0,
             }}>
               {nexusChat.messages.length > 0 && (
