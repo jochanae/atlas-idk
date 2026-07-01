@@ -1608,7 +1608,7 @@ export default function MasterMap() {
               {(() => {
                 const proj = projects.find(p => p.id === context.projectId);
                 const cachedReadiness = proj ? readinessCacheRef.current.get(proj.id) : undefined;
-                const score = cachedReadiness?.score ?? proj?.latestSnapshotScore;
+                const score = cachedReadiness?.score ?? proj?.readinessScore ?? proj?.latestSnapshotScore;
                 const updated = proj?.updatedAt ? new Date(proj.updatedAt) : null;
                 const daysAgo = updated ? Math.floor((Date.now() - updated.getTime()) / 86400000) : null;
                 const lastActive = daysAgo === 0 ? "Active today" : daysAgo === 1 ? "Yesterday" : daysAgo != null ? `${daysAgo}d ago` : null;
