@@ -2252,11 +2252,11 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             gap: isTinyMobile ? 6 : 12,
             padding: isTinyMobile ? "0 10px" : "0 clamp(14px, 4vw, 24px)",
             borderBottom: currentDepth === "ambient" ? "none" : undefined,
-            boxShadow: "none",
+            boxShadow: currentDepth !== "ambient" && scrolled ? "var(--atlas-header-shadow)" : "none",
             opacity: 1,
             background: currentDepth === "ambient" ? "transparent" : undefined,
             backdropFilter: currentDepth === "ambient" ? "none" : undefined,
-            transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft), backdrop-filter var(--motion-deliberate) var(--ease-out-soft), border-color var(--motion-deliberate) var(--ease-out-soft)",
+            transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft), backdrop-filter var(--motion-deliberate) var(--ease-out-soft), border-color var(--motion-deliberate) var(--ease-out-soft), box-shadow 220ms var(--ease-out-soft)",
           }}
         >
           <div style={{ flexShrink: 0, minWidth: 0, position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 4 }}>
