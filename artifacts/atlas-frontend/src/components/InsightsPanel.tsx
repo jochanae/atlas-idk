@@ -281,6 +281,11 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
         <DnaGrid dna={dna} />
       </Section>
 
+      {/* Stack */}
+      <Section title="Stack">
+        <StackBlock stack={intel.stack ?? null} />
+      </Section>
+
       {/* Manifest (vision + emotion) */}
       {(dna.purpose || dna.coreEmotion || dna.differentiator) && (
         <Section title="Manifest">
