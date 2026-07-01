@@ -147,7 +147,7 @@ function briefingLines(intel: Intelligence): string[] {
   return lines;
 }
 
-export function InsightsPanel({ projectId }: { projectId: number | null }) {
+export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | null; onOpenFlow?: () => void }) {
   const [, setLocation] = useLocation();
   const [intel, setIntel] = useState<Intelligence | null>(null);
   const [loading, setLoading] = useState(false);
