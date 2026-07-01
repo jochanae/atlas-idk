@@ -7648,7 +7648,7 @@ export default function Workspace() {
             pushHistory={pushHistory}
             onRollbackPush={handleRollbackPush}
             onHomeNav={() => setLocation("/home")}
-            forceTab={isMobile && mobileTab === "manifest" ? "manifest" : isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : isMobile && mobileTab === "memory" ? "memory" : isMobile && mobileTab === "connections" ? "connections" : isMobile && mobileTab === "write" ? "write" : desktopForceTab}
+            forceTab={isMobile && mobileTab === "insights" ? "insights" : isMobile && mobileTab === "manifest" ? "manifest" : isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : isMobile && mobileTab === "memory" ? "memory" : isMobile && mobileTab === "connections" ? "connections" : isMobile && mobileTab === "write" ? "write" : desktopForceTab}
             onSendIntent={sendFromIntentCapture}
             onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
             onMapReadinessChange={setMapReadiness}
