@@ -1317,20 +1317,20 @@ mark.atlas-search-hit.atlas-search-hit--active {
 }
 
 /* 1) Hamburger / drawer trigger in the header — charcoal, not gold. */
-[data-theme="parchment"] .atlas-app-header button[aria-label="Open projects"],
-[data-theme="parchment"] .atlas-app-header button[aria-label="Open projects"] * {
+[data-theme="parchment"] .atlas-drawer-trigger,
+[data-theme="parchment"] .atlas-drawer-trigger * {
   color: var(--atlas-icon) !important;
 }
-[data-theme="parchment"] .atlas-app-header button[aria-label="Open projects"]:hover {
+[data-theme="parchment"] .atlas-drawer-trigger:hover,
+[data-theme="parchment"] .atlas-drawer-trigger:hover * {
   color: var(--atlas-icon-muted) !important;
 }
 
 /* 2) AXIOM wordmark — charcoal in parchment. Logo mark carries the brand. */
-[data-theme="parchment"] .atlas-app-header button[aria-label="Go home"],
-[data-theme="parchment"] .atlas-app-header button[aria-label="Return to ambient Nexus"],
-[data-theme="parchment"] .atlas-app-header button[aria-label="Open command palette"] + button {
+[data-theme="parchment"] .atlas-wordmark {
   color: var(--atlas-icon) !important;
 }
+
 
 /* 3) Avatar ring — neutral in parchment (was gold rgba). */
 [data-theme="parchment"] .atlas-avatar-ring {
