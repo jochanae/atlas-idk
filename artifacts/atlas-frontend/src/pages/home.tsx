@@ -4007,9 +4007,9 @@ export default function Home() {
             justifyContent: globalInsightOpen ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
             position: "relative",
             paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
-            paddingTop: globalInsightOpen ? 0 : 0,
+            paddingTop: (globalInsightOpen || !askAtlasConversationActive) ? 0 : 48,
             minWidth: 0,
-            overflow: globalInsightOpen ? "hidden" : "visible",
+            overflow: (globalInsightOpen || askAtlasConversationActive) ? "hidden" : "visible",
           }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
