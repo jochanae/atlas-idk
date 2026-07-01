@@ -544,6 +544,84 @@ function FieldBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
+function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
+  if (!stack) {
+    return <EmptyLine>Not captured yet — Atlas hasn't seen this project's stack.</EmptyLine>;
+  }
+  const rows: { label: string; value: string | null }[] = [
+    { label: "Frontend", value: stack.frontend },
+    { label: "Backend", value: stack.backend },
+    { label: "Database", value: stack.database },
+    { label: "Hosting", value: stack.hosting },
+    { label: "Auth", value: stack.auth },
+    { label: "Language", value: stack.language },
+    { label: "Package manager", value: stack.packageManager },
+  ];
+  const known = rows.filter((r) => r.value);
+  const hasIntegrations = stack.integrations && stack.integrations.length > 0;
+  if (known.length === 0 && !hasIntegrations && !stack.repo) {
+    return <EmptyLine>Stack row exists but no fields captured yet.</EmptyLine>;
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {known.map((r) => (
+        <FieldBlock key={r.label} label={r.label} value={r.value ?? ""} />
+      ))}
+      {hasIntegrations && (
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO, marginBottom: 5 }}>
+            Integrations
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {stack.integrations.map((tag) => (
+              <span
+                key={tag}
+                style={{
+                  fontSize: 11,
+                  fontFamily: MONO,
+                  color: FG,
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  border: `1px solid ${BORDER}`,
+                  background: "color-mix(in oklab, var(--atlas-fg) 3%, transparent)",
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {stack.repo && (
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO, marginBottom: 5 }}>
+            Repo
+          </div>
+          <a
+            href={stack.repo.startsWith("http") ? stack.repo : `https://${stack.repo}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              fontFamily: MONO,
+              color: GOLD,
+              textDecoration: "none",
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: `1px solid ${BORDER}`,
+            }}
+          >
+            {stack.repo.replace(/^https?:\/\//, "")} <span style={{ opacity: 0.7 }}>↗</span>
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EntryRow({ title, summary, status }: { title: string; summary: string | null; status: string }) {
   return (
     <li style={{
