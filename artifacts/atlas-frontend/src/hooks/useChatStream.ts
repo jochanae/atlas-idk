@@ -543,6 +543,7 @@ export function useChatStream(
               ...(fds.length > 0 ? { fileDeletes: fds } : {}),
               ...(fms.length > 0 ? { fileMoves: fms } : {}),
               ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
+              ...(Array.isArray(res.nextSuggestions) && res.nextSuggestions.length > 0 ? { nextSuggestions: res.nextSuggestions as string[] } : {}),
               ...(repoSearchPayload ? { repoSearch: repoSearchPayload } : {}),
               ...(extractionQueuedFlag ? { extractionQueued: true } : {}),
               ...(res.imageB64
@@ -906,6 +907,7 @@ export function useChatStream(
             ...(fds.length > 0 ? { fileDeletes: fds } : {}),
             ...(fms.length > 0 ? { fileMoves: fms } : {}),
             ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
+            ...(Array.isArray(res.nextSuggestions) && res.nextSuggestions.length > 0 ? { nextSuggestions: res.nextSuggestions as string[] } : {}),
             ...(repoSearchPayload ? { repoSearch: repoSearchPayload } : {}),
             ...(extractionQueuedFlag ? { extractionQueued: true } : {}),
             ...(res.imageB64

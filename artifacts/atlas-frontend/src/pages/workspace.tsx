@@ -241,6 +241,7 @@ export interface ChatMessage {
   fileDeletes?: Array<{ path: string }>;
   fileMoves?: Array<{ from: string; to: string }>;
   memoryChips?: MemoryChip[];
+  nextSuggestions?: string[];
   sentAt?: string;
   imageB64?: string;
   imageMimeType?: string;

@@ -462,6 +462,27 @@ function extractIntentType(content: string): { content: string; intentType: stri
   return { content: cleaned, intentType };
 }
 
+// ── Next Suggestions Parser ───────────────────────────────────────────────────
+// Extracts the optional NEXT_SUGGESTIONS token Atlas emits for tappable chips.
+// Format (on its own line): NEXT_SUGGESTIONS:["chip one","chip two","chip three"]
+const NEXT_SUGGESTIONS_RE = /^NEXT_SUGGESTIONS:\s*(\[.*?\])\s*$/im;
+
+function extractNextSuggestions(content: string): { content: string; nextSuggestions: string[] } {
+  const match = content.match(NEXT_SUGGESTIONS_RE);
+  if (!match) return { content, nextSuggestions: [] };
+  let chips: string[] = [];
+  try {
+    const parsed = JSON.parse(match[1]) as unknown;
+    if (Array.isArray(parsed)) {
+      chips = (parsed as unknown[])
+        .filter((c): c is string => typeof c === "string" && c.length > 0 && c.length <= 72)
+        .slice(0, 3);
+    }
+  } catch { /* malformed JSON — ignore */ }
+  const cleaned = content.replace(NEXT_SUGGESTIONS_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+  return { content: cleaned, nextSuggestions: chips };
+}
+
 type ChatTerminalCommand = {
   command: string;
   tier: TerminalTier;
@@ -802,7 +823,17 @@ INTENT_TYPE: EXPLORE  — you researched, inspected files, or gathered informati
 INTENT_TYPE: DEBUG    — you diagnosed an error or bug
 INTENT_TYPE: AUDIT    — you reviewed code, architecture, or decisions for quality
 
-This is critical: PLAN, DECIDE, THINK, EXPLORE, DEBUG, and AUDIT responses are never expected to include FILE_EDIT blocks. Only BUILD responses produce code edits. Do not feel pressure to add FILE_EDIT blocks to non-BUILD responses.`;
+This is critical: PLAN, DECIDE, THINK, EXPLORE, DEBUG, and AUDIT responses are never expected to include FILE_EDIT blocks. Only BUILD responses produce code edits. Do not feel pressure to add FILE_EDIT blocks to non-BUILD responses.
+
+NEXT_SUGGESTIONS (emit when offering choices or when the next step is genuinely unclear):
+At the very end of your response, on its own line, optionally emit:
+NEXT_SUGGESTIONS:["chip one","chip two","chip three"]
+
+Rules:
+- Emit when: you gave options/tradeoffs/analysis and there are 2-3 clear actionable follow-ups; the user expressed ambiguity ("not sure", "which direction", "help me decide"); after a DECIDE or PLAN response with multiple paths.
+- Do NOT emit when: the user gave clear intent and you acted on it; BUILD response with file edits; a simple factual answer; a direct follow-up question; the user is mid-build; the path forward is obvious.
+- Each chip must be ≤ 60 characters, phrased as something the user would naturally say or tap ("Start with option 1", "Show me the tradeoffs", "Build the onboarding flow first").
+- Max 3 chips. If you can't think of genuinely useful chips, omit the token entirely.`;
 
 const FOUNDATION_SYSTEM_PROMPT = `${ATLAS_IDENTITY}
 
@@ -4338,7 +4369,8 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   const { content: afterMemory, newFacts } = extractMemoryLines(visibleContent);
   const { content: afterNodeResolved, resolvedNodes } = extractNodeResolved(afterMemory);
   const { content: afterIntent, intentType: detectedIntentType } = extractIntentType(afterNodeResolved);
-  const { content: finalContentRaw, memoryChips: aiMemoryChips } = detectMemoryChips(afterIntent);
+  const { content: afterSuggestions, nextSuggestions: detectedNextSuggestions } = extractNextSuggestions(afterIntent);
+  const { content: finalContentRaw, memoryChips: aiMemoryChips } = detectMemoryChips(afterSuggestions);
   const { content: finalContent, repoSearchQuery } = detectRepoSearchRequest(finalContentRaw);
 
   // Auto-match ledger entries referenced in the response
@@ -4753,6 +4785,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     alertPayload: alertPayload ?? undefined,
     model: activeModel,
     memoryChips: allChips.length > 0 ? allChips : undefined,
+    nextSuggestions: detectedNextSuggestions.length > 0 ? detectedNextSuggestions : undefined,
     messageId: savedMsgId,
     memoryUpdated: newFacts.length > 0,
     ...(projectId ? { extractionQueued: true } : {}),

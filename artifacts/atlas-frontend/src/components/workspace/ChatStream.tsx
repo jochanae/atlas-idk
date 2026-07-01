@@ -751,6 +751,7 @@ export function ChatStream(props: ChatStreamProps) {
       {showSuggestionChips && onSuggestionTap && (
         <SuggestionChipRail
           lastAssistantText={lastAssistantText}
+          nextSuggestions={lastMsg?.nextSuggestions}
           onTap={onSuggestionTap}
           onLongPress={onSuggestionPark ?? onSuggestionTap}
         />

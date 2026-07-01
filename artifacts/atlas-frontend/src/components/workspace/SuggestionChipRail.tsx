@@ -1,14 +1,12 @@
 import { useMemo, useRef } from "react";
 
 /**
- * SuggestionChipRail — three next-step chips derived from the trailing
- * "Next steps" / "Next" / bullet list of the last assistant message.
+ * SuggestionChipRail — tappable next-step chips.
+ *
+ * Priority: explicit `nextSuggestions` from backend → regex scraper fallback.
  *
  * Tap: inject into composer.
  * Long-press: dispatch park event (workspace handles via onPark).
- *
- * Frontend-only stopgap until backend emits an explicit `nextSuggestions`
- * field; when it does, replace `extractSuggestions(text)` with a direct read.
  */
 
 const MAX_CHIPS = 3;
@@ -69,12 +67,21 @@ export function extractSuggestions(text: string): string[] {
 
 interface Props {
   lastAssistantText: string;
+  /** Explicit chips from backend NEXT_SUGGESTIONS token — preferred over regex. */
+  nextSuggestions?: string[];
   onTap: (text: string) => void;
   onLongPress: (text: string) => void;
 }
 
-export function SuggestionChipRail({ lastAssistantText, onTap, onLongPress }: Props) {
-  const chips = useMemo(() => extractSuggestions(lastAssistantText), [lastAssistantText]);
+export function SuggestionChipRail({ lastAssistantText, nextSuggestions, onTap, onLongPress }: Props) {
+  // Use explicit backend chips if present; fall back to regex scraper.
+  const chips = useMemo(
+    () =>
+      nextSuggestions && nextSuggestions.length > 0
+        ? nextSuggestions.slice(0, MAX_CHIPS)
+        : extractSuggestions(lastAssistantText),
+    [lastAssistantText, nextSuggestions]
+  );
   const timerRef = useRef<number | null>(null);
   const firedLongRef = useRef(false);
 
