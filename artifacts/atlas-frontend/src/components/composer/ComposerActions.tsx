@@ -54,9 +54,9 @@ export interface ComposerActionsProps {
   hasAttachments?: boolean;
   /** Optional trailing slot — e.g. workspace model chip — rendered between actions and Send. */
   trailing?: ReactNode;
-  /** Strip the borders / chip backgrounds from + and ... buttons (used by Ask Atlas). */
+  /** Strip the borders / chip backgrounds from + and ... buttons (used by Global Insight). */
   borderless?: boolean;
-  /** When true (Ask Atlas), hides workspace-only items from the More menu. */
+  /** When true (Global Insight), hides workspace-only items from the More menu. */
   globalContext?: boolean;
   /** When provided, shows a "Sketch" tile in the + sheet that opens a manual
    *  image-generation prompt. Receives the composed `[SKETCH:<preset>] …`
