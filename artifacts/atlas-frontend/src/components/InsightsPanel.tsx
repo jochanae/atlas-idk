@@ -299,7 +299,7 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
       {/* Affects — Flow Map link */}
       <Section title="Affects">
         <button
-          onClick={() => setLocation("/map")}
+          onClick={() => (onOpenFlow ? onOpenFlow() : setLocation("/map"))}
           style={{
             width: "100%",
             textAlign: "left",
