@@ -591,6 +591,7 @@ ${t}
   const normalize = (raw: string) =>
     raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
 
+  const sMono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
   const routedLiveUrl = liveUrl ? withPreviewRoute(liveUrl, selectedRoute) : "";
   const routedWorkspacePreviewUrl = withPreviewRoute(`/api/preview/workspace/${projectId}/`, selectedRoute);
 
@@ -701,8 +702,6 @@ ${t}
     } catch {}
     setDetecting(false);
   };
-
-  const sMono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
   const platformColor = (p: string) => {
     if (p === "Vercel") return "var(--atlas-fg)";
     if (p === "Netlify") return "rgba(110,231,183,0.8)";
@@ -1881,7 +1880,7 @@ ${t}
           {previewMode === "local" && sessionId && !linkedRepo && wsDsPort && (
             <iframe
               key={`cfs-ws-${projectId}-${wsDsPort}`}
-              src={`/api/preview/workspace/${projectId}/`}
+              src={routedWorkspacePreviewUrl}
               title="Local Dev fullscreen"
               style={{ border: "none", flex: 1, width: "100%", background: "#fff" }}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
