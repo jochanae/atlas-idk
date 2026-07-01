@@ -13,6 +13,8 @@ export type DrawerProject = {
   id: number;
   name: string;
   description?: string | null;
+  /** Canonical live readiness from GET /api/projects (B1). Preferred over latestSnapshotScore. */
+  readinessScore?: number | null;
   latestSnapshotScore?: number | null;
   status?: "shaping" | "committed" | "archived";
 };
