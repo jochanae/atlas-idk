@@ -1,0 +1,105 @@
+/* Forced-state overrides scoped to the showcase page.
+   These only apply inside [data-showcase-root] so they can't leak. */
+
+[data-showcase-root] [data-force-state="hover"] > *:first-child {
+  filter: brightness(1.05);
+}
+[data-showcase-root] [data-force-state="hover"] button,
+[data-showcase-root] [data-force-state="hover"] [role="button"],
+[data-showcase-root] [data-force-state="hover"] .force-target {
+  background-color: color-mix(in oklab, currentColor 8%, transparent);
+  border-color: var(--atlas-gold-border);
+}
+
+[data-showcase-root] [data-force-state="focus"] button,
+[data-showcase-root] [data-force-state="focus"] [role="button"],
+[data-showcase-root] [data-force-state="focus"] input,
+[data-showcase-root] [data-force-state="focus"] textarea,
+[data-showcase-root] [data-force-state="focus"] .force-target {
+  outline: 2px solid var(--atlas-gold);
+  outline-offset: 2px;
+}
+
+[data-showcase-root] [data-force-state="active"] button,
+[data-showcase-root] [data-force-state="active"] [role="button"],
+[data-showcase-root] [data-force-state="active"] .force-target {
+  transform: translateY(1px);
+  background-color: var(--atlas-gold-dim);
+  border-color: var(--atlas-gold);
+}
+
+[data-showcase-root] [data-force-state="disabled"] button,
+[data-showcase-root] [data-force-state="disabled"] [role="button"],
+[data-showcase-root] [data-force-state="disabled"] input,
+[data-showcase-root] [data-force-state="disabled"] textarea,
+[data-showcase-root] [data-force-state="disabled"] .force-target {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+[data-showcase-root] [data-force-state="selected"] .force-target,
+[data-showcase-root] [data-force-state="selected"] > *:first-child {
+  border-color: var(--atlas-gold);
+  background-color: var(--atlas-gold-dim);
+}
+
+[data-showcase-root] .sc-section {
+  border-top: 1px solid var(--atlas-border);
+  padding: 32px 0;
+}
+
+[data-showcase-root] .sc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+[data-showcase-root] .sc-tile {
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--atlas-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 96px;
+}
+
+[data-showcase-root] .sc-caption {
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--atlas-muted);
+}
+
+[data-showcase-root] .sc-forced-badge {
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-gold);
+  border: 1px dashed var(--atlas-gold-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  align-self: flex-start;
+}
+
+[data-showcase-root] .sc-todo {
+  border: 1px dashed var(--atlas-border);
+  color: var(--atlas-muted);
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  background: transparent;
+}
+
+[data-showcase-root] .sc-swatch {
+  width: 100%;
+  height: 44px;
+  border-radius: 6px;
+  border: 1px solid var(--atlas-border);
+}

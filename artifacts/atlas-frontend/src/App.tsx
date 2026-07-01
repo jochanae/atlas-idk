@@ -21,6 +21,7 @@ import ConnectorsPage from "./pages/connectors";
 import Vault from "./pages/vault";
 import MasterMap from "./pages/master-map";
 import RunPage from "./pages/run";
+import Showcase from "./pages/showcase";
 
 import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
@@ -231,6 +232,7 @@ function Router() {
           <Route path="/master-map" component={MasterMap} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/runs/:id" component={RunPage} />
+          <Route path="/showcase" component={Showcase} />
           <Route component={NotFound} />
         </Switch>
       )}

@@ -1,44 +1,79 @@
-## #6 — Ask Atlas handoff audit
 
-Frontend-only. No backend changes. The current handoff (`home.tsx:4268`) always creates a new conversation with a generic seed and a backend-auto-named project. Fix the routing decision and the resulting project name.
+## Reframe
 
-### Files touched
-- `artifacts/atlas-frontend/src/components/AskAtlasOverlay.tsx` — add two helpers: `matchRecommendedProject`, `deriveProjectTitle`.
-- `artifacts/atlas-frontend/src/pages/home.tsx` — rewrite the `Continue in Workspace` `onClick` to use those helpers; add the multi-match picker UI; reuse existing `useListProjects` + `useUpdateProject`.
+Build the **Theme Showcase page first**. Don't touch parchment tokens yet. `/showcase` becomes the surface where we judge every future theme change side by side, and we'll use it to validate the neutral/bronze/purple rebalance in a follow-up pass.
 
-### Behavior
+## What we're building
 
-1. On tap of **Continue in Workspace**:
-   - Run `matchRecommendedProject(askAtlasChat.messages, projects)`.
-   - Scoring: tokenize each project name (drop stopwords, lowercase, strip punctuation). For each project, score = number of distinct name tokens (≥3 chars) that appear in the Ask Atlas thread text (last 8 messages). Bonus for full-name substring match (case-insensitive, word-boundary). Confident = score ≥ ceil(nameTokens × 0.6) **and** score ≥ 2, OR full-name substring hit.
+A new internal page at **`/showcase`** (unlinked from nav) that renders every real component state Axiom uses, in both themes, on a single scrollable canvas.
 
-2. **Exactly one confident match** → look up its most recent conversation via existing `useListSessions(projectId)` query (lazy fetch on tap) and navigate to `/workspace/{conversationId}`. No new project created, no rename. Header already surfaces the existing name via `activeProject`.
+### Page structure
 
-3. **Multiple confident matches** → render a small inline picker below the handoff button: "Atlas mentioned a few of your projects. Which one?" with up to 3 chips. Tap → routes to that project as in (2). No auto-decision.
+Sticky top bar:
+- Theme toggle: `Obsidian` / `Parchment` (writes `document.documentElement.dataset.theme`, mirrors `useThemeMode`; reverts on unmount)
+- Side-by-side toggle: render both themes in two columns for direct comparison
+- Anchor jump-links to each section
 
-4. **Zero matches** → derive title with `deriveProjectTitle(askAtlasChat.messages)`:
-   - Concatenate all user + assistant text from the thread.
-   - Lowercase, strip URLs/punctuation, tokenize.
-   - Drop stopwords + Atlas filler ("atlas", "build", "help", "think", "want", "need", etc.).
-   - Score remaining tokens by `tf × idf-lite` where idf-lite penalizes tokens that are also Atlas filler.
-   - Pick top 3–5 distinct content tokens, preserve original casing from first occurrence, join with spaces.
-   - Fallback if score is too thin: trim the first user message to ~6 words, strip leading "I think I should/Help me/Can you".
-   - Hard cap 48 chars.
-   - Then: POST `/api/conversations` as today, but after success run `useUpdateProject().mutate({ id: projectId, data: { name: derivedTitle } })` before navigating. Navigation waits for the rename to resolve (with a 1.5 s timeout fallback) so the workspace header renders the right name on first paint.
+Sections (in order):
 
-5. Existing seed text still flows as `initialMessage` so the workspace conversation opens with full Ask Atlas context.
+1. **Typography** — H1/H2/H3/subheading/body/caption/mono + editorial labels (`YOU`, `ATLAS`, `PORTFOLIO THINKING · NOT BUILDING`)
+2. **Color tokens** — swatch grid for every `--atlas-*` variable with resolved value + role label ("border-default", "gold-armed", "intel-active")
+3. **Buttons** — primary / secondary / ghost / danger / icon-only; states default / hover / focus / active / disabled / loading
+4. **Ask Atlas states** — Idle / Listening / Thinking / Streaming / Completed / Error
+5. **Inputs** — empty / focused / typing / disabled / error; single-line, textarea, composer shell
+6. **Cards** — default / hover / selected / active / dragging
+7. **Message bubbles** — user / atlas / system / streaming / with tool result
+8. **Pills & chips** — default / selected / thinking / error / success / memory chip
+9. **Icons** — idle / hover / active / armed (send)
+10. **Tables / list rows** — normal / hover / selected / with divider (mirrors History sheet)
+11. **Sheets & drawers** — header, list, empty state (mirrors HistoryBookmarksSheet, feature drawers)
+12. **Status indicators** — Committed / In Motion / Under Consideration / In Tension / Overridden
 
-### Edge cases
-- Anonymous / empty projects list → skip matching, go straight to create-and-rename.
-- Rename PATCH fails → log, still navigate (project keeps backend-auto name; non-blocking).
-- Multi-match picker dismissable by tapping outside or toggling Ask Atlas off.
-- Matching is case-insensitive and ignores accents via `.normalize("NFKD")`.
+Each state gets a caption with the token(s) it consumes.
 
-### Out of scope
-- No LLM-powered title generation (would need backend route — out of lane).
-- No alias table for projects (future).
-- No changes to workspace chrome or header rendering.
+## Forced-state previews (added)
 
-### Verification
-- Manual: create 2 fake projects ("Quinn Strategy", "Bloom Roadmap"). Ask Atlas thread mentions Quinn → tap handoff → lands in Quinn workspace, header shows "Quinn Strategy". Mentions both → picker appears. Mentions neither, topic "food donation app" → new project named e.g. "Food Donation App", header shows it on landing.
-- Typecheck must pass.
+Hover/focus/active/armed are hard to inspect at rest. Rules:
+
+- Always render the **real** component. Never rebuild lookalike markup.
+- To display a non-default state, wrap the real component in a `ForcedState` primitive that applies the styling only:
+  - toggles CSS via `data-force-state="hover|focus|active|disabled"` on the wrapper, backed by matching CSS rules scoped to `[data-force-state]` in a small `showcase.css`
+  - for stateful React components, pass real props when they exist (`disabled`, `aria-selected`), and only fall back to `data-force-state` for pseudo-class states
+- Every forced state renders a small badge above it: **"Forced preview state — hover"** (or focus/active/etc.) so nothing masquerades as a live interaction.
+- Never modify the underlying component's props/markup to fake a state that isn't wired.
+
+## TODO discipline
+
+If a real component or state doesn't exist yet (e.g. "Ask Atlas Listening" has no built component), render a visible **`TODO — not yet built`** tile in that slot instead of inventing markup. The showcase stays an honest mirror of what exists.
+
+## Files
+
+New:
+- `artifacts/atlas-frontend/src/pages/showcase.tsx` — the page
+- `artifacts/atlas-frontend/src/pages/showcase/sections/*.tsx` — one file per section
+- `artifacts/atlas-frontend/src/pages/showcase/ForcedState.tsx` — wrapper primitive with the "Forced preview state" label
+- `artifacts/atlas-frontend/src/pages/showcase/Swatch.tsx`, `StateRow.tsx`, `SectionShell.tsx`, `TodoTile.tsx` — small shared primitives
+- `artifacts/atlas-frontend/src/pages/showcase/showcase.css` — scoped rules for `[data-force-state="…"]`
+
+Edited:
+- `artifacts/atlas-frontend/src/App.tsx` — add `<Route path="/showcase" component={Showcase} />` near line 219. No nav link.
+
+**Not touched:** `styles.css` parchment tokens, any existing components, dark mode, `/home`, `/workspace`.
+
+## After `/showcase` lands (follow-up plan, not this one)
+
+Rebalance parchment with corrected rule:
+- **Bronze** = premium/priority — focus, hover, selected borders, armed send. "This is Axiom / your action."
+- **Purple** = intelligence status only — idle Ask Atlas dot, streaming pulse, live AI signal. Never a theme fill.
+- **Neutrals** = everything structural.
+- Dark mode untouched.
+
+That pass ships only after we've inspected each state in `/showcase`.
+
+## Verification
+
+- `/showcase` loads without errors
+- Theme toggle repaints every section; obsidian and parchment look identical to today (no token changes yet)
+- Every forced-state tile carries the "Forced preview state" label
+- Missing components render as visible `TODO` tiles, not fake UI
+- No visible change on `/`, `/home`, `/workspace`, or any existing route
