@@ -2057,7 +2057,7 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
-  // ── Global Insight mode ────────────────────────────────────────────────────────
+  // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [globalInsightOpen, setGlobalInsightOpen] = useState(false);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
@@ -2069,8 +2069,8 @@ export default function Home() {
   }, [globalInsightOpen, nexusChat.messages.length]);
 
   useEffect(() => {
-    document.body.setAttribute("data-axiom-global-insight", globalInsightOpen ? "true" : "false");
-    return () => { document.body.removeAttribute("data-axiom-global-insight"); };
+    document.body.setAttribute("data-axiom-ask-atlas", globalInsightOpen ? "true" : "false");
+    return () => { document.body.removeAttribute("data-axiom-ask-atlas"); };
   }, [globalInsightOpen]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
@@ -2214,7 +2214,7 @@ export default function Home() {
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (globalInsightOpen) {
-      // Exit Global Insight → return to the ambient homepage, NOT a stranded
+      // Exit Ask Atlas → return to the ambient homepage, NOT a stranded
       // "Untitled conversation" view. Clear the active thread and message
       // stream so the hero/quick-actions come back.
       void callGlobalInsightMode(false);
@@ -2709,11 +2709,11 @@ export default function Home() {
       });
   }, [activeConversationId, nexusChat.setMessages]);
 
-  // Rehydrate Global Insight mode on hard refresh / initial load.
+  // Rehydrate Ask Atlas mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
   // via POST /api/sessions/:id/reflection-mode). Without this, a refresh
   // resets the in-memory `globalInsightOpen` to false and the conversation
-  // renders as the ambient/active homepage instead of the Global Insight surface.
+  // renders as the ambient/active homepage instead of the Ask Atlas surface.
   useEffect(() => {
     if (!activeConversationId) return;
     let cancelled = false;
@@ -3248,7 +3248,7 @@ export default function Home() {
       return;
     }
 
-    if (surface !== "global-insight") return;
+    if (surface !== "ask-atlas") return;
 
     setGlobalInsightOpen(true);
     if (seed === "portfolio") {
@@ -3583,7 +3583,7 @@ export default function Home() {
       try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
       try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
 
-      // The home composer's gold-clock history exclusively lists Global Insight
+      // The home composer's gold-clock history exclusively lists Ask Atlas
       // threads ("ASK ATLAS · HISTORY"). Resuming one must re-enter Ask Atlas
       // mode so the surface, reflection flag, and depth all match — not
       // strand the thread in the ambient homepage where it tries to earn a
@@ -3673,7 +3673,7 @@ export default function Home() {
     if (!titleRegion) return;
 
     const slot = document.createElement("div");
-    slot.setAttribute("data-home-global-insight-title-slot", "true");
+    slot.setAttribute("data-home-ask-atlas-title-slot", "true");
     slot.style.display = "flex";
     slot.style.alignItems = "center";
     slot.style.justifyContent = "center";

@@ -967,7 +967,7 @@ export default function MasterMap() {
       if (obj === nexMesh || obj === nexWire) {
         setPeek(null);
         setWarping(true);
-        setTimeout(() => setLocation("/home?surface=global-insight&seed=portfolio"), 950);
+        setTimeout(() => setLocation("/home?surface=ask-atlas&seed=portfolio"), 950);
         return;
       }
       const idx = nodeMeshes.indexOf(obj);
