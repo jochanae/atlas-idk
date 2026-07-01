@@ -5304,56 +5304,52 @@ export default function Home() {
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
         focusChip={
-          /* FOCUS chip: one job only — "where is Atlas focused?"
-             Memory is the HUD's responsibility, not this chip's. */
           <button
             type="button"
-            title="Focus scope"
-            aria-label={`Focus scope: ${focusChipLabel}`}
-            aria-expanded={showFocusPicker}
-            onClick={() => setShowFocusPicker((open) => !open)}
+            title="Exit Ask Atlas"
+            aria-label="Exit Ask Atlas"
+            aria-pressed={true}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSendTo("workspace");
+              setAskAtlasSurfaceOpen(false);
+              setAskAtlasHelperVisible(false);
+              askAtlasChat.abort();
+              askAtlasChat.clearMessages();
+            }}
             style={{
               height: 34,
-              maxWidth: 178,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "0 10px",
-              borderRadius: 999,
-              background: resolvedPortfolioFocus === "project"
-                ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
-                : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-              border: resolvedPortfolioFocus === "project"
-                ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
-                : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-              color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "0 10px", borderRadius: 999,
+              background: "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))",
+              border: "1px solid rgba(201,162,76,0.55)",
+              boxShadow: "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)",
+              color: "var(--atlas-gold)",
               cursor: "pointer",
               fontFamily: "var(--app-font-mono)",
-              fontSize: 10,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
+              fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
               whiteSpace: "nowrap",
               minWidth: 0,
               flexShrink: 1,
               WebkitTapHighlightColor: "transparent",
-              transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+              transition: "all 180ms ease",
             }}
           >
-            <Crosshair
+            <Globe
               size={13}
-              strokeWidth={resolvedPortfolioFocus === "project" ? 2.2 : 1.6}
+              strokeWidth={1.8}
               style={{
                 flexShrink: 0,
-                filter: resolvedPortfolioFocus === "project"
-                  ? "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-phosphor) 60%, transparent))"
-                  : "none",
-                transition: "stroke-width 160ms ease, filter 160ms ease",
+                filter: "drop-shadow(0 0 4px rgba(201,162,76,0.75))",
               }}
             />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-              {focusChipLabel}
-            </span>
-            <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
+            <span>Ask Atlas</span>
+            <span style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: "var(--atlas-gold)",
+              boxShadow: "0 0 6px rgba(201,162,76,0.85)",
+              flexShrink: 0,
+            }} />
           </button>
         }
         onMenuAction={(action) => {
