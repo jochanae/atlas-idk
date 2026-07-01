@@ -1310,7 +1310,7 @@ function ProjectCard({ project, onSelect }: { project: Project; onSelect: () => 
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <CompactReadinessRing score={project.latestSnapshotScore ?? computeScoreFromNodeState(project.nodeState)} />
+        <CompactReadinessRing score={(project as { readinessScore?: number | null }).readinessScore ?? project.latestSnapshotScore ?? computeScoreFromNodeState(project.nodeState)} />
         <span
           style={{
             fontFamily: "var(--app-font-mono)",
@@ -5454,7 +5454,7 @@ export default function Home() {
 
       {showProjectsSheet && (
         <ProjectsGridSheet
-          projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name, description: p.description, latestSnapshotScore: p.latestSnapshotScore ?? null }))}
+          projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name, description: p.description, readinessScore: (p as { readinessScore?: number | null }).readinessScore ?? null, latestSnapshotScore: p.latestSnapshotScore ?? null }))}
           onOpenProject={(id) => { setShowProjectsSheet(false); navigateToProject(id); }}
           onNewProject={() => {
             setShowProjectsSheet(false);
@@ -5473,7 +5473,7 @@ export default function Home() {
       <ProjectsDrawer
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
-        projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name, description: p.description, latestSnapshotScore: p.latestSnapshotScore ?? null, status: (p as { status?: "shaping" | "committed" | "archived" }).status }))}
+        projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name, description: p.description, readinessScore: (p as { readinessScore?: number | null }).readinessScore ?? null, latestSnapshotScore: p.latestSnapshotScore ?? null, status: (p as { status?: "shaping" | "committed" | "archived" }).status }))}
         onOpenProject={navigateToProject}
         onNewProject={() => { setShowDrawer(false); handleNewProject("New Project"); }}
         onOpenLedger={(id) => setLocation(`/ledger/${id}`)}
@@ -6020,7 +6020,7 @@ function OverviewBottomSheet({
 }
 
 // ── Projects Grid Sheet ───────────────────────────────────────────────────────
-type SheetProject = { id: number; name: string; description?: string | null; latestSnapshotScore?: number | null };
+type SheetProject = { id: number; name: string; description?: string | null; readinessScore?: number | null; latestSnapshotScore?: number | null };
 
 function ProjectsGridSheet({
   projects,
@@ -6155,7 +6155,7 @@ function ProjectsGridSheet({
                       <p style={{ margin: 0, fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-label)", fontWeight: 600, color: "var(--atlas-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>
                         {p.name}
                       </p>
-                      <CompactReadinessRing score={p.latestSnapshotScore ?? 0} />
+                      <CompactReadinessRing score={p.readinessScore ?? p.latestSnapshotScore ?? 0} />
                     </div>
                     <p style={{ margin: 0, fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.05em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {p.description ?? "No description"}

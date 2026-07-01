@@ -478,10 +478,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const isTinyMobile = useIsTinyScreen();
   const ps = useProjectState(projectId);
   const { data: intelligence } = useProjectIntelligence(projectId);
-  const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
-  // Canonical readiness: prefer the blended intelligence score so the lifecycle
-  // glyph and pulse card agree with the workspace header ring.
-  const canonicalReadiness = intelligence?.readiness?.overall ?? project?.latestSnapshotScore ?? null;
+  const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; readinessScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
+  // Canonical readiness: intelligence.readiness.overall is the single source of truth.
+  // No fallbacks — stale snapshot scores were the drift source (see audit F2).
+  const canonicalReadiness = intelligence?.readiness?.overall ?? null;
   // Avoid the "Untitled" flash while the project state is still loading for the first time.
   const hydrating = ps.loading && !ps.project;
   const resolvedName = project?.name?.trim();
@@ -901,109 +901,52 @@ function SovereignReadinessSheet({
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, [onClose]);
 
-  // ── Derive real Frontend / Backend / Context mix from project.nodeState. ──
-  // Arch-layer ids (SystemMap): auth/db/api/state/ui/logic — value is boolean.
-  // Flow-layer ids (AxiomFlow / Forge): { resolved, type, ... } objects.
-  const ARCH_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
-  const FRONTEND_ARCH = new Set(["ui", "state"]);
-  const BACKEND_ARCH = new Set(["auth", "db", "api"]);
-  // Flow node types → category buckets.
-  const FRONTEND_FLOW = new Set(["goal", "requirement"]);
-  const BACKEND_FLOW = new Set(["decision"]);
-  // remaining flow types (blocker / priority / sprint / wont / logic) → context
+  // Server is authoritative — read layerMix and phases from the readiness payload.
+  // No client-side nodeState math. If the backend hasn't populated a field yet, hide that section.
+  const serverReadiness = readiness as (ProjectReadiness & {
+    layerMix?: { strategy: number; build: number; activity: number; delivery: number } | null;
+    phases?: Array<{ key: string; label: string; score: number; label_status?: string; evidence?: string }> | Record<string, { score: number; label: string; evidence: string }> | null;
+  }) | null | undefined;
 
-  type Bucket = { total: number; resolved: number };
-  const buckets: Record<"frontend" | "backend" | "context", Bucket> = {
-    frontend: { total: 0, resolved: 0 },
-    backend: { total: 0, resolved: 0 },
-    context: { total: 0, resolved: 0 },
-  };
+  const layerMix = serverReadiness?.layerMix ?? null;
+  const hasLayerMix = layerMix != null && (layerMix.strategy + layerMix.build + layerMix.activity + layerMix.delivery) > 0;
 
-  const ns = (nodeState ?? {}) as Record<string, unknown>;
-  Object.entries(ns).forEach(([nid, raw]) => {
-    let category: "frontend" | "backend" | "context" = "context";
-    let resolved = false;
-    if (ARCH_IDS.has(nid)) {
-      resolved = raw === true || (typeof raw === "object" && raw !== null && (raw as { resolved?: unknown }).resolved === true);
-      if (FRONTEND_ARCH.has(nid)) category = "frontend";
-      else if (BACKEND_ARCH.has(nid)) category = "backend";
-      else category = "context";
-    } else if (typeof raw === "object" && raw !== null) {
-      const obj = raw as { resolved?: unknown; type?: unknown };
-      resolved = obj.resolved === true;
-      const t = typeof obj.type === "string" ? obj.type : "";
-      if (FRONTEND_FLOW.has(t)) category = "frontend";
-      else if (BACKEND_FLOW.has(t)) category = "backend";
-      else category = "context";
-    } else {
-      return;
+  // phases may arrive as an object keyed by phase name, or as an array — normalize to array.
+  const rawPhases = serverReadiness?.phases ?? null;
+  type PhaseRow = { key: string; label: string; pct: number; note: string; tone: "ok" | "warn" | "block" };
+  const phases: PhaseRow[] = (() => {
+    if (!rawPhases) return [];
+    const toTone = (n: number): "ok" | "warn" | "block" =>
+      n >= 80 ? "ok" : n >= 40 ? "warn" : "block";
+    const titleize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    if (Array.isArray(rawPhases)) {
+      return rawPhases.map((p) => ({
+        key: p.key,
+        label: p.label ?? titleize(p.key),
+        pct: p.score ?? 0,
+        note: p.evidence ?? "",
+        tone: toTone(p.score ?? 0),
+      }));
     }
-    buckets[category].total += 1;
-    if (resolved) buckets[category].resolved += 1;
-  });
+    return Object.entries(rawPhases).map(([key, v]) => ({
+      key,
+      label: titleize(key),
+      pct: v.score ?? 0,
+      note: v.evidence ?? "",
+      tone: toTone(v.score ?? 0),
+    }));
+  })();
 
-  const totalNodes = buckets.frontend.total + buckets.backend.total + buckets.context.total;
-  const sharePct = (n: number) => totalNodes === 0 ? 0 : Math.round((n / totalNodes) * 100);
-  const frontend = sharePct(buckets.frontend.total);
-  const backend = sharePct(buckets.backend.total);
-  // Force the three shares to sum to 100 even after rounding.
-  const context = totalNodes === 0 ? 0 : Math.max(0, 100 - frontend - backend);
-
-  const readinessPct = (b: Bucket) => b.total === 0 ? 0 : Math.round((b.resolved / b.total) * 100);
-
-  // Phases derived from the same nodeState — no mock math.
-  // Foundational = arch core (auth/db/api/state) resolved share.
-  // Core Lead Funnel = flow nodes (Forge-produced) resolved share.
-  // Multi-Repo Sync = currently no signal in nodeState → 0% with honest empty note.
-  const archCoreIds = ["auth", "db", "api", "state"];
-  const archCoreTotal = archCoreIds.filter(k => k in ns).length;
-  const archCoreResolved = archCoreIds.filter(k => {
-    const v = ns[k];
-    return v === true || (typeof v === "object" && v !== null && (v as { resolved?: unknown }).resolved === true);
-  }).length;
-  const foundationalPct = archCoreTotal === 0 ? 0 : Math.round((archCoreResolved / archCoreTotal) * 100);
-
-  let flowTotal = 0, flowResolved = 0;
-  Object.entries(ns).forEach(([nid, raw]) => {
-    if (ARCH_IDS.has(nid)) return;
-    if (typeof raw !== "object" || raw === null) return;
-    flowTotal += 1;
-    if ((raw as { resolved?: unknown }).resolved === true) flowResolved += 1;
-  });
-  const funnelPct = flowTotal === 0 ? 0 : Math.round((flowResolved / flowTotal) * 100);
-
-  const phases = [
-    {
-      label: "Foundational Data Layer",
-      pct: foundationalPct,
-      tone: (foundationalPct >= 80 ? "ok" : foundationalPct >= 40 ? "warn" : "block") as "ok" | "warn" | "block",
-      note: archCoreTotal === 0
-        ? "No core architecture nodes mapped yet."
-        : `${archCoreResolved}/${archCoreTotal} core nodes resolved.`,
-    },
-    {
-      label: "Core Lead Funnel System",
-      pct: funnelPct,
-      tone: (funnelPct >= 80 ? "ok" : funnelPct >= 40 ? "warn" : "block") as "ok" | "warn" | "block",
-      note: flowTotal === 0
-        ? "No flow nodes mapped — run The Forge to seed."
-        : `${flowResolved}/${flowTotal} flow nodes resolved.`,
-    },
-    {
-      label: "Multi-Repo Synchronization",
-      pct: 0,
-      tone: "block" as const,
-      note: "Repository connection not linked yet.",
-    },
-  ];
-
-  const guidance = totalNodes === 0
+  const hasNodes = nodeState != null && Object.keys(nodeState as Record<string, unknown>).length > 0;
+  const guidance = !hasNodes
     ? `Unscored — no architecture nodes mapped yet. Run The Forge or open the System Map to seed the spine, then commit decisions in the Ledger (${decisionsCount} so far).`
     : score >= 90
     ? "You're in the green. The remaining gap is polish — wire any uncommitted decisions into the ledger and ship."
     : score >= 60
-    ? `Core mechanics are production-ready. ${flowTotal - flowResolved} flow node${(flowTotal - flowResolved) === 1 ? "" : "s"} still unresolved — close them to push past ${score}%.`
-    : `Foundations are still forming. ${totalNodes} node${totalNodes === 1 ? "" : "s"} mapped, ${decisionsCount} decision${decisionsCount === 1 ? "" : "s"} committed. Resolve the open architectural nodes before adding more surface area.`;
+    ? `Core mechanics are production-ready. Close the remaining open items to push past ${score}%.`
+    : `Foundations are still forming. ${decisionsCount} decision${decisionsCount === 1 ? "" : "s"} committed. Resolve the open items before adding more surface area.`;
+
+
 
   const toneColor = (t: "ok" | "warn" | "block") =>
     t === "ok" ? "#4ade80" : t === "warn" ? "var(--atlas-gold)" : "rgba(252,165,165,0.9)";
@@ -1107,40 +1050,50 @@ function SovereignReadinessSheet({
           </div>
         )}
 
-        {/* Mix bar */}
-        <SectionLabel>Core Mix</SectionLabel>
-        <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
-          <div style={{ width: `${frontend}%`, background: "var(--atlas-gold)" }} />
-          <div style={{ width: `${backend}%`, background: "rgba(201,162,76,0.55)" }} />
-          <div style={{ width: `${context}%`, background: "rgba(201,162,76,0.28)" }} />
-        </div>
-        <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
-          <MixLegend dot="var(--atlas-gold)" label="Frontend" pct={frontend} />
-          <MixLegend dot="rgba(201,162,76,0.55)" label="Backend" pct={backend} />
-          <MixLegend dot="rgba(201,162,76,0.28)" label="Context" pct={context} />
-        </div>
-
-        {/* Phases */}
-        <SectionLabel>Architectural Phases</SectionLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
-          {phases.map((p) => (
-            <div key={p.label}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: 999, background: toneColor(p.tone) }} />
-                  <span style={{ fontSize: 13, color: "var(--atlas-fg)" }}>{p.label}</span>
-                </div>
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: toneColor(p.tone) }}>
-                  {p.pct}%
-                </span>
-              </div>
-              <div style={{ height: 3, borderRadius: 999, background: "rgba(201,162,76,0.08)", overflow: "hidden" }}>
-                <div style={{ width: `${p.pct}%`, height: "100%", background: toneColor(p.tone) }} />
-              </div>
-              <div style={{ fontSize: 11, color: "var(--atlas-muted)", marginTop: 3 }}>{p.note}</div>
+        {/* Core Mix — server-authoritative from readiness.layerMix. Hidden when unavailable. */}
+        {hasLayerMix && layerMix && (
+          <>
+            <SectionLabel>Core Mix</SectionLabel>
+            <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
+              <div style={{ width: `${layerMix.strategy}%`, background: "var(--atlas-gold)" }} />
+              <div style={{ width: `${layerMix.build}%`, background: "rgba(201,162,76,0.7)" }} />
+              <div style={{ width: `${layerMix.activity}%`, background: "rgba(201,162,76,0.45)" }} />
+              <div style={{ width: `${layerMix.delivery}%`, background: "rgba(201,162,76,0.25)" }} />
             </div>
-          ))}
-        </div>
+            <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
+              <MixLegend dot="var(--atlas-gold)" label="Strategy" pct={layerMix.strategy} />
+              <MixLegend dot="rgba(201,162,76,0.7)" label="Build" pct={layerMix.build} />
+              <MixLegend dot="rgba(201,162,76,0.45)" label="Activity" pct={layerMix.activity} />
+              <MixLegend dot="rgba(201,162,76,0.25)" label="Delivery" pct={layerMix.delivery} />
+            </div>
+          </>
+        )}
+
+        {/* Phases — server-authoritative from readiness.phases. Hidden when unavailable. */}
+        {phases.length > 0 && (
+          <>
+            <SectionLabel>Lifecycle Phases</SectionLabel>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+              {phases.map((p) => (
+                <div key={p.key}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 999, background: toneColor(p.tone) }} />
+                      <span style={{ fontSize: 13, color: "var(--atlas-fg)" }}>{p.label}</span>
+                    </div>
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: toneColor(p.tone) }}>
+                      {p.pct}%
+                    </span>
+                  </div>
+                  <div style={{ height: 3, borderRadius: 999, background: "rgba(201,162,76,0.08)", overflow: "hidden" }}>
+                    <div style={{ width: `${p.pct}%`, height: "100%", background: toneColor(p.tone) }} />
+                  </div>
+                  {p.note && <div style={{ fontSize: 11, color: "var(--atlas-muted)", marginTop: 3 }}>{p.note}</div>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Atlas guidance */}
         <SectionLabel>Atlas Strategic Assessment</SectionLabel>
@@ -1399,11 +1352,11 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   });
   const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
   const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
-  // Intelligence endpoint is authoritative for blended score — falls back to snapshot
-  // then client-computed blend if the endpoint hasn't loaded yet.
+  // Intelligence endpoint is authoritative for blended score. Fall back to
+  // client-computed blend only when the endpoint hasn't loaded yet — stale
+  // snapshot scores were the drift source (see audit F2).
   const blendedScore =
     intelligence?.readiness.overall ??
-    proj?.latestSnapshotScore ??
     (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
 
   const repoLinked = Boolean(proj?.linkedRepo);

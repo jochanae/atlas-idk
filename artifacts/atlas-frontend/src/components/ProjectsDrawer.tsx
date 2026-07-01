@@ -13,6 +13,8 @@ export type DrawerProject = {
   id: number;
   name: string;
   description?: string | null;
+  /** Canonical live readiness from GET /api/projects (B1). Preferred over latestSnapshotScore. */
+  readinessScore?: number | null;
   latestSnapshotScore?: number | null;
   status?: "shaping" | "committed" | "archived";
 };
@@ -387,7 +389,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                               projectId={p.id}
                               projectName={p.name}
                               status={p.status}
-                              readinessScore={p.latestSnapshotScore ?? null}
+                              readinessScore={p.readinessScore ?? p.latestSnapshotScore ?? null}
                               size={12}
                             />
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
@@ -401,7 +403,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                         </span>
                       )}
                     </div>
-                    <CompactReadinessRing score={p.latestSnapshotScore ?? 0} />
+                    <CompactReadinessRing score={p.readinessScore ?? p.latestSnapshotScore ?? 0} />
                   </button>
                 ))
               )}
