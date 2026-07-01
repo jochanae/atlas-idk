@@ -2303,7 +2303,10 @@ export default function Home() {
 
   const exitAskAtlasMode = useCallback(() => {
     if (nexusChat.messages.length > 0) {
-      askAtlasHiddenMessagesRef.current = nexusChat.messages as any[];
+      askAtlasHiddenMessagesRef.current = (nexusChat.messages as any[]).map((message) => ({
+        ...message,
+        streaming: false,
+      }));
       askAtlasHiddenConversationIdRef.current = activeConversationId;
     }
     nexusChat.abort();
