@@ -559,7 +559,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
       {(() => {
         const state = deriveLifecycle({
           status: project?.status ?? null,
-          readinessScore: project?.latestSnapshotScore ?? null,
+          readinessScore: canonicalReadiness,
           decisionCount: ps.decisions?.length ?? 0,
           hasRepo: Boolean(project?.linkedRepo),
         });
