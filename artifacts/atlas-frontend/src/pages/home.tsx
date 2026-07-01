@@ -4720,10 +4720,10 @@ export default function Home() {
                 : "transparent",
               border: "1px solid",
               borderColor: (inputFocused || hasInput || attachedFiles.length > 0)
-                ? "rgba(212,175,55,0.45)"
+                ? (isParchment ? "rgba(15,23,42,0.14)" : "rgba(212,175,55,0.45)")
                 : "rgba(212,175,55,0)",
               boxShadow: (inputFocused || hasInput || attachedFiles.length > 0)
-                ? "inset 0 0 22px rgba(212,175,55,0.08), 0 0 18px rgba(212,175,55,0.06)"
+                ? (isParchment ? "0 1px 6px rgba(15,23,42,0.04)" : "inset 0 0 22px rgba(212,175,55,0.08), 0 0 18px rgba(212,175,55,0.06)")
                 : "none",
               backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
@@ -4807,7 +4807,7 @@ export default function Home() {
                 style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
-              {/* Gold history clock — matches production action bar */}
+              {/* History clock — icon only, no card. */}
               <button
                 type="button"
                 aria-label="Where were we"
@@ -4816,14 +4816,14 @@ export default function Home() {
                 onClick={() => void handleOpenHistory()}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 32, height: 32, borderRadius: 8, border: "none",
-                  background: "rgba(201,162,76,0.12)",
+                  width: 32, height: 32, borderRadius: 999, border: "none",
+                  background: "transparent",
                   color: "rgba(201,162,76,0.85)",
                   cursor: "pointer", flexShrink: 0, padding: 0,
-                  transition: "background 150ms",
+                  transition: "color 150ms ease, opacity 150ms ease",
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(201,162,76,0.22)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(201,162,76,0.12)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(201,162,76,1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(201,162,76,0.85)"; }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="9" />
