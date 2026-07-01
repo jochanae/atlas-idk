@@ -1933,6 +1933,7 @@ export default function Home() {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
       setSendTo("ask-atlas");
       sendToRef.current = "ask-atlas";
+      setGlobalInsightOpen(true);
       if (detail?.seed) setInput(detail.seed);
       // Defer focus to after the toggle/render flush.
       window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
