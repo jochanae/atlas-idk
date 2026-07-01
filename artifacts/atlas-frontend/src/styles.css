@@ -114,6 +114,11 @@ html, body {
   --atlas-dock-height: 64px;
   --atlas-dock-clearance: calc(var(--atlas-dock-height) + env(safe-area-inset-bottom, 0px) + 24px);
 
+  /* Hairline shadow the fixed header wears when any surface has scrolled.
+     Dark mode: subtle black wash. Light mode overrides below. */
+  --atlas-header-shadow: 0 1px 0 rgba(0,0,0,0.28), 0 6px 14px rgba(0,0,0,0.22);
+
+
   /* Type scale — mono-forward, 4-step minor */
   --ts-tiny:    10px;  /* promoted: was 8px → now meets iOS legibility floor */
   --ts-xs:      11px;  /* promoted: was 9px → now meets iOS legibility floor */
