@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -507,6 +507,47 @@ function ShowcaseCanvas() {
 export default function Showcase() {
   const [theme, setTheme] = useLocalTheme();
   const [sideBySide, setSideBySide] = useState(false);
+  const [syncScroll, setSyncScroll] = useState(true);
+  const leftRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sideBySide || !syncScroll) return;
+    const left = leftRef.current;
+    const right = rightRef.current;
+    if (!left || !right) return;
+    let locked = false;
+    const sync = (src: HTMLDivElement, dst: HTMLDivElement) => () => {
+      if (locked) return;
+      locked = true;
+      dst.scrollTop = src.scrollTop;
+      requestAnimationFrame(() => {
+        locked = false;
+      });
+    };
+    const l = sync(left, right);
+    const r = sync(right, left);
+    left.addEventListener("scroll", l);
+    right.addEventListener("scroll", r);
+    return () => {
+      left.removeEventListener("scroll", l);
+      right.removeEventListener("scroll", r);
+    };
+  }, [sideBySide, syncScroll]);
+
+  // Segmented control style — one dominant selected state, others recede
+  const segBtn = (active: boolean): React.CSSProperties => ({
+    padding: "6px 12px",
+    fontFamily: "var(--app-font-mono)",
+    fontSize: 10,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    border: "1px solid var(--atlas-border)",
+    background: active ? "var(--atlas-gold-dim)" : "transparent",
+    color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+    cursor: "pointer",
+    borderRadius: 6,
+  });
 
   return (
     <div
@@ -540,36 +581,73 @@ export default function Showcase() {
             fontSize: 12,
             letterSpacing: "0.16em",
             textTransform: "uppercase",
-            color: "var(--atlas-gold)",
+            color: "var(--atlas-fg)",
+            fontWeight: 500,
           }}
         >
           Showcase
         </div>
 
-        <div style={{ display: "flex", gap: 6 }}>
-          <Button
-            size="sm"
-            variant={theme === "obsidian" ? "default" : "outline"}
+        {/* Theme segmented control — dominant primary role */}
+        <div
+          role="group"
+          aria-label="Theme"
+          style={{
+            display: "flex",
+            gap: 0,
+            padding: 2,
+            border: "1px solid var(--atlas-border)",
+            borderRadius: 8,
+            background: "var(--atlas-surface)",
+          }}
+        >
+          <button
+            type="button"
+            style={{ ...segBtn(theme === "obsidian"), border: "none" }}
             onClick={() => setTheme("obsidian")}
           >
             Obsidian
-          </Button>
-          <Button
-            size="sm"
-            variant={theme === "parchment" ? "default" : "outline"}
+          </button>
+          <button
+            type="button"
+            style={{ ...segBtn(theme === "parchment"), border: "none" }}
             onClick={() => setTheme("parchment")}
           >
             Parchment
-          </Button>
+          </button>
         </div>
 
-        <Button
-          size="sm"
-          variant={sideBySide ? "default" : "outline"}
+        {/* Layout toggles — secondary role, quieter */}
+        <button
+          type="button"
+          style={segBtn(sideBySide)}
           onClick={() => setSideBySide((v) => !v)}
         >
           {sideBySide ? "Single view" : "Side by side"}
-        </Button>
+        </button>
+
+        {sideBySide ? (
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "var(--atlas-muted)",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={syncScroll}
+              onChange={(e) => setSyncScroll(e.target.checked)}
+            />
+            Sync scroll
+          </label>
+        ) : null}
 
         <nav
           style={{
@@ -598,12 +676,16 @@ export default function Showcase() {
       {sideBySide ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
           <div
+            ref={leftRef}
             data-theme=""
             style={{
               padding: 24,
               background: "#0B0A0F",
               color: "rgba(255,255,255,0.94)",
               borderRight: "1px solid rgba(255,255,255,0.1)",
+              ...(syncScroll
+                ? { height: "calc(100vh - 57px)", overflowY: "auto" }
+                : {}),
             }}
           >
             <div
@@ -612,7 +694,7 @@ export default function Showcase() {
                 fontSize: 10,
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                color: "#E6C687",
+                color: "rgba(255,255,255,0.6)",
                 marginBottom: 12,
               }}
             >
@@ -623,11 +705,15 @@ export default function Showcase() {
             </div>
           </div>
           <div
+            ref={rightRef}
             data-theme="parchment"
             style={{
               padding: 24,
               background: "#F7F4ED",
               color: "#0F172A",
+              ...(syncScroll
+                ? { height: "calc(100vh - 57px)", overflowY: "auto" }
+                : {}),
             }}
           >
             <div
@@ -636,7 +722,7 @@ export default function Showcase() {
                 fontSize: 10,
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                color: "#8B5E3C",
+                color: "#6B6560",
                 marginBottom: 12,
               }}
             >
