@@ -833,7 +833,7 @@ export function AxiomFlow({
             const parsed = JSON.parse(raw) as ArchNode[];
             const parsedEdges = edgesRaw ? (JSON.parse(edgesRaw) as ArchEdge[]) : [];
             if (Array.isArray(parsed) && parsed.length > 0 && !isLegacyDefault(parsed, parsedEdges)) {
-              setNodes(parsed);
+              setNodes(sanitizeNodePositions(parsed));
               setEdges(parsedEdges);
               setFlowLoading(false);
               return;
