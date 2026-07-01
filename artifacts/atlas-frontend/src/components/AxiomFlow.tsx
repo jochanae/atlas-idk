@@ -797,7 +797,8 @@ export function AxiomFlow({
               const parsed = JSON.parse(raw) as ArchNode[];
               const parsedEdges = edgesRaw ? (JSON.parse(edgesRaw) as ArchEdge[]) : [];
               if (Array.isArray(parsed) && parsed.length > 0 && !isLegacyDefault(parsed, parsedEdges)) {
-                setNodes(parsed);
+                const sanitized = sanitizeNodePositions(parsed);
+                setNodes(sanitized);
                 setEdges(parsedEdges);
                 dbLoadedRef.current = true;
                 setFlowLoading(false);
@@ -808,7 +809,7 @@ export function AxiomFlow({
                   method: "PUT",
                   credentials: "include",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ nodes: parsed, edges: parsedEdges }),
+                  body: JSON.stringify({ nodes: sanitized, edges: parsedEdges }),
                 })
                   .then(r => { if (r.ok) try { localStorage.setItem(migKey, "1"); } catch {} })
                   .catch(() => {});
