@@ -4813,7 +4813,7 @@ export default function Home() {
                   if ((e.target as HTMLElement).closest("input,textarea,select")) return;
                   e.preventDefault();
                 }}
-                style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
+                style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
               {/* History clock — icon only, no card. */}
