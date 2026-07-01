@@ -477,7 +477,11 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const isMobile = useIsMobile();
   const isTinyMobile = useIsTinyScreen();
   const ps = useProjectState(projectId);
+  const { data: intelligence } = useProjectIntelligence(projectId);
   const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
+  // Canonical readiness: prefer the blended intelligence score so the lifecycle
+  // glyph and pulse card agree with the workspace header ring.
+  const canonicalReadiness = intelligence?.readiness?.overall ?? project?.latestSnapshotScore ?? null;
   // Avoid the "Untitled" flash while the project state is still loading for the first time.
   const hydrating = ps.loading && !ps.project;
   const resolvedName = project?.name?.trim();
