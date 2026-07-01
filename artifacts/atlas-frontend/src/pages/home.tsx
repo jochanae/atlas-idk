@@ -4597,7 +4597,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: askAtlasSurfaceOpen ? "none" : undefined }}>
+          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: (askAtlasSurfaceOpen || askAtlasConversationActive) ? "none" : undefined }}>
           <div ref={askAtlasSurfaceOpen ? askAtlasComposerRef : null} className="atlas-input-shell" style={{
             position: askAtlasSurfaceOpen ? "relative" : "sticky",
             left: askAtlasSurfaceOpen ? undefined : 0,
@@ -5012,7 +5012,7 @@ export default function Home() {
 
           {/* Intent row — soft orientation under the input. Permission, not features. */}
 
-          {!askAtlasSurfaceOpen && nexusChat.messages.length === 0 && (() => {
+          {!askAtlasSurfaceOpen && !askAtlasConversationActive && nexusChat.messages.length === 0 && (() => {
             const pickStarter = (starter: string, inlineOnHome = false) => {
               thinkOutLoudInlineRef.current = inlineOnHome;
               setInput(starter);
