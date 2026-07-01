@@ -1300,3 +1300,99 @@ mark.atlas-search-hit.atlas-search-hit--active {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ============================================================
+   VISUAL HIERARCHY AUDIT — parchment demotion pass.
+   Rule: every color has one job. Bronze = brand / active /
+   primary CTA only. Charcoal = functional UI, icons, nav,
+   primary typography. Gray = borders, dividers, secondary text.
+   Purple = AI thinking / streaming / intelligence.
+   Dark mode is not touched by any rule below.
+   ============================================================ */
+
+[data-theme="parchment"] {
+  /* Functional UI ink — for icons, hamburger, nav glyphs, wordmark. */
+  --atlas-icon:        #2A2A2A;
+  --atlas-icon-muted:  #5A5A5A;
+}
+
+/* 1) Hamburger / drawer trigger in the header — charcoal, not gold. */
+[data-theme="parchment"] .atlas-app-header button[aria-label="Open projects"],
+[data-theme="parchment"] .atlas-app-header button[aria-label="Open projects"] * {
+  color: var(--atlas-icon) !important;
+}
+[data-theme="parchment"] .atlas-app-header button[aria-label="Open projects"]:hover {
+  color: var(--atlas-icon-muted) !important;
+}
+
+/* 2) AXIOM wordmark — charcoal in parchment. Logo mark carries the brand. */
+[data-theme="parchment"] .atlas-app-header button[aria-label="Go home"],
+[data-theme="parchment"] .atlas-app-header button[aria-label="Return to ambient Nexus"],
+[data-theme="parchment"] .atlas-app-header button[aria-label="Open command palette"] + button {
+  color: var(--atlas-icon) !important;
+}
+
+/* 3) Avatar ring — neutral in parchment (was gold rgba). */
+[data-theme="parchment"] .atlas-avatar-ring {
+  border-left-color: rgba(15, 23, 42, 0.14) !important;
+  border-right-color: rgba(15, 23, 42, 0.14) !important;
+}
+
+/* 4) "+" invite affordance — charcoal glyph, neutral border, no gold glow. */
+[data-theme="parchment"] .atlas-invite-plus {
+  border-color: rgba(15, 23, 42, 0.14) !important;
+  border-style: solid !important;
+  color: var(--atlas-icon) !important;
+  background: transparent !important;
+}
+[data-theme="parchment"] .atlas-invite-plus:hover {
+  border-color: rgba(15, 23, 42, 0.28) !important;
+  background: rgba(15, 23, 42, 0.03) !important;
+  color: var(--atlas-icon) !important;
+}
+
+/* 5) Thinking dots — purple (Atlas intelligence), not gold, in parchment. */
+[data-theme="parchment"] .atlas-bloom-circle,
+[data-theme="parchment"] .atlas-bloom-blur {
+  background: var(--atlas-intel) !important;
+}
+
+/* 6) Composer glass border — neutral, not gold, in parchment. */
+[data-theme="parchment"] .atlas-composer-glass {
+  border-top-color: var(--atlas-border) !important;
+  border-left-color: var(--atlas-border) !important;
+  border-right-color: var(--atlas-border) !important;
+  box-shadow: 0 -8px 28px -18px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* 7) Timeline rail spine — neutral in parchment (was gold gradient). */
+[data-theme="parchment"] .atlas-rail-spine {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(15, 23, 42, 0.10) 12%,
+    rgba(15, 23, 42, 0.18) 50%,
+    rgba(15, 23, 42, 0.10) 88%,
+    transparent 100%) !important;
+}
+
+/* 8) Discovery cards — neutral border in parchment. */
+[data-theme="parchment"] .atlas-discovery-card {
+  border-color: var(--atlas-border) !important;
+}
+
+/* 9) Briefcase FAB — neutral surface, charcoal icon; bronze only when active. */
+[data-theme="parchment"] .atlas-briefcase-toggle {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  color: var(--atlas-icon) !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+[data-theme="parchment"] .atlas-briefcase-toggle:hover {
+  border-color: rgba(15, 23, 42, 0.20) !important;
+  color: var(--atlas-icon) !important;
+}
+[data-theme="parchment"] .atlas-briefcase-toggle[data-active="true"] {
+  color: var(--atlas-gold) !important;
+  border-color: color-mix(in oklab, var(--atlas-gold) 40%, transparent) !important;
+}
+
