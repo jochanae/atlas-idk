@@ -4292,7 +4292,7 @@ export default function Home() {
             }} />
 
             {/* Greeting + inline Ask Atlas conversation — crossfade in the hero slot */}
-            {nexusChat.messages.length === 0 && !showOverviewSheet && (
+            {nexusChat.messages.length === 0 && !showOverviewSheet && !(threadLoading && activeConversationId) && (
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
