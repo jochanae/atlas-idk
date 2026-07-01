@@ -34,7 +34,6 @@ import { ManifestPanel } from "../components/ManifestPanel";
 import { InsightsPanel } from "../components/InsightsPanel";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
-import { ActiveRunsStrip } from "../components/home/ActiveRunsStrip";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
@@ -7828,6 +7827,7 @@ export default function Workspace() {
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 runId={focusedRunId}
+                projectName={project?.name ?? null}
               />
             </div>
           ) : leftTab === "terminal" ? (
@@ -8365,8 +8365,6 @@ export default function Workspace() {
         )}
         </>
       </UnifiedConversationSurface>
-
-      <ActiveRunsStrip bottomOffset={isMobile ? 76 : 24} />
 
       {isMobile && mobileTab !== "map" && (
 

@@ -20,7 +20,6 @@ import SketchReveal from "@/components/chat/SketchReveal";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { UnifiedConversationSurface } from "../components/UnifiedConversationSurface";
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
-import { ActiveRunsStrip } from "../components/home/ActiveRunsStrip";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
@@ -5891,8 +5890,6 @@ export default function Home() {
           }}
         />
       )}
-
-      <ActiveRunsStrip bottomOffset={76} />
 
       <div className="atlas-home-bottom-nav">
 

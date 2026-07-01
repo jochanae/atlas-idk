@@ -12,10 +12,11 @@
 // we show the pill + an honest "No entries tagged for this run yet." hint
 // above the unfiltered list rather than pretending the view is filtered.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FolderGit2, X, FileCode2 } from "lucide-react";
 import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
+import { RunCard, dismissActiveRun, patchActiveRun, useAllRuns, type ActiveRun } from "@/components/home/ActiveRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 
 // ── Shared badge logic (mirrors WorkspaceFilesPanel) ─────────────────────────
@@ -118,6 +119,55 @@ interface FileRow {
   projectId: number;
 }
 
+function messageRunId(message: TimelineMessage): string {
+  const tagged = (message as TimelineMessage & { runId?: string; run_id?: string }).runId
+    ?? (message as TimelineMessage & { runId?: string; run_id?: string }).run_id;
+  return tagged ?? `message-${message.id ?? message.sentAt ?? "untagged"}`;
+}
+
+function messageTime(message: TimelineMessage, fallback: number): number {
+  const t = message.sentAt ? Date.parse(message.sentAt) : NaN;
+  return Number.isFinite(t) ? t : fallback;
+}
+
+function summarizeMessageRun(message: TimelineMessage): string {
+  const stripped = (message.content ?? "")
+    .replace(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "")
+    .replace(/LINE_PATCH_START[\s\S]*?LINE_PATCH_END/g, "")
+    .trim();
+  const firstLine = stripped.split("\n").map((line) => line.trim()).find(Boolean);
+  if (firstLine) return firstLine.slice(0, 120);
+  return "Workspace changes prepared";
+}
+
+function synthesizeRunsFromMessages(messages: TimelineMessage[], projectId: number, projectName: string): ActiveRun[] {
+  return messages
+    .filter((m) => m.role === "assistant" && ((m.fileEdits?.length ?? 0) > 0 || !!m.fileEdit || (m.linePatches?.length ?? 0) > 0 || /FILE_EDIT/i.test(m.content ?? "")))
+    .map((m, index) => {
+      const edits = m.fileEdits ?? (m.fileEdit ? [m.fileEdit] : []);
+      const patchPaths = (m.linePatches ?? []).map((p) => p.path);
+      const paths = Array.from(new Set([...edits.map((e) => e.path), ...patchPaths]));
+      const createdAt = messageTime(m, Date.now() - index);
+      return {
+        id: messageRunId(m),
+        projectId,
+        projectName,
+        intent: "build",
+        prompt: summarizeMessageRun(m),
+        sessionId: null,
+        status: m.streaming ? "running" : "completed",
+        createdAt,
+        completedAt: m.streaming ? null : createdAt,
+        attachmentNames: [],
+        streamedContent: m.content,
+        fileEdits: edits.map((e) => ({ path: e.path, content: e.content })),
+        appliedFiles: paths,
+        summaryLine: summarizeMessageRun(m),
+      } satisfies ActiveRun;
+    })
+    .reverse();
+}
+
 function collectFileRows(messages: TimelineMessage[]): FileRow[] {
   const rows: FileRow[] = [];
   for (const m of messages) {
@@ -182,6 +232,96 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
   );
 }
 
+// ── Run receipt: existing RunCard mounted on the Changes surface ─────────────
+
+function WorkspaceRunCards({
+  projectId,
+  projectName,
+  messages,
+  runId,
+}: {
+  projectId: number;
+  projectName: string;
+  messages: TimelineMessage[];
+  runId?: string | null;
+}) {
+  const runs = useAllRuns();
+  const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
+  const [retryErrors, setRetryErrors] = useState<Map<string, string>>(new Map());
+  const [dismissedRunIds, setDismissedRunIds] = useState<Set<string>>(new Set());
+
+  const visibleRuns = useMemo(() => {
+    const composerRuns = runs.filter((r) => r.projectId === projectId);
+    const composerIds = new Set(composerRuns.map((r) => r.id));
+    const messageRuns = synthesizeRunsFromMessages(messages, projectId, projectName)
+      .filter((r) => !composerIds.has(r.id));
+    const projectRuns = [...composerRuns, ...messageRuns]
+      .filter((r) => !dismissedRunIds.has(r.id))
+      .sort((a, b) => b.createdAt - a.createdAt);
+    if (runId) return projectRuns.filter((r) => r.id === runId);
+    return projectRuns.slice(0, 3);
+  }, [dismissedRunIds, messages, projectId, projectName, runId, runs]);
+
+  const handleDismiss = useCallback((run: ActiveRun) => {
+    setDismissedRunIds((prev) => new Set(prev).add(run.id));
+    dismissActiveRun(run.id);
+  }, []);
+
+  const handleForceApply = useCallback(async (run: ActiveRun, filePath: string) => {
+    const fileEdit = run.fileEdits?.find((fe) => fe.path === filePath);
+    if (!fileEdit) return;
+    const key = `${run.id}:${filePath}`;
+
+    setRetryingFiles((prev) => new Set(prev).add(key));
+    setRetryErrors((prev) => { const m = new Map(prev); m.delete(key); return m; });
+
+    try {
+      const res = await fetch("/api/github/apply-local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ files: [fileEdit], projectId: run.projectId }),
+      });
+
+      if (res.ok) {
+        patchActiveRun(run.id, {
+          applyErrors: (run.applyErrors ?? []).filter((ae) => ae.path !== filePath),
+          appliedFiles: [...(run.appliedFiles ?? []), filePath],
+        });
+      } else {
+        const errBody = await res.json().catch(() => ({})) as { error?: string };
+        setRetryErrors((prev) => new Map(prev).set(key, `Apply failed (${res.status}): ${errBody.error ?? "Server error"}`));
+      }
+    } catch (err) {
+      setRetryErrors((prev) => new Map(prev).set(key, `Apply failed: ${err instanceof Error ? err.message : String(err)}`));
+    } finally {
+      setRetryingFiles((prev) => { const s = new Set(prev); s.delete(key); return s; });
+    }
+  }, []);
+
+  if (visibleRuns.length === 0) return null;
+
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", gap: 6,
+      padding: "10px 14px",
+      borderBottom: "1px solid rgba(201,162,76,0.08)",
+    }}>
+      {visibleRuns.map((run) => (
+        <RunCard
+          key={run.id}
+          run={run}
+          onEnter={() => {}}
+          onDismiss={() => handleDismiss(run)}
+          retryingFiles={retryingFiles}
+          retryErrors={retryErrors}
+          onForceApply={handleForceApply}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ── Root component ────────────────────────────────────────────────────────────
 
 interface Props {
@@ -191,6 +331,7 @@ interface Props {
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
   runId?: string | null;
+  projectName?: string | null;
 }
 
 export function ViewChangesPanel({
@@ -200,6 +341,7 @@ export function ViewChangesPanel({
   pushHistory,
   onRollbackPush,
   runId,
+  projectName,
 }: Props) {
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
 
@@ -207,7 +349,10 @@ export function ViewChangesPanel({
   // filter honestly. Otherwise show the pill + hint and render unfiltered.
   const { filteredMessages, filteredActive, showEmptyHint } = useMemo(() => {
     if (!runId) return { filteredMessages: messages, filteredActive: false, showEmptyHint: false };
-    const hits = messages.filter((m) => (m as { runId?: string }).runId === runId);
+    const hits = messages.filter((m) => {
+      const tagged = (m as { runId?: string; run_id?: string }).runId ?? (m as { runId?: string; run_id?: string }).run_id;
+      return tagged === runId || messageRunId(m) === runId;
+    });
     if (hits.length > 0) return { filteredMessages: hits, filteredActive: true, showEmptyHint: false };
     return { filteredMessages: messages, filteredActive: false, showEmptyHint: true };
   }, [messages, runId]);
@@ -264,6 +409,13 @@ export function ViewChangesPanel({
           ><X size={10} strokeWidth={1.8} /> Clear</button>
         </div>
       )}
+
+      <WorkspaceRunCards
+        projectId={projectId}
+        projectName={projectName?.trim() || "Workspace"}
+        messages={filteredMessages}
+        runId={runId}
+      />
 
       {/* ── Toggle ── */}
       <div style={{

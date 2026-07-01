@@ -111,10 +111,18 @@ function _patchRun(id: string, patch: Partial<ActiveRun>) {
   _notify();
 }
 
+export function patchActiveRun(id: string, patch: Partial<ActiveRun>) {
+  _patchRun(id, patch);
+}
+
 function _removeRun(id: string) {
   _runs = _runs.filter((r) => r.id !== id);
   _saveToStorage(_runs);
   _notify();
+}
+
+export function dismissActiveRun(id: string) {
+  _removeRun(id);
 }
 
 function _scheduleAutoDismiss(id: string, failed = false) {
