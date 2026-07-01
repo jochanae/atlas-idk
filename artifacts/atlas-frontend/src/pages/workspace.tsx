@@ -8223,7 +8223,7 @@ export default function Workspace() {
         {/* Mobile: overlay panel */}
         {isMobile && rightOpen && (
           <div
-            style={{ position: "fixed", top: 46, left: 0, right: 0, bottom: mobileTab === "map" ? 0 : "calc(var(--atlas-dock-height, 64px) + env(safe-area-inset-bottom, 0px))", zIndex: 50, display: "flex", justifyContent: "flex-end" }}
+            style={{ position: "fixed", top: 46, left: 0, right: 0, bottom: mobileTab === "map" ? 0 : "calc(var(--atlas-dock-reserved, var(--atlas-dock-height, 64px)) + env(safe-area-inset-bottom, 0px))", zIndex: 50, display: "flex", justifyContent: "flex-end", transition: "bottom 240ms var(--ease-standard, ease)" }}
           >
             {/* Backdrop — hidden in fullscreen */}
             {!rightFullscreen && (
