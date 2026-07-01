@@ -880,6 +880,7 @@ function buildDimensionMissing(row: ExplainRow, intel: Intelligence): string[] {
     if (openQ > 0) out.push("Resolve open questions or move them to committed.");
   }
   if (row.key === "build") {
+    if (!intel.stack) out.push("Capture the tech stack (frontend, backend, database) so Atlas can reason about architecture.");
     if (!intel.hasFlow) out.push("Sketch the flow map so Atlas can track architecture.");
   }
   return out;
