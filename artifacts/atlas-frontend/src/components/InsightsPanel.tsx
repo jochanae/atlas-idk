@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 /**
  * InsightsPanel — v1 read-only intelligence surface.
@@ -516,64 +517,174 @@ function ConfidenceGrid({
 
 
 function DnaGrid({ dna }: { dna: Intelligence["dna"] }) {
-  const items: { label: string; value: string | null }[] = [
-    { label: "Purpose", value: dna.purpose },
-    { label: "Audience", value: dna.audience },
-    { label: "Identity", value: dna.identity },
-    { label: "Wedge", value: dna.wedge },
+  const items: { label: string; value: string | null; help: string; missingHint: string }[] = [
+    {
+      label: "Purpose",
+      value: dna.purpose,
+      help: "The core reason this project exists — the problem it solves and why it matters.",
+      missingHint: "Tell Atlas what problem this solves and who feels it most.",
+    },
+    {
+      label: "Audience",
+      value: dna.audience,
+      help: "Who this is built for — the specific person or group who benefits most.",
+      missingHint: "Name the audience out loud in a conversation with Atlas.",
+    },
+    {
+      label: "Identity",
+      value: dna.identity,
+      help: "What kind of product this is — the category, tone, or archetype it embodies.",
+      missingHint: "Describe how you'd introduce this project in one sentence.",
+    },
+    {
+      label: "Wedge",
+      value: dna.wedge,
+      help: "The sharp angle or insight that makes this different from anything else.",
+      missingHint: "Talk through what only you can build here, or what others get wrong.",
+    },
   ];
-  const known = items.filter((i) => i.value);
-  if (known.length === 0) return <EmptyLine>DNA still forming.</EmptyLine>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {known.map((i) => (
-        <FieldBlock key={i.label} label={i.label} value={i.value ?? ""} />
+      {items.map((i) => (
+        <FieldBlock key={i.label} label={i.label} value={i.value ?? ""} help={i.help} missingHint={i.missingHint} />
       ))}
     </div>
   );
 }
 
-function FieldBlock({ label, value }: { label: string; value: string }) {
+function FieldBlock({
+  label,
+  value,
+  help,
+  missingHint,
+}: {
+  label: string;
+  value: string;
+  help?: string;
+  missingHint?: string;
+}) {
+  const isEmpty = !value;
   return (
     <div>
-      <div style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO, marginBottom: 3 }}>
-        {label}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+        <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO }}>
+          {label}
+        </span>
+        {help && <HelpDot label={label} help={help} missingHint={isEmpty ? missingHint : undefined} />}
       </div>
-      <div style={{ fontSize: 13, color: FG, fontFamily: SANS, lineHeight: 1.5 }}>{value}</div>
+      {isEmpty ? (
+        <div style={{ fontSize: 13, color: MUTED, fontFamily: SANS, lineHeight: 1.5, fontStyle: "italic" }}>
+          Not captured yet
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, color: FG, fontFamily: SANS, lineHeight: 1.5 }}>{value}</div>
+      )}
     </div>
+  );
+}
+
+function HelpDot({ label, help, missingHint }: { label: string; help: string; missingHint?: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`What is ${label}?`}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            border: `1px solid ${BORDER}`,
+            background: "transparent",
+            color: MUTED,
+            fontFamily: MONO,
+            fontSize: 10,
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          ?
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        style={{
+          width: 260,
+          padding: 12,
+          background: "var(--atlas-bg)",
+          border: `1px solid ${BORDER}`,
+          borderRadius: 10,
+          fontFamily: SANS,
+          zIndex: 220,
+        }}
+      >
+        <div style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: GOLD, fontFamily: MONO, marginBottom: 6 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 12.5, color: FG, lineHeight: 1.5 }}>{help}</div>
+        {missingHint && (
+          <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.5, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
+            <span style={{ color: GOLD, fontFamily: MONO, fontSize: 10, letterSpacing: 1, textTransform: "uppercase", display: "block", marginBottom: 4 }}>
+              How to fill this
+            </span>
+            {missingHint}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 
 function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
-  if (!stack) {
-    return <EmptyLine>Not captured yet — Atlas hasn't seen this project's stack.</EmptyLine>;
-  }
-  const rows: { label: string; value: string | null }[] = [
-    { label: "Frontend", value: stack.frontend },
-    { label: "Backend", value: stack.backend },
-    { label: "Database", value: stack.database },
-    { label: "Hosting", value: stack.hosting },
-    { label: "Auth", value: stack.auth },
-    { label: "Language", value: stack.language },
-    { label: "Package manager", value: stack.packageManager },
+  const rows: { label: string; value: string | null; help: string; missingHint: string }[] = [
+    { label: "Frontend", value: stack?.frontend ?? null, help: "The UI framework and language the frontend is built with.", missingHint: "Tell Atlas what the frontend uses (e.g. React + Vite + TypeScript)." },
+    { label: "Backend", value: stack?.backend ?? null, help: "The server runtime, framework, and where it runs.", missingHint: "Describe the backend runtime and framework (e.g. Node/Express on Cloud Run)." },
+    { label: "Database", value: stack?.database ?? null, help: "The primary datastore for the project.", missingHint: "Name the database and provider (e.g. Supabase Postgres)." },
+    { label: "Hosting", value: stack?.hosting ?? null, help: "Where the frontend and backend are deployed.", missingHint: "Say where each piece runs (e.g. Vercel frontend, Cloud Run backend)." },
+    { label: "Auth", value: stack?.auth ?? null, help: "How users are authenticated.", missingHint: "Describe how auth works (provider, token/cookie strategy)." },
+    { label: "Language", value: stack?.language ?? null, help: "The dominant language across the codebase.", missingHint: "Set the primary language in Atlas (e.g. TypeScript)." },
+    { label: "Package manager", value: stack?.packageManager ?? null, help: "The package manager used to install and lock dependencies.", missingHint: "Note the package manager (pnpm, npm, bun)." },
   ];
-  const known = rows.filter((r) => r.value);
-  const hasIntegrations = stack.integrations && stack.integrations.length > 0;
-  if (known.length === 0 && !hasIntegrations && !stack.repo) {
-    return <EmptyLine>Stack row exists but no fields captured yet.</EmptyLine>;
+
+  const hasIntegrations = !!stack?.integrations && stack.integrations.length > 0;
+  const hasRepo = !!stack?.repo;
+
+  if (!stack) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 12.5, color: MUTED, fontFamily: SANS, fontStyle: "italic", lineHeight: 1.5 }}>
+          Not captured yet — Atlas hasn't seen this project's stack.
+        </div>
+        {rows.map((r) => (
+          <FieldBlock key={r.label} label={r.label} value="" help={r.help} missingHint={r.missingHint} />
+        ))}
+      </div>
+    );
   }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {known.map((r) => (
-        <FieldBlock key={r.label} label={r.label} value={r.value ?? ""} />
+      {rows.map((r) => (
+        <FieldBlock key={r.label} label={r.label} value={r.value ?? ""} help={r.help} missingHint={r.missingHint} />
       ))}
       {hasIntegrations && (
         <div>
-          <div style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO, marginBottom: 5 }}>
-            Integrations
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+            <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO }}>
+              Integrations
+            </span>
+            <HelpDot label="Integrations" help="Third-party services this project talks to (APIs, providers, SDKs)." />
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {stack.integrations.map((tag) => (
+            {stack!.integrations.map((tag) => (
               <span
                 key={tag}
                 style={{
@@ -592,13 +703,16 @@ function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
           </div>
         </div>
       )}
-      {stack.repo && (
+      {hasRepo && (
         <div>
-          <div style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO, marginBottom: 5 }}>
-            Repo
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+            <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: MUTED, fontFamily: MONO }}>
+              Repo
+            </span>
+            <HelpDot label="Repo" help="The source-of-truth code repository for this project." />
           </div>
           <a
-            href={stack.repo.startsWith("http") ? stack.repo : `https://${stack.repo}`}
+            href={stack!.repo!.startsWith("http") ? stack!.repo! : `https://${stack!.repo}`}
             target="_blank"
             rel="noreferrer"
             style={{
@@ -614,13 +728,14 @@ function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
               border: `1px solid ${BORDER}`,
             }}
           >
-            {stack.repo.replace(/^https?:\/\//, "")} <span style={{ opacity: 0.7 }}>↗</span>
+            {stack!.repo!.replace(/^https?:\/\//, "")} <span style={{ opacity: 0.7 }}>↗</span>
           </a>
         </div>
       )}
     </div>
   );
 }
+
 
 function EntryRow({ title, summary, status }: { title: string; summary: string | null; status: string }) {
   return (
@@ -827,14 +942,9 @@ function buildDimensionObservations(row: ExplainRow, intel: Intelligence): strin
         s.hosting && "hosting",
         s.auth && "auth",
       ].filter(Boolean) as string[];
-      if (captured.length > 0) {
-        out.push(`Stack captured: ${captured.join(", ")}.`);
-      } else {
-        out.push("Stack row exists but no fields captured yet.");
-      }
-      if (s.integrations && s.integrations.length > 0) {
-        out.push(`Integrations tracked: ${s.integrations.join(", ")}.`);
-      }
+      if (captured.length > 0) out.push(`Stack captured: ${captured.join(", ")}.`);
+      else out.push("Stack row exists but no fields captured yet.");
+      if (s.integrations && s.integrations.length > 0) out.push(`Integrations tracked: ${s.integrations.join(", ")}.`);
     } else {
       out.push("No stack captured yet — Atlas hasn't seen this project's tech.");
     }
