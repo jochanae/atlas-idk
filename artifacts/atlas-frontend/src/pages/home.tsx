@@ -4007,9 +4007,9 @@ export default function Home() {
             justifyContent: globalInsightOpen ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
             position: "relative",
             paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
-            paddingTop: (globalInsightOpen || !askAtlasConversationActive) ? 0 : 48,
+            paddingTop: 0,
             minWidth: 0,
-            overflow: (globalInsightOpen || askAtlasConversationActive) ? "hidden" : "visible",
+            overflow: globalInsightOpen ? "hidden" : "visible",
           }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
@@ -4119,18 +4119,20 @@ export default function Home() {
                 ref={askAtlasScrollRef}
                 aria-live="polite"
                 style={{
-                  textAlign: "left",
-                  maxHeight: "min(52vh, 480px)",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                   overflowY: "auto",
                   display: "flex",
                   flexDirection: "column",
                   gap: 12,
-                  padding: "24px 4px 8px",
+                  padding: "52px 4px 16px",
                   scrollbarWidth: "none",
                   msOverflowStyle: "none",
-                  marginBottom: 24,
-                  position: "relative",
                   zIndex: 1,
+                  textAlign: "left",
                 }}
               >
                 {askAtlasChat.messages.map((m, i) => {
