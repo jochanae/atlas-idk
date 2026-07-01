@@ -403,7 +403,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                         </span>
                       )}
                     </div>
-                    <CompactReadinessRing score={p.latestSnapshotScore ?? 0} />
+                    <CompactReadinessRing score={p.readinessScore ?? p.latestSnapshotScore ?? 0} />}
                   </button>
                 ))
               )}
