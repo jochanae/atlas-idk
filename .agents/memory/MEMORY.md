@@ -1,3 +1,4 @@
+- [Home Chat State Architecture](home-chat-state.md) — two independent chat instances (nexusChat=workspace, askAtlasChat=ask-atlas); ownership map for messages, scroll, routing, legacy removal targets
 - [Checkpoint System](checkpoint-system.md) — project_checkpoints table + GET/POST API + auto-triggers (forge-sync=build, DNA PATCH=understanding) + 3-tab HistoryBookmarksSheet UI
 - [AM Canonical DNA Migration](am-canonical-migration.md) — projectGenomeTable eliminated from routes; all DNA reads/writes go through projectDNA.ts helpers; boot migration auto-runs
 - [Ledger AM Field Tagging](ledger-am-field.md) — entries.am_field declares which AM field a decision belongs to; new columns must go through ensureColumns(), not drizzle-kit push
