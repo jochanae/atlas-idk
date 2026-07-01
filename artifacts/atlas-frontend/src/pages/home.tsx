@@ -5473,7 +5473,7 @@ export default function Home() {
       <ProjectsDrawer
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
-        projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name, description: p.description, latestSnapshotScore: p.latestSnapshotScore ?? null, status: (p as { status?: "shaping" | "committed" | "archived" }).status }))}
+        projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name, description: p.description, readinessScore: (p as { readinessScore?: number | null }).readinessScore ?? null, latestSnapshotScore: p.latestSnapshotScore ?? null, status: (p as { status?: "shaping" | "committed" | "archived" }).status }))}
         onOpenProject={navigateToProject}
         onNewProject={() => { setShowDrawer(false); handleNewProject("New Project"); }}
         onOpenLedger={(id) => setLocation(`/ledger/${id}`)}
