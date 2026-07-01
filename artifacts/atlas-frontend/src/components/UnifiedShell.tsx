@@ -81,15 +81,31 @@ export function useShellState(): ShellState {
 }
 
 function depthFromPath(pathname: string): ShellDepth {
-  if (pathname.startsWith("/project/")) return "operational";
+  if (pathname.startsWith("/project/") || pathname.startsWith("/workspace/")) return "operational";
   return "ambient";
 }
 
 function projectIdFromPath(pathname: string): number | null {
-  const match = pathname.match(/^\/project\/(\d+)/);
-  if (!match) return null;
-  const id = Number(match[1]);
-  return Number.isFinite(id) ? id : null;
+  const projectMatch = pathname.match(/^\/project\/(\d+)/);
+  if (projectMatch) {
+    const id = Number(projectMatch[1]);
+    if (Number.isFinite(id)) return id;
+  }
+  const wsMatch = pathname.match(/^\/workspace\/([^/?#]+)/);
+  if (wsMatch) {
+    try {
+      const cached = typeof sessionStorage !== "undefined"
+        ? sessionStorage.getItem(`atlas-cid-${wsMatch[1]}`)
+        : null;
+      const id = cached ? Number(cached) : NaN;
+      if (Number.isFinite(id) && id > 0) return id;
+    } catch {}
+  }
+  return null;
+}
+
+function isProjectRoute(pathname: string): boolean {
+  return pathname.startsWith("/project/") || pathname.startsWith("/workspace/");
 }
 
 function ShellDrawerButton() {
@@ -2045,15 +2061,33 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
   const [activeConversationTitle, setActiveConversationTitleState] = useState<string | null>(null);
   const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
 
+
   useEffect(() => {
     const projectId = projectIdFromPath(location);
     if (projectId != null) {
       setCurrentDepth("operational");
       setActiveProjectIdState(projectId);
       setActiveConversationTitleState(null);
-    } else {
-      setActiveProjectIdState(null);
+      return undefined;
     }
+    if (location.startsWith("/workspace/")) {
+      // Conversation-id route without a cached numeric id yet — keep operational
+      // depth and poll sessionStorage briefly while workspace.tsx resolves it.
+      setCurrentDepth("operational");
+      let cancelled = false;
+      const start = Date.now();
+      const tick = () => {
+        if (cancelled) return;
+        const resolved = projectIdFromPath(location);
+        if (resolved != null) { setActiveProjectIdState(resolved); return; }
+        if (Date.now() - start > 8000) return;
+        window.setTimeout(tick, 200);
+      };
+      tick();
+      return () => { cancelled = true; };
+    }
+    setActiveProjectIdState(null);
+    return undefined;
   }, [location]);
 
   const setDepth = useCallback((depth: ShellDepth) => {
@@ -2189,7 +2223,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             ) : (
               <ShellConversationTitle title={location === "/home" ? activeConversationTitle : null} />
             )}
-            {!(location === "/home" && currentDepth === "ambient") && !location.startsWith("/project/") && <HudToggleDot />}
+            {!(location === "/home" && currentDepth === "ambient") && !isProjectRoute(location) && <HudToggleDot />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: isTinyMobile ? 3 : 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />
