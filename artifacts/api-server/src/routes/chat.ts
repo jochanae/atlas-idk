@@ -2460,7 +2460,7 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Load project memory + repo info + node state from DB, plus user memory when authenticated.
   // Also check for Vercel connection so we know whether to defer BROWSER_VISIT until after deploy.
-  const [projectRows, userRows, vercelRows, sessionRows] = await Promise.all([
+  const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow] = await Promise.all([
     isFoundationMode
       ? Promise.resolve([] as Array<{ memory: string | null; linkedRepo: string | null; githubToken: string | null; nodeState: Record<string, unknown> | null; name: string; previewUrl: string | null; description: string | null }>)
       : db
@@ -2489,12 +2489,22 @@ router.post("/chat", async (req, res): Promise<void> => {
           .limit(1)
           .catch(() => [] as Array<{ buildIntent: string | null; messageCount: number; title: string | null }>)
       : Promise.resolve([] as Array<{ buildIntent: string | null; messageCount: number; title: string | null }>),
+    !isFoundationMode && projectId
+      ? db.execute(sql`SELECT session_summary, session_summary_at FROM projects WHERE id = ${projectId}`)
+          .then((r) => {
+            const row = (r as unknown as { rows: Array<Record<string, unknown>> }).rows?.[0] ?? null;
+            return row ? { summary: row["session_summary"] as string | null, summaryAt: row["session_summary_at"] as string | null } : null;
+          })
+          .catch(() => null)
+      : Promise.resolve(null),
   ]);
   const [project] = projectRows;
   const [user] = userRows;
   const hasVercelConnection = vercelRows.length > 0;
   const sessionBuildIntent = sessionRows[0]?.buildIntent ?? null;
   const sessionMessageCount = sessionRows[0]?.messageCount ?? 1;
+  const storedSessionSummary = sessionSummaryRow?.summary ?? null;
+  const storedSessionSummaryAt = sessionSummaryRow?.summaryAt ?? null;
 
   // Auto-title: when this is the very first message in a session, use the user's
   // message text (truncated) as the session title, replacing any placeholder.
@@ -2950,6 +2960,24 @@ HARD RULE: Never answer from the context of a different project unless the user 
     }
     continuityBlock += `\n--- END PROJECT CONTEXT ---`;
     systemPrompt += continuityBlock;
+
+    // SESSION RESUMPTION — inject when user returns after a meaningful gap (≥3 hours)
+    // and this is early in the conversation (they haven't already been talking for a while).
+    const SESSION_GAP_MS = 3 * 60 * 60 * 1000; // 3 hours
+    const isEarlyInConversation = history.length <= 4;
+    if (storedSessionSummary && storedSessionSummaryAt && isEarlyInConversation) {
+      const gapMs = Date.now() - new Date(storedSessionSummaryAt).getTime();
+      if (gapMs >= SESSION_GAP_MS) {
+        const gapHours = Math.floor(gapMs / (1000 * 60 * 60));
+        const gapLabel = gapHours < 24
+          ? `${gapHours}h`
+          : `${Math.floor(gapHours / 24)}d`;
+        systemPrompt += `\n\n--- SESSION RESUMPTION ---`;
+        systemPrompt += `\nThe user is returning after a gap of approximately ${gapLabel}. Here is where the last session ended:\n\n${storedSessionSummary}`;
+        systemPrompt += `\n\nUse this to orient the user naturally — speak from memory, not from notes. Do not recite this summary back verbatim. Weave the context into your response. If their first message picks up exactly where things left off, continue directly. If it's unrelated, follow their lead — do not force the orientation. The posture is: "I've been keeping an eye on things. Here's where we are."`;
+        systemPrompt += `\n--- END SESSION RESUMPTION ---`;
+      }
+    }
   }
 
   // Project DNA: Creative Principles + Experience Intent + Visual Memory sketches
@@ -4963,6 +4991,47 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     void runArtifactOrchestrator(projectId).catch((err) => {
       logger.warn({ err, projectId }, "ArtifactOrchestrator: evaluation failed — non-fatal");
     });
+  }
+
+  // Session Summary — generate/refresh after every workspace turn so Atlas can
+  // orient the user when they return after a gap. Fire-and-forget, non-blocking.
+  if (projectId && message && displayContent) {
+    void (async () => {
+      try {
+        // Build a condensed excerpt of the session exchange for the summary prompt.
+        const recentExchanges = [
+          ...history.slice(-6).map((m: { role: string; content: string }) =>
+            `${m.role === "user" ? "User" : "Atlas"}: ${String(m.content).slice(0, 400)}`
+          ),
+          `User: ${message.slice(0, 400)}`,
+          `Atlas: ${displayContent.slice(0, 600)}`,
+        ].join("\n");
+
+        const summaryResp = await anthropic.messages.create({
+          model: "claude-haiku-4-5",
+          max_tokens: 180,
+          messages: [{
+            role: "user",
+            content: `You are writing a private one-paragraph session summary for an AI assistant called Atlas. It will be used to orient Atlas when the user returns after a gap — not shown to the user directly.\n\nWrite ONE tight paragraph (2–4 sentences, no bullets) covering:\n1. What was being worked on or decided\n2. What is unresolved or paused\n3. The clearest next move\n\nTone: matter-of-fact, specific. Write in third person ("The user was...") so Atlas can read it as context.\n\nRecent session exchange:\n${recentExchanges}\n\nSession summary (one paragraph, no preamble):`,
+          }],
+        });
+
+        const rawSummary = summaryResp.content[0]?.type === "text"
+          ? summaryResp.content[0].text.trim()
+          : null;
+
+        if (rawSummary) {
+          await db.execute(sql`
+            UPDATE projects
+            SET session_summary = ${rawSummary},
+                session_summary_at = now()
+            WHERE id = ${projectId}
+          `);
+        }
+      } catch (err) {
+        logger.warn({ err, projectId }, "session summary generation failed — non-fatal");
+      }
+    })();
   }
 });
 

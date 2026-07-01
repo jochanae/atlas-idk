@@ -373,6 +373,17 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.error({ err }, "ensureColumns: project_dna migration failed — legacy columns preserved");
   }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS session_summary text,
+        ADD COLUMN IF NOT EXISTS session_summary_at timestamptz
+    `);
+    logger.info("ensureColumns: projects.session_summary columns verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: projects.session_summary failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {
