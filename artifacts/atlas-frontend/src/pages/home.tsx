@@ -6155,7 +6155,7 @@ function ProjectsGridSheet({
                       <p style={{ margin: 0, fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-label)", fontWeight: 600, color: "var(--atlas-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>
                         {p.name}
                       </p>
-                      <CompactReadinessRing score={p.latestSnapshotScore ?? 0} />
+                      <CompactReadinessRing score={p.readinessScore ?? p.latestSnapshotScore ?? 0} />
                     </div>
                     <p style={{ margin: 0, fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.05em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {p.description ?? "No description"}
