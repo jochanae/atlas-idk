@@ -3966,10 +3966,6 @@ export default function Home() {
         className="atlas-home-responsive-shell"
         style={{
           display: "flex",
-          flexDirection: "column",
-          flex: 1,
-          minHeight: 0,
-          width: "100%",
           justifyContent: "center",
           padding: "0 24px",
         }}
