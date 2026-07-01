@@ -1332,22 +1332,22 @@ mark.atlas-search-hit.atlas-search-hit--active {
 }
 
 
-/* 3) Avatar ring — neutral in parchment (was gold rgba). */
+/* 3) Avatar ring — charcoal in parchment, matching hamburger weight. */
 [data-theme="parchment"] .atlas-avatar-ring {
-  border-left-color: rgba(15, 23, 42, 0.14) !important;
-  border-right-color: rgba(15, 23, 42, 0.14) !important;
+  border-left-color: rgba(42, 42, 42, 0.55) !important;
+  border-right-color: rgba(42, 42, 42, 0.55) !important;
 }
 
-/* 4) "+" invite affordance — charcoal glyph, neutral border, no gold glow. */
+/* 4) "+" invite affordance — charcoal glyph + border, matches hamburger. */
 [data-theme="parchment"] .atlas-invite-plus {
-  border-color: rgba(15, 23, 42, 0.14) !important;
-  border-style: solid !important;
+  border-color: rgba(42, 42, 42, 0.45) !important;
+  border-style: dashed !important;
   color: var(--atlas-icon) !important;
   background: transparent !important;
 }
 [data-theme="parchment"] .atlas-invite-plus:hover {
-  border-color: rgba(15, 23, 42, 0.28) !important;
-  background: rgba(15, 23, 42, 0.03) !important;
+  border-color: rgba(42, 42, 42, 0.7) !important;
+  background: rgba(42, 42, 42, 0.04) !important;
   color: var(--atlas-icon) !important;
 }
 
