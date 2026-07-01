@@ -368,7 +368,7 @@ export function AskAtlasSurface({
           bottom: "var(--atlas-dock-height, 64px)",
         display: "flex",
         flexDirection: "column",
-        background: "var(--atlas-bg)",
+        background: "transparent",
         zIndex: 60,
         overscrollBehavior: "contain",
         touchAction: "none",
