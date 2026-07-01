@@ -3751,7 +3751,29 @@ export default function Home() {
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.clearMessages]);
+    // Reset transient Home state so a fresh conversation starts clean.
+    setShapingStatus("idle");
+    setPendingWorkspace(null, "");
+    setGlobalInsightOpen(false);
+    void callGlobalInsightMode(false);
+    setSendTo("workspace");
+    sendToRef.current = "workspace";
+    setAskAtlasHelperVisible(false);
+    clearAskAtlasPortfolioTransition();
+    setAskAtlasPortfolioStatus(null);
+    askAtlasChat.abort();
+    askAtlasChat.clearMessages();
+    setHandoffCardDismissed(false);
+    setHandoffProjectName("");
+  }, [
+    nexusChat.clearMessages,
+    setShapingStatus,
+    setPendingWorkspace,
+    callGlobalInsightMode,
+    askAtlasChat.abort,
+    askAtlasChat.clearMessages,
+    clearAskAtlasPortfolioTransition,
+  ]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
