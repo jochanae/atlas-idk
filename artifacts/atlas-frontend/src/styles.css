@@ -775,6 +775,18 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   animation: atlas-dot-pulse 2.2s ease-in-out infinite;
 }
 
+/* Intelligence pulse — purple, for AI signals only (Ask Atlas idle,
+   streaming, live inference). Never a theme fill. */
+.atlas-intel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--atlas-intel);
+  box-shadow: 0 0 8px var(--atlas-intel-glow);
+  display: inline-block;
+  animation: atlas-dot-pulse 2.2s ease-in-out infinite;
+}
+
 /* ── Thinking-label shimmer (gold sweep across muted text) ── */
 @keyframes atlas-label-shimmer {
   0%   { background-position: 200% 0; }
