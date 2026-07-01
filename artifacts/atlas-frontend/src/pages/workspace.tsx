@@ -8282,6 +8282,7 @@ export default function Workspace() {
                   mobileTab === "files" ? "files" :
                   mobileTab === "preview" ? "preview" :
                   mobileTab === "manifest" ? "manifest" :
+                  mobileTab === "insights" ? "insights" :
                   mobileTab === "blueprints" ? "blueprints" :
                   mobileTab === "memory" ? "memory" :
                   mobileTab === "connections" ? "connections" :
