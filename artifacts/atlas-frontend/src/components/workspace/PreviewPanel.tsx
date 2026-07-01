@@ -1900,7 +1900,7 @@ ${t}
                 </div>
               )}
 
-              {routePicker("local")}
+              
 
               {/* Error banner */}
               {devError && (
