@@ -5892,9 +5892,10 @@ export default function Home() {
         />
       )}
 
-
+      <ActiveRunsStrip bottomOffset={76} />
 
       <div className="atlas-home-bottom-nav">
+
         <UnifiedContextDock
           mode="ambient"
           onAtlasCore={() => window.scrollTo({ top: 0, behavior: "smooth" })}
