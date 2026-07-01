@@ -250,9 +250,17 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
       </Section>
 
       {/* Atlas Confidence */}
-      <Section title="Atlas confidence">
-        <ConfidenceGrid dimensions={readiness.dimensions} clarity={health.clarity} />
+      <Section title="Atlas confidence" trailing={
+        <button
+          onClick={() => setExplainDim({ key: "__overall", label: "Build readiness overall", score: readiness.overall, note: readiness.label, evidence: "", applicable: true })}
+          style={{ background: "transparent", border: "none", color: GOLD, fontFamily: SANS, fontSize: 11, cursor: "pointer", padding: 0 }}
+        >
+          Explain
+        </button>
+      }>
+        <ConfidenceGrid dimensions={readiness.dimensions} clarity={health.clarity} onExplain={setExplainDim} />
       </Section>
+
 
       {/* Project DNA */}
       <Section title="Project DNA">
