@@ -2548,19 +2548,6 @@ export function AssistantBubble({
             <span>Retry</span>
           </button>
 
-          <button
-            className={`atlas-icon-action${commitDone ? " done" : ""}`}
-            title={commitDone ? "Saved to Ledger" : "Save response to Ledger"}
-            aria-label={commitDone ? "Saved to Ledger" : "Save response to Ledger"}
-            style={labeledActionStyle}
-            onClick={() => { if (!commitDone) { onCommit(message.content); setCommitDone(true); } }}
-          >
-            {commitDone
-              ? <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
-              : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="1.5" width="10" height="11" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" /></svg>
-            }
-            <span>{commitDone ? "Saved" : "Save to Ledger"}</span>
-          </button>
 
           {/* Sketch this — icon-only, popover with style presets */}
           {!message.imageB64 && !message.imageGen && message.content && (
