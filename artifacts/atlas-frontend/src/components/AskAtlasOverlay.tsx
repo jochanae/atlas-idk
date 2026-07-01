@@ -322,7 +322,8 @@ export function AskAtlasOverlay({
                       {[0, 1, 2].map((n) => (
                         <span key={n} style={{
                           width: 5, height: 5, borderRadius: 999,
-                          background: "rgba(212,175,55,0.85)",
+                          background: "var(--atlas-intel)",
+                          boxShadow: "0 0 6px var(--atlas-intel-glow)",
                           display: "inline-block",
                           animation: `askAtlasDot 1100ms ${EASE} ${n * 140}ms infinite`,
                         }} />
