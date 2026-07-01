@@ -86,10 +86,26 @@ function depthFromPath(pathname: string): ShellDepth {
 }
 
 function projectIdFromPath(pathname: string): number | null {
-  const match = pathname.match(/^\/project\/(\d+)/);
-  if (!match) return null;
-  const id = Number(match[1]);
-  return Number.isFinite(id) ? id : null;
+  const projectMatch = pathname.match(/^\/project\/(\d+)/);
+  if (projectMatch) {
+    const id = Number(projectMatch[1]);
+    if (Number.isFinite(id)) return id;
+  }
+  const wsMatch = pathname.match(/^\/workspace\/([^/?#]+)/);
+  if (wsMatch) {
+    try {
+      const cached = typeof sessionStorage !== "undefined"
+        ? sessionStorage.getItem(`atlas-cid-${wsMatch[1]}`)
+        : null;
+      const id = cached ? Number(cached) : NaN;
+      if (Number.isFinite(id) && id > 0) return id;
+    } catch {}
+  }
+  return null;
+}
+
+function isProjectRoute(pathname: string): boolean {
+  return pathname.startsWith("/project/") || pathname.startsWith("/workspace/");
 }
 
 function ShellDrawerButton() {
