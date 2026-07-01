@@ -1989,8 +1989,9 @@ export default function Home() {
     projectContext: null,
   });
   const askAtlasScrollRef = useRef<HTMLDivElement | null>(null);
-  const askAtlasConversationActive = askAtlasChat.messages.length > 0;
+  const askAtlasConversationActive = sendTo === "ask-atlas" && askAtlasChat.messages.length > 0;
   const askAtlasBusy = sendTo === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending);
+  const dockVisible = useDockVisibility();
   const clearAskAtlasPortfolioTransition = useCallback(() => {
     if (askAtlasPortfolioTransitionFadeTimerRef.current != null) {
       window.clearTimeout(askAtlasPortfolioTransitionFadeTimerRef.current);
