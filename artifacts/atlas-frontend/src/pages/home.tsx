@@ -4296,7 +4296,7 @@ export default function Home() {
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
-                marginTop: 72,
+                marginTop: askAtlasConversationActive ? 16 : 72,
                 position: "relative",
                 zIndex: 1,
                 transition: "margin-top 280ms cubic-bezier(0.22, 1, 0.36, 1)",
