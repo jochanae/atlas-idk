@@ -6020,7 +6020,7 @@ function OverviewBottomSheet({
 }
 
 // ── Projects Grid Sheet ───────────────────────────────────────────────────────
-type SheetProject = { id: number; name: string; description?: string | null; latestSnapshotScore?: number | null };
+type SheetProject = { id: number; name: string; description?: string | null; readinessScore?: number | null; latestSnapshotScore?: number | null };
 
 function ProjectsGridSheet({
   projects,
