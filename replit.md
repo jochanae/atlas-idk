@@ -66,9 +66,11 @@ Axiom is an application-modeling system that uses conversation as its interface.
 - `src/_workspace/api-client-react/` is NOT auto-generated — update manually when the API spec changes
 - 401s on `/api/auth/me` on page load are expected (not logged in yet)
 
-## Database
+## Databases
 
-- **Replit built-in PostgreSQL** — the only database. Auto-provisioned, schema auto-pushed on boot via Drizzle ORM.
+- **Replit built-in PostgreSQL** — local backend DB. Auto-provisioned, schema auto-pushed on boot via Drizzle ORM.
+- **Supabase `osuasytymbzurjvklhde`** — production Axiom DB. Still wired in — do NOT touch from here.
+- **Supabase `lmrpnsjckljdwqudtelk`** — Lovable project DB (unrelated, do not use here).
 
 ## Key surfaces
 
