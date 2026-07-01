@@ -461,6 +461,21 @@ export function layoutRadial(nodes: ArchNode[]): ArchNode[] {
   });
 }
 
+// Guards against stray "top-left" nodes: any node whose persisted x/y is
+// missing, non-finite, or an obvious (0,0) placeholder gets its `moved`
+// flag cleared so layoutRadial re-assigns it a proper ring slot. Nodes
+// with real user-placed coordinates are preserved untouched.
+export function sanitizeNodePositions(nodes: ArchNode[]): ArchNode[] {
+  const cleaned = nodes.map(n => {
+    const xOk = typeof n.x === "number" && Number.isFinite(n.x);
+    const yOk = typeof n.y === "number" && Number.isFinite(n.y);
+    const isStray = !xOk || !yOk || (n.x === 0 && n.y === 0 && n.type !== "goal");
+    if (!isStray) return n;
+    return { ...n, moved: false, x: n.type === "goal" ? RADIAL_CENTER_X : 0, y: n.type === "goal" ? RADIAL_CENTER_Y : 0 };
+  });
+  return layoutRadial(cleaned);
+}
+
 function addEdgeIfMissing(edges: ArchEdge[], from: string, to: string): ArchEdge[] {
   if (from === to || edges.some(e => e.from === from && e.to === to)) return edges;
   return [...edges, { id: `e-${from}-${to}`, from, to }];
