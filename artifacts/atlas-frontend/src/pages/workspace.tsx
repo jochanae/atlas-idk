@@ -1868,11 +1868,13 @@ function RightPanel({
       ),
     },
     {
-      id: "manifest" as RightTab,
-      label: "Manifest",
+      id: "insights" as RightTab,
+      label: "Insights",
       icon: (
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="8,1.5 10,5.5 14.5,6.2 11.5,9.2 12.2,13.5 8,11.5 3.8,13.5 4.5,9.2 1.5,6.2 6,5.5" />
+          <circle cx="8" cy="8" r="6" />
+          <path d="M8 4.5v3.5l2 1.4" />
+          <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
         </svg>
       ),
     },
