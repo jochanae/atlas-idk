@@ -254,7 +254,7 @@ export function ComposerActions({
           setMoreExpanded(false);
           setShowMore(true);
         }}
-        style={iconBtnStyle(showMore, false, borderless)}
+        style={iconBtnStyle(showMore, false, borderless, compact)}
       >
         <MoreHorizontal size={17} strokeWidth={1.7} />
       </button>
