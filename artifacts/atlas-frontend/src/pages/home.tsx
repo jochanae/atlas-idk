@@ -3989,8 +3989,6 @@ export default function Home() {
           display: "flex",
           justifyContent: "center",
           padding: "0 24px",
-          flex: 1,
-          minHeight: 0,
         }}
       >
         <UnifiedConversationSurface
@@ -4030,7 +4028,7 @@ export default function Home() {
             justifyContent: askAtlasSurfaceVisible ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
             position: "relative",
             paddingBottom: askAtlasSurfaceVisible ? 0 : "var(--atlas-dock-clearance)",
-            paddingTop: askAtlasSurfaceVisible ? 0 : (isMobile ? (isTiny ? "clamp(84px, 13dvh, 116px)" : "clamp(120px, 18dvh, 172px)") : 0),
+            paddingTop: 0,
             minWidth: 0,
             overflow: askAtlasSurfaceVisible ? "hidden" : "visible",
           }}>
@@ -4053,11 +4051,10 @@ export default function Home() {
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
-                marginTop: 0,
+                marginTop: 72,
                 position: "relative",
                 zIndex: 1,
               }}>
-
                 <div style={{
                   opacity: inputFocused ? 0.3 : 1,
                   transform: inputFocused ? "translateY(-12px)" : "translateY(0)",
@@ -4102,7 +4099,7 @@ export default function Home() {
                     })()}
                   </p>
                   {projects && projects.length > 0 && (() => {
-                    const receded = askAtlasSurfaceVisible;
+                    const receded = askAtlasSurfaceVisible || inputFocused;
                     return (
                       <button
                         type="button"
@@ -4113,13 +4110,11 @@ export default function Home() {
                         aria-hidden={receded}
                         tabIndex={receded ? -1 : 0}
                         style={{
-                          position: isTiny ? "fixed" : "absolute",
-                          top: isTiny ? "calc(env(safe-area-inset-top, 0px) + 10px)" : -14,
-                          right: isTiny ? 68 : 8,
-                          left: "auto",
-                          width: isTiny ? 34 : 40,
-                          height: isTiny ? 34 : 40,
-                          zIndex: isTiny ? 400 : undefined,
+                          position: "absolute",
+                          top: -14,
+                          right: 8,
+                          width: 40,
+                          height: 40,
                           borderRadius: 999,
                           display: "inline-flex",
                           alignItems: "center",
@@ -4153,7 +4148,7 @@ export default function Home() {
             <div style={{
               margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
-                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isMobile && !isTiny ? "clamp(40px, 7dvh, 72px) 0 50px" : "18px 0 26px")),
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
               minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
               display: askAtlasSurfaceVisible ? "none" : undefined,
