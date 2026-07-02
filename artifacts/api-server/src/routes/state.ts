@@ -132,4 +132,37 @@ router.get("/projects/:id/state", async (req, res): Promise<void> => {
   });
 });
 
+// ── GET /api/projects/:id/session-summary ─────────────────────────────────────
+router.get("/projects/:id/session-summary", async (req, res): Promise<void> => {
+  const projectId = Number(req.params.id);
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  const userId = (req as any).authUser.id as number;
+  const rows = await db.execute(
+    sql`SELECT session_summary, session_summary_at FROM projects WHERE id = ${projectId} AND user_id = ${userId} LIMIT 1`
+  );
+  const row = rows.rows[0] as { session_summary: string | null; session_summary_at: string | null } | undefined;
+  if (!row) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  res.json({ summary: row.session_summary ?? null, summaryAt: row.session_summary_at ?? null });
+});
+
+// ── DELETE /api/projects/:id/session-summary — clear stored summary ───────────
+router.delete("/projects/:id/session-summary", async (req, res): Promise<void> => {
+  const projectId = Number(req.params.id);
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  const userId = (req as any).authUser.id as number;
+  await db.execute(
+    sql`UPDATE projects SET session_summary = NULL, session_summary_at = NULL WHERE id = ${projectId} AND user_id = ${userId}`
+  );
+  res.json({ ok: true });
+});
+
 export default router;

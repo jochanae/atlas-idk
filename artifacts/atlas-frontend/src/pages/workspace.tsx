@@ -98,6 +98,7 @@ import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer } from "@/components/workspace/ChatComposer";
+import { SessionSummaryPill } from "@/components/workspace/SessionSummaryPill";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ParkSheet } from "@/components/ParkSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
@@ -7292,6 +7293,21 @@ export default function Workspace() {
         onExpandedChange={setSubheaderOpen}
       />
 
+      {/* Session summary pill — only visible on the chat tab when a project is open */}
+      {project && unifiedSubheaderTab === "chat" && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            padding: "6px 16px 0",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ pointerEvents: "auto" }}>
+            <SessionSummaryPill projectId={project.id} />
+          </div>
+        </div>
+      )}
 
       <LaunchModal
         open={launchModal.open}
