@@ -4861,41 +4861,24 @@ export default function Home() {
                   Atlas on Send. Inspired by the workspace Plan Mode button. */}
               <button
                 type="button"
-                title={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
-                aria-label={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
-                aria-pressed={sendTo === "ask-atlas"}
+                title="Open Ask Atlas"
+                aria-label="Open Ask Atlas"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSendTo((prev) => {
-                    const next: SendTarget = prev === "ask-atlas" ? "workspace" : "ask-atlas";
-                    if (next === "ask-atlas") {
-                      nexusChat.clearMessages();
-                      try {
-                        if (!localStorage.getItem("atlas-ask-atlas-helped")) {
-                          setAskAtlasHelperVisible(true);
-                          localStorage.setItem("atlas-ask-atlas-helped", "1");
-                        }
-                      } catch { /* noop */ }
-                    } else {
-                      setAskAtlasHelperVisible(false);
-                      askAtlasChat.abort();
-                      askAtlasChat.clearMessages();
-                    }
-                    return next;
-                  });
+                  nexusChat.clearMessages();
+                  setAskAtlasSurfaceOpen(true);
+                  const seed = input.trim();
+                  if (seed) setInput(seed);
+                  window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
                 }}
                 style={{
                   height: isTiny ? 28 : 34,
                   display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
                   padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
-                  background: sendTo === "ask-atlas"
-                    ? "color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
-                    : "transparent",
-                  border: `1px solid ${sendTo === "ask-atlas" ? "var(--atlas-gold-border)" : "var(--atlas-border, rgba(120,113,108,0.18))"}`,
-                  boxShadow: sendTo === "ask-atlas"
-                    ? "0 0 14px -4px var(--atlas-gold-glow), inset 0 0 0 1px var(--atlas-gold-border)"
-                    : "none",
-                  color: sendTo === "ask-atlas" ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  background: "transparent",
+                  border: "1px solid var(--atlas-border, rgba(120,113,108,0.18))",
+                  boxShadow: "none",
+                  color: "var(--atlas-muted)",
                   cursor: "pointer",
                   fontFamily: "var(--app-font-mono)",
                   fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
@@ -4906,26 +4889,8 @@ export default function Home() {
                   transition: "all 180ms ease",
                 }}
               >
-                <Globe
-                  size={13}
-                  strokeWidth={1.8}
-                  style={{
-                    flexShrink: 0,
-                    filter: sendTo === "ask-atlas"
-                      ? "drop-shadow(0 0 4px var(--atlas-gold-glow))"
-                      : "none",
-                    transition: "filter 180ms ease",
-                  }}
-                />
+                <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
                 {!isTiny && <span>Ask Atlas</span>}
-                {sendTo === "ask-atlas" && (
-                  <span style={{
-                    width: 5, height: 5, borderRadius: "50%",
-                    background: "var(--atlas-gold)",
-                    boxShadow: "0 0 6px var(--atlas-gold-glow)",
-                    flexShrink: 0,
-                  }} />
-                )}
               </button>
 
 
