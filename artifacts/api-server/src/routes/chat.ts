@@ -4008,6 +4008,22 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     );
   }
 
+  // Inject prior shell execution result into system prompt — lets Atlas self-correct on failure
+  // without the user having to describe the error. shellResult is sent by the client in history.
+  type HistoryMsgWithShell = { role: string; content: string; shellResult?: { cmd: string; output: string; exitCode: number; durationMs: number } };
+  const historyWithMeta = (history || []) as HistoryMsgWithShell[];
+  const lastShell = [...historyWithMeta].reverse().find((m) => m.role === "assistant" && m.shellResult);
+  if (lastShell?.shellResult) {
+    const sr = lastShell.shellResult;
+    const dur = sr.durationMs < 1000 ? `${sr.durationMs}ms` : `${(sr.durationMs / 1000).toFixed(1)}s`;
+    const statusLabel = sr.exitCode === 0 ? "PASSED" : `FAILED (exit ${sr.exitCode})`;
+    const snippet = sr.output.slice(-2000).trim();
+    systemPrompt += `\n\n--- LAST SHELL EXECUTION ---\nCommand: \`${sr.cmd}\`\nStatus: ${statusLabel} in ${dur}\nOutput:\n${snippet || "(no output)"}\n--- END LAST SHELL EXECUTION ---`;
+    if (sr.exitCode !== 0) {
+      systemPrompt += `\n\nThe last shell command FAILED. If the user's message doesn't explicitly change direction, diagnose the failure and fix it — emit FILE_EDIT blocks to correct the issue, then SHELL_RUN to re-verify. Do not wait to be asked.`;
+    }
+  }
+
   writeStep(res, { verb: "Analyzing", target: "your request", phase: "analyze" });
   let modelResult: Awaited<ReturnType<typeof callModel>>;
   try {

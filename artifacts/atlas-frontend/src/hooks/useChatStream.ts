@@ -324,7 +324,11 @@ export function useChatStream(
       // and triggering further auto-apply loops.
       const history = currentMessages
         .filter((m) => m.displayAs !== "autoVerify")
-        .map((m) => ({ role: m.role, content: m.content }));
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+          ...(m.shellResult ? { shellResult: m.shellResult } : {}),
+        }));
       const ledgerEntries = (entries || []).map((e) => ({ id: e.id, title: e.title, status: e.status }));
       const activeCtx = ctx !== undefined ? ctx : fileContext;
 
