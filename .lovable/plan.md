@@ -1,61 +1,41 @@
-# Pass B — Workspace Changes, Run-Aware
+# Ask Atlas surface cleanup
 
-Frontend-only. Reuses the existing Changes surface (`leftTab === "diff"`). No new page, no new tab key, no backend.
+Two files: `src/pages/home.tsx` and `src/components/home/AskAtlasSurface.tsx`.
 
-## Surface
+## 1. Delete the empty-state hero on the Ask Atlas surface
 
-```text
-Workspace top nav:  CHANGES · BLUEPRINTS · OUTPUTS · CONSOLE
-                     │
-                     ▼
-ViewChangesPanel  (leftTab === "diff")
-├── [run pill]  "Viewing run: <title>   ✕ clear"     ← only when ?runId= present
-├── Toggle:    ( Timeline | Changes )                 ← new
-├── Timeline lens  → SessionTimeline (filtered when runId tags match)
-├── Changes lens   → per-file rows: path · summary · [View diff] [Open file]
-└── GitHub block   → Workspace-updated / Pushed-to-main (unchanged)
-```
+In `AskAtlasSurface.tsx`, remove the entire `messages.length === 0` block (currently ~lines 466–560+). This kills:
+- the "Ask across every project." headline
+- the four intent pills: **Where were we**, **Think out loud**, **Untangle something**, **Weigh a decision**
+- the surrounding wrapper
 
-## Deep-link contract
+Also delete the now-unused `intents` array (lines 348–353) and `pickStarter` if only referenced by those intents (verify).
 
-- URL: `/project/:projectId?leftTab=diff&runId=<id>`
-- `leftTab=diff` reuses the existing internal key — no `tab=changes` alias.
-- On mount, if `leftTab=diff` is present in `location.search`, set `leftTab` to `"diff"` (piggyback on the existing `sessionStorage` restore path or read `URLSearchParams` alongside it).
-- If `runId` is present but no `TimelineMessage.runId` matches: show the run pill AND a hint above the unfiltered list: **"No entries tagged for this run yet."** Do not pretend the view is filtered.
+In `home.tsx` line 4058, drop the italic subtitle `"Ask across every thread."` when `askAtlasSurfaceOpen` is true.
 
-## Files
+Net effect: opening Ask Atlas shows only the "Ask Atlas." title, past messages, and the composer.
 
-1. **`artifacts/atlas-frontend/src/components/workspace/ViewChangesPanel.tsx`**
-   - Add prop `runId?: string | null`.
-   - Add local `lens: "timeline" | "changes"` (default `"timeline"`).
-   - Replace the two collapsible sections with: run pill (if `runId`), segmented `Timeline | Changes` toggle, body per lens, then existing GitHub block.
-   - Timeline lens = existing `SessionTimeline`, `messages` filtered when at least one carries the runId; otherwise unfiltered + hint.
-   - Changes lens = minimal per-file list built from `messages.fileEdits` / `linePatches`, same filter rule. Reuse the diff/open handlers already used inside `SessionTimeline`; extract or inline a small row renderer.
+## 2. Move the download control into the header chip
 
-2. **`artifacts/atlas-frontend/src/pages/workspace.tsx`**
-   - Read `runId` and `leftTab` from `URLSearchParams` near the existing `leftTab` initializer (line ~4127).
-   - If `leftTab=diff` in URL, initialize `leftTab` to `"diff"`.
-   - Pass `runId={runId}` into `<ViewChangesPanel />` (line ~7810).
+Today `ASK ATLAS ↓` lives inside the scroll (`AskAtlasSurface.tsx` ~lines 400–464). The header chip (`focusChip` in `home.tsx` ~lines 5253–5299) renders `Globe + "Ask Atlas" + gold dot`.
 
-3. **`artifacts/atlas-frontend/src/components/home/ActiveRuns.tsx`**
-   - Change Details link (line ~1341) from `/runs/${run.id}` to `/project/${run.projectId}?leftTab=diff&runId=${run.id}`.
-   - No other Run Card changes; Pass A stays intact.
+- **Remove** the `ASK ATLAS` caption + download `<button>` block from `AskAtlasSurface.tsx` entirely.
+- **Add** the download button inline in the `focusChip` in `home.tsx`, placed after the label. It should:
+  - only render when `askAtlasChat.messages.length > 0`
+  - reuse the same download SVG + blob logic (build `.txt` from `askAtlasChat.messages`, download, revoke URL)
+  - `e.stopPropagation()` so tap doesn't trigger the chip's exit-Ask-Atlas handler
+
+## 3. Swap the trailing gold dot for a purple pulsing dot on the LEFT
+
+In the `focusChip` (`home.tsx` ~lines 5283–5297):
+- **Remove** the trailing `<span>` gold dot after the label.
+- **Remove** the `Globe` icon on the left.
+- **Insert** a small pulsing purple dot on the LEFT of "Ask Atlas" (before the label), same size as the previous gold dot (5px), color `#A78BFA` / `rgb(167,139,250)` with matching purple glow, and a subtle CSS `@keyframes` pulse (opacity + box-shadow) — inline `<style>` scoped via a class on the chip is fine.
+
+Final chip layout: `[purple pulsing dot] Ask Atlas [download icon, only when messages exist]`.
 
 ## Out of scope
 
-- Blueprints, Outputs, Console tabs.
-- Chat rendering, RunCard header/receipt.
-- Backend message schema (no runId tagging pass).
-- Saved Runs / bookmark behavior.
-
-## Validation
-
-- Build passes.
-- From a Run Card → tap **Details** → lands on workspace Changes surface, run pill shown, Timeline lens by default, toggle switches to Changes lens.
-- Tap ✕ clear → same panel, unfiltered, no pill.
-- Open CHANGES from top nav directly (no `runId`) → same panel, no pill, toggle works.
-- Push/rollback flow still renders and functions.
-
-## Risk
-
-Low. One new prop, one local state, one URL param read, one href change. Streaming/retry/apply/PR paths untouched.
+- No routing, sessions, composer, or workspace changes.
+- Utility buttons next to the composer (e.g. "Where were we" clock) untouched.
+- No other visual redesign of the chip.
