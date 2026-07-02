@@ -3216,15 +3216,13 @@ HARD RULE: Never answer from the context of a different project unless the user 
     const portfolioLabel = isFoundationMode
       ? "YOUR FULL PORTFOLIO (all projects — use this to answer cross-portfolio questions)"
       : "YOUR PORTFOLIO (other projects — BACKGROUND ONLY — do NOT answer from this context unless the user explicitly asks about multiple projects or their portfolio)";
-    if (!isSelfContainedBuild) {
-      systemPrompt += `\n\n--- ${portfolioLabel} ---\n${portfolioSummary}\n${portfolioMemory ? `\n### Background knowledge (do NOT surface unless cross-project question):\n${portfolioMemory}` : ""}\nTotal projects: ${portfolioRows.length}\n--- END PORTFOLIO ---`;
-    }
+    systemPrompt += `\n\n--- ${portfolioLabel} ---\n${portfolioSummary}\n${portfolioMemory ? `\n### Background knowledge (do NOT surface unless cross-project question):\n${portfolioMemory}` : ""}\nTotal projects: ${portfolioRows.length}\n--- END PORTFOLIO ---`;
   }
 
   // ── Portfolio Intelligence (always injected when portfolio context exists) ──────────
   // Replaces Ask Atlas as a separate surface. Atlas carries this awareness into
   // every workspace conversation — no need to route the user to another page.
-  if (!isSelfContainedBuild && userId && portfolioRows.length > 0) {
+  if (userId && portfolioRows.length > 0) {
     // 1. Aggregated memory across all projects (zero extra DB queries)
     const aggregatedMemoryParts = portfolioRows
       .filter((p) => p.memory)
@@ -3327,18 +3325,18 @@ HARD RULE: Never answer from the context of a different project unless the user 
       }
     } catch { /* non-fatal — portfolio context is additive */ }
   }
-  if (!isSelfContainedBuild) {
-    if (userProfile) {
-      systemPrompt += `\n\n--- WHO YOU'RE WORKING WITH ---\n${userProfile}`;
-    }
-    if (userMemoryText) {
-      systemPrompt += `\n\n--- ABOUT THIS FOUNDER (durable facts about the person you work with — use naturally, never recite) ---\n${userMemoryText}\n--- END ABOUT THIS FOUNDER ---`;
-    }
-    if (memoryText) {
-      systemPrompt += `\n\n--- PROJECT MEMORY (what you already know — use this) ---\n${memoryText}\n--- END PROJECT MEMORY ---`;
-    }
+  if (userProfile) {
+    systemPrompt += `\n\n--- WHO YOU'RE WORKING WITH ---\n${userProfile}`;
+  }
+  if (userMemoryText) {
+    systemPrompt += `\n\n--- ABOUT THIS FOUNDER (durable facts about the person you work with — use naturally, never recite) ---\n${userMemoryText}\n--- END ABOUT THIS FOUNDER ---`;
+  }
+  if (memoryText) {
+    systemPrompt += `\n\n--- PROJECT MEMORY (what you already know — use this) ---\n${memoryText}\n--- END PROJECT MEMORY ---`;
+  }
 
-    // Inject committed decisions from the Decision Ledger (fetched in the parallel batch above)
+  // Inject committed decisions from the Decision Ledger (fetched in the parallel batch above)
+  {
     if (committedRows.length > 0) {
       const ledgerText = committedRows
         .map(e => `• ${e.title}${e.summary ? ` — ${e.summary}` : ""}`)
@@ -3439,7 +3437,7 @@ HARD RULE: Never answer from the context of a different project unless the user 
     systemPrompt += `\n\n--- FILE SOURCE CONTEXT ---\n${fileSourceLines.join("\n")}\n--- END FILE SOURCE CONTEXT ---`;
   }
 
-  if (!isSelfContainedBuild && recentRepoActivityContext) {
+  if (recentRepoActivityContext) {
     systemPrompt += `\n\n${recentRepoActivityContext}\n\nWhen referencing recent commits in your response, interpret them narratively — group by area of impact, synthesize what's changing (e.g. "Three commits hit the auth flow this week, one fixed a session timeout, another added a retry"), don't enumerate SHA hashes. Speak like a collaborator who understands what the code changes actually mean.`;
   }
   // Build handoff — fires exactly once: when the session has a buildIntent and no messages have been exchanged yet.
@@ -3499,50 +3497,24 @@ Make the sensible default for any unspecified choice (framework, styling, etc.) 
 
 Just build it.
 --- END BUILD HANDOFF ---`;
-  } else if (isSelfContainedBuild) {
-    systemPrompt += `\n\n--- SELF-CONTAINED BUILD ---
-The user has sent a build request directly in the workspace. Build it now. Do not ask questions.
-
-DEFAULT PATH — full runnable Vite + React scaffold:
-Emit FILE_EDIT blocks for a COMPLETE project. Every file needed to run must be present:
-
-  1. package.json — include @vitejs/plugin-react in devDependencies and "build": "vite build" in scripts
-  2. vite.config.js — THIS FILE IS MANDATORY. Without it vite cannot transpile JSX and the build WILL fail.
-     Use this exact template:
-       import { defineConfig } from 'vite'
-       import react from '@vitejs/plugin-react'
-       export default defineConfig({
-         plugins: [react()],
-         server: { host: '0.0.0.0', allowedHosts: true, hmr: false },
-         build: { outDir: 'dist' },
-       })
-  3. index.html — with <div id="root"> and <script type="module" src="/src/main.jsx">
-  4. src/main.jsx — ReactDOM.createRoot entry point
-  5. src/App.jsx (or split into logical component files)
-  6. Any CSS files referenced by the above
-
-If Tailwind is used — BOTH of these are required or Tailwind directives won't compile:
-  7. tailwind.config.js
-  8. postcss.config.js — THIS FILE IS MANDATORY when using Tailwind:
-       export default { plugins: { tailwindcss: {}, autoprefixer: {} } }
-
-REACT ROUTER: always HashRouter, never BrowserRouter.
-
-ALTERNATE PATH — single visual artifact (only when the request is explicitly "show me what it looks like" with no interactive or runnable intent):
-  Emit a single ARTIFACT block (standalone HTML with no build step).
-  At the END of your response, on its own line, emit:
-  BUILD_TYPE: visual-artifact
-  This tells the UI the output is a visual preview only — not a runnable Local Dev project.
-
-DEFAULT is the full scaffold. Only use the alternate path if the request is unambiguously visual-only.
-
-FILE_EDIT blocks for ALL code. No partial snippets. Every file is complete.
---- END SELF-CONTAINED BUILD ---`;
   } else {
+    // R3: isSelfContainedBuild branch removed — SESSION CONTINUITY fires for all non-handoff turns.
+    // Standalone build instructions (vite.config.js requirements etc.) are included as an addendum
+    // so the LLM has them available when it determines a build is appropriate — without pre-LLM regex.
     systemPrompt += `\n\n--- SESSION CONTINUITY ---
 If this is the first assistant message in this session (no prior assistant messages exist in the session history), open naturally — like picking up a real conversation, not filing a status report. DO NOT use the format "Still here. [recap]. What's next:". Instead, read the memory and repo activity and respond the way a sharp collaborator would after being away: reference what actually matters, skip what doesn't, and lead with something useful or ask the right question. One to two sentences max. Never clinical. Never a checklist. Match the energy of someone who was already thinking about this project before the conversation started.
 
 PROHIBITED (when PROJECT CONTEXT block is present above): "What are we building today?", "How can I help you today?", "What would you like to work on?", "Hey! What are we working on?", or any variant that pretends this is a fresh start. If you know the project's purpose, audience, or current stage from PROJECT CONTEXT, reference it — don't ask for it again.
+
+STANDALONE BUILD RULES (apply when the user asks you to build something from scratch in this workspace):
+If the message is a direct build request ("build me X", "create a Y", "write a Z app"), build it immediately — emit FILE_EDIT blocks without asking questions. For a Vite+React project, every file needed to run must be present:
+• vite.config.js — MANDATORY (without it, Vite cannot transpile JSX). Must include: plugins:[react()], server:{host:'0.0.0.0',allowedHosts:true,hmr:false}, build:{outDir:'dist'}
+• package.json with @vitejs/plugin-react in devDependencies
+• index.html with <div id="root"> and <script type="module" src="/src/main.jsx">
+• src/main.jsx (ReactDOM.createRoot entry), src/App.jsx
+• If Tailwind: tailwind.config.js + postcss.config.js (both mandatory)
+• Always HashRouter, never BrowserRouter.
+For a visual-only request ("show me what it looks like"): emit a single ARTIFACT block (standalone HTML) and append BUILD_TYPE: visual-artifact on its own line.
 --- END SESSION CONTINUITY ---`;
   }
   if (recentErrorContext) {
@@ -3551,7 +3523,7 @@ PROHIBITED (when PROJECT CONTEXT block is present above): "What are we building 
   if (selfMapContext) {
     systemPrompt += `\n\n--- CURRENT CODEBASE MAP ---\n${selfMapContext}\n--- END CURRENT CODEBASE MAP ---`;
   }
-  if (!isSelfContainedBuild && forgeContext) {
+  if (forgeContext) {
     systemPrompt += `\n\n--- FORGE STRATEGIC MAP (agreed foundation — treat these as committed nodes; flag any contradictions) ---\n${forgeContext}\n--- END FORGE STRATEGIC MAP ---`;
   }
   if (combinedFileContext) {
@@ -3671,10 +3643,10 @@ Rules:
   }
 
   // Workspace lens — new four-lens system (FLOW / BUILD / LOOK / SCENARIO)
-  // Self-contained build requests ("Create a dashboard", "Build me X") always force
-  // the build lens regardless of what the client sent — these are unambiguous build
-  // intent and must emit FILE_EDIT blocks, not a FLOW thinking response.
-  const workspaceLens = (buildMode || isSelfContainedBuild) ? "build" : (body.workspaceLens ?? "flow").toLowerCase();
+  // workspaceLens is determined by explicit client signal (buildMode) or the body param.
+  // R3: isSelfContainedBuild removed — the LLM determines build intent from the message,
+  // not a pre-LLM regex. The FLOW lens does not prevent FILE_EDIT emission.
+  const workspaceLens = buildMode ? "build" : (body.workspaceLens ?? "flow").toLowerCase();
   const workspaceLensInstructions: Record<string, string> = {
     flow: `\n\n--- LENS: FLOW ---
 You are in FLOW lens. This means:
@@ -4385,7 +4357,10 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     linePatches,
     repoFiles,
   });
-  const fileChangesAllowed = isBuildHandoff || !hasProposedFileChanges || canProceedWithFileChanges({
+  // R3: isBuildHandoff bypass removed — all turns go through canProceedWithFileChanges.
+  // Build handoffs with new files (no existing repoFiles) still pass since there's
+  // no confidence conflict on files the LLM is creating from scratch.
+  const fileChangesAllowed = !hasProposedFileChanges || canProceedWithFileChanges({
     fileEdits,
     linePatches,
     repoFiles,
