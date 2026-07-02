@@ -66,7 +66,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { buildAskAtlasHandoffSeed, hasBuildIntent } from "@/lib/askAtlasHelpers";
+import { hasBuildIntent } from "@/lib/askAtlasHelpers";
 
 
 const PLACEHOLDERS = [
@@ -1903,26 +1903,17 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
-  // Composer mode: workspace (default) or ask-atlas (toggled on composer).
-  // Toggle lives inline on the home composer — no routing sheet, no second
-  // composer. Ask Atlas replies render inline in the hero area after send.
-  type SendTarget = "workspace" | "ask-atlas";
-  const [sendTo, setSendTo] = useState<SendTarget>("workspace");
-  const sendToRef = useRef<SendTarget>("workspace");
-  useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
-  // One-time helper line on first Ask Atlas activation.
-  const [askAtlasHelperVisible, setAskAtlasHelperVisible] = useState(false);
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
-  // Radial menu "Ask Atlas" → shortcut: flip toggle ON + focus composer.
-  // Does NOT auto-send; inline conversation starts only after Send.
+  // Ask Atlas is a standalone surface — see AskAtlasSurface.
+  // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
+  // the same purple-header surface. No inline routing, no split renderer.
+  // Radial menu "Ask Atlas" → open the AskAtlasSurface + focus its composer.
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
-      setSendTo("ask-atlas");
-      sendToRef.current = "ask-atlas";
+      setAskAtlasSurfaceOpen(true);
       if (detail?.seed) setInput(detail.seed);
-      // Defer focus to after the toggle/render flush.
       window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
     };
     window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
@@ -1976,23 +1967,10 @@ export default function Home() {
     conversationId: null,
     projectContext: null,
   });
-  const askAtlasScrollRef = useRef<HTMLDivElement | null>(null);
   const askAtlasConversationActive = askAtlasChat.messages.length > 0;
-  const askAtlasBusy = sendTo === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending);
-  const askAtlasHandoffSeed = useMemo(
-    () => buildAskAtlasHandoffSeed(askAtlasChat.messages, input),
-    [askAtlasChat.messages, input],
-  );
-  useEffect(() => {
-    if (!askAtlasConversationActive) return;
-    const el = askAtlasScrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [askAtlasConversationActive, askAtlasChat.messages, askAtlasChat.isStreaming]);
-  // When entering ask-atlas mode, wipe any nexus messages so the layouts don't conflict.
-  useEffect(() => {
-    if (sendTo === "ask-atlas") nexusChat.clearMessages();
-  }, [sendTo, nexusChat.clearMessages]);
+  const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
+  // (Clear-nexus-on-ask-atlas-open effect declared below, after
+  //  askAtlasSurfaceOpen state is created.)
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
   // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
@@ -2073,6 +2051,12 @@ export default function Home() {
     document.body.setAttribute("data-axiom-ask-atlas", askAtlasSurfaceOpen ? "true" : "false");
     return () => { document.body.removeAttribute("data-axiom-ask-atlas"); };
   }, [askAtlasSurfaceOpen]);
+
+  // Clear any ambient nexus messages the instant Ask Atlas opens so the two
+  // renderers can never coexist on screen.
+  useEffect(() => {
+    if (askAtlasSurfaceOpen) nexusChat.clearMessages();
+  }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -2934,15 +2918,15 @@ export default function Home() {
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
-    if (sendToRef.current === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending)) return;
-    // Composer-mode routing — Ask Atlas streams inline; workspace falls through
-    // to the standard create/inline-send fork below.
-    const routeTarget = sendToRef.current;
-    if (routeTarget === "ask-atlas" && text) {
+    // Ask Atlas surface routing — the surface is the sole owner of askAtlasChat.
+    // When it's open, EVERY send goes through askAtlasChat regardless of how
+    // the surface was opened (composer pill, resume, radial, history). This
+    // eliminates the old split where entry point determined data source.
+    if (askAtlasSurfaceOpen && text) {
+      if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
       setAttachedFiles([]);
-      setAskAtlasHelperVisible(false);
       void askAtlasChat.send({ text }).finally(() => {
         submitInFlightRef.current = false;
       });
@@ -4617,7 +4601,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: (askAtlasSurfaceOpen || askAtlasConversationActive) ? "none" : undefined }}>
+          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: askAtlasSurfaceOpen ? "none" : undefined }}>
           <div ref={askAtlasSurfaceOpen ? askAtlasComposerRef : null} className="atlas-input-shell" style={{
             position: askAtlasSurfaceOpen ? "relative" : "sticky",
             left: askAtlasSurfaceOpen ? undefined : 0,
@@ -4684,41 +4668,9 @@ export default function Home() {
               </div>
             )}
 
-            {/* Ask Atlas mode banner — fades in while toggle is ON.
-                Mirrors the workspace Plan Mode banner pattern. */}
-            <div
-              role="status"
-              aria-live="polite"
-              style={{
-                display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
-                marginBottom: sendTo === "ask-atlas" ? 6 : 0,
-                height: sendTo === "ask-atlas" ? "auto" : 0,
-                overflow: "hidden",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
-                color: "var(--atlas-gold)",
-                opacity: sendTo === "ask-atlas" ? 0.85 : 0,
-                transition: "opacity 1.2s ease-out, margin-bottom 200ms ease",
-                pointerEvents: "none",
-              }}
-            >
-              <span style={{
-                width: 5, height: 5, borderRadius: "50%",
-                background: "var(--atlas-gold)",
-                boxShadow: "0 0 6px rgba(201,162,76,0.7)",
-              }} />
-              Portfolio Thinking · Not Building
-            </div>
-            {sendTo === "ask-atlas" && askAtlasHelperVisible && (
-              <div style={{
-                textAlign: "center", marginBottom: 6,
-                fontFamily: "var(--app-font-sans)", fontSize: 11, lineHeight: 1.4,
-                color: "var(--atlas-muted)", opacity: 0.8,
-                padding: "0 12px",
-              }}>
-                Think freely across your portfolio. Nothing here modifies a project until you continue in a workspace.
-              </div>
-            )}
+            {/* (Ask Atlas mode banner removed — Ask Atlas now lives entirely
+                inside AskAtlasSurface; the home composer has no ask-atlas mode.) */}
+
 
             <div style={{
               position: "relative",
@@ -4759,7 +4711,7 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {sendTo === "ask-atlas" ? "Ask Atlas anything..." : askAtlasSurfaceOpen ? "Ask the global view..." : placeholder}
+                  {askAtlasSurfaceOpen ? "Ask the global view..." : placeholder}
                   {!askAtlasSurfaceOpen && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
@@ -4880,41 +4832,24 @@ export default function Home() {
                   Atlas on Send. Inspired by the workspace Plan Mode button. */}
               <button
                 type="button"
-                title={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
-                aria-label={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
-                aria-pressed={sendTo === "ask-atlas"}
+                title="Open Ask Atlas"
+                aria-label="Open Ask Atlas"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSendTo((prev) => {
-                    const next: SendTarget = prev === "ask-atlas" ? "workspace" : "ask-atlas";
-                    if (next === "ask-atlas") {
-                      nexusChat.clearMessages();
-                      try {
-                        if (!localStorage.getItem("atlas-ask-atlas-helped")) {
-                          setAskAtlasHelperVisible(true);
-                          localStorage.setItem("atlas-ask-atlas-helped", "1");
-                        }
-                      } catch { /* noop */ }
-                    } else {
-                      setAskAtlasHelperVisible(false);
-                      askAtlasChat.abort();
-                      askAtlasChat.clearMessages();
-                    }
-                    return next;
-                  });
+                  nexusChat.clearMessages();
+                  setAskAtlasSurfaceOpen(true);
+                  const seed = input.trim();
+                  if (seed) setInput(seed);
+                  window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
                 }}
                 style={{
                   height: isTiny ? 28 : 34,
                   display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
                   padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
-                  background: sendTo === "ask-atlas"
-                    ? "color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
-                    : "transparent",
-                  border: `1px solid ${sendTo === "ask-atlas" ? "var(--atlas-gold-border)" : "var(--atlas-border, rgba(120,113,108,0.18))"}`,
-                  boxShadow: sendTo === "ask-atlas"
-                    ? "0 0 14px -4px var(--atlas-gold-glow), inset 0 0 0 1px var(--atlas-gold-border)"
-                    : "none",
-                  color: sendTo === "ask-atlas" ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  background: "transparent",
+                  border: "1px solid var(--atlas-border, rgba(120,113,108,0.18))",
+                  boxShadow: "none",
+                  color: "var(--atlas-muted)",
                   cursor: "pointer",
                   fontFamily: "var(--app-font-mono)",
                   fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
@@ -4925,26 +4860,8 @@ export default function Home() {
                   transition: "all 180ms ease",
                 }}
               >
-                <Globe
-                  size={13}
-                  strokeWidth={1.8}
-                  style={{
-                    flexShrink: 0,
-                    filter: sendTo === "ask-atlas"
-                      ? "drop-shadow(0 0 4px var(--atlas-gold-glow))"
-                      : "none",
-                    transition: "filter 180ms ease",
-                  }}
-                />
+                <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
                 {!isTiny && <span>Ask Atlas</span>}
-                {sendTo === "ask-atlas" && (
-                  <span style={{
-                    width: 5, height: 5, borderRadius: "50%",
-                    background: "var(--atlas-gold)",
-                    boxShadow: "0 0 6px var(--atlas-gold-glow)",
-                    flexShrink: 0,
-                  }} />
-                )}
               </button>
 
 
@@ -5302,7 +5219,7 @@ export default function Home() {
       </div>
 
       <AskAtlasSurface
-        open={askAtlasSurfaceOpen || askAtlasConversationActive}
+        open={askAtlasSurfaceOpen}
         messages={askAtlasChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={activeConversationId}
@@ -5341,9 +5258,7 @@ export default function Home() {
             aria-pressed={true}
             onClick={(e) => {
               e.stopPropagation();
-              setSendTo("workspace");
               setAskAtlasSurfaceOpen(false);
-              setAskAtlasHelperVisible(false);
               askAtlasChat.abort();
               askAtlasChat.clearMessages();
             }}
