@@ -11,6 +11,12 @@ const PROJECT_READY_RE = /PROJECT_READY:\s*(\{[\s\S]*?\})(?=\s|$)/;
 const BARE_PROJECT_READY_RE = /(^|\s)PROJECT_READY(?=\s|$)/;
 const BARE_PROJECT_READY_RE_GLOBAL = /(^|\s)PROJECT_READY(?=\s|$)/g;
 
+// Full signal lines to strip during streaming (complete lines)
+const SIGNAL_LINE_RE = /^(CONV_STATE|MEMORY_T\d+|NAVIGATE_TO|PROJECT_READY|VISUALIZE|READY_TO_SHAPE|MEMORY_CHIPS):[^\n]*/gm;
+// Partial signal prefixes that may appear at the tail of accumulated text while
+// the model is still mid-token — hold them back so they never flash to the user.
+const SIGNAL_TAIL_RE = /\n(C|CO|CON|CONV|CONV_|CONV_S|CONV_ST|CONV_STA|CONV_STAT|CONV_STATE|M|ME|MEM|MEMO|MEMOR|MEMORY|MEMORY_|MEMORY_T\d*|N|NA|NAV|NAVI|NAVIG|NAVIGA|NAVIGAT|NAVIGATE|NAVIGATE_|NAVIGATE_T|NAVIGATE_TO|P|PR|PRO|PROJ|PROJE|PROJEC|PROJECT|PROJECT_|PROJECT_R|PROJECT_RE|PROJECT_REA|PROJECT_READ|PROJECT_READY|V|VI|VIS|VISU|VISUA|VISUAL|VISUALI|VISUALIZ|VISUALIZE|R|RE|REA|READ|READY|READY_|READY_T|READY_TO|READY_TO_|READY_TO_S|READY_TO_SH|READY_TO_SHA|READY_TO_SHAP|READY_TO_SHAPE)$/;
+
 function parseProjectReady(content: string): { title: string | null; reason: string | null } | null {
   const match = content.match(PROJECT_READY_RE);
   if (!match) return null;
@@ -378,21 +384,15 @@ export function useNexusChatStream(
         callbacks: {
           onToken: (released) => {
             if (hasBareProjectReady(released)) notifyProjectReady();
-            const cleaned = stripBareProjectReady(stripNavigateTo(released)
-              .content
-              .split('\n')
-              .filter(line => {
-                const t = line.trim();
-                return !t.startsWith('VISUALIZE:') &&
-                       !t.startsWith('READY_TO_SHAPE:') &&
-                       !t.startsWith('NAVIGATE_TO:') &&
-                       !t.startsWith('PROJECT_READY:') &&
-                       !t.startsWith('MEMORY_CHIPS:');
-              })
-              .join('\n')
-              .replace(/VISUALIZE:\{[\s\S]*$/g, '')
-              .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '')
-              .replace(/PROJECT_READY:\{[\s\S]*$/g, ''));
+            // 1. Strip complete signal lines (CONV_STATE, MEMORY_Tx, PROJECT_READY, etc.)
+            // 2. Strip partial signal prefixes at the tail so they never flash to the user
+            //    while the model is still building the token (e.g. "C", "CO", "CONV_ST…")
+            const navStripped = stripNavigateTo(released).content;
+            const linesCleaned = navStripped
+              .replace(SIGNAL_LINE_RE, "")
+              .replace(/\n{3,}/g, "\n\n");
+            const tailCleaned = linesCleaned.replace(SIGNAL_TAIL_RE, "");
+            const cleaned = stripBareProjectReady(tailCleaned);
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
