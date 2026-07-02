@@ -187,7 +187,6 @@ type HomeMessage = {
   researchResult?: { type: "research"; url: string; title: string; summary: string | null; headings: string[] } | null;
   terminalCmd?: unknown;
   terminalResult?: unknown;
-  shellResult?: { cmd: string; output: string; exitCode: number; durationMs: number } | null;
   imageUrl?: string;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   imageGen?: {
@@ -1785,7 +1784,6 @@ export default function Home() {
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
   const isMobile = useIsMobile();
   const isTiny = useIsTinyMobile();
-  const isFoldInner = isMobile && !isTiny;
   const conversationsRequestRef = useRef(0);
   const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
   const prunedAbandonedProjectIdsRef = useRef<Set<number>>(new Set());
@@ -4070,7 +4068,6 @@ export default function Home() {
                     letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
                     color: askAtlasSurfaceVisible ? undefined : "var(--atlas-fg)",
                     opacity: askAtlasSurfaceVisible ? 1 : 0.85,
-                    animation: askAtlasSurfaceVisible ? undefined : "homeCinematicEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0ms both",
                     background: askAtlasSurfaceVisible
                       ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
                       : undefined,
@@ -4087,7 +4084,6 @@ export default function Home() {
                     opacity: askAtlasSurfaceVisible ? 0.75 : 0.55,
                     margin: 0,
                     fontStyle: "italic",
-                    animation: askAtlasSurfaceVisible ? undefined : "homeCinematicEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 150ms both",
                   }}>
                     {askAtlasSurfaceVisible ? "" : (() => {
                       const activeProjects = ((projects ?? []) as Project[]).filter((p: Project) => p.status !== "archived");
@@ -4105,7 +4101,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {projects && projects.length > 0 && !isTiny && (() => {
+                  {projects && projects.length > 0 && (() => {
                     const receded = askAtlasSurfaceVisible;
                     return (
                       <button
@@ -4117,12 +4113,13 @@ export default function Home() {
                         aria-hidden={receded}
                         tabIndex={receded ? -1 : 0}
                         style={{
-                          position: "absolute",
-                          top: -14,
-                          right: 8,
+                          position: isTiny ? "fixed" : "absolute",
+                          top: isTiny ? "calc(env(safe-area-inset-top, 0px) + 10px)" : -14,
+                          right: isTiny ? 68 : 8,
                           left: "auto",
-                          width: 40,
-                          height: 40,
+                          width: isTiny ? 34 : 40,
+                          height: isTiny ? 34 : 40,
+                          zIndex: isTiny ? 400 : undefined,
                           borderRadius: 999,
                           display: "inline-flex",
                           alignItems: "center",
@@ -4156,7 +4153,7 @@ export default function Home() {
             <div style={{
               margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
-                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isFoldInner ? "clamp(40px, 7dvh, 72px) 0 26px" : "18px 0 26px")),
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isMobile && !isTiny ? "clamp(40px, 7dvh, 72px) 0 26px" : "18px 0 26px")),
               minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
               display: askAtlasSurfaceVisible ? "none" : undefined,
@@ -4170,7 +4167,7 @@ export default function Home() {
                 </div>
               )}
             {nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading && !askAtlasConversationActive ? (
-              <div style={{ display: "flex", justifyContent: "center", marginTop: isFoldInner ? 16 : 10, marginBottom: isFoldInner ? "clamp(8px, 1.5dvh, 16px)" : 0, opacity: 0.7, animation: "homeCinematicEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 300ms both" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
                 <button
                   type="button"
                   aria-label="Focus composer"
@@ -4636,16 +4633,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{
-            position: "relative",
-            zIndex: 260,
-            flexShrink: 0,
-            display: askAtlasSurfaceVisible ? "none" : undefined,
-            marginTop: isFoldInner && !askAtlasSurfaceVisible && nexusChat.messages.length === 0 ? "clamp(12px, 2.5dvh, 24px)" : undefined,
-            animation: !askAtlasSurfaceVisible && !askAtlasConversationActive && nexusChat.messages.length === 0
-              ? "homeCinematicEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 300ms both"
-              : undefined,
-          }}>
+          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: askAtlasSurfaceVisible ? "none" : undefined }}>
           <div ref={askAtlasSurfaceVisible ? askAtlasComposerRef : null} className="atlas-input-shell" style={{
             position: askAtlasSurfaceVisible ? "relative" : "sticky",
             left: askAtlasSurfaceVisible ? undefined : 0,
@@ -5072,8 +5060,7 @@ export default function Home() {
                 gap: 10,
                 position: "relative",
                 zIndex: 20,
-                paddingBottom: undefined,
-                animation: "homeCinematicEntranceRise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 450ms both",
+                transform: "translateY(-20px)",
               }}>
 
                 <div className="suggestion-chips-row" style={{
@@ -5561,14 +5548,6 @@ export default function Home() {
         @keyframes ptr-spin { to { transform: rotate(360deg); } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes homeCinematicEntrance {
-          from { opacity: 0; transform: translateY(-20px); filter: blur(4px); }
-          to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
-        @keyframes homeCinematicEntranceRise {
-          from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
-          to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
         @keyframes askAtlasInlineDot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0) } 40% { opacity: 1; transform: translateY(-2px) } }
         @keyframes askAtlasInlineMsgIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
         .ask-atlas-inline-msg { animation: askAtlasInlineMsgIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
