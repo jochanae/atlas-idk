@@ -4050,8 +4050,8 @@ export default function Home() {
             {nexusChat.messages.length === 0 && !showOverviewSheet && !askAtlasConversationActive && (
               <div style={{
                 textAlign: "center",
-                marginBottom: 24,
-                marginTop: 72,
+                marginBottom: isTiny ? 14 : 24,
+                marginTop: isTiny ? 32 : 72,
                 position: "relative",
                 zIndex: 1,
               }}>
@@ -4098,7 +4098,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {projects && projects.length > 0 && (() => {
+                  {projects && projects.length > 0 && !isTiny && (() => {
                     const receded = askAtlasSurfaceVisible || inputFocused;
                     return (
                       <button
@@ -4148,7 +4148,7 @@ export default function Home() {
             <div style={{
               margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
-                : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isTiny ? "10px 0 14px" : "18px 0 26px")),
               minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
               display: askAtlasSurfaceVisible ? "none" : undefined,
@@ -5048,7 +5048,7 @@ export default function Home() {
             };
             return (
               <div className="ambient-suggestion-chips-wrap" style={{
-                marginTop: 20,
+                marginTop: isTiny ? 12 : 20,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
