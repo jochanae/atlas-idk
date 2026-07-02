@@ -17,6 +17,7 @@ import {
   FileText,
   Image as ImageIcon,
   FileCode,
+  ChevronDown,
 } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
 
@@ -51,8 +52,6 @@ function fmtElapsed(ms: number): string {
 }
 
 function deriveRun(messages: ChatMessage[]): DerivedRun | null {
-  // Walk backwards, find most-recent assistant message that either is
-  // streaming, produced file edits, or reported an error.
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role !== "assistant") continue;
@@ -69,7 +68,6 @@ function deriveRun(messages: ChatMessage[]): DerivedRun | null {
 
     if (!hasWork) continue;
 
-    // Collect file paths.
     const paths = new Set<string>();
     for (const e of edits) if (e?.path) paths.add(e.path);
     for (const d of deletes) if (d?.path) paths.add(d.path);
@@ -77,7 +75,6 @@ function deriveRun(messages: ChatMessage[]): DerivedRun | null {
     const files = Array.from(paths);
     const produced = files.filter((p) => PRODUCED_EXT.test(p));
 
-    // Status.
     let status: DerivedStatus = "applied";
     let error: string | undefined;
     if (msg.streaming) status = "running";
@@ -87,7 +84,6 @@ function deriveRun(messages: ChatMessage[]): DerivedRun | null {
       error = m?.[0];
     }
 
-    // Title = preceding user prompt, else first line of assistant content.
     let title = "";
     for (let j = i - 1; j >= 0; j--) {
       if (messages[j].role === "user") {
@@ -111,7 +107,6 @@ function deriveRun(messages: ChatMessage[]): DerivedRun | null {
   return null;
 }
 
-/** Find the file content for a given path from the most recent matching fileEdit in messages. */
 function findFileContent(messages: ChatMessage[], filePath: string): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
@@ -180,9 +175,6 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     const isHtml = /\.html?$/i.test(filePath);
     const content = isHtml ? findFileContent(messages, filePath) : null;
 
-    // preview/output.html — route into the Draft sandbox via the same event
-    // pathway used by useChatStream. This keeps it inline in the Preview panel
-    // instead of opening a new browser tab.
     if (filePath === "preview/output.html" && content) {
       window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
         detail: { content },
@@ -191,17 +183,17 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     }
 
     if (content) {
-      // All other HTML artifacts — open via blob URL in a new tab.
       const blob = new Blob([content], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } else {
-      // Fallback: navigate to diff view (historical load — content not in memory).
-      const href = `${window.location.origin}/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}&file=${encodeURIComponent(filePath)}`;
+      const href = `${window.location.origin}/project/${projectId}?leftTab=diff&file=${encodeURIComponent(filePath)}`;
       window.open(href, "_blank", "noopener,noreferrer");
     }
   }, [run, messages, projectId]);
+
+  const [expanded, setExpanded] = useState(false);
 
   if (!run) return null;
 
@@ -218,6 +210,8 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
   const detailsHref = `/project/${projectId}?leftTab=diff`;
   const hasProduced = run.produced.length > 0;
   const hasFiles = run.files.length > 0;
+  // Auto-expand while running so users see progress; otherwise collapsed by default.
+  const isOpen = expanded || run.status === "running";
 
   return (
     <div
@@ -228,8 +222,10 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
         border: `1px solid ${tone.border}`,
         boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
         borderRadius: 10,
-        padding: "14px 16px 12px",
-        margin: "12px 0 6px",
+        padding: "10px 12px",
+        margin: "10px 0 4px",
+        maxWidth: "88%",
+        alignSelf: "flex-start",
         transition: "border-color 240ms ease",
       }}
       data-run-id={run.id}
@@ -241,8 +237,8 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
         title="Bookmark (coming soon)"
         style={{
           position: "absolute",
-          top: 12,
-          right: 12,
+          top: 8,
+          right: 8,
           background: "transparent",
           border: "none",
           color: "hsl(var(--muted-foreground) / 0.55)",
@@ -252,15 +248,15 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
           lineHeight: 0,
         }}
       >
-        <Bookmark size={14} strokeWidth={1.75} />
+        <Bookmark size={12} strokeWidth={1.75} />
       </button>
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, paddingRight: 22 }}>
         <span
           style={{
             flex: "0 0 auto",
-            width: 22,
-            height: 22,
+            width: 20,
+            height: 20,
             borderRadius: 999,
             background: tone.iconBg,
             color: tone.fg,
@@ -269,29 +265,30 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
             justifyContent: "center",
           }}
         >
-          <meta.Icon size={14} strokeWidth={1.75} className={meta.spin ? "spin" : undefined} />
+          <meta.Icon size={12} strokeWidth={1.75} className={meta.spin ? "spin" : undefined} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
               fontFamily: "var(--app-font-mono)",
-              fontSize: 10,
+              fontSize: 9.5,
               letterSpacing: "0.14em",
               textTransform: "uppercase",
               color: tone.fg,
-              marginBottom: 4,
+              lineHeight: 1.2,
             }}
           >
             {meta.kicker}
           </div>
           <div
             style={{
-              fontSize: 14.5,
+              fontSize: 13,
               fontWeight: 500,
               letterSpacing: "-0.005em",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              marginTop: 2,
             }}
           >
             {run.title}
@@ -299,33 +296,65 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
           <div
             style={{
               fontFamily: "var(--app-font-mono)",
-              fontSize: 11.5,
+              fontSize: 10.5,
               color: "hsl(var(--muted-foreground))",
-              marginTop: 3,
+              marginTop: 2,
             }}
           >
             {fileCount} {fileCount === 1 ? "file" : "files"} · {fmtElapsed(elapsedMs)}
+            {run.status === "failed" && run.error ? (
+              <> · <span style={{ color: TONE.failed.fg }}>{run.error}</span></>
+            ) : null}
           </div>
-          {run.status === "failed" && run.error ? (
-            <div style={{ marginTop: 6, fontSize: 12, color: TONE.failed.fg }}>{run.error}</div>
-          ) : null}
         </div>
       </div>
 
-      {hasProduced && (
+      {run.status !== "running" && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={isOpen}
+          style={{
+            marginTop: 8,
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 4,
+            padding: "5px 8px",
+            background: "transparent",
+            border: "none",
+            color: "hsl(var(--muted-foreground))",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            borderTop: "1px dashed hsl(var(--border))",
+          }}
+        >
+          {isOpen ? "Hide details" : "View details"}
+          <ChevronDown
+            size={12}
+            style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 180ms ease" }}
+          />
+        </button>
+      )}
+
+      {isOpen && hasProduced && (
         <div
           style={{
-            marginTop: 12,
-            paddingTop: 10,
+            marginTop: 8,
+            paddingTop: 8,
             borderTop: "1px dashed hsl(var(--border))",
             display: "grid",
-            gap: 6,
+            gap: 5,
           }}
         >
           <div
             style={{
               fontFamily: "var(--app-font-mono)",
-              fontSize: 9.5,
+              fontSize: 9,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
               color: "hsl(var(--muted-foreground) / 0.7)",
@@ -342,7 +371,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
                   alignItems: "center",
                   gap: 8,
                   fontFamily: "var(--app-font-mono)",
-                  fontSize: 11.5,
+                  fontSize: 11,
                   color: "hsl(var(--muted-foreground))",
                 }}
               >
@@ -356,75 +385,77 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          marginTop: 12,
-          paddingTop: 10,
-          borderTop: "1px solid hsl(var(--border))",
-        }}
-      >
-        <Link
-          href={detailsHref}
+      {isOpen && (
+        <div
           style={{
-            flex: 1,
-            padding: "8px 12px",
-            fontSize: 12.5,
-            fontWeight: 500,
-            textAlign: "center",
-            background: "transparent",
-            border: "1px solid hsl(var(--border))",
-            color: "hsl(var(--card-foreground))",
-            borderRadius: 6,
-            textDecoration: "none",
-            letterSpacing: "0.01em",
+            display: "flex",
+            gap: 6,
+            marginTop: 10,
+            paddingTop: 8,
+            borderTop: "1px solid hsl(var(--border))",
           }}
         >
-          Details
-        </Link>
-        {hasProduced ? (
-          <button
-            type="button"
-            onClick={handleOpenPreview}
-            style={{
-              flex: 1,
-              padding: "8px 12px",
-              fontSize: 12.5,
-              fontWeight: 500,
-              textAlign: "center",
-              background: "var(--atlas-gold-dim)",
-              border: "1px solid var(--atlas-gold-border)",
-              color: "var(--atlas-gold)",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              letterSpacing: "0.01em",
-            }}
-          >
-            Open Preview
-          </button>
-        ) : hasFiles ? (
           <Link
             href={detailsHref}
             style={{
               flex: 1,
-              padding: "8px 12px",
-              fontSize: 12.5,
+              padding: "6px 10px",
+              fontSize: 11.5,
               fontWeight: 500,
               textAlign: "center",
               background: "transparent",
               border: "1px solid hsl(var(--border))",
               color: "hsl(var(--card-foreground))",
-              borderRadius: 6,
+              borderRadius: 5,
               textDecoration: "none",
               letterSpacing: "0.01em",
             }}
           >
-            View Changes
+            Diff
           </Link>
-        ) : null}
-      </div>
+          {hasProduced ? (
+            <button
+              type="button"
+              onClick={handleOpenPreview}
+              style={{
+                flex: 1,
+                padding: "6px 10px",
+                fontSize: 11.5,
+                fontWeight: 500,
+                textAlign: "center",
+                background: "var(--atlas-gold-dim)",
+                border: "1px solid var(--atlas-gold-border)",
+                color: "var(--atlas-gold)",
+                borderRadius: 5,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                letterSpacing: "0.01em",
+              }}
+            >
+              Preview
+            </button>
+          ) : hasFiles ? (
+            <Link
+              href={detailsHref}
+              style={{
+                flex: 1,
+                padding: "6px 10px",
+                fontSize: 11.5,
+                fontWeight: 500,
+                textAlign: "center",
+                background: "transparent",
+                border: "1px solid hsl(var(--border))",
+                color: "hsl(var(--card-foreground))",
+                borderRadius: 5,
+                textDecoration: "none",
+                letterSpacing: "0.01em",
+              }}
+            >
+              View Changes
+            </Link>
+          ) : null}
+        </div>
+      )}
 
       <style>{`
         [data-run-id="${run.id}"] .spin { animation: wrc-spin 1s linear infinite; transform-origin: 50% 50%; }
