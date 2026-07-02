@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Atlas Run Card — Dark Mockup</title>
+<style>
+    :root {
+      --bg: #0e0e0f; --surface: #17171a; --surface2: #1c1c20;
+      --fg: #e9e6df; --muted: rgba(233,230,223,0.55); --faint: rgba(233,230,223,0.35);
+      --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
+      --gold: #c9a24c; --gold-soft: rgba(201,162,76,0.14); --gold-border: rgba(201,162,76,0.35);
+      --green: #4ade80; --green-bg: rgba(74,222,128,0.08); --green-border: rgba(74,222,128,0.35);
+      --red: #f87171; --red-bg: rgba(248,113,113,0.08); --red-border: rgba(248,113,113,0.35);
+      --amber: #facc15; --amber-bg: rgba(250,204,21,0.08); --amber-border: rgba(250,204,21,0.35);
+      --code-bg: rgba(255,255,255,0.04);
+      --toggle-bg: rgba(255,255,255,0.04); --toggle-active: rgba(201,162,76,0.18);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; background: var(--bg); color: var(--fg);
+      font-family: 'Geist', 'Inter', -apple-system, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.5; }
+    code, .mono { font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; }
+    .page { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+    .theme-tag { display:inline-flex; align-items:center; gap:6px; padding:4px 10px;
+      font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--gold); background: var(--gold-soft);
+      border: 1px solid var(--gold-border); border-radius: 4px; }
+    h1 { font-size: 22px; font-weight: 500; margin: 14px 0 6px; letter-spacing:-0.01em; }
+    h2 { font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--faint); margin: 36px 0 12px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    .legend { background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px; margin-bottom: 32px; }
+    .legend ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+    .legend li { font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+    .legend b { color: var(--fg); font-weight: 500; }
+    .kbd { font-family: 'Geist Mono', monospace; font-size: 11px;
+      background: var(--code-bg); padding: 1px 6px; border-radius: 3px;
+      border: 1px solid var(--border); color: var(--fg); }
+
+    /* ---- Run Card ---- */
+    .card { position: relative; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px 12px; margin: 0 0 6px;
+      transition: border-color 240ms ease; }
+    .card.success { border-color: var(--green-border); box-shadow: 0 0 0 3px var(--green-bg); }
+    .card.failed  { border-color: var(--red-border);   box-shadow: 0 0 0 3px var(--red-bg); }
+    .card.blocked { border-color: var(--amber-border); box-shadow: 0 0 0 3px var(--amber-bg); }
+    .card.running { border-color: var(--gold-border); }
+
+    .card-head { display: flex; align-items: flex-start; gap: 10px; }
+    .card-icon { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 999px;
+      display: inline-flex; align-items: center; justify-content: center; }
+    .card-icon.success { background: var(--green-bg); color: var(--green); }
+    .card-icon.failed  { background: var(--red-bg);   color: var(--red); }
+    .card-icon.blocked { background: var(--amber-bg); color: var(--amber); }
+    .card-icon.running { background: var(--gold-soft); color: var(--gold); }
+    .card-body-main { flex: 1; min-width: 0; }
+    .card-title { font-size: 14.5px; color: var(--fg); font-weight: 500; letter-spacing: -0.005em; }
+    .card-sub { font-family: 'Geist Mono', monospace; font-size: 11.5px;
+      color: var(--muted); margin-top: 3px; }
+    .card-bookmark { position: absolute; top: 12px; right: 12px;
+      color: var(--faint); cursor: pointer; padding: 4px; border-radius: 4px; }
+    .card-bookmark:hover { color: var(--gold); background: var(--gold-soft); }
+
+    .card-footer { display: flex; gap: 8px; margin-top: 12px;
+      padding-top: 10px; border-top: 1px solid var(--border); }
+    .btn { flex: 1; padding: 8px 12px; font-size: 12.5px; font-weight: 500;
+      background: transparent; border: 1px solid var(--border-strong); color: var(--fg);
+      border-radius: 6px; cursor: pointer; letter-spacing: 0.01em;
+      font-family: inherit; transition: background 150ms, border-color 150ms; }
+    .btn:hover { background: var(--toggle-bg); border-color: var(--gold-border); }
+    .btn.primary { background: var(--gold-soft); border-color: var(--gold-border); color: var(--gold); }
+
+    .expand { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
+      display: grid; gap: 10px; }
+    .expand-label { font-family: 'Geist Mono', monospace; font-size: 9.5px;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--faint); }
+    .expand-list { display: grid; gap: 3px; font-family: 'Geist Mono', monospace;
+      font-size: 11.5px; color: var(--muted); }
+    .expand-list .row { display: flex; gap: 8px; }
+    .expand-list .dot { color: var(--faint); }
+
+    .atlas-summary { margin: 4px 0 22px; padding: 0 4px 0 34px; color: var(--fg);
+      font-size: 13.5px; line-height: 1.6; }
+    .atlas-summary .head { color: var(--muted); font-size: 12px; margin-bottom: 4px;
+      font-family: 'Geist Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+    .atlas-summary ul { margin: 6px 0 0; padding-left: 18px; }
+    .atlas-summary li { margin: 2px 0; }
+
+    /* ---- Details surface ---- */
+    .details { background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0; margin-top: 12px; overflow: hidden; }
+    .details-head { padding: 12px 16px 10px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px; }
+    .details-title { font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+    .toggle { display: inline-flex; padding: 3px; background: var(--toggle-bg);
+      border: 1px solid var(--border); border-radius: 7px; }
+    .toggle button { background: transparent; border: none; color: var(--muted);
+      font-family: 'Geist Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 5px 12px; border-radius: 5px; cursor: pointer; }
+    .toggle button.active { background: var(--toggle-active); color: var(--gold); }
+    .details-body { padding: 14px 16px 16px; }
+
+    .lens-label { font-family: 'Geist Mono', monospace; font-size: 9.5px;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--faint);
+      margin: 6px 0 10px; }
+    .timeline { display: grid; gap: 8px; }
+    .timeline .item { display: flex; gap: 10px; font-size: 13px; color: var(--fg);
+      padding: 4px 0; }
+    .timeline .item .ico { opacity: 0.9; width: 20px; text-align: center; }
+    .timeline .item .txt { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--muted); }
+    .timeline .item.done .txt { color: var(--green); }
+
+    .changes-group { margin-bottom: 14px; }
+    .changes-group h4 { margin: 0 0 6px; font-size: 10.5px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--faint); font-weight: 500; }
+    .change-row { display: flex; flex-direction: column; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px;
+      background: var(--surface2); }
+    .change-row.active { border-color: var(--gold-border); background: var(--gold-soft); }
+    .change-row .file { font-family: 'Geist Mono', monospace; font-size: 12.5px;
+      color: var(--fg); display: flex; align-items: center; gap: 6px; }
+    .change-row .bullets { margin: 6px 0 0; padding-left: 20px; font-size: 12px;
+      color: var(--muted); }
+    .change-row .bullets li { margin: 1px 0; }
+    .change-row .actions { margin-top: 8px; display: flex; gap: 8px; }
+    .change-row .actions a { font-family: 'Geist Mono', monospace; font-size: 11px;
+      color: var(--gold); text-decoration: none; padding: 3px 8px; border-radius: 4px;
+      background: var(--gold-soft); border: 1px solid var(--gold-border); }
+
+    .github { margin-top: 18px; padding: 12px 14px;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--surface2);
+      display: flex; align-items: center; gap: 12px; }
+    .github .icon { color: var(--muted); }
+    .github .main { flex: 1; }
+    .github .line1 { font-size: 12.5px; color: var(--fg); display: flex; align-items: center; gap: 6px; }
+    .github .line1 .ok { color: var(--green); }
+    .github .line2 { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .github a { color: var(--gold); text-decoration: none; font-family: 'Geist Mono', monospace; font-size: 11px; }
+
+    /* Desktop side-by-side */
+    .desktop-hint { display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      padding: 14px 16px 16px; border-top: 1px dashed var(--border); }
+    .desktop-hint > div h5 { margin: 0 0 8px; font-family: 'Geist Mono', monospace;
+      font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
+
+    /* Responsive strip */
+    .strip { display: grid; grid-template-columns: 260px 340px 1fr; gap: 18px;
+      align-items: start; margin-top: 12px; }
+    .strip .cap { font-family: 'Geist Mono', monospace; font-size: 9.5px;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+    .strip .frame { background: var(--bg); border: 1px dashed var(--border);
+      border-radius: 10px; padding: 10px; }
+    @media (max-width: 780px) {
+      .strip { grid-template-columns: 1fr; }
+      .desktop-hint { grid-template-columns: 1fr; }
+    }
+
+    /* Spinner */
+    .spin { animation: spin 1s linear infinite; transform-origin: 50% 50%; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Load Geist */
+    @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/style.css');
+    @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-mono/style.css');
+    </style>
+</head>
+<body>
+<div class="page">
+  <span class="theme-tag">Atlas · Run Card · Dark</span>
+  <h1>One run = one Run Card</h1>
+  <p class="subtitle">Visual reference only. No app code. Card body expands inline; Details opens the surface; Preview plays.</p>
+
+  <div class="legend">
+    <ul>
+      <li><b>Card body tap</b> → expand / collapse inline. Does not navigate.</li>
+      <li><b>Details</b> → opens the Details surface with a <span class="kbd">Timeline | Changes</span> toggle.</li>
+      <li><b>Preview</b> → triggers the existing play / preview behavior.</li>
+      <li><b>Border color</b> → run status (green success, red failed, amber blocked). Fades to neutral ~1s after completion.</li>
+      <li><b>Bookmark</b> → top-right of every card. Saves the run.</li>
+    </ul>
+  </div>
+
+  <h2>1 · Running</h2>
+  
+        <div class="card running">
+          <span class="card-bookmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+          <div class="card-head">
+            <span class="card-icon running"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span>
+            <div class="card-body-main">
+              <div class="card-title">Working…</div>
+              <div class="card-sub">Tightening tiny-mobile left spacing…</div>
+            </div>
+          </div>
+        </div>
+        
+
+  <h2>2 · Completed — success (with summary below)</h2>
+  
+        <div class="card success">
+          <span class="card-bookmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+          <div class="card-head">
+            <span class="card-icon success"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="card-body-main">
+              <div class="card-title">Fixed Ask Atlas mobile spacing</div>
+            </div>
+          </div>
+          
+          <div class="card-footer">
+            <button class="btn">Details</button>
+            <button class="btn primary">Preview</button>
+          </div>
+        </div>
+        
+  
+        <div class="atlas-summary">
+          <div class="head">Atlas</div>
+          Fixed both:
+          <ul>
+            <li>Light-mode gold now uses semantic tokens.</li>
+            <li>Tiny-mobile overlap fixed by hiding the label and tightening spacing.</li>
+          </ul>
+        </div>
+        
+
+  <h2>3 · Completed — failed</h2>
+  
+        <div class="card failed">
+          <span class="card-bookmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+          <div class="card-head">
+            <span class="card-icon failed"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <div class="card-body-main">
+              <div class="card-title">Couldn't apply changes to home.tsx</div>
+            </div>
+          </div>
+          
+          <div class="card-footer">
+            <button class="btn">Details</button>
+            <button class="btn primary">Preview</button>
+          </div>
+        </div>
+        
+
+  <h2>4 · Blocked / needs input</h2>
+  
+        <div class="card blocked">
+          <span class="card-bookmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+          <div class="card-head">
+            <span class="card-icon blocked"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <div class="card-body-main">
+              <div class="card-title">Waiting on your decision — 2 files conflict</div>
+            </div>
+          </div>
+          
+          <div class="card-footer">
+            <button class="btn">Details</button>
+            <button class="btn primary">Resolve</button>
+          </div>
+        </div>
+        
+
+  <h2>5 · Expanded inline (success, tapped open)</h2>
+  
+        <div class="card success">
+          <span class="card-bookmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+          <div class="card-head">
+            <span class="card-icon success"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="card-body-main">
+              <div class="card-title">Fixed Ask Atlas mobile spacing</div>
+            </div>
+          </div>
+          
+            <div class="expand">
+              <div>
+                <div class="expand-label">Latest steps</div>
+                <div class="expand-list">
+                  <div class="row"><span class="dot">·</span><span>Edited home.tsx</span></div>
+                  <div class="row"><span class="dot">·</span><span>Edited AskAtlasSurface.tsx</span></div>
+                  <div class="row"><span class="dot">·</span><span>Typecheck passed</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="expand-label">Touched files</div>
+                <div class="expand-list">
+                  <div class="row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>home.tsx</span></div>
+                  <div class="row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>AskAtlasSurface.tsx</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="expand-label">Blockers</div>
+                <div class="expand-list"><div class="row"><span>No blockers.</span></div></div>
+              </div>
+            </div>
+            
+          <div class="card-footer">
+            <button class="btn">Details</button>
+            <button class="btn primary">Preview</button>
+          </div>
+        </div>
+        
+
+  <h2>6 · Details surface — mobile (Timeline selected)</h2>
+  
+        <div class="lens-label">Mobile — Timeline selected</div>
+        <div class="details">
+          <div class="details-head">
+            <span class="details-title">Changes</span>
+            <div class="toggle" style="margin-left:auto;">
+              <button class="active">Timeline</button>
+              <button class="">Changes</button>
+            </div>
+          </div>
+          <div class="details-body">
+            <div class="timeline"><div class="item "><span class="ico">💭</span><span class="txt">Thought for 8s</span></div><div class="item "><span class="ico">📖</span><span class="txt">Read home.tsx</span></div><div class="item "><span class="ico">📖</span><span class="txt">Read ComposerActions.tsx</span></div><div class="item "><span class="ico">✏️</span><span class="txt">Edited home.tsx</span></div><div class="item "><span class="ico">✏️</span><span class="txt">Edited AskAtlasSurface.tsx</span></div><div class="item "><span class="ico">🧪</span><span class="txt">Typecheck passed</span></div><div class="item done"><span class="ico">✅</span><span class="txt">Run completed</span></div></div>
+            
+        <div class="github">
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span>
+          <div class="main">
+            <div class="line1"><span class="ok">✓</span> Pushed to <code>main</code></div>
+            <div class="line2">Commit <code>7b81ac2</code></div>
+          </div>
+          <a href="#">View on GitHub ↗</a>
+        </div>
+        
+          </div>
+        </div>
+        
+
+  <h2>7 · Details surface — mobile (Changes selected)</h2>
+  
+        <div class="lens-label">Mobile — Changes selected</div>
+        <div class="details">
+          <div class="details-head">
+            <span class="details-title">Changes</span>
+            <div class="toggle" style="margin-left:auto;">
+              <button class="">Timeline</button>
+              <button class="active">Changes</button>
+            </div>
+          </div>
+          <div class="details-body">
+            
+        <div class="changes-group">
+          <h4>Modified</h4>
+          <div class="change-row active">
+            <div class="file">home.tsx</div>
+            <ul class="bullets">
+              <li>tightened mobile spacing</li>
+              <li>replaced gold tokens</li>
+              <li>fixed button sizing</li>
+            </ul>
+            <div class="actions">
+              <a href="#">View diff</a>
+              <a href="#">Open file</a>
+            </div>
+          </div>
+        </div>
+        <div class="changes-group">
+          <h4>Created</h4>
+          <div class="change-row"><div class="file">RunSummary.tsx</div></div>
+        </div>
+        <div class="changes-group">
+          <h4>Deleted</h4>
+          <div class="change-row"><div class="file">legacyTimeline.tsx</div></div>
+        </div>
+        
+            
+        <div class="github">
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span>
+          <div class="main">
+            <div class="line1"><span class="ok">✓</span> Pushed to <code>main</code></div>
+            <div class="line2">Commit <code>7b81ac2</code></div>
+          </div>
+          <a href="#">View on GitHub ↗</a>
+        </div>
+        
+          </div>
+        </div>
+        
+
+  <h2>8 · Details surface — desktop / tablet density hint</h2>
+  
+        <div class="lens-label">Desktop / Tablet — Toggle still owns interaction; side-by-side is a density hint</div>
+        <div class="details">
+          <div class="details-head">
+            <span class="details-title">Changes</span>
+            <div class="toggle" style="margin-left:auto;">
+              <button class="active">Timeline</button>
+              <button>Changes</button>
+            </div>
+          </div>
+          <div class="desktop-hint">
+            <div>
+              <h5>Timeline</h5>
+              <div class="timeline"><div class="item "><span class="ico">💭</span><span class="txt">Thought for 8s</span></div><div class="item "><span class="ico">📖</span><span class="txt">Read home.tsx</span></div><div class="item "><span class="ico">📖</span><span class="txt">Read ComposerActions.tsx</span></div><div class="item "><span class="ico">✏️</span><span class="txt">Edited home.tsx</span></div><div class="item "><span class="ico">✏️</span><span class="txt">Edited AskAtlasSurface.tsx</span></div><div class="item "><span class="ico">🧪</span><span class="txt">Typecheck passed</span></div><div class="item done"><span class="ico">✅</span><span class="txt">Run completed</span></div></div>
+            </div>
+            <div>
+              <h5>Changes</h5>
+              
+        <div class="changes-group">
+          <h4>Modified</h4>
+          <div class="change-row active">
+            <div class="file">home.tsx</div>
+            <ul class="bullets">
+              <li>tightened mobile spacing</li>
+              <li>replaced gold tokens</li>
+              <li>fixed button sizing</li>
+            </ul>
+            <div class="actions">
+              <a href="#">View diff</a>
+              <a href="#">Open file</a>
+            </div>
+          </div>
+        </div>
+        <div class="changes-group">
+          <h4>Created</h4>
+          <div class="change-row"><div class="file">RunSummary.tsx</div></div>
+        </div>
+        <div class="changes-group">
+          <h4>Deleted</h4>
+          <div class="change-row"><div class="file">legacyTimeline.tsx</div></div>
+        </div>
+        
+            </div>
+          </div>
+          <div style="padding: 0 16px 16px;">
+        <div class="github">
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span>
+          <div class="main">
+            <div class="line1"><span class="ok">✓</span> Pushed to <code>main</code></div>
+            <div class="line2">Commit <code>7b81ac2</code></div>
+          </div>
+          <a href="#">View on GitHub ↗</a>
+        </div>
+        </div>
+        </div>
+        
+
+  <h2>9 · Responsive strip</h2>
+  
+        <div class="strip">
+          <div>
+            <div class="cap">Tiny mobile</div>
+            <div class="frame" style="max-width:260px;">
+              
+        <div class="card success">
+          <span class="card-bookmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+          <div class="card-head">
+            <span class="card-icon success"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="card-body-main">
+              <div class="card-title">Fixed Ask Atlas mobile spacing</div>
+            </div>
+          </div>
+          
+            <div class="expand">
+              <div>
+                <div class="expand-label">Latest steps</div>
+                <div class="expand-list">
+                  <div class="row"><span class="dot">·</span><span>Edited home.tsx</span></div>
+                  <div class="row"><span class="dot">·</span><span>Edited AskAtlasSurface.tsx</span></div>
+                  <div class="row"><span class="dot">·</span><span>Typecheck passed</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="expand-label">Touched files</div>
+                <div class="expand-list">
+                  <div class="row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>home.tsx</span></div>
+                  <div class="row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>AskAtlasSurface.tsx</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="expand-label">Blockers</div>
+                <div class="expand-list"><div class="row"><span>No blockers.</span></div></div>
+              </div>
+            </div>
+            
+          <div class="card-footer">
+            <button class="btn">Details</button>
+            <button class="btn primary">Preview</button>
+          </div>
+        </div>
+        
+            </div>
+          </div>
+          <div>
+            <div class="cap">Mobile</div>
+            <div class="frame">
+              
+        <div class="card success">
+          <span class="card-bookmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+          <div class="card-head">
+            <span class="card-icon success"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="card-body-main">
+              <div class="card-title">Fixed Ask Atlas mobile spacing</div>
+            </div>
+          </div>
+          
+            <div class="expand">
+              <div>
+                <div class="expand-label">Latest steps</div>
+                <div class="expand-list">
+                  <div class="row"><span class="dot">·</span><span>Edited home.tsx</span></div>
+                  <div class="row"><span class="dot">·</span><span>Edited AskAtlasSurface.tsx</span></div>
+                  <div class="row"><span class="dot">·</span><span>Typecheck passed</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="expand-label">Touched files</div>
+                <div class="expand-list">
+                  <div class="row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>home.tsx</span></div>
+                  <div class="row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>AskAtlasSurface.tsx</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="expand-label">Blockers</div>
+                <div class="expand-list"><div class="row"><span>No blockers.</span></div></div>
+              </div>
+            </div>
+            
+          <div class="card-footer">
+            <button class="btn">Details</button>
+            <button class="btn primary">Preview</button>
+          </div>
+        </div>
+        
+            </div>
+          </div>
+          <div>
+            <div class="cap">Desktop</div>
+            <div class="frame">
+              
+        <div class="card success">
+          <span class="card-bookmark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+          <div class="card-head">
+            <span class="card-icon success"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="card-body-main">
+              <div class="card-title">Fixed Ask Atlas mobile spacing</div>
+            </div>
+          </div>
+          
+            <div class="expand">
+              <div>
+                <div class="expand-label">Latest steps</div>
+                <div class="expand-list">
+                  <div class="row"><span class="dot">·</span><span>Edited home.tsx</span></div>
+                  <div class="row"><span class="dot">·</span><span>Edited AskAtlasSurface.tsx</span></div>
+                  <div class="row"><span class="dot">·</span><span>Typecheck passed</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="expand-label">Touched files</div>
+                <div class="expand-list">
+                  <div class="row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>home.tsx</span></div>
+                  <div class="row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>AskAtlasSurface.tsx</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="expand-label">Blockers</div>
+                <div class="expand-list"><div class="row"><span>No blockers.</span></div></div>
+              </div>
+            </div>
+            
+          <div class="card-footer">
+            <button class="btn">Details</button>
+            <button class="btn primary">Preview</button>
+          </div>
+        </div>
+        
+            </div>
+          </div>
+        </div>
+        
+</div>
+</body>
+</html>
