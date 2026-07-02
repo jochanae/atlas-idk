@@ -18,6 +18,7 @@ export const projectsTable = pgTable("projects", {
   githubToken: text("github_token"),
   linkedRepo: text("linked_repo"),
   nodeState: jsonb("node_state").default({}),
+  convState: text("conv_state"),
   pushHistory: jsonb("push_history").default([]),
   shape: jsonb("shape").notNull().default({ identity: [], constraints: [], formats: [] }),
   forgedAt: timestamp("forged_at", { withTimezone: true }),

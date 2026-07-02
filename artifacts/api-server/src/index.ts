@@ -96,6 +96,16 @@ async function ensureColumns(): Promise<void> {
   try {
     await db.execute(sql`
       ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS conv_state text
+    `);
+    logger.info("ensureColumns: projects.conv_state verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: projects.conv_state failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE projects
         ADD COLUMN IF NOT EXISTS conversation_id text
     `);
     await db.execute(sql`
