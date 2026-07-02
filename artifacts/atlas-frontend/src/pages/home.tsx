@@ -4679,8 +4679,8 @@ export default function Home() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 6, marginBottom: 10,
                 fontFamily: "var(--app-font-mono)", fontSize: 10,
-                letterSpacing: "0.12em", textTransform: "uppercase",
-                color: "var(--atlas-muted)", opacity: 0.72,
+                letterSpacing: "0.14em", textTransform: "uppercase",
+                color: "var(--atlas-gold)", opacity: 0.6,
                 animation: "fadeIn 200ms ease forwards",
               }}>
                 <span style={{
@@ -4859,6 +4859,10 @@ export default function Home() {
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  if (askAtlasSurfaceOpen) {
+                    setAskAtlasSurfaceOpen(false);
+                    return;
+                  }
                   nexusChat.clearMessages();
                   setAskAtlasSurfaceOpen(true);
                   const seed = input.trim();
@@ -4867,12 +4871,6 @@ export default function Home() {
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (askAtlasSurfaceOpen) return;
-                  nexusChat.clearMessages();
-                  setAskAtlasSurfaceOpen(true);
-                  const seed = input.trim();
-                  if (seed) setInput(seed);
-                  window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
                 }}
                 style={{
                   height: isTiny ? 28 : 34,
