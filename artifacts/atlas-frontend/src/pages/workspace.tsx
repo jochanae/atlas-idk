@@ -6883,7 +6883,26 @@ export default function Workspace() {
     fetch(`/api/deploy/after-push?atlasProjectId=${id}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { hasVercel?: boolean; status?: string; alias?: string; url?: string; visualQa?: DeployQa; autoMonitoringSetUp?: boolean; autoMonitoringMessage?: string } | null) => {
-        if (!data?.hasVercel) return;
+        if (!data?.hasVercel) {
+          // Show Vercel onboarding guidance once per session per project
+          const shownKey = `axiom-vercel-onboard-${id}`;
+          try {
+            if (!sessionStorage.getItem(shownKey)) {
+              sessionStorage.setItem(shownKey, "1");
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant" as const,
+                  content: "Your code is on GitHub but there's no Vercel connection set up yet.\n\nTo auto-deploy on every push, go to **Settings → Integrations → Vercel**, add your API token and Vercel project ID. Once connected, the next GitHub push will trigger a live deployment automatically.",
+                  model: "system",
+                  intentType: "BUILD" as const,
+                  sentAt: new Date().toISOString(),
+                },
+              ]);
+            }
+          } catch { /* sessionStorage unavailable */ }
+          return;
+        }
         const host = data.alias
           ? `https://${data.alias}`
           : data.url

@@ -380,4 +380,133 @@ router.delete("/projects/:id/artifacts/:artifactId", async (req, res): Promise<v
   }
 });
 
+// ── POST /api/projects/:id/docs/generate ─────────────────────────────────────
+// Generates a technical architecture document from the project's AM + DNA.
+// Stores it as a documentation artifact and returns it.
+router.post("/projects/:id/docs/generate", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    if (!projectId || isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+
+    if (!(await assertOwner(projectId, userId))) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+
+    // Fetch AM
+    const [amRow] = await db
+      .select()
+      .from(applicationModelsTable)
+      .where(eq(applicationModelsTable.projectId, projectId))
+      .limit(1);
+
+    const [project] = await db
+      .select()
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+
+    if (!amRow) {
+      res.status(422).json({ error: "No Application Model found — continue the conversation to build one first." });
+      return;
+    }
+
+    const identity = (amRow.identity as Record<string, unknown>) ?? {};
+    const intent = (amRow.intent as Record<string, unknown>) ?? {};
+    const data = (amRow.data as Record<string, unknown>) ?? {};
+    const pages = (amRow.pages as Array<{ name: string; route?: string; description?: string }> ?? []).slice(0, 15);
+    const entities = (data.entities as Array<{ name: string; description?: string; fields?: string[] }> ?? []).slice(0, 12);
+    const relationships = (data.relationships as Array<{ from: string; to: string; type?: string }> ?? []).slice(0, 10);
+    const logic = (data.logic as Array<{ name: string; description?: string }> ?? []).slice(0, 8);
+    const components = (amRow.components as Array<{ name: string; description?: string }> ?? []).slice(0, 10);
+
+    const amSummary = { identity, intent, pages, entities, relationships, logic, components };
+    const projectName = (identity.name as string | undefined) ?? project?.name ?? "This Project";
+
+    const systemPrompt = `You are a technical architect writing clear, accurate documentation for a software project. Write in professional markdown. Be specific and concrete — no filler, no placeholder text. Only describe what the Application Model actually contains.`;
+
+    const userPrompt = `Generate technical architecture documentation for "${projectName}" using this Application Model:
+
+${JSON.stringify(amSummary, null, 2)}
+
+Write a markdown document with these sections (omit any section if the AM has no relevant data):
+
+# ${projectName} — Architecture
+
+## Overview
+One paragraph: what this product does and who it's for.
+
+## Pages & Routes
+Table or list of pages with their routes and purpose.
+
+## Data Model
+Key entities, their purpose, and relationships between them.
+
+## Core Logic
+Key business logic, workflows, or computed behaviors.
+
+## Components
+Reusable UI components or system components.
+
+## Technical Notes
+Any architectural decisions, constraints, or conventions evident from the model.
+
+Rules:
+- Only include a section if the AM has data for it
+- Be specific: use the real names from the model, not generic descriptions
+- No marketing language
+- Write for an engineer joining the project`;
+
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const markdown = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
+    if (!markdown) {
+      res.status(500).json({ error: "Documentation generation produced no output — try again." });
+      return;
+    }
+
+    const existing = await db
+      .select({ id: projectArtifactsTable.id })
+      .from(projectArtifactsTable)
+      .where(and(eq(projectArtifactsTable.projectId, projectId), eq(projectArtifactsTable.type, "documentation")));
+
+    const version = existing.length + 1;
+    const title = `${projectName} — Architecture Docs v${version}`;
+
+    const [row] = await db
+      .insert(projectArtifactsTable)
+      .values({
+        projectId,
+        type: "documentation",
+        version,
+        title,
+        metadata: { generatedAt: new Date().toISOString(), amVersion: amRow.version },
+        payload: { markdown },
+      })
+      .returning();
+
+    if (!row) { res.status(500).json({ error: "Insert failed" }); return; }
+
+    res.status(201).json({
+      id: row.id,
+      projectId: row.projectId,
+      type: row.type,
+      version: row.version,
+      title: row.title,
+      metadata: row.metadata,
+      payload: row.payload,
+      createdAt: row.createdAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error({ err }, "POST /projects/:id/docs/generate failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

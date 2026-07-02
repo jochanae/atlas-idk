@@ -9,7 +9,7 @@ import { ExperienceIntentCard } from "./ExperienceIntentCard";
 import { DesignPlanPanel } from "./DesignPlanPanel";
 import { PipelineSketchPanel } from "./PipelineSketchPanel";
 
-type BPTab = "spec" | "components" | "data" | "logic" | "soul" | "design" | "sketch";
+type BPTab = "spec" | "components" | "data" | "logic" | "soul" | "design" | "sketch" | "docs";
 
 const MONO = "var(--app-font-mono)";
 const GOLD = "var(--atlas-gold, #C9A24C)";
@@ -435,6 +435,82 @@ function ApproveButton({
   );
 }
 
+// ── DocsTab ───────────────────────────────────────────────────────────────────
+
+type DocArtifact = { id: number; title: string; payload: { markdown?: string }; metadata: { generatedAt?: string }; createdAt: string };
+
+function DocsTab({ projectId }: { projectId: number }) {
+  const [doc, setDoc] = useState<DocArtifact | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLatest = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/projects/${projectId}/artifacts?type=documentation`, { credentials: "include" });
+      if (!r.ok) throw new Error("fetch failed");
+      const data = await r.json() as { artifacts?: DocArtifact[] };
+      setDoc(data.artifacts?.[0] ?? null);
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => { void fetchLatest(); }, [fetchLatest]);
+
+  const handleGenerate = useCallback(async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const r = await fetch(`/api/projects/${projectId}/docs/generate`, { method: "POST", credentials: "include" });
+      const data = await r.json() as DocArtifact & { error?: string };
+      if (!r.ok) { setError((data as { error?: string }).error ?? "Generation failed"); return; }
+      setDoc(data);
+    } catch { setError("Network error — please try again."); } finally {
+      setGenerating(false);
+    }
+  }, [projectId]);
+
+  if (loading) return <div style={{ padding: "32px 20px", textAlign: "center" }}><span style={mutedStyle}>Loading…</span></div>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ padding: "12px 16px", borderBottom: `1px solid ${BORDER}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <span style={{ ...labelStyle, opacity: 0.6 }}>{doc ? `v${(doc as any).version ?? "—"} · ${new Date(doc.createdAt).toLocaleDateString()}` : "No docs yet"}</span>
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          style={{
+            fontFamily: MONO, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase",
+            color: generating ? MUTED : GOLD, background: "none", border: `1px solid ${generating ? BORDER : GOLD}`,
+            borderRadius: 4, padding: "4px 10px", cursor: generating ? "default" : "pointer", opacity: generating ? 0.5 : 1,
+          }}
+        >
+          {generating ? "Generating…" : doc ? "Regenerate" : "Generate Docs"}
+        </button>
+      </div>
+      {error && (
+        <div style={{ padding: "8px 16px", background: "rgba(180,60,60,0.12)", borderBottom: `1px solid ${BORDER}` }}>
+          <span style={{ fontFamily: MONO, fontSize: 11, color: "#c97070" }}>{error}</span>
+        </div>
+      )}
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+        {doc?.payload?.markdown ? (
+          <pre style={{
+            fontFamily: MONO, fontSize: 11.5, color: FG, lineHeight: 1.7, whiteSpace: "pre-wrap",
+            wordBreak: "break-word", margin: 0, background: "none", border: "none",
+          }}>
+            {doc.payload.markdown}
+          </pre>
+        ) : (
+          <EmptySlot message="Generate documentation from the Application Model — covers architecture, data model, pages, and core logic." />
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface BlueprintPanelProps {
   projectId: number;
   refreshTrigger?: number;
@@ -495,6 +571,7 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
     { id: "soul", label: "Soul", dot: hasSoul },
     { id: "sketch", label: "Sketch" },
     { id: "design", label: "Design" },
+    { id: "docs", label: "Docs" },
   ];
 
   const approvedAt = model?.intent?.approvedAt;
@@ -607,6 +684,7 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
         )}
         {activeTab === "sketch" && <PipelineSketchPanel projectId={projectId} />}
         {activeTab === "design" && <DesignPlanPanel projectId={projectId} />}
+        {activeTab === "docs" && <DocsTab projectId={projectId} />}
       </div>
 
       {/* Footer: version + last extracted */}

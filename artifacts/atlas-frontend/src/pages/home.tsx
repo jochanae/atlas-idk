@@ -2030,11 +2030,11 @@ export default function Home() {
     // Don't clobber the user-armed transition state.
     if (shapingStatus === "transitioning") return;
     if (suggestedName) {
-      setPendingWorkspace(null, suggestedName);
-      // Mid-stream: always "shaping" — Atlas is still writing its goodbye.
-      // "ready" is only promoted by the done-event (projectReadyDoneData effect)
-      // so the pill never lights up before Atlas finishes speaking.
+      // Once the done-event promotes status to "ready"/"packaging"/"opening",
+      // the project name is locked — prevent mid-stream handoffSignal from
+      // overwriting it (dedup: PROJECT_READY token + detectHomeHandoff both fire).
       if (shapingStatus !== "ready" && shapingStatus !== "packaging" && shapingStatus !== "opening") {
+        setPendingWorkspace(null, suggestedName);
         setShapingStatus("shaping");
       }
     } else if (userMsgCount === 0 && shapingStatus !== "idle") {
