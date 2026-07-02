@@ -4220,7 +4220,9 @@ export default function Workspace() {
       } catch {}
     };
     void poll();
-    const iv = setInterval(poll, 3000);
+    // 10s baseline — fast enough to catch a completed build but no longer
+    // hammering the server every 3s during a pure conversation.
+    const iv = setInterval(poll, 10_000);
     return () => clearInterval(iv);
   }, [id, latestRunKey]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
@@ -5369,6 +5371,15 @@ export default function Workspace() {
     Object.keys((project?.nodeState ?? {}) as Record<string, unknown>)
       .some(k => !["auth", "db", "api", "state", "ui", "logic"].includes(k));
   const isBrandNewProject = messages.length === 0 && !chatPending && (priorLoaded.current || !sessionId) && !hasForgeNodes;
+
+  // Thinking Mode vs Building Mode.
+  // Building = conversation has produced file edits. Thinking = pure conversation.
+  // This gates engineering telemetry: liveStep (FILE_READ/TREE indicators) only
+  // renders in Building Mode so the workspace feels as calm as Ask Atlas during chat.
+  const isBuilding = useMemo(() =>
+    messages.some(m => m.role === "assistant" && ((m.fileEdits?.length ?? 0) > 0 || m.fileEdit != null)),
+    [messages]
+  );
   const projectName = project?.name?.trim() ?? "";
   const isFirstMessage =
     chatPending && messages.filter((message) => message.role === "user").length === 1;
@@ -7871,9 +7882,14 @@ export default function Workspace() {
               },
               messages,
               chatPending,
-              activityStream,
+              // In Thinking Mode (pure conversation, no file edits), suppress all
+              // engineering telemetry so the workspace feels as calm as Ask Atlas.
+              // activityStream drives the step-by-step FILE_READ/TREE visualization;
+              // liveStep drives the inline "working…" badge. Both are hidden when
+              // Atlas is thinking rather than building.
+              activityStream: isBuilding ? activityStream : { active: false, content: "" },
               liveGeneration,
-              liveStep,
+              liveStep: isBuilding ? liveStep : null,
               thinkingBlock: thinkingState && (
                 <AtlasThinkingBlock thinkingState={thinkingState} />
               ),

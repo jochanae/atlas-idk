@@ -213,8 +213,11 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
       ? now - run.createdAt
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
 
-  const detailsHref = `/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}`;
+  // Details opens the Changes panel. We don't include runId because WorkspaceRunCard
+  // derives from chat message IDs, not project_builds IDs — they're different namespaces.
+  const detailsHref = `/project/${projectId}?leftTab=diff`;
   const hasProduced = run.produced.length > 0;
+  const hasFiles = run.files.length > 0;
 
   return (
     <div
@@ -401,26 +404,26 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
           >
             Open Preview
           </button>
-        ) : (
-          <button
-            type="button"
-            disabled
+        ) : hasFiles ? (
+          <Link
+            href={detailsHref}
             style={{
               flex: 1,
               padding: "8px 12px",
               fontSize: 12.5,
               fontWeight: 500,
+              textAlign: "center",
               background: "transparent",
               border: "1px solid hsl(var(--border))",
-              color: "hsl(var(--muted-foreground) / 0.5)",
+              color: "hsl(var(--card-foreground))",
               borderRadius: 6,
-              cursor: "not-allowed",
-              fontFamily: "inherit",
+              textDecoration: "none",
+              letterSpacing: "0.01em",
             }}
           >
-            Open Preview
-          </button>
-        )}
+            View Changes
+          </Link>
+        ) : null}
       </div>
 
       <style>{`

@@ -82,6 +82,9 @@ export interface UseChatStreamOptions {
   onStepEvent?: (event: { phase?: unknown; verb?: string; target?: string; status?: string }) => void;
   onFirstStreamingToken?: () => void;
   onDoneEvent?: (payload: any) => void;
+  /** When true, liveStep state updates are suppressed — prevents unnecessary
+   *  React re-renders during pure conversation (Thinking Mode). */
+  suppressSteps?: boolean;
 }
 
 export interface ActivityStreamState {
@@ -197,7 +200,13 @@ export function useChatStream(
     onStepEvent,
     onFirstStreamingToken,
     onDoneEvent,
+    suppressSteps,
   } = opts;
+
+  // Ref so inner callbacks always see the latest value without
+  // needing to be re-created when suppressSteps changes.
+  const suppressStepsRef = useRef(suppressSteps ?? false);
+  useEffect(() => { suppressStepsRef.current = suppressSteps ?? false; }, [suppressSteps]);
 
   // ---- message state ----
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -346,7 +355,7 @@ export function useChatStream(
         const pushSketchStep = (line: string, step: { verb: string; target?: string }) => {
           sketchLines.push(`SKETCH_STEP: ${line}`);
           setActivityStream({ active: true, content: sketchLines.join("\n") });
-          setLiveStep({ verb: step.verb, target: step.target, status: "ok" });
+          if (!suppressStepsRef.current) setLiveStep({ verb: step.verb, target: step.target, status: "ok" });
         };
         pushSketchStep(`Interpreting "${promptPreview}"`, { verb: "Interpreting", target: promptPreview });
         const pendingId = Date.now();
@@ -761,7 +770,7 @@ export function useChatStream(
                     status?: string;
                   };
                   if (step?.verb) {
-                    setLiveStep({ verb: step.verb, target: step.target, status: step.status });
+                    if (!suppressStepsRef.current) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
                     onStepEvent?.(step);
                   }
                 } else if (evtName === "plan_start") {
