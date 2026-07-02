@@ -964,8 +964,8 @@ export function BridgeSection({ onEnter }: { onEnter: () => void }) {
             transition: "opacity 900ms ease-out 200ms",
           }}
         >
-          What you commit in Axiom travels with you — into Lovable, Figma, your team,
-          your next quiet hour.
+          Axiom doesn't stop at a specification. It follows your work into execution —
+          building, previewing, and preparing it for the world it was made for.
         </p>
         <button
           onClick={onEnter}
