@@ -1193,7 +1193,6 @@ async function loadRecentNexusMessagesForConversation(
 
 // GET /api/nexus/thread — return a conversation thread (optionally scoped by conversationId)
 router.get("/nexus/thread", async (req, res): Promise<void> => {
-  console.log("nexus/thread userId:", (req as any).session?.userId);
   try {
     const userId = (req as any).authUser.id as number;
     const conversationId = req.query.conversationId as string | undefined;

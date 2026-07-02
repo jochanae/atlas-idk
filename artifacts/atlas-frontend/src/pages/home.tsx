@@ -1873,7 +1873,13 @@ export default function Home() {
   }, []);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem("atlas-home-conversation-id") ?? localStorage.getItem("atlas-home-conversation-id") ?? null;
+    } catch {
+      return null;
+    }
+  });
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
@@ -2059,7 +2065,9 @@ export default function Home() {
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
-  const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(false);
+  const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
+    try { return localStorage.getItem("atlas-ask-atlas-surface-open") === "1"; } catch { return false; }
+  });
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
   // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
@@ -2084,6 +2092,38 @@ export default function Home() {
   useEffect(() => {
     if (askAtlasSurfaceOpen) nexusChat.clearMessages();
   }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
+
+  // Persist Ask Atlas surface state to localStorage so it survives hard refresh.
+  useEffect(() => {
+    try {
+      if (askAtlasSurfaceOpen) {
+        localStorage.setItem("atlas-ask-atlas-surface-open", "1");
+      } else {
+        localStorage.removeItem("atlas-ask-atlas-surface-open");
+      }
+    } catch {}
+  }, [askAtlasSurfaceOpen]);
+
+  // Restore Ask Atlas thread after hard refresh — the surface may be open (from
+  // lazy localStorage init) but askAtlasChat is empty because the standard
+  // thread-load effect populates nexusChat, not askAtlasChat.
+  const askAtlasRestoreAttemptRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!askAtlasSurfaceOpen || !activeConversationId) return;
+    if (askAtlasRestoreAttemptRef.current === activeConversationId) return;
+    if (askAtlasChat.messages.length > 0) {
+      askAtlasRestoreAttemptRef.current = activeConversationId;
+      return;
+    }
+    askAtlasRestoreAttemptRef.current = activeConversationId;
+    fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((msgs: Array<{ role: string; content: string }>) => {
+        const normalized = normalizeLoadedHomeMessages(msgs);
+        if (normalized.length > 0) askAtlasChat.setMessages(normalized as any);
+      })
+      .catch(() => {});
+  }, [askAtlasSurfaceOpen, activeConversationId, askAtlasChat.messages.length, askAtlasChat.setMessages]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
