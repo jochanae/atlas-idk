@@ -4673,8 +4673,25 @@ export default function Home() {
               </div>
             )}
 
-            {/* (Ask Atlas mode banner removed — Ask Atlas now lives entirely
-                inside AskAtlasSurface; the home composer has no ask-atlas mode.) */}
+            {/* Ask Atlas mode banner — shown when button is active, before first message */}
+            {askAtlasSurfaceOpen && (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                gap: 6, marginBottom: 10,
+                fontFamily: "var(--app-font-mono)", fontSize: 10,
+                letterSpacing: "0.12em", textTransform: "uppercase",
+                color: "var(--atlas-muted)", opacity: 0.72,
+                animation: "fadeIn 200ms ease forwards",
+              }}>
+                <span style={{
+                  width: 5, height: 5, borderRadius: "50%",
+                  background: "var(--atlas-gold)",
+                  boxShadow: "0 0 5px rgba(201,162,76,0.5)",
+                  flexShrink: 0,
+                }} />
+                PORTFOLIO THINKING · NOT BUILDING
+              </div>
+            )}
 
 
             <div style={{
