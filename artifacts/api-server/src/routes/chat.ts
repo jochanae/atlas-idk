@@ -1369,6 +1369,7 @@ async function recordGenerationRunInBackground({
   startedAt,
   fileEdits,
   previousContentByPath,
+  chatMessageId,
 }: {
   projectId: unknown;
   userId: unknown;
@@ -1377,6 +1378,7 @@ async function recordGenerationRunInBackground({
   startedAt: Date | null;
   fileEdits: FileEdit[];
   previousContentByPath: Map<string, string>;
+  chatMessageId?: number;
 }): Promise<void> {
   try {
     if (fileEdits.length === 0) return;
@@ -1415,6 +1417,7 @@ async function recordGenerationRunInBackground({
       summary: `Edited ${generationFiles.length} file${generationFiles.length === 1 ? "" : "s"}`,
       commitSha: null,
       pushedToBranch: null,
+      chatMessageId: chatMessageId ?? null,
     });
 
     await db.insert(generatedFiles).values(
@@ -4748,6 +4751,15 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           ...runMetadata,
           imageB64: imageB64Val,
           imageMimeType: imageMimeTypeVal,
+          fileEditsJson: responseFileEdits.length > 0
+            ? JSON.stringify(responseFileEdits.map(e => ({ path: e.path, language: e.language })))
+            : null,
+          fileDeletesJson: fileDeletes.length > 0
+            ? JSON.stringify(fileDeletes.map((d: { path: string }) => ({ path: d.path })))
+            : null,
+          linePatchesJson: responseLinePatches.length > 0
+            ? JSON.stringify(responseLinePatches.map((p: { path: string }) => ({ path: p.path })))
+            : null,
         })
         .returning();
       savedMsgId = savedMsg.id;
@@ -4973,6 +4985,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     startedAt: now,
     fileEdits: responseFileEdits,
     previousContentByPath,
+    chatMessageId: savedMsgId,
   });
   if (userId) {
     void extractUserMemoryInBackground({

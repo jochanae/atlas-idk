@@ -408,6 +408,28 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: project_bookmarks table failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE chat_messages
+        ADD COLUMN IF NOT EXISTS file_edits_json   text,
+        ADD COLUMN IF NOT EXISTS file_deletes_json text,
+        ADD COLUMN IF NOT EXISTS line_patches_json text
+    `);
+    logger.info("ensureColumns: chat_messages run-card columns verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: chat_messages run-card columns failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE generation_runs
+        ADD COLUMN IF NOT EXISTS chat_message_id integer
+    `);
+    logger.info("ensureColumns: generation_runs.chat_message_id verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: generation_runs.chat_message_id failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

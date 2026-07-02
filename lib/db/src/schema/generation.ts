@@ -17,6 +17,7 @@ export const generationRuns = pgTable("generation_runs", {
   summary: text("summary").notNull().default(""),
   commitSha: text("commit_sha"),
   pushedToBranch: text("pushed_to_branch"),
+  chatMessageId: integer("chat_message_id"),
 });
 
 export const generatedFiles = pgTable("generated_files", {

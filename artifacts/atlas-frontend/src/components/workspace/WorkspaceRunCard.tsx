@@ -90,8 +90,11 @@ function deriveRun(
     const msg = messages[i];
     if (msg.role !== "assistant") continue;
 
-    const edits = msg.fileEdits ?? (msg.fileEdit ? [msg.fileEdit] : []);
-    const deletes = msg.fileDeletes ?? [];
+    const edits = msg.fileEdits
+      ?? (msg.fileEdit ? [msg.fileEdit] : undefined)
+      ?? (msg.fileEditsJson ? (JSON.parse(msg.fileEditsJson) as Array<{ path: string; language: string }>).map(e => ({ path: e.path, language: e.language, content: "" })) : []);
+    const deletes = msg.fileDeletes
+      ?? (msg.fileDeletesJson ? (JSON.parse(msg.fileDeletesJson) as Array<{ path: string }>) : []);
     const proposal = msg.writeFileProposal?.path;
     // Gate: only show the run card when Atlas actually produced an artifact.
     // Pure streaming with no file output is Layer 3 telemetry — no card.

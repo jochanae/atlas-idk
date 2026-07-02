@@ -241,6 +241,9 @@ export interface ChatMessage {
   fileEdits?: FileEdit[];
   linePatches?: LinePatch[];
   fileDeletes?: Array<{ path: string }>;
+  fileEditsJson?: string | null;
+  fileDeletesJson?: string | null;
+  linePatchesJson?: string | null;
   fileMoves?: Array<{ from: string; to: string }>;
   memoryChips?: MemoryChip[];
   nextSuggestions?: string[];
