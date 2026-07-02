@@ -36,6 +36,7 @@ import {
 interface Props {
   projectId: number;
   messages: ChatMessage[];
+  projectPreviewUrl?: string | null;
 }
 
 type DerivedStatus = "running" | "applied" | "failed";
@@ -80,7 +81,11 @@ function fmtElapsed(ms: number): string {
   return r ? `${m}m ${r}s` : `${m}m`;
 }
 
-function deriveRun(messages: ChatMessage[], projectId: number): DerivedRun | null {
+function deriveRun(
+  messages: ChatMessage[],
+  projectId: number,
+  projectPreviewUrl?: string | null,
+): DerivedRun | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role !== "assistant") continue;
@@ -137,7 +142,7 @@ function deriveRun(messages: ChatMessage[], projectId: number): DerivedRun | nul
       previewPath = produced[0];
     } else if (files.some((p) => APP_FILE_RE.test(p))) {
       previewSource = "local";
-    } else if (getSavedPreviewUrl(projectId)) {
+    } else if ((projectPreviewUrl?.trim() || getSavedPreviewUrl(projectId))) {
       previewSource = "url";
     }
 
@@ -212,8 +217,11 @@ const TONE: Record<
   },
 };
 
-export function WorkspaceRunCard({ projectId, messages }: Props) {
-  const run = useMemo(() => deriveRun(messages, projectId), [messages, projectId]);
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Props) {
+  const run = useMemo(
+    () => deriveRun(messages, projectId, projectPreviewUrl),
+    [messages, projectId, projectPreviewUrl],
+  );
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
