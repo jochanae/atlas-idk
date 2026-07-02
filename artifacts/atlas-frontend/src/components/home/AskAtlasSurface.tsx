@@ -251,6 +251,7 @@ export function AskAtlasSurface({
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [dismissedNavIdx, setDismissedNavIdx] = useState<Set<number>>(new Set());
+  const isTiny = useIsTinyMobile();
 
   // Manage object URLs for image previews
   useEffect(() => { ensureComposerAuraCSS(); }, []);
