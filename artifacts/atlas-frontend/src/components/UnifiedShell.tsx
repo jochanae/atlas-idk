@@ -1589,31 +1589,19 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
               <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)" }}>{completion}%</span>
             </div>
           ) : (
-            <div style={{ padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", marginRight: 4 }}>View</span>
-              {(["blended", "arch", "decisions"] as ReadinessMode[]).map((m) => {
-                const isActive = mode === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setNextMode(m)}
-                    style={{
-                      padding: "3px 8px", borderRadius: 999, cursor: "pointer",
-                      border: "1px solid " + (isActive ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.18)"),
-                      background: isActive ? "rgba(var(--atlas-muted-rgb),0.10)" : "transparent",
-                      color: isActive ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                      fontFamily: "var(--app-font-mono)", fontSize: 9, fontWeight: 700,
-                      letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1,
-                    }}
-                  >{MODE_META[m].abbr}</button>
-                );
-              })}
-              <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)" }}>{displayScore}%</span>
+            <div style={{ padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)" }}>
+                {chipReadiness?.overallLabel ?? "Readiness"}
+              </span>
+              <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)" }}>{completion}%</span>
             </div>
           )}
           <div style={{ padding: "0 14px 10px", fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.35 }}>
-            {isAppProject ? appTierDesc : `${meta.label} — ${meta.description}`}
+            {isAppProject
+              ? appTierDesc
+              : chipReadiness
+                ? "Canonical readiness — same score the workspace ring shows."
+                : "Loading readiness…"}
           </div>
 
           <div style={{ borderTop: "1px solid rgba(var(--atlas-muted-rgb),0.12)" }}>
@@ -1650,33 +1638,43 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
                   <CompletionRow label="Live URL" sub="Set" pct={100} onClick={() => go("/workspace")} />
                 )}
               </>
-            ) : (
+            ) : chipReadiness?.dimensions ? (
               <>
-                <CompletionRow
-                  label="Architecture"
-                  sub={`${archResolved}/${archTotal || 6} resolved`}
-                  pct={archScore}
-                  onClick={() => go("/master-map")}
-                />
-                <CompletionRow
-                  label="Decisions"
-                  sub={`${decResolved}/${decTotal} resolved · ${decisionsCount} committed`}
-                  pct={decisionsScore}
-                  onClick={() => go("/ledger")}
-                />
-                <CompletionRow
-                  label="Repo"
-                  sub={repoLinked ? "Linked" : "Not linked"}
-                  pct={repoPct}
-                  onClick={() => go("/workspace")}
-                />
-                <CompletionRow
-                  label="Live URL"
-                  sub={previewLinked ? "Set" : "Not set"}
-                  pct={urlPct}
-                  onClick={() => go("/workspace")}
-                />
+                {(["strategy", "build", "activity", "delivery"] as const).map((key) => {
+                  const dim = chipReadiness.dimensions?.[key];
+                  if (!dim) return null;
+                  const labels: Record<string, string> = {
+                    strategy: "Strategy", build: "Build", activity: "Activity", delivery: "Delivery",
+                  };
+                  const targets: Record<string, string> = {
+                    strategy: "/master-map", build: "/workspace", activity: "/ledger", delivery: "/workspace",
+                  };
+                  return (
+                    <CompletionRow
+                      key={key}
+                      label={labels[key]}
+                      sub={dim.applicable ? dim.evidence : "N/A for this project kind"}
+                      pct={dim.applicable ? dim.score : 0}
+                      onClick={() => go(targets[key])}
+                    />
+                  );
+                })}
+                {chipReadiness.warnings?.length > 0 && (
+                  <div style={{ padding: "8px 14px", fontSize: 10, color: "rgba(252,165,165,0.85)", lineHeight: 1.4, borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.08)" }}>
+                    {chipReadiness.warnings.map((w, i) => (
+                      <div key={i}>⚠ {w}</div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+                  <MetaRow label="Repo" value={repoLinked ? "Linked" : "Not linked"} ok={repoLinked} onClick={() => go("/workspace")} />
+                  <MetaRow label="Live URL" value={previewLinked ? "Set" : "Not set (backend writeback pending)"} ok={previewLinked} onClick={() => go("/workspace")} />
+                </div>
               </>
+            ) : (
+              <div style={{ padding: "14px", fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
+                Waiting for readiness endpoint…
+              </div>
             )}
           </div>
 
