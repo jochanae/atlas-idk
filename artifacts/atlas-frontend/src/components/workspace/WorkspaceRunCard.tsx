@@ -244,17 +244,25 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
   }, [run]);
 
   const handlePreview = useCallback(() => {
-    if (!run || !run.previewSource) return;
+    if (!run) return;
     let content: string | null = null;
     if (run.previewSource === "sandbox" && run.previewPath) {
       content = findFileContent(messages, run.previewPath);
     }
+    const savedLiveUrl = getSavedPreviewUrl(projectId) || projectPreviewUrl || null;
     window.dispatchEvent(
       new CustomEvent("axiom:open-preview", {
-        detail: { source: run.previewSource, content: content ?? undefined },
+        detail: {
+          source: run.previewSource ?? undefined,
+          content: content ?? undefined,
+          // Empty-state hints — only meaningful when source is null.
+          emptyReason: run.previewSource ? undefined : (run.error ?? (run.status === "failed" ? "RUN_FAILED" : "NO_PREVIEWABLE_OUTPUT")),
+          runId: run.previewSource ? undefined : run.id,
+          liveUrl: run.previewSource ? undefined : savedLiveUrl,
+        },
       }),
     );
-  }, [run, messages]);
+  }, [run, messages, projectId, projectPreviewUrl]);
 
   // Card body tap = inline expand/collapse only. Navigation is on explicit
   // Details / Preview buttons — never smart card-body routing.
