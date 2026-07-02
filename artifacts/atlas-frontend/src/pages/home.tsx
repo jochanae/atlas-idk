@@ -4825,14 +4825,22 @@ export default function Home() {
                 onClick={() => void handleOpenHistory()}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  width: isTiny ? 26 : 32, height: isTiny ? 26 : 32, borderRadius: 999, border: "none",
-                  background: "transparent",
-                  color: "rgba(201,162,76,0.85)",
+                  width: isTiny ? 30 : 36, height: isTiny ? 30 : 36, borderRadius: 10,
+                  border: "1px solid var(--atlas-gold-border, rgba(201,162,76,0.55))",
+                  background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+                  boxShadow: "0 0 12px -4px var(--atlas-gold-glow, rgba(201,162,76,0.45)), inset 0 0 0 1px color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
+                  color: "var(--atlas-gold, rgba(201,162,76,1))",
                   cursor: "pointer", flexShrink: 0, padding: 0,
-                  transition: "color 150ms ease, opacity 150ms ease",
+                  transition: "background 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(201,162,76,1)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(201,162,76,0.85)"; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 16%, transparent)";
+                  e.currentTarget.style.borderColor = "var(--atlas-gold, rgba(201,162,76,0.9))";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 8%, transparent)";
+                  e.currentTarget.style.borderColor = "var(--atlas-gold-border, rgba(201,162,76,0.55))";
+                }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="9" />
