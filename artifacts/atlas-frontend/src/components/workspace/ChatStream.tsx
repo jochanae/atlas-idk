@@ -21,6 +21,7 @@ import { WorkspaceRunCard } from "@/components/workspace/WorkspaceRunCard";
 
 // Minimal structural types — avoid importing private types from workspace.tsx
 type ProjectLike = { name?: string } | null | undefined;
+type ProjectWithPreview = { previewUrl?: string | null } | null | undefined;
 type HomeHandoffMetaLike = { flowNodeCount: number; goalLabel: string } | null | undefined;
 type LinkedRepoLike = LinkedRepo | null;
 type PushRecordLike = PushRecord;
@@ -738,7 +739,11 @@ export function ChatStream(props: ChatStreamProps) {
         />
       )}
 
-      <WorkspaceRunCard projectId={projectId} messages={messages} />
+      <WorkspaceRunCard
+        projectId={projectId}
+        messages={messages}
+        projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+      />
 
       <div ref={bottomRef} />
 
