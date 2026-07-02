@@ -430,6 +430,19 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: generation_runs.chat_message_id failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_resume_snapshots (
+        user_id      INTEGER PRIMARY KEY,
+        data_json    TEXT NOT NULL,
+        generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    logger.info("ensureColumns: user_resume_snapshots table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: user_resume_snapshots table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

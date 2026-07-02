@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable } from "@workspace/db";
+import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, userResumeSnapshotsTable } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { autoCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
@@ -3343,6 +3343,26 @@ router.get("/nexus/resume", async (req, res): Promise<void> => {
       return;
     }
 
+    // DB fallback — survive server restarts (2-hour TTL)
+    const DB_RESUME_TTL_MS = 2 * 60 * 60 * 1000;
+    if (!bustCache) {
+      try {
+        const [snap] = await db
+          .select()
+          .from(userResumeSnapshotsTable)
+          .where(eq(userResumeSnapshotsTable.userId, userId))
+          .limit(1);
+        if (snap && Date.now() - snap.generatedAt.getTime() < DB_RESUME_TTL_MS) {
+          const data = JSON.parse(snap.dataJson) as ResumeData;
+          resumeCache.set(userId, { data, expiresAt: Date.now() + RESUME_CACHE_TTL_MS });
+          res.json(data);
+          return;
+        }
+      } catch {
+        // Non-fatal — fall through to LLM generation
+      }
+    }
+
     // 1. Fetch user's projects
     const projects = await db
       .select({ id: projectsTable.id, name: projectsTable.name, status: projectsTable.status, description: projectsTable.description, updatedAt: projectsTable.updatedAt })
@@ -3474,8 +3494,13 @@ Rules:
       suggestedNextMove: typeof parsed.suggestedNextMove === "string" ? parsed.suggestedNextMove.trim() : "",
     };
 
-    // Cache for 5 minutes
+    // Cache in-memory for 5 minutes and persist to DB (survives server restarts)
     resumeCache.set(userId, { data, expiresAt: Date.now() + RESUME_CACHE_TTL_MS });
+    db.execute(sql`
+      INSERT INTO user_resume_snapshots (user_id, data_json, generated_at)
+      VALUES (${userId}, ${JSON.stringify(data)}, NOW())
+      ON CONFLICT (user_id) DO UPDATE SET data_json = EXCLUDED.data_json, generated_at = EXCLUDED.generated_at
+    `).catch((err: unknown) => logger.warn({ err }, "resume snapshot upsert failed — non-fatal"));
 
     res.json(data);
   } catch (err) {
