@@ -4055,7 +4055,7 @@ export default function Home() {
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
-                marginTop: isFoldInner ? "300px" : 0,
+                marginTop: 0,
                 position: "relative",
                 zIndex: 1,
               }}>
@@ -4156,8 +4156,8 @@ export default function Home() {
             <div style={{
               margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
-                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isFoldInner ? "clamp(30px, 7dvh, 62px) 0 clamp(32px, 6dvh, 52px)" : "18px 0 26px")),
-              minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : (isFoldInner ? "clamp(52px, 8dvh, 76px)" : 0)),
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isFoldInner ? "clamp(40px, 7dvh, 72px) 0 26px" : "18px 0 26px")),
+              minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
               display: askAtlasSurfaceVisible ? "none" : undefined,
               flexDirection: askAtlasSurfaceVisible ? "column" : undefined,
@@ -5072,7 +5072,7 @@ export default function Home() {
                 gap: 10,
                 position: "relative",
                 zIndex: 20,
-                paddingBottom: isFoldInner ? "var(--atlas-dock-clearance)" : undefined,
+                paddingBottom: undefined,
                 animation: "homeCinematicEntranceRise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 450ms both",
               }}>
 
