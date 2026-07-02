@@ -8030,7 +8030,9 @@ export default function Workspace() {
               onPushSuccess: handleReviewPushSuccess,
               commitCarryover,
               onBuildAnyway: (msg: string) => doSend(msg, sessionId ?? 0, messagesRef.current, undefined, undefined, { buildMode: true, skipReadiness: true }),
-              activityEvents: workspaceActivityItems,
+              // Decision extractions are Layer 3 telemetry — they belong in the
+              // Ledger, not the conversation. Filter them out of the inline feed.
+              activityEvents: workspaceActivityItems.filter(item => item.type !== "decision"),
               onSuggestionTap: (text: string) => {
                 setInput((prev: string) => prev ? `${prev} ${text}` : text);
                 setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);

@@ -93,11 +93,12 @@ function deriveRun(
     const edits = msg.fileEdits ?? (msg.fileEdit ? [msg.fileEdit] : []);
     const deletes = msg.fileDeletes ?? [];
     const proposal = msg.writeFileProposal?.path;
+    // Gate: only show the run card when Atlas actually produced an artifact.
+    // Pure streaming with no file output is Layer 3 telemetry — no card.
     const hasWork =
       edits.length > 0 ||
       deletes.length > 0 ||
       !!proposal ||
-      msg.streaming ||
       ERROR_MARKERS.test(msg.content ?? "");
 
     if (!hasWork) continue;
