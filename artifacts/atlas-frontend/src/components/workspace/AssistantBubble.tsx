@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, type FormEvent } from "react";
 import { createEntry, useCreateEntry, getListEntriesQueryKey, useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
-import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, CornerUpLeft, Download, Pencil, X, MoreHorizontal, GitBranch, Share2, Archive, FileOutput } from "lucide-react";
+import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, CornerUpLeft, Download, Pencil, Sparkles, X, MoreHorizontal, GitBranch, Share2, Archive, FileOutput } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useAtlasHistory, type AtlasLens } from "@/lib/atlas-history";
@@ -1764,22 +1764,7 @@ export function AssistantBubble({
           }}
         >
           <span>Atlas</span>
-          {message.model && message.model !== "claude" && (
-            <span style={{
-              display: "inline-flex", alignItems: "center", gap: 3,
-              padding: "1px 6px", borderRadius: 4,
-              background: message.model === "gpt4o"
-                ? "rgba(16,163,127,0.12)"
-                : message.model === "gemini"
-                ? "rgba(66,133,244,0.12)"
-                : "rgba(201,162,76,0.08)",
-              border: `1px solid ${message.model === "gpt4o" ? "rgba(16,163,127,0.28)" : message.model === "gemini" ? "rgba(66,133,244,0.28)" : "rgba(201,162,76,0.2)"}`,
-              fontSize: 8, fontWeight: 700, letterSpacing: "0.08em",
-              color: message.model === "gpt4o" ? "#10a37f" : message.model === "gemini" ? "#4285f4" : "var(--atlas-gold)",
-            }}>
-              {message.model === "gpt4o" ? "GPT-4o" : message.model === "gemini" ? "Gemini" : message.model}
-            </span>
-          )}
+          {/* Model badge is telemetry — lives in Inspect, not the header */}
           {message.isDeepDive && (
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 3,
@@ -2526,30 +2511,7 @@ export function AssistantBubble({
             }
           </button>
 
-          <button className="atlas-icon-action" title="Regenerate / pivot" aria-label="Retry" onClick={onRegenerate} style={ICON_TOUCH_TARGET_STYLE}>
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1.5 7a5.5 5.5 0 005.5 5.5 5.5 5.5 0 005.5-5.5 5.5 5.5 0 00-5.5-5.5 5.5 5.5 0 00-3.9 1.6" />
-              <polyline points="1.5 1.5 1.5 4 4 4" />
-            </svg>
-          </button>
-
-          <button
-            className={`atlas-icon-action${commitDone ? " done" : ""}`}
-            title={commitDone ? "Committed to ledger" : "Commit to ledger"}
-            aria-label="Save to ledger"
-            style={ICON_TOUCH_TARGET_STYLE}
-            onClick={() => { if (!commitDone) { onCommit(message.content); setCommitDone(true); } }}
-          >
-            {commitDone
-              ? <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
-              : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="1.5" width="10" height="11" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" /></svg>
-            }
-          </button>
-
-          {/* Sketch this — icon-only, popover with style presets */}
-          {!message.imageB64 && !message.imageGen && message.content && (
-            <InlineSketchOffer text={message.content} onSend={onSend} />
-          )}
+          {/* Regenerate, Commit, and Sketch moved to ⋯ overflow — keeps the bar minimal */}
           </>
           )}
 
@@ -2630,6 +2592,27 @@ export function AssistantBubble({
                     </svg>
                   </button>
                 </div>
+                <MenuItem
+                  icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 7a5.5 5.5 0 005.5 5.5 5.5 5.5 0 005.5-5.5 5.5 5.5 0 00-5.5-5.5 5.5 5.5 0 00-3.9 1.6" /><polyline points="1.5 1.5 1.5 4 4 4" /></svg>}
+                  label="Regenerate response"
+                  onClick={() => { setMenuOpen(false); onRegenerate?.(); }}
+                />
+                <MenuItem
+                  icon={commitDone
+                    ? <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
+                    : <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="1.5" width="10" height="11" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" /></svg>
+                  }
+                  label={commitDone ? "Committed to ledger" : "Commit to ledger"}
+                  disabled={commitDone}
+                  onClick={() => { setMenuOpen(false); if (!commitDone) { onCommit(message.content); setCommitDone(true); } }}
+                />
+                {!message.imageB64 && !message.imageGen && message.content && onSend && (
+                  <MenuItem
+                    icon={<Sparkles size={13} strokeWidth={1.6} />}
+                    label="Sketch this…"
+                    onClick={() => { setMenuOpen(false); onSend(`Sketch this: ${message.content.slice(0, 120)}`); }}
+                  />
+                )}
                 {snapshotForMsg && (
                   <MenuItem
                     icon={snapshotForMsg.isBookmarked ? <BookmarkCheck size={13} strokeWidth={1.7} /> : <Bookmark size={13} strokeWidth={1.6} />}
