@@ -738,7 +738,7 @@ export function ChatStream(props: ChatStreamProps) {
         />
       )}
 
-      <WorkspaceRunCard projectId={projectId} />
+      <WorkspaceRunCard projectId={projectId} messages={messages} />
 
       <div ref={bottomRef} />
 
