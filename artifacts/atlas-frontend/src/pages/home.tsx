@@ -4797,8 +4797,8 @@ export default function Home() {
             {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
             <div style={{
               display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative",
-              opacity: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker || homeFocus !== null) ? 1 : 0,
-              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker || homeFocus !== null) ? "auto" : "none",
+              opacity: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? 1 : 0,
+              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? "auto" : "none",
               transition: "opacity 200ms ease-in-out",
             }}>
               <div
