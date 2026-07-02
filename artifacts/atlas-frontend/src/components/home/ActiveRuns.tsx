@@ -1048,6 +1048,13 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
 // Running: streaming view auto-shown inline
 // Expanded (tap): Chat tab (full response) + Diff tab (file changes) + PR link
 
+// ── ViewChangesPanel bridge exports ──────────────────────────────────────────
+// These expose the pre-Lovable store API to ViewChangesPanel.WorkspaceRunCards.
+// They are NOT Lovable additions — patchActiveRun/dismissActiveRun wrap the
+// private _patchRun/_removeRun store functions that have always existed here.
+// RunCard (below) is exported so ViewChangesPanel can render Composer run cards
+// on the Changes surface; its visual is the pre-Lovable compact dot card.
+
 export function patchActiveRun(id: string, patch: Partial<ActiveRun>) {
   _patchRun(id, patch);
 }
