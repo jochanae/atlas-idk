@@ -435,6 +435,34 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
         </div>
       </div>
 
+      {/* Inline expand — file list preview. No navigation. */}
+      {expanded && run.files.length > 0 && (
+        <div
+          style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px dashed hsl(var(--border))",
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10.5,
+            color: "hsl(var(--muted-foreground))",
+            maxHeight: 140,
+            overflowY: "auto",
+          }}
+        >
+          {run.files.slice(0, 12).map((path) => (
+            <div key={path} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {path}
+            </div>
+          ))}
+          {run.files.length > 12 && (
+            <div style={{ opacity: 0.6 }}>+{run.files.length - 12} more</div>
+          )}
+        </div>
+      )}
+
       {/* Divider + always-visible Details / Preview buttons */}
       <div
         style={{
