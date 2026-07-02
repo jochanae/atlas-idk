@@ -32,6 +32,8 @@ type DerivedStatus = "running" | "applied" | "failed";
 
 interface DerivedRun {
   id: string;
+  /** Numeric chat message id when available — needed for history/bookmark ledger. */
+  associatedMessageId: number | null;
   status: DerivedStatus;
   title: string;
   createdAt: number;
