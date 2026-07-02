@@ -5017,7 +5017,14 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
 
   // Session Summary — generate/refresh after every workspace turn so Atlas can
   // orient the user when they return after a gap. Fire-and-forget, non-blocking.
-  if (projectId && message && displayContent) {
+  // Skip for trivial/short exchanges: combined length < 200 chars, or the
+  // response is a one-liner acknowledgment (auto-name, simple confirmation, etc.)
+  const _sessionSummaryExchangeLength = (message?.length ?? 0) + (displayContent?.length ?? 0);
+  const _sessionSummaryIsTrivial =
+    _sessionSummaryExchangeLength < 200 ||
+    // Single-sentence responses are unlikely to carry session-worthy content
+    (displayContent?.split(/[.!?\n]/).filter((s) => s.trim().length > 0).length ?? 0) <= 1;
+  if (projectId && message && displayContent && !_sessionSummaryIsTrivial) {
     void (async () => {
       try {
         // Build a condensed excerpt of the session exchange for the summary prompt.
