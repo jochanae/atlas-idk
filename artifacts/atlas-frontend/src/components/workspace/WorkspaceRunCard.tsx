@@ -8,17 +8,19 @@
  * Visual reference: attached_assets/run-card-{dark,light}.html
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
 import {
   Loader2,
   CheckCircle2,
   XCircle,
   Bookmark,
+  BookmarkCheck,
   FileText,
   Image as ImageIcon,
   FileCode,
   ChevronDown,
 } from "lucide-react";
+import { toast } from "sonner";
+import { addSnapshot, toggleBookmark, useAtlasHistory } from "@/lib/atlas-history";
 import type { ChatMessage } from "@/pages/workspace";
 
 interface Props {
