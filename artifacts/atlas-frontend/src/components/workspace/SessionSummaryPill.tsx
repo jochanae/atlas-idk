@@ -22,9 +22,11 @@ function timeAgo(iso: string): string {
 type Props = {
   projectId: number | null;
   onSummaryCleared?: () => void;
+  /** Compact mode: renders a gold clock icon-only trigger (for composer footer) */
+  compact?: boolean;
 };
 
-export function SessionSummaryPill({ projectId, onSummaryCleared }: Props) {
+export function SessionSummaryPill({ projectId, onSummaryCleared, compact = false }: Props) {
   const [data, setData] = useState<SessionSummaryData | null>(null);
   const [open, setOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
