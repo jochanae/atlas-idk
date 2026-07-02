@@ -77,6 +77,32 @@ async function resolveGithubTokenForRequest(
   return resolveStoredGithubToken(projectGithubToken) ?? process.env.GITHUB_TOKEN ?? null;
 }
 
+const GH_API_BASE = "https://api.github.com";
+
+function ghApiHeaders(token: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "Atlas/1.0",
+  };
+}
+
+function parseRepoFullName(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw) as { fullName?: unknown; full_name?: unknown } | string;
+    if (typeof p === "string") return p.trim() || null;
+    if (typeof p === "object" && p !== null) {
+      const fn = (p as { fullName?: unknown }).fullName ?? (p as { full_name?: unknown }).full_name;
+      return typeof fn === "string" && fn.trim() ? fn.trim() : null;
+    }
+    return null;
+  } catch {
+    return (raw ?? "").trim() || null;
+  }
+}
+
 // ── Five-Tier Memory System ───────────────────────────────────────────────────
 interface MemoryEntry {
   tier: 1 | 2 | 3 | 4 | 5;
@@ -821,6 +847,40 @@ RULES:
 - Use AFTER SHELL_RUN when the server needs to be started first
 - Response appears inline in chat with status code and formatted body
 - Do NOT use for destructive mutations you have not verified intent for
+
+## GitHub Bidirectional — Atlas Can Read and Push to GitHub
+
+When the project has a linked GitHub repo, Atlas can read files from it and push changes as commits.
+
+### Reading a file from GitHub
+Emit at the END of your response (before SHELL_RUN / DATA_FETCH):
+
+GITHUB_READ:{"path":"src/routes/users.ts"}
+GITHUB_READ:{"path":"src/components/Button.tsx","branch":"feature/redesign"}
+
+RULES:
+- One GITHUB_READ per response
+- path: file path relative to repo root (no leading slash needed)
+- branch: optional — defaults to the repo's default branch (usually "main")
+- Use BEFORE writing FILE_EDIT blocks when you need to understand the current remote state of a file
+- The file content appears inline in chat so you can reference it immediately
+
+### Pushing changes to GitHub
+Emit AFTER all FILE_EDIT blocks (alongside or after SHELL_RUN):
+
+GITHUB_PUSH:{"branch":"atlas/fix-auth","message":"Fix auth token validation"}
+GITHUB_PUSH:{"branch":"atlas/add-users-api","message":"Add GET /api/users endpoint","openPr":true,"prTitle":"Add users list endpoint","base":"main"}
+
+RULES:
+- One GITHUB_PUSH per response
+- branch: name of the branch to commit to (created automatically if it does not exist)
+- message: commit message
+- base: optional base branch for both branch creation and PR target (default "main")
+- openPr: optional boolean — if true, open a pull request from branch → base
+- prTitle / prBody: optional — PR title and body (prTitle defaults to the commit message)
+- All FILE_EDIT blocks in the same response are committed together to the branch
+- Only use when the user explicitly asks to commit/push, or when the task says to open a PR
+- Do NOT push without user intent — file edits applied locally are always available for a manual push via the GitHubPushModal
 
 ## Threshold Arrival — First Session
 When this is a fresh workspace and you have project memories from a Global shaping conversation, this is a Threshold moment — the user just crossed from discovery into execution. Your first message should:
@@ -4384,6 +4444,40 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     return "";
   }).trim();
 
+  // Extract and strip GITHUB_READ tokens — Atlas reads a file from the linked GitHub repo
+  const GITHUB_READ_RE = /^GITHUB_READ:\s*(\{[^\n]+\})\s*$/gm;
+  type GithubReadToken = { path: string; branch?: string };
+  let githubReadToken: GithubReadToken | null = null;
+  rawContent = rawContent.replace(GITHUB_READ_RE, (_match, json: string) => {
+    if (!githubReadToken) {
+      try {
+        const parsed = JSON.parse(json) as GithubReadToken;
+        if (typeof parsed.path === "string" && parsed.path.trim()) {
+          githubReadToken = parsed;
+          writeStep(res, { verb: "Reading", target: parsed.path, phase: "execute" });
+        }
+      } catch { /* ignore malformed tokens */ }
+    }
+    return "";
+  }).trim();
+
+  // Extract and strip GITHUB_PUSH tokens — Atlas pushes FILE_EDIT changes to GitHub
+  const GITHUB_PUSH_RE = /^GITHUB_PUSH:\s*(\{[^\n]+\})\s*$/gm;
+  type GithubPushToken = { branch: string; message: string; openPr?: boolean; prTitle?: string; prBody?: string; base?: string };
+  let githubPushToken: GithubPushToken | null = null;
+  rawContent = rawContent.replace(GITHUB_PUSH_RE, (_match, json: string) => {
+    if (!githubPushToken) {
+      try {
+        const parsed = JSON.parse(json) as GithubPushToken;
+        if (typeof parsed.branch === "string" && typeof parsed.message === "string") {
+          githubPushToken = parsed;
+          writeStep(res, { verb: "Pushing to", target: parsed.branch, phase: "execute" });
+        }
+      } catch { /* ignore malformed tokens */ }
+    }
+    return "";
+  }).trim();
+
   // Extract and strip CLARIFY blocks — Atlas asks structured follow-up questions when blocked
   type ClarifyPayload = {
     steps: Array<{
@@ -5236,6 +5330,140 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     }
   }
 
+  // Execute GITHUB_READ token — fetch a file from the linked GitHub repo and return it inline
+  type GithubReadResult = { path: string; branch: string; content: string; lines: number; truncated: boolean };
+  let githubReadResult: GithubReadResult | null = null;
+  if (githubReadToken && project) {
+    const grt = githubReadToken as GithubReadToken;
+    try {
+      const repoFull = parseRepoFullName(project.linkedRepo);
+      const ghToken = await resolveGithubTokenForRequest(userId, project.githubToken ?? null);
+      if (repoFull && ghToken) {
+        const branch = grt.branch ?? "main";
+        const apiUrl = `${GH_API_BASE}/repos/${repoFull}/contents/${grt.path.replace(/^\//, "")}?ref=${encodeURIComponent(branch)}`;
+        const resp = await fetch(apiUrl, { headers: ghApiHeaders(ghToken), signal: AbortSignal.timeout(10_000) });
+        if (resp.ok) {
+          const data = await resp.json() as { content?: string; encoding?: string };
+          if (data.encoding === "base64" && typeof data.content === "string") {
+            const decoded = Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf-8");
+            const lineCount = decoded.split("\n").length;
+            const truncated = lineCount > 600;
+            githubReadResult = {
+              path: grt.path,
+              branch,
+              content: truncated ? decoded.split("\n").slice(0, 600).join("\n") + "\n// [truncated — first 600 lines]" : decoded,
+              lines: lineCount,
+              truncated,
+            };
+          }
+        } else {
+          logger.warn({ status: resp.status, path: grt.path, repo: repoFull }, "GITHUB_READ: GitHub API non-OK");
+        }
+      } else {
+        logger.warn({ hasRepo: !!repoFull, hasToken: !!ghToken }, "GITHUB_READ: missing repo or token");
+      }
+    } catch (err) {
+      logger.warn({ err }, "GITHUB_READ execution failed");
+    }
+  }
+
+  // Execute GITHUB_PUSH token — commit FILE_EDIT changes to a GitHub branch
+  type GithubPushResult = {
+    branch: string;
+    message: string;
+    files: Array<{ path: string; commitSha?: string; commitUrl?: string; error?: string }>;
+    prUrl?: string;
+    prNumber?: number;
+    error?: string;
+  };
+  let githubPushResult: GithubPushResult | null = null;
+  if (githubPushToken && project && fileEdits.length > 0) {
+    const gpt = githubPushToken as GithubPushToken;
+    try {
+      const repoFull = parseRepoFullName(project.linkedRepo);
+      const ghToken = await resolveGithubTokenForRequest(userId, project.githubToken ?? null);
+      if (repoFull && ghToken) {
+        const baseBranch = gpt.base ?? "main";
+        const pushBranch = gpt.branch;
+
+        // Resolve SHA of the base branch (try main then master)
+        let baseSha: string | null = null;
+        for (const b of [baseBranch, baseBranch === "main" ? "master" : "main"]) {
+          const refResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/ref/heads/${b}`, { headers: ghApiHeaders(ghToken), signal: AbortSignal.timeout(8_000) });
+          if (refResp.ok) { const d = await refResp.json() as { object: { sha: string } }; baseSha = d.object.sha; break; }
+        }
+        if (!baseSha) throw new Error(`Base branch '${baseBranch}' not found in ${repoFull}`);
+
+        // Create the push branch (ignore 422 "already exists")
+        const createResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/refs`, {
+          method: "POST",
+          headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+          body: JSON.stringify({ ref: `refs/heads/${pushBranch}`, sha: baseSha }),
+          signal: AbortSignal.timeout(8_000),
+        });
+        if (!createResp.ok) {
+          const errText = await createResp.text();
+          if (!errText.includes("already exists")) throw new Error(`Branch creation failed: ${errText}`);
+        }
+
+        // Commit each file edit to the branch
+        const committedFiles: GithubPushResult["files"] = [];
+        for (const edit of fileEdits) {
+          let currentSha: string | undefined;
+          const existingResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}?ref=${pushBranch}`, { headers: ghApiHeaders(ghToken), signal: AbortSignal.timeout(8_000) });
+          if (existingResp.ok) { const d = await existingResp.json() as { sha?: string }; currentSha = d.sha; }
+
+          const putBody: Record<string, unknown> = {
+            message: gpt.message,
+            content: Buffer.from(edit.content, "utf-8").toString("base64"),
+            branch: pushBranch,
+          };
+          if (currentSha) putBody.sha = currentSha;
+
+          const putResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}`, {
+            method: "PUT",
+            headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+            body: JSON.stringify(putBody),
+            signal: AbortSignal.timeout(15_000),
+          });
+          if (!putResp.ok) {
+            committedFiles.push({ path: edit.path, error: await putResp.text() });
+          } else {
+            const d = await putResp.json() as { commit?: { sha?: string; html_url?: string } };
+            committedFiles.push({ path: edit.path, commitSha: d.commit?.sha, commitUrl: d.commit?.html_url });
+          }
+        }
+
+        githubPushResult = { branch: pushBranch, message: gpt.message, files: committedFiles };
+
+        // Open a PR if requested
+        if (gpt.openPr) {
+          const prTitle = gpt.prTitle ?? gpt.message;
+          const prBody = gpt.prBody ?? `Automated commit by Atlas\n\nFiles changed:\n${fileEdits.map((e) => `- \`${e.path}\``).join("\n")}`;
+          const prResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/pulls`, {
+            method: "POST",
+            headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+            body: JSON.stringify({ title: prTitle, body: prBody, head: pushBranch, base: baseBranch }),
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (prResp.ok) {
+            const pr = await prResp.json() as { html_url?: string; number?: number };
+            githubPushResult.prUrl = pr.html_url;
+            githubPushResult.prNumber = pr.number;
+          }
+        }
+
+        (finalPayload as Record<string, unknown>).githubPushResult = githubPushResult;
+      } else {
+        logger.warn({ hasRepo: !!repoFull, hasToken: !!ghToken }, "GITHUB_PUSH: missing repo or token");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      githubPushResult = { branch: (githubPushToken as GithubPushToken).branch, message: (githubPushToken as GithubPushToken).message, files: [], error: msg };
+      logger.warn({ err }, "GITHUB_PUSH execution failed");
+    }
+  }
+
   // Append browser visit analysis to the displayed message so users can read it in chat
   let fullText = displayContent;
   if (browserVisitResult) {
@@ -5304,6 +5532,31 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       `\`\`\`${isJson ? "json" : "text"}\n${formatted.trim() || "(empty response)"}\n\`\`\``,
     ];
     fullText = fullText.trimEnd() + "\n\n" + dataFetchLines.join("\n");
+  }
+  // Append GitHub file read result inline so Atlas and the user can reference the remote content
+  if (githubReadResult) {
+    const grr = githubReadResult;
+    const ext = grr.path.match(/\.(\w+)$/)?.[1] ?? "text";
+    const truncNote = grr.truncated ? ` — first 600 of ${grr.lines} lines` : ` (${grr.lines} lines)`;
+    fullText = fullText.trimEnd() +
+      `\n\n**GitHub** \`${grr.path}\` @ \`${grr.branch}\`${truncNote}\n` +
+      `\`\`\`${ext}\n${grr.content}\n\`\`\``;
+  }
+  // Append GitHub push result inline
+  if (githubPushResult) {
+    const gpr = githubPushResult;
+    if (gpr.error) {
+      fullText = fullText.trimEnd() +
+        `\n\n❌ **GitHub push failed** to \`${gpr.branch}\`: ${gpr.error}`;
+    } else {
+      const fileLines = gpr.files.map((f) =>
+        f.error ? `- ❌ \`${f.path}\` — ${f.error}` : `- ✅ \`${f.path}\``
+      ).join("\n");
+      const prLine = gpr.prUrl ? `\n🔗 **PR opened:** [#${gpr.prNumber}](${gpr.prUrl})` : "";
+      const commitLine = !gpr.prUrl ? `\n🔗 [View commit](${gpr.files.find((f) => f.commitUrl)?.commitUrl ?? `https://github.com`})` : "";
+      fullText = fullText.trimEnd() +
+        `\n\n✅ **Pushed ${gpr.files.length} file${gpr.files.length !== 1 ? "s" : ""} to** \`${gpr.branch}\`${prLine}${commitLine}\n${fileLines}`;
+    }
   }
   // Emit structured plan SSE event now that fullText is finalised (before done).
   if (structuredPlanArtifact) {
