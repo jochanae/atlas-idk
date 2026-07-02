@@ -321,18 +321,13 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
     <div
       role="button"
       tabIndex={0}
-      aria-label={
-        run.status === "running"
-          ? "Open run details"
-          : run.previewSource
-            ? "Open run preview"
-            : "Open run details"
-      }
-      onClick={handleCardClick}
+      aria-expanded={expanded}
+      aria-label={expanded ? "Collapse run details" : "Expand run details"}
+      onClick={toggleExpanded}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          handleCardClick();
+          toggleExpanded();
         }
       }}
       style={{
