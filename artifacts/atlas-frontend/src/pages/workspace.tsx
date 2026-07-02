@@ -7293,21 +7293,7 @@ export default function Workspace() {
         onExpandedChange={setSubheaderOpen}
       />
 
-      {/* Session summary pill — only visible on the chat tab when a project is open */}
-      {project && unifiedSubheaderTab === "chat" && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            padding: "6px 16px 0",
-            pointerEvents: "none",
-          }}
-        >
-          <div style={{ pointerEvents: "auto" }}>
-            <SessionSummaryPill projectId={project.id} />
-          </div>
-        </div>
-      )}
+      {/* Session summary pill moved into the composer footer (gold-clock trigger). */}
 
       <LaunchModal
         open={launchModal.open}
