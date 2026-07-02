@@ -4055,7 +4055,7 @@ export default function Home() {
                     margin: 0,
                     fontStyle: "italic",
                   }}>
-                    {askAtlasSurfaceOpen ? "Ask across every thread." : (() => {
+                    {askAtlasSurfaceOpen ? "" : (() => {
                       const activeProjects = ((projects ?? []) as Project[]).filter((p: Project) => p.status !== "archived");
                       const mostRecent = [...activeProjects].sort((a, b) => {
                         const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
