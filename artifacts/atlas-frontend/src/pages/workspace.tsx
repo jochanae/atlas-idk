@@ -1102,6 +1102,12 @@ function DatabaseTab({
   const mono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
   const muted: React.CSSProperties = { color: "var(--atlas-muted)", ...mono };
 
+  useEffect(() => {
+    const handler = () => setSection("env");
+    window.addEventListener("axiom:open-env-panel", handler);
+    return () => window.removeEventListener("axiom:open-env-panel", handler);
+  }, []);
+
   const save = () => {
     const trimmed = value.trim();
     if (!trimmed) return;
@@ -1833,6 +1839,17 @@ function RightPanel({
     const onNavigateToMap = () => setTab("map");
     window.addEventListener("axiom:navigate-to-map", onNavigateToMap);
     return () => window.removeEventListener("axiom:navigate-to-map", onNavigateToMap);
+  }, []);
+
+  // "axiom:open-env-panel" — dispatched from WorkspaceRunCard env-var chip.
+  // Opens Files → Database → Environment. DatabaseTab handles its own section switch.
+  useEffect(() => {
+    const handler = () => {
+      setTab("files");
+      setWorkspaceSubTab("database");
+    };
+    window.addEventListener("axiom:open-env-panel", handler);
+    return () => window.removeEventListener("axiom:open-env-panel", handler);
   }, []);
 
   const openConnections = useCallback(() => {

@@ -518,6 +518,29 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     });
   }, [run, existingSnapshot, isBookmarked, projectId]);
 
+  // ── Env var detection (receipt mode only) ────────────────────────────
+  const envVarsReferenced = useMemo(() => {
+    if (isActive) return [];
+    const vars = new Set<string>();
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role !== "assistant") continue;
+      const edits = msg.fileEdits ?? (msg.fileEdit ? [msg.fileEdit] : []);
+      if (edits.length === 0) continue;
+      for (const edit of edits) {
+        if (!edit?.content) continue;
+        for (const m of edit.content.matchAll(/process\.env\.([A-Z_][A-Z0-9_]+)/g)) {
+          vars.add(m[1]);
+        }
+        for (const m of edit.content.matchAll(/import\.meta\.env\.(VITE_[A-Z_][A-Z0-9_]+)/g)) {
+          vars.add(m[1]);
+        }
+      }
+      break;
+    }
+    return Array.from(vars);
+  }, [isActive, messages]);
+
   // ── Render: active (live communication) ───────────────────────────────
   if (isActive) {
     return <ActiveCard steps={liveSteps} title={activeTitle} />;
@@ -752,6 +775,52 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           Preview
         </button>
       </div>
+
+      {/* Env var chip — shown when Atlas wrote code referencing env vars */}
+      {envVarsReferenced.length > 0 && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            window.dispatchEvent(new CustomEvent("axiom:open-env-panel"));
+          }}
+          style={{
+            marginTop: 8,
+            width: "100%",
+            padding: "7px 10px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            background: "rgba(201,162,76,0.05)",
+            border: "1px solid rgba(201,162,76,0.2)",
+            borderRadius: 6,
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: "var(--app-font-mono)",
+          }}
+        >
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 2 }}>
+              Env vars referenced
+            </div>
+            <div
+              style={{
+                fontSize: 10.5,
+                color: "hsl(var(--muted-foreground))",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {envVarsReferenced.join(", ")}
+            </div>
+          </div>
+          <span style={{ fontSize: 10, color: "var(--atlas-gold)", opacity: 0.8, flexShrink: 0 }}>
+            Configure →
+          </span>
+        </button>
+      )}
     </div>
   );
 }

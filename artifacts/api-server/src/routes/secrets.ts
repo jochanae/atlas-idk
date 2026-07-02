@@ -42,15 +42,24 @@ const CreateSchema = z.object({
   value: z.string().min(1).max(4000),
 });
 
+/** List secrets for the current user, optionally filtered by projectId. */
 router.get("/secrets", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
-  const rows = await db
+  const projectIdFilter = req.query.projectId ? parseInt(req.query.projectId as string, 10) : null;
+
+  let query = db
     .select()
     .from(secretsTable)
     .where(eq(secretsTable.userId, userId))
     .orderBy(desc(secretsTable.createdAt));
 
-  const safe = rows.map(r => ({
+  const rows = await query;
+
+  const filtered = projectIdFilter
+    ? rows.filter(r => r.projectId === projectIdFilter)
+    : rows;
+
+  const safe = filtered.map(r => ({
     id: r.id,
     projectId: r.projectId,
     projectName: r.projectName,
@@ -61,6 +70,7 @@ router.get("/secrets", async (req, res): Promise<void> => {
   res.json(safe);
 });
 
+/** Create a new secret for this project. */
 router.post("/secrets", async (req, res): Promise<void> => {
   const parsed = CreateSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -87,6 +97,36 @@ router.post("/secrets", async (req, res): Promise<void> => {
   });
 });
 
+/** Rotate (update) the value of an existing secret. The label stays the same. */
+router.put("/secrets/:id", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const parsed = z.object({ value: z.string().min(1).max(4000) }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const encryptedValue = encrypt(parsed.data.value);
+  const [row] = await db
+    .update(secretsTable)
+    .set({ encryptedValue })
+    .where(and(eq(secretsTable.id, id), eq(secretsTable.userId, userId)))
+    .returning();
+
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  res.json({
+    id: row.id,
+    projectId: row.projectId,
+    label: row.label,
+    maskedValue: mask(row.label),
+  });
+});
+
+/** Reveal the decrypted value of a secret — use sparingly, only when the user explicitly requests. */
 router.get("/secrets/:id/reveal", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   const id = parseInt(req.params.id, 10);
@@ -104,6 +144,7 @@ router.get("/secrets/:id/reveal", async (req, res): Promise<void> => {
   }
 });
 
+/** Delete a secret. */
 router.delete("/secrets/:id", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   const id = parseInt(req.params.id, 10);
