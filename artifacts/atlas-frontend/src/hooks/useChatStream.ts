@@ -936,15 +936,31 @@ export function useChatStream(
             ...(res.reviewNotes?.length ? { reviewNotes: res.reviewNotes } : {}),
           }]);
           setActivityStream({ active: false, content: "" });
-          // Auto-route standalone HTML artifacts to the Draft sandbox.
-          // When Atlas emits a FILE_EDIT for preview/output.html, push the
-          // content via a custom event so PreviewPanel auto-renders it without
-          // requiring the user to copy-paste.
+          // Auto-route standalone HTML artifacts to the Draft sandbox and
+          // persist them to the project artifacts gallery.
           const previewHtmlEdit = fes.find((e: any) => e.path === "preview/output.html");
           if (previewHtmlEdit?.content) {
+            // Push to Draft tab immediately (no user copy-paste needed).
             window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
               detail: { content: previewHtmlEdit.content },
             }));
+            // Persist to project_artifacts so it appears in the Artifacts tab.
+            fetch(`/api/projects/${projectId}/artifacts`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                type: "html_preview",
+                title: "Preview Output",
+                metadata: { path: "preview/output.html", generatedAt: new Date().toISOString() },
+                payload: { html: previewHtmlEdit.content },
+              }),
+            })
+              .then(() => {
+                // Tell PreviewPanel to refetch the artifacts gallery.
+                window.dispatchEvent(new CustomEvent("axiom:artifact-saved"));
+              })
+              .catch(() => {});
           }
           if (isScenario) {
             setScenarioBuffer((prev) => [

@@ -243,6 +243,61 @@ router.post("/projects/:id/sketches/generate", async (req, res): Promise<void> =
   }
 });
 
+// ── POST /api/projects/:id/artifacts ─────────────────────────────────────────
+// Generic artifact save. Accepts { type, title, metadata?, payload? }.
+// Version is computed automatically (count of existing same-type artifacts + 1).
+router.post("/projects/:id/artifacts", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    if (!projectId || isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+
+    if (!(await assertOwner(projectId, userId))) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+
+    const { type, title, metadata = {}, payload = {} } = req.body as {
+      type?: string;
+      title?: string;
+      metadata?: Record<string, unknown>;
+      payload?: Record<string, unknown>;
+    };
+
+    if (!type || !title) {
+      res.status(400).json({ error: "type and title are required" }); return;
+    }
+
+    const existing = await db
+      .select({ id: projectArtifactsTable.id })
+      .from(projectArtifactsTable)
+      .where(and(eq(projectArtifactsTable.projectId, projectId), eq(projectArtifactsTable.type, type)));
+
+    const version = existing.length + 1;
+
+    const [row] = await db
+      .insert(projectArtifactsTable)
+      .values({ projectId, type, version, title, metadata, payload })
+      .returning();
+
+    if (!row) { res.status(500).json({ error: "Insert failed" }); return; }
+
+    res.status(201).json({
+      id: row.id,
+      projectId: row.projectId,
+      type: row.type,
+      version: row.version,
+      title: row.title,
+      metadata: row.metadata,
+      payload: row.payload,
+      createdAt: row.createdAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error({ err }, "POST /projects/:id/artifacts failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── POST /api/projects/:id/artifacts/:artifactId/approve ─────────────────────
 // Approves an artifact (marks metadata.approved = true, status = 'approved').
 router.post("/projects/:id/artifacts/:artifactId/approve", async (req, res): Promise<void> => {

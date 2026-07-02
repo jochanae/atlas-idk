@@ -710,6 +710,14 @@ ${t}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wsDsStatus, liveUrl]);
 
+  // Refetch artifacts gallery when useChatStream persists a new html_preview.
+  useEffect(() => {
+    const handler = () => { void refetchArtifacts(); };
+    window.addEventListener("axiom:artifact-saved", handler);
+    return () => window.removeEventListener("axiom:artifact-saved", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // Sync from DB on project load / switch
   useEffect(() => {
@@ -1385,8 +1393,10 @@ ${t}
                 blueprint_snapshot: { label: "BLUEPRINT", color: "rgba(96,165,250,0.9)",     bg: "rgba(96,165,250,0.06)", border: "rgba(96,165,250,0.18)" },
                 build_output:       { label: "BUILD",     color: "rgba(52,211,153,0.85)",    bg: "rgba(52,211,153,0.06)", border: "rgba(52,211,153,0.18)" },
                 visual_sketch:      { label: "SKETCH",    color: "rgba(167,139,250,0.85)",   bg: "rgba(167,139,250,0.06)",border: "rgba(167,139,250,0.18)"},
+                pipeline_sketch:    { label: "SKETCH",    color: "rgba(167,139,250,0.85)",   bg: "rgba(167,139,250,0.06)",border: "rgba(167,139,250,0.18)"},
                 landing_draft:      { label: "LANDING",   color: "rgba(251,146,60,0.85)",    bg: "rgba(251,146,60,0.06)", border: "rgba(251,146,60,0.18)" },
                 export_package:     { label: "EXPORT",    color: "rgba(34,211,238,0.85)",    bg: "rgba(34,211,238,0.06)", border: "rgba(34,211,238,0.18)" },
+                html_preview:       { label: "PREVIEW",   color: "rgba(251,191,36,0.85)",    bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.2)"  },
               };
 
               // Latest id per type (first occurrence in DESC list = highest version)
@@ -1417,6 +1427,7 @@ ${t}
                 const isBlueprint = artifact.type === "blueprint_snapshot";
                 const isDesignPlan = artifact.type === "design_plan";
                 const isSketch = artifact.type === "visual_sketch";
+                const isHtmlPreview = artifact.type === "html_preview";
 
                 const dp = artifact.payload as Record<string, unknown>;
                 const bpIdentity = (artifact.payload.identity as Record<string, unknown>) ?? {};
@@ -1473,6 +1484,30 @@ ${t}
                           {isExpanded ? "▲" : "▼"}
                         </span>
                       </div>
+
+                      {/* HTML preview — open in Draft */}
+                      {isHtmlPreview && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => {
+                              const html = artifact.payload.html as string | undefined;
+                              if (!html) return;
+                              setSandboxInput(html);
+                              setSandboxRendered(buildSrcdoc(html));
+                              setSandboxExpanded(false);
+                              setPreviewMode("sandbox");
+                            }}
+                            style={{
+                              fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                              color: "rgba(251,191,36,0.85)", background: "rgba(251,191,36,0.08)",
+                              border: "1px solid rgba(251,191,36,0.2)", borderRadius: 3,
+                              padding: "2px 7px", cursor: "pointer",
+                            }}
+                          >
+                            Open in Draft
+                          </button>
+                        </div>
+                      )}
 
                       {/* Build preview action row */}
                       {isBuild && (
