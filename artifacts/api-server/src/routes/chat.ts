@@ -2961,11 +2961,11 @@ HARD RULE: Never answer from the context of a different project unless the user 
     continuityBlock += `\n--- END PROJECT CONTEXT ---`;
     systemPrompt += continuityBlock;
 
-    // SESSION RESUMPTION — inject when user returns after a meaningful gap (≥3 hours)
-    // and this is early in the conversation (they haven't already been talking for a while).
+    // SESSION RESUMPTION — inject only on the very first assistant turn of a new session
+    // (no prior assistant messages in history) after a meaningful gap (≥3 hours).
     const SESSION_GAP_MS = 3 * 60 * 60 * 1000; // 3 hours
-    const isEarlyInConversation = history.length <= 4;
-    if (storedSessionSummary && storedSessionSummaryAt && isEarlyInConversation) {
+    const isFirstTurnOfSession = !history.some((m: { role: string }) => m.role === "assistant");
+    if (storedSessionSummary && storedSessionSummaryAt && isFirstTurnOfSession) {
       const gapMs = Date.now() - new Date(storedSessionSummaryAt).getTime();
       if (gapMs >= SESSION_GAP_MS) {
         const gapHours = Math.floor(gapMs / (1000 * 60 * 60));
