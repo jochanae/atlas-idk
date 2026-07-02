@@ -437,7 +437,7 @@ export function StrategicManifest() {
             transition: "opacity 700ms",
           }}
         >
-          03 // Strategic Manifest
+          05 // Three Lenses
         </p>
 
         <h2
@@ -454,8 +454,8 @@ export function StrategicManifest() {
             transition: "all 900ms ease-out",
           }}
         >
-          One idea.{" "}
-          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>Three lenses.</span>
+          One project.{" "}
+          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>Three ways to see it.</span>
         </h2>
 
         <p
@@ -464,14 +464,14 @@ export function StrategicManifest() {
             ...serif,
             fontSize: "clamp(0.95rem, 1.8vw, 1.05rem)",
             color: "rgba(232,220,200,0.55)",
-            maxWidth: 360,
+            maxWidth: 380,
             margin: "0 auto 40px",
             lineHeight: 1.5,
             opacity: visible ? 1 : 0,
             transition: "opacity 900ms ease-out 200ms",
           }}
         >
-          The same seed, seen the way you need to see it.
+          Storyteller, Designer, Builder — the same work, seen the way you need to see it.
         </p>
 
         {/* Seed */}
