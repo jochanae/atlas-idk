@@ -1784,6 +1784,7 @@ export default function Home() {
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
   const isMobile = useIsMobile();
   const isTiny = useIsTinyMobile();
+  const isFoldInner = isMobile && !isTiny;
   const conversationsRequestRef = useRef(0);
   const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
   const prunedAbandonedProjectIdsRef = useRef<Set<number>>(new Set());
@@ -4152,8 +4153,8 @@ export default function Home() {
             <div style={{
               margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
-                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isMobile && !isTiny ? "clamp(68px, 12dvh, 112px) 0 18px" : "18px 0 26px")),
-              minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isFoldInner ? "clamp(40px, 7dvh, 72px) 0 clamp(32px, 6dvh, 52px)" : "18px 0 26px")),
+              minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : (isFoldInner ? "clamp(52px, 8dvh, 76px)" : 0)),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
               display: askAtlasSurfaceVisible ? "none" : undefined,
               flexDirection: askAtlasSurfaceVisible ? "column" : undefined,
@@ -4166,7 +4167,7 @@ export default function Home() {
                 </div>
               )}
             {nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading && !askAtlasConversationActive ? (
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginTop: isFoldInner ? 16 : 10, marginBottom: isFoldInner ? "clamp(8px, 1.5dvh, 16px)" : 0, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
                 <button
                   type="button"
                   aria-label="Focus composer"
@@ -4632,7 +4633,13 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: askAtlasSurfaceVisible ? "none" : undefined }}>
+          <div style={{
+            position: "relative",
+            zIndex: 260,
+            flexShrink: 0,
+            display: askAtlasSurfaceVisible ? "none" : undefined,
+            marginTop: isFoldInner && !askAtlasSurfaceVisible && nexusChat.messages.length === 0 ? "clamp(12px, 2.5dvh, 24px)" : undefined,
+          }}>
           <div ref={askAtlasSurfaceVisible ? askAtlasComposerRef : null} className="atlas-input-shell" style={{
             position: askAtlasSurfaceVisible ? "relative" : "sticky",
             left: askAtlasSurfaceVisible ? undefined : 0,
@@ -5059,7 +5066,7 @@ export default function Home() {
                 gap: 10,
                 position: "relative",
                 zIndex: 20,
-                transform: isMobile && !isTiny ? "translateY(0)" : "translateY(-20px)",
+                transform: isFoldInner ? "translateY(0)" : "translateY(-20px)",
               }}>
 
                 <div className="suggestion-chips-row" style={{
