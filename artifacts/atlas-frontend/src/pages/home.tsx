@@ -1967,23 +1967,13 @@ export default function Home() {
     conversationId: null,
     projectContext: null,
   });
-  const askAtlasScrollRef = useRef<HTMLDivElement | null>(null);
   const askAtlasConversationActive = askAtlasChat.messages.length > 0;
-  const askAtlasBusy = sendTo === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending);
-  const askAtlasHandoffSeed = useMemo(
-    () => buildAskAtlasHandoffSeed(askAtlasChat.messages, input),
-    [askAtlasChat.messages, input],
-  );
+  const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
+  // Clear any ambient nexus messages the instant Ask Atlas opens so the two
+  // renderers can never coexist on screen.
   useEffect(() => {
-    if (!askAtlasConversationActive) return;
-    const el = askAtlasScrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [askAtlasConversationActive, askAtlasChat.messages, askAtlasChat.isStreaming]);
-  // When entering ask-atlas mode, wipe any nexus messages so the layouts don't conflict.
-  useEffect(() => {
-    if (sendTo === "ask-atlas") nexusChat.clearMessages();
-  }, [sendTo, nexusChat.clearMessages]);
+    if (askAtlasSurfaceOpen) nexusChat.clearMessages();
+  }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
   // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
