@@ -256,14 +256,10 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
     );
   }, [run, messages]);
 
-  const handleCardClick = useCallback(() => {
-    if (!run) return;
-    if (run.status === "running" || !run.previewSource) {
-      handleDetails();
-      return;
-    }
-    handlePreview();
-  }, [handleDetails, handlePreview, run]);
+  // Card body tap = inline expand/collapse only. Navigation is on explicit
+  // Details / Preview buttons — never smart card-body routing.
+  const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded((v) => !v), []);
 
   const handleBookmark = useCallback(() => {
     if (!run) return;
@@ -325,18 +321,13 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
     <div
       role="button"
       tabIndex={0}
-      aria-label={
-        run.status === "running"
-          ? "Open run details"
-          : run.previewSource
-            ? "Open run preview"
-            : "Open run details"
-      }
-      onClick={handleCardClick}
+      aria-expanded={expanded}
+      aria-label={expanded ? "Collapse run details" : "Expand run details"}
+      onClick={toggleExpanded}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          handleCardClick();
+          toggleExpanded();
         }
       }}
       style={{
@@ -443,6 +434,34 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
           </div>
         </div>
       </div>
+
+      {/* Inline expand — file list preview. No navigation. */}
+      {expanded && run.files.length > 0 && (
+        <div
+          style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px dashed hsl(var(--border))",
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10.5,
+            color: "hsl(var(--muted-foreground))",
+            maxHeight: 140,
+            overflowY: "auto",
+          }}
+        >
+          {run.files.slice(0, 12).map((path) => (
+            <div key={path} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {path}
+            </div>
+          ))}
+          {run.files.length > 12 && (
+            <div style={{ opacity: 0.6 }}>+{run.files.length - 12} more</div>
+          )}
+        </div>
+      )}
 
       {/* Divider + always-visible Details / Preview buttons */}
       <div
