@@ -725,9 +725,26 @@ ${t}
       const detail = (ev as CustomEvent<{ source?: "sandbox" | "url" | "local" | "generated" }>).detail ?? {};
       if (!detail.source) return;
       setPreviewMode(detail.source);
+      setEmptyState(null); // clear banner if a real source was chosen
     };
     window.addEventListener("axiom:preview-set-mode", handler);
     return () => window.removeEventListener("axiom:preview-set-mode", handler);
+  }, []);
+
+  // "axiom:preview-empty-state" — dispatched by the workspace when a Run Card's
+  // Preview button was tapped but the run produced nothing previewable.
+  const [emptyState, setEmptyState] = useState<{ reason: string; runId?: string; liveUrl?: string | null } | null>(null);
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ reason?: string; runId?: string; liveUrl?: string | null }>).detail ?? {};
+      setEmptyState({
+        reason: detail.reason ?? "NO_PREVIEWABLE_OUTPUT",
+        runId: detail.runId,
+        liveUrl: detail.liveUrl ?? null,
+      });
+    };
+    window.addEventListener("axiom:preview-empty-state", handler);
+    return () => window.removeEventListener("axiom:preview-empty-state", handler);
   }, []);
 
 
