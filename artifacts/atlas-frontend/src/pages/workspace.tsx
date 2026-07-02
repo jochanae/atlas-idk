@@ -98,7 +98,7 @@ import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer } from "@/components/workspace/ChatComposer";
-import { SessionSummaryPill } from "@/components/workspace/SessionSummaryPill";
+
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ParkSheet } from "@/components/ParkSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
