@@ -2296,7 +2296,7 @@ function RightPanel({
       )}
       {tab === "preview" && (
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} rebuildTrigger={rebuildTrigger} onWsRunningChange={onWsRunningChange} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} manifestDecision={manifestDecision} manifestPreviewHtml={manifestPreviewHtml} />
+          <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} rebuildTrigger={rebuildTrigger} onWsRunningChange={onWsRunningChange} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} onOpenRuntime={() => setTab("runtime")} manifestDecision={manifestDecision} manifestPreviewHtml={manifestPreviewHtml} />
         </div>
       )}
       {tab === "runtime" && (

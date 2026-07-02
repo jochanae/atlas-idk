@@ -169,7 +169,7 @@ function RoutePickerButton({ routes, selected, onSelect }: {
   );
 }
 
-export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, rebuildTrigger, onWsRunningChange, sessionId, onSwitchToFiles, manifestDecision, manifestPreviewHtml }: {
+export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, rebuildTrigger, onWsRunningChange, sessionId, onSwitchToFiles, onOpenRuntime, manifestDecision, manifestPreviewHtml }: {
   projectId: number;
   sandboxCode?: string | null;
   onSandboxConsumed?: () => void;
@@ -178,6 +178,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   onWsRunningChange?: (running: boolean) => void;
   sessionId?: number;
   onSwitchToFiles?: () => void;
+  onOpenRuntime?: () => void;
   manifestDecision?: ManifestDecision | null;
   manifestPreviewHtml?: string | null;
 }) {
@@ -451,12 +452,10 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [browserErrors, setBrowserErrors] = useState<string[]>([]);
   const [showLogsWhileRunning, setShowLogsWhileRunning] = useState(false);
 
-  // Poll workspace devserver status whenever a sessionId is present
-  // Track whether we've already auto-switched to local so the user can freely
-  // switch tabs after the server is up without being yanked back on each poll.
+  // Poll workspace devserver status for this project (no sessionId gate — Runtime
+  // tab may have started the server independently of any chat session).
   const hasAutoSwitchedToLocal = useRef(false);
   useEffect(() => {
-    if (!sessionId) return;
     hasAutoSwitchedToLocal.current = false;
     let cancelled = false;
     const poll = async () => {
@@ -486,7 +485,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
     poll();
     const iv = setInterval(poll, 2000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [projectId, sessionId]);
+  }, [projectId]);
 
   // Auto-scroll workspace logs
   useEffect(() => {
@@ -1782,20 +1781,20 @@ ${t}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
           {/* Case 1: No workspace, no linked repo → prompt */}
-          {!linkedRepo && !sessionId && (
+          {!linkedRepo && hasScaffold === false && wsDsStatus === "idle" && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", gap: 12 }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" opacity={0.12}>
                 <rect x="2" y="2" width="20" height="8" rx="2" stroke="var(--atlas-fg)" strokeWidth="1.5" />
                 <rect x="2" y="14" width="20" height="8" rx="2" stroke="var(--atlas-fg)" strokeWidth="1.5" />
               </svg>
               <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.4, textAlign: "center", lineHeight: 1.8 }}>
-                Start a build session or link a GitHub repo to run a live dev server.
+                No runnable code yet. Ask Atlas to scaffold a project to get a live preview.
               </div>
             </div>
           )}
 
-          {/* Case 2: Workspace project (sessionId set, no linked repo) → workspace devserver */}
-          {sessionId && !linkedRepo && (
+          {/* Case 2: Workspace project — workspace devserver (no GitHub link required) */}
+          {!linkedRepo && (hasScaffold !== false || wsDsStatus !== "idle") && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               {/* Top bar */}
               <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderBottom: "1px solid var(--atlas-border)", background: "var(--atlas-surface)" }}>
@@ -1830,37 +1829,19 @@ ${t}
                 </div>
               )}
 
-              {/* Controls */}
+              {/* Controls — runtime is managed by the Runtime tab */}
               <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "1px solid var(--atlas-border)" }}>
-                {wsDsStatus === "idle" || wsDsStatus === "error" ? (
+                {(wsDsStatus === "idle" || wsDsStatus === "error") && (
                   <button
-                    onClick={handleWsDsStart}
-                    disabled={wsDsStarting || hasScaffold === false}
-                    style={{ padding: "5px 12px", borderRadius: 5, background: wsDsStarting || hasScaffold === false ? "var(--atlas-glass-bg)" : "var(--atlas-ember)", border: "none", color: wsDsStarting || hasScaffold === false ? "var(--atlas-muted)" : "var(--atlas-fg)", fontSize: 10, ...sMono, letterSpacing: "0.08em", cursor: wsDsStarting || hasScaffold === false ? "not-allowed" : "pointer", transition: "all 140ms ease" }}
-                    title={hasScaffold === false ? "No runnable scaffold — Atlas built a visual artifact only" : undefined}
+                    onClick={onOpenRuntime}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 11px", borderRadius: 5, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", fontSize: 10, ...sMono, letterSpacing: "0.06em", cursor: "pointer" }}
                   >
-                    {wsDsStarting ? "Starting…" : "Run Project"}
+                    <span style={{ fontSize: 10 }}>▶</span>
+                    {wsDsStatus === "error" ? "Restart in Runtime tab" : "Start from Runtime tab"}
                   </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleWsDsStart}
-                      disabled={wsDsStarting}
-                      title="Rebuild with latest files"
-                      style={{ padding: "5px 12px", borderRadius: 5, background: wsDsStarting ? "var(--atlas-glass-bg)" : "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.28)", color: wsDsStarting ? "var(--atlas-muted)" : "var(--atlas-gold)", fontSize: 10, ...sMono, letterSpacing: "0.08em", cursor: wsDsStarting ? "not-allowed" : "pointer", transition: "all 140ms ease" }}
-                    >
-                      {wsDsStarting ? "Building…" : "⟳ Rebuild"}
-                    </button>
-                    <button
-                      onClick={handleWsDsStop}
-                      style={{ padding: "5px 12px", borderRadius: 5, background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", color: "rgba(248,113,113,0.85)", fontSize: 10, ...sMono, letterSpacing: "0.08em", cursor: "pointer", transition: "all 140ms ease" }}
-                    >
-                      Stop
-                    </button>
-                  </>
                 )}
                 <div style={{ flex: 1 }} />
-                {routePickerButton}
+                {wsDsStatus === "running" && routePickerButton}
               </div>
 
 
