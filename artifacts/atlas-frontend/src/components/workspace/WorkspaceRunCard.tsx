@@ -456,8 +456,9 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
             borderTop: "1px solid hsl(var(--border))",
           }}
         >
-          <Link
-            href={detailsHref}
+          <button
+            type="button"
+            onClick={handleOpenDetails}
             style={{
               flex: 1,
               padding: "6px 10px",
@@ -468,13 +469,14 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
               border: "1px solid hsl(var(--border))",
               color: "hsl(var(--card-foreground))",
               borderRadius: 5,
-              textDecoration: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
               letterSpacing: "0.01em",
             }}
           >
-            Diff
-          </Link>
-          {hasProduced ? (
+            Details
+          </button>
+          {hasPreview ? (
             <button
               type="button"
               onClick={handleOpenPreview}
@@ -499,7 +501,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
             <button
               type="button"
               disabled
-              title="No previewable files in this run"
+              title="No previewable output in this run"
               style={{
                 flex: 1,
                 padding: "6px 10px",
