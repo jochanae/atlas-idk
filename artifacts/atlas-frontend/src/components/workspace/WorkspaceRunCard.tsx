@@ -256,14 +256,10 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
     );
   }, [run, messages]);
 
-  const handleCardClick = useCallback(() => {
-    if (!run) return;
-    if (run.status === "running" || !run.previewSource) {
-      handleDetails();
-      return;
-    }
-    handlePreview();
-  }, [handleDetails, handlePreview, run]);
+  // Card body tap = inline expand/collapse only. Navigation is on explicit
+  // Details / Preview buttons — never smart card-body routing.
+  const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded((v) => !v), []);
 
   const handleBookmark = useCallback(() => {
     if (!run) return;
