@@ -544,6 +544,17 @@ export function useNexusChatStream(
               pushHudEvent("DECISION", "Build signal detected — ready to commit");
             }
 
+            // DECISION surface auto-captured to Ledger — notify quietly
+            const surfaceMeta = (meta as any).surface as { type: string } | null | undefined;
+            if (surfaceMeta?.type === "DECISION" && (meta as any).focusProjectId) {
+              import("sonner").then(({ toast }) => {
+                toast("Decision captured to Ledger", {
+                  description: "Atlas logged this commitment automatically.",
+                  duration: 3500,
+                });
+              }).catch(() => { /* non-critical */ });
+            }
+
             // Parse VISUALIZE marker
             const visualMatch = fullText.match(
               /VISUALIZE:\{([\s\S]*?)\}(?:\s|$)/

@@ -6,6 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
+import { autoCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { vectorSearch, buildRagBlock } from "../lib/embeddings";
@@ -2472,6 +2473,17 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
 
     // Background genome extraction — non-blocking, rate-limited
     void maybeExtractGenome(focusProjectId ?? null);
+
+    // Auto-capture DECISION signal to Ledger — fire-and-forget, never blocks stream
+    if (surface?.type === "DECISION" && focusProjectId) {
+      void autoCaptureLedgerDecision({
+        projectId: focusProjectId,
+        userId,
+        sessionId,
+        content: visibleContent,
+        sourceMessageId: null,
+      });
+    }
 
     await emitConversationTitle(visibleContent);
 
