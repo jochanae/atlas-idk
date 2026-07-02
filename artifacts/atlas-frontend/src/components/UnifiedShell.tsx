@@ -15,7 +15,7 @@ import { useLocation } from "wouter";
 import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
 import { useProjectState } from "@/hooks/useProjectState";
 import { useProjectIntelligence } from "@/hooks/useProjectIntelligence";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
 import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
@@ -2070,6 +2070,7 @@ function ShellFooter() {
 export function UnifiedShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const isTinyMobile = useIsTinyScreen();
+  const isTinyHomeHeader = useIsTinyMobile();
   const [currentDepth, setCurrentDepth] = useState<ShellDepth>(() => depthFromPath(location));
   const [activeProjectId, setActiveProjectIdState] = useState<number | null>(() => projectIdFromPath(location));
   const [activeConversationTitle, setActiveConversationTitleState] = useState<string | null>(null);
@@ -2289,7 +2290,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: isTinyMobile ? 3 : 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />
-            {location === "/home" && isTinyMobile && (
+            {location === "/home" && isTinyHomeHeader && (
               <button
                 type="button"
                 aria-label="Open project briefcase"
