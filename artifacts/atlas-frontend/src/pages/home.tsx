@@ -2038,6 +2038,11 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(false);
+  // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
+  // only appears once the user has actually sent the first message. Until then
+  // the home surface stays visually identical to the ambient homepage — the
+  // composer just routes into askAtlasChat under the hood.
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && askAtlasChat.messages.length > 0;
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -4036,26 +4041,26 @@ export default function Home() {
                   <h1 style={{
                     fontSize: "var(--ts-display-xl)", fontWeight: 300,
                     letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                    color: askAtlasSurfaceOpen ? undefined : "var(--atlas-fg)",
-                    opacity: askAtlasSurfaceOpen ? 1 : 0.85,
-                    background: askAtlasSurfaceOpen
+                    color: askAtlasSurfaceVisible ? undefined : "var(--atlas-fg)",
+                    opacity: askAtlasSurfaceVisible ? 1 : 0.85,
+                    background: askAtlasSurfaceVisible
                       ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
                       : undefined,
-                    WebkitBackgroundClip: askAtlasSurfaceOpen ? "text" : undefined,
-                    WebkitTextFillColor: askAtlasSurfaceOpen ? "transparent" : undefined,
-                    backgroundClip: askAtlasSurfaceOpen ? "text" : undefined,
-                    filter: askAtlasSurfaceOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
+                    WebkitBackgroundClip: askAtlasSurfaceVisible ? "text" : undefined,
+                    WebkitTextFillColor: askAtlasSurfaceVisible ? "transparent" : undefined,
+                    backgroundClip: askAtlasSurfaceVisible ? "text" : undefined,
+                    filter: askAtlasSurfaceVisible ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                   }}>
-                    {askAtlasSurfaceOpen ? "Ask Atlas." : greetingRef.current?.head}
+                    {askAtlasSurfaceVisible ? "Ask Atlas." : greetingRef.current?.head}
                   </h1>
                   <p style={{
                     fontSize: "var(--ts-body)" as any,
-                    color: askAtlasSurfaceOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                    opacity: askAtlasSurfaceOpen ? 0.75 : 0.55,
+                    color: askAtlasSurfaceVisible ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    opacity: askAtlasSurfaceVisible ? 0.75 : 0.55,
                     margin: 0,
                     fontStyle: "italic",
                   }}>
-                    {askAtlasSurfaceOpen ? "" : (() => {
+                    {askAtlasSurfaceVisible ? "" : (() => {
                       const activeProjects = ((projects ?? []) as Project[]).filter((p: Project) => p.status !== "archived");
                       const mostRecent = [...activeProjects].sort((a, b) => {
                         const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
@@ -5219,7 +5224,7 @@ export default function Home() {
       </div>
 
       <AskAtlasSurface
-        open={askAtlasSurfaceOpen}
+        open={askAtlasSurfaceVisible}
         messages={askAtlasChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={activeConversationId}
