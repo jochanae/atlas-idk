@@ -56,6 +56,7 @@ import zipRouter from "./zip";
 import searchRouter from "./search";
 import ledgerRouter from "./ledger";
 import conversationsRouter from "./conversations";
+import feedbackRouter from "./feedback";
 
 const router: IRouter = Router();
 
@@ -143,6 +144,9 @@ router.use(requireAuth, ledgerRouter);
 
 // Conversation-first routing — create a conversation/project and resolve by conversationId
 router.use(requireAuth, conversationsRouter);
+
+// Message feedback — 👍 / 👎 on Atlas responses
+router.use(requireAuth, feedbackRouter);
 
 // Self-repair routes — super_admin only
 router.use(requireAdmin, selfRouter);

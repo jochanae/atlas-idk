@@ -20,12 +20,24 @@ const REASONS: { id: Reason; label: string }[] = [
   { id: "other", label: "Other…" },
 ];
 
-/**
- * MessageFeedback — quiet 👍 / 👎 controls for Atlas responses.
- *
- * Frontend-only. 👍 fires a toast. 👎 reveals a compact inline panel
- * with quick reasons + optional comment. No backend persistence yet.
- */
+async function submitFeedback(
+  messageId: number,
+  rating: "up" | "down",
+  reason?: Reason | null,
+  comment?: string,
+): Promise<void> {
+  await fetch(`/api/messages/${messageId}/feedback`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      rating,
+      ...(reason ? { reason } : {}),
+      ...(comment?.trim() ? { comment: comment.trim() } : {}),
+    }),
+  });
+}
+
 export function MessageFeedback({
   messageId,
   compact = false,
@@ -37,12 +49,20 @@ export function MessageFeedback({
   const [panelOpen, setPanelOpen] = useState(false);
   const [reason, setReason] = useState<Reason | null>(null);
   const [comment, setComment] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const handleUp = () => {
+  const handleUp = async () => {
     if (rating === "up") return;
     haptic.short();
     setRating("up");
     setPanelOpen(false);
+    if (messageId) {
+      try {
+        await submitFeedback(messageId, "up");
+      } catch {
+        // non-critical — still show optimistic state
+      }
+    }
     toast.success("Thanks for the feedback");
   };
 
@@ -52,11 +72,18 @@ export function MessageFeedback({
     setPanelOpen((v) => !v || rating !== "down");
   };
 
-  const sendDetails = () => {
+  const sendDetails = async () => {
+    if (sending) return;
     haptic.short();
-    // Frontend-only — log for future backend wiring.
-    // eslint-disable-next-line no-console
-    console.info("[atlas-feedback]", { messageId, reason, comment });
+    setSending(true);
+    if (messageId) {
+      try {
+        await submitFeedback(messageId, "down", reason, comment);
+      } catch {
+        // non-critical
+      }
+    }
+    setSending(false);
     setPanelOpen(false);
     toast("Thanks — noted");
   };
@@ -208,7 +235,7 @@ export function MessageFeedback({
             </button>
             <button
               type="button"
-              disabled={!reason && !comment.trim()}
+              disabled={(!reason && !comment.trim()) || sending}
               onClick={sendDetails}
               style={{
                 padding: "5px 12px",
@@ -218,12 +245,12 @@ export function MessageFeedback({
                 color: "var(--atlas-gold)",
                 border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 45%, transparent)",
                 borderRadius: 5,
-                cursor: !reason && !comment.trim() ? "not-allowed" : "pointer",
-                opacity: !reason && !comment.trim() ? 0.5 : 1,
+                cursor: (!reason && !comment.trim()) || sending ? "not-allowed" : "pointer",
+                opacity: (!reason && !comment.trim()) || sending ? 0.5 : 1,
                 fontFamily: "var(--app-font-sans)",
               }}
             >
-              Send
+              {sending ? "Sending…" : "Send"}
             </button>
           </div>
         </div>
