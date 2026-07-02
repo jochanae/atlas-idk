@@ -4708,7 +4708,7 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {sendTo === "ask-atlas" ? "Ask Atlas anything..." : askAtlasSurfaceOpen ? "Ask the global view..." : placeholder}
+                  {askAtlasSurfaceOpen ? "Ask the global view..." : placeholder}
                   {!askAtlasSurfaceOpen && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
