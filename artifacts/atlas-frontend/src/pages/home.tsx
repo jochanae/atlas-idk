@@ -3687,7 +3687,6 @@ export default function Home() {
   };
   const [askAtlasTitleSlot, setAskAtlasTitleSlot] = useState<HTMLElement | null>(null);
   const [shapingHeaderSlot, setShapingHeaderSlot] = useState<HTMLElement | null>(null);
-  const [briefcaseHeaderSlot, setBriefcaseHeaderSlot] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     const header = document.querySelector(".atlas-app-header");
@@ -3710,33 +3709,6 @@ export default function Home() {
       setAskAtlasTitleSlot(null);
     };
   }, []);
-
-  useEffect(() => {
-    if (!isTiny) {
-      setBriefcaseHeaderSlot(null);
-      return;
-    }
-
-    const header = document.querySelector(".atlas-app-header");
-    const rightRegion = header?.children[2] as HTMLElement | undefined;
-    if (!rightRegion) return;
-
-    const slot = document.createElement("div");
-    slot.setAttribute("data-home-briefcase-header-slot", "true");
-    slot.style.display = "flex";
-    slot.style.alignItems = "center";
-    slot.style.flexShrink = "0";
-    slot.style.position = "relative";
-    slot.style.zIndex = "2";
-
-    rightRegion.insertBefore(slot, rightRegion.lastElementChild ?? null);
-    setBriefcaseHeaderSlot(slot);
-
-    return () => {
-      slot.remove();
-      setBriefcaseHeaderSlot(null);
-    };
-  }, [isTiny]);
 
   useEffect(() => {
     const header = document.querySelector(".atlas-app-header");
@@ -3822,36 +3794,6 @@ export default function Home() {
       {askAtlasTitleSlot && askAtlasSurfaceVisible && createPortal(
         <AskAtlasTitleCarousel earnedTitle={earnedTitle} />,
         askAtlasTitleSlot
-      )}
-      {briefcaseHeaderSlot && projects && projects.length > 0 && !askAtlasSurfaceVisible && createPortal(
-        <button
-          type="button"
-          onClick={openOverviewSheet}
-          aria-label="Open project briefcase"
-          title="Open workspace"
-          className="atlas-briefcase-toggle"
-          style={{
-            position: "relative",
-            width: 34,
-            height: 34,
-            borderRadius: 999,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
-            border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
-            color: "var(--atlas-gold)",
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
-            transition: "opacity 180ms ease, transform 180ms ease, filter 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          <Briefcase size={17} strokeWidth={1.5} />
-        </button>,
-        briefcaseHeaderSlot
       )}
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
@@ -4159,7 +4101,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {!isTiny && projects && projects.length > 0 && (() => {
+                  {projects && projects.length > 0 && (() => {
                     const receded = askAtlasSurfaceVisible;
                     return (
                       <button
@@ -4171,12 +4113,13 @@ export default function Home() {
                         aria-hidden={receded}
                         tabIndex={receded ? -1 : 0}
                         style={{
-                          position: "absolute",
-                          top: -14,
-                          right: 8,
+                          position: isTiny ? "fixed" : "absolute",
+                          top: isTiny ? "calc(env(safe-area-inset-top, 0px) + 10px)" : -14,
+                          right: isTiny ? 68 : 8,
                           left: "auto",
-                          width: 40,
-                          height: 40,
+                          width: isTiny ? 34 : 40,
+                          height: isTiny ? 34 : 40,
+                          zIndex: isTiny ? 400 : undefined,
                           borderRadius: 999,
                           display: "inline-flex",
                           alignItems: "center",
@@ -4210,7 +4153,7 @@ export default function Home() {
             <div style={{
               margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
-                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isMobile && !isTiny ? "clamp(54px, 9dvh, 92px) 0 18px" : "18px 0 18px")),
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isMobile && !isTiny ? "clamp(40px, 7dvh, 72px) 0 26px" : "18px 0 26px")),
               minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
               display: askAtlasSurfaceVisible ? "none" : undefined,
@@ -4695,7 +4638,7 @@ export default function Home() {
             position: askAtlasSurfaceVisible ? "relative" : "sticky",
             left: askAtlasSurfaceVisible ? undefined : 0,
             right: askAtlasSurfaceVisible ? undefined : 0,
-            bottom: askAtlasSurfaceVisible ? undefined : (isMobile ? "calc(48px + env(safe-area-inset-bottom, 0px))" : "calc(64px + env(safe-area-inset-bottom, 0px))"),
+            bottom: askAtlasSurfaceVisible ? undefined : "calc(64px + env(safe-area-inset-bottom, 0px))",
             padding: askAtlasSurfaceVisible
               ? "12px 0 0"
               : "14px 20px 14px",
