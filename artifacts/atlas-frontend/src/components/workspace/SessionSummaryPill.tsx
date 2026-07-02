@@ -136,7 +136,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
       }}
     >
       <Clock size={10} strokeWidth={2} aria-hidden />
-      Last session: {timeAgo(data!.summaryAt!)}
+      Last session: {data?.summaryAt ? timeAgo(data.summaryAt) : ""}
     </button>
   );
 
