@@ -697,27 +697,8 @@ export function ChatComposer(props: ChatComposerProps) {
 
             {/* Universal composer actions: [clock] + [+] + [...] */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
-              {onOpenSessionsHistory && (
-                <button
-                  type="button"
-                  onClick={onOpenSessionsHistory}
-                  aria-label="Sessions — resume or start new"
-                  title="Sessions — resume or start new"
-                  style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: isCompact ? 26 : 32, height: isCompact ? 26 : 32, borderRadius: 999,
-                    background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-                    border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                    color: "var(--atlas-gold)",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9" />
-                    <polyline points="12 7 12 12 15 14" />
-                  </svg>
-                </button>
+              {projectId != null && (
+                <SessionSummaryPill projectId={projectId} compact />
               )}
               <ComposerActions
                 scope="ws"
