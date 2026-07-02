@@ -5595,6 +5595,19 @@ export default function Home() {
               0 0 44px 12px rgba(212,175,55,0.14);
           }
         }
+        @keyframes atlasAskPurplePulse {
+          0%, 100% {
+            opacity: 0.75;
+            box-shadow: 0 0 6px rgba(167,139,250,0.55);
+          }
+          50% {
+            opacity: 1;
+            box-shadow: 0 0 12px rgba(167,139,250,0.95), 0 0 22px rgba(167,139,250,0.35);
+          }
+        }
+        .atlas-ask-purple-pulse {
+          animation: atlasAskPurplePulse 1.8s ease-in-out infinite;
+        }
         @keyframes atlasHandoffReadyPulse {
           0%, 100% {
             transform: scale(1);
