@@ -4073,7 +4073,50 @@ export default function Home() {
                     backgroundClip: askAtlasSurfaceVisible ? "text" : undefined,
                     filter: askAtlasSurfaceVisible ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                   }}>
-                    {askAtlasSurfaceVisible ? "Ask Atlas." : greetingRef.current?.head}
+                    {askAtlasSurfaceVisible ? "Ask Atlas." : (
+                      <>
+                        {greetingRef.current?.head}
+                        {isTiny && projects && projects.length > 0 && (() => {
+                          const receded = askAtlasSurfaceVisible || inputFocused;
+                          return (
+                            <button
+                              type="button"
+                              onClick={openOverviewSheet}
+                              aria-label="Open project briefcase"
+                              title="Open workspace"
+                              className="atlas-briefcase-toggle"
+                              aria-hidden={receded}
+                              tabIndex={receded ? -1 : 0}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 999,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                marginInlineStart: 10,
+                                verticalAlign: "middle",
+                                background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+                                border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
+                                color: "var(--atlas-gold)",
+                                cursor: "pointer",
+                                padding: 0,
+                                backdropFilter: "blur(10px)",
+                                WebkitBackdropFilter: "blur(10px)",
+                                boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+                                opacity: receded ? 0.22 : 1,
+                                filter: receded ? "blur(0.5px)" : "none",
+                                pointerEvents: receded ? "none" : "auto",
+                                transition: "opacity 180ms ease, transform 180ms ease, filter 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
+                                WebkitTapHighlightColor: "transparent",
+                              }}
+                            >
+                              <Briefcase size={16} strokeWidth={1.5} />
+                            </button>
+                          );
+                        })()}
+                      </>
+                    )}
                   </h1>
                   <p style={{
                     fontSize: "var(--ts-body)" as any,
@@ -4098,7 +4141,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {projects && projects.length > 0 && (() => {
+                  {!isTiny && projects && projects.length > 0 && (() => {
                     const receded = askAtlasSurfaceVisible || inputFocused;
                     return (
                       <button
