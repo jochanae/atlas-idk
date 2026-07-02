@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { UnifiedShell } from "@/components/UnifiedShell";
@@ -268,7 +268,7 @@ function App() {
             <Router />
           </WouterRouter>
         </ErrorBoundary>
-        <Toaster />
+        <Toaster richColors closeButton position="top-center" />
       </TooltipProvider>
     </QueryClientProvider>
   );
