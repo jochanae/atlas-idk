@@ -7,7 +7,7 @@
  *
  * Visual reference: attached_assets/run-card-{dark,light}.html
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   Loader2,
@@ -111,6 +111,18 @@ function deriveRun(messages: ChatMessage[]): DerivedRun | null {
   return null;
 }
 
+/** Find the file content for a given path from the most recent matching fileEdit in messages. */
+function findFileContent(messages: ChatMessage[], filePath: string): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== "assistant") continue;
+    const edits = msg.fileEdits ?? (msg.fileEdit ? [msg.fileEdit] : []);
+    const match = edits.find((e) => e.path === filePath);
+    if (match && match.content) return match.content;
+  }
+  return null;
+}
+
 function statusMeta(status: DerivedStatus) {
   switch (status) {
     case "running":
@@ -162,6 +174,26 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     return () => clearInterval(id);
   }, [run?.id, run?.status]);
 
+  const handleOpenPreview = useCallback(() => {
+    if (!run?.produced[0]) return;
+    const filePath = run.produced[0];
+    const isHtml = /\.html?$/i.test(filePath);
+    const content = isHtml ? findFileContent(messages, filePath) : null;
+
+    if (content) {
+      // Render the HTML in a new tab via a blob URL.
+      const blob = new Blob([content], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      // Revoke after 60 s — long enough for the tab to have loaded the content.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } else {
+      // Fallback: navigate to diff view (historical load — content not in memory).
+      const href = `${window.location.origin}/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}&file=${encodeURIComponent(filePath)}`;
+      window.open(href, "_blank", "noopener,noreferrer");
+    }
+  }, [run, messages, projectId]);
+
   if (!run) return null;
 
   const meta = statusMeta(run.status);
@@ -173,9 +205,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
 
   const detailsHref = `/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}`;
-  const previewHref = run.produced[0]
-    ? `/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}&file=${encodeURIComponent(run.produced[0])}`
-    : null;
+  const hasProduced = run.produced.length > 0;
 
   return (
     <div
@@ -270,7 +300,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
         </div>
       </div>
 
-      {run.produced.length > 0 && (
+      {hasProduced && (
         <div
           style={{
             marginTop: 12,
@@ -341,9 +371,10 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
         >
           Details
         </Link>
-        {previewHref ? (
-          <Link
-            href={previewHref}
+        {hasProduced ? (
+          <button
+            type="button"
+            onClick={handleOpenPreview}
             style={{
               flex: 1,
               padding: "8px 12px",
@@ -354,12 +385,13 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
               border: "1px solid var(--atlas-gold-border)",
               color: "var(--atlas-gold)",
               borderRadius: 6,
-              textDecoration: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
               letterSpacing: "0.01em",
             }}
           >
             Open Preview
-          </Link>
+          </button>
         ) : (
           <button
             type="button"
