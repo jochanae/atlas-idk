@@ -2998,6 +2998,16 @@ HARD RULE: Never answer from the context of a different project unless the user 
     }
   }
 
+  // R5: Nexus handoff context — when workspace opens from a Nexus COMMIT or SHAPE session,
+  // tell Atlas to skip re-exploration and open with execution focus. The user has already
+  // established the core dimensions in the Nexus conversation; don't make them repeat themselves.
+  if (!isFoundationMode && (incomingConvState === "commit" || incomingConvState === "shape")) {
+    const handoffPosture = incomingConvState === "commit"
+      ? `The user just committed to building this in a focused exploration conversation before arriving here. Core dimensions (what/who/why) are already established. Do NOT re-probe them. Do NOT ask "what are we building?" or "what's the goal?" — that work is done. Open with execution focus: what gets built first, what decisions need to be made now, what Atlas will do. The posture is: "We've agreed on the direction. Let's build."`
+      : `The user arrived from a shaping conversation — they have been actively defining scope and direction. Build on what's been established rather than re-opening closed questions. Favor convergence and specificity. If a dimension has been answered, treat it as settled.`;
+    systemPrompt += `\n\n--- NEXUS HANDOFF CONTEXT ---\n${handoffPosture}\n--- END NEXUS HANDOFF CONTEXT ---`;
+  }
+
   // Project DNA: Creative Principles + Experience Intent + Visual Memory sketches
   // Injected here so every response is shaped by the product's accumulated soul.
   // Status precedence: committed > confirmed (strong constraints) > inferred (suggestions) > guessed (skip)

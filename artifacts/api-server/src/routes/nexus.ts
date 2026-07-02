@@ -2398,39 +2398,9 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
       ? { projectId: projectMentions[0].id, projectName: projectMentions[0].name }
       : null;
 
-    const rawHandoffSignal = ideaMode
-      ? null
-      : await detectHomeHandoff([
-          ...conversationHistory.slice(-8),
-          { role: "user", content: message },
-          { role: "assistant", content: visibleContent },
-        ]);
-    // Gate: in THINK mode, suppress the handoff signal entirely.
-    // Recognizing that a project is relevant ≠ the user consenting to navigate or commit.
-    // The CommitPill and FOCUS chip must not arm during exploration.
-    const handoffSignal = convState === "THINK" ? null : rawHandoffSignal;
-
-    // Auto-create: arms when Atlas is in SHAPE or COMMIT state and the handoff signal is high-confidence.
-    // CommitPill tap remains the primary consent path — this only fires on clear signals.
-    if (!focusProjectId && !ideaMode && convState !== "THINK" && handoffSignal?.readyToHandoff && handoffSignal.confidence === "high" && pendingNavProjectId === null) {
-      try {
-        const autoName = handoffSignal.projectName ?? "New Project";
-        writeStep({ verb: "Creating", target: autoName, detail: "Project workspace" });
-        const autoProject = await createProjectForUser({
-          userId,
-          authUser,
-          name: autoName,
-          description: handoffSignal.reason ?? "",
-          entityType: "project",
-          memory: buildInitialProjectMemory(handoffSignal.reason ?? autoName),
-        });
-        pendingNavProjectId = autoProject.id;
-        pendingNavProjectName = autoProject.name;
-        writeStep({ verb: "Created", target: autoProject.name, detail: `Project ${autoProject.id}` });
-      } catch (autoErr) {
-        logger.warn({ err: String(autoErr) }, "Auto project creation from handoff signal failed");
-      }
-    }
+    // R2: detectHomeHandoff() removed — PROJECT_READY token is the sole project-creation signal.
+    // The frontend synthesises a CommitPill from projectReadyToken when no handoffSignal is present,
+    // so the UX is preserved while eliminating the competing-signal FM-3 failure mode.
     const surface = ideaMode
       ? null
       : detectSurfaceSignal({
@@ -2490,7 +2460,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.
     // Send done immediately — HUD clears now regardless of image generation speed.
-    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(handoffSignal ? { handoffSignal } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
+    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
 
     // Persist conv_state to project so workspace always opens with the correct posture.
     // Non-blocking: runs after SSE done is flushed so it never delays the stream.
@@ -2498,6 +2468,15 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
     if (convStateProjectId) {
       db.update(projectsTable).set({ convState: convState.toLowerCase() }).where(eq(projectsTable.id, convStateProjectId)).catch((err: unknown) => {
         logger.warn({ err }, "nexus conv_state persist failed — non-fatal");
+      });
+    }
+
+    // R7: Bidirectional ideaMode — unset when user commits so future Nexus turns don't
+    // re-enter idea-posture for a conversation that has already reached COMMIT state.
+    // Cast needed: TS control-flow narrows convState at this point; runtime value is correct.
+    if (ideaMode && (convState as string) === "COMMIT" && sessionId) {
+      db.update(sessionsTable).set({ ideaMode: false }).where(eq(sessionsTable.id, sessionId)).catch((err: unknown) => {
+        logger.warn({ err }, "ideaMode unset on COMMIT failed — non-fatal");
       });
     }
 
