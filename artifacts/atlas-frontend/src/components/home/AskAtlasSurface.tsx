@@ -814,11 +814,11 @@ export function AskAtlasSurface({
             display: "flex",
             alignItems: "center",
             position: "relative",
-            gap: 8,
+            gap: isTiny ? 4 : 8,
             paddingTop: 4,
           }}
         >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 6 }}>
               {/* Left cluster: history, then +/⋯ from ComposerActions */}
               <UtilityButton
                 ariaLabel="Where were we"
