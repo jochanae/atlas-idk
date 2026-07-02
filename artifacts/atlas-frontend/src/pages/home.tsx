@@ -5224,7 +5224,7 @@ export default function Home() {
       </div>
 
       <AskAtlasSurface
-        open={askAtlasSurfaceOpen}
+        open={askAtlasSurfaceVisible}
         messages={askAtlasChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={activeConversationId}
