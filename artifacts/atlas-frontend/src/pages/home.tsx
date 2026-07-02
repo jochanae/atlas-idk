@@ -3978,11 +3978,11 @@ export default function Home() {
                 style={{
                   width: "100%",
                   maxWidth: 560,
-                  paddingBottom: askAtlasSurfaceOpen ? 0 : "var(--atlas-dock-clearance)",
+                  paddingBottom: askAtlasSurfaceVisible ? 0 : "var(--atlas-dock-clearance)",
                   display: "flex",
                   flexDirection: "column",
                   flex: 1,
-                  height: askAtlasSurfaceOpen
+                  height: askAtlasSurfaceVisible
                     ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
                     : undefined,
                   minHeight: 0,
@@ -4000,15 +4000,15 @@ export default function Home() {
           <div style={{
             flex: 1,
             minHeight: 0,
-            height: askAtlasSurfaceOpen ? "100%" : undefined,
+            height: askAtlasSurfaceVisible ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
-            justifyContent: askAtlasSurfaceOpen ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
+            justifyContent: askAtlasSurfaceVisible ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
             position: "relative",
-            paddingBottom: askAtlasSurfaceOpen ? 0 : "var(--atlas-dock-clearance)",
+            paddingBottom: askAtlasSurfaceVisible ? 0 : "var(--atlas-dock-clearance)",
             paddingTop: 0,
             minWidth: 0,
-            overflow: askAtlasSurfaceOpen ? "hidden" : "visible",
+            overflow: askAtlasSurfaceVisible ? "hidden" : "visible",
           }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
@@ -4077,7 +4077,7 @@ export default function Home() {
                     })()}
                   </p>
                   {projects && projects.length > 0 && (() => {
-                    const receded = askAtlasSurfaceOpen || inputFocused;
+                    const receded = askAtlasSurfaceVisible || inputFocused;
                     return (
                       <button
                         type="button"
@@ -4124,14 +4124,14 @@ export default function Home() {
 
             {/* Chat thread */}
             <div style={{
-              margin: askAtlasSurfaceOpen
+              margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
                 : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
-              minHeight: askAtlasSurfaceOpen ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
-              flex: askAtlasSurfaceOpen ? 1 : undefined,
-              display: askAtlasSurfaceOpen ? "flex" : undefined,
-              flexDirection: askAtlasSurfaceOpen ? "column" : undefined,
-              overflow: askAtlasSurfaceOpen ? "hidden" : undefined,
+              minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
+              flex: askAtlasSurfaceVisible ? 1 : undefined,
+              display: askAtlasSurfaceVisible ? "flex" : undefined,
+              flexDirection: askAtlasSurfaceVisible ? "column" : undefined,
+              overflow: askAtlasSurfaceVisible ? "hidden" : undefined,
               minWidth: 0,
             }}>
               {nexusChat.messages.length > 0 && (
@@ -4163,7 +4163,7 @@ export default function Home() {
               </div>
 
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: askAtlasSurfaceOpen ? 0 : undefined }}>
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: askAtlasSurfaceVisible ? 0 : undefined }}>
                 {/* Messages */}
                 <div
                   ref={chatScrollRef}
@@ -4174,26 +4174,26 @@ export default function Home() {
                   }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 20,
-                    justifyContent: askAtlasSurfaceOpen ? "flex-end" : undefined,
+                    justifyContent: askAtlasSurfaceVisible ? "flex-end" : undefined,
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     WebkitOverflowScrolling: "touch",
                     touchAction: "pan-y",
-                    paddingRight: askAtlasSurfaceOpen ? 0 : 80,
-                    paddingLeft: askAtlasSurfaceOpen ? 0 : 0,
+                    paddingRight: askAtlasSurfaceVisible ? 0 : 80,
+                    paddingLeft: askAtlasSurfaceVisible ? 0 : 0,
                     position: "relative",
                     border: "none",
                     borderRadius: 0,
-                    paddingTop: askAtlasSurfaceOpen ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
-                    scrollPaddingTop: askAtlasSurfaceOpen ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
-                    paddingBottom: askAtlasSurfaceOpen
+                    paddingTop: askAtlasSurfaceVisible ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
+                    scrollPaddingTop: askAtlasSurfaceVisible ? 24 : (nexusChat.messages.length > 0 ? 40 : 56),
+                    paddingBottom: askAtlasSurfaceVisible
                       ? "calc(24px + env(safe-area-inset-bottom, 0px))"
                       : "calc(var(--atlas-composer-height, 96px) + var(--atlas-dock-clearance, 24px) + env(safe-area-inset-bottom, 0px))",
-                    WebkitMaskImage: askAtlasSurfaceOpen
+                    WebkitMaskImage: askAtlasSurfaceVisible
                       ? "none"
                       : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
-                    maskImage: askAtlasSurfaceOpen
+                    maskImage: askAtlasSurfaceVisible
                       ? "none"
                       : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     transition: "border-color 200ms",
@@ -4229,7 +4229,7 @@ export default function Home() {
                             <span style={{
                               fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                               textTransform: "uppercase", opacity: 0.45,
-                              color: askAtlasSurfaceOpen ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
+                              color: askAtlasSurfaceVisible ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
                             }}>Atlas</span>
                             {msg.intentType && (
                               <span style={{
@@ -4379,7 +4379,7 @@ export default function Home() {
                               {formatMessageTime(msg.createdAt)}
                             </div>
                           )}
-                          {!askAtlasSurfaceOpen && !msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
+                          {!askAtlasSurfaceVisible && !msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
                             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: 2 }}>
                               {formatModelUsedLabel(msg.modelUsed)}
                             </div>
@@ -4606,21 +4606,21 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: askAtlasSurfaceOpen ? "none" : undefined }}>
-          <div ref={askAtlasSurfaceOpen ? askAtlasComposerRef : null} className="atlas-input-shell" style={{
-            position: askAtlasSurfaceOpen ? "relative" : "sticky",
-            left: askAtlasSurfaceOpen ? undefined : 0,
-            right: askAtlasSurfaceOpen ? undefined : 0,
-            bottom: askAtlasSurfaceOpen ? undefined : "calc(64px + env(safe-area-inset-bottom, 0px))",
-            padding: askAtlasSurfaceOpen
+          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: askAtlasSurfaceVisible ? "none" : undefined }}>
+          <div ref={askAtlasSurfaceVisible ? askAtlasComposerRef : null} className="atlas-input-shell" style={{
+            position: askAtlasSurfaceVisible ? "relative" : "sticky",
+            left: askAtlasSurfaceVisible ? undefined : 0,
+            right: askAtlasSurfaceVisible ? undefined : 0,
+            bottom: askAtlasSurfaceVisible ? undefined : "calc(64px + env(safe-area-inset-bottom, 0px))",
+            padding: askAtlasSurfaceVisible
               ? "12px 0 0"
               : "14px 20px 14px",
             flexShrink: 0,
-            zIndex: askAtlasSurfaceOpen ? 1 : 250,
+            zIndex: askAtlasSurfaceVisible ? 1 : 250,
             pointerEvents: "auto",
             background: "transparent",
-            maxWidth: askAtlasSurfaceOpen ? undefined : 680,
-            margin: askAtlasSurfaceOpen ? 0 : undefined,
+            maxWidth: askAtlasSurfaceVisible ? undefined : 680,
+            margin: askAtlasSurfaceVisible ? 0 : undefined,
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
@@ -4694,7 +4694,7 @@ export default function Home() {
               backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
-              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceOpen) && !askAtlasConversationActive && (
+              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceVisible) && !askAtlasConversationActive && (
                 <div
                   style={{
                     position: "absolute",
@@ -4716,8 +4716,8 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {askAtlasSurfaceOpen ? "Ask the global view..." : placeholder}
-                  {!askAtlasSurfaceOpen && !typewriterPaused && <span className="atlas-cursor" />}
+                  {askAtlasSurfaceVisible ? "Ask the global view..." : placeholder}
+                  {!askAtlasSurfaceVisible && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
               <textarea
@@ -4963,7 +4963,7 @@ export default function Home() {
 
           {/* Intent row — soft orientation under the input. Permission, not features. */}
 
-          {!askAtlasSurfaceOpen && !askAtlasConversationActive && nexusChat.messages.length === 0 && (() => {
+          {!askAtlasSurfaceVisible && !askAtlasConversationActive && nexusChat.messages.length === 0 && (() => {
             const pickStarter = (starter: string, inlineOnHome = false) => {
               thinkOutLoudInlineRef.current = inlineOnHome;
               setInput(starter);
@@ -5028,7 +5028,7 @@ export default function Home() {
                       : "0 0 0 1px rgba(212,175,55,0.32), 0 0 22px rgba(212,175,55,0.4)";
                     const restBg = isParchment ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.025)";
                     const restBorder = isParchment ? "1px solid rgba(17,17,17,0.10)" : "1px solid rgba(212,175,55,0.18)";
-                    const restColor = isParchment ? "rgba(64,64,64,0.92)" : (askAtlasSurfaceOpen ? "rgba(245,215,130,1)" : "rgba(212,175,55,0.78)");
+                    const restColor = isParchment ? "rgba(64,64,64,0.92)" : (askAtlasSurfaceVisible ? "rgba(245,215,130,1)" : "rgba(212,175,55,0.78)");
                     const restColorHover = isParchment ? "rgba(23,23,23,1)" : "rgba(245,215,130,1)";
                     return (
                     <span key={it.label} style={{ display: "inline-flex", alignItems: "center", flex: "1 1 0", minWidth: 0, justifyContent: "center" }}>
@@ -5038,7 +5038,7 @@ export default function Home() {
                         style={{
                           background: premium ? premiumBg : restBg,
                           border: premium ? premiumBorder : restBorder,
-                          backdropFilter: isParchment && !premium ? "blur(8px)" : (premium && !askAtlasSurfaceOpen ? "blur(8px)" : "none"),
+                          backdropFilter: isParchment && !premium ? "blur(8px)" : (premium && !askAtlasSurfaceVisible ? "blur(8px)" : "none"),
                           borderRadius: 999,
                           padding: "6px 10px",
                           width: "100%",
@@ -5112,7 +5112,7 @@ export default function Home() {
 
 
           {/* Empty state CTA — shown only when no projects exist */}
-          {!askAtlasSurfaceOpen && (!projects || projects.length === 0) && (
+          {!askAtlasSurfaceVisible && (!projects || projects.length === 0) && (
             <div style={{ marginTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
               <div style={{ width: "100%", maxWidth: 340, height: 1, background: "linear-gradient(to right, transparent, rgba(212,175,55,0.18), transparent)" }} />
               <span style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", color: "rgba(120,113,108,0.5)", letterSpacing: "0.06em" }}>
@@ -5214,7 +5214,7 @@ export default function Home() {
           </>}
         />
 
-        {!askAtlasSurfaceOpen && projects && projects.length > 0 && (
+        {!askAtlasSurfaceVisible && projects && projects.length > 0 && (
           <aside className="atlas-home-desktop-overview" aria-label="Overview">
             <div className="atlas-home-desktop-overview-scroll">
               {renderOverviewDashboard()}
@@ -5443,8 +5443,8 @@ export default function Home() {
       )}
 
       {/* Right-edge timeline rail — always in Ask Atlas, otherwise only when a thread exists. Hidden on ambient empty home. */}
-      {(askAtlasSurfaceOpen || nexusChat.messages.length > 0) && (
-        <TimelineRail alwaysVisible={askAtlasSurfaceOpen} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
+      {(askAtlasSurfaceVisible || nexusChat.messages.length > 0) && (
+        <TimelineRail alwaysVisible={askAtlasSurfaceVisible} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
       )}
 
       {/* Projects Drawer (slide-in menu) */}
