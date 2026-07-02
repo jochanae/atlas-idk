@@ -502,7 +502,9 @@ export function useNexusChatStream(
             }
 
             const { content: navCleanedText, route: routeFromText } = stripNavigateTo(fullText);
-            let displayText = navCleanedText;
+            // Strip CONV_STATE signal — internal governor token that should never reach the user.
+            // Backend strips it from metadata but the raw streamed fullText still contains it.
+            let displayText = navCleanedText.replace(/^CONV_STATE:\s*\{[^\n]+\}\s*$/gm, "").trim();
             // Prefer structured navigateTo from done event; fall back to text extraction (backward compat)
             const navFromMeta = (meta as any).navigateTo as { route: string; projectId?: number; projectName?: string | null } | null | undefined;
             const navigateTo: { route: string; projectId?: number; projectName?: string | null } | null = navFromMeta
