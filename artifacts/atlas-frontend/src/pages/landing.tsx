@@ -75,6 +75,8 @@ export default function LandingPage() {
 
       <HeroSection onEnter={handleEnter} />
       <InterrogationFragments />
+      <WhyAxiomExists />
+      <ContinuityThread />
       <StrategicManifest />
       <StructuralOutputs />
       <ParchmentAside />
