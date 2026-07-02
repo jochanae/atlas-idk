@@ -4735,6 +4735,7 @@ export default function Home() {
             }}>
               {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceVisible) && !askAtlasConversationActive && (
                 <div
+                  className="atlas-prompt-settle"
                   style={{
                     position: "absolute",
                     top: 0,
@@ -4742,9 +4743,11 @@ export default function Home() {
                     right: 44,
                     zIndex: 2,
                     color: "var(--atlas-muted)",
-                    fontSize: "var(--ts-h3)",
-                    lineHeight: 1.55,
-                    opacity: typewriterPaused ? 0.4 : 0.65,
+                    fontSize: "calc(var(--ts-h3) * 1.18)",
+                    fontWeight: 350,
+                    letterSpacing: "-0.005em",
+                    lineHeight: 1.5,
+                    opacity: typewriterPaused ? 0.5 : 0.88,
                     cursor: "text",
                     display: "-webkit-box",
                     WebkitLineClamp: 2,
@@ -4756,7 +4759,7 @@ export default function Home() {
                   }}
                 >
                   {askAtlasSurfaceVisible ? "Ask the global view..." : placeholder}
-                  {!askAtlasSurfaceVisible && !typewriterPaused && <span className="atlas-cursor" />}
+                  {!askAtlasSurfaceVisible && !typewriterPaused && <span className="atlas-cursor atlas-cursor-settle" />}
                 </div>
               )}
               <textarea
@@ -5137,34 +5140,8 @@ export default function Home() {
                     );
                   })}
                 </div>
-                <button
-                  type="button"
-                  onClick={rotate}
-                  aria-label="Suggest a starting point"
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    padding: "2px 6px",
-                    color: isParchment ? "rgba(15,23,42,0.60)" : "rgba(212,175,55,0.6)",
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-sans)",
-                    fontSize: "var(--ts-caption)",
-                    letterSpacing: "0.01em",
-                    fontWeight: 500,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    transition: "color 160ms ease",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(15,23,42,0.90)" : "rgba(212,175,55,0.95)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(15,23,42,0.60)" : "rgba(212,175,55,0.6)"; }}
-                >
-                  <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "var(--atlas-intel)" : "rgba(212,175,55,0.7)", boxShadow: isParchment ? "0 0 6px var(--atlas-intel-glow)" : "none", display: "inline-block" }} />
-                  need a starting point?
-                  <span style={{ fontSize: "var(--ts-label)", color: "inherit", display: "inline-block" }}>↻</span>
-                </button>
-
               </div>
+
             );
           })()}
 
@@ -5570,6 +5547,9 @@ export default function Home() {
         @keyframes askAtlasInlineMsgIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
         .ask-atlas-inline-msg { animation: askAtlasInlineMsgIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
         .ask-atlas-inline-dot { animation: askAtlasInlineDot 1100ms cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+        @keyframes atlasPromptSettle { 0% { opacity: 0; transform: translateY(4px); } 55% { opacity: 0; transform: translateY(4px); } 100% { opacity: var(--_settle-op, 0.88); transform: translateY(0); } }
+        .atlas-prompt-settle { animation: atlasPromptSettle 1400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .atlas-cursor-settle { animation: atlasPromptSettle 1400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
         @keyframes ping {
           75%, 100% { transform: scale(1.8); opacity: 0; }
         }
