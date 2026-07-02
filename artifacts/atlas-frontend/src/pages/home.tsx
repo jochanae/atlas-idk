@@ -1969,11 +1969,8 @@ export default function Home() {
   });
   const askAtlasConversationActive = askAtlasChat.messages.length > 0;
   const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
-  // Clear any ambient nexus messages the instant Ask Atlas opens so the two
-  // renderers can never coexist on screen.
-  useEffect(() => {
-    if (askAtlasSurfaceOpen) nexusChat.clearMessages();
-  }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
+  // (Clear-nexus-on-ask-atlas-open effect declared below, after
+  //  askAtlasSurfaceOpen state is created.)
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
   // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
