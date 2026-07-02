@@ -180,34 +180,80 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     return () => clearInterval(id);
   }, [run?.id, run?.status]);
 
-  const handleOpenPreview = useCallback(() => {
-    if (!run?.produced[0]) return;
-    const filePath = run.produced[0];
-    const isHtml = /\.html?$/i.test(filePath);
-    const content = isHtml ? findFileContent(messages, filePath) : null;
+  // Bookmark state — reads the atlas-history ledger to render an active
+  // BookmarkCheck when this run is already saved.
+  const historyItems = useAtlasHistory(projectId);
+  const bookmarkEntry = useMemo(() => {
+    if (!run?.associatedMessageId) return null;
+    return historyItems.find((h) => h.associated_message_id === run.associatedMessageId) ?? null;
+  }, [historyItems, run?.associatedMessageId]);
+  const isBookmarked = !!bookmarkEntry?.isBookmarked;
 
-    // preview/output.html — route into the Draft sandbox via the same event
-    // pathway used by useChatStream. This keeps it inline in the Preview panel
-    // instead of opening a new browser tab.
-    if (filePath === "preview/output.html" && content) {
-      window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
-        detail: { content },
-      }));
+  const APP_FILE_RE = /(?:^|\/)(package\.json|vite\.config|tsconfig|src\/|app\/|routes\/|pages\/|index\.html$)/i;
+
+  /**
+   * Preview priority:
+   *   1. preview/output.html            → Draft (sandbox)
+   *   2. produced artifact              → Artifacts (generated)
+   *   3. app/routes/package changes     → Local Dev (local)
+   *   4. (Live URL fallback handled inside PreviewPanel when no source resolves)
+   *   5. nothing previewable            → button disabled (rendered below)
+   */
+  const previewPlan = useMemo(() => {
+    if (!run) return null;
+    const draftPath = run.produced.find((p) => p === "preview/output.html");
+    if (draftPath) {
+      return { source: "sandbox" as const, content: findFileContent(messages, draftPath) };
+    }
+    if (run.produced.length > 0) {
+      return { source: "generated" as const };
+    }
+    if (run.files.some((f) => APP_FILE_RE.test(f))) {
+      return { source: "local" as const };
+    }
+    return null;
+  }, [run, messages]);
+
+  const handleOpenPreview = useCallback(() => {
+    if (!previewPlan) return;
+    window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: previewPlan }));
+  }, [previewPlan]);
+
+  const handleOpenDetails = useCallback(() => {
+    if (!run) return;
+    window.dispatchEvent(new CustomEvent("axiom:open-changes", { detail: { runId: run.id } }));
+  }, [run]);
+
+  const handleBookmark = useCallback(() => {
+    if (!run) return;
+    if (!run.associatedMessageId) {
+      toast.error("Can't bookmark yet", { description: "Run is still streaming — try again after it completes." });
       return;
     }
-
-    if (content) {
-      // All other HTML artifacts — open via blob URL in a new tab.
-      const blob = new Blob([content], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } else {
-      // Fallback: navigate to diff view (historical load — content not in memory).
-      const href = `${window.location.origin}/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}&file=${encodeURIComponent(filePath)}`;
-      window.open(href, "_blank", "noopener,noreferrer");
+    // Ensure a snapshot exists for this message, then flip its bookmark flag.
+    let entryId = bookmarkEntry?.id ?? null;
+    if (!entryId) {
+      const created = addSnapshot(projectId, {
+        associated_message_id: run.associatedMessageId,
+        title: run.title,
+        lens: "builder",
+        payload: {},
+      });
+      entryId = created?.id ?? null;
     }
-  }, [run, messages, projectId]);
+    if (!entryId) return;
+    const willBeBookmarked = !isBookmarked;
+    toggleBookmark(projectId, entryId);
+    toast.success(willBeBookmarked ? "Bookmarked" : "Bookmark removed", {
+      description: willBeBookmarked ? run.title : undefined,
+      action: willBeBookmarked
+        ? {
+            label: "View history",
+            onClick: () => window.dispatchEvent(new CustomEvent("atlas:open-history-sheet")),
+          }
+        : undefined,
+    });
+  }, [run, bookmarkEntry, isBookmarked, projectId]);
 
   const [expanded, setExpanded] = useState(false);
 
@@ -221,8 +267,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
       ? now - run.createdAt
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
 
-  const detailsHref = `/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}`;
-  const hasProduced = run.produced.length > 0;
+  const hasPreview = !!previewPlan;
   // Auto-expand while running so users see progress; otherwise collapsed by default.
   const isOpen = expanded || run.status === "running";
 
