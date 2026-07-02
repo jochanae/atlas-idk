@@ -1724,6 +1724,22 @@ function CompletionRow({ label, sub, pct, onClick }: { label: string; sub: strin
   );
 }
 
+function MetaRow({ label, value, ok, onClick }: { label: string; value: string; ok: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+        padding: "4px 0", background: "transparent", border: "none", cursor: "pointer",
+        color: "var(--atlas-fg)", textAlign: "left",
+      }}
+    >
+      <span style={{ fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.06em" }}>{label}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: ok ? "#4ade80" : "var(--atlas-muted)" }}>{value}</span>
+    </button>
+  );
+
 
 function ShellFooterIcon({ icon }: { icon: ShellNavIcon }) {
   const common = {
