@@ -122,7 +122,7 @@ function renderMessageImages(msg: AskAtlasMessage) {
                 objectFit: "cover",
                 borderRadius: 8,
                 display: "block",
-                border: "0.5px solid rgba(212,175,55,0.25)",
+                border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 25%, transparent)",
               }}
             />
           </div>
@@ -560,7 +560,7 @@ export function AskAtlasSurface({
                   fontFamily: "var(--app-font-mono)",
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
-                  color: "rgba(212,175,55,0.85)",
+                  color: "color-mix(in oklab, var(--atlas-gold) 85%, transparent)",
                   opacity: 0.65,
                 }}
               >
@@ -569,8 +569,8 @@ export function AskAtlasSurface({
               <div
                 style={{
                   padding: "10px 14px",
-                  background: "rgba(212,175,55,0.05)",
-                  border: "1px solid rgba(212,175,55,0.22)",
+                  background: "color-mix(in oklab, var(--atlas-gold) 5%, transparent)",
+                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
                   borderRadius: 12,
                   maxWidth: "82%",
                   fontSize: 16,
@@ -692,7 +692,7 @@ export function AskAtlasSurface({
             fontSize: 10,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
-            color: isParchment ? "rgba(15,23,42,0.45)" : "rgba(212,175,55,0.72)",
+            color: isParchment ? "rgba(15,23,42,0.45)" : "color-mix(in oklab, var(--atlas-gold) 72%, transparent)",
             paddingBottom: 2,
           }}
         >
@@ -708,7 +708,7 @@ export function AskAtlasSurface({
             background: "transparent",
             border: isParchment
               ? "1px solid rgba(15,23,42,0.10)"
-              : "1px solid rgba(212,175,55,0.32)",
+              : "1px solid color-mix(in oklab, var(--atlas-gold) 32%, transparent)",
             borderRadius: 16,
             padding: "10px 12px",
 
@@ -726,12 +726,12 @@ export function AskAtlasSurface({
                     <img
                       src={filePreviewUrls.current.get(file)}
                       alt={file.name}
-                      style={{ width: 54, height: 54, borderRadius: 7, objectFit: "cover", border: "1px solid rgba(212,175,55,0.28)", display: "block" }}
+                      style={{ width: 54, height: 54, borderRadius: 7, objectFit: "cover", border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)", display: "block" }}
                     />
                   ) : (
-                    <div style={{ width: 54, height: 54, borderRadius: 7, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.22)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, overflow: "hidden" }}>
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="rgba(212,175,55,0.65)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      <span style={{ fontSize: 8, color: "rgba(212,175,55,0.6)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
+                    <div style={{ width: 54, height: 54, borderRadius: 7, background: "color-mix(in oklab, var(--atlas-gold) 7%, transparent)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, overflow: "hidden" }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="var(--atlas-gold)" strokeOpacity="0.65" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      <span style={{ fontSize: 8, color: "color-mix(in oklab, var(--atlas-gold) 60%, transparent)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
                     </div>
                   )}
                   {onRemoveFile && (
@@ -739,7 +739,7 @@ export function AskAtlasSurface({
                       type="button"
                       onClick={() => onRemoveFile(idx)}
                       aria-label="Remove attachment"
-                      style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(212,175,55,0.35)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
+                      style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "var(--atlas-surface)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 35%, transparent)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
                     >×</button>
                   )}
                 </div>
@@ -909,18 +909,18 @@ export function AskAtlasSurface({
                   height: 38,
                   flexShrink: 0,
                   borderRadius: 999,
-                  border: `1px solid ${canSubmit ? "rgba(212,175,55,0.55)" : "rgba(212,175,55,0.15)"}`,
+                  border: `1px solid ${canSubmit ? "color-mix(in oklab, var(--atlas-gold) 55%, transparent)" : "color-mix(in oklab, var(--atlas-gold) 15%, transparent)"}`,
                   background: canSubmit
-                    ? "linear-gradient(135deg, rgba(212,175,55,0.32), rgba(201,162,76,0.16))"
-                    : "rgba(255,255,255,0.02)",
-                  color: canSubmit ? "rgba(245,215,130,1)" : "var(--atlas-muted)",
+                    ? "linear-gradient(135deg, color-mix(in oklab, var(--atlas-gold) 32%, transparent), color-mix(in oklab, var(--atlas-gold) 16%, transparent))"
+                    : "color-mix(in oklab, var(--atlas-fg) 2%, transparent)",
+                  color: canSubmit ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: canSubmit ? "pointer" : "not-allowed",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
                   padding: 0,
                   opacity: isSending ? 0.55 : 1,
-                  boxShadow: canSubmit ? "0 0 18px -4px rgba(212,175,55,0.45)" : "none",
+                  boxShadow: canSubmit ? "0 0 18px -4px color-mix(in oklab, var(--atlas-gold) 45%, transparent)" : "none",
                   transition: "background 200ms ease, border-color 200ms ease, box-shadow 200ms ease",
                 }}
               >
@@ -977,8 +977,8 @@ function UtilityButton({
       {glowing && (
         <style>{`
           @keyframes ask-atlas-folder-glow {
-            0%, 100% { box-shadow: 0 0 6px rgba(201,162,76,0.45), 0 0 14px rgba(201,162,76,0.2); }
-            50% { box-shadow: 0 0 12px rgba(201,162,76,0.75), 0 0 24px rgba(201,162,76,0.35); }
+            0%, 100% { box-shadow: 0 0 6px color-mix(in oklab, var(--atlas-gold) 45%, transparent), 0 0 14px color-mix(in oklab, var(--atlas-gold) 20%, transparent); }
+            50% { box-shadow: 0 0 12px color-mix(in oklab, var(--atlas-gold) 75%, transparent), 0 0 24px color-mix(in oklab, var(--atlas-gold) 35%, transparent); }
           }
         `}</style>
       )}
@@ -992,18 +992,18 @@ function UtilityButton({
           height: 34,
           flexShrink: 0,
           borderRadius: 10,
-          border: glowing ? "1px solid rgba(201,162,76,0.55)" : "1px solid transparent",
+          border: glowing ? "1px solid color-mix(in oklab, var(--atlas-gold) 55%, transparent)" : "1px solid transparent",
           background: glowing
-            ? "rgba(201,162,76,0.12)"
+            ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
             : active
-              ? "rgba(212,175,55,0.14)"
+              ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"
               : tinted
-                ? "rgba(212,175,55,0.06)"
+                ? "color-mix(in oklab, var(--atlas-gold) 6%, transparent)"
                 : "transparent",
           color: glowing || active
             ? "var(--atlas-gold)"
             : tinted
-              ? "rgba(212,175,55,0.85)"
+              ? "color-mix(in oklab, var(--atlas-gold) 85%, transparent)"
               : "var(--atlas-muted)",
           display: "inline-flex",
           alignItems: "center",
@@ -1017,22 +1017,22 @@ function UtilityButton({
         onMouseEnter={(e) => {
           if (!onClick) return;
           const el = e.currentTarget as HTMLButtonElement;
-          el.style.background = glowing ? "rgba(201,162,76,0.18)" : "rgba(212,175,55,0.10)";
-          el.style.color = "rgba(245,215,130,1)";
+          el.style.background = glowing ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)" : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)";
+          el.style.color = "var(--atlas-gold)";
         }}
         onMouseLeave={(e) => {
           const el = e.currentTarget as HTMLButtonElement;
           el.style.background = glowing
-            ? "rgba(201,162,76,0.12)"
+            ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
             : active
-              ? "rgba(212,175,55,0.14)"
+              ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"
               : tinted
-                ? "rgba(212,175,55,0.06)"
+                ? "color-mix(in oklab, var(--atlas-gold) 6%, transparent)"
                 : "transparent";
           el.style.color = glowing || active
             ? "var(--atlas-gold)"
             : tinted
-              ? "rgba(212,175,55,0.85)"
+              ? "color-mix(in oklab, var(--atlas-gold) 85%, transparent)"
               : "var(--atlas-muted)";
         }}
       >
