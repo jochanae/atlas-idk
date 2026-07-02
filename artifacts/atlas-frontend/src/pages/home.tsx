@@ -2040,9 +2040,9 @@ export default function Home() {
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(false);
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
-  // Surface is visible (and drives all layout changes) as soon as the button is
-  // tapped — no need to wait for messages to exist first.
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen;
+  // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
+  // button and routes sends to askAtlasChat.
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && askAtlasChat.messages.length > 0;
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -4861,10 +4861,14 @@ export default function Home() {
                   height: isTiny ? 28 : 34,
                   display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
                   padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
-                  background: "transparent",
-                  border: "1px solid var(--atlas-border, rgba(120,113,108,0.18))",
+                  background: askAtlasSurfaceOpen
+                    ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
+                    : "transparent",
+                  border: askAtlasSurfaceOpen
+                    ? "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)"
+                    : "1px solid var(--atlas-border, rgba(120,113,108,0.18))",
                   boxShadow: "none",
-                  color: "var(--atlas-muted)",
+                  color: askAtlasSurfaceOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer",
                   fontFamily: "var(--app-font-mono)",
                   fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
@@ -4877,6 +4881,14 @@ export default function Home() {
               >
                 <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
                 {!isTiny && <span>Ask Atlas</span>}
+                {askAtlasSurfaceOpen && (
+                  <span style={{
+                    width: 5, height: 5, borderRadius: "50%",
+                    background: "var(--atlas-gold)",
+                    flexShrink: 0,
+                    boxShadow: "0 0 4px rgba(201,162,76,0.6)",
+                  }} />
+                )}
               </button>
 
 
@@ -5234,7 +5246,7 @@ export default function Home() {
       </div>
 
       <AskAtlasSurface
-        open={askAtlasSurfaceOpen}
+        open={askAtlasSurfaceVisible}
         messages={askAtlasChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={activeConversationId}
