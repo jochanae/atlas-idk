@@ -4282,6 +4282,24 @@ export default function Workspace() {
   useEffect(() => {
     try { setDbUrl(localStorage.getItem(`atlas-db-url-${id}`) ?? null); } catch { setDbUrl(null); }
   }, [id]);
+  // Restore manifest preview from DB on mount (survives page refresh)
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/projects/${id}/artifacts?type=manifest_preview`, {
+      headers: { ...getAuthHeaders() },
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { artifacts?: Array<{ metadata?: Record<string, unknown>; payload?: Record<string, unknown> }> } | null) => {
+        const latest = data?.artifacts?.[0];
+        if (!latest) return;
+        const decision = latest.metadata?.decision as ManifestDecision | null | undefined;
+        const html = typeof latest.payload?.html === "string" ? latest.payload.html : null;
+        if (decision) setManifestDecision(decision);
+        if (html) setManifestPreviewHtml(html);
+      })
+      .catch(() => {});
+  }, [id]);
   const { data: fallbackEntries } = useListEntries(id, {}, {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getListEntriesQueryKey(id, {}) },
   });
@@ -5477,6 +5495,18 @@ export default function Workspace() {
       }
       const previewHtml = await previewRes.text();
       setManifestPreviewHtml(previewHtml);
+      // Persist so the manifest survives page refresh
+      fetch(`/api/projects/${id}/artifacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        credentials: "include",
+        body: JSON.stringify({
+          type: "manifest_preview",
+          title: data.decision.firstArtifact?.name ?? "First Artifact",
+          metadata: { decision: data.decision },
+          payload: { html: previewHtml },
+        }),
+      }).catch(() => {});
       openPreviewPanel();
     } catch (err) {
       console.error("Manifest failed:", err);
