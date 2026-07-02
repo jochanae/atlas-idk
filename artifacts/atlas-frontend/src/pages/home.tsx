@@ -4030,7 +4030,7 @@ export default function Home() {
             justifyContent: askAtlasSurfaceVisible ? "flex-start" : (nexusChat.messages.length > 0 || askAtlasConversationActive ? "flex-start" : "center"),
             position: "relative",
             paddingBottom: askAtlasSurfaceVisible ? 0 : "var(--atlas-dock-clearance)",
-            paddingTop: askAtlasSurfaceVisible ? 0 : (isMobile ? "clamp(56px, 10dvh, 88px)" : 0),
+            paddingTop: askAtlasSurfaceVisible ? 0 : (isMobile ? "clamp(84px, 13dvh, 116px)" : 0),
             minWidth: 0,
             overflow: askAtlasSurfaceVisible ? "hidden" : "visible",
           }}>
