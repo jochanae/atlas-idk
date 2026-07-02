@@ -179,7 +179,230 @@ export function InterrogationFragments() {
 }
 
 /* ──────────────────────────────────────────────────────────
-   03 — STRATEGIC MANIFEST (lens system)
+   03 — WHY AXIOM EXISTS (the "why", not the "what")
+   ────────────────────────────────────────────────────────── */
+export function WhyAxiomExists() {
+  const { ref, visible } = useReveal(0.2);
+  return (
+    <section ref={ref} className="relative z-10 py-28 md:py-40 px-6">
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 h-px transition-all duration-[1.2s] ease-out"
+        style={{
+          width: visible ? "60%" : "0%",
+          background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.25), transparent)",
+        }}
+      />
+      <div className="max-w-2xl mx-auto text-center">
+        <p
+          className="uppercase tracking-[0.35em] mb-8"
+          style={{
+            ...mono,
+            fontSize: "0.65rem",
+            color: "#6b5f50",
+            opacity: visible ? 1 : 0,
+            transition: "opacity 700ms",
+          }}
+        >
+          03 // Why Axiom
+        </p>
+        <h2
+          style={{
+            ...serif,
+            fontWeight: 400,
+            fontSize: "clamp(1.9rem, 5vw, 3rem)",
+            lineHeight: 1.2,
+            color: "#e8dcc8",
+            letterSpacing: "-0.01em",
+            margin: "0 0 22px",
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(16px)",
+            transition: "all 900ms ease-out",
+          }}
+        >
+          Ideas deserve a place to{" "}
+          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>grow.</span>
+        </h2>
+        <p
+          style={{
+            ...serif,
+            fontSize: "clamp(1.05rem, 2vw, 1.25rem)",
+            lineHeight: 1.6,
+            color: "rgba(232,220,200,0.7)",
+            margin: 0,
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(12px)",
+            transition: "all 900ms ease-out 200ms",
+          }}
+        >
+          Most tools help you generate. Few help you continue. Axiom exists so your work
+          can evolve without losing its purpose.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────
+   04 — CONTINUITY THREAD (the new centerpiece)
+   ────────────────────────────────────────────────────────── */
+const CONTINUITY_NODES = [
+  "Conversation",
+  "Understanding",
+  "Decision",
+  "Workspace",
+  "Code",
+  "Runtime",
+  "Preview",
+  "Deploy",
+  "Evolution",
+];
+
+export function ContinuityThread() {
+  const { ref, visible } = useReveal(0.1);
+  return (
+    <section ref={ref} className="relative z-10 py-28 md:py-40 px-6">
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 h-px transition-all duration-[1.2s] ease-out"
+        style={{
+          width: visible ? "80%" : "0%",
+          background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)",
+        }}
+      />
+      <div className="max-w-3xl mx-auto">
+        <p
+          className="uppercase tracking-[0.35em] mb-4 text-center"
+          style={{
+            ...mono,
+            fontSize: "0.65rem",
+            color: "#6b5f50",
+            opacity: visible ? 1 : 0,
+            transition: "opacity 700ms",
+          }}
+        >
+          04 // Continuity
+        </p>
+        <h2
+          className="text-center mb-3"
+          style={{
+            ...serif,
+            fontWeight: 400,
+            fontSize: "clamp(1.9rem, 5vw, 3rem)",
+            lineHeight: 1.15,
+            color: "#e8dcc8",
+            letterSpacing: "-0.01em",
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(16px)",
+            transition: "all 900ms ease-out",
+          }}
+        >
+          Most AI starts over.{" "}
+          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>Axiom remembers.</span>
+        </h2>
+        <p
+          className="text-center italic mb-16"
+          style={{
+            ...serif,
+            fontSize: "clamp(1rem, 1.8vw, 1.15rem)",
+            color: "rgba(232,220,200,0.6)",
+            maxWidth: 460,
+            margin: "0 auto 56px",
+            lineHeight: 1.55,
+            opacity: visible ? 1 : 0,
+            transition: "opacity 900ms ease-out 200ms",
+          }}
+        >
+          Every decision, pivot, and file stays tethered to the idea that started it.
+          Six months later, the project still knows why.
+        </p>
+
+        {/* Vertical thread */}
+        <div className="relative mx-auto" style={{ maxWidth: 440, paddingLeft: 32 }}>
+          <div
+            aria-hidden="true"
+            className="absolute w-px"
+            style={{
+              left: 8,
+              top: 8,
+              bottom: 8,
+              background: "rgba(212,175,55,0.12)",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute w-px"
+            style={{
+              left: 8,
+              top: 8,
+              height: visible ? "calc(100% - 16px)" : "0%",
+              background: "linear-gradient(180deg, rgba(212,175,55,0.75), rgba(212,175,55,0.25))",
+              transition: "height 2200ms cubic-bezier(0.16,1,0.3,1) 300ms",
+            }}
+          />
+          {CONTINUITY_NODES.map((label, i) => {
+            const delay = 400 + i * 180;
+            return (
+              <div
+                key={label}
+                className="relative"
+                style={{
+                  padding: "14px 0",
+                  opacity: visible ? 1 : 0,
+                  transform: visible ? "translateX(0)" : "translateX(-8px)",
+                  transition: `opacity 700ms ease-out ${delay}ms, transform 700ms ease-out ${delay}ms`,
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute"
+                  style={{
+                    left: -32,
+                    top: 20,
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "#D4AF37",
+                    boxShadow: "0 0 10px rgba(212,175,55,0.5)",
+                  }}
+                />
+                <p
+                  style={{
+                    ...serif,
+                    fontWeight: 400,
+                    fontSize: "clamp(1.15rem, 2.4vw, 1.4rem)",
+                    color: "#e8dcc8",
+                    margin: 0,
+                    letterSpacing: "-0.005em",
+                  }}
+                >
+                  {label}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <p
+          className="text-center mt-14 italic"
+          style={{
+            ...serif,
+            fontSize: "clamp(0.95rem, 1.6vw, 1.05rem)",
+            color: "rgba(232,220,200,0.5)",
+            maxWidth: 420,
+            margin: "56px auto 0",
+            lineHeight: 1.55,
+            opacity: visible ? 1 : 0,
+            transition: "opacity 900ms ease-out 2200ms",
+          }}
+        >
+          One continuous thread — from the first sentence to the twelfth version.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────
+   05 — STRATEGIC MANIFEST (lens system — one capability, three views)
    ────────────────────────────────────────────────────────── */
 type Lens = "storyteller" | "designer" | "builder";
 
