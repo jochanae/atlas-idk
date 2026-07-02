@@ -244,17 +244,25 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
   }, [run]);
 
   const handlePreview = useCallback(() => {
-    if (!run || !run.previewSource) return;
+    if (!run) return;
     let content: string | null = null;
     if (run.previewSource === "sandbox" && run.previewPath) {
       content = findFileContent(messages, run.previewPath);
     }
+    const savedLiveUrl = getSavedPreviewUrl(projectId) || projectPreviewUrl || null;
     window.dispatchEvent(
       new CustomEvent("axiom:open-preview", {
-        detail: { source: run.previewSource, content: content ?? undefined },
+        detail: {
+          source: run.previewSource ?? undefined,
+          content: content ?? undefined,
+          // Empty-state hints — only meaningful when source is null.
+          emptyReason: run.previewSource ? undefined : (run.error ?? (run.status === "failed" ? "RUN_FAILED" : "NO_PREVIEWABLE_OUTPUT")),
+          runId: run.previewSource ? undefined : run.id,
+          liveUrl: run.previewSource ? undefined : savedLiveUrl,
+        },
       }),
     );
-  }, [run, messages]);
+  }, [run, messages, projectId, projectPreviewUrl]);
 
   // Card body tap = inline expand/collapse only. Navigation is on explicit
   // Details / Preview buttons — never smart card-body routing.
@@ -306,9 +314,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
       ? now - run.createdAt
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
 
-  const previewDisabled = run.previewSource === null;
-  const previewTitle = previewDisabled
-    ? "No previewable output in this run"
+  const noFreshArtifact = run.previewSource === null;
+  const previewTitle = noFreshArtifact
+    ? "No fresh artifact from this run — opens Preview panel"
     : run.previewSource === "sandbox"
       ? "Open Draft preview"
       : run.previewSource === "generated"
@@ -502,7 +510,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
             event.stopPropagation();
             handlePreview();
           }}
-          disabled={previewDisabled}
+          disabled={false}
           title={previewTitle}
           style={{
             flex: 1,
@@ -510,15 +518,15 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
             fontSize: 11.5,
             fontWeight: 500,
             textAlign: "center",
-            background: previewDisabled ? "transparent" : "var(--atlas-gold-dim)",
-            border: previewDisabled
+            background: noFreshArtifact ? "transparent" : "var(--atlas-gold-dim)",
+            border: noFreshArtifact
               ? "1px solid hsl(var(--border))"
               : "1px solid var(--atlas-gold-border)",
-            color: previewDisabled
-              ? "hsl(var(--muted-foreground) / 0.55)"
+            color: noFreshArtifact
+              ? "hsl(var(--muted-foreground) / 0.75)"
               : "var(--atlas-gold)",
             borderRadius: 5,
-            cursor: previewDisabled ? "not-allowed" : "pointer",
+            cursor: "pointer",
             fontFamily: "inherit",
             letterSpacing: "0.01em",
           }}

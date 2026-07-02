@@ -6155,7 +6155,13 @@ export default function Workspace() {
   // Opens the Preview panel and forwards the requested source mode.
   useEffect(() => {
     const handler = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ source?: "sandbox" | "url" | "local" | "generated"; content?: string }>).detail ?? {};
+      const detail = (ev as CustomEvent<{
+        source?: "sandbox" | "url" | "local" | "generated";
+        content?: string;
+        emptyReason?: string;
+        runId?: string;
+        liveUrl?: string | null;
+      }>).detail ?? {};
       openPreviewPanel();
       // If a Draft HTML payload came along, reuse the existing artifact event.
       if (detail.source === "sandbox" && detail.content) {
@@ -6165,6 +6171,17 @@ export default function Workspace() {
         // Small delay so the panel mounts before it switches mode.
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent("axiom:preview-set-mode", { detail: { source: detail.source } }));
+        }, 40);
+      } else {
+        // No previewable source — surface an empty-state banner in the panel.
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("axiom:preview-empty-state", {
+            detail: {
+              reason: detail.emptyReason ?? "NO_PREVIEWABLE_OUTPUT",
+              runId: detail.runId,
+              liveUrl: detail.liveUrl ?? null,
+            },
+          }));
         }, 40);
       }
     };
