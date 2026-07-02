@@ -3769,7 +3769,7 @@ export default function Home() {
       {/* Ask Atlas runs inline through the ambient home shell:
           header title only, no overlay, no duplicate header, no separate composer. */}
 
-      {askAtlasTitleSlot && askAtlasSurfaceOpen && createPortal(
+      {askAtlasTitleSlot && askAtlasSurfaceVisible && createPortal(
         <AskAtlasTitleCarousel earnedTitle={earnedTitle} />,
         askAtlasTitleSlot
       )}
