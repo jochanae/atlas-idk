@@ -4598,7 +4598,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: (askAtlasSurfaceOpen || askAtlasConversationActive) ? "none" : undefined }}>
+          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: askAtlasSurfaceOpen ? "none" : undefined }}>
           <div ref={askAtlasSurfaceOpen ? askAtlasComposerRef : null} className="atlas-input-shell" style={{
             position: askAtlasSurfaceOpen ? "relative" : "sticky",
             left: askAtlasSurfaceOpen ? undefined : 0,
