@@ -2047,15 +2047,15 @@ export default function Home() {
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
   useEffect(() => {
-    const active = askAtlasSurfaceOpen || nexusChat.messages.length > 0;
+    const active = askAtlasSurfaceVisible || nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
     return () => { document.body.removeAttribute("data-axiom-thread"); };
-  }, [askAtlasSurfaceOpen, nexusChat.messages.length]);
+  }, [askAtlasSurfaceVisible, nexusChat.messages.length]);
 
   useEffect(() => {
-    document.body.setAttribute("data-axiom-ask-atlas", askAtlasSurfaceOpen ? "true" : "false");
+    document.body.setAttribute("data-axiom-ask-atlas", askAtlasSurfaceVisible ? "true" : "false");
     return () => { document.body.removeAttribute("data-axiom-ask-atlas"); };
-  }, [askAtlasSurfaceOpen]);
+  }, [askAtlasSurfaceVisible]);
 
   // Clear any ambient nexus messages the instant Ask Atlas opens so the two
   // renderers can never coexist on screen.
@@ -2131,7 +2131,7 @@ export default function Home() {
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
-    if (askAtlasSurfaceOpen) {
+    if (askAtlasSurfaceVisible) {
       setDepth("active");
     } else if (nexusChat.messages.length === 0) {
       setDepth("ambient");
@@ -2139,7 +2139,7 @@ export default function Home() {
       setDepth("active");
     }
     previousHomeMessageCountRef.current = nexusChat.messages.length;
-  }, [askAtlasSurfaceOpen, nexusChat.messages.length, setDepth]);
+  }, [askAtlasSurfaceVisible, nexusChat.messages.length, setDepth]);
 
   useEffect(() => {
     setActiveProjectId(homeFocus);
@@ -3725,7 +3725,7 @@ export default function Home() {
     };
   }, []);
 
-  const homeUnifiedSubheader = askAtlasSurfaceOpen ? null : (
+  const homeUnifiedSubheader = askAtlasSurfaceVisible ? null : (
     <UnifiedSubheader
       activeTab="chat"
       onTabChange={handleHomeSubheaderTabChange}
@@ -4839,8 +4839,18 @@ export default function Home() {
                 type="button"
                 title="Open Ask Atlas"
                 aria-label="Open Ask Atlas"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  nexusChat.clearMessages();
+                  setAskAtlasSurfaceOpen(true);
+                  const seed = input.trim();
+                  if (seed) setInput(seed);
+                  window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (askAtlasSurfaceOpen) return;
                   nexusChat.clearMessages();
                   setAskAtlasSurfaceOpen(true);
                   const seed = input.trim();
