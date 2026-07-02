@@ -1026,6 +1026,63 @@ ${t}
         </div>{/* end scroll container */}
       </div>{/* end mode toggle */}
 
+      {/* Empty-state banner — shown when Preview was requested for a run with no previewable output. */}
+      {emptyState && (
+        <div style={{
+          flexShrink: 0,
+          margin: "8px 10px 0",
+          padding: "10px 12px",
+          border: "1px solid var(--atlas-border)",
+          borderRadius: 8,
+          background: "hsl(var(--card))",
+          color: "hsl(var(--card-foreground))",
+          position: "relative",
+        }}>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setEmptyState(null)}
+            style={{ position: "absolute", top: 6, right: 8, background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 2 }}
+          >×</button>
+          <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", marginBottom: 4 }}>
+            Nothing to preview yet
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.45, marginBottom: 8, paddingRight: 18 }}>
+            This run didn't produce a previewable artifact.{" "}
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)" }}>
+              ({emptyState.reason})
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {emptyState.runId && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("axiom:open-changes", { detail: { runId: emptyState.runId } }));
+                  setEmptyState(null);
+                }}
+                style={{ padding: "5px 10px", fontSize: 11, border: "1px solid hsl(var(--border))", background: "transparent", color: "hsl(var(--card-foreground))", borderRadius: 5, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                View Details
+              </button>
+            )}
+            {emptyState.liveUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewMode("url");
+                  setEmptyState(null);
+                }}
+                style={{ padding: "5px 10px", fontSize: 11, border: "1px solid var(--atlas-gold-border)", background: "var(--atlas-gold-dim)", color: "var(--atlas-gold)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Open Live URL
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+
       {/* Device switcher — Sandbox mode: Edit-code toggle + Clear inline with device selector */}
       {previewMode === "sandbox" && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, position: "relative", zIndex: 5 }}>
