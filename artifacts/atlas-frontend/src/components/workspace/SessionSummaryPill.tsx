@@ -77,52 +77,72 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
     }
   };
 
-  if (!data?.summary || !data.summaryAt) return null;
+  const hasSummary = !!(data?.summary && data.summaryAt);
+
+  // Non-compact mode preserves original behavior: hide entirely when no summary.
+  if (!compact && !hasSummary) return null;
+
+  const compactTrigger = (
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      aria-label={hasSummary ? "Last session memory" : "No session memory yet"}
+      title={hasSummary ? "What Atlas remembers from your last session" : "No session memory yet"}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 32, height: 32, borderRadius: 999,
+        background: hasSummary
+          ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+          : "color-mix(in oklab, var(--atlas-gold) 4%, transparent)",
+        border: `1px solid color-mix(in oklab, var(--atlas-gold) ${hasSummary ? 28 : 14}%, transparent)`,
+        color: "var(--atlas-gold)",
+        opacity: hasSummary ? 1 : 0.55,
+        cursor: "pointer",
+        flexShrink: 0,
+        position: "relative",
+      }}
+    >
+      <Clock size={15} strokeWidth={1.7} aria-hidden />
+      {hasSummary && (
+        <span style={{ position: "absolute", top: 4, right: 4, width: 6, height: 6, borderRadius: 999, background: "var(--atlas-gold)" }} />
+      )}
+    </button>
+  );
+
+  const fullTrigger = (
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      title="What Atlas remembers from your last session"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "3px 9px",
+        borderRadius: 20,
+        border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
+        background: open
+          ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+          : "color-mix(in oklab, var(--atlas-gold) 5%, transparent)",
+        color: "color-mix(in oklab, var(--atlas-gold) 75%, var(--atlas-muted))",
+        fontSize: 11,
+        fontFamily: "var(--app-font-sans)",
+        fontWeight: 500,
+        letterSpacing: "0.03em",
+        cursor: "pointer",
+        transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+        WebkitTapHighlightColor: "transparent",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <Clock size={10} strokeWidth={2} aria-hidden />
+      Last session: {timeAgo(data!.summaryAt!)}
+    </button>
+  );
 
   return (
     <div ref={containerRef} style={{ position: "relative", display: "inline-flex" }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        title="What Atlas remembers from your last session"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-          padding: "3px 9px",
-          borderRadius: 20,
-          border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
-          background: open
-            ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
-            : "color-mix(in oklab, var(--atlas-gold) 5%, transparent)",
-          color: "color-mix(in oklab, var(--atlas-gold) 75%, var(--atlas-muted))",
-          fontSize: 11,
-          fontFamily: "var(--app-font-sans)",
-          fontWeight: 500,
-          letterSpacing: "0.03em",
-          cursor: "pointer",
-          transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
-          WebkitTapHighlightColor: "transparent",
-          whiteSpace: "nowrap",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background =
-            "color-mix(in oklab, var(--atlas-gold) 10%, transparent)";
-          (e.currentTarget as HTMLButtonElement).style.borderColor =
-            "color-mix(in oklab, var(--atlas-gold) 35%, transparent)";
-        }}
-        onMouseLeave={(e) => {
-          if (!open) {
-            (e.currentTarget as HTMLButtonElement).style.background =
-              "color-mix(in oklab, var(--atlas-gold) 5%, transparent)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor =
-              "color-mix(in oklab, var(--atlas-gold) 22%, transparent)";
-          }
-        }}
-      >
-        <Clock size={10} strokeWidth={2} aria-hidden />
-        Last session: {timeAgo(data.summaryAt)}
-      </button>
+      {compact ? compactTrigger : fullTrigger}
 
       {open && (
         <div
