@@ -2052,6 +2052,12 @@ export default function Home() {
     return () => { document.body.removeAttribute("data-axiom-ask-atlas"); };
   }, [askAtlasSurfaceOpen]);
 
+  // Clear any ambient nexus messages the instant Ask Atlas opens so the two
+  // renderers can never coexist on screen.
+  useEffect(() => {
+    if (askAtlasSurfaceOpen) nexusChat.clearMessages();
+  }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
+
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
   // backlog produced while Atlas streams a reply.
