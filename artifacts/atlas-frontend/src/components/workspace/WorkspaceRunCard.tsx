@@ -182,11 +182,11 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
 
   // Bookmark state — reads the atlas-history ledger to render an active
   // BookmarkCheck when this run is already saved.
-  const historyItems = useAtlasHistory(projectId);
+  const history = useAtlasHistory(projectId);
   const bookmarkEntry = useMemo(() => {
     if (!run?.associatedMessageId) return null;
-    return historyItems.find((h) => h.associated_message_id === run.associatedMessageId) ?? null;
-  }, [historyItems, run?.associatedMessageId]);
+    return history.items.find((h) => h.associated_message_id === run.associatedMessageId) ?? null;
+  }, [history.items, run?.associatedMessageId]);
   const isBookmarked = !!bookmarkEntry?.isBookmarked;
 
   const APP_FILE_RE = /(?:^|\/)(package\.json|vite\.config|tsconfig|src\/|app\/|routes\/|pages\/|index\.html$)/i;
