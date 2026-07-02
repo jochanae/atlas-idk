@@ -335,22 +335,8 @@ export function AskAtlasSurface({
     }
   };
 
-  const pickStarter = (starter: string) => {
-    setInput(starter);
-    requestAnimationFrame(() => {
-      const el = textareaRef.current;
-      if (!el) return;
-      el.style.height = "0px";
-      el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
-    });
-  };
 
-  const intents: Array<{ label: string; action: () => void; premium?: boolean }> = [
-    { label: "Where were we", action: () => void onOpenHistory(), premium: true },
-    { label: "Think out loud", action: () => pickStarter("Think out loud about this with me: ") },
-    { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
-    { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
-  ];
+
 
   return (
     <div
