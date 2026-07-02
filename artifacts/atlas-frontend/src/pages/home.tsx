@@ -2038,6 +2038,11 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(false);
+  // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
+  // only appears once the user has actually sent the first message. Until then
+  // the home surface stays visually identical to the ambient homepage — the
+  // composer just routes into askAtlasChat under the hood.
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && askAtlasChat.messages.length > 0;
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
