@@ -1270,28 +1270,9 @@ ${t}
       {/* ── Sandbox mode ── */}
       {previewMode === "sandbox" && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {/* Code input area */}
-          <div style={{ flexShrink: 0, borderBottom: "1px solid var(--atlas-border)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px 0" }}>
-              <button
-                onClick={() => setSandboxExpanded((v) => !v)}
-                style={{ display: "flex", alignItems: "center", gap: 4, background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em", padding: "0 2px", opacity: 0.65 }}
-              >
-                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ transition: "transform 140ms ease", transform: sandboxExpanded ? "rotate(90deg)" : "rotate(0deg)" }}>
-                  <path d="M2 1.5L6 4.5L2 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {sandboxExpanded ? "Hide code" : "Edit code"}
-              </button>
-              <div style={{ flex: 1 }} />
-              {sandboxRendered && (
-                <button
-                  onClick={() => { setSandboxInput(""); setSandboxRendered(null); setSandboxExpanded(true); }}
-                  style={{ padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", fontSize: 9, fontFamily: "var(--app-font-mono)", cursor: "pointer", opacity: 0.45, transition: "opacity 140ms ease" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.45")}
-                >Clear</button>
-              )}
-            </div>
+          {/* Code input area — header moved up into device row */}
+          <div style={{ flexShrink: 0, borderBottom: sandboxExpanded ? "1px solid var(--atlas-border)" : "none" }}>
+
             {sandboxExpanded && (
               <div style={{ padding: "6px 8px 8px" }}>
                 <textarea
