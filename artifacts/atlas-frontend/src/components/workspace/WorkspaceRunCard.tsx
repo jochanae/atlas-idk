@@ -510,7 +510,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
             event.stopPropagation();
             handlePreview();
           }}
-          disabled={previewDisabled}
+          disabled={false}
           title={previewTitle}
           style={{
             flex: 1,
@@ -518,15 +518,15 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
             fontSize: 11.5,
             fontWeight: 500,
             textAlign: "center",
-            background: previewDisabled ? "transparent" : "var(--atlas-gold-dim)",
-            border: previewDisabled
+            background: noFreshArtifact ? "transparent" : "var(--atlas-gold-dim)",
+            border: noFreshArtifact
               ? "1px solid hsl(var(--border))"
               : "1px solid var(--atlas-gold-border)",
-            color: previewDisabled
-              ? "hsl(var(--muted-foreground) / 0.55)"
+            color: noFreshArtifact
+              ? "hsl(var(--muted-foreground) / 0.75)"
               : "var(--atlas-gold)",
             borderRadius: 5,
-            cursor: previewDisabled ? "not-allowed" : "pointer",
+            cursor: "pointer",
             fontFamily: "inherit",
             letterSpacing: "0.01em",
           }}
