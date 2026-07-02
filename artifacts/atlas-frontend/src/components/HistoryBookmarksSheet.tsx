@@ -3,7 +3,10 @@
  *
  * Surfaced from the composer's More menu → "History" item.
  *
- * History & Bookmarks tabs operate on the localStorage `AtlasHistoryItem` ledger.
+ * History tab operates on the localStorage `AtlasHistoryItem` ledger (session-ephemeral).
+ * Bookmarks tab reads from the server-backed `project_bookmarks` table — survives
+ * browser clears, new devices, and incognito sessions. Falls back to local bookmarks
+ * if the server has none yet.
  * Checkpoints tab reads from the server-backed `project_checkpoints` table —
  * richer verified restore points created automatically at meaningful milestones
  * or manually by the user.
@@ -28,11 +31,13 @@ import {
   type AtlasLens,
   type CheckpointType,
   type ProjectCheckpoint,
+  type ServerBookmark,
   formatSnapshotTimestamp,
   groupByDay,
   useAtlasHistory,
   useCheckpointCreatedListener,
   useCheckpoints,
+  useServerBookmarks,
 } from "@/lib/atlas-history";
 import { toast } from "sonner";
 import { useThemeMode } from "@/lib/theme";
@@ -107,6 +112,22 @@ const CHECKPOINT_BG: Record<CheckpointType, string> = {
   manual: "rgba(196,160,80,0.10)",
 };
 
+function serverToHistoryItem(sb: ServerBookmark): AtlasHistoryItem {
+  let payload: AtlasHistoryItem["payload"] = {};
+  if (sb.payload_json) {
+    try { payload = JSON.parse(sb.payload_json) as AtlasHistoryItem["payload"]; } catch { /* ignore */ }
+  }
+  return {
+    id: sb.local_id ?? `srv_${sb.id}`,
+    associated_message_id: sb.message_id ?? 0,
+    title: sb.title,
+    timestamp: sb.created_at,
+    isBookmarked: true,
+    lens: (sb.lens as AtlasLens | null) ?? "builder",
+    payload,
+  };
+}
+
 export function HistoryBookmarksSheet({
   projectId,
   open,
@@ -132,6 +153,8 @@ export function HistoryBookmarksSheet({
   const { active, reverted, bookmarks, rollback, toggleBookmark, remove } =
     useAtlasHistory(projectId ?? 0);
 
+  const { serverBookmarks } = useServerBookmarks(projectId);
+
   const { checkpoints, isLoading: checkpointsLoading, refresh: refreshCheckpoints, createManual } =
     useCheckpoints(projectId);
 
@@ -149,14 +172,16 @@ export function HistoryBookmarksSheet({
   });
 
   const grouped = useMemo(() => groupByDay(active), [active]);
-  const bookmarkSorted = useMemo(
-    () =>
-      [...bookmarks].sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      ),
-    [bookmarks],
-  );
+  const bookmarkSorted = useMemo(() => {
+    if (serverBookmarks.length > 0) {
+      return serverBookmarks.map(serverToHistoryItem).sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+    }
+    return [...bookmarks].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [serverBookmarks, bookmarks]);
 
   const isParchment = useThemeMode() === "parchment";
 

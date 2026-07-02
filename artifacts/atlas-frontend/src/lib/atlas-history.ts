@@ -144,6 +144,105 @@ export function removeSnapshot(projectId: number | string, id: string): void {
   write(projectId, read(projectId).filter((i) => i.id !== id));
 }
 
+/* ── Server-persisted bookmarks ──────────────────────────────────────── */
+
+export interface ServerBookmark {
+  id: number;
+  project_id: number;
+  user_id: number;
+  message_id: number | null;
+  local_id: string | null;
+  title: string;
+  lens: string | null;
+  payload_json: string | null;
+  created_at: string;
+}
+
+const BOOKMARK_SERVER_EVENT = "atlas:server-bookmark-changed";
+
+async function syncBookmarkToServer(
+  projectId: number | string,
+  item: AtlasHistoryItem,
+): Promise<void> {
+  try {
+    await fetch(`/api/projects/${projectId}/bookmarks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messageId: item.associated_message_id || null,
+        localId: item.id,
+        title: item.title,
+        lens: item.lens,
+        payload: item.payload,
+      }),
+    });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(BOOKMARK_SERVER_EVENT, { detail: { projectId } }),
+      );
+    }
+  } catch {
+    /* non-fatal — local state is still correct */
+  }
+}
+
+async function deleteBookmarkFromServer(
+  projectId: number | string,
+  localId: string,
+): Promise<void> {
+  try {
+    await fetch(
+      `/api/projects/${projectId}/bookmarks/${encodeURIComponent(localId)}`,
+      { method: "DELETE" },
+    );
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(BOOKMARK_SERVER_EVENT, { detail: { projectId } }),
+      );
+    }
+  } catch {
+    /* non-fatal */
+  }
+}
+
+export function useServerBookmarks(projectId: number | null | undefined) {
+  const pid = projectId ?? null;
+  const [serverBookmarks, setServerBookmarks] = useState<ServerBookmark[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchBookmarks = useCallback(async () => {
+    if (!pid) {
+      setServerBookmarks([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${pid}/bookmarks`);
+      if (res.ok) {
+        setServerBookmarks((await res.json()) as ServerBookmark[]);
+      }
+    } catch {
+      /* non-fatal */
+    } finally {
+      setLoading(false);
+    }
+  }, [pid]);
+
+  useEffect(() => {
+    void fetchBookmarks();
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ projectId: number | string }>).detail;
+      if (!detail || String(detail.projectId) === String(pid)) {
+        void fetchBookmarks();
+      }
+    };
+    window.addEventListener(BOOKMARK_SERVER_EVENT, handler);
+    return () => window.removeEventListener(BOOKMARK_SERVER_EVENT, handler);
+  }, [fetchBookmarks, pid]);
+
+  return { serverBookmarks, loading, refresh: fetchBookmarks };
+}
+
 /**
  * Mark a snapshot as reverted (used to move bypassed snapshots into
  * the "Reverted edits" accordion) — does NOT delete.
@@ -234,7 +333,15 @@ export function useAtlasHistory(projectId: number | string | null | undefined) {
   );
   const bookmark = useCallback(
     (id: string) => {
-      if (pid) toggleBookmark(pid, id);
+      if (!pid) return;
+      toggleBookmark(pid, id);
+      const updated = read(pid).find((i) => i.id === id);
+      if (!updated) return;
+      if (updated.isBookmarked) {
+        void syncBookmarkToServer(pid, updated);
+      } else {
+        void deleteBookmarkFromServer(pid, id);
+      }
     },
     [pid],
   );

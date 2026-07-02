@@ -384,6 +384,30 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: projects.session_summary failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_bookmarks (
+        id          SERIAL PRIMARY KEY,
+        project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_id     INTEGER NOT NULL,
+        message_id  INTEGER,
+        local_id    TEXT,
+        title       TEXT NOT NULL,
+        lens        TEXT,
+        payload_json TEXT,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (project_id, user_id, local_id)
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_project_bookmarks_project_user
+      ON project_bookmarks(project_id, user_id)
+    `);
+    logger.info("ensureColumns: project_bookmarks table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: project_bookmarks table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {
