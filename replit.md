@@ -77,3 +77,18 @@ Axiom is an application-modeling system that uses conversation as its interface.
 - **Ask Atlas** — inline chat in the home page hero. Ephemeral: starts with no conversationId, creates a new thread on first message. Calls `/api/nexus/chat` locally.
 - **Global Insight** — full-screen layout takeover on the home page. Uses the active session thread. Same `/api/nexus/chat` endpoint, same AI. Different surface, same core.
 - **Workspace** — per-project AI conversation. Full history, persistent threads.
+
+## ⚠️ Surface boundary table — read before touching home/ or workspace/
+
+Agents frequently write run card / chat / UI code into the wrong component. This table is the authority. Do NOT cross these lines without an explicit task that names the target surface.
+
+| Component | What it IS | What it is NOT |
+|---|---|---|
+| `components/home/ActiveRuns.tsx` | **Atlas Composer** — shortcut run launcher in Projects drawer → Tools sheet. Shows Composer-started runs. The `RunCard` inside it is the compact Composer card. | NOT the workspace chat. NOT the homepage chat. Never apply workspace designs here. |
+| `components/AtlasComposerSheet.tsx` | Shell that opens the Composer drawer. Wraps `ActiveRuns`. | Do not touch. |
+| `components/workspace/ChatStream.tsx` | **Workspace chat stream** — renders per-message history in the workspace. Workspace run cards belong here as a separate `WorkspaceRunCard` component. | NOT the Composer. NOT the homepage chat. |
+| `pages/home.tsx` + `components/home/` (excl. `ActiveRuns.tsx`) | **Homepage** — Ask Atlas hero, Global Insight surface. | Not the workspace. Not the Composer. |
+| `components/workspace/ViewChangesPanel.tsx` | **Changes surface** — Timeline/Changes lenses, runId pill, GitHub block. Fully implemented. | Do not modify unless the task explicitly says "ViewChangesPanel". |
+| `features/runs/` | Shared run data hooks and types only (`useRun`, `useRuns`, `adaptRun`). | No surface-specific UI components here. |
+
+**Rule:** If a task says "run card" without naming the surface, stop and ask. The Composer card (`ActiveRuns.RunCard`) and the workspace chat card (`WorkspaceRunCard` — not yet built) are different components with different designs. Never apply one surface's design to another.

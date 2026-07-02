@@ -12,10 +12,6 @@ import { WriteFileCard } from "@/components/workspace/WriteFileCard";
 import { SystemActivityCard, BatchedActivityCard } from "@/components/workspace/SystemActivityCard";
 import { SuggestionChipRail } from "@/components/workspace/SuggestionChipRail";
 import { classifyActivity, type ActivityItem as WorkspaceActivityItem } from "@/hooks/useWorkspaceActivity";
-import { useRuns } from "@/features/runs/useRun";
-import { RunCard } from "@/features/runs";
-
-
 import type { ChatMessage, LinkedRepo, PushRecord } from "@/pages/workspace";
 import type { PlanExecution } from "@/lib/plan";
 import type { Plan } from "@/lib/plan";
@@ -315,13 +311,6 @@ export function ChatStream(props: ChatStreamProps) {
     onSuggestionPark,
   } = props;
 
-
-  // ── Project run cards (features/runs) ────────────────────────────────────
-  const allRuns = useRuns();
-  const projectRuns = useMemo(
-    () => allRuns.filter((r) => r.projectId === projectId),
-    [allRuns, projectId],
-  );
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
@@ -746,14 +735,6 @@ export function ChatStream(props: ChatStreamProps) {
           onTap={onSuggestionTap}
           onLongPress={onSuggestionPark ?? onSuggestionTap}
         />
-      )}
-
-      {projectRuns.length > 0 && !activityStream.active && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, margin: "8px 0 4px" }}>
-          {projectRuns.map((r) => (
-            <RunCard key={r.id} runId={r.id} />
-          ))}
-        </div>
       )}
 
       <div ref={bottomRef} />
