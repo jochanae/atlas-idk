@@ -9,6 +9,7 @@ import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import { SessionSummaryPill } from "@/components/workspace/SessionSummaryPill";
 import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/composerAura";
+import { useThemeMode } from "@/lib/theme";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
 // CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
@@ -362,6 +363,7 @@ export function ChatComposer(props: ChatComposerProps) {
   const setUserComposerPreference = useShellStore((s) => s.setUserComposerPreference);
   // Compact mode applies only when the input isn't actively expanded as a sheet.
   const isCompact = composerVisibility === 'compact' && !sheetVisible;
+  const isParchment = useThemeMode() === "parchment";
 
   return (
 
@@ -378,9 +380,11 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
           style={{
             position: "fixed", inset: 0, zIndex: 55,
-            background: "rgba(8,8,10,0.55)",
-            backdropFilter: "blur(6px) saturate(120%)",
-            WebkitBackdropFilter: "blur(6px) saturate(120%)",
+            background: isParchment
+              ? "color-mix(in oklab, #f4ecd8 55%, transparent)"
+              : "rgba(8,8,10,0.55)",
+            backdropFilter: isParchment ? "blur(14px) saturate(115%)" : "blur(6px) saturate(120%)",
+            WebkitBackdropFilter: isParchment ? "blur(14px) saturate(115%)" : "blur(6px) saturate(120%)",
             opacity: sheetVisible ? 1 : 0,
             pointerEvents: sheetVisible ? "auto" : "none",
             transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1)",
@@ -409,7 +413,9 @@ export function ChatComposer(props: ChatComposerProps) {
           zIndex: 60,
           display: "flex", flexDirection: "column",
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
-          boxShadow: "0 -24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,76,0.18)",
+          boxShadow: isParchment
+            ? "0 -24px 60px rgba(74, 53, 30, 0.18), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
+            : "0 -24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,76,0.18)",
           transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           overflow: "hidden",
         } : {
