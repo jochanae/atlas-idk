@@ -6,7 +6,7 @@
  * the given project. Visual reference: attached_assets/run-card-{dark,light}.html
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "wouter";
 import { Loader2, CheckCircle2, XCircle, Bookmark, FileText, Image as ImageIcon, FileCode } from "lucide-react";
 import { useAllRuns, type ActiveRun } from "@/components/home/ActiveRuns";
 
