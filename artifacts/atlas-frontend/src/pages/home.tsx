@@ -4050,8 +4050,8 @@ export default function Home() {
             {nexusChat.messages.length === 0 && !showOverviewSheet && !askAtlasConversationActive && (
               <div style={{
                 textAlign: "center",
-                marginBottom: 24,
-                marginTop: 72,
+                marginBottom: isTiny ? 14 : 24,
+                marginTop: isTiny ? 32 : 72,
                 position: "relative",
                 zIndex: 1,
               }}>
