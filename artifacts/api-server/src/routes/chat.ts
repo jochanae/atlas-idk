@@ -5015,6 +5015,153 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     }
   }
 
+  // ── Agentic self-correction loop ─────────────────────────────────────────
+  // When a SHELL_RUN fails, Atlas autonomously diagnoses and re-attempts:
+  //   1. Apply this turn's FILE_EDIT blocks to disk (so the workspace is current)
+  //   2. Re-call the LLM with structured failure context — streaming to client
+  //   3. Extract + apply new FILE_EDIT blocks, re-run the SHELL_RUN command
+  //   4. Repeat up to MAX_SELF_CORRECT times or until the command passes
+  // All iteration tokens stream continuously into the same SSE message.
+  const MAX_SELF_CORRECT = 3;
+  let agenticLoopText = ""; // accumulated for the done-event content field
+  const SELF_CORRECT_ALLOWLIST = [
+    "npm ", "pnpm ", "yarn ", "node ", "npx ",
+    "git status", "git log", "git diff",
+    "ls", "cat ", "python ", "python3 ", "ts-node ", "tsx ",
+  ];
+  if (shellResult && shellResult.exitCode !== 0 && projectId && !isFlowMode) {
+    try {
+      const wsDir = await ensureProjectWorkspaceDir(projectId);
+
+      // Apply the original turn's FILE_EDIT blocks so the workspace reflects Atlas's edits
+      // before the first retry (build-handoff already did this — skip if so)
+      if (!autoApplied) {
+        for (const edit of responseFileEdits) {
+          try {
+            const absPath = resolveWorkspacePath(wsDir, edit.path);
+            await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+            await fsPromises.writeFile(absPath, edit.content, "utf-8");
+          } catch { /* best-effort */ }
+        }
+      }
+
+      let currentShellResult = shellResult;
+
+      for (let attempt = 1; attempt <= MAX_SELF_CORRECT; attempt++) {
+        if (currentShellResult.exitCode === 0) break;
+
+        // Stream iteration header as tokens so client sees progress live
+        const iterHeader = `\n\n---\n\n**⟳ Self-correcting (attempt ${attempt}/${MAX_SELF_CORRECT})…**\n\n`;
+        res.write(`data: ${JSON.stringify({ type: "token", content: iterHeader })}\n\n`);
+        agenticLoopText += iterHeader;
+
+        // Build failure context message for the next LLM call
+        const sr = currentShellResult;
+        const failureMsg =
+          `[SELF_CORRECT: attempt ${attempt}/${MAX_SELF_CORRECT}]\n` +
+          `Shell command \`${sr.cmd}\` failed (exit ${sr.exitCode}).\n` +
+          `Output:\n${sr.output.slice(-1500).trim() || "(no output)"}\n\n` +
+          `Diagnose the root cause. Emit FILE_EDIT blocks for every file you change, ` +
+          `then SHELL_RUN to re-verify. Do not explain — fix and verify.`;
+
+        const iterMessages: Array<{ role: "user" | "assistant"; content: string }> = [
+          ...(dispatchMessages as Array<{ role: "user" | "assistant"; content: unknown }>).map((m) => ({
+            role: m.role,
+            content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+          })),
+          { role: "assistant", content: rawContent },
+          { role: "user", content: failureMsg },
+        ];
+
+        let iterContent = "";
+        try {
+          const iterResult = await callModel(
+            activeModel,
+            systemPrompt,
+            iterMessages,
+            undefined,
+            (chunk: string) => {
+              iterContent += chunk;
+              res.write(`data: ${JSON.stringify({ type: "token", content: chunk })}\n\n`);
+            },
+          );
+          iterContent = iterResult.content; // authoritative full text
+        } catch (iterErr) {
+          logger.warn({ err: iterErr, attempt }, "agentic self-correct: callModel failed — aborting loop");
+          break;
+        }
+
+        // Extract display text and FILE_EDIT blocks from this iteration's response
+        const { visibleContent: iterVisible, fileEdits: iterEdits } = extractAllFileEdits(iterContent);
+        agenticLoopText += iterVisible;
+
+        // Apply iteration FILE_EDIT blocks to disk
+        for (const edit of iterEdits) {
+          try {
+            const absPath = resolveWorkspacePath(wsDir, edit.path);
+            await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+            await fsPromises.writeFile(absPath, edit.content, "utf-8");
+          } catch (applyErr) {
+            logger.warn({ err: applyErr, path: edit.path }, "agentic self-correct: file apply failed");
+          }
+        }
+
+        // Extract and run the SHELL_RUN command from this iteration
+        const ITER_SHELL_RE = /^SHELL_RUN:\s*(\{[^\n]+\})\s*$/m;
+        const iterShellMatch = iterContent.match(ITER_SHELL_RE);
+        if (!iterShellMatch) break; // Atlas gave up — no new command emitted
+
+        let iterShellToken: { cmd: string } | null = null;
+        try { iterShellToken = JSON.parse(iterShellMatch[1]) as { cmd: string }; } catch { break; }
+        if (!iterShellToken?.cmd?.trim()) break;
+
+        const iterCmdLower = iterShellToken.cmd.trim().toLowerCase();
+        if (!SELF_CORRECT_ALLOWLIST.some((p) => iterCmdLower.startsWith(p))) {
+          logger.warn({ cmd: iterShellToken.cmd }, "agentic self-correct: command blocked by allowlist");
+          break;
+        }
+
+        writeStep(res, { verb: "Running", target: iterShellToken.cmd, phase: "start" });
+        try {
+          const iterExec = await executeTerminalCommand(
+            iterShellToken.cmd,
+            { onStart: () => {}, onStdout: () => {}, onStderr: () => {}, onProcess: () => {} },
+            { cwd: wsDir },
+          );
+          currentShellResult = {
+            cmd: iterShellToken.cmd,
+            output: iterExec.output,
+            exitCode: iterExec.exitCode ?? 0,
+            durationMs: iterExec.durationMs,
+          };
+        } catch (execErr) {
+          logger.warn({ err: execErr, cmd: iterShellToken.cmd }, "agentic self-correct: execution threw");
+          break;
+        }
+
+        // Emit this iteration's shell result inline (also included in agenticLoopText → fullText)
+        const iterBadge = currentShellResult.exitCode === 0 ? "✅ Passed" : `❌ Failed (exit ${currentShellResult.exitCode})`;
+        const iterDur = currentShellResult.durationMs < 1000 ? `${currentShellResult.durationMs}ms` : `${(currentShellResult.durationMs / 1000).toFixed(1)}s`;
+        const iterSnippet = currentShellResult.output.slice(-3000).trim();
+        const iterShellText =
+          `\n\n**Shell** \`${currentShellResult.cmd}\` — ${iterBadge} in ${iterDur}` +
+          (iterSnippet ? `\n\`\`\`\n${iterSnippet}\n\`\`\`` : "");
+        res.write(`data: ${JSON.stringify({ type: "token", content: iterShellText })}\n\n`);
+        agenticLoopText += iterShellText;
+
+        if (currentShellResult.exitCode === 0) {
+          logger.info({ attempt, cmd: currentShellResult.cmd, projectId }, "agentic self-correct: resolved on attempt");
+          break;
+        }
+      }
+
+      // Propagate the final loop outcome to the done-event payload
+      (finalPayload as Record<string, unknown>).shellResult = currentShellResult;
+    } catch (loopErr) {
+      logger.warn({ err: loopErr, projectId }, "agentic self-correct: loop error — continuing without");
+    }
+  }
+
   // Append browser visit analysis to the displayed message so users can read it in chat
   let fullText = displayContent;
   if (browserVisitResult) {
@@ -5063,6 +5210,11 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       snippet ? `\`\`\`\n${snippet}\n\`\`\`` : "",
     ].filter(Boolean);
     fullText = fullText.trimEnd() + "\n\n" + shellTextLines.join("\n");
+  }
+  // Append agentic self-correction iterations to fullText so the done-event content
+  // matches everything that was streamed as tokens during the loop.
+  if (agenticLoopText) {
+    fullText = fullText.trimEnd() + agenticLoopText;
   }
   // Emit structured plan SSE event now that fullText is finalised (before done).
   if (structuredPlanArtifact) {
