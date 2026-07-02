@@ -803,6 +803,25 @@ RULES:
 - The command runs in the project's workspace directory (/home/runner/workspace/.project-workspaces/<projectId>/)
 - Output appears inline in chat immediately after your message so you can see the result and respond
 
+## Real-Time Data — Atlas Can Fetch Live Endpoints
+
+Query live HTTP endpoints and inspect the actual JSON/text response. Emit at the END of your response (after any FILE_EDIT or SHELL_RUN blocks):
+
+DATA_FETCH:{"url":"http://localhost:8080/api/users","method":"GET"}
+DATA_FETCH:{"url":"https://api.example.com/v1/status","method":"GET"}
+DATA_FETCH:{"url":"http://localhost:8080/api/items","method":"POST","body":"{\"name\":\"test\"}","headers":{"Content-Type":"application/json"}}
+
+RULES:
+- One DATA_FETCH per response
+- Supports GET, POST, PUT, DELETE, PATCH
+- localhost/127.0.0.1 URLs: test your running dev server endpoints directly
+- External HTTPS URLs: verify third-party API integrations
+- Use to confirm an API endpoint you just wrote returns the expected data
+- Use to debug why an endpoint is returning wrong status or payload
+- Use AFTER SHELL_RUN when the server needs to be started first
+- Response appears inline in chat with status code and formatted body
+- Do NOT use for destructive mutations you have not verified intent for
+
 ## Threshold Arrival — First Session
 When this is a fresh workspace and you have project memories from a Global shaping conversation, this is a Threshold moment — the user just crossed from discovery into execution. Your first message should:
 1. Briefly surface what was brought over: problem, audience, and key constraints as tight bullets prefixed with ✓
@@ -4348,6 +4367,23 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     return "";
   }).trim();
 
+  // Extract and strip DATA_FETCH tokens — Atlas requests a live HTTP endpoint response
+  const DATA_FETCH_RE = /^DATA_FETCH:\s*(\{[^\n]+\})\s*$/gm;
+  type DataFetchToken = { url: string; method?: string; body?: string; headers?: Record<string, string> };
+  let dataFetchToken: DataFetchToken | null = null;
+  rawContent = rawContent.replace(DATA_FETCH_RE, (_match, json: string) => {
+    if (!dataFetchToken) {
+      try {
+        const parsed = JSON.parse(json) as DataFetchToken;
+        if (typeof parsed.url === "string" && parsed.url.trim()) {
+          dataFetchToken = parsed;
+          writeStep(res, { verb: "Fetching", target: parsed.url, phase: "execute" });
+        }
+      } catch { /* ignore malformed tokens */ }
+    }
+    return "";
+  }).trim();
+
   // Extract and strip CLARIFY blocks — Atlas asks structured follow-up questions when blocked
   type ClarifyPayload = {
     steps: Array<{
@@ -5162,6 +5198,44 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     }
   }
 
+  // Execute DATA_FETCH token — fetch a live HTTP endpoint and return the response inline
+  type DataFetchResult = { url: string; method: string; status: number; body: string; contentType: string };
+  let dataFetchResult: DataFetchResult | null = null;
+  if (dataFetchToken) {
+    const dft = dataFetchToken as DataFetchToken;
+    try {
+      const parsedUrl = new URL(dft.url);
+      const isLocalhost = parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1";
+      const isHttps = parsedUrl.protocol === "https:";
+      if (isLocalhost || isHttps) {
+        const method = (dft.method ?? "GET").toUpperCase();
+        const fetchOpts: RequestInit = {
+          method,
+          headers: { Accept: "application/json, text/plain, */*", ...(dft.headers ?? {}) },
+          signal: AbortSignal.timeout(10_000),
+        };
+        if (method !== "GET" && method !== "HEAD" && dft.body) {
+          fetchOpts.body = dft.body;
+        }
+        writeStep(res, { verb: "Fetching", target: dft.url, phase: "start" });
+        const resp = await fetch(dft.url, fetchOpts);
+        const text = await resp.text();
+        dataFetchResult = {
+          url: dft.url,
+          method,
+          status: resp.status,
+          body: text.slice(0, 4000),
+          contentType: resp.headers.get("content-type") ?? "",
+        };
+        (finalPayload as Record<string, unknown>).dataFetchResult = dataFetchResult;
+      } else {
+        logger.warn({ url: dft.url }, "DATA_FETCH blocked — only localhost and HTTPS URLs are permitted");
+      }
+    } catch (err) {
+      logger.warn({ err, url: dft.url }, "DATA_FETCH execution failed");
+    }
+  }
+
   // Append browser visit analysis to the displayed message so users can read it in chat
   let fullText = displayContent;
   if (browserVisitResult) {
@@ -5215,6 +5289,21 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   // matches everything that was streamed as tokens during the loop.
   if (agenticLoopText) {
     fullText = fullText.trimEnd() + agenticLoopText;
+  }
+  // Append data fetch result inline so Atlas and the user can read it in chat
+  if (dataFetchResult) {
+    const dfr = dataFetchResult;
+    const httpBadge = dfr.status >= 200 && dfr.status < 300 ? "✅" : dfr.status >= 400 ? "❌" : "⚠️";
+    const isJson = dfr.contentType.includes("json");
+    let formatted = dfr.body;
+    if (isJson) {
+      try { formatted = JSON.stringify(JSON.parse(dfr.body), null, 2).slice(0, 4000); } catch {}
+    }
+    const dataFetchLines = [
+      `**${dfr.method}** \`${dfr.url}\` — ${httpBadge} ${dfr.status}`,
+      `\`\`\`${isJson ? "json" : "text"}\n${formatted.trim() || "(empty response)"}\n\`\`\``,
+    ];
+    fullText = fullText.trimEnd() + "\n\n" + dataFetchLines.join("\n");
   }
   // Emit structured plan SSE event now that fullText is finalised (before done).
   if (structuredPlanArtifact) {
