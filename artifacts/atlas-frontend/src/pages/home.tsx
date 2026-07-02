@@ -4156,7 +4156,7 @@ export default function Home() {
             <div style={{
               margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
-                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isFoldInner ? "clamp(40px, 7dvh, 72px) 0 clamp(32px, 6dvh, 52px)" : "18px 0 26px")),
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isFoldInner ? "clamp(30px, 7dvh, 62px) 0 clamp(32px, 6dvh, 52px)" : "18px 0 26px")),
               minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : (isFoldInner ? "clamp(52px, 8dvh, 76px)" : 0)),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
               display: askAtlasSurfaceVisible ? "none" : undefined,
