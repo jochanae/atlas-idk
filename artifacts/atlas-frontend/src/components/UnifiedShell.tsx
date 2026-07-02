@@ -2297,7 +2297,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             ) : (
               <ShellConversationTitle title={location === "/home" ? activeConversationTitle : null} />
             )}
-            {!(location === "/home" && currentDepth === "ambient") && !isProjectRoute(location) && <HudToggleDot />}
+            {location !== "/home" && !isProjectRoute(location) && <HudToggleDot />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: isTinyMobile ? 3 : 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />

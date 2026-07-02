@@ -98,38 +98,60 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
   // Header title rotation stripped (Pass 1). Header is permanently
   // "Ask Atlas"; the project name lives in the CommitPill only.
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
-      <span
-        aria-hidden
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          flexShrink: 0,
-          background: "var(--atlas-gold)",
-          boxShadow: "0 0 6px rgba(201,162,76,0.45)",
-        }}
-      />
-      <span
-        title="Ask Atlas"
-        style={{
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          minWidth: 0,
-          maxWidth: "100%",
-          color: "var(--atlas-gold)",
-          fontFamily: "var(--app-font-sans)",
-          fontSize: "var(--ts-body)",
-          fontWeight: 500,
-          lineHeight: "var(--lh-snug)",
-          letterSpacing: "var(--ls-tight)",
-          opacity: 0.92,
-        }}
-      >
-        Ask Atlas
-      </span>
-    </div>
+    <>
+      <style>{`
+        @keyframes ask-atlas-title-ping {
+          0% { transform: scale(1); opacity: 0.6; }
+          75%, 100% { transform: scale(2.2); opacity: 0; }
+        }
+      `}</style>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
+        <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8, flexShrink: 0 }}>
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 999,
+              background: "rgb(167,139,250)",
+              opacity: 0.45,
+              animation: "ask-atlas-title-ping 1.6s cubic-bezier(0,0,0.2,1) infinite",
+            }}
+          />
+          <span
+            aria-hidden
+            style={{
+              position: "relative",
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background: "rgb(139,92,246)",
+              boxShadow: "0 0 8px rgba(139,92,246,0.6)",
+            }}
+          />
+        </span>
+        <span
+          title="Ask Atlas"
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+            maxWidth: "100%",
+            color: "var(--atlas-gold)",
+            fontFamily: "var(--app-font-sans)",
+            fontSize: "var(--ts-body)",
+            fontWeight: 500,
+            lineHeight: "var(--lh-snug)",
+            letterSpacing: "var(--ls-tight)",
+            opacity: 0.92,
+          }}
+        >
+          Ask Atlas
+        </span>
+      </div>
+    </>
   );
 }
 
@@ -4129,7 +4151,7 @@ export default function Home() {
                 : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
               minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
-              display: askAtlasSurfaceVisible ? "flex" : undefined,
+              display: askAtlasSurfaceVisible ? "none" : undefined,
               flexDirection: askAtlasSurfaceVisible ? "column" : undefined,
               overflow: askAtlasSurfaceVisible ? "hidden" : undefined,
               minWidth: 0,

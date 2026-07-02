@@ -18,7 +18,7 @@ import { AskAtlasRenderer } from "./AskAtlasRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
-import { StepProgress, type LiveStep } from "@/components/workspace/StepProgress";
+import { type LiveStep } from "@/components/workspace/StepProgress";
 import SketchReveal from "@/components/chat/SketchReveal";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ParkSheet } from "@/components/ParkSheet";
@@ -615,13 +615,6 @@ export function AskAtlasSurface({
           );
         })}
 
-        <StepProgress
-          mode="single"
-          isStreaming={isStreaming}
-          hasContent={messages.some((m) => m.streaming && m.content.length > 0)}
-          liveStep={liveStep}
-          pendingPhrase={pendingPhrase}
-        />
       </div>
       {showScrollBtn && (
         <button
