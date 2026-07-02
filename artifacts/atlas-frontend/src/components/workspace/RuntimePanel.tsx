@@ -11,6 +11,11 @@ interface RuntimeState {
   startedAt: string | null;
 }
 
+interface ShareState {
+  token: string | null;
+  url: string | null;
+}
+
 const STATUS_COLOR: Record<RuntimeStatus, string> = {
   idle: "var(--atlas-muted)",
   cloning: "#f59e0b",
@@ -92,6 +97,13 @@ const btnRed: React.CSSProperties = {
   border: "1px solid rgba(239,68,68,0.25)",
 };
 
+const btnBlue: React.CSSProperties = {
+  ...btn,
+  background: "rgba(99,179,237,0.10)",
+  color: "#63b3ed",
+  border: "1px solid rgba(99,179,237,0.25)",
+};
+
 export function RuntimePanel({
   projectId,
   onOpenPreview,
@@ -108,6 +120,10 @@ export function RuntimePanel({
     startedAt: null,
   });
   const [actionLoading, setActionLoading] = useState(false);
+  const [share, setShare] = useState<ShareState>({ token: null, url: null });
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const uptime = useUptime(state.startedAt, state.status === "running");
 
@@ -137,6 +153,14 @@ export function RuntimePanel({
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [state.logs.length]);
+
+  // Load share state when panel first mounts
+  useEffect(() => {
+    fetch(`/api/projects/${projectId}/share`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setShare({ token: d.token, url: d.url }); })
+      .catch(() => {});
+  }, [projectId]);
 
   const start = async () => {
     setActionLoading(true);
@@ -174,6 +198,46 @@ export function RuntimePanel({
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const generateShare = async () => {
+    setShareLoading(true);
+    try {
+      const r = await fetch(`/api/projects/${projectId}/share`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (r.ok) {
+        const d = await r.json() as ShareState;
+        setShare(d);
+        setShareOpen(true);
+      }
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const revokeShare = async () => {
+    setShareLoading(true);
+    try {
+      await fetch(`/api/projects/${projectId}/share`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      setShare({ token: null, url: null });
+      setShareOpen(false);
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const copyShareUrl = async () => {
+    if (!share.url) return;
+    try {
+      await navigator.clipboard.writeText(share.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
   };
 
   const atlasVoice = isRunning
@@ -331,7 +395,17 @@ export function RuntimePanel({
               onClick={restart}
               disabled={actionLoading}
             >
-              <span>↺</span> Restart
+              <span>↺</span> Rebuild
+            </button>
+          )}
+          {isRunning && (
+            <button
+              style={share.token ? { ...btn, color: "#63b3ed", borderColor: "rgba(99,179,237,0.35)" } : btnBlue}
+              onClick={() => share.token ? setShareOpen((o) => !o) : generateShare()}
+              disabled={shareLoading}
+              title={share.token ? "Manage share link" : "Generate a public share link"}
+            >
+              <span>⇗</span> {share.token ? "Shared" : "Share"}
             </button>
           )}
           {isRunning && onOpenPreview && (
@@ -339,10 +413,63 @@ export function RuntimePanel({
               style={{ ...btn, marginLeft: "auto" }}
               onClick={onOpenPreview}
             >
-              <span>⧉</span> Open Preview
+              <span>⧉</span> Preview
             </button>
           )}
         </div>
+
+        {/* Share panel */}
+        {shareOpen && share.url && (
+          <div
+            style={{
+              padding: "10px 12px",
+              background: "rgba(99,179,237,0.06)",
+              border: "1px solid rgba(99,179,237,0.2)",
+              borderRadius: 6,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
+              Anyone with this link can view the latest build — no login required.
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                readOnly
+                value={share.url}
+                style={{
+                  flex: 1,
+                  fontSize: 10,
+                  fontFamily: "var(--app-font-mono)",
+                  background: "var(--atlas-bg)",
+                  border: "1px solid var(--atlas-border)",
+                  borderRadius: 4,
+                  padding: "4px 8px",
+                  color: "var(--atlas-text)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                onFocus={(e) => e.target.select()}
+              />
+              <button
+                style={{ ...btn, fontSize: 10, padding: "4px 10px" }}
+                onClick={copyShareUrl}
+              >
+                {copied ? "✓ Copied" : "Copy"}
+              </button>
+              <button
+                style={{ ...btn, fontSize: 10, padding: "4px 10px", color: "#ef4444", borderColor: "rgba(239,68,68,0.25)" }}
+                onClick={revokeShare}
+                disabled={shareLoading}
+                title="Revoke this link — it will stop working immediately"
+              >
+                Revoke
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Logs ───────────────────────────────────────────────── */}

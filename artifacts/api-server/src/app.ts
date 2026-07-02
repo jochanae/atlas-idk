@@ -143,6 +143,57 @@ app.use("/api/preview/workspace/:projectId", (req, res) => {
   createReadStream(fullPath).pipe(res);
 });
 
+// ── Public share route — /share/:token (no auth required) ─────────────────
+// Serves the static build output for a project identified by its share token.
+app.use("/share/:token", async (req, res) => {
+  const token = req.params["token"];
+  if (!token || !/^[a-f0-9]{32}$/.test(token)) { res.status(400).send("Invalid share token"); return; }
+
+  let projectId: number | null = null;
+  try {
+    const { pool } = await import("@workspace/db");
+    const result = await pool.query<{ id: number }>(
+      "SELECT id FROM projects WHERE share_token = $1",
+      [token]
+    );
+    projectId = result.rows[0]?.id ?? null;
+  } catch {
+    res.status(500).send("Database error"); return;
+  }
+
+  if (!projectId) { res.status(404).send("Share link not found or has been revoked."); return; }
+
+  const distDir = path.join(projectWorkspaceDir(projectId), "dist");
+  const SHARE_MIME: Record<string, string> = {
+    ".html": "text/html", ".css": "text/css", ".js": "application/javascript",
+    ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon",
+    ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf",
+  };
+
+  const base = `/share/${token}`;
+  let filePath = (!req.path || req.path === "/") ? "/index.html" : req.path;
+  if (!path.extname(filePath)) filePath = "/index.html";
+  const fullPath = path.join(distDir, filePath);
+  if (!fullPath.startsWith(distDir)) { res.status(403).end(); return; }
+
+  const serveIndex = () => {
+    const idx = path.join(distDir, "index.html");
+    let html: string;
+    try { html = readFileSync(idx, "utf8"); } catch { res.status(404).send("No build found — the project may not have been built yet."); return; }
+    html = html.replace(/(src|href)="\/(assets\/[^"]+)"/g, `$1="${base}/$2"`);
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  };
+
+  if (filePath === "/index.html") { serveIndex(); return; }
+
+  try { statSync(fullPath); } catch { serveIndex(); return; }
+  const mime = SHARE_MIME[path.extname(fullPath).toLowerCase()] ?? "application/octet-stream";
+  res.setHeader("Content-Type", mime);
+  createReadStream(fullPath).pipe(res);
+});
+
 app.use("/api/shell", shellRouter);
 app.use("/api", router);
 

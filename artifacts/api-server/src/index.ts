@@ -443,6 +443,21 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: user_resume_snapshots table failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS share_token text
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS projects_share_token_uq
+        ON projects (share_token)
+        WHERE share_token IS NOT NULL
+    `);
+    logger.info("ensureColumns: projects.share_token verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: projects.share_token failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

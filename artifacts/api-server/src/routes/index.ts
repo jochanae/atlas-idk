@@ -58,6 +58,7 @@ import searchRouter from "./search";
 import ledgerRouter from "./ledger";
 import conversationsRouter from "./conversations";
 import feedbackRouter from "./feedback";
+import shareRouter from "./share";
 
 const router: IRouter = Router();
 
@@ -149,6 +150,9 @@ router.use(requireAuth, conversationsRouter);
 
 // Message feedback — 👍 / 👎 on Atlas responses
 router.use(requireAuth, feedbackRouter);
+
+// Share — generate/revoke public share tokens for workspace builds
+router.use(requireAuth, shareRouter);
 
 // Self-repair routes — super_admin only
 router.use(requireAdmin, selfRouter);
