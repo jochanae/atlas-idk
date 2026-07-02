@@ -5547,6 +5547,9 @@ export default function Home() {
         @keyframes askAtlasInlineMsgIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
         .ask-atlas-inline-msg { animation: askAtlasInlineMsgIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
         .ask-atlas-inline-dot { animation: askAtlasInlineDot 1100ms cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+        @keyframes atlasPromptSettle { 0% { opacity: 0; transform: translateY(4px); } 55% { opacity: 0; transform: translateY(4px); } 100% { opacity: var(--_settle-op, 0.88); transform: translateY(0); } }
+        .atlas-prompt-settle { animation: atlasPromptSettle 1400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .atlas-cursor-settle { animation: atlasPromptSettle 1400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
         @keyframes ping {
           75%, 100% { transform: scale(1.8); opacity: 0; }
         }
