@@ -28,6 +28,7 @@ import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
+import { useIsTinyMobile } from "@/hooks/use-mobile";
 
 
 export type AskAtlasMessage = {
