@@ -154,6 +154,23 @@ function deriveRun(
     const elapsedMs =
       typeof msg.executionTimeMs === "number" ? msg.executionTimeMs : null;
 
+    // If the conversation has moved on past this run (a user message sent
+    // after the run received a completed Atlas reply), hide the card.
+    // This prevents stale run cards from lingering while a new thread is active.
+    const hasSubsequentExchange = (() => {
+      let foundUserAfterRun = false;
+      for (let k = i + 1; k < messages.length; k++) {
+        if (messages[k].role === "user") { foundUserAfterRun = true; break; }
+      }
+      if (!foundUserAfterRun) return false;
+      // Also need a completed (non-streaming) assistant reply after the user message.
+      for (let k = i + 1; k < messages.length; k++) {
+        if (messages[k].role === "assistant" && !messages[k].streaming) return true;
+      }
+      return false;
+    })();
+    if (hasSubsequentExchange) return null;
+
     const associatedMessageId =
       typeof msg.id === "number" ? msg.id : null;
     const id = msg.id != null ? String(msg.id) : `msg-${i}-${createdAt}`;
