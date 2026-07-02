@@ -4099,7 +4099,7 @@ export default function Home() {
                     })()}
                   </p>
                   {projects && projects.length > 0 && (() => {
-                    const receded = askAtlasSurfaceVisible || inputFocused;
+                    const receded = askAtlasSurfaceVisible;
                     return (
                       <button
                         type="button"
