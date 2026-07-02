@@ -5464,52 +5464,6 @@ export default function Home() {
                 boxShadow: "0 0 4px color-mix(in oklab, var(--atlas-gold) 60%, transparent)",
               }} />
             </button>
-            {askAtlasChat.messages.length > 0 && (
-              <button
-                type="button"
-                title="Download thread"
-                aria-label="Download Ask Atlas thread"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const lines = askAtlasChat.messages
-                    .filter((m: any) => m.content && m.content.trim().length > 0)
-                    .map((m: any) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.content}\n`)
-                    .join("\n");
-                  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-                  const blob = new Blob(
-                    [`ASK ATLAS\n${stamp}\n\n${lines}`],
-                    { type: "text/plain;charset=utf-8" },
-                  );
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `ask-atlas-${stamp}.txt`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  setTimeout(() => URL.revokeObjectURL(url), 0);
-                }}
-                style={{
-                  height: isTiny ? 26 : 30,
-                  width: isTiny ? 26 : 30,
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  borderRadius: 999,
-                  background: "transparent",
-                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
-                  color: "var(--atlas-gold)",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  WebkitTapHighlightColor: "transparent",
-                  transition: "all 180ms ease",
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 2.5v8.5" />
-                  <path d="M4.5 7.5L8 11l3.5-3.5" />
-                  <path d="M3 13.5h10" />
-                </svg>
-              </button>
-            )}
           </div>
         }
         handoffSignal={askAtlasChat.handoffSignal}
