@@ -4702,6 +4702,8 @@ export default function Workspace() {
   const [desktopRightFull, setDesktopRightFull] = useState(false);
   const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [switchToExpanded, setSwitchToExpanded] = useState(false);
+  const [exportExpanded, setExportExpanded] = useState(false);
+  const [archiveExpanded, setArchiveExpanded] = useState(false);
   const [switchProjectDeleteId, setSwitchProjectDeleteId] = useState<number | null>(null);
   // null = panel closed; string = open with current draft
   const [archiveReasonDraft, setArchiveReasonDraft] = useState<string | null>(null);
