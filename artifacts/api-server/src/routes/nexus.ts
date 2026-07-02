@@ -2492,15 +2492,6 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
     // Send done immediately — HUD clears now regardless of image generation speed.
     res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(handoffSignal ? { handoffSignal } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
 
-    // Persist conv_state to project so workspace always opens with the correct posture.
-    // Non-blocking: runs after SSE done is flushed so it never delays the stream.
-    const convStateProjectId = pendingNavProjectId ?? focusProjectId;
-    if (convStateProjectId) {
-      db.update(projectsTable).set({ convState: convState.toLowerCase() }).where(eq(projectsTable.id, convStateProjectId)).catch((err: unknown) => {
-        logger.warn({ err }, "nexus conv_state persist failed — non-fatal");
-      });
-    }
-
     // Generate image AFTER done — client keeps the connection open for this event.
     // runImageGen has a 20 s internal timeout so it can never hang the stream.
     if (imageGenTokens.length > 0 && !res.writableEnded && !res.destroyed) {

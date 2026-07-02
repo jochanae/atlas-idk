@@ -4026,8 +4026,6 @@ export default function Workspace() {
     } catch { return 0; }
   });
   const cidResolvingRef = useRef(false);
-  // Persisted conv_state from the last Nexus turn — gates build posture in workspace
-  const [openingConvState, setOpeningConvState] = useState<string>("think");
   useEffect(() => {
     if (!conversationId || cidResolvedId > 0 || cidResolvingRef.current) return;
     cidResolvingRef.current = true;
@@ -4037,12 +4035,11 @@ export default function Workspace() {
       headers: tok ? { Authorization: `Bearer ${tok}` } : {},
     })
       .then((r) => r.json())
-      .then((data: { id?: number; conv_state?: string }) => {
+      .then((data: { id?: number }) => {
         if (data?.id) {
           const num = Number(data.id);
           try { sessionStorage.setItem(`atlas-cid-${conversationId}`, String(num)); } catch {}
           setCidResolvedId(num);
-          if (data.conv_state) setOpeningConvState(data.conv_state);
         } else {
           setLocation("/home");
         }
@@ -4437,7 +4434,6 @@ export default function Workspace() {
     onStepEvent: handleThinkingStep,
     onFirstStreamingToken: handleFirstStreamingToken,
     onDoneEvent: handleThinkingDone,
-    convState: openingConvState,
     onFlowNodes: (nodes) => {
       const archNodes: ArchNode[] = nodes.map((n) => ({
         id: n.id,

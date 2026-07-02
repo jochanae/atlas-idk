@@ -443,15 +443,6 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: user_resume_snapshots table failed — server will start anyway");
   }
-
-  try {
-    await db.execute(sql`
-      ALTER TABLE projects ADD COLUMN IF NOT EXISTS conv_state TEXT DEFAULT 'think'
-    `);
-    logger.info("ensureColumns: projects.conv_state verified");
-  } catch (err) {
-    logger.warn({ err }, "ensureColumns: projects.conv_state failed — server will start anyway");
-  }
 }
 
 async function runMigrations(): Promise<void> {
