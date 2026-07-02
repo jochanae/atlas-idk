@@ -5315,7 +5315,7 @@ export default function Home() {
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
         focusChip={null}
-        handoffSignal={nexusChat.handoffSignal}
+        handoffSignal={askAtlasChat.handoffSignal}
         onMenuAction={(action) => {
           if (action === "history") { setShowTimeTravel(true); return; }
           if (action === "settings") { setLocation("/account"); return; }
