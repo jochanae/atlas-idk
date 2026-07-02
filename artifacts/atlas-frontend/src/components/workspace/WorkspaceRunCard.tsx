@@ -111,7 +111,8 @@ function deriveRun(messages: ChatMessage[]): DerivedRun | null {
 
     const id = msg.id != null ? String(msg.id) : `msg-${i}-${createdAt}`;
 
-    return { id, status, title, createdAt, elapsedMs, files, produced, error };
+    const associatedMessageId = typeof msg.id === "number" ? msg.id : null;
+    return { id, associatedMessageId, status, title, createdAt, elapsedMs, files, produced, error };
   }
   return null;
 }
