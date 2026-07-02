@@ -3989,6 +3989,8 @@ export default function Home() {
           display: "flex",
           justifyContent: "center",
           padding: "0 24px",
+          flex: 1,
+          minHeight: 0,
         }}
       >
         <UnifiedConversationSurface
