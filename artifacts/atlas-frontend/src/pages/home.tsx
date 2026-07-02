@@ -5255,9 +5255,7 @@ export default function Home() {
             aria-pressed={true}
             onClick={(e) => {
               e.stopPropagation();
-              setSendTo("workspace");
               setAskAtlasSurfaceOpen(false);
-              setAskAtlasHelperVisible(false);
               askAtlasChat.abort();
               askAtlasChat.clearMessages();
             }}
