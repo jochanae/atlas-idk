@@ -20,6 +20,7 @@ import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { HudToggleDot } from "@/components/HudToggleDot";
+import { Briefcase } from "lucide-react";
 import AtlasMemoryHUD from "@/components/workspace/AtlasMemoryHUD";
 import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { SpecifySheet } from "@/components/SpecifySheet";
@@ -2288,6 +2289,34 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: isTinyMobile ? 3 : 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />
+            {location === "/home" && isTinyMobile && (
+              <button
+                type="button"
+                aria-label="Open project briefcase"
+                title="Open workspace"
+                onClick={() => window.dispatchEvent(new CustomEvent("axiom:open-overview"))}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
+                  color: "var(--atlas-gold)",
+                  cursor: "pointer",
+                  padding: 0,
+                  flexShrink: 0,
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <Briefcase size={16} strokeWidth={1.5} />
+              </button>
+            )}
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
 
