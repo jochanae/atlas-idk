@@ -5314,7 +5314,44 @@ export default function Home() {
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
-        focusChip={null}
+        focusChip={
+          <button
+            type="button"
+            title="Exit Ask Atlas"
+            aria-label="Exit Ask Atlas"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setAskAtlasSurfaceOpen(false);
+              askAtlasChat.abort();
+              askAtlasChat.clearMessages();
+            }}
+            onClick={(e) => { e.stopPropagation(); }}
+            style={{
+              height: isTiny ? 28 : 34,
+              display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
+              padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
+              background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+              color: "var(--atlas-gold)",
+              cursor: "pointer",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
+              whiteSpace: "nowrap", minWidth: 0, flexShrink: 0,
+              WebkitTapHighlightColor: "transparent",
+              transition: "all 180ms ease",
+            }}
+          >
+            <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+            {!isTiny && <span>Ask Atlas</span>}
+            <span style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: "var(--atlas-gold)",
+              flexShrink: 0,
+              boxShadow: "0 0 4px color-mix(in oklab, var(--atlas-gold) 60%, transparent)",
+            }} />
+          </button>
+        }
         handoffSignal={askAtlasChat.handoffSignal}
         onMenuAction={(action) => {
           if (action === "history") { setShowTimeTravel(true); return; }
