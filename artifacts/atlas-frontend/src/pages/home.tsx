@@ -5375,42 +5375,90 @@ export default function Home() {
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
         focusChip={
-          <button
-            type="button"
-            title="Exit Ask Atlas"
-            aria-label="Exit Ask Atlas"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setAskAtlasSurfaceOpen(false);
-              askAtlasChat.abort();
-              askAtlasChat.clearMessages();
-            }}
-            onClick={(e) => { e.stopPropagation(); }}
-            style={{
-              height: isTiny ? 28 : 34,
-              display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
-              padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
-              background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
-              color: "var(--atlas-gold)",
-              cursor: "pointer",
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
-              whiteSpace: "nowrap", minWidth: 0, flexShrink: 0,
-              WebkitTapHighlightColor: "transparent",
-              transition: "all 180ms ease",
-            }}
-          >
-            <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-            {!isTiny && <span>Ask Atlas</span>}
-            <span style={{
-              width: 5, height: 5, borderRadius: "50%",
-              background: "var(--atlas-gold)",
-              flexShrink: 0,
-              boxShadow: "0 0 4px color-mix(in oklab, var(--atlas-gold) 60%, transparent)",
-            }} />
-          </button>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <button
+              type="button"
+              title="Exit Ask Atlas"
+              aria-label="Exit Ask Atlas"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setAskAtlasSurfaceOpen(false);
+                askAtlasChat.abort();
+                askAtlasChat.clearMessages();
+              }}
+              onClick={(e) => { e.stopPropagation(); }}
+              style={{
+                height: isTiny ? 28 : 34,
+                display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
+                padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
+                background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+                color: "var(--atlas-gold)",
+                cursor: "pointer",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
+                whiteSpace: "nowrap", minWidth: 0, flexShrink: 0,
+                WebkitTapHighlightColor: "transparent",
+                transition: "all 180ms ease",
+              }}
+            >
+              <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+              {!isTiny && <span>Ask Atlas</span>}
+              <span style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: "var(--atlas-gold)",
+                flexShrink: 0,
+                boxShadow: "0 0 4px color-mix(in oklab, var(--atlas-gold) 60%, transparent)",
+              }} />
+            </button>
+            {askAtlasChat.messages.length > 0 && (
+              <button
+                type="button"
+                title="Download thread"
+                aria-label="Download Ask Atlas thread"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const lines = askAtlasChat.messages
+                    .filter((m: any) => m.content && m.content.trim().length > 0)
+                    .map((m: any) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.content}\n`)
+                    .join("\n");
+                  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+                  const blob = new Blob(
+                    [`ASK ATLAS\n${stamp}\n\n${lines}`],
+                    { type: "text/plain;charset=utf-8" },
+                  );
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `ask-atlas-${stamp}.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  setTimeout(() => URL.revokeObjectURL(url), 0);
+                }}
+                style={{
+                  height: isTiny ? 26 : 30,
+                  width: isTiny ? 26 : 30,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 999,
+                  background: "transparent",
+                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
+                  color: "var(--atlas-gold)",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  WebkitTapHighlightColor: "transparent",
+                  transition: "all 180ms ease",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 2.5v8.5" />
+                  <path d="M4.5 7.5L8 11l3.5-3.5" />
+                  <path d="M3 13.5h10" />
+                </svg>
+              </button>
+            )}
+          </div>
         }
         handoffSignal={askAtlasChat.handoffSignal}
         onMenuAction={(action) => {
