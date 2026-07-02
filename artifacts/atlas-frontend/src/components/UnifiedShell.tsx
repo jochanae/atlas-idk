@@ -1709,6 +1709,9 @@ function MetaRow({ label, value, ok, onClick }: { label: string; value: string; 
       <span style={{ fontSize: 11, fontWeight: 600, color: ok ? "#4ade80" : "var(--atlas-muted)" }}>{value}</span>
     </button>
   );
+}
+
+
 
 
 function ShellFooterIcon({ icon }: { icon: ShellNavIcon }) {
