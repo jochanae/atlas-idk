@@ -234,8 +234,8 @@ export function WhyAxiomExists() {
             transition: "all 900ms ease-out 200ms",
           }}
         >
-          Most tools help you generate. Few help you continue. Axiom exists so your work
-          can evolve without losing its purpose.
+          Most tools help you generate. Few help you continue.
+          Axiom exists so your work can evolve without losing its purpose.
         </p>
       </div>
     </section>
@@ -312,7 +312,6 @@ export function ContinuityThread() {
           }}
         >
           Every decision, pivot, and file stays tethered to the idea that started it.
-          Six months later, the project still knows why.
         </p>
 
         {/* Vertical thread */}
@@ -394,7 +393,7 @@ export function ContinuityThread() {
             transition: "opacity 900ms ease-out 2200ms",
           }}
         >
-          One continuous thread — from the first sentence to the twelfth version.
+          One thread — first sentence to twelfth version.
         </p>
       </div>
     </section>
@@ -471,7 +470,7 @@ export function StrategicManifest() {
             transition: "opacity 900ms ease-out 200ms",
           }}
         >
-          Storyteller, Designer, Builder — the same work, seen the way you need to see it.
+          The same work — seen the way you need to see it.
         </p>
 
         {/* Seed */}
@@ -718,7 +717,7 @@ export function StructuralOutputs() {
       idx: "01",
       eye: "Continuity Vector",
       h: "The through-line that survives any pivot.",
-      p: "Direction outlasts the conversation that produced it.",
+      p: "Direction outlasts the conversation.",
     },
     {
       idx: "02",
@@ -730,7 +729,7 @@ export function StructuralOutputs() {
       idx: "03",
       eye: "Decision Ledger",
       h: "Every commitment, every override, kept honest.",
-      p: "Decisions hold their weight long after the moment passes.",
+      p: "Decisions hold their weight long after the moment.",
     },
   ];
 
@@ -785,7 +784,7 @@ export function StructuralOutputs() {
             transition: "opacity 900ms ease-out 200ms",
           }}
         >
-          Three artifacts. Every conversation produces them.
+          Three artifacts. Every conversation earns them.
         </p>
 
         <div>
@@ -898,8 +897,8 @@ export function ParchmentAside() {
             transition: "all 900ms ease-out 200ms",
           }}
         >
-          It was designed for the part that happens before tasks exist — when an idea
-          is still finding its shape, and the wrong system would flatten it.
+          It was designed for the part before tasks exist — when an idea is still
+          finding its shape, and the wrong system would flatten it.
           Most tools wait for you to be sure. Axiom is for the time before you are.
         </p>
       </div>
@@ -964,8 +963,8 @@ export function BridgeSection({ onEnter }: { onEnter: () => void }) {
             transition: "opacity 900ms ease-out 200ms",
           }}
         >
-          Axiom doesn't stop at a specification. It follows your work into execution —
-          building, previewing, and preparing it for the world it was made for.
+          Axiom doesn't stop at the spec. It follows your work into execution —
+          building, previewing, and shipping it into the world it was made for.
         </p>
         <button
           onClick={onEnter}

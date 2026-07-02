@@ -136,7 +136,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
         maxWidth: 520,
         lineHeight: 1.55,
       }}>
-        A workspace that carries an idea from spark to shipped — without losing why it exists.
+        From spark to shipped — without losing why it exists.
       </p>
 
         {/* Mode pills */}
