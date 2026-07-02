@@ -6118,6 +6118,37 @@ export default function Workspace() {
     return () => window.removeEventListener("atlas:open-history-sheet", handler);
   }, []);
 
+  // "axiom:open-changes" — dispatched from WorkspaceRunCard "Details" button.
+  // Routes the workspace to the Changes/Diff panel (which hosts Timeline | Changes).
+  useEffect(() => {
+    const handler = () => {
+      setLeftTab("diff");
+    };
+    window.addEventListener("axiom:open-changes", handler);
+    return () => window.removeEventListener("axiom:open-changes", handler);
+  }, []);
+
+  // "axiom:open-preview" — dispatched from WorkspaceRunCard "Preview" button.
+  // Opens the Preview panel and forwards the requested source mode.
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ source?: "sandbox" | "url" | "local" | "generated"; content?: string }>).detail ?? {};
+      openPreviewPanel();
+      // If a Draft HTML payload came along, reuse the existing artifact event.
+      if (detail.source === "sandbox" && detail.content) {
+        window.dispatchEvent(new CustomEvent("axiom:preview-artifact", { detail: { content: detail.content } }));
+      }
+      if (detail.source) {
+        // Small delay so the panel mounts before it switches mode.
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("axiom:preview-set-mode", { detail: { source: detail.source } }));
+        }, 40);
+      }
+    };
+    window.addEventListener("axiom:open-preview", handler);
+    return () => window.removeEventListener("axiom:open-preview", handler);
+  }, [openPreviewPanel]);
+
   // ARTIFACT protocol — intercept ARTIFACT: <json> lines in assistant responses.
   // Strips the line from display and POSTs the artifact to /api/artifacts.
   const processedArtifactRef = useRef<Set<string>>(new Set());

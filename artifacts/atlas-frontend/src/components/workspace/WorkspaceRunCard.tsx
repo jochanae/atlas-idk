@@ -8,17 +8,19 @@
  * Visual reference: attached_assets/run-card-{dark,light}.html
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
 import {
   Loader2,
   CheckCircle2,
   XCircle,
   Bookmark,
+  BookmarkCheck,
   FileText,
   Image as ImageIcon,
   FileCode,
   ChevronDown,
 } from "lucide-react";
+import { toast } from "sonner";
+import { addSnapshot, toggleBookmark, useAtlasHistory } from "@/lib/atlas-history";
 import type { ChatMessage } from "@/pages/workspace";
 
 interface Props {
@@ -30,6 +32,8 @@ type DerivedStatus = "running" | "applied" | "failed";
 
 interface DerivedRun {
   id: string;
+  /** Numeric chat message id when available — needed for history/bookmark ledger. */
+  associatedMessageId: number | null;
   status: DerivedStatus;
   title: string;
   createdAt: number;
@@ -107,7 +111,8 @@ function deriveRun(messages: ChatMessage[]): DerivedRun | null {
 
     const id = msg.id != null ? String(msg.id) : `msg-${i}-${createdAt}`;
 
-    return { id, status, title, createdAt, elapsedMs, files, produced, error };
+    const associatedMessageId = typeof msg.id === "number" ? msg.id : null;
+    return { id, associatedMessageId, status, title, createdAt, elapsedMs, files, produced, error };
   }
   return null;
 }
@@ -175,34 +180,80 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     return () => clearInterval(id);
   }, [run?.id, run?.status]);
 
-  const handleOpenPreview = useCallback(() => {
-    if (!run?.produced[0]) return;
-    const filePath = run.produced[0];
-    const isHtml = /\.html?$/i.test(filePath);
-    const content = isHtml ? findFileContent(messages, filePath) : null;
+  // Bookmark state — reads the atlas-history ledger to render an active
+  // BookmarkCheck when this run is already saved.
+  const history = useAtlasHistory(projectId);
+  const bookmarkEntry = useMemo(() => {
+    if (!run?.associatedMessageId) return null;
+    return history.items.find((h) => h.associated_message_id === run.associatedMessageId) ?? null;
+  }, [history.items, run?.associatedMessageId]);
+  const isBookmarked = !!bookmarkEntry?.isBookmarked;
 
-    // preview/output.html — route into the Draft sandbox via the same event
-    // pathway used by useChatStream. This keeps it inline in the Preview panel
-    // instead of opening a new browser tab.
-    if (filePath === "preview/output.html" && content) {
-      window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
-        detail: { content },
-      }));
+  const APP_FILE_RE = /(?:^|\/)(package\.json|vite\.config|tsconfig|src\/|app\/|routes\/|pages\/|index\.html$)/i;
+
+  /**
+   * Preview priority:
+   *   1. preview/output.html            → Draft (sandbox)
+   *   2. produced artifact              → Artifacts (generated)
+   *   3. app/routes/package changes     → Local Dev (local)
+   *   4. (Live URL fallback handled inside PreviewPanel when no source resolves)
+   *   5. nothing previewable            → button disabled (rendered below)
+   */
+  const previewPlan = useMemo(() => {
+    if (!run) return null;
+    const draftPath = run.produced.find((p) => p === "preview/output.html");
+    if (draftPath) {
+      return { source: "sandbox" as const, content: findFileContent(messages, draftPath) };
+    }
+    if (run.produced.length > 0) {
+      return { source: "generated" as const };
+    }
+    if (run.files.some((f) => APP_FILE_RE.test(f))) {
+      return { source: "local" as const };
+    }
+    return null;
+  }, [run, messages]);
+
+  const handleOpenPreview = useCallback(() => {
+    if (!previewPlan) return;
+    window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: previewPlan }));
+  }, [previewPlan]);
+
+  const handleOpenDetails = useCallback(() => {
+    if (!run) return;
+    window.dispatchEvent(new CustomEvent("axiom:open-changes", { detail: { runId: run.id } }));
+  }, [run]);
+
+  const handleBookmark = useCallback(() => {
+    if (!run) return;
+    if (!run.associatedMessageId) {
+      toast.error("Can't bookmark yet", { description: "Run is still streaming — try again after it completes." });
       return;
     }
-
-    if (content) {
-      // All other HTML artifacts — open via blob URL in a new tab.
-      const blob = new Blob([content], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } else {
-      // Fallback: navigate to diff view (historical load — content not in memory).
-      const href = `${window.location.origin}/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}&file=${encodeURIComponent(filePath)}`;
-      window.open(href, "_blank", "noopener,noreferrer");
+    // Ensure a snapshot exists for this message, then flip its bookmark flag.
+    let entryId = bookmarkEntry?.id ?? null;
+    if (!entryId) {
+      const created = addSnapshot(projectId, {
+        associated_message_id: run.associatedMessageId,
+        title: run.title,
+        lens: "builder",
+        payload: {},
+      });
+      entryId = created?.id ?? null;
     }
-  }, [run, messages, projectId]);
+    if (!entryId) return;
+    const willBeBookmarked = !isBookmarked;
+    toggleBookmark(projectId, entryId);
+    toast.success(willBeBookmarked ? "Bookmarked" : "Bookmark removed", {
+      description: willBeBookmarked ? run.title : undefined,
+      action: willBeBookmarked
+        ? {
+            label: "View history",
+            onClick: () => window.dispatchEvent(new CustomEvent("atlas:open-history-sheet")),
+          }
+        : undefined,
+    });
+  }, [run, bookmarkEntry, isBookmarked, projectId]);
 
   const [expanded, setExpanded] = useState(false);
 
@@ -216,8 +267,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
       ? now - run.createdAt
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
 
-  const detailsHref = `/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}`;
-  const hasProduced = run.produced.length > 0;
+  const hasPreview = !!previewPlan;
   // Auto-expand while running so users see progress; otherwise collapsed by default.
   const isOpen = expanded || run.status === "running";
 
@@ -241,22 +291,25 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     >
       <button
         type="button"
-        aria-label="Bookmark run"
-        title="Bookmark (coming soon)"
+        aria-label={isBookmarked ? "Remove bookmark" : "Bookmark run"}
+        title={isBookmarked ? "Remove bookmark" : "Bookmark run"}
+        onClick={handleBookmark}
         style={{
           position: "absolute",
           top: 8,
           right: 8,
           background: "transparent",
           border: "none",
-          color: "hsl(var(--muted-foreground) / 0.55)",
+          color: isBookmarked ? "var(--atlas-gold)" : "hsl(var(--muted-foreground) / 0.55)",
           cursor: "pointer",
           padding: 4,
           borderRadius: 4,
           lineHeight: 0,
         }}
       >
-        <Bookmark size={12} strokeWidth={1.75} />
+        {isBookmarked
+          ? <BookmarkCheck size={12} strokeWidth={1.75} />
+          : <Bookmark size={12} strokeWidth={1.75} />}
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 9, paddingRight: 22 }}>
@@ -349,7 +402,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
         </button>
       )}
 
-      {isOpen && hasProduced && (
+      {isOpen && run.produced.length > 0 && (
         <div
           style={{
             marginTop: 8,
@@ -403,8 +456,9 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
             borderTop: "1px solid hsl(var(--border))",
           }}
         >
-          <Link
-            href={detailsHref}
+          <button
+            type="button"
+            onClick={handleOpenDetails}
             style={{
               flex: 1,
               padding: "6px 10px",
@@ -415,13 +469,14 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
               border: "1px solid hsl(var(--border))",
               color: "hsl(var(--card-foreground))",
               borderRadius: 5,
-              textDecoration: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
               letterSpacing: "0.01em",
             }}
           >
-            Diff
-          </Link>
-          {hasProduced ? (
+            Details
+          </button>
+          {hasPreview ? (
             <button
               type="button"
               onClick={handleOpenPreview}
@@ -446,7 +501,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
             <button
               type="button"
               disabled
-              title="No previewable files in this run"
+              title="No previewable output in this run"
               style={{
                 flex: 1,
                 padding: "6px 10px",
