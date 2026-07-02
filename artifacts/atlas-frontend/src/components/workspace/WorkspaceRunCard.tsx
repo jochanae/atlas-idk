@@ -314,9 +314,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
       ? now - run.createdAt
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
 
-  const previewDisabled = run.previewSource === null;
-  const previewTitle = previewDisabled
-    ? "No previewable output in this run"
+  const noFreshArtifact = run.previewSource === null;
+  const previewTitle = noFreshArtifact
+    ? "No fresh artifact from this run — opens Preview panel"
     : run.previewSource === "sandbox"
       ? "Open Draft preview"
       : run.previewSource === "generated"
