@@ -35,7 +35,6 @@ const openaiClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "not-configured",
 });
 
-const IMAGE_REQUEST_RE = /\b(sketch|draw|render|paint|illustrate)\b|\b(generate|create|make|show me|visualize|mock.?up|wireframe)\b.{0,80}\b(image|picture|visual|ui|screen|layout|logo|icon|banner|mockup|diagram|chart|graphic|illustration|what.{0,20}look)\b/i;
 
 const router: IRouter = Router();
 
@@ -2281,15 +2280,11 @@ router.post("/chat", async (req, res): Promise<void> => {
     forgeContext?: string;
     planMode?: boolean;
     previousLens?: string;
-    convState?: string;
   };
 
   const isFlowMode = !!body.flowMode;
   const isScenarioMode = !!body.scenarioMode;
   const buildMode = Boolean(body.buildMode);
-  // Canonical conversation state — written every Nexus turn, read here to gate build posture.
-  // If the last Nexus state was THINK, workspace opens in conversation mode (not build mode).
-  const incomingConvState = body.convState ?? "think";
 
   const isFoundationMode = !body.projectId;
   if ((!body.sessionId && !isFlowMode && !isFoundationMode) || (!body.message && !body.attachments?.length)) {
@@ -2536,9 +2531,7 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Hoisted so auto-apply and file-source logic share the same flag
   // Keep build-handoff mode active for the first few turns so the audit/completion
   // rounds after LOCAL_APPLY_SUCCESS still run with the BUILD_HANDOFF system prompt.
-  // Gate: if the conversation arrived from THINK state in Nexus, suppress build posture.
-  // This is the canonical conv_state check — prevents "Atlas built when I wanted to talk".
-  const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount <= 4 && projectId && incomingConvState !== "think");
+  const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount <= 4 && projectId);
 
   // ── Build Readiness Gate ──────────────────────────────────────────────────
   // Advisory gate: runs before Builder starts. If gaps exist, returns a
@@ -4265,17 +4258,9 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     return "";
   }).trim();
 
-  // Auto-inject IMAGE_GEN if user asked for an image but Atlas didn't emit the token
-  // This prevents the AI from ignoring the image generation instruction
-  logger.info({ rawTokens: imageGenTokens.length, messageMatched: IMAGE_REQUEST_RE.test(message), message }, "image gen debug");
-  if (imageGenTokens.length === 0 && IMAGE_REQUEST_RE.test(message)) {
-    const autoPrompt = message.replace(/\b(generate|create|make|draw|sketch|visualize|design|mock.?up|wireframe|show me|build me)\b/gi, "").trim();
-    const mode = /\b(diagram|flow|chart|wireframe|architecture|schematic|structure|map|system)\b/i.test(message) ? "schematic" : "render";
-    const size = /\b(wide|landscape|desktop|banner|hero)\b/i.test(message) ? "landscape" : /\b(mobile|phone|portrait|tall|vertical)\b/i.test(message) ? "portrait" : "square";
-    imageGenTokens.push({ prompt: autoPrompt || message, mode, size });
-    logger.info({ autoPrompt, mode, size, autoInjected: true }, "image gen auto-injected");
-    writeStep(res, { verb: "Auto-generating", target: "image", phase: "render" });
-  }
+  // R6: IMAGE_REQUEST_RE auto-inject removed. The LLM emits IMAGE_GEN when it determines
+  // image generation is appropriate. Overriding that decision post-hoc second-guesses
+  // responses that deliberately chose text (e.g. describing a layout concept in words).
 
   // Extract and strip BROWSER_VISIT tokens — Atlas requests browser visits at end of response
   const BROWSER_VISIT_RE = /^BROWSER_VISIT:\s*(\{[^\n]+\})\s*$/gm;

@@ -16,7 +16,7 @@ import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
 import { createTextPacer, type TextPacer } from "@/lib/textPacer";
-import { extractSketchSubject, routeDirectImageRequestToSketchPrompt, shouldAutoRouteToSketchPrompt, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
+import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
 type PriorMessage = Message;
 
@@ -85,9 +85,6 @@ export interface UseChatStreamOptions {
   /** When true, liveStep state updates are suppressed — prevents unnecessary
    *  React re-renders during pure conversation (Thinking Mode). */
   suppressSteps?: boolean;
-  /** The conv_state from the last Nexus turn for this conversation.
-   *  Passed to the backend so workspace can open with the right posture. */
-  convState?: string;
 }
 
 export interface ActivityStreamState {
@@ -204,7 +201,6 @@ export function useChatStream(
     onFirstStreamingToken,
     onDoneEvent,
     suppressSteps,
-    convState,
   } = opts;
 
   // Ref so inner callbacks always see the latest value without
@@ -339,70 +335,16 @@ export function useChatStream(
       setLiveStep(null);
 
       const userProfileStr = profileToString(loadProfile());
-      // Sketch auto-routing demoted to the inline offer pill (InlineSketchOffer).
-      // Only explicit [SKETCH:*] markers (user-confirmed via the pill) short-circuit below.
-      const routedText = text;
-
-      // ── Frontend short-circuit for image requests ─────────────────
-      // The backend /api/chat handler does not have image-tool wiring,
-      // so only explicit [SKETCH:*] picks route to image generation.
-      // shouldAutoRouteToSketchPrompt is intentionally NOT used here —
-      // it matches words like "mockup", "render", "create a wireframe"
-      // and would silently swallow normal generation requests.
-      const isImageIntent = imgAttachments.length === 0 && SKETCH_PROMPT_MARKER_RE.test(text);
-      if (isImageIntent) {
-        const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
-        const imgPrompt = extractSketchSubject(SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText);
-        const styleLabel = (sketchPreset ?? "concept").replace(/^\w/, c => c.toUpperCase());
-        const promptPreview = imgPrompt.length > 48 ? `${imgPrompt.slice(0, 48)}…` : imgPrompt;
-        const sketchLines: string[] = [];
-        const pushSketchStep = (line: string, step: { verb: string; target?: string }) => {
-          sketchLines.push(`SKETCH_STEP: ${line}`);
-          setActivityStream({ active: true, content: sketchLines.join("\n") });
-          if (!suppressStepsRef.current) setLiveStep({ verb: step.verb, target: step.target, status: "ok" });
-        };
-        pushSketchStep(`Interpreting "${promptPreview}"`, { verb: "Interpreting", target: promptPreview });
-        const pendingId = Date.now();
-        // Insert shimmer placeholder so the user gets immediate visual
-        // feedback instead of staring at a silent bubble during gen.
-        setMessages((prev) => [...prev, {
-          id: pendingId,
-          role: "assistant",
-          content: "",
-          sentAt: new Date().toISOString(),
-          pendingSketch: true,
-          streaming: true,
-        } as ChatMessage]);
-        void (async () => {
-          try {
-            pushSketchStep(`Sketching ${styleLabel} style…`, { verb: "Sketching", target: `${styleLabel} style` });
-            const { generateImage } = await import("@/lib/generateImage");
-            const img = await generateImage(imgPrompt, {
-              style: (sketchPreset as "concept" | "wireframe" | "moodboard" | "blueprint" | "photoreal" | undefined) ?? "concept",
-            });
-            pushSketchStep("Rendering image…", { verb: "Rendering", target: "image" });
-            setMessages((prev) => prev.map(m => m.id === pendingId ? {
-              ...m,
-              imageB64: img.b64_json,
-              imageMimeType: img.mimeType,
-              pendingSketch: false,
-              streaming: false,
-            } as ChatMessage : m));
-          } catch (err: any) {
-            console.error("[useChatStream] image generate failed:", err);
-            setMessages((prev) => prev.map(m => m.id === pendingId ? {
-              ...m,
-              content: `Image generation failed: ${err?.message ?? "unknown error"}`,
-              pendingSketch: false,
-              streaming: false,
-            } as ChatMessage : m));
-          } finally {
-            setChatPending(false);
-            setActivityStream({ active: false, content: "" });
-            setLiveStep(null);
-          }
-        })();
-        return;
+      // R6: [SKETCH:*] client-side short-circuit removed. Image requests now route through
+      // the LLM which emits IMAGE_GEN tokens — handled server-side via Gemini/Imagen.
+      // Transform [SKETCH:<preset>] prefix into natural language so the LLM has style context.
+      let routedText = text;
+      if (SKETCH_PROMPT_MARKER_RE.test(text)) {
+        const sketchPreset = text.match(SKETCH_PROMPT_MARKER_RE)?.[1]?.toLowerCase();
+        const imgSubject = extractSketchSubject(text);
+        routedText = sketchPreset
+          ? `Generate a ${sketchPreset} style image: ${imgSubject}`
+          : `Generate an image: ${imgSubject}`;
       }
 
       // Read cached project scan from localStorage and send as compact map string
@@ -437,7 +379,6 @@ export function useChatStream(
         ...(options?.mode ? { mode: options.mode } : {}),
         planMode: options?.planMode,
         buildMode: options?.buildMode,
-        ...(convState ? { convState } : {}),
         ...(options?.skipReadiness ? { skipReadiness: true } : {}),
         ...(effectiveModel ? { model: effectiveModel } : {}),
         orchestrate: !effectiveModel,

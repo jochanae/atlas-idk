@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
+
 import { pushHudEvent } from "@/lib/hudBus";
 
 const STREAM_TIMEOUT_MS = 90_000;
@@ -277,9 +278,17 @@ export function useNexusChatStream(
     const effectiveText = text.trim().length > 0
       ? text
       : (imgAttachments.length > 0 ? "(image attached)" : text);
-    // Sketch auto-routing demoted to the inline offer pill (InlineSketchOffer).
-    // Only explicit [SKETCH:*] markers (user-confirmed) short-circuit to image gen below.
-    const routedText = effectiveText;
+    // R6: [SKETCH:*] client-side short-circuit removed. Route through the LLM which
+    // emits IMAGE_GEN tokens — handled server-side via Gemini/Imagen.
+    // Transform [SKETCH:<preset>] prefix into natural language so the LLM has style context.
+    let routedText = effectiveText;
+    if (SKETCH_PROMPT_MARKER_RE.test(effectiveText)) {
+      const sketchPreset = effectiveText.match(SKETCH_PROMPT_MARKER_RE)?.[1]?.toLowerCase();
+      const imgSubject = extractSketchSubject(effectiveText);
+      routedText = sketchPreset
+        ? `Generate a ${sketchPreset} style image: ${imgSubject}`
+        : `Generate an image: ${imgSubject}`;
+    }
 
     const resolvedModel = overrideOptions?.model ?? model;
     const resolvedMode = overrideOptions?.mode ?? mode;
@@ -327,74 +336,6 @@ export function useNexusChatStream(
         : {}),
     };
     setMessages(prev => [...prev, userMsg]);
-
-    // ── Frontend short-circuit for image requests ─────────────────
-    // /api/chat does not generate images. Route direct image
-    // asks (and explicit [SKETCH:*] picks) to /api/image/generate
-    // and render the result inline as an assistant message.
-    const isImageIntent = imgAttachments.length === 0 && SKETCH_PROMPT_MARKER_RE.test(text);
-    if (isImageIntent) {
-      const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
-      const imgPrompt = extractSketchSubject(SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText);
-      const styleLabel = (sketchPreset ?? "concept").replace(/^\w/, c => c.toUpperCase());
-      const pushStep = (verb: string, target?: string) => {
-        const step: NexusLiveStep = { id: `${Date.now()}-${verb}`, verb, target };
-        setLiveStep(step);
-        setLiveSteps(prev => [...prev, step].slice(-6));
-      };
-      pushStep("Interpreting", `"${imgPrompt.slice(0, 48)}${imgPrompt.length > 48 ? "…" : ""}"`);
-      // Insert placeholder assistant bubble immediately so the user
-      // sees a shimmer instead of waiting in silence with their prompt text.
-      setMessages(prev => [...prev, {
-        id: streamingId,
-        role: "assistant",
-        content: "",
-        createdAt: new Date().toISOString(),
-        model: resolvedModel,
-        pendingSketch: true,
-        streaming: true,
-      } as NexusMessage]);
-      try {
-        pushStep("Sketching", `${styleLabel} style`);
-        const { generateImage } = await import("@/lib/generateImage");
-        const img = await generateImage(imgPrompt, {
-          style: (sketchPreset as "concept" | "wireframe" | "moodboard" | "blueprint" | "photoreal" | undefined) ?? "concept",
-        });
-        pushStep("Rendering", "image");
-        setMessages(prev => prev.map(m => (m as any).id === streamingId ? {
-          ...m,
-          content: "",
-          imageUrl: img.dataUrl,
-          imageGen: { images: [{ imageUrl: img.dataUrl, prompt: imgPrompt }] },
-          pendingSketch: false,
-          streaming: false,
-          isNew: true,
-        } as NexusMessage : m));
-      } catch (err: any) {
-        console.error("[useNexusChatStream] image generate failed:", err);
-        setMessages(prev => {
-          const exists = prev.some(m => (m as any).id === streamingId);
-          const errMsg = {
-            id: streamingId,
-            role: "assistant" as const,
-            content: `Image generation failed: ${err?.message ?? "unknown error"}`,
-            createdAt: new Date().toISOString(),
-            model: resolvedModel,
-            pendingSketch: false,
-            streaming: false,
-          } as NexusMessage;
-          return exists
-            ? prev.map(m => (m as any).id === streamingId ? errMsg : m)
-            : [...prev, errMsg];
-        });
-      } finally {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setIsPending(false);
-        setIsStreaming(false);
-        resetStreamState();
-      }
-      return;
-    }
 
     // Add streaming assistant bubble
     const assistantMsg: NexusMessage = {
