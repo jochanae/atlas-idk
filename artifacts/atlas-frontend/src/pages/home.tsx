@@ -4113,11 +4113,13 @@ export default function Home() {
                         aria-hidden={receded}
                         tabIndex={receded ? -1 : 0}
                         style={{
-                          position: "absolute",
-                          top: -14,
-                          right: 8,
-                          width: 40,
-                          height: 40,
+                          position: isTiny ? "fixed" : "absolute",
+                          top: isTiny ? "calc(env(safe-area-inset-top, 0px) + 10px)" : -14,
+                          right: isTiny ? 68 : 8,
+                          left: "auto",
+                          width: isTiny ? 34 : 40,
+                          height: isTiny ? 34 : 40,
+                          zIndex: isTiny ? 400 : undefined,
                           borderRadius: 999,
                           display: "inline-flex",
                           alignItems: "center",
