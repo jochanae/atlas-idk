@@ -4735,6 +4735,7 @@ export default function Home() {
             }}>
               {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceVisible) && !askAtlasConversationActive && (
                 <div
+                  className="atlas-prompt-settle"
                   style={{
                     position: "absolute",
                     top: 0,
@@ -4742,9 +4743,11 @@ export default function Home() {
                     right: 44,
                     zIndex: 2,
                     color: "var(--atlas-muted)",
-                    fontSize: "var(--ts-h3)",
-                    lineHeight: 1.55,
-                    opacity: typewriterPaused ? 0.4 : 0.65,
+                    fontSize: "calc(var(--ts-h3) * 1.18)",
+                    fontWeight: 350,
+                    letterSpacing: "-0.005em",
+                    lineHeight: 1.5,
+                    opacity: typewriterPaused ? 0.5 : 0.88,
                     cursor: "text",
                     display: "-webkit-box",
                     WebkitLineClamp: 2,
@@ -4756,7 +4759,7 @@ export default function Home() {
                   }}
                 >
                   {askAtlasSurfaceVisible ? "Ask the global view..." : placeholder}
-                  {!askAtlasSurfaceVisible && !typewriterPaused && <span className="atlas-cursor" />}
+                  {!askAtlasSurfaceVisible && !typewriterPaused && <span className="atlas-cursor atlas-cursor-settle" />}
                 </div>
               )}
               <textarea
