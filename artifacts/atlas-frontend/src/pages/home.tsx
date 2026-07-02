@@ -2915,15 +2915,15 @@ export default function Home() {
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
-    if (sendToRef.current === "ask-atlas" && (askAtlasChat.isStreaming || askAtlasChat.isPending)) return;
-    // Composer-mode routing — Ask Atlas streams inline; workspace falls through
-    // to the standard create/inline-send fork below.
-    const routeTarget = sendToRef.current;
-    if (routeTarget === "ask-atlas" && text) {
+    // Ask Atlas surface routing — the surface is the sole owner of askAtlasChat.
+    // When it's open, EVERY send goes through askAtlasChat regardless of how
+    // the surface was opened (composer pill, resume, radial, history). This
+    // eliminates the old split where entry point determined data source.
+    if (askAtlasSurfaceOpen && text) {
+      if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
       setAttachedFiles([]);
-      setAskAtlasHelperVisible(false);
       void askAtlasChat.send({ text }).finally(() => {
         submitInFlightRef.current = false;
       });
