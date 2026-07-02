@@ -187,6 +187,7 @@ type HomeMessage = {
   researchResult?: { type: "research"; url: string; title: string; summary: string | null; headings: string[] } | null;
   terminalCmd?: unknown;
   terminalResult?: unknown;
+  shellResult?: { cmd: string; output: string; exitCode: number; durationMs: number } | null;
   imageUrl?: string;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   imageGen?: {

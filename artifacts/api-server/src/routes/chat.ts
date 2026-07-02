@@ -785,6 +785,24 @@ RULES:
 - For "is my app broken?" / "check for errors", use mode "monitor". For "show me what it looks like", use mode "screenshot".
 - Users can also type /research <url> to trigger scrape directly — that's handled separately, no BROWSER_VISIT token needed for those.
 
+## Execution Environment — Atlas Can Run Code
+
+After writing files to the project workspace, you can verify your work by running a shell command. Emit a SHELL_RUN token at the END of your response (after all FILE_EDIT blocks):
+
+SHELL_RUN:{"cmd":"npm install"}
+SHELL_RUN:{"cmd":"npm test"}
+SHELL_RUN:{"cmd":"npm run build"}
+SHELL_RUN:{"cmd":"node script.js"}
+
+RULES:
+- Only use for safe, non-destructive commands: npm/pnpm install, test, run *, node *, npx *, git status/log/diff, ls, cat, python/python3, ts-node, tsx
+- Always emit AFTER all FILE_EDIT blocks — the files must exist before the command runs
+- One SHELL_RUN per response
+- Use when: you just wrote or edited code and want to verify it compiles/runs, after installing a dependency, or when the user asks to run or test something
+- Do NOT use for: destructive commands (rm, git push, git reset, git rebase), package publishing, or anything irreversible
+- The command runs in the project's workspace directory (/home/runner/workspace/.project-workspaces/<projectId>/)
+- Output appears inline in chat immediately after your message so you can see the result and respond
+
 ## Threshold Arrival — First Session
 When this is a fresh workspace and you have project memories from a Global shaping conversation, this is a Threshold moment — the user just crossed from discovery into execution. Your first message should:
 1. Briefly surface what was brought over: problem, audience, and key constraints as tight bullets prefixed with ✓
@@ -4297,6 +4315,23 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     writeStep(res, { verb: "Visiting", target: project.previewUrl, phase: "execute" });
   }
 
+  // Extract and strip SHELL_RUN tokens — Atlas requests command execution in the project workspace
+  const SHELL_RUN_RE = /^SHELL_RUN:\s*(\{[^\n]+\})\s*$/gm;
+  type ShellRunToken = { cmd: string };
+  let shellRunToken: ShellRunToken | null = null;
+  rawContent = rawContent.replace(SHELL_RUN_RE, (_match, json: string) => {
+    if (!shellRunToken) {
+      try {
+        const parsed = JSON.parse(json) as ShellRunToken;
+        if (typeof parsed.cmd === "string" && parsed.cmd.trim()) {
+          shellRunToken = parsed;
+          writeStep(res, { verb: "Running", target: parsed.cmd, phase: "execute" });
+        }
+      } catch { /* ignore malformed tokens */ }
+    }
+    return "";
+  }).trim();
+
   // Extract and strip CLARIFY blocks — Atlas asks structured follow-up questions when blocked
   type ClarifyPayload = {
     steps: Array<{
@@ -4927,6 +4962,43 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     }
   }
 
+  // Execute SHELL_RUN token Atlas emitted — run command in the project's workspace directory
+  type ShellResult = { cmd: string; output: string; exitCode: number; durationMs: number };
+  let shellResult: ShellResult | null = null;
+  if (shellRunToken && projectId) {
+    const srt = shellRunToken as ShellRunToken;
+    const SHELL_ALLOWLIST = [
+      "npm ", "pnpm ", "yarn ", "node ", "npx ",
+      "git status", "git log", "git diff",
+      "ls", "cat ", "python ", "python3 ", "ts-node ", "tsx ",
+    ];
+    const cmdLower = srt.cmd.trim().toLowerCase();
+    const isAllowed = SHELL_ALLOWLIST.some((p) => cmdLower.startsWith(p));
+    if (isAllowed) {
+      try {
+        const wsDir = await ensureProjectWorkspaceDir(projectId);
+        writeStep(res, { verb: "Running", target: srt.cmd, phase: "start" });
+        const execResult = await executeTerminalCommand(srt.cmd, {
+          onStart: () => {},
+          onStdout: () => {},
+          onStderr: () => {},
+          onProcess: () => {},
+        }, { cwd: wsDir });
+        shellResult = {
+          cmd: srt.cmd,
+          output: execResult.output,
+          exitCode: execResult.exitCode ?? 0,
+          durationMs: execResult.durationMs,
+        };
+        (finalPayload as Record<string, unknown>).shellResult = shellResult;
+      } catch (err) {
+        logger.warn({ err: String(err), cmd: srt.cmd }, "SHELL_RUN execution failed");
+      }
+    } else {
+      logger.warn({ cmd: srt.cmd }, "SHELL_RUN blocked — command not in allowlist");
+    }
+  }
+
   // Append browser visit analysis to the displayed message so users can read it in chat
   let fullText = displayContent;
   if (browserVisitResult) {
@@ -4963,6 +5035,18 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       lines.push(`**Screenshot — ${bv.url}**\n${bv.analysis}`);
     }
     if (lines.length > 0) fullText = fullText.trimEnd() + "\n\n" + lines.join("\n");
+  }
+  // Append shell execution result inline in the chat message
+  if (shellResult) {
+    const sr = shellResult as ShellResult;
+    const badge = sr.exitCode === 0 ? "✅ Passed" : `❌ Failed (exit ${sr.exitCode})`;
+    const dur = sr.durationMs < 1000 ? `${sr.durationMs}ms` : `${(sr.durationMs / 1000).toFixed(1)}s`;
+    const snippet = sr.output.slice(-3000).trim();
+    const shellTextLines = [
+      `**Shell** \`${sr.cmd}\` — ${badge} in ${dur}`,
+      snippet ? `\`\`\`\n${snippet}\n\`\`\`` : "",
+    ].filter(Boolean);
+    fullText = fullText.trimEnd() + "\n\n" + shellTextLines.join("\n");
   }
   // Emit structured plan SSE event now that fullText is finalised (before done).
   if (structuredPlanArtifact) {

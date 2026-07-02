@@ -222,6 +222,7 @@ export interface ChatMessage {
   terminalCmd?: unknown;
   terminalResult?: unknown;
   browserResult?: BrowserResult | null;
+  shellResult?: { cmd: string; output: string; exitCode: number; durationMs: number } | null;
   deployQa?: DeployQa | null;
   intentType?: string | null;
   plan?: Plan;
