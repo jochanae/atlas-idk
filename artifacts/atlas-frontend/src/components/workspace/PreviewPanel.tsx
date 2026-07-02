@@ -997,11 +997,25 @@ ${t}
         </div>{/* end scroll container */}
       </div>{/* end mode toggle */}
 
-      {/* Device switcher — Sandbox mode uses same popover dropdown as URL mode */}
+      {/* Device switcher — Sandbox mode: Edit-code toggle + Clear inline with device selector */}
       {previewMode === "sandbox" && (
-        <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 8px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, position: "relative", zIndex: 5 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, position: "relative", zIndex: 5 }}>
+          <button
+            onClick={() => setSandboxExpanded((v) => !v)}
+            style={{ display: "flex", alignItems: "center", gap: 4, background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em", padding: "0 2px", opacity: 0.75 }}
+          >
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ transition: "transform 140ms ease", transform: sandboxExpanded ? "rotate(90deg)" : "rotate(0deg)" }}>
+              <path d="M2 1.5L6 4.5L2 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {sandboxExpanded ? "Hide code" : "Edit code"}
+          </button>
+          {sandboxRendered && (
+            <button
+              onClick={() => { setSandboxInput(""); setSandboxRendered(null); setSandboxExpanded(true); }}
+              style={{ padding: "2px 7px", borderRadius: 4, background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", fontSize: 9, fontFamily: "var(--app-font-mono)", cursor: "pointer", opacity: 0.55 }}
+            >Clear</button>
+          )}
           <div style={{ flex: 1 }} />
-          {/* Device popover (mirrors URL mode) */}
           <div style={{ flexShrink: 0 }}>
             <button ref={deviceBtnRef} onClick={() => setDeviceMenuOpen((v) => !v)} title="Device size"
               style={{ ...iconBtn, padding: "5px 8px", display: "inline-flex", alignItems: "center", gap: 4, ...sMono }}>
@@ -1009,7 +1023,6 @@ ${t}
               <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
             </button>
           </div>
-
         </div>
       )}
 
