@@ -6132,12 +6132,24 @@ export default function Workspace() {
   // "axiom:open-changes" — dispatched from WorkspaceRunCard "Details" button.
   // Routes the workspace to the Changes/Diff panel (which hosts Timeline | Changes).
   useEffect(() => {
-    const handler = () => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ runId?: string }>).detail ?? {};
       setLeftTab("diff");
+      if (isMobile) {
+        setMobileTab("chat");
+        setRightOpen(false);
+      }
+      if (detail.runId) {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.set("runId", detail.runId);
+          window.history.replaceState({}, "", url.toString());
+        } catch {}
+      }
     };
     window.addEventListener("axiom:open-changes", handler);
     return () => window.removeEventListener("axiom:open-changes", handler);
-  }, []);
+  }, [isMobile]);
 
   // "axiom:open-preview" — dispatched from WorkspaceRunCard "Preview" button.
   // Opens the Preview panel and forwards the requested source mode.
