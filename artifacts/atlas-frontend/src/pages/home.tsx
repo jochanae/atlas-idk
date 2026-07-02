@@ -4051,10 +4051,11 @@ export default function Home() {
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
-                marginTop: 72,
+                marginTop: 0,
                 position: "relative",
                 zIndex: 1,
               }}>
+
                 <div style={{
                   opacity: inputFocused ? 0.3 : 1,
                   transform: inputFocused ? "translateY(-12px)" : "translateY(0)",
