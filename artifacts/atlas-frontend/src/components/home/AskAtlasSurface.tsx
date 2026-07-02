@@ -836,6 +836,7 @@ export function AskAtlasSurface({
                 hasProjectContext={false}
                 borderless={true}
                 globalContext={true}
+                compact={isTiny}
                 onFiles={(files) => onFiles?.(files)}
                 onMenuAction={(action) => {
                   if (action === "park") { setShowParkSheet(true); return; }
