@@ -1,21 +1,46 @@
 /**
- * WorkspaceRunCard — receipt-style Run Card for the workspace chat surface.
+ * WorkspaceRunCard — receipt-style Run Card derived from workspace chat messages.
  *
- * Standalone. Does NOT import layout from ActiveRuns.tsx (only the exported
- * `useAllRuns` hook and `ActiveRun` type). Renders the most-recent run for
- * the given project. Visual reference: attached_assets/run-card-{dark,light}.html
+ * Standalone. Does NOT import from ActiveRuns.tsx, useAllRuns, _startRun, or
+ * the Atlas Composer live-queue store. All run data is derived from the
+ * ChatMessage[] passed in via props.
+ *
+ * Visual reference: attached_assets/run-card-{dark,light}.html
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Loader2, CheckCircle2, XCircle, Bookmark, FileText, Image as ImageIcon, FileCode } from "lucide-react";
-import { useAllRuns, type ActiveRun } from "@/components/home/ActiveRuns";
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Bookmark,
+  FileText,
+  Image as ImageIcon,
+  FileCode,
+} from "lucide-react";
+import type { ChatMessage } from "@/pages/workspace";
 
 interface Props {
   projectId: number;
+  messages: ChatMessage[];
 }
 
-// Files considered user-facing "produced artifacts" (allowlist).
+type DerivedStatus = "running" | "applied" | "failed";
+
+interface DerivedRun {
+  id: string;
+  status: DerivedStatus;
+  title: string;
+  createdAt: number;
+  elapsedMs: number | null;
+  files: string[];
+  produced: string[];
+  error?: string;
+}
+
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
+const ERROR_MARKERS =
+  /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
 
 function fmtElapsed(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -25,21 +50,82 @@ function fmtElapsed(ms: number): string {
   return r ? `${m}m ${r}s` : `${m}m`;
 }
 
-function statusMeta(status: ActiveRun["status"], projectName: string) {
+function deriveRun(messages: ChatMessage[]): DerivedRun | null {
+  // Walk backwards, find most-recent assistant message that either is
+  // streaming, produced file edits, or reported an error.
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== "assistant") continue;
+
+    const edits = msg.fileEdits ?? (msg.fileEdit ? [msg.fileEdit] : []);
+    const deletes = msg.fileDeletes ?? [];
+    const proposal = msg.writeFileProposal?.path;
+    const hasWork =
+      edits.length > 0 ||
+      deletes.length > 0 ||
+      !!proposal ||
+      msg.streaming ||
+      ERROR_MARKERS.test(msg.content ?? "");
+
+    if (!hasWork) continue;
+
+    // Collect file paths.
+    const paths = new Set<string>();
+    for (const e of edits) if (e?.path) paths.add(e.path);
+    for (const d of deletes) if (d?.path) paths.add(d.path);
+    if (proposal) paths.add(proposal);
+    const files = Array.from(paths);
+    const produced = files.filter((p) => PRODUCED_EXT.test(p));
+
+    // Status.
+    let status: DerivedStatus = "applied";
+    let error: string | undefined;
+    if (msg.streaming) status = "running";
+    else if (ERROR_MARKERS.test(msg.content ?? "")) {
+      status = "failed";
+      const m = msg.content?.match(ERROR_MARKERS);
+      error = m?.[0];
+    }
+
+    // Title = preceding user prompt, else first line of assistant content.
+    let title = "";
+    for (let j = i - 1; j >= 0; j--) {
+      if (messages[j].role === "user") {
+        title = (messages[j].content ?? "").trim();
+        break;
+      }
+    }
+    if (!title) {
+      title = (msg.content ?? "").split("\n").find((l) => l.trim()) ?? "Run";
+    }
+    title = title.length > 140 ? title.slice(0, 137) + "…" : title;
+
+    const createdAt = msg.sentAt ? new Date(msg.sentAt).getTime() : Date.now();
+    const elapsedMs =
+      typeof msg.executionTimeMs === "number" ? msg.executionTimeMs : null;
+
+    const id = msg.id != null ? String(msg.id) : `msg-${i}-${createdAt}`;
+
+    return { id, status, title, createdAt, elapsedMs, files, produced, error };
+  }
+  return null;
+}
+
+function statusMeta(status: DerivedStatus) {
   switch (status) {
     case "running":
-    case "queued":
-      return { kicker: `Working · ${projectName}`, tone: "running" as const, Icon: Loader2, spin: true };
-    case "completed":
-      return { kicker: `Run Complete · ${projectName}`, tone: "success" as const, Icon: CheckCircle2, spin: false };
+      return { kicker: "Working", tone: "running" as const, Icon: Loader2, spin: true };
+    case "applied":
+      return { kicker: "Run Complete", tone: "success" as const, Icon: CheckCircle2, spin: false };
     case "failed":
-      return { kicker: `Run Failed · ${projectName}`, tone: "failed" as const, Icon: XCircle, spin: false };
-    default:
-      return { kicker: projectName, tone: "running" as const, Icon: Loader2, spin: false };
+      return { kicker: "Run Failed", tone: "failed" as const, Icon: XCircle, spin: false };
   }
 }
 
-const TONE: Record<"running" | "success" | "failed", { border: string; ring: string; fg: string; iconBg: string }> = {
+const TONE: Record<
+  "running" | "success" | "failed",
+  { border: string; ring: string; fg: string; iconBg: string }
+> = {
   running: {
     border: "var(--atlas-gold-border)",
     ring: "transparent",
@@ -60,57 +146,36 @@ const TONE: Record<"running" | "success" | "failed", { border: string; ring: str
   },
 };
 
-function producedFrom(run: ActiveRun): string[] {
-  const paths = new Set<string>();
-  for (const p of run.appliedFiles ?? []) if (PRODUCED_EXT.test(p)) paths.add(p);
-  for (const e of run.fileEdits ?? []) if (PRODUCED_EXT.test(e.path)) paths.add(e.path);
-  return Array.from(paths);
-}
-
 function ProducedIcon({ path }: { path: string }) {
   if (/\.(png|jpe?g|gif|svg|webp)$/i.test(path)) return <ImageIcon size={12} />;
   if (/\.(html?|md)$/i.test(path)) return <FileText size={12} />;
   return <FileCode size={12} />;
 }
 
-export function WorkspaceRunCard({ projectId }: Props) {
-  const runs = useAllRuns();
-  const run = useMemo(
-    () =>
-      runs
-        .filter((r) => r.projectId === projectId)
-        .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null,
-    [runs, projectId]
-  );
+export function WorkspaceRunCard({ projectId, messages }: Props) {
+  const run = useMemo(() => deriveRun(messages), [messages]);
 
-  // Live elapsed clock for running/queued.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!run || (run.status !== "running" && run.status !== "queued")) return;
+    if (!run || run.status !== "running") return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [run?.id, run?.status]);
 
   if (!run) return null;
 
-  const meta = statusMeta(run.status, run.projectName);
+  const meta = statusMeta(run.status);
   const tone = TONE[meta.tone];
-  const produced = producedFrom(run);
-  const fileCount = new Set([...(run.appliedFiles ?? []), ...(run.fileEdits ?? []).map((e) => e.path)]).size;
+  const fileCount = run.files.length;
   const elapsedMs =
-    run.status === "completed" || run.status === "failed"
-      ? (run.completedAt ?? run.createdAt) - run.createdAt
-      : now - run.createdAt;
+    run.status === "running"
+      ? now - run.createdAt
+      : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
 
-  const title =
-    run.summaryLine?.trim() ||
-    run.prompt?.trim() ||
-    (run.status === "running" ? "Working…" : "Run");
-
-  const previewHref = produced[0]
-    ? `/project/${run.projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}&file=${encodeURIComponent(produced[0])}`
+  const detailsHref = `/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}`;
+  const previewHref = run.produced[0]
+    ? `/project/${projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}&file=${encodeURIComponent(run.produced[0])}`
     : null;
-  const detailsHref = `/project/${run.projectId}?leftTab=diff&runId=${encodeURIComponent(run.id)}`;
 
   return (
     <div
@@ -128,7 +193,6 @@ export function WorkspaceRunCard({ projectId }: Props) {
       data-run-id={run.id}
       data-run-status={run.status}
     >
-      {/* Bookmark placeholder */}
       <button
         type="button"
         aria-label="Bookmark run"
@@ -149,7 +213,6 @@ export function WorkspaceRunCard({ projectId }: Props) {
         <Bookmark size={14} strokeWidth={1.75} />
       </button>
 
-      {/* Head */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         <span
           style={{
@@ -189,7 +252,7 @@ export function WorkspaceRunCard({ projectId }: Props) {
               whiteSpace: "nowrap",
             }}
           >
-            {title}
+            {run.title}
           </div>
           <div
             style={{
@@ -207,8 +270,7 @@ export function WorkspaceRunCard({ projectId }: Props) {
         </div>
       </div>
 
-      {/* PRODUCED */}
-      {produced.length > 0 && (
+      {run.produced.length > 0 && (
         <div
           style={{
             marginTop: 12,
@@ -230,7 +292,7 @@ export function WorkspaceRunCard({ projectId }: Props) {
             Produced
           </div>
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 3 }}>
-            {produced.map((p) => (
+            {run.produced.map((p) => (
               <li
                 key={p}
                 style={{
@@ -243,14 +305,15 @@ export function WorkspaceRunCard({ projectId }: Props) {
                 }}
               >
                 <ProducedIcon path={p} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p}
+                </span>
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Footer */}
       <div
         style={{
           display: "flex",
@@ -317,26 +380,6 @@ export function WorkspaceRunCard({ projectId }: Props) {
             Open Preview
           </button>
         )}
-        {run.prUrl ? (
-          <a
-            href={run.prUrl}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              padding: "8px 10px",
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 11,
-              background: "var(--atlas-gold-dim)",
-              border: "1px solid var(--atlas-gold-border)",
-              color: "var(--atlas-gold)",
-              borderRadius: 6,
-              textDecoration: "none",
-              alignSelf: "center",
-            }}
-          >
-            PR ↗
-          </a>
-        ) : null}
       </div>
 
       <style>{`
