@@ -150,9 +150,9 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
           aria-label="Session memory"
           style={{
             position: "absolute",
-            top: "calc(100% + 8px)",
-            left: "50%",
-            transform: "translateX(-50%)",
+            ...(compact
+              ? { bottom: "calc(100% + 8px)", left: 0 }
+              : { top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" }),
             zIndex: 200,
             width: 320,
             maxWidth: "calc(100vw - 32px)",
@@ -182,98 +182,52 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
                 fontFamily: "var(--app-font-sans)",
               }}
             >
-              What Atlas remembers
+              {hasSummary ? "What Atlas remembers" : "Last session"}
             </span>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close"
               style={{
-                background: "none",
-                border: "none",
-                padding: 2,
-                cursor: "pointer",
-                color: "var(--atlas-muted)",
-                lineHeight: 0,
-                borderRadius: 4,
-                opacity: 0.6,
-                transition: "opacity 120ms ease",
+                background: "none", border: "none", padding: 2, cursor: "pointer",
+                color: "var(--atlas-muted)", lineHeight: 0, borderRadius: 4, opacity: 0.6,
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.6"; }}
             >
               <X size={13} strokeWidth={2} />
             </button>
           </div>
 
-          <p
-            style={{
-              margin: 0,
-              padding: "10px 12px",
-              fontSize: 13,
-              lineHeight: 1.55,
-              color: "var(--atlas-fg)",
-              fontFamily: "var(--app-font-sans)",
-            }}
-          >
-            {data.summary}
-          </p>
-
-          <div
-            style={{
-              padding: "8px 12px 10px",
-              borderTop: "1px solid color-mix(in oklab, var(--atlas-border, #2a2a36) 60%, transparent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--atlas-muted)",
-                fontFamily: "var(--app-font-sans)",
-              }}
-            >
-              {timeAgo(data.summaryAt!)}
-            </span>
-            <button
-              type="button"
-              onClick={() => void handleClear()}
-              disabled={clearing}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                background: "none",
-                border: "1px solid color-mix(in oklab, var(--atlas-muted) 25%, transparent)",
-                borderRadius: 6,
-                padding: "3px 8px",
-                fontSize: 11,
-                fontFamily: "var(--app-font-sans)",
-                fontWeight: 500,
-                color: "var(--atlas-muted)",
-                cursor: clearing ? "default" : "pointer",
-                opacity: clearing ? 0.5 : 1,
-                transition: "opacity 160ms ease, border-color 160ms ease, color 160ms ease",
-              }}
-              onMouseEnter={(e) => {
-                if (!clearing) {
-                  (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-fg)";
-                  (e.currentTarget as HTMLButtonElement).style.borderColor =
-                    "color-mix(in oklab, var(--atlas-muted) 50%, transparent)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-muted)";
-                (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "color-mix(in oklab, var(--atlas-muted) 25%, transparent)";
-              }}
-            >
-              <RotateCcw size={10} strokeWidth={2} />
-              {clearing ? "Clearing…" : "Clear memory"}
-            </button>
-          </div>
+          {hasSummary ? (
+            <>
+              <p style={{ margin: 0, padding: "10px 12px", fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)" }}>
+                {data!.summary}
+              </p>
+              <div style={{ padding: "8px 12px 10px", borderTop: "1px solid color-mix(in oklab, var(--atlas-border, #2a2a36) 60%, transparent)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)" }}>
+                  {timeAgo(data!.summaryAt!)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleClear()}
+                  disabled={clearing}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    background: "none", border: "1px solid color-mix(in oklab, var(--atlas-muted) 25%, transparent)",
+                    borderRadius: 6, padding: "3px 8px", fontSize: 11, fontFamily: "var(--app-font-sans)",
+                    fontWeight: 500, color: "var(--atlas-muted)",
+                    cursor: clearing ? "default" : "pointer", opacity: clearing ? 0.5 : 1,
+                  }}
+                >
+                  <RotateCcw size={10} strokeWidth={2} />
+                  {clearing ? "Clearing…" : "Clear memory"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p style={{ margin: 0, padding: "12px", fontSize: 12.5, lineHeight: 1.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)" }}>
+              No session memory yet. Atlas will summarize your session when it ends.
+            </p>
+          )}
         </div>
       )}
     </div>
