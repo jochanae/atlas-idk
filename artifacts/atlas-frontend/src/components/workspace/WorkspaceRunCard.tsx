@@ -261,7 +261,7 @@ export function WorkspaceRunCard({ projectId }: Props) {
         }}
       >
         <Link
-          to={detailsHref}
+          href={detailsHref}
           style={{
             flex: 1,
             padding: "8px 12px",
@@ -280,7 +280,7 @@ export function WorkspaceRunCard({ projectId }: Props) {
         </Link>
         {previewHref ? (
           <Link
-            to={previewHref}
+            href={previewHref}
             style={{
               flex: 1,
               padding: "8px 12px",
