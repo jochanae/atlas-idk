@@ -658,6 +658,7 @@ Critical rules:
 - Always output the COMPLETE file — never partial, never "// ... unchanged".
 - Be an editor, not a narrator. Lead with the file path and action. One sentence of context at most — then the block. Never explain what you're "about to do."
 - Do NOT emit FILE_EDIT for explanations or debugging questions.
+- NEVER claim a file was created, written, sent to preview, sent to sandbox, or saved unless you have emitted a FILE_EDIT_START…FILE_EDIT_END block for it in this response. If you have not emitted the block, describe intent instead: "Here is the code — I can write it if you confirm the path." A claim without an emission is a lie.
 
 NO PLACEHOLDER CODE — ABSOLUTE:
 Never write stub code, skeleton code, or placeholder comments. This means:
@@ -4476,6 +4477,11 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   const ADVISORY_USER_RE = /\b(what should i|help me (decide|choose|pick|prioritize)|which (direction|option|path|route|approach)|what (do you think|would you (suggest|recommend))|should i\b|what(?:'s| is) next|not sure (what|which)|give me options|tradeoffs?|pros.{0,20}cons|walk me through|where do i start|what direction)\b/i;
   // Advisory signals in the response — structured decision/planning content
   const ADVISORY_RESPONSE_RE = /^(#{1,4}\s+)?(option\s+[1-9]|decision\s+card|pros\s*(and\s*)?cons|tradeoffs?|next\s+steps|which\s+focus|choose\s+a\s+(path|direction)|recommendation|what\s+resonates|strategic\s+(options?|guidance))/im;
+  // Write-claim phrases: the model narrated a file creation/send but emitted no blocks.
+  // Catches "sent it to your sandbox", "created the file", "I've generated the HTML", etc.
+  const WRITE_CLAIM_RE = /\b(sent (it |this )?(to (your |the )?)?(sandbox|preview)|created (the |a |an )?file|saved (to|as|the)|written to|generated (the |a |an )?file|wrote (the |a |an )?file|added (the |a |an )?file (to|at)|updated (the |a |an )?file|I'?ve (made|built|created|written|generated) (the |a |an )?file)\b/i;
+  const hasWriteClaim = WRITE_CLAIM_RE.test(persistContent);
+
   const isBuildIntegrityFailure =
     workspaceLens === "build" &&
     !hasProposedFileChanges &&
@@ -4488,7 +4494,15 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     !ADVISORY_RESPONSE_RE.test(persistContent) &&
     // Don't flag genuinely short acknowledgments or confirmations
     !(/^(ok|done|got it|sure|yes|noted|confirmed|created|pushed)\b/i.test(persistContent.trim()));
-  if (isBuildIntegrityFailure) {
+
+  // Write-claim failure: model claimed to write/send a file without emitting blocks.
+  // This fires regardless of lens so the lie is always caught.
+  const isWriteClaimFailure =
+    hasWriteClaim &&
+    !hasProposedFileChanges &&
+    persistContent.length > 100;
+
+  if (isBuildIntegrityFailure || isWriteClaimFailure) {
     persistContent += "\n\n⚠️ [NO_FILES_WRITTEN] This response described code changes but emitted no FILE_EDIT blocks. The workspace was NOT modified. Please send your FILE_EDIT blocks now.";
   }
   const surface = detectSurfaceSignal({
