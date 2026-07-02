@@ -28,6 +28,7 @@ import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
+import { useIsTinyMobile } from "@/hooks/use-mobile";
 
 
 export type AskAtlasMessage = {
@@ -250,6 +251,7 @@ export function AskAtlasSurface({
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [dismissedNavIdx, setDismissedNavIdx] = useState<Set<number>>(new Set());
+  const isTiny = useIsTinyMobile();
 
   // Manage object URLs for image previews
   useEffect(() => { ensureComposerAuraCSS(); }, []);
@@ -812,11 +814,11 @@ export function AskAtlasSurface({
             display: "flex",
             alignItems: "center",
             position: "relative",
-            gap: 8,
+            gap: isTiny ? 4 : 8,
             paddingTop: 4,
           }}
         >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 6 }}>
               {/* Left cluster: history, then +/⋯ from ComposerActions */}
               <UtilityButton
                 ariaLabel="Where were we"
@@ -834,6 +836,7 @@ export function AskAtlasSurface({
                 hasProjectContext={false}
                 borderless={true}
                 globalContext={true}
+                compact={isTiny}
                 onFiles={(files) => onFiles?.(files)}
                 onMenuAction={(action) => {
                   if (action === "park") { setShowParkSheet(true); return; }
