@@ -1903,26 +1903,15 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
-  // Composer mode: workspace (default) or ask-atlas (toggled on composer).
-  // Toggle lives inline on the home composer — no routing sheet, no second
-  // composer. Ask Atlas replies render inline in the hero area after send.
-  type SendTarget = "workspace" | "ask-atlas";
-  const [sendTo, setSendTo] = useState<SendTarget>("workspace");
-  const sendToRef = useRef<SendTarget>("workspace");
-  useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
-  // One-time helper line on first Ask Atlas activation.
-  const [askAtlasHelperVisible, setAskAtlasHelperVisible] = useState(false);
-  // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
-  const [showParkSheet, setShowParkSheet] = useState(false);
-  // Radial menu "Ask Atlas" → shortcut: flip toggle ON + focus composer.
-  // Does NOT auto-send; inline conversation starts only after Send.
+  // Ask Atlas is a standalone surface — see AskAtlasSurface.
+  // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
+  // the same purple-header surface. No inline routing, no split renderer.
+  // Radial menu "Ask Atlas" → open the AskAtlasSurface + focus its composer.
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
-      setSendTo("ask-atlas");
-      sendToRef.current = "ask-atlas";
+      setAskAtlasSurfaceOpen(true);
       if (detail?.seed) setInput(detail.seed);
-      // Defer focus to after the toggle/render flush.
       window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
     };
     window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
