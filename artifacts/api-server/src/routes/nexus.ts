@@ -348,21 +348,22 @@ async function detectHomeHandoff(
   "reason": "one sentence why this is ready to build, or null"
 }
 
-It is ready to handoff ONLY if the user has explicitly said they want to build or create something — not simply because the idea is clear or the conversation has been productive.
+It is ready to handoff when the idea is sufficiently shaped AND the user has shown forward momentum — this includes both explicit commitment and positive agreement after Atlas bridges toward a workspace.
 
-Required signal: The user must have used explicit commitment language such as:
-"let's build this", "let's build it", "create a workspace", "move this into a project", "turn this into a project", "create the project", "start the project", "create it", "please create", "build this project"
+CONFIDENCE levels:
+- "high": Clear forward intent. Explicit: "let's build this", "create a workspace", "create the project", "move this into a project", "start the project", "create it". OR implied: positive agreement after Atlas suggested the workspace step ("yeah let's", "sounds good", "go for it", "set it up", "do it", "sure", "let's go", "ok").
+- "medium": The idea is well-shaped (name, problem, purpose clear) and the user is engaging positively and leaning forward, but has not explicitly committed yet.
+- "low": Still in early exploration — idea unclear, too vague, or user is asking for information only.
 
-Intentionally NOT sufficient (too context-free): "do it", "set it up", "make it", "build it", "go ahead", "yes", "ok", "sure", "let's go"
+Set readyToHandoff: true when ALL of the following are true:
+- The idea has a clear name or one can be inferred
+- The problem or purpose is clear
+- The user has shown any positive forward motion (agreement, enthusiasm, or explicit commitment)
 
-Return readyToHandoff: false for ALL of the following, regardless of how detailed the conversation is:
-- Exploring, mapping, analyzing, or understanding an idea ("let's map out...", "break this down...", "what do you think about...")
-- Asking Atlas to create a framework, schema, or plan (asking FOR information is not the same as committing to build)
-- Any message that is interrogative, analytical, or exploratory in nature
-- When the user is thinking out loud or asking for strategic advice
-- When Atlas has recognized an existing project the idea belongs in — recognition is not commitment
-
-The idea being clear and the conversation being rich is NOT enough. The user must have explicitly committed to building.
+Return readyToHandoff: false when:
+- The user is in pure exploration mode with no evident intent to build (asking "what do you think about...", "help me understand...", "can you break this down...")
+- The conversation has just started (fewer than 4 exchanges)
+- Atlas has only recognized that an idea belongs in an existing project — recognition alone is not commitment
 
 Conversation:
 ${context}`;
@@ -433,7 +434,7 @@ Phrases: "let's explore", "what do you think", "help me map", "break this down",
 
 **SHAPE** — Structuring an idea, defining scope, building a framework
 Phrases: "let's flesh this out", "help me define the MVP", "structure this", "let's plan"
-→ Stay in Global. Do not emit PROJECT_READY unless they explicitly say they're ready to build.
+→ Stay in Global. When 4+ dimensions are gathered and the picture is clear, proactively bridge: end your response with a natural sentence like "I think we have enough to open a workspace for this — want me to set one up?" and emit PROJECT_READY on the next line. Do not wait for the user to use exact commit phrasing.
 
 **COMMIT** — Explicit decision to build or move to a workspace
 Phrases: "let's build this", "create a workspace", "move this into a project", "I'm ready", "set it up", "do it"
@@ -523,21 +524,21 @@ GATHERING RULES:
 - React to what's interesting before pivoting to the next dimension.
 - Never ask "what are we building?"
 - If a dimension is clearly inferable from what the user said, mark it gathered — do not ask about it.
-- If you have 4 of 5 dimensions and the 5th is inferable, that is enough. Stop asking — but do NOT auto-emit PROJECT_READY.
-- Hard ceiling: 5 questions total. At 5, stop asking. Do not emit PROJECT_READY — wait for explicit commitment from the user.
+- If you have 4 of 5 dimensions and the 5th is inferable, that is enough. Stop asking. If the user shows any positive forward motion, proactively bridge to the workspace: "I think we have enough to open a workspace — want me to set one up?" and emit PROJECT_READY.
+- Hard ceiling: 5 questions total. At 5, stop asking and proactively suggest moving to a workspace if the picture is clear enough.
 
 INTENT CLASSIFICATION (apply before any transition):
 THINK = user is exploring, mapping, analyzing, asking for a framework or breakdown
 → Stay in Global. No project signals. No navigation.
 
 SHAPE = user is structuring or defining the idea
-→ Stay in Global. No project signals unless they explicitly commit.
+→ Stay in Global. When 4+ dimensions are gathered and the user shows any positive forward motion, proactively bridge: "I think we have enough to open a workspace — want me to set one up?" and emit PROJECT_READY.
 
-COMMIT = user has explicitly said they want to build ("build it", "create a workspace", "move this into a project", "I'm ready", "let's go", "set it up")
+COMMIT = user has explicitly said they want to build ("build it", "create a workspace", "move this into a project", "I'm ready", "let's go", "set it up", "do it", "sure", "sounds good")
 → Transition is now appropriate.
 
 TRANSITION RULE:
-Only emit PROJECT_READY when: (1) the user has given an explicit COMMIT signal, AND (2) the picture is clear enough to write a useful brief. Information completeness alone is not enough — wait for commitment.
+Emit PROJECT_READY when: (1) the picture is clear enough (4+ dimensions gathered), AND (2) the user shows positive forward motion — explicit commit OR positive agreement after Atlas suggests the workspace step. Do not wait for exact phrasing.
 
 Do not confirm. Do not say "ready to create." Do not call create_project. Do not emit NAVIGATE_TO. Say something brief and declarative. Then emit this signal at the END of your response on its own line:
 PROJECT_READY:{"projectName":"<short memorable name inferred from the conversation>","reason":"<one sentence: what this is and why it matters>"}
@@ -2408,9 +2409,9 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
     // The CommitPill and FOCUS chip must not arm during exploration.
     const handoffSignal = convState === "THINK" ? null : rawHandoffSignal;
 
-    // Auto-create requires all three: Atlas in COMMIT state, explicit commit phrase, AND high-confidence handoff.
-    // CommitPill tap remains the primary consent path — this only fires on unmistakable signals.
-    if (!focusProjectId && !ideaMode && convState === "COMMIT" && isExplicitCreate && handoffSignal?.readyToHandoff && handoffSignal.confidence === "high" && pendingNavProjectId === null) {
+    // Auto-create: arms when Atlas is in SHAPE or COMMIT state and the handoff signal is high-confidence.
+    // CommitPill tap remains the primary consent path — this only fires on clear signals.
+    if (!focusProjectId && !ideaMode && convState !== "THINK" && handoffSignal?.readyToHandoff && handoffSignal.confidence === "high" && pendingNavProjectId === null) {
       try {
         const autoName = handoffSignal.projectName ?? "New Project";
         writeStep({ verb: "Creating", target: autoName, detail: "Project workspace" });

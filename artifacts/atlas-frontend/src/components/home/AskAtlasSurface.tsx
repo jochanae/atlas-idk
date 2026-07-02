@@ -11,6 +11,7 @@
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { type NexusHandoffSignal } from "@/hooks/useNexusChatStream";
 import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
@@ -77,6 +78,8 @@ interface Props {
   subheader?: ReactNode;
   /** When true, hides the surface's own composer so the home dock acts as the sole input. */
   hideComposer?: boolean;
+  /** When set, the folder+plus button glows gold to indicate a workspace is ready to open. */
+  handoffSignal?: NexusHandoffSignal | null;
 }
 
 const ASK_ATLAS_PLACEHOLDERS = [
@@ -233,6 +236,7 @@ export function AskAtlasSurface({
   focusChip,
   subheader,
   hideComposer = false,
+  handoffSignal,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -865,9 +869,10 @@ export function AskAtlasSurface({
               {messages.length > 0 && (
                 <UtilityButton
                   ariaLabel="Create project from this conversation"
-                  title="Create project from this conversation"
+                  title={handoffSignal?.projectName ? `Start workspace: ${handoffSignal.projectName}` : "Create project from this conversation"}
                   onClick={() => onCreateProject?.()}
                   tinted
+                  glowing={!!handoffSignal?.projectName}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 6.5h5l2 2H20v9.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
@@ -957,6 +962,7 @@ function UtilityButton({
   onClick,
   tinted,
   active,
+  glowing,
 }: {
   children: React.ReactNode;
   ariaLabel: string;
@@ -964,59 +970,75 @@ function UtilityButton({
   onClick?: () => void;
   tinted?: boolean;
   active?: boolean;
+  glowing?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      title={title ?? ariaLabel}
-      style={{
-        width: 34,
-        height: 34,
-        flexShrink: 0,
-        borderRadius: 10,
-        border: "1px solid transparent",
-        background: active
-          ? "rgba(212,175,55,0.14)"
-          : tinted
-            ? "rgba(212,175,55,0.06)"
-            : "transparent",
-        color: active
-          ? "var(--atlas-gold)"
-          : tinted
-            ? "rgba(212,175,55,0.85)"
-            : "var(--atlas-muted)",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: onClick ? "pointer" : "default",
-        padding: 0,
-        WebkitTapHighlightColor: "transparent",
-        transition: "background 160ms ease, color 160ms ease, border-color 160ms ease",
-      }}
-      onMouseEnter={(e) => {
-        if (!onClick) return;
-        const el = e.currentTarget as HTMLButtonElement;
-        el.style.background = "rgba(212,175,55,0.10)";
-        el.style.color = "rgba(245,215,130,1)";
-      }}
-      onMouseLeave={(e) => {
-        const el = e.currentTarget as HTMLButtonElement;
-        el.style.background = active
-          ? "rgba(212,175,55,0.14)"
-          : tinted
-            ? "rgba(212,175,55,0.06)"
-            : "transparent";
-        el.style.color = active
-          ? "var(--atlas-gold)"
-          : tinted
-            ? "rgba(212,175,55,0.85)"
-            : "var(--atlas-muted)";
-      }}
-    >
-      {children}
-    </button>
+    <>
+      {glowing && (
+        <style>{`
+          @keyframes ask-atlas-folder-glow {
+            0%, 100% { box-shadow: 0 0 6px rgba(201,162,76,0.45), 0 0 14px rgba(201,162,76,0.2); }
+            50% { box-shadow: 0 0 12px rgba(201,162,76,0.75), 0 0 24px rgba(201,162,76,0.35); }
+          }
+        `}</style>
+      )}
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel}
+        title={title ?? ariaLabel}
+        style={{
+          width: 34,
+          height: 34,
+          flexShrink: 0,
+          borderRadius: 10,
+          border: glowing ? "1px solid rgba(201,162,76,0.55)" : "1px solid transparent",
+          background: glowing
+            ? "rgba(201,162,76,0.12)"
+            : active
+              ? "rgba(212,175,55,0.14)"
+              : tinted
+                ? "rgba(212,175,55,0.06)"
+                : "transparent",
+          color: glowing || active
+            ? "var(--atlas-gold)"
+            : tinted
+              ? "rgba(212,175,55,0.85)"
+              : "var(--atlas-muted)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: onClick ? "pointer" : "default",
+          padding: 0,
+          WebkitTapHighlightColor: "transparent",
+          transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
+          animation: glowing ? "ask-atlas-folder-glow 2s ease-in-out infinite" : undefined,
+        }}
+        onMouseEnter={(e) => {
+          if (!onClick) return;
+          const el = e.currentTarget as HTMLButtonElement;
+          el.style.background = glowing ? "rgba(201,162,76,0.18)" : "rgba(212,175,55,0.10)";
+          el.style.color = "rgba(245,215,130,1)";
+        }}
+        onMouseLeave={(e) => {
+          const el = e.currentTarget as HTMLButtonElement;
+          el.style.background = glowing
+            ? "rgba(201,162,76,0.12)"
+            : active
+              ? "rgba(212,175,55,0.14)"
+              : tinted
+                ? "rgba(212,175,55,0.06)"
+                : "transparent";
+          el.style.color = glowing || active
+            ? "var(--atlas-gold)"
+            : tinted
+              ? "rgba(212,175,55,0.85)"
+              : "var(--atlas-muted)";
+        }}
+      >
+        {children}
+      </button>
+    </>
   );
 }
 
