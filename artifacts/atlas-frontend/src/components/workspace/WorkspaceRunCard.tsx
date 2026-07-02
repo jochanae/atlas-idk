@@ -291,22 +291,25 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     >
       <button
         type="button"
-        aria-label="Bookmark run"
-        title="Bookmark (coming soon)"
+        aria-label={isBookmarked ? "Remove bookmark" : "Bookmark run"}
+        title={isBookmarked ? "Remove bookmark" : "Bookmark run"}
+        onClick={handleBookmark}
         style={{
           position: "absolute",
           top: 8,
           right: 8,
           background: "transparent",
           border: "none",
-          color: "hsl(var(--muted-foreground) / 0.55)",
+          color: isBookmarked ? "var(--atlas-gold)" : "hsl(var(--muted-foreground) / 0.55)",
           cursor: "pointer",
           padding: 4,
           borderRadius: 4,
           lineHeight: 0,
         }}
       >
-        <Bookmark size={12} strokeWidth={1.75} />
+        {isBookmarked
+          ? <BookmarkCheck size={12} strokeWidth={1.75} />
+          : <Bookmark size={12} strokeWidth={1.75} />}
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 9, paddingRight: 22 }}>
