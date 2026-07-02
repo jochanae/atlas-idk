@@ -718,6 +718,18 @@ ${t}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // "axiom:preview-set-mode" — dispatched by the workspace when a Run Card
+  // requests a specific preview source (sandbox/url/local/generated).
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ source?: "sandbox" | "url" | "local" | "generated" }>).detail ?? {};
+      if (!detail.source) return;
+      setPreviewMode(detail.source);
+    };
+    window.addEventListener("axiom:preview-set-mode", handler);
+    return () => window.removeEventListener("axiom:preview-set-mode", handler);
+  }, []);
+
 
   // Sync from DB on project load / switch
   useEffect(() => {
