@@ -4055,7 +4055,7 @@ export default function Home() {
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
-                marginTop: isFoldInner ? "clamp(58px, 9dvh, 82px)" : 0,
+                marginTop: isFoldInner ? "clamp(72px, 9dvh, 96px)" : 0,
                 position: "relative",
                 zIndex: 1,
               }}>
