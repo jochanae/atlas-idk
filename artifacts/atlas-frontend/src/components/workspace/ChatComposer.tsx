@@ -9,6 +9,7 @@ import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import { SessionSummaryPill } from "@/components/workspace/SessionSummaryPill";
 import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/composerAura";
+import { useThemeMode } from "@/lib/theme";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
 // CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
