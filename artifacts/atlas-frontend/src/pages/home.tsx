@@ -4098,7 +4098,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {projects && projects.length > 0 && (() => {
+                  {projects && projects.length > 0 && !isTiny && (() => {
                     const receded = askAtlasSurfaceVisible || inputFocused;
                     return (
                       <button
