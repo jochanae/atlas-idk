@@ -130,6 +130,17 @@ export function addSnapshot(
     payload: input.payload ?? {},
   };
   write(projectId, [next, ...items]);
+  // Fire-and-forget: persist to server so other devices can load this snapshot
+  void fetch(`/api/projects/${projectId}/artifacts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "history_snapshot",
+      title: next.title,
+      metadata: { messageId: next.associated_message_id, lens: next.lens, localId: next.id },
+      payload: next.payload,
+    }),
+  }).catch(() => { /* non-fatal — local state is correct */ });
   return next;
 }
 
@@ -321,6 +332,38 @@ export function useAtlasHistory(projectId: number | string | null | undefined) {
       window.removeEventListener(STORE_EVENT, handler);
       window.removeEventListener("storage", storage);
     };
+  }, [pid]);
+
+  // Cross-device sync: merge server-persisted snapshots into localStorage on mount
+  useEffect(() => {
+    if (!pid) return;
+    fetch(`/api/projects/${pid}/artifacts?type=history_snapshot`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { artifacts?: Array<{ metadata?: Record<string, unknown>; payload?: Record<string, unknown>; title?: string; createdAt?: string }> } | null) => {
+        if (!data?.artifacts?.length) return;
+        const serverItems: AtlasHistoryItem[] = data.artifacts
+          .filter((a) => a.metadata?.messageId != null)
+          .map((a) => ({
+            id: (a.metadata?.localId as string | undefined) ?? `srv_${String(a.metadata?.messageId)}`,
+            associated_message_id: Number(a.metadata?.messageId),
+            title: a.title ?? "History item",
+            timestamp: a.createdAt ?? new Date().toISOString(),
+            isBookmarked: false,
+            lens: ((a.metadata?.lens as string | undefined) ?? "builder") as AtlasLens,
+            payload: (a.payload as AtlasHistoryItem["payload"]) ?? {},
+          }));
+        setItems((prev) => {
+          const existingMsgIds = new Set(prev.map((i) => i.associated_message_id));
+          const incoming = serverItems.filter((i) => !existingMsgIds.has(i.associated_message_id));
+          if (!incoming.length) return prev;
+          const merged = [...prev, ...incoming].sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+          );
+          write(String(pid), merged);
+          return merged;
+        });
+      })
+      .catch(() => { /* non-fatal — local cache is source of truth */ });
   }, [pid]);
 
   const add = useCallback(

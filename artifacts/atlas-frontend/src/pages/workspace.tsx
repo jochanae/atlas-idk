@@ -1826,6 +1826,13 @@ function RightPanel({
     if (forceTab) setTab(forceTab);
   }, [forceTab]);
 
+  // Navigate to Flow map tab when MAP surface is surfaced from chat
+  useEffect(() => {
+    const onNavigateToMap = () => setTab("map");
+    window.addEventListener("axiom:navigate-to-map", onNavigateToMap);
+    return () => window.removeEventListener("axiom:navigate-to-map", onNavigateToMap);
+  }, []);
+
   const openConnections = useCallback(() => {
     setTab("connections");
     onOpenConnections?.();
@@ -4993,6 +5000,20 @@ export default function Workspace() {
       window.removeEventListener("axiom:open-nav-drawer", openNavDrawer);
       window.removeEventListener("axiom:close-project-menu", closeProjectMenu);
     };
+  }, []);
+  // MAP surface detected in chat → nudge user to Flow tab via toast
+  useEffect(() => {
+    const onMapSurface = () => {
+      toast("Atlas mapped interconnected tensions in this conversation", {
+        action: {
+          label: "View Flow Map",
+          onClick: () => window.dispatchEvent(new CustomEvent("axiom:navigate-to-map")),
+        },
+        duration: 9000,
+      });
+    };
+    window.addEventListener("axiom:surface-map", onMapSurface);
+    return () => window.removeEventListener("axiom:surface-map", onMapSurface);
   }, []);
   const [showVault, setShowVault] = useState(false);
   const [showSearch, setShowSearch] = useState(false);

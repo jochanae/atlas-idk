@@ -938,6 +938,7 @@ export function useChatStream(
             ...(writeFilePath ? { writeFileProposal: { path: writeFilePath } } : {}),
             surface: res.surface ?? null,
             executionTimeMs: res.executionTimeMs ?? null,
+            // MAP surface dispatch handled below after message is set
             inputTokens: res.inputTokens ?? null,
             outputTokens: res.outputTokens ?? null,
             costUsd: res.costUsd != null ? Number(res.costUsd) : null,
@@ -945,6 +946,10 @@ export function useChatStream(
             ...(res.reviewNotes?.length ? { reviewNotes: res.reviewNotes } : {}),
           }]);
           setActivityStream({ active: false, content: "" });
+          // MAP surface detected → nudge user to open Flow tab
+          if ((res.surface as { type?: string } | null)?.type === "MAP") {
+            window.dispatchEvent(new CustomEvent("axiom:surface-map"));
+          }
           // Auto-route standalone HTML artifacts to the Draft sandbox and
           // persist them to the project artifacts gallery.
           const previewHtmlEdit = fes.find((e: any) => e.path === "preview/output.html");

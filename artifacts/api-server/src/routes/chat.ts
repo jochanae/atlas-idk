@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
-import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable } from "@workspace/db";
+import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
 import { checkBuildReadiness } from "../lib/buildReadiness";
@@ -4763,6 +4763,28 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         })
         .returning();
       savedMsgId = savedMsg.id;
+      // Persist plan to project_artifacts for cross-session queryability (fire-and-forget)
+      if (structuredPlanArtifact && projectId) {
+        const plan = structuredPlanArtifact;
+        const msgId = savedMsg.id;
+        setImmediate(async () => {
+          try {
+            const existing = await db.select({ id: projectArtifactsTable.id })
+              .from(projectArtifactsTable)
+              .where(and(eq(projectArtifactsTable.projectId, projectId), eq(projectArtifactsTable.type, "plan")));
+            await db.insert(projectArtifactsTable).values({
+              projectId,
+              type: "plan",
+              version: existing.length + 1,
+              title: plan.title,
+              metadata: { messageId: msgId, confidence: plan.confidence, amFields: plan.amFields ?? [] } as Record<string, unknown>,
+              payload: plan as unknown as Record<string, unknown>,
+            });
+          } catch (planErr) {
+            logger.warn({ err: planErr }, "plan artifact persist failed — non-fatal");
+          }
+        });
+      }
       // Persist image version record if an image was generated
       if (firstImage && savedMsg.id) {
         try {
