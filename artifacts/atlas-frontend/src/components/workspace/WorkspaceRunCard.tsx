@@ -180,12 +180,21 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     const isHtml = /\.html?$/i.test(filePath);
     const content = isHtml ? findFileContent(messages, filePath) : null;
 
+    // preview/output.html — route into the Draft sandbox via the same event
+    // pathway used by useChatStream. This keeps it inline in the Preview panel
+    // instead of opening a new browser tab.
+    if (filePath === "preview/output.html" && content) {
+      window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
+        detail: { content },
+      }));
+      return;
+    }
+
     if (content) {
-      // Render the HTML in a new tab via a blob URL.
+      // All other HTML artifacts — open via blob URL in a new tab.
       const blob = new Blob([content], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
-      // Revoke after 60 s — long enough for the tab to have loaded the content.
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } else {
       // Fallback: navigate to diff view (historical load — content not in memory).
