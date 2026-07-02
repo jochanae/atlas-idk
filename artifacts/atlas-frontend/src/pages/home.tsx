@@ -1903,6 +1903,8 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
+  // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
+  const [showParkSheet, setShowParkSheet] = useState(false);
   // Ask Atlas is a standalone surface — see AskAtlasSurface.
   // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
   // the same purple-header surface. No inline routing, no split renderer.
