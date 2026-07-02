@@ -1344,12 +1344,6 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   const isTinyMobile = useIsTinyScreen();
 
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<ReadinessMode>(() => {
-    try {
-      const v = localStorage.getItem(READINESS_MODE_KEY) as ReadinessMode | null;
-      return v === "arch" || v === "decisions" || v === "blended" ? v : "blended";
-    } catch { return "blended"; }
-  });
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1376,7 +1370,6 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
 
   const proj = ps.project as {
     latestSnapshotScore?: number | null;
-    nodeState?: ProjectNodeState | null;
     name?: string;
     linkedRepo?: string | null;
     previewUrl?: string | null;
@@ -1384,7 +1377,6 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
     appSourceFileCount?: number | null;
     appBuildSucceeded?: boolean | null;
   } | null;
-  const ns = (proj?.nodeState ?? {}) as Record<string, unknown>;
   const decisionsCount = ps.decisions?.length ?? 0;
   const active = !!ps.activeSession;
 
@@ -1400,36 +1392,18 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
     ([appFilesOk, appBuildOk, appPreviewOk, appExportOk].filter(Boolean).length / 4) * 100
   );
 
-  // ── General readiness signals ─────────────────────────────────────────────
-  const ARCH_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
-  let archTotal = 0, archResolved = 0, decTotal = 0, decResolved = 0;
-  Object.entries(ns).forEach(([nid, raw]) => {
-    const resolved = raw === true || (typeof raw === "object" && raw !== null && (raw as { resolved?: unknown }).resolved === true);
-    if (ARCH_IDS.has(nid)) { archTotal++; if (resolved) archResolved++; }
-    else { decTotal++; if (resolved) decResolved++; }
-  });
-  const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
-  const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
-  // Intelligence endpoint is authoritative for blended score — falls back to snapshot
-  // then client-computed blend if the endpoint hasn't loaded yet.
-  const blendedScore =
-    intelligence?.readiness.overall ??
-    proj?.latestSnapshotScore ??
-    (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
-
   const repoLinked = Boolean(proj?.linkedRepo);
   const previewLinked = Boolean(proj?.previewUrl);
-  const repoPct = repoLinked ? 100 : 0;
-  const urlPct = previewLinked ? 100 : 0;
-  const generalCompletion = Math.round((archScore + decisionsScore + repoPct + urlPct) / 4);
 
-  const localCompletion = isAppProject ? appCompletion : generalCompletion;
-  const completion = chipReadiness?.overallScore ?? localCompletion;
-
-  const displayScore = isAppProject
-    ? appCompletion
-    : mode === "arch" ? archScore : mode === "decisions" ? decisionsScore : blendedScore;
-  const meta = MODE_META[mode];
+  // ── Canonical readiness — one source ─────────────────────────────────────
+  // Prefer the /readiness endpoint (per-dimension breakdown), fall back to
+  // intelligence.readiness.overall (same value, no breakdown), then snapshot.
+  const canonicalScore =
+    chipReadiness?.overallScore ??
+    intelligence?.readiness.overall ??
+    proj?.latestSnapshotScore ??
+    0;
+  const completion = isAppProject ? appCompletion : canonicalScore;
 
   // Tier-1 state label for app projects — reflects what has actually been proven
   const appTierLabel = !appFilesOk
@@ -1447,10 +1421,6 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
         ? "Build succeeded · preview live · export available"
         : "Files written · export available · build next";
 
-  const setNextMode = (m: ReadinessMode) => {
-    setMode(m);
-    try { localStorage.setItem(READINESS_MODE_KEY, m); } catch {}
-  };
 
   const SIZE = 26;
   const R = 10;
@@ -1589,31 +1559,19 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
               <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)" }}>{completion}%</span>
             </div>
           ) : (
-            <div style={{ padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", marginRight: 4 }}>View</span>
-              {(["blended", "arch", "decisions"] as ReadinessMode[]).map((m) => {
-                const isActive = mode === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setNextMode(m)}
-                    style={{
-                      padding: "3px 8px", borderRadius: 999, cursor: "pointer",
-                      border: "1px solid " + (isActive ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.18)"),
-                      background: isActive ? "rgba(var(--atlas-muted-rgb),0.10)" : "transparent",
-                      color: isActive ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                      fontFamily: "var(--app-font-mono)", fontSize: 9, fontWeight: 700,
-                      letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1,
-                    }}
-                  >{MODE_META[m].abbr}</button>
-                );
-              })}
-              <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)" }}>{displayScore}%</span>
+            <div style={{ padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)" }}>
+                {chipReadiness?.overallLabel ?? "Readiness"}
+              </span>
+              <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)" }}>{completion}%</span>
             </div>
           )}
           <div style={{ padding: "0 14px 10px", fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.35 }}>
-            {isAppProject ? appTierDesc : `${meta.label} — ${meta.description}`}
+            {isAppProject
+              ? appTierDesc
+              : chipReadiness
+                ? "Canonical readiness — same score the workspace ring shows."
+                : "Loading readiness…"}
           </div>
 
           <div style={{ borderTop: "1px solid rgba(var(--atlas-muted-rgb),0.12)" }}>
@@ -1650,33 +1608,43 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
                   <CompletionRow label="Live URL" sub="Set" pct={100} onClick={() => go("/workspace")} />
                 )}
               </>
-            ) : (
+            ) : chipReadiness?.dimensions ? (
               <>
-                <CompletionRow
-                  label="Architecture"
-                  sub={`${archResolved}/${archTotal || 6} resolved`}
-                  pct={archScore}
-                  onClick={() => go("/master-map")}
-                />
-                <CompletionRow
-                  label="Decisions"
-                  sub={`${decResolved}/${decTotal} resolved · ${decisionsCount} committed`}
-                  pct={decisionsScore}
-                  onClick={() => go("/ledger")}
-                />
-                <CompletionRow
-                  label="Repo"
-                  sub={repoLinked ? "Linked" : "Not linked"}
-                  pct={repoPct}
-                  onClick={() => go("/workspace")}
-                />
-                <CompletionRow
-                  label="Live URL"
-                  sub={previewLinked ? "Set" : "Not set"}
-                  pct={urlPct}
-                  onClick={() => go("/workspace")}
-                />
+                {(["strategy", "build", "activity", "delivery"] as const).map((key) => {
+                  const dim = chipReadiness.dimensions?.[key];
+                  if (!dim) return null;
+                  const labels: Record<string, string> = {
+                    strategy: "Strategy", build: "Build", activity: "Activity", delivery: "Delivery",
+                  };
+                  const targets: Record<string, string> = {
+                    strategy: "/master-map", build: "/workspace", activity: "/ledger", delivery: "/workspace",
+                  };
+                  return (
+                    <CompletionRow
+                      key={key}
+                      label={labels[key]}
+                      sub={dim.applicable ? dim.evidence : "N/A for this project kind"}
+                      pct={dim.applicable ? dim.score : 0}
+                      onClick={() => go(targets[key])}
+                    />
+                  );
+                })}
+                {chipReadiness.warnings?.length > 0 && (
+                  <div style={{ padding: "8px 14px", fontSize: 10, color: "rgba(252,165,165,0.85)", lineHeight: 1.4, borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.08)" }}>
+                    {chipReadiness.warnings.map((w, i) => (
+                      <div key={i}>⚠ {w}</div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+                  <MetaRow label="Repo" value={repoLinked ? "Linked" : "Not linked"} ok={repoLinked} onClick={() => go("/workspace")} />
+                  <MetaRow label="Live URL" value={previewLinked ? "Set" : "Not set (backend writeback pending)"} ok={previewLinked} onClick={() => go("/workspace")} />
+                </div>
               </>
+            ) : (
+              <div style={{ padding: "14px", fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
+                Waiting for readiness endpoint…
+              </div>
             )}
           </div>
 
@@ -1725,6 +1693,25 @@ function CompletionRow({ label, sub, pct, onClick }: { label: string; sub: strin
     </button>
   );
 }
+
+function MetaRow({ label, value, ok, onClick }: { label: string; value: string; ok: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+        padding: "4px 0", background: "transparent", border: "none", cursor: "pointer",
+        color: "var(--atlas-fg)", textAlign: "left",
+      }}
+    >
+      <span style={{ fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.06em" }}>{label}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: ok ? "#4ade80" : "var(--atlas-muted)" }}>{value}</span>
+    </button>
+  );
+}
+
+
 
 
 function ShellFooterIcon({ icon }: { icon: ShellNavIcon }) {
