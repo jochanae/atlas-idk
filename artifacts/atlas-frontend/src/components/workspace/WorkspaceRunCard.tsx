@@ -402,7 +402,7 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
         </button>
       )}
 
-      {isOpen && hasProduced && (
+      {isOpen && run.produced.length > 0 && (
         <div
           style={{
             marginTop: 8,
