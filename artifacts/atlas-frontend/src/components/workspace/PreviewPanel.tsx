@@ -257,7 +257,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   // Sandbox state
   const [sandboxInput, setSandboxInput] = useState("");
   const [sandboxRendered, setSandboxRendered] = useState<string | null>(null);
-  const [sandboxExpanded, setSandboxExpanded] = useState(true);
+  const [sandboxExpanded, setSandboxExpanded] = useState(false);
 
   // ── URL mode state ──────────────────────────────────────────────────────────
   const storageKey = `atlas-preview-${projectId}`;
