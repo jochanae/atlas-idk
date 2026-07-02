@@ -1344,12 +1344,6 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   const isTinyMobile = useIsTinyScreen();
 
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<ReadinessMode>(() => {
-    try {
-      const v = localStorage.getItem(READINESS_MODE_KEY) as ReadinessMode | null;
-      return v === "arch" || v === "decisions" || v === "blended" ? v : "blended";
-    } catch { return "blended"; }
-  });
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1376,7 +1370,6 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
 
   const proj = ps.project as {
     latestSnapshotScore?: number | null;
-    nodeState?: ProjectNodeState | null;
     name?: string;
     linkedRepo?: string | null;
     previewUrl?: string | null;
@@ -1384,7 +1377,6 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
     appSourceFileCount?: number | null;
     appBuildSucceeded?: boolean | null;
   } | null;
-  const ns = (proj?.nodeState ?? {}) as Record<string, unknown>;
   const decisionsCount = ps.decisions?.length ?? 0;
   const active = !!ps.activeSession;
 
@@ -1400,36 +1392,18 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
     ([appFilesOk, appBuildOk, appPreviewOk, appExportOk].filter(Boolean).length / 4) * 100
   );
 
-  // ── General readiness signals ─────────────────────────────────────────────
-  const ARCH_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
-  let archTotal = 0, archResolved = 0, decTotal = 0, decResolved = 0;
-  Object.entries(ns).forEach(([nid, raw]) => {
-    const resolved = raw === true || (typeof raw === "object" && raw !== null && (raw as { resolved?: unknown }).resolved === true);
-    if (ARCH_IDS.has(nid)) { archTotal++; if (resolved) archResolved++; }
-    else { decTotal++; if (resolved) decResolved++; }
-  });
-  const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
-  const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
-  // Intelligence endpoint is authoritative for blended score — falls back to snapshot
-  // then client-computed blend if the endpoint hasn't loaded yet.
-  const blendedScore =
-    intelligence?.readiness.overall ??
-    proj?.latestSnapshotScore ??
-    (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
-
   const repoLinked = Boolean(proj?.linkedRepo);
   const previewLinked = Boolean(proj?.previewUrl);
-  const repoPct = repoLinked ? 100 : 0;
-  const urlPct = previewLinked ? 100 : 0;
-  const generalCompletion = Math.round((archScore + decisionsScore + repoPct + urlPct) / 4);
 
-  const localCompletion = isAppProject ? appCompletion : generalCompletion;
-  const completion = chipReadiness?.overallScore ?? localCompletion;
-
-  const displayScore = isAppProject
-    ? appCompletion
-    : mode === "arch" ? archScore : mode === "decisions" ? decisionsScore : blendedScore;
-  const meta = MODE_META[mode];
+  // ── Canonical readiness — one source ─────────────────────────────────────
+  // Prefer the /readiness endpoint (per-dimension breakdown), fall back to
+  // intelligence.readiness.overall (same value, no breakdown), then snapshot.
+  const canonicalScore =
+    chipReadiness?.overallScore ??
+    intelligence?.readiness.overall ??
+    proj?.latestSnapshotScore ??
+    0;
+  const completion = isAppProject ? appCompletion : canonicalScore;
 
   // Tier-1 state label for app projects — reflects what has actually been proven
   const appTierLabel = !appFilesOk
@@ -1447,10 +1421,6 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
         ? "Build succeeded · preview live · export available"
         : "Files written · export available · build next";
 
-  const setNextMode = (m: ReadinessMode) => {
-    setMode(m);
-    try { localStorage.setItem(READINESS_MODE_KEY, m); } catch {}
-  };
 
   const SIZE = 26;
   const R = 10;
