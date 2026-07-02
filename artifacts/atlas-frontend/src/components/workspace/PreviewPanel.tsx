@@ -691,6 +691,25 @@ ${t}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  // Listen for auto-routed preview artifacts emitted by useChatStream when
+  // Atlas generates a FILE_EDIT at preview/output.html. Mirrors the sandboxCode
+  // prop path so Draft auto-populates without user copy-paste.
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const { content } = (ev as CustomEvent<{ content: string }>).detail ?? {};
+      if (!content) return;
+      setSandboxInput(content);
+      setSandboxRendered(buildSrcdoc(content));
+      setSandboxExpanded(false);
+      try { localStorage.setItem(sandboxStorageKey, content); } catch {}
+      const hasRealProject = wsDsStatus === "running" || wsDsStatus === "starting" || wsDsStatus === "installing" || liveUrl;
+      if (!hasRealProject) setPreviewMode("sandbox");
+    };
+    window.addEventListener("axiom:preview-artifact", handler);
+    return () => window.removeEventListener("axiom:preview-artifact", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wsDsStatus, liveUrl]);
+
 
   // Sync from DB on project load / switch
   useEffect(() => {
@@ -1280,19 +1299,17 @@ ${t}
               </div>
             )}
           </div>
-          {/* Sandbox preview area */}
+          {/* Sandbox preview area — fills container, no device-frame constraint */}
           <div ref={containerRef} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {sandboxRendered ? (
-              <div style={deviceWrapperStyle}>
-                <div style={deviceInnerStyle}>
-                  <iframe
-                    key={sandboxRendered.slice(0, 80)}
-                    srcDoc={sandboxRendered}
-                    title="Sandbox Preview"
-                    sandbox="allow-scripts allow-same-origin"
-                    style={{ border: "none", width: "100%", height: "100%", display: "block", background: "#fff" }}
-                  />
-                </div>
+              <div style={{ flex: 1, overflow: "hidden", background: "#fff" }}>
+                <iframe
+                  key={sandboxRendered.slice(0, 80)}
+                  srcDoc={sandboxRendered}
+                  title="Sandbox Preview"
+                  sandbox="allow-scripts allow-same-origin"
+                  style={{ border: "none", width: "100%", height: "100%", display: "block", background: "#fff" }}
+                />
               </div>
             ) : (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", gap: 12 }}>

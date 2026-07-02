@@ -936,6 +936,16 @@ export function useChatStream(
             ...(res.reviewNotes?.length ? { reviewNotes: res.reviewNotes } : {}),
           }]);
           setActivityStream({ active: false, content: "" });
+          // Auto-route standalone HTML artifacts to the Draft sandbox.
+          // When Atlas emits a FILE_EDIT for preview/output.html, push the
+          // content via a custom event so PreviewPanel auto-renders it without
+          // requiring the user to copy-paste.
+          const previewHtmlEdit = fes.find((e: any) => e.path === "preview/output.html");
+          if (previewHtmlEdit?.content) {
+            window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
+              detail: { content: previewHtmlEdit.content },
+            }));
+          }
           if (isScenario) {
             setScenarioBuffer((prev) => [
               ...prev,
