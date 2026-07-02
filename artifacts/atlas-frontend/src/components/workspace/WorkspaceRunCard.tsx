@@ -17,6 +17,7 @@ import {
   FileText,
   Image as ImageIcon,
   FileCode,
+  ChevronDown,
 } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
 
