@@ -59,6 +59,7 @@ import ledgerRouter from "./ledger";
 import conversationsRouter from "./conversations";
 import feedbackRouter from "./feedback";
 import shareRouter from "./share";
+import publishRouter from "./publish";
 
 const router: IRouter = Router();
 
@@ -153,6 +154,9 @@ router.use(requireAuth, feedbackRouter);
 
 // Share — generate/revoke public share tokens for workspace builds
 router.use(requireAuth, shareRouter);
+
+// Publish — permanent public deployment URLs for workspace builds
+router.use(requireAuth, publishRouter);
 
 // Self-repair routes — super_admin only
 router.use(requireAdmin, selfRouter);

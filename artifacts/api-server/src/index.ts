@@ -458,6 +458,22 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: projects.share_token failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS publish_token text,
+        ADD COLUMN IF NOT EXISTS published_at  timestamptz
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS projects_publish_token_uq
+        ON projects (publish_token)
+        WHERE publish_token IS NOT NULL
+    `);
+    logger.info("ensureColumns: projects.publish_token + published_at verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: projects.publish_token failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

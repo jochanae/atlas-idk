@@ -194,6 +194,57 @@ app.use("/share/:token", async (req, res) => {
   createReadStream(fullPath).pipe(res);
 });
 
+// ── Permanent published app route — /p/:token (no auth required) ──────────
+// Serves the static build for a project that has been explicitly "published".
+// Distinct from /share/:token — publish is permanent, share is ephemeral.
+app.use("/p/:token", async (req, res) => {
+  const token = req.params["token"];
+  if (!token || !/^[a-f0-9]{32}$/.test(token)) { res.status(400).send("Invalid publish token"); return; }
+
+  let projectId: number | null = null;
+  try {
+    const { pool } = await import("@workspace/db");
+    const result = await pool.query<{ id: number }>(
+      "SELECT id FROM projects WHERE publish_token = $1",
+      [token]
+    );
+    projectId = result.rows[0]?.id ?? null;
+  } catch {
+    res.status(500).send("Database error"); return;
+  }
+
+  if (!projectId) { res.status(404).send("Published app not found — the link may have been revoked."); return; }
+
+  const distDir = path.join(projectWorkspaceDir(projectId), "dist");
+  const PUB_MIME: Record<string, string> = {
+    ".html": "text/html", ".css": "text/css", ".js": "application/javascript",
+    ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon",
+    ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf",
+  };
+
+  const base = `/p/${token}`;
+  let filePath = (!req.path || req.path === "/") ? "/index.html" : req.path;
+  if (!path.extname(filePath)) filePath = "/index.html";
+  const fullPath = path.join(distDir, filePath);
+  if (!fullPath.startsWith(distDir)) { res.status(403).end(); return; }
+
+  const serveIndex = () => {
+    const idx = path.join(distDir, "index.html");
+    let html: string;
+    try { html = readFileSync(idx, "utf8"); } catch { res.status(404).send("Build not found — rebuild the project to restore the published app."); return; }
+    html = html.replace(/(src|href)="\/(assets\/[^"]+)"/g, `$1="${base}/$2"`);
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  };
+
+  if (filePath === "/index.html") { serveIndex(); return; }
+  try { statSync(fullPath); } catch { serveIndex(); return; }
+  const mime = PUB_MIME[path.extname(fullPath).toLowerCase()] ?? "application/octet-stream";
+  res.setHeader("Content-Type", mime);
+  createReadStream(fullPath).pipe(res);
+});
+
 app.use("/api/shell", shellRouter);
 app.use("/api", router);
 
