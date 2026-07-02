@@ -17,6 +17,7 @@ import type { PlanExecution } from "@/lib/plan";
 import type { Plan } from "@/lib/plan";
 import type { PlanState } from "@/components/workspace/chatShared";
 import type { ResumeBrief } from "@/hooks/useProjectResume";
+import { WorkspaceRunCard } from "@/components/workspace/WorkspaceRunCard";
 
 // Minimal structural types — avoid importing private types from workspace.tsx
 type ProjectLike = { name?: string } | null | undefined;
