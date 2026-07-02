@@ -282,6 +282,7 @@ interface WsDevState {
   proc: ChildProcess | null;
   logs: string[];
   errorMsg: string | null;
+  startedAt: Date | null;
 }
 
 const wsStates = new Map<number, WsDevState>();
@@ -327,7 +328,7 @@ function wsDeleteState(projectId: number) {
 
 function getWsState(projectId: number): WsDevState {
   if (!wsStates.has(projectId)) {
-    wsStates.set(projectId, { status: "idle", port: null, proc: null, logs: [], errorMsg: null });
+    wsStates.set(projectId, { status: "idle", port: null, proc: null, logs: [], errorMsg: null, startedAt: null });
   }
   return wsStates.get(projectId)!;
 }
@@ -956,6 +957,7 @@ router.post("/devserver/workspace/:projectId/start", (req, res): void => {
       // points to /api/preview/workspace/:id/ (served by this same API server).
       st.port = 1;
       st.status = "running";
+      st.startedAt = new Date();
       wsSaveState(projectId, 1, undefined);
       addWsLog(st, `✓ Build complete — ${fileCount} source files · preview ready`);
 
@@ -983,7 +985,7 @@ router.get("/devserver/workspace/:projectId/status", (req, res): void => {
   const st = getWsState(projectId);
   const wsDir = projectWorkspaceDir(projectId);
   const hasScaffold = existsSync(path.join(wsDir, "package.json"));
-  res.json({ status: st.status, port: st.port, logs: st.logs.slice(-50), errorMsg: st.errorMsg, hasScaffold });
+  res.json({ status: st.status, port: st.port, logs: st.logs.slice(-50), errorMsg: st.errorMsg, hasScaffold, startedAt: st.startedAt ?? null });
 });
 
 router.post("/devserver/workspace/:projectId/stop", (req, res): void => {

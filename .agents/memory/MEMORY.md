@@ -39,3 +39,4 @@
 - [ShellNavMenu event routing](shell-nav-menu-events.md) — axiom:open-nav-drawer opens drawer everywhere; axiom:open-projects-drawer opens project switcher in workspace (wrong for global nav); dashboard dispatches axiom:open-dashboard → home OverviewBottomSheet
 - [Conversation-first routing](conversation-first-routing.md) — POST /api/conversations creates project+UUID; homepage Send navigates to workspace (shouldStayOnHome now defaults false); pre-model writeStep removed from chat.ts for faster first token
 - [Build Runner Architecture](build-runner.md) — SSE POST /api/builds, project_builds table, BuildPanel overlay via axiom:build-run event, Phase 2 = workspace BUILD_RUN action
+- [Runtime Architecture](runtime-architecture.md) — Sandbox→Share→Publish model; Phase 1 done: Runtime tab owns lifecycle (start/stop/restart); devserver.ts has all routes; WsDevState tracks startedAt; Preview tab is viewer-only

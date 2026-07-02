@@ -111,6 +111,7 @@ import { SecretsPanel } from "@/components/workspace/SecretsPanel";
 import { JobsPanel } from "@/components/workspace/JobsPanel";
 import { McpPanel } from "@/components/workspace/McpPanel";
 import { WriteTab } from "@/components/workspace/WriteTab";
+import { RuntimePanel } from "@/components/workspace/RuntimePanel";
 import { LaunchModal, type LaunchMode } from "@/components/workspace/LaunchModal";
 import {
   type PlanState,
@@ -302,7 +303,7 @@ type ManifestDecisionResponse = {
   componentName?: string;
 };
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "jobs" | "mcp" | "image" | "forge" | "artifacts" | "manifest" | "insights" | "write";
+type RightTab = "ledger" | "files" | "preview" | "runtime" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "jobs" | "mcp" | "image" | "forge" | "artifacts" | "manifest" | "insights" | "write";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
@@ -1880,6 +1881,16 @@ function RightPanel({
       ),
     },
     {
+      id: "runtime" as RightTab,
+      label: "Runtime",
+      icon: (
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2" />
+          <path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="currentColor" opacity={0.85} />
+        </svg>
+      ),
+    },
+    {
       id: "insights" as RightTab,
       label: "Insights",
       icon: (
@@ -2286,6 +2297,11 @@ function RightPanel({
       {tab === "preview" && (
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
           <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} rebuildTrigger={rebuildTrigger} onWsRunningChange={onWsRunningChange} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} manifestDecision={manifestDecision} manifestPreviewHtml={manifestPreviewHtml} />
+        </div>
+      )}
+      {tab === "runtime" && (
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <RuntimePanel projectId={projectId} onOpenPreview={() => setTab("preview")} />
         </div>
       )}
       {tab === "manifest" && (
