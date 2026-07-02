@@ -1,31 +1,30 @@
 /**
- * WorkspaceRunCard — receipt-style Run Card derived from workspace chat messages.
+ * WorkspaceRunCard — live communication layer + receipt for workspace builds.
  *
- * Standalone. Does NOT import from ActiveRuns.tsx, useAllRuns, _startRun, or
- * the Atlas Composer live-queue store. All run data is derived from the
- * ChatMessage[] passed in via props.
+ * TWO MODES:
  *
- * Buttons:
- *   Card tap → during a run, routes to Details; after a run, routes to Preview when
- *              previewable, otherwise Details.
- *   Details  → dispatches "axiom:open-changes" (workspace switches to Changes/Diff panel)
- *   Preview  → dispatches "axiom:open-preview" with priority:
- *              1. preview/output.html      → { source: "sandbox", content }
- *              2. any produced artifact    → { source: "generated" }
- *              3. app/route/package edits  → { source: "local" }
- *              4. saved live URL fallback  → { source: "url" }
- *              5. otherwise                → disabled
- *   Bookmark → toggles bookmark in atlas-history ledger (existing sheet),
- *              toast with "View history" opens the sheet via "atlas:open-history-sheet".
+ * 1. ACTIVE (chatPending=true or last message streaming):
+ *    Card appears immediately, shimmers, and streams live step text as Atlas
+ *    scans, reads, and writes. The gold shimmer sweep communicates that work
+ *    is happening even during silent phases (file-read, second LLM call, etc.).
+ *
+ * 2. RECEIPT (generation complete, file output detected):
+ *    Settles into the Run Complete / Run Failed summary card with Details +
+ *    Preview buttons. Hides once the user has continued the conversation.
+ *
+ * Props:
+ *   chatPending — true while waiting for first token OR during agentic loops
+ *   liveStep    — latest step event from SSE { verb, target?, status? }
+ *   messages    — full ChatMessage[] for receipt derivation
+ *
+ * Buttons (receipt mode only):
+ *   Details  → dispatches "axiom:open-changes"
+ *   Preview  → dispatches "axiom:open-preview"
+ *   Bookmark → toggles bookmark in atlas-history ledger
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Bookmark,
-} from "lucide-react";
+import { CheckCircle2, XCircle, Bookmark } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
 import {
   addSnapshot,
@@ -33,10 +32,17 @@ import {
   useAtlasHistory,
 } from "@/lib/atlas-history";
 
+interface LiveStepItem {
+  verb: string;
+  target?: string;
+}
+
 interface Props {
   projectId: number;
   messages: ChatMessage[];
   projectPreviewUrl?: string | null;
+  chatPending?: boolean;
+  liveStep?: { verb: string; target?: string; status?: string } | null;
 }
 
 type DerivedStatus = "running" | "applied" | "failed";
@@ -96,8 +102,6 @@ function deriveRun(
     const deletes = msg.fileDeletes
       ?? (msg.fileDeletesJson ? (JSON.parse(msg.fileDeletesJson) as Array<{ path: string }>) : []);
     const proposal = msg.writeFileProposal?.path;
-    // Gate: only show the run card when Atlas actually produced an artifact.
-    // Pure streaming with no file output is Layer 3 telemetry — no card.
     const hasWork =
       edits.length > 0 ||
       deletes.length > 0 ||
@@ -105,6 +109,21 @@ function deriveRun(
       ERROR_MARKERS.test(msg.content ?? "");
 
     if (!hasWork) continue;
+
+    // If the conversation has moved on past this run (user sent a new message
+    // that received a completed Atlas reply), hide the receipt card.
+    const hasSubsequentExchange = (() => {
+      let foundUserAfterRun = false;
+      for (let k = i + 1; k < messages.length; k++) {
+        if (messages[k].role === "user") { foundUserAfterRun = true; break; }
+      }
+      if (!foundUserAfterRun) return false;
+      for (let k = i + 1; k < messages.length; k++) {
+        if (messages[k].role === "assistant" && !messages[k].streaming) return true;
+      }
+      return false;
+    })();
+    if (hasSubsequentExchange) return null;
 
     const paths = new Set<string>();
     for (const e of edits) if (e?.path) paths.add(e.path);
@@ -134,7 +153,6 @@ function deriveRun(
     }
     title = title.length > 140 ? title.slice(0, 137) + "…" : title;
 
-    // Preview source priority.
     let previewSource: PreviewSource = null;
     let previewPath: string | null = null;
     const sandbox = produced.find((p) => p === "preview/output.html");
@@ -153,23 +171,6 @@ function deriveRun(
     const createdAt = msg.sentAt ? new Date(msg.sentAt).getTime() : Date.now();
     const elapsedMs =
       typeof msg.executionTimeMs === "number" ? msg.executionTimeMs : null;
-
-    // If the conversation has moved on past this run (a user message sent
-    // after the run received a completed Atlas reply), hide the card.
-    // This prevents stale run cards from lingering while a new thread is active.
-    const hasSubsequentExchange = (() => {
-      let foundUserAfterRun = false;
-      for (let k = i + 1; k < messages.length; k++) {
-        if (messages[k].role === "user") { foundUserAfterRun = true; break; }
-      }
-      if (!foundUserAfterRun) return false;
-      // Also need a completed (non-streaming) assistant reply after the user message.
-      for (let k = i + 1; k < messages.length; k++) {
-        if (messages[k].role === "assistant" && !messages[k].streaming) return true;
-      }
-      return false;
-    })();
-    if (hasSubsequentExchange) return null;
 
     const associatedMessageId =
       typeof msg.id === "number" ? msg.id : null;
@@ -203,18 +204,7 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
   return null;
 }
 
-function statusMeta(status: DerivedStatus) {
-  switch (status) {
-    case "running":
-      return { kicker: "Working", tone: "running" as const, Icon: Loader2, spin: true };
-    case "applied":
-      return { kicker: "Run Complete", tone: "success" as const, Icon: CheckCircle2, spin: false };
-    case "failed":
-      return { kicker: "Run Failed", tone: "failed" as const, Icon: XCircle, spin: false };
-  }
-}
-
-const TONE: Record<
+const RECEIPT_TONE: Record<
   "running" | "success" | "failed",
   { border: string; ring: string; fg: string; iconBg: string }
 > = {
@@ -238,10 +228,216 @@ const TONE: Record<
   },
 };
 
-export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Props) {
+function ReceiptIcon({ status }: { status: "running" | "applied" | "failed" }) {
+  if (status === "applied") return <CheckCircle2 size={12} strokeWidth={1.75} />;
+  if (status === "failed") return <XCircle size={12} strokeWidth={1.75} />;
+  return null;
+}
+
+/** The shimmer live-communication card shown while Atlas is working. */
+function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        background: "hsl(var(--card))",
+        border: "1px solid var(--atlas-gold-border)",
+        borderRadius: 10,
+        padding: "10px 12px",
+        margin: "10px 0 4px",
+        maxWidth: "88%",
+        overflow: "hidden",
+      }}
+      data-wrc-active="true"
+    >
+      {/* Shimmer sweep */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(90deg, transparent 0%, rgba(201,162,76,0.07) 50%, transparent 100%)",
+          backgroundSize: "200% 100%",
+          animation: "wrc-shimmer 2.2s ease-in-out infinite",
+          pointerEvents: "none",
+          borderRadius: "inherit",
+        }}
+      />
+
+      {/* Left accent bar — animates opacity */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 2,
+          background: "var(--atlas-gold)",
+          borderRadius: "10px 0 0 10px",
+          animation: "wrc-pulse-bar 1.8s ease-in-out infinite",
+        }}
+      />
+
+      <div style={{ paddingLeft: 8 }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          {/* Pulsing dot */}
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-block",
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: "var(--atlas-gold)",
+              flexShrink: 0,
+              animation: "wrc-dot-pulse 1.4s ease-in-out infinite",
+            }}
+          />
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 9,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "var(--atlas-gold)",
+                opacity: 0.9,
+                lineHeight: 1.2,
+              }}
+            >
+              Working
+            </div>
+            {title && (
+              <div
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  color: "hsl(var(--card-foreground))",
+                  marginTop: 1,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  maxWidth: "85%",
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                {title}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Step list — last 5 */}
+        {steps.length > 0 && (
+          <div
+            style={{
+              paddingTop: 6,
+              borderTop: "1px solid hsl(var(--border) / 0.5)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 3,
+            }}
+          >
+            {steps.slice(-5).map((step, idx, arr) => {
+              const isCurrent = idx === arr.length - 1;
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: 5,
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10,
+                    lineHeight: 1.4,
+                    color: isCurrent
+                      ? "var(--atlas-gold)"
+                      : "hsl(var(--muted-foreground) / 0.6)",
+                    transition: "color 300ms ease",
+                  }}
+                >
+                  <span style={{ flexShrink: 0, fontSize: 9, opacity: isCurrent ? 1 : 0.7 }}>
+                    {isCurrent ? "→" : "✓"}
+                  </span>
+                  <span>
+                    {step.verb}
+                    {step.target ? (
+                      <span style={{ opacity: 0.75 }}>{" "}{step.target}</span>
+                    ) : null}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes wrc-shimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+        @keyframes wrc-pulse-bar {
+          0%, 100% { opacity: 0.4; }
+          50%       { opacity: 1; }
+        }
+        @keyframes wrc-dot-pulse {
+          0%, 100% { opacity: 0.5; transform: scale(0.85); }
+          50%       { opacity: 1;   transform: scale(1); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep }: Props) {
+  // ── Step accumulation for active/live mode ─────────────────────────────
+  const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
+  const prevPendingRef = useRef(false);
+
+  // When a new generation starts, reset step history
+  useEffect(() => {
+    const nowPending = chatPending ?? false;
+    if (nowPending && !prevPendingRef.current) {
+      setLiveSteps([]);
+    }
+    prevPendingRef.current = nowPending;
+  }, [chatPending]);
+
+  // Accumulate live step events (deduplicate consecutive identical steps)
+  useEffect(() => {
+    if (!liveStep?.verb) return;
+    setLiveSteps(prev => {
+      const last = prev[prev.length - 1];
+      if (last?.verb === liveStep.verb && last?.target === liveStep.target) return prev;
+      return [...prev, { verb: liveStep.verb, target: liveStep.target }];
+    });
+  }, [liveStep?.verb, liveStep?.target]);
+
+  // ── Active state detection ─────────────────────────────────────────────
+  const isStreaming = useMemo(
+    () => messages.some(m => m.streaming),
+    [messages],
+  );
+  const isActive = (chatPending ?? false) || isStreaming;
+
+  // Last user message — title for the active card
+  const activeTitle = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        const t = (messages[i].content ?? "").trim();
+        return t.length > 120 ? t.slice(0, 117) + "…" : t;
+      }
+    }
+    return "";
+  }, [messages]);
+
+  // ── Receipt derivation ────────────────────────────────────────────────
   const run = useMemo(
-    () => deriveRun(messages, projectId, projectPreviewUrl),
-    [messages, projectId, projectPreviewUrl],
+    () => (isActive ? null : deriveRun(messages, projectId, projectPreviewUrl)),
+    [isActive, messages, projectId, projectPreviewUrl],
   );
 
   const [now, setNow] = useState(() => Date.now());
@@ -251,7 +447,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
     return () => clearInterval(id);
   }, [run?.id, run?.status]);
 
-  // Bookmark state via existing atlas-history ledger.
+  // ── Bookmark (receipt mode) ───────────────────────────────────────────
   const { items } = useAtlasHistory(projectId);
   const existingSnapshot = useMemo(() => {
     if (!run?.associatedMessageId) return null;
@@ -276,7 +472,6 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
         detail: {
           source: run.previewSource ?? undefined,
           content: content ?? undefined,
-          // Empty-state hints — only meaningful when source is null.
           emptyReason: run.previewSource ? undefined : (run.error ?? (run.status === "failed" ? "RUN_FAILED" : "NO_PREVIEWABLE_OUTPUT")),
           runId: run.previewSource ? undefined : run.id,
           liveUrl: run.previewSource ? undefined : savedLiveUrl,
@@ -285,8 +480,6 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
     );
   }, [run, messages, projectId, projectPreviewUrl]);
 
-  // Card body tap = inline expand/collapse only. Navigation is on explicit
-  // Details / Preview buttons — never smart card-body routing.
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = useCallback(() => setExpanded((v) => !v), []);
 
@@ -325,11 +518,18 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
     });
   }, [run, existingSnapshot, isBookmarked, projectId]);
 
+  // ── Render: active (live communication) ───────────────────────────────
+  if (isActive) {
+    return <ActiveCard steps={liveSteps} title={activeTitle} />;
+  }
+
+  // ── Render: receipt ───────────────────────────────────────────────────
   if (!run) return null;
 
-  const meta = statusMeta(run.status);
-  const tone = TONE[meta.tone];
+  const toneKey = run.status === "applied" ? "success" : run.status === "failed" ? "failed" : "running";
+  const tone = RECEIPT_TONE[toneKey];
   const fileCount = run.files.length;
+  const kicker = run.status === "running" ? "Working" : run.status === "applied" ? "Run Complete" : "Run Failed";
   const elapsedMs =
     run.status === "running"
       ? now - run.createdAt
@@ -370,7 +570,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
         margin: "10px 0 4px",
         maxWidth: "88%",
         alignSelf: "flex-start",
-        transition: "border-color 240ms ease",
+        transition: "border-color 240ms ease, box-shadow 240ms ease",
         cursor: "pointer",
       }}
       data-run-id={run.id}
@@ -420,7 +620,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
             justifyContent: "center",
           }}
         >
-          <meta.Icon size={12} strokeWidth={1.75} className={meta.spin ? "spin" : undefined} />
+          <ReceiptIcon status={run.status} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
@@ -433,7 +633,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
               lineHeight: 1.2,
             }}
           >
-            {meta.kicker}
+            {kicker}
           </div>
           <div
             style={{
@@ -458,13 +658,12 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
           >
             {fileCount} {fileCount === 1 ? "file" : "files"} · {fmtElapsed(elapsedMs)}
             {run.status === "failed" && run.error ? (
-              <> · <span style={{ color: TONE.failed.fg }}>{run.error}</span></>
+              <> · <span style={{ color: RECEIPT_TONE.failed.fg }}>{run.error}</span></>
             ) : null}
           </div>
         </div>
       </div>
 
-      {/* Inline expand — file list preview. No navigation. */}
       {expanded && run.files.length > 0 && (
         <div
           style={{
@@ -492,7 +691,6 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
         </div>
       )}
 
-      {/* Divider + always-visible Details / Preview buttons */}
       <div
         style={{
           display: "flex",
@@ -531,7 +729,6 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
             event.stopPropagation();
             handlePreview();
           }}
-          disabled={false}
           title={previewTitle}
           style={{
             flex: 1,
@@ -555,11 +752,6 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
           Preview
         </button>
       </div>
-
-      <style>{`
-        [data-run-id="${run.id}"] .spin { animation: wrc-spin 1s linear infinite; transform-origin: 50% 50%; }
-        @keyframes wrc-spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }

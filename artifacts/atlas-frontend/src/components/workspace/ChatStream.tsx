@@ -311,6 +311,7 @@ export function ChatStream(props: ChatStreamProps) {
     activityEvents,
     onSuggestionTap,
     onSuggestionPark,
+    liveStep,
   } = props;
 
 
@@ -743,6 +744,8 @@ export function ChatStream(props: ChatStreamProps) {
         projectId={projectId}
         messages={messages}
         projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+        chatPending={chatPending}
+        liveStep={liveStep}
       />
 
       <div ref={bottomRef} />
