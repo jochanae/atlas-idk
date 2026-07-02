@@ -277,7 +277,13 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl }: Pro
         associated_message_id: run.associatedMessageId,
         title: run.title,
         lens: "builder",
-        payload: { files: run.files, produced: run.produced, status: run.status },
+        payload: {
+          code_delta: [
+            `${run.status.toUpperCase()} · ${run.files.length} ${run.files.length === 1 ? "file" : "files"}`,
+            ...run.files,
+          ].join("\n"),
+          active_file: run.previewPath ?? run.files[0],
+        },
       });
     }
     if (!snap) return;
