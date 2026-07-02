@@ -5,21 +5,30 @@
  * the Atlas Composer live-queue store. All run data is derived from the
  * ChatMessage[] passed in via props.
  *
- * Visual reference: attached_assets/run-card-{dark,light}.html
+ * Buttons:
+ *   Details  → dispatches "axiom:open-changes" (workspace switches to Changes/Diff panel)
+ *   Preview  → dispatches "axiom:open-preview" with priority:
+ *              1. preview/output.html      → { source: "sandbox", content }
+ *              2. any produced artifact    → { source: "generated" }
+ *              3. app/route/package edits  → { source: "local" }
+ *              4. otherwise                → disabled
+ *   Bookmark → toggles bookmark in atlas-history ledger (existing sheet),
+ *              toast with "View history" opens the sheet via "atlas:open-history-sheet".
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import { toast } from "sonner";
 import {
   Loader2,
   CheckCircle2,
   XCircle,
   Bookmark,
-  FileText,
-  Image as ImageIcon,
-  FileCode,
-  ChevronDown,
 } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
+import {
+  addSnapshot,
+  toggleBookmark as toggleHistoryBookmark,
+  useAtlasHistory,
+} from "@/lib/atlas-history";
 
 interface Props {
   projectId: number;
@@ -27,19 +36,24 @@ interface Props {
 }
 
 type DerivedStatus = "running" | "applied" | "failed";
+type PreviewSource = "sandbox" | "generated" | "local" | null;
 
 interface DerivedRun {
   id: string;
+  associatedMessageId: number | null;
   status: DerivedStatus;
   title: string;
   createdAt: number;
   elapsedMs: number | null;
   files: string[];
   produced: string[];
+  previewSource: PreviewSource;
+  previewPath: string | null;
   error?: string;
 }
 
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
+const APP_FILE_RE = /(^|\/)(src\/|app\/|pages\/|routes\/|package\.json$|vite\.config|tailwind\.config)/i;
 const ERROR_MARKERS =
   /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
 
@@ -96,13 +110,41 @@ function deriveRun(messages: ChatMessage[]): DerivedRun | null {
     }
     title = title.length > 140 ? title.slice(0, 137) + "…" : title;
 
+    // Preview source priority.
+    let previewSource: PreviewSource = null;
+    let previewPath: string | null = null;
+    const sandbox = produced.find((p) => p === "preview/output.html");
+    if (sandbox) {
+      previewSource = "sandbox";
+      previewPath = sandbox;
+    } else if (produced.length > 0) {
+      previewSource = "generated";
+      previewPath = produced[0];
+    } else if (files.some((p) => APP_FILE_RE.test(p))) {
+      previewSource = "local";
+    }
+
     const createdAt = msg.sentAt ? new Date(msg.sentAt).getTime() : Date.now();
     const elapsedMs =
       typeof msg.executionTimeMs === "number" ? msg.executionTimeMs : null;
 
+    const associatedMessageId =
+      typeof msg.id === "number" ? msg.id : null;
     const id = msg.id != null ? String(msg.id) : `msg-${i}-${createdAt}`;
 
-    return { id, status, title, createdAt, elapsedMs, files, produced, error };
+    return {
+      id,
+      associatedMessageId,
+      status,
+      title,
+      createdAt,
+      elapsedMs,
+      files,
+      produced,
+      previewSource,
+      previewPath,
+      error,
+    };
   }
   return null;
 }
@@ -153,12 +195,6 @@ const TONE: Record<
   },
 };
 
-function ProducedIcon({ path }: { path: string }) {
-  if (/\.(png|jpe?g|gif|svg|webp)$/i.test(path)) return <ImageIcon size={12} />;
-  if (/\.(html?|md)$/i.test(path)) return <FileText size={12} />;
-  return <FileCode size={12} />;
-}
-
 export function WorkspaceRunCard({ projectId, messages }: Props) {
   const run = useMemo(() => deriveRun(messages), [messages]);
 
@@ -169,31 +205,58 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     return () => clearInterval(id);
   }, [run?.id, run?.status]);
 
-  const handleOpenPreview = useCallback(() => {
-    if (!run?.produced[0]) return;
-    const filePath = run.produced[0];
-    const isHtml = /\.html?$/i.test(filePath);
-    const content = isHtml ? findFileContent(messages, filePath) : null;
+  // Bookmark state via existing atlas-history ledger.
+  const { items } = useAtlasHistory(projectId);
+  const existingSnapshot = useMemo(() => {
+    if (!run?.associatedMessageId) return null;
+    return items.find((i) => i.associated_message_id === run.associatedMessageId) ?? null;
+  }, [items, run?.associatedMessageId]);
+  const isBookmarked = !!existingSnapshot?.isBookmarked;
 
-    if (filePath === "preview/output.html" && content) {
-      window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
-        detail: { content },
-      }));
+  const handleDetails = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("axiom:open-changes"));
+  }, []);
+
+  const handlePreview = useCallback(() => {
+    if (!run || !run.previewSource) return;
+    let content: string | null = null;
+    if (run.previewSource === "sandbox" && run.previewPath) {
+      content = findFileContent(messages, run.previewPath);
+    }
+    window.dispatchEvent(
+      new CustomEvent("axiom:open-preview", {
+        detail: { source: run.previewSource, content: content ?? undefined },
+      }),
+    );
+  }, [run, messages]);
+
+  const handleBookmark = useCallback(() => {
+    if (!run) return;
+    if (!run.associatedMessageId) {
+      toast.error("Can't bookmark this run yet — message hasn't been persisted.");
       return;
     }
-
-    if (content) {
-      const blob = new Blob([content], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } else {
-      const href = `${window.location.origin}/project/${projectId}?leftTab=diff&file=${encodeURIComponent(filePath)}`;
-      window.open(href, "_blank", "noopener,noreferrer");
+    let snap = existingSnapshot;
+    if (!snap) {
+      snap = addSnapshot(projectId, {
+        associated_message_id: run.associatedMessageId,
+        title: run.title,
+        lens: "builder",
+        payload: { files: run.files, produced: run.produced, status: run.status },
+      });
     }
-  }, [run, messages, projectId]);
-
-  const [expanded, setExpanded] = useState(false);
+    if (!snap) return;
+    toggleHistoryBookmark(projectId, snap.id);
+    const nowBookmarked = !isBookmarked;
+    toast.success(nowBookmarked ? "Run bookmarked" : "Bookmark removed", {
+      action: nowBookmarked
+        ? {
+            label: "View history",
+            onClick: () => window.dispatchEvent(new CustomEvent("atlas:open-history-sheet")),
+          }
+        : undefined,
+    });
+  }, [run, existingSnapshot, isBookmarked, projectId]);
 
   if (!run) return null;
 
@@ -205,13 +268,14 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
       ? now - run.createdAt
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
 
-  // Details opens the Changes panel. We don't include runId because WorkspaceRunCard
-  // derives from chat message IDs, not project_builds IDs — they're different namespaces.
-  const detailsHref = `/project/${projectId}?leftTab=diff`;
-  const hasProduced = run.produced.length > 0;
-  const hasFiles = run.files.length > 0;
-  // Auto-expand while running so users see progress; otherwise collapsed by default.
-  const isOpen = expanded || run.status === "running";
+  const previewDisabled = run.previewSource === null;
+  const previewTitle = previewDisabled
+    ? "No previewable output in this run"
+    : run.previewSource === "sandbox"
+      ? "Open Draft preview"
+      : run.previewSource === "generated"
+        ? "Open produced artifact"
+        : "Open local dev preview";
 
   return (
     <div
@@ -233,22 +297,29 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
     >
       <button
         type="button"
-        aria-label="Bookmark run"
-        title="Bookmark (coming soon)"
+        aria-label={isBookmarked ? "Remove bookmark" : "Bookmark run"}
+        title={isBookmarked ? "Bookmarked" : "Bookmark run"}
+        onClick={handleBookmark}
         style={{
           position: "absolute",
           top: 8,
           right: 8,
           background: "transparent",
           border: "none",
-          color: "hsl(var(--muted-foreground) / 0.55)",
+          color: isBookmarked
+            ? "var(--atlas-gold)"
+            : "hsl(var(--muted-foreground) / 0.55)",
           cursor: "pointer",
           padding: 4,
           borderRadius: 4,
           lineHeight: 0,
         }}
       >
-        <Bookmark size={12} strokeWidth={1.75} />
+        <Bookmark
+          size={12}
+          strokeWidth={1.75}
+          fill={isBookmarked ? "currentColor" : "none"}
+        />
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 9, paddingRight: 22 }}>
@@ -309,153 +380,63 @@ export function WorkspaceRunCard({ projectId, messages }: Props) {
         </div>
       </div>
 
-      {run.status !== "running" && (
+      {/* Divider + always-visible Details / Preview buttons */}
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          marginTop: 10,
+          paddingTop: 8,
+          borderTop: "1px solid hsl(var(--border))",
+        }}
+      >
         <button
           type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={isOpen}
+          onClick={handleDetails}
           style={{
-            marginTop: 8,
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 4,
-            padding: "5px 8px",
+            flex: 1,
+            padding: "6px 10px",
+            fontSize: 11.5,
+            fontWeight: 500,
+            textAlign: "center",
             background: "transparent",
-            border: "none",
-            color: "hsl(var(--muted-foreground))",
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 10,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
+            border: "1px solid hsl(var(--border))",
+            color: "hsl(var(--card-foreground))",
+            borderRadius: 5,
             cursor: "pointer",
-            borderTop: "1px dashed hsl(var(--border))",
+            fontFamily: "inherit",
+            letterSpacing: "0.01em",
           }}
         >
-          {isOpen ? "Hide details" : "View details"}
-          <ChevronDown
-            size={12}
-            style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 180ms ease" }}
-          />
+          Details
         </button>
-      )}
-
-      {isOpen && hasProduced && (
-        <div
+        <button
+          type="button"
+          onClick={handlePreview}
+          disabled={previewDisabled}
+          title={previewTitle}
           style={{
-            marginTop: 8,
-            paddingTop: 8,
-            borderTop: "1px dashed hsl(var(--border))",
-            display: "grid",
-            gap: 5,
+            flex: 1,
+            padding: "6px 10px",
+            fontSize: 11.5,
+            fontWeight: 500,
+            textAlign: "center",
+            background: previewDisabled ? "transparent" : "var(--atlas-gold-dim)",
+            border: previewDisabled
+              ? "1px solid hsl(var(--border))"
+              : "1px solid var(--atlas-gold-border)",
+            color: previewDisabled
+              ? "hsl(var(--muted-foreground) / 0.55)"
+              : "var(--atlas-gold)",
+            borderRadius: 5,
+            cursor: previewDisabled ? "not-allowed" : "pointer",
+            fontFamily: "inherit",
+            letterSpacing: "0.01em",
           }}
         >
-          <div
-            style={{
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 9,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: "hsl(var(--muted-foreground) / 0.7)",
-            }}
-          >
-            Produced
-          </div>
-          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 3 }}>
-            {run.produced.map((p) => (
-              <li
-                key={p}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontFamily: "var(--app-font-mono)",
-                  fontSize: 11,
-                  color: "hsl(var(--muted-foreground))",
-                }}
-              >
-                <ProducedIcon path={p} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {p}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {isOpen && (
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            marginTop: 10,
-            paddingTop: 8,
-            borderTop: "1px solid hsl(var(--border))",
-          }}
-        >
-          <Link
-            href={detailsHref}
-            style={{
-              flex: 1,
-              padding: "6px 10px",
-              fontSize: 11.5,
-              fontWeight: 500,
-              textAlign: "center",
-              background: "transparent",
-              border: "1px solid hsl(var(--border))",
-              color: "hsl(var(--card-foreground))",
-              borderRadius: 5,
-              textDecoration: "none",
-              letterSpacing: "0.01em",
-            }}
-          >
-            Diff
-          </Link>
-          {hasProduced ? (
-            <button
-              type="button"
-              onClick={handleOpenPreview}
-              style={{
-                flex: 1,
-                padding: "6px 10px",
-                fontSize: 11.5,
-                fontWeight: 500,
-                textAlign: "center",
-                background: "var(--atlas-gold-dim)",
-                border: "1px solid var(--atlas-gold-border)",
-                color: "var(--atlas-gold)",
-                borderRadius: 5,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                letterSpacing: "0.01em",
-              }}
-            >
-              Preview
-            </button>
-          ) : hasFiles ? (
-            <Link
-              href={detailsHref}
-              style={{
-                flex: 1,
-                padding: "6px 10px",
-                fontSize: 11.5,
-                fontWeight: 500,
-                textAlign: "center",
-                background: "transparent",
-                border: "1px solid hsl(var(--border))",
-                color: "hsl(var(--card-foreground))",
-                borderRadius: 5,
-                textDecoration: "none",
-                letterSpacing: "0.01em",
-              }}
-            >
-              View Changes
-            </Link>
-          ) : null}
-        </div>
-      )}
+          Preview
+        </button>
+      </div>
 
       <style>{`
         [data-run-id="${run.id}"] .spin { animation: wrc-spin 1s linear infinite; transform-origin: 50% 50%; }
