@@ -778,6 +778,13 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   animation: atlas-bubble-in 260ms var(--ease-cinematic) both;
 }
 
+/* Chunk fade — used by HomeChunkedBubbles between paragraph chunks */
+@keyframes atlasChunkFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
 /* ── Pulsing status dot ── */
 @keyframes atlas-dot-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }

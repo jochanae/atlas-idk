@@ -1,13 +1,17 @@
 /**
  * textPacer — decouples a streaming source (network tokens, or a full string)
- * from the visible reveal rate, so text glides at a human reading cadence
+ * from the visible reveal rate, so text unfolds at a human reading cadence
  * instead of "plopping" in network bursts.
  *
  * Design (matches mem://design/conversational-flow):
- *  - Baseline rate ~6ms per character (~165 chars/sec) — slightly slower than
- *    fast reading, so the eye stays just ahead of the cursor.
- *  - Punctuation pauses: +90ms after . ! ?  •  +40ms after , ; :  •  +180ms after \n\n.
- *  - Catch-up mode: if buffered backlog > 400 chars, halve the per-char delay.
+ *  - Baseline rate ~14ms per character (~70 chars/sec) — comfortable reading
+ *    speed, so the text feels like a thought unfolding rather than a printer.
+ *  - Punctuation pauses: +180ms after . ! ?  •  +80ms after , ; :
+ *    +260ms after em/en dashes  •  +320ms after \n\n (paragraph breath).
+ *  - Settle pause: ~140ms hold before the very first character so the typing
+ *    indicator lingers a beat and the reader's eye can arrive.
+ *  - Catch-up mode: if buffered backlog > 900 chars, gently trim the per-char
+ *    delay (never below ~9ms) so we never blast text at terminal speed.
  *  - requestAnimationFrame loop — synced to display refresh, no setInterval drift.
  *  - One setState per frame max (caller's onTick is called at most once per rAF tick).
  *
@@ -24,10 +28,12 @@ export interface TextPacerOptions {
   onTick: (released: string) => void;
   /** Called once after the released text has caught up to the final target. */
   onDone?: () => void;
-  /** Baseline ms per character (default 6). */
+  /** Baseline ms per character (default 14 — comfortable reading cadence). */
   rateMs?: number;
-  /** Backlog threshold above which catch-up halves the delay (default 400). */
+  /** Backlog threshold above which catch-up gently trims the delay (default 900). */
   catchupAt?: number;
+  /** Ms to hold before revealing the very first character (default 140). */
+  settleMs?: number;
 }
 
 export interface TextPacer {
@@ -44,13 +50,15 @@ export interface TextPacer {
 }
 
 const PUNCT_PAUSE: Record<string, number> = {
-  ".": 90, "!": 90, "?": 90,
-  ",": 40, ";": 40, ":": 40,
+  ".": 180, "!": 180, "?": 180,
+  ",": 80, ";": 80, ":": 80,
+  "—": 260, "–": 260,
 };
 
 export function createTextPacer(opts: TextPacerOptions): TextPacer {
-  const baseRate = opts.rateMs ?? 6;
-  const catchupAt = opts.catchupAt ?? 400;
+  const baseRate = opts.rateMs ?? 14;
+  const catchupAt = opts.catchupAt ?? 900;
+  const settleMs = opts.settleMs ?? 140;
 
   let target = "";
   let released = 0;
@@ -59,6 +67,8 @@ export function createTextPacer(opts: TextPacerOptions): TextPacer {
   let rafId: number | null = null;
   let lastTickMs = 0;
   let punctHoldUntil = 0;
+  let settleUntil = 0;
+  let firstCharSeen = false;
   let lastEmittedLen = -1;
   let donePromise: Promise<void> | null = null;
   let resolveDone: (() => void) | null = null;
@@ -98,19 +108,30 @@ export function createTextPacer(opts: TextPacerOptions): TextPacer {
       return;
     }
 
-    // Catch-up: if backlog is big, double the rate.
-    const effectiveRate = backlog > catchupAt ? baseRate / 2 : baseRate;
+    // Settle: on the very first character, hold briefly so the typing
+    // indicator lingers and the reader's eye arrives before text appears.
+    if (!firstCharSeen) {
+      if (settleUntil === 0) settleUntil = now + settleMs;
+      if (now < settleUntil) { schedule(); return; }
+      firstCharSeen = true;
+    }
+
+    // Catch-up: if backlog is large, gently trim the per-char delay — but
+    // never below ~9ms so text never blasts at terminal speed.
+    const effectiveRate = backlog > catchupAt
+      ? Math.max(9, baseRate * 0.7)
+      : baseRate;
     let charsThisFrame = Math.max(1, Math.floor(elapsed / effectiveRate));
-    // Hard cap so a long stall doesn't dump 5000 chars in one frame.
-    if (charsThisFrame > 80) charsThisFrame = 80;
+    // Hard cap so a long stall doesn't dump hundreds of chars in one frame.
+    if (charsThisFrame > 40) charsThisFrame = 40;
 
     // Walk forward char by char so we can honor punctuation pauses mid-frame.
     for (let i = 0; i < charsThisFrame && released < target.length; i++) {
       const ch = target[released];
       released++;
-      // Paragraph break = bigger pause
+      // Paragraph break = a full breath
       if (ch === "\n" && target[released] === "\n") {
-        punctHoldUntil = now + 180;
+        punctHoldUntil = now + 320;
         break;
       }
       const pause = PUNCT_PAUSE[ch];
@@ -189,6 +210,13 @@ export function followScrollIfNearBottom(
   if (!container) return;
   const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
   if (distance <= threshold) {
-    container.scrollTop = container.scrollHeight;
+    // Smooth follow when the reader is close to the bottom — feels like the
+    // page is easing to keep up, not snapping under them. If they've scrolled
+    // away, leave them alone entirely.
+    try {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    } catch {
+      container.scrollTop = container.scrollHeight;
+    }
   }
 }

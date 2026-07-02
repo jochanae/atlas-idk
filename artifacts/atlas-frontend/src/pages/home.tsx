@@ -783,7 +783,11 @@ function HomeChunkedBubbles({ text, isNew, isStreaming }: { text: string; isNew:
 
   useEffect(() => {
     if (!isNew || revealed >= chunks.length) return;
-    const t = setTimeout(() => setRevealed(r => r + 1), revealed === 0 ? 80 : 500 + Math.random() * 300);
+    // Longer, more human pauses between chunks — feels like Atlas is
+    // thinking, not paginating. First chunk gets a small settle, later
+    // chunks get a full breath (900–1400ms) so each paragraph lands.
+    const delay = revealed === 0 ? 220 : 900 + Math.random() * 500;
+    const t = setTimeout(() => setRevealed(r => r + 1), delay);
     return () => clearTimeout(t);
   }, [revealed, chunks.length, isNew]);
 
@@ -793,12 +797,15 @@ function HomeChunkedBubbles({ text, isNew, isStreaming }: { text: string; isNew:
   return (
     <>
       {visible.map((chunk, i) => (
-        <HomeStreamingText
+        <div
           key={i}
-          text={chunk}
-          animate={false}
-          style={i < visible.length - 1 ? { marginBottom: 14 } : undefined}
-        />
+          style={{
+            marginBottom: i < visible.length - 1 ? 18 : undefined,
+            animation: isNew ? "atlasChunkFade 420ms ease-out both" : undefined,
+          }}
+        >
+          <HomeStreamingText text={chunk} animate={false} />
+        </div>
       ))}
     </>
   );
