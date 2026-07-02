@@ -2473,9 +2473,9 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Also check for Vercel connection so we know whether to defer BROWSER_VISIT until after deploy.
   const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow] = await Promise.all([
     isFoundationMode
-      ? Promise.resolve([] as Array<{ memory: string | null; linkedRepo: string | null; githubToken: string | null; nodeState: Record<string, unknown> | null; name: string; previewUrl: string | null; description: string | null }>)
+      ? Promise.resolve([] as Array<{ memory: string | null; linkedRepo: string | null; githubToken: string | null; nodeState: Record<string, unknown> | null; name: string; previewUrl: string | null; description: string | null; convState: string | null }>)
       : db
-          .select({ memory: projectsTable.memory, linkedRepo: projectsTable.linkedRepo, githubToken: projectsTable.githubToken, nodeState: projectsTable.nodeState, name: projectsTable.name, previewUrl: projectsTable.previewUrl, description: projectsTable.description })
+          .select({ memory: projectsTable.memory, linkedRepo: projectsTable.linkedRepo, githubToken: projectsTable.githubToken, nodeState: projectsTable.nodeState, name: projectsTable.name, previewUrl: projectsTable.previewUrl, description: projectsTable.description, convState: projectsTable.convState })
           .from(projectsTable)
           .where(userId ? and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)) : eq(projectsTable.id, projectId)),
     userId
@@ -2510,6 +2510,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       : Promise.resolve(null),
   ]);
   const [project] = projectRows;
+  const incomingConvState = project?.convState ?? null;
   const [user] = userRows;
   const hasVercelConnection = vercelRows.length > 0;
   const sessionBuildIntent = sessionRows[0]?.buildIntent ?? null;
