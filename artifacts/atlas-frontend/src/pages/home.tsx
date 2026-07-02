@@ -2277,6 +2277,7 @@ export default function Home() {
       thinkOutLoudInlineRef.current = false;
       setActiveConversationId(null);
       nexusChat.setMessages([]);
+      askAtlasChat.clearMessages();
       setEarnedTitle(null);
       setDepth("ambient");
     } else {
@@ -2290,7 +2291,7 @@ export default function Home() {
         description: "Macro view across every project.",
       });
     }
-  }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, setDepth]);
+  }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, askAtlasChat.clearMessages, setDepth]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
@@ -6050,7 +6051,13 @@ export default function Home() {
         <UnifiedContextDock
           mode="ambient"
           onAtlasCore={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onHome={() => {
+            if (askAtlasSurfaceOpen) {
+              handleLockTap();
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
           onProjects={() => setLocation("/projects")}
           onDecisions={() => setLocation("/ledger")}
           onYou={() => setShowProfile(true)}
