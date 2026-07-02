@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable } from "@workspace/db";
+import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { autoCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
@@ -2501,6 +2501,29 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
       if (nexusImageGenResult && !res.writableEnded && !res.destroyed) {
         res.write(`event: image\ndata: ${JSON.stringify(nexusImageGenResult)}\n\n`);
       }
+      // Persist nexus AI images as project assets — fire-and-forget
+      if (nexusImageGenResult && focusProjectId && sessionId) {
+        void (async () => {
+          try {
+            for (const img of nexusImageGenResult.images) {
+              const b64Match = img.imageUrl.match(/^data:([^;]+);base64,(.+)$/s);
+              if (!b64Match) continue;
+              await db.insert(imageVersionsTable).values({
+                sessionId,
+                projectId: focusProjectId,
+                prompt: img.prompt,
+                imageB64: b64Match[2],
+                imageMimeType: b64Match[1],
+                model: img.model,
+                mode: img.mode,
+              } as typeof imageVersionsTable.$inferInsert);
+            }
+          } catch (err) {
+            logger.warn({ err }, "nexus imageVersion persist failed — non-fatal");
+          }
+        })();
+      }
+
       // Persist imageGen payload to the message so sketches survive thread reload (P3).
       // Find the most-recently inserted assistant message for this conversation, then UPDATE it.
       if (nexusImageGenResult && effectiveConversationId) {

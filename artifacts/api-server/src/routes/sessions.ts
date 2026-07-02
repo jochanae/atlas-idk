@@ -405,6 +405,41 @@ router.get("/sessions/:sessionId/image-versions", async (req, res): Promise<void
   })));
 });
 
+// GET /projects/:projectId/images — list AI-generated images for a project (from imageVersionsTable)
+router.get("/projects/:projectId/images", async (req, res): Promise<void> => {
+  const projectId = Number(req.params.projectId);
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    res.status(400).json({ error: "Invalid projectId" }); return;
+  }
+  const userId = (req as any).authUser.id as number;
+  const [proj] = await db
+    .select({ id: projectsTable.id })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const versions = await db
+    .select()
+    .from(imageVersionsTable)
+    .where(eq(imageVersionsTable.projectId, projectId))
+    .orderBy(desc(imageVersionsTable.createdAt));
+
+  res.json({
+    images: versions.map((v) => ({
+      id: v.id,
+      prompt: v.prompt,
+      imageB64: v.imageB64,
+      imageMimeType: v.imageMimeType,
+      model: v.model,
+      mode: v.mode,
+      sessionId: v.sessionId,
+      messageId: v.messageId,
+      createdAt: v.createdAt.toISOString(),
+    })),
+  });
+});
+
 // POST /sessions/:id/summarize — write a session memory snapshot to project memory.
 // Called automatically by the frontend when the user navigates away (visibilitychange).
 router.post("/sessions/:id/summarize", async (req, res): Promise<void> => {

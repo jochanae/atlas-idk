@@ -10,6 +10,22 @@ interface GalleryImage {
   projectId: number | null;
 }
 
+interface GeneratedImage {
+  id: number;
+  prompt: string;
+  imageB64: string;
+  imageMimeType: string;
+  model: string | null;
+  mode: string | null;
+  sessionId: number;
+  messageId: number | null;
+  createdAt: string;
+}
+
+type LightboxItem =
+  | { kind: "uploaded"; id: number; src: string; label: string | null }
+  | { kind: "generated"; src: string; label: string | null };
+
 interface VisualVaultProps {
   projectId?: number | null;
   onClose: () => void;
@@ -49,10 +65,11 @@ function compressVaultImage(source: Blob): Promise<Blob> {
 
 export function VisualVault({ projectId, onClose }: VisualVaultProps) {
   const [images, setImages] = useState<GalleryImage[]>([]);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [lightbox, setLightbox] = useState<GalleryImage | null>(null);
+  const [lightbox, setLightbox] = useState<LightboxItem | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const [capturing, setCapturing] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
@@ -75,6 +92,18 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
   }, [projectId]);
 
   useEffect(() => { fetchImages(); }, [fetchImages]);
+
+  const fetchGenerated = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/images`, { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json() as { images: GeneratedImage[] };
+      setGeneratedImages(data.images);
+    } catch { /* silent */ }
+  }, [projectId]);
+
+  useEffect(() => { fetchGenerated(); }, [fetchGenerated]);
 
   const saveCompressedImage = useCallback(async (source: Blob, name: string, label: string) => {
     const compressed = await compressVaultImage(source);
@@ -134,7 +163,7 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
     try {
       await fetch(`/api/gallery/${id}`, { method: "DELETE", credentials: "include" });
       setImages(prev => prev.filter(i => i.id !== id));
-      if (lightbox?.id === id) setLightbox(null);
+      if (lightbox?.kind === "uploaded" && lightbox.id === id) setLightbox(null);
     } catch {
       toast("Could not delete image");
     }
@@ -348,7 +377,7 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
               <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
                 <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(201,162,76,0.2)", borderTopColor: "var(--atlas-gold)", animation: "spin 0.8s linear infinite" }} />
               </div>
-            ) : images.length === 0 ? (
+            ) : images.length === 0 && generatedImages.length === 0 ? (
               <div
                 onClick={() => fileInputRef.current?.click()}
                 style={{
@@ -376,46 +405,68 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
                 gridTemplateColumns: "repeat(3, 1fr)",
                 gap: 8,
               }}>
-                {images.map(img => (
-                  <div
-                    key={img.id}
-                    style={{ position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden", cursor: "pointer" }}
-                    onClick={() => setLightbox(img)}
-                  >
-                    <img
-                      src={`/api/storage${img.objectPath}`}
-                      alt={img.label ?? "gallery image"}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      loading="lazy"
-                    />
-                    {img.label && (
-                      <div style={{
-                        position: "absolute", bottom: 0, left: 0, right: 0,
-                        background: "linear-gradient(transparent, var(--atlas-bg))",
-                        padding: "12px 6px 5px",
-                        fontSize: 9,
-                        color: "var(--atlas-fg)",
-                        fontFamily: "var(--app-font-mono)",
-                        letterSpacing: "0.04em",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
-                        {img.label}
-                      </div>
-                    )}
-                    <button
-                      onClick={e => { e.stopPropagation(); handleDelete(img.id); }}
-                      style={{
-                        position: "absolute", top: 4, right: 4,
-                        width: 20, height: 20, borderRadius: "50%",
-                        background: "var(--atlas-bg)",
-                        border: "1px solid var(--atlas-fg)",
-                        color: "var(--atlas-fg)",
-                        fontSize: 11, lineHeight: 1,
-                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >×</button>
-                  </div>
-                ))}
+                {[
+                  ...images.map(img => ({ kind: "uploaded" as const, id: img.id, src: `/api/storage${img.objectPath}`, label: img.label, createdAt: img.createdAt })),
+                  ...generatedImages.map(img => ({ kind: "generated" as const, id: img.id, src: `data:${img.imageMimeType};base64,${img.imageB64}`, label: img.prompt, createdAt: img.createdAt })),
+                ]
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map(item => (
+                    <div
+                      key={`${item.kind}-${item.id}`}
+                      style={{ position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden", cursor: "pointer" }}
+                      onClick={() => setLightbox({ kind: item.kind as LightboxItem["kind"], id: item.id, src: item.src, label: item.label } as LightboxItem)}
+                    >
+                      <img
+                        src={item.src}
+                        alt={item.label ?? "image"}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        loading="lazy"
+                      />
+                      {item.kind === "generated" && (
+                        <div style={{
+                          position: "absolute", top: 4, left: 4,
+                          background: "rgba(201,162,76,0.85)",
+                          borderRadius: 3,
+                          padding: "1px 4px",
+                          fontSize: 7.5,
+                          fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.08em",
+                          color: "var(--atlas-bg)",
+                          fontWeight: 700,
+                          lineHeight: 1.6,
+                        }}>ATLAS</div>
+                      )}
+                      {item.label && (
+                        <div style={{
+                          position: "absolute", bottom: 0, left: 0, right: 0,
+                          background: "linear-gradient(transparent, var(--atlas-bg))",
+                          padding: "12px 6px 5px",
+                          fontSize: 9,
+                          color: "var(--atlas-fg)",
+                          fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.04em",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {item.label}
+                        </div>
+                      )}
+                      {item.kind === "uploaded" && (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDelete(item.id); }}
+                          style={{
+                            position: "absolute", top: 4, right: 4,
+                            width: 20, height: 20, borderRadius: "50%",
+                            background: "var(--atlas-bg)",
+                            border: "1px solid var(--atlas-fg)",
+                            color: "var(--atlas-fg)",
+                            fontSize: 11, lineHeight: 1,
+                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >×</button>
+                      )}
+                    </div>
+                  ))
+                }
                 {/* Add more button */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
@@ -437,7 +488,7 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
           </div>
 
           {/* Image count footer */}
-          {images.length > 0 && (
+          {(images.length > 0 || generatedImages.length > 0) && (
             <div style={{
               padding: "10px 20px 16px",
               fontSize: 10, color: "var(--atlas-muted)", opacity: 0.5,
@@ -445,7 +496,7 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
               textAlign: "center", flexShrink: 0,
               borderTop: "1px solid rgba(201,162,76,0.07)",
             }}>
-              {images.length} image{images.length !== 1 ? "s" : ""} · tap to enlarge
+              {images.length + generatedImages.length} image{images.length + generatedImages.length !== 1 ? "s" : ""} · tap to enlarge
             </div>
           )}
         </div>
@@ -475,7 +526,7 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
             }}
           >×</button>
           <img
-            src={`/api/storage${lightbox.objectPath}`}
+            src={lightbox.src}
             alt={lightbox.label ?? ""}
             onClick={e => e.stopPropagation()}
             style={{
@@ -490,22 +541,26 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
               color: "var(--atlas-muted)",
               fontFamily: "var(--app-font-mono)",
               letterSpacing: "0.06em",
+              maxWidth: 480,
+              textAlign: "center",
             }}>
               {lightbox.label}
             </div>
           )}
-          <button
-            onClick={e => { e.stopPropagation(); handleDelete(lightbox.id); }}
-            style={{
-              marginTop: 16,
-              padding: "7px 18px", borderRadius: 8,
-              background: "rgba(146,64,14,0.15)",
-              border: "1px solid rgba(146,64,14,0.4)",
-              color: "var(--atlas-fg)",
-              fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
-              cursor: "pointer",
-            }}
-          >Remove from vault</button>
+          {lightbox.kind === "uploaded" && (
+            <button
+              onClick={e => { e.stopPropagation(); handleDelete(lightbox.id); }}
+              style={{
+                marginTop: 16,
+                padding: "7px 18px", borderRadius: 8,
+                background: "rgba(146,64,14,0.15)",
+                border: "1px solid rgba(146,64,14,0.4)",
+                color: "var(--atlas-fg)",
+                fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                cursor: "pointer",
+              }}
+            >Remove from vault</button>
+          )}
         </div>
       )}
 
