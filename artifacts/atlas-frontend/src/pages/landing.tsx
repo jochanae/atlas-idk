@@ -4,6 +4,8 @@ import { useLocation } from "wouter";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import {
   InterrogationFragments,
+  WhyAxiomExists,
+  ContinuityThread,
   StrategicManifest,
   StructuralOutputs,
   ParchmentAside,
