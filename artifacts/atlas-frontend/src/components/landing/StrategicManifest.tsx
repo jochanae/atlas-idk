@@ -754,7 +754,7 @@ export function StructuralOutputs() {
             transition: "opacity 700ms",
           }}
         >
-          04 // Structural Outputs
+          06 // Structural Outputs
         </p>
         <h2
           className="text-center mb-3"
@@ -866,7 +866,7 @@ export function ParchmentAside() {
             transition: "opacity 700ms",
           }}
         >
-          05 // a quiet aside
+          07 // a quiet aside
         </p>
         <h2
           style={{
@@ -932,7 +932,7 @@ export function BridgeSection({ onEnter }: { onEnter: () => void }) {
             transition: "opacity 700ms",
           }}
         >
-          06 // The Bridge
+          08 // The Bridge
         </p>
         <h2
           style={{

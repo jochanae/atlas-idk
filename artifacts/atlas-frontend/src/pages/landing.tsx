@@ -257,7 +257,7 @@ function PricingSection({ onEnter }: { onEnter: () => void }) {
           ...mono, fontSize: "0.65rem", color: "#6b5f50",
           opacity: visRef ? 1 : 0, transform: visRef ? "translateY(0)" : "translateY(12px)",
         }}>
-          07 // Pricing
+          09 // Pricing
         </p>
 
         <h2 className="text-center mb-3" style={{
