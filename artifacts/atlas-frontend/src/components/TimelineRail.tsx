@@ -37,11 +37,13 @@ export function TimelineRail({
   topOffset = 92,
   bottomOffset = 90,
   alwaysVisible = false,
+  hideSearch = false,
 }: {
   messages: RailMessage[];
   topOffset?: number;
   bottomOffset?: number;
   alwaysVisible?: boolean;
+  hideSearch?: boolean;
 }) {
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
@@ -263,8 +265,8 @@ export function TimelineRail({
 
   return (
     <>
-      {/* Search magnifier — preserved, top-right */}
-      <button
+      {/* Search magnifier — hidden on Ask Atlas surface, shown in workspace */}
+      {!hideSearch && <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v); }}
         title="Search this thread"
@@ -294,7 +296,7 @@ export function TimelineRail({
           <circle cx="11" cy="11" r="7" />
           <line x1="20" y1="20" x2="16.2" y2="16.2" />
         </svg>
-      </button>
+      </button>}
 
       {/* Scroll-linked chronological rail — Compani style.
           Only the dates whose messages are currently in viewport render, and
