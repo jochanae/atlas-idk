@@ -85,6 +85,9 @@ export interface UseChatStreamOptions {
   /** When true, liveStep state updates are suppressed — prevents unnecessary
    *  React re-renders during pure conversation (Thinking Mode). */
   suppressSteps?: boolean;
+  /** The conv_state from the last Nexus turn for this conversation.
+   *  Passed to the backend so workspace can open with the right posture. */
+  convState?: string;
 }
 
 export interface ActivityStreamState {
@@ -201,6 +204,7 @@ export function useChatStream(
     onFirstStreamingToken,
     onDoneEvent,
     suppressSteps,
+    convState,
   } = opts;
 
   // Ref so inner callbacks always see the latest value without
@@ -433,6 +437,7 @@ export function useChatStream(
         ...(options?.mode ? { mode: options.mode } : {}),
         planMode: options?.planMode,
         buildMode: options?.buildMode,
+        ...(convState ? { convState } : {}),
         ...(options?.skipReadiness ? { skipReadiness: true } : {}),
         ...(effectiveModel ? { model: effectiveModel } : {}),
         orchestrate: !effectiveModel,

@@ -2281,11 +2281,15 @@ router.post("/chat", async (req, res): Promise<void> => {
     forgeContext?: string;
     planMode?: boolean;
     previousLens?: string;
+    convState?: string;
   };
 
   const isFlowMode = !!body.flowMode;
   const isScenarioMode = !!body.scenarioMode;
   const buildMode = Boolean(body.buildMode);
+  // Canonical conversation state — written every Nexus turn, read here to gate build posture.
+  // If the last Nexus state was THINK, workspace opens in conversation mode (not build mode).
+  const incomingConvState = body.convState ?? "think";
 
   const isFoundationMode = !body.projectId;
   if ((!body.sessionId && !isFlowMode && !isFoundationMode) || (!body.message && !body.attachments?.length)) {
@@ -2532,7 +2536,9 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Hoisted so auto-apply and file-source logic share the same flag
   // Keep build-handoff mode active for the first few turns so the audit/completion
   // rounds after LOCAL_APPLY_SUCCESS still run with the BUILD_HANDOFF system prompt.
-  const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount <= 4 && projectId);
+  // Gate: if the conversation arrived from THINK state in Nexus, suppress build posture.
+  // This is the canonical conv_state check — prevents "Atlas built when I wanted to talk".
+  const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount <= 4 && projectId && incomingConvState !== "think");
 
   // ── Build Readiness Gate ──────────────────────────────────────────────────
   // Advisory gate: runs before Builder starts. If gaps exist, returns a
