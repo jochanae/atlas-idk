@@ -114,7 +114,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
           color: "rgba(232,220,200,0.32)",
         }}>
-          Axiom // From spark to decision
+          Axiom // Where ideas become enduring projects
         </p>
 
         <h1 className="leading-[0.95] mb-8" style={{
@@ -124,10 +124,8 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           fontSize: "clamp(2.2rem, 7vw, 5.6rem)",
           letterSpacing: "-0.01em",
         }}>
-          Every great reality
-          <br />
-          began as an idea that{" "}
-          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>held its shape</span>.
+          Where conversations become{" "}
+          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>enduring projects</span>.
         </h1>
 
       <p className="mb-10 italic mx-auto" style={{
@@ -135,15 +133,15 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
         fontWeight: 400,
         color: "rgba(232,220,200,0.55)",
         fontSize: "clamp(1rem, 2vw, 1.25rem)",
-        maxWidth: 480,
+        maxWidth: 520,
         lineHeight: 1.55,
       }}>
-        A workspace where ideas hold their shape long enough to become real.
+        A workspace that carries an idea from spark to shipped — without losing why it exists.
       </p>
 
         {/* Mode pills */}
         <div className="flex items-center justify-center gap-2 mb-12 flex-wrap">
-          {["Think it through", "Map it out", "Bring it to life"].map((label) => (
+          {["Spark", "Shape", "Build", "Continue"].map((label) => (
             <span key={label} style={{
               ...smallUiText,
               fontSize: "0.62rem",
