@@ -5137,34 +5137,8 @@ export default function Home() {
                     );
                   })}
                 </div>
-                <button
-                  type="button"
-                  onClick={rotate}
-                  aria-label="Suggest a starting point"
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    padding: "2px 6px",
-                    color: isParchment ? "rgba(15,23,42,0.60)" : "rgba(212,175,55,0.6)",
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-sans)",
-                    fontSize: "var(--ts-caption)",
-                    letterSpacing: "0.01em",
-                    fontWeight: 500,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    transition: "color 160ms ease",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(15,23,42,0.90)" : "rgba(212,175,55,0.95)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(15,23,42,0.60)" : "rgba(212,175,55,0.6)"; }}
-                >
-                  <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "var(--atlas-intel)" : "rgba(212,175,55,0.7)", boxShadow: isParchment ? "0 0 6px var(--atlas-intel-glow)" : "none", display: "inline-block" }} />
-                  need a starting point?
-                  <span style={{ fontSize: "var(--ts-label)", color: "inherit", display: "inline-block" }}>↻</span>
-                </button>
-
               </div>
+
             );
           })()}
 
