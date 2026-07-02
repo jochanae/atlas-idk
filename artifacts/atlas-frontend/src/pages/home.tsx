@@ -5264,8 +5264,8 @@ export default function Home() {
             }}
             style={{
               height: 34,
-              display: "inline-flex", alignItems: "center", gap: 6,
-              padding: "0 10px", borderRadius: 999,
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "0 12px", borderRadius: 999,
               background: "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))",
               border: "1px solid rgba(201,162,76,0.55)",
               boxShadow: "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)",
@@ -5280,21 +5280,61 @@ export default function Home() {
               transition: "all 180ms ease",
             }}
           >
-            <Globe
-              size={13}
-              strokeWidth={1.8}
+            <span
+              className="atlas-ask-purple-pulse"
               style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: "#A78BFA",
+                boxShadow: "0 0 8px rgba(167,139,250,0.85)",
                 flexShrink: 0,
-                filter: "drop-shadow(0 0 4px rgba(201,162,76,0.75))",
               }}
             />
             <span>Ask Atlas</span>
-            <span style={{
-              width: 5, height: 5, borderRadius: "50%",
-              background: "var(--atlas-gold)",
-              boxShadow: "0 0 6px rgba(201,162,76,0.85)",
-              flexShrink: 0,
-            }} />
+            {askAtlasChat.messages.length > 0 && (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="Download chat thread"
+                title="Download thread"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const lines = askAtlasChat.messages
+                    .filter((m: any) => m.content && m.content.trim().length > 0)
+                    .map((m: any) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.content}\n`)
+                    .join("\n");
+                  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+                  const blob = new Blob(
+                    [`ASK ATLAS\n${stamp}\n\n${lines}`],
+                    { type: "text/plain;charset=utf-8" },
+                  );
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `ask-atlas-${stamp}.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  setTimeout(() => URL.revokeObjectURL(url), 0);
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 16,
+                  height: 16,
+                  marginLeft: 2,
+                  color: "var(--atlas-gold)",
+                  opacity: 0.75,
+                  cursor: "pointer",
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 2.5v8.5" />
+                  <path d="M4.5 7.5L8 11l3.5-3.5" />
+                  <path d="M3 13.5h10" />
+                </svg>
+              </span>
+            )}
           </button>
         }
         onMenuAction={(action) => {
