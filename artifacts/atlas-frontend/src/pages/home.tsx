@@ -4101,7 +4101,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {projects && projects.length > 0 && (() => {
+                  {projects && projects.length > 0 && !isTiny && (() => {
                     const receded = askAtlasSurfaceVisible;
                     return (
                       <button
@@ -4113,13 +4113,12 @@ export default function Home() {
                         aria-hidden={receded}
                         tabIndex={receded ? -1 : 0}
                         style={{
-                          position: isTiny ? "fixed" : "absolute",
-                          top: isTiny ? "calc(env(safe-area-inset-top, 0px) + 10px)" : -14,
-                          right: isTiny ? 68 : 8,
+                          position: "absolute",
+                          top: -14,
+                          right: 8,
                           left: "auto",
-                          width: isTiny ? 34 : 40,
-                          height: isTiny ? 34 : 40,
-                          zIndex: isTiny ? 400 : undefined,
+                          width: 40,
+                          height: 40,
                           borderRadius: 999,
                           display: "inline-flex",
                           alignItems: "center",
@@ -4153,7 +4152,7 @@ export default function Home() {
             <div style={{
               margin: askAtlasSurfaceVisible
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
-                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isMobile && !isTiny ? "clamp(40px, 7dvh, 72px) 0 26px" : "18px 0 26px")),
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : (isMobile && !isTiny ? "clamp(68px, 12dvh, 112px) 0 18px" : "18px 0 26px")),
               minHeight: askAtlasSurfaceVisible ? 0 : (nexusChat.messages.length > 0 ? 60 : 0),
               flex: askAtlasSurfaceVisible ? 1 : undefined,
               display: askAtlasSurfaceVisible ? "none" : undefined,
@@ -5060,7 +5059,7 @@ export default function Home() {
                 gap: 10,
                 position: "relative",
                 zIndex: 20,
-                transform: "translateY(-20px)",
+                transform: isMobile && !isTiny ? "translateY(0)" : "translateY(-20px)",
               }}>
 
                 <div className="suggestion-chips-row" style={{
