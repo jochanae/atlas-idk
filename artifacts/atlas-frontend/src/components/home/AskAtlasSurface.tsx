@@ -25,6 +25,7 @@ import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ParkSheet } from "@/components/ParkSheet";
 
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+import { ThinkingReceiptsStrip } from "./ThinkingReceiptsStrip";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
@@ -621,6 +622,13 @@ export function AskAtlasSurface({
             </div>
           );
         })}
+
+        {/* Thinking receipts — appear after streaming settles */}
+        <ThinkingReceiptsStrip
+          conversationId={conversationId}
+          isStreaming={isStreaming}
+          turnCount={messages.filter(m => m.role === "assistant" && !m.streaming).length}
+        />
 
       </div>
       {showScrollBtn && (

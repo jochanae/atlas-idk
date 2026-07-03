@@ -20,6 +20,7 @@ import { ATLAS_IDENTITY } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
+import { maybeExtractThinkingReceipts } from "../lib/thinkingReceiptExtract";
 
 // In-memory cache for cross-project behavioral pattern analysis (30-min TTL per user)
 const patternCache = new Map<string, { text: string; ts: number }>();
@@ -2494,6 +2495,18 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
 
     // Background genome extraction — non-blocking, rate-limited
     void maybeExtractGenome(focusProjectId ?? null);
+
+    // Thinking receipt extraction — Ask Atlas turns only (no project focus)
+    // Fires after every unprojectified turn; rate-limited by (conversationId, turnIndex).
+    if (!focusProjectId && effectiveConversationId) {
+      void maybeExtractThinkingReceipts({
+        userId,
+        conversationId: effectiveConversationId,
+        turnIndex: Math.floor(dbMessages.length / 2),
+        userMessage: body.message ?? "",
+        atlasResponse: visibleContent,
+      });
+    }
 
     // Auto-capture DECISION signal to Ledger — fire-and-forget, never blocks stream
     if (surface?.type === "DECISION" && focusProjectId) {

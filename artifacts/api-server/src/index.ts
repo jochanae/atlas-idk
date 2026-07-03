@@ -550,6 +550,34 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: design_plans table failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS thinking_receipts (
+        id              SERIAL       PRIMARY KEY,
+        user_id         INTEGER      NOT NULL,
+        conversation_id TEXT         NOT NULL,
+        turn_index      INTEGER      NOT NULL DEFAULT 0,
+        headline        TEXT         NOT NULL,
+        body            TEXT         NOT NULL,
+        category        TEXT         NOT NULL DEFAULT 'Insight',
+        confidence      INTEGER      NOT NULL DEFAULT 70,
+        dismissed       BOOLEAN      NOT NULL DEFAULT false,
+        created_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS thinking_receipts_user_conv_idx
+        ON thinking_receipts (user_id, conversation_id, created_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS thinking_receipts_user_active_idx
+        ON thinking_receipts (user_id, dismissed, created_at DESC)
+    `);
+    logger.info("ensureColumns: thinking_receipts table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: thinking_receipts table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

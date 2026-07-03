@@ -40,3 +40,4 @@
 - [Conversation-first routing](conversation-first-routing.md) — POST /api/conversations creates project+UUID; homepage Send navigates to workspace (shouldStayOnHome now defaults false); pre-model writeStep removed from chat.ts for faster first token
 - [Build Runner Architecture](build-runner.md) — SSE POST /api/builds, project_builds table, BuildPanel overlay via axiom:build-run event, Phase 2 = workspace BUILD_RUN action
 - [Runtime Architecture](runtime-architecture.md) — Sandbox→Share→Publish model; Phase 1 done: Runtime tab owns lifecycle (start/stop/restart); devserver.ts has all routes; WsDevState tracks startedAt; Preview tab is viewer-only
+- [Thinking Receipts Architecture](thinking-receipts.md) — fire-and-forget Haiku extraction after each Ask Atlas turn; thinking_receipts table; ThinkingReceiptsStrip polls 4s post-stream

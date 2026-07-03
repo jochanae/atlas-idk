@@ -45,6 +45,7 @@ import checkpointsRouter from "./checkpoints";
 import bookmarksRouter from "./bookmarks";
 import buildsRouter from "./builds";
 import readinessRouter from "./readiness";
+import thinkingReceiptsRouter from "./thinkingReceipts";
 import intelligenceRouter from "./intelligence";
 import fsRouter from "./fs";
 import artifactsRouter from "./artifacts";
@@ -138,6 +139,7 @@ router.use(requireAuth, checkpointsRouter);
 router.use(requireAuth, bookmarksRouter);
 router.use(requireAuth, buildsRouter);
 router.use(requireAuth, readinessRouter);
+router.use(requireAuth, thinkingReceiptsRouter);
 router.use(requireAuth, intelligenceRouter);
 
 // Project file system — local workspace read/write
