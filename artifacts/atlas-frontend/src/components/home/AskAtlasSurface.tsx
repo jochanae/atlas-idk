@@ -827,7 +827,7 @@ export function AskAtlasSurface({
           )}
 
           {/* Textarea row — full width, generous height */}
-          <div style={{ position: "relative", flex: 1, minHeight: 56 }}>
+          <div style={{ position: "relative", flex: 1, minHeight: focused ? 0 : (restingCompact ? 36 : 56) }}>
             {showPlaceholder && (
               <div
                 aria-hidden
