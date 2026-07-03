@@ -2408,22 +2408,9 @@ export function AxiomFlow({
                     pointerEvents: "none",
                   }}
                 />
-                <span
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 6px)", right: 0,
-                    padding: "3px 7px", borderRadius: 5,
-                    background: theme === "parchment" ? "rgba(255,252,245,0.96)" : "rgba(10,10,12,0.92)",
-                    border: `1px solid rgba(${palette.goldRgb},0.45)`,
-                    color: `rgba(${palette.goldRgb},0.95)`,
-                    fontFamily: "var(--app-font-mono)",
-                    fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase",
-                    whiteSpace: "nowrap", pointerEvents: "none",
-                    boxShadow: `0 4px 14px rgba(0,0,0,0.35)`,
-                  }}
-                >
-                  Tap to hydrate
-                </span>
+                {/* "Tap to hydrate" label removed — the pulsing ring on the
+                    refresh button is enough signal; the label was rendering
+                    as a separate ghost pill below the control row. */}
               </>
             )}
             <button
