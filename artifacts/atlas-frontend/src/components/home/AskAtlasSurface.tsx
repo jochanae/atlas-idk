@@ -672,6 +672,23 @@ export function AskAtlasSurface({
       )}
       </div>
 
+      {/* Focus backdrop — subtle dim when composer is focused inside Ask Atlas. Tap to dismiss. */}
+      {!hideComposer && focused && (
+        <div
+          onMouseDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
+          onTouchStart={() => { textareaRef.current?.blur(); }}
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: isParchment ? "rgba(15,23,42,0.10)" : "rgba(0,0,0,0.28)",
+            transition: "opacity 200ms ease",
+            zIndex: 4,
+            pointerEvents: "auto",
+          }}
+        />
+      )}
+
       {/* Composer — transparent. Label above, textarea in middle, action row below. Hidden when home dock acts as composer. */}
       {!hideComposer && <div
         style={{
@@ -681,6 +698,8 @@ export function AskAtlasSurface({
           display: "flex",
           flexDirection: "column",
           gap: 8,
+          position: "relative",
+          zIndex: 5,
         }}
       >
         {/* Portfolio Thinking · Not Building label */}
@@ -798,8 +817,9 @@ export function AskAtlasSurface({
                 letterSpacing: "-0.005em",
                 fontFamily: "var(--app-font-sans)",
                 padding: "4px 2px",
-                minHeight: 56,
-                maxHeight: 180,
+                minHeight: focused ? 140 : 56,
+                maxHeight: focused ? "38vh" : 180,
+                transition: "min-height 220ms ease, max-height 220ms ease",
                 position: "relative",
                 zIndex: 1,
                 display: "block",
