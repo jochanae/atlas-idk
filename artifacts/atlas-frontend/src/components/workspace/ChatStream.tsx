@@ -5,7 +5,7 @@ import { StepProgress } from "@/components/workspace/StepProgress";
 import { AssistantBubble, type BuildGroupInfo } from "@/components/workspace/AssistantBubble";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
-import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
+// LiveGenerationCard removed (Model A) — WorkspaceRunCard.ActiveCard owns live streaming.
 import { ExecutionJournal, isExecutionStream } from "@/components/workspace/ExecutionJournal";
 import { TimelineRail } from "../TimelineRail";
 import { WriteFileCard } from "@/components/workspace/WriteFileCard";
