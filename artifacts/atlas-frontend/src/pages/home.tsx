@@ -786,7 +786,9 @@ function HomeChunkedBubbles({ text, isNew, isStreaming }: { text: string; isNew:
     // Longer, more human pauses between chunks — feels like Atlas is
     // thinking, not paginating. First chunk gets a small settle, later
     // chunks get a full breath (900–1400ms) so each paragraph lands.
-    const delay = revealed === 0 ? 220 : 900 + Math.random() * 500;
+    // Slower, more deliberate cadence — Atlas should feel like it's
+    // choosing its next thought, not paginating output.
+    const delay = revealed === 0 ? 360 : 1150 + Math.random() * 650;
     const t = setTimeout(() => setRevealed(r => r + 1), delay);
     return () => clearTimeout(t);
   }, [revealed, chunks.length, isNew]);
