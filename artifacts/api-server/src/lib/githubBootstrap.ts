@@ -522,58 +522,86 @@ export async function bootstrapGitHubRepo(opts: {
       isCodeProject: opts.isCodeProject,
       projectMemory: opts.projectMemory,
     });
-    const blobResults = await Promise.all(
-      files.map(async (f) => {
-        const r = await fetch(`${GH_API}/repos/${fullName}/git/blobs`, {
-          method: "POST",
-          headers: ghHeaders(token),
-          body: JSON.stringify({ content: f.content, encoding: "utf-8" }),
-        });
-        if (!r.ok) throw new Error(`Blob creation failed for ${f.path}`);
-        const b = await r.json() as { sha: string };
-        return { path: f.path, sha: b.sha, mode: "100644" as const, type: "blob" as const };
-      }),
-    );
-
-    // 4. Create tree
-    const treeResp = await fetch(`${GH_API}/repos/${fullName}/git/trees`, {
-      method: "POST",
-      headers: ghHeaders(token),
-      body: JSON.stringify({ tree: blobResults }),
-    });
-    if (!treeResp.ok) return { ok: false, error: "Failed to create git tree" };
-    const treeData = await treeResp.json() as { sha: string };
-
-    // 5. Create initial commit
     const commitMessage = opts.isCodeProject === false
       ? "Initial Atlas scaffold — docs project"
       : "Initial Atlas scaffold — app project";
-    const commitResp = await fetch(`${GH_API}/repos/${fullName}/git/commits`, {
-      method: "POST",
-      headers: ghHeaders(token),
-      body: JSON.stringify({
-        message: commitMessage,
-        tree: treeData.sha,
-        parents: [],
-      }),
-    });
-    if (!commitResp.ok) return { ok: false, error: "Failed to create initial commit" };
-    const commitData = await commitResp.json() as { sha: string };
 
-    // 6. Create main branch ref
-    const refResp = await fetch(`${GH_API}/repos/${fullName}/git/refs`, {
-      method: "POST",
-      headers: ghHeaders(token),
-      body: JSON.stringify({ ref: "refs/heads/main", sha: commitData.sha }),
-    });
-    if (!refResp.ok) return { ok: false, error: "Failed to set main branch" };
+    if (!existingRepoLinked) {
+      // Atlas just created this repo via the API — git backend is initialized,
+      // Git Data API works. Use blobs → tree → commit → ref for a single clean commit.
+      const blobResults = await Promise.all(
+        files.map(async (f) => {
+          const r = await fetch(`${GH_API}/repos/${fullName}/git/blobs`, {
+            method: "POST",
+            headers: ghHeaders(token),
+            body: JSON.stringify({ content: f.content, encoding: "utf-8" }),
+          });
+          if (!r.ok) throw new Error(`Blob creation failed for ${f.path}`);
+          const b = await r.json() as { sha: string };
+          return { path: f.path, sha: b.sha, mode: "100644" as const, type: "blob" as const };
+        }),
+      );
 
-    // 7. Set default branch to main
-    await fetch(`${GH_API}/repos/${fullName}`, {
-      method: "PATCH",
-      headers: ghHeaders(token),
-      body: JSON.stringify({ default_branch: "main" }),
-    });
+      const treeResp = await fetch(`${GH_API}/repos/${fullName}/git/trees`, {
+        method: "POST",
+        headers: ghHeaders(token),
+        body: JSON.stringify({ tree: blobResults }),
+      });
+      if (!treeResp.ok) return { ok: false, error: "Failed to create git tree" };
+      const treeData = await treeResp.json() as { sha: string };
+
+      const commitResp = await fetch(`${GH_API}/repos/${fullName}/git/commits`, {
+        method: "POST",
+        headers: ghHeaders(token),
+        body: JSON.stringify({ message: commitMessage, tree: treeData.sha, parents: [] }),
+      });
+      if (!commitResp.ok) return { ok: false, error: "Failed to create initial commit" };
+      const commitData = await commitResp.json() as { sha: string };
+
+      const refResp = await fetch(`${GH_API}/repos/${fullName}/git/refs`, {
+        method: "POST",
+        headers: ghHeaders(token),
+        body: JSON.stringify({ ref: "refs/heads/main", sha: commitData.sha }),
+      });
+      if (!refResp.ok) return { ok: false, error: "Failed to set main branch" };
+
+      await fetch(`${GH_API}/repos/${fullName}`, {
+        method: "PATCH",
+        headers: ghHeaders(token),
+        body: JSON.stringify({ default_branch: "main" }),
+      });
+    } else {
+      // User linked an existing empty repo — its git state is unknown.
+      // GitHub's Git Data API returns 409 "Git Repository is empty" on repos
+      // that have never had a commit regardless of how they were created.
+      // The Contents API is the only endpoint guaranteed to work in this state:
+      // it initializes the git backend and creates the default branch automatically.
+      for (const f of files) {
+        const putResp = await fetch(`${GH_API}/repos/${fullName}/contents/${f.path}`, {
+          method: "PUT",
+          headers: ghHeaders(token),
+          body: JSON.stringify({
+            message: commitMessage,
+            content: Buffer.from(f.content, "utf-8").toString("base64"),
+            branch: "main",
+          }),
+        });
+        // Ignore 422 (file already exists from a previous partial scaffold attempt)
+        if (!putResp.ok) {
+          const errText = await putResp.text();
+          if (!errText.includes("already exists") && !errText.includes("sha")) {
+            return { ok: false, error: `Failed to scaffold ${f.path}: ${errText}` };
+          }
+        }
+      }
+
+      // Set default branch to main after the Contents API has created it
+      await fetch(`${GH_API}/repos/${fullName}`, {
+        method: "PATCH",
+        headers: ghHeaders(token),
+        body: JSON.stringify({ default_branch: "main" }),
+      });
+    }
   }
 
   // 8. Link the repo + set StackBlitz preview URL on the project
