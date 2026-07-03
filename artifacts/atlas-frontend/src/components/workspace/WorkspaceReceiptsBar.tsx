@@ -3,6 +3,9 @@
  * conversation that spawned this project. Shown at the top of the workspace
  * chat, collapsed by default after first view.
  *
+ * Phase 6: each card has a "→ Ledger" action that promotes the receipt to
+ * a committed Decision entry via POST /api/projects/:id/entries.
+ *
  * Self-contained: fetches GET /api/projects/:id/thinking-receipts internally.
  * No prop threading through workspace.tsx required.
  */
@@ -41,46 +44,83 @@ function storageKey(projectId: number) {
 // ------------------------------------------------------------------
 // Single receipt card
 // ------------------------------------------------------------------
+type PromoteState = "idle" | "loading" | "done" | "error";
+
 function ReceiptCard({
   receipt,
+  projectId,
   onDismiss,
 }: {
   receipt: Receipt;
+  projectId: number;
   onDismiss: (id: number) => void;
 }) {
   const [dismissed, setDismissed] = useState(false);
+  const [promoteState, setPromoteState] = useState<PromoteState>("idle");
 
   const handleDismiss = useCallback(() => {
     setDismissed(true);
     onDismiss(receipt.id);
   }, [receipt.id, onDismiss]);
 
+  const handlePromote = useCallback(async () => {
+    if (promoteState !== "idle") return;
+    setPromoteState("loading");
+    try {
+      const r = await fetch(`/api/projects/${projectId}/entries`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: receipt.headline,
+          summary: receipt.body,
+          type: "Decision",
+          status: "committed",
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      setPromoteState("done");
+      // Auto-dismiss after brief confirmation
+      setTimeout(() => {
+        setDismissed(true);
+        onDismiss(receipt.id);
+      }, 1200);
+    } catch {
+      setPromoteState("error");
+      // Reset to idle after a moment
+      setTimeout(() => setPromoteState("idle"), 2000);
+    }
+  }, [promoteState, projectId, receipt.headline, receipt.body, receipt.id, onDismiss]);
+
   if (dismissed) return null;
+
+  const isPromoting = promoteState === "loading";
+  const isDone = promoteState === "done";
+  const isError = promoteState === "error";
 
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 3,
-        padding: "7px 9px",
+        gap: 4,
+        padding: "7px 9px 8px",
         borderRadius: 6,
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        background: isDone
+          ? "rgba(106, 191, 138, 0.07)"
+          : "rgba(255,255,255,0.03)",
+        border: isDone
+          ? "1px solid rgba(106, 191, 138, 0.25)"
+          : "1px solid rgba(255,255,255,0.07)",
         position: "relative",
         flexShrink: 0,
-        minWidth: 180,
-        maxWidth: 260,
+        minWidth: 190,
+        maxWidth: 270,
+        transition: "background 0.2s ease, border-color 0.2s ease",
       }}
     >
       {/* category chip */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", gap: 5, paddingRight: 18 }}>
         <span
           style={{
             width: 6,
@@ -108,6 +148,7 @@ function ReceiptCard({
           </svg>
         )}
       </div>
+
       {/* headline */}
       <div
         style={{
@@ -115,10 +156,12 @@ function ReceiptCard({
           fontWeight: 600,
           color: "var(--atlas-text-primary)",
           lineHeight: 1.3,
+          paddingRight: 18,
         }}
       >
         {receipt.headline}
       </div>
+
       {/* body */}
       <div
         style={{
@@ -130,7 +173,64 @@ function ReceiptCard({
       >
         {receipt.body}
       </div>
-      {/* dismiss */}
+
+      {/* Promote action */}
+      <button
+        onClick={handlePromote}
+        disabled={isPromoting || isDone}
+        title={isDone ? "Added to Ledger" : "Promote to Ledger Decision"}
+        style={{
+          marginTop: 3,
+          alignSelf: "flex-start",
+          background: "none",
+          border: `1px solid ${isDone ? "rgba(106,191,138,0.4)" : isError ? "rgba(232,120,120,0.4)" : "rgba(255,255,255,0.12)"}`,
+          borderRadius: 4,
+          cursor: isDone || isPromoting ? "default" : "pointer",
+          padding: "2px 7px",
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          transition: "border-color 0.15s, opacity 0.15s",
+          opacity: isPromoting ? 0.6 : 1,
+        }}
+        onMouseEnter={e => {
+          if (!isDone && !isPromoting) {
+            (e.currentTarget.style.borderColor = "rgba(106,180,232,0.5)");
+          }
+        }}
+        onMouseLeave={e => {
+          if (!isDone && !isPromoting && !isError) {
+            (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)");
+          }
+        }}
+      >
+        {isDone ? (
+          <>
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+              <path d="M2 5.5L4.2 7.5L8 3" stroke="#6abf8a" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "#6abf8a" }}>
+              in ledger
+            </span>
+          </>
+        ) : isError ? (
+          <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "#e87878" }}>
+            failed — retry
+          </span>
+        ) : isPromoting ? (
+          <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)" }}>
+            adding…
+          </span>
+        ) : (
+          <>
+            <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "rgba(255,255,255,0.45)" }}>
+              → ledger
+            </span>
+          </>
+        )}
+      </button>
+
+      {/* dismiss ✕ */}
       <button
         onClick={handleDismiss}
         title="Dismiss"
@@ -143,12 +243,12 @@ function ReceiptCard({
           cursor: "pointer",
           padding: 2,
           color: "var(--atlas-muted)",
-          opacity: 0.4,
+          opacity: 0.35,
           lineHeight: 1,
           fontSize: 10,
         }}
-        onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-        onMouseLeave={e => (e.currentTarget.style.opacity = "0.4")}
+        onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
+        onMouseLeave={e => (e.currentTarget.style.opacity = "0.35")}
       >
         ✕
       </button>
@@ -237,7 +337,6 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
           color: "inherit",
         }}
       >
-        {/* Diamond icon */}
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ opacity: hasStable ? 0.9 : 0.55 }}>
           {hasStable ? (
             <polygon points="5,1 9,5 5,9 1,5" fill="var(--atlas-gold)" />
@@ -258,7 +357,6 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
         >
           thought carry-in · {visible.length}
         </span>
-        {/* chevron */}
         <svg
           width="8"
           height="8"
@@ -289,6 +387,7 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
             <ReceiptCard
               key={receipt.id}
               receipt={receipt}
+              projectId={projectId}
               onDismiss={dismiss}
             />
           ))}
