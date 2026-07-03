@@ -12,6 +12,7 @@ import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useBuildLifecycle } from "@/hooks/useBuildLifecycle";
 import { useWorkspaceActivity } from "@/hooks/useWorkspaceActivity";
+import { useProjectRuns } from "@/hooks/useProjectRuns";
 
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 
@@ -4663,6 +4664,10 @@ export default function Workspace() {
   // SystemActivityCard inside the chat stream — see useWorkspaceActivity.
   const { items: workspaceActivityItems } = useWorkspaceActivity(id);
 
+  // Phase 2B: execution_runs data layer — provides durable run receipts to the
+  // trailing WorkspaceRunCard instead of relying on message scanning (deriveRun).
+  const { execLatestRun, invalidate: invalidateProjectRuns } = useProjectRuns(id);
+
 
   const thinkFreelyThreadLoadedRef = useRef(false);
   useEffect(() => {
@@ -5408,6 +5413,20 @@ export default function Workspace() {
     const t = setTimeout(() => setAmRefreshTrigger(n => n + 1), 5000);
     return () => clearTimeout(t);
   }, [chatPending]);
+
+  // Invalidate the runs cache when a chat turn completes so the trailing
+  // WorkspaceRunCard immediately reflects the newly recorded execution_run.
+  // 600ms delay gives the fire-and-forget recorder time to commit.
+  const chatPendingRef = useRef(chatPending);
+  useEffect(() => {
+    const prev = chatPendingRef.current;
+    chatPendingRef.current = chatPending;
+    if (prev && !chatPending) {
+      const t = setTimeout(() => invalidateProjectRuns(), 600);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [chatPending, invalidateProjectRuns]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
@@ -8299,6 +8318,7 @@ export default function Workspace() {
                 setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
               },
               onSuggestionPark: (text: string) => handlePark(text),
+              execLatestRun,
             } : null}
 
             betweenSlot={

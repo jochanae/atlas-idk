@@ -28,6 +28,7 @@ import { CheckCircle2, XCircle, Bookmark, Github, ImageIcon, Terminal, Eye, File
 import type { LucideIcon } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
 import type { GithubPushPayload } from "@/lib/githubPushReceipt";
+import type { ApiRun } from "@/hooks/useProjectRuns";
 import {
   addSnapshot,
   toggleBookmark as toggleHistoryBookmark,
@@ -48,6 +49,9 @@ interface Props {
   onTryToFix?: () => void;
   receiptMessage?: ChatMessage | null;
   suppressGitHubReceipt?: boolean;
+  /** Phase 2B: pre-fetched latest run from execution_runs table.
+   *  When provided and isActive=false, used instead of deriveRun(messages). */
+  executionRun?: ApiRun | null;
 }
 
 type DerivedStatus = "running" | "applied" | "failed" | "pushed" | "sketched";
@@ -73,6 +77,127 @@ interface DerivedRun {
 
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
 const APP_FILE_RE = /(^|\/)(src\/|app\/|pages\/|routes\/|package\.json$|vite\.config|tailwind\.config)/i;
+
+/** Phase 2B: map an API-sourced execution_run to the DerivedRun shape used by this card. */
+function adaptExecutionRun(
+  run: ApiRun,
+  messages: ChatMessage[],
+  projectPreviewUrl?: string | null,
+): DerivedRun | null {
+  // Dismiss if conversation has moved on past this run (same threshold as hasSubsequentExchange).
+  // BUILD_RUN entries have messageId=null — they always show (never dismissed).
+  if (run.messageId !== null) {
+    const msgIdx = messages.findIndex(m => m.id === run.messageId);
+    if (msgIdx !== -1) {
+      let userAfter = 0;
+      let assistantAfter = 0;
+      for (let k = msgIdx + 1; k < messages.length; k++) {
+        if (messages[k].role === "user") userAfter++;
+        else if (messages[k].role === "assistant") assistantAfter++;
+      }
+      if (userAfter >= 2 || (userAfter >= 1 && assistantAfter >= 1)) return null;
+    }
+  }
+
+  const hasGithubPush = run.steps.some(s => s.verb === "GITHUB_PUSH");
+  const hasImageGen = run.steps.some(s => s.verb === "IMAGE_GEN");
+  const hasFileWork = run.steps.some(
+    s => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH",
+  );
+
+  let status: DerivedStatus;
+  if (run.status === "failed") status = "failed";
+  else if (hasGithubPush) status = "pushed";
+  else if (hasImageGen && !hasFileWork) status = "sketched";
+  else status = "applied";
+
+  // Collect file paths from step targets
+  const pathSet = new Set<string>();
+  for (const step of run.steps) {
+    if (
+      (step.verb === "FILE_EDIT" || step.verb === "FILE_DELETE" || step.verb === "LINE_PATCH") &&
+      step.target
+    ) {
+      pathSet.add(step.target);
+    }
+  }
+  const files = Array.from(pathSet);
+  const produced = files.filter(p => PRODUCED_EXT.test(p));
+
+  // Title: prefer the user message that triggered this run, fall back to summary
+  let title = run.summary ?? "Run";
+  if (run.messageId !== null) {
+    const msgIdx = messages.findIndex(m => m.id === run.messageId);
+    if (msgIdx > 0) {
+      for (let j = msgIdx - 1; j >= 0; j--) {
+        if (messages[j].role === "user") {
+          const t = (messages[j].content ?? "").trim();
+          if (t) { title = t; break; }
+        }
+      }
+    }
+  }
+  if (title.length > 140) title = title.slice(0, 137) + "…";
+
+  // Sketch image URL: look it up in the message that was the run response
+  let sketchImageUrl: string | undefined;
+  if (hasImageGen && run.messageId !== null) {
+    const msg = messages.find(m => m.id === run.messageId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sketchImageUrl = (msg as any)?.imageGen?.images?.[0]?.imageUrl;
+  }
+
+  // Preview source/path
+  const hasAppFile = files.some(f => APP_FILE_RE.test(f));
+  let previewSource: PreviewSource = null;
+  let previewPath: string | null = null;
+  if (produced.length > 0) {
+    previewSource = "generated";
+    previewPath = produced[0];
+  } else if (hasAppFile && projectPreviewUrl) {
+    previewSource = "local";
+    previewPath = projectPreviewUrl;
+  }
+
+  // GitHub push metadata: prefer rich message payload, fall back to step target
+  let githubPush: GithubPushPayload | undefined;
+  if (hasGithubPush) {
+    if (run.messageId !== null) {
+      const msg = messages.find(m => m.id === run.messageId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((msg as any)?.githubPush) githubPush = (msg as any).githubPush as GithubPushPayload;
+    }
+    if (!githubPush) {
+      const pushStep = run.steps.find(s => s.verb === "GITHUB_PUSH");
+      if (pushStep?.target) {
+        githubPush = { branch: pushStep.target, message: "", files: [], repo: "", sha: "", url: "" } as GithubPushPayload;
+      }
+    }
+  }
+
+  // Error text from the first failed step
+  const failStep = run.steps.find(s => s.status === "fail");
+  const error =
+    run.status === "failed"
+      ? (failStep?.detail ?? failStep?.verb ?? "Build failed")
+      : undefined;
+
+  return {
+    id: run.id,
+    associatedMessageId: run.messageId,
+    status,
+    title,
+    createdAt: new Date(run.startedAt).getTime(),
+    elapsedMs: run.elapsedMs,
+    files,
+    produced,
+    previewSource,
+    previewPath,
+    ...(error ? { error } : {}),
+    ...(githubPush ? { githubPush } : {}),
+    ...(sketchImageUrl ? { sketchImageUrl } : {}),
+  };
+}
 const ERROR_MARKERS =
   /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
 
@@ -457,7 +582,7 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
   );
 }
 
-export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, suppressGitHubReceipt }: Props) {
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, suppressGitHubReceipt, executionRun }: Props) {
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
@@ -503,9 +628,14 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   const run = useMemo(
     () => {
       if (receiptMessage) return deriveRun([receiptMessage], projectId, projectPreviewUrl);
-      return isActive ? null : deriveRun(messages, projectId, projectPreviewUrl, { suppressGitHubReceipt });
+      if (isActive) return null;
+      // Phase 2B: prefer the API-sourced execution_run when available.
+      // Falls back to deriveRun (message scan) when executionRun is not yet loaded
+      // or for projects with no recorded runs yet.
+      if (executionRun) return adaptExecutionRun(executionRun, messages, projectPreviewUrl);
+      return deriveRun(messages, projectId, projectPreviewUrl, { suppressGitHubReceipt });
     },
-    [isActive, messages, projectId, projectPreviewUrl, receiptMessage, suppressGitHubReceipt],
+    [isActive, executionRun, messages, projectId, projectPreviewUrl, receiptMessage, suppressGitHubReceipt],
   );
 
   const [now, setNow] = useState(() => Date.now());

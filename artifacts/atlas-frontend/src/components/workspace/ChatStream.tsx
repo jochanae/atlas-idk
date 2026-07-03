@@ -327,6 +327,10 @@ export interface ChatStreamProps {
   // message only when the stream is idle (chatPending=false, not streaming).
   onSuggestionTap?: (text: string) => void;
   onSuggestionPark?: (text: string) => void;
+
+  /** Phase 2B: latest execution_run from the API. Passed to the trailing
+   *  WorkspaceRunCard instead of using deriveRun(messages). */
+  execLatestRun?: import("@/hooks/useProjectRuns").ApiRun | null;
 }
 
 
@@ -357,6 +361,7 @@ export function ChatStream(props: ChatStreamProps) {
     onSuggestionTap,
     onSuggestionPark,
     liveStep,
+    execLatestRun,
   } = props;
 
   // ── Live-step latch ─────────────────────────────────────────────────────────
@@ -826,6 +831,7 @@ export function ChatStream(props: ChatStreamProps) {
         chatPending={chatPending}
         liveStep={liveStep}
         suppressGitHubReceipt
+        executionRun={execLatestRun}
         onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
       />
 
