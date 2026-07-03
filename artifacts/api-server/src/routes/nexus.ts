@@ -541,7 +541,20 @@ CONV_STATE:{"state":"SHAPE"}    — user is structuring, defining scope, or buil
 CONV_STATE:{"state":"COMMIT"}   — user has explicitly said they want to build or create something
 
 This governs system behavior (CommitPill visibility, auto-creation gates). It is stripped before display — never shown to the user. Emit it on every response, after MEMORY lines and before any PROJECT_READY signal.
+
+## Crystallization Signal
+When something genuinely crystallizes in the conversation — a tension resolves into a clear path, a commitment forms, or the user articulates something they hadn't fully named before — emit at the very END of your response, after CONV_STATE:
+THINKING_STABLE
+
+Criteria for emitting THINKING_STABLE:
+- A key assumption was named and acknowledged
+- A genuine tension resolved into a decision or direction
+- The user stated something with conviction they hadn't before
+- A core constraint or insight landed that changes the shape of the problem
+
+Do NOT emit this for every response — only when the thinking meaningfully advances. It is stripped before display and never shown to the user.
 `;
+
 
 const CREATE_PROJECT_TOOL: Anthropic.Tool = {
   name: "create_project",
@@ -2292,6 +2305,14 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
       return "";
     }).trim();
 
+    // THINKING_STABLE — crystallization signal. Strip from display; passed as flag in done event.
+    const THINKING_STABLE_RE = /^THINKING_STABLE\s*$/gm;
+    let thinkingStable = false;
+    rawContent = rawContent.replace(THINKING_STABLE_RE, () => {
+      thinkingStable = true;
+      return "";
+    }).trim();
+
     const PROJECT_READY_RE = /^PROJECT_READY:\s*(\{[^\n]+\})\s*$/gm;
     type ProjectReadyToken = { projectName: string; reason: string };
     let projectReadyToken: ProjectReadyToken | null = null;
@@ -2505,6 +2526,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
         turnIndex: Math.floor(dbMessages.length / 2),
         userMessage: body.message ?? "",
         atlasResponse: visibleContent,
+        stable: thinkingStable,
       });
     }
 
@@ -2524,7 +2546,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.
     // Send done immediately — HUD clears now regardless of image generation speed.
-    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
+    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(thinkingStable ? { thinkingStable: true } : {}), ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
 
     // Persist conv_state to project so workspace always opens with the correct posture.
     // Non-blocking: runs after SSE done is flushed so it never delays the stream.

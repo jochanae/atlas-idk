@@ -161,6 +161,7 @@ export interface UseNexusChatStreamOptions {
   onData?: (data: unknown) => void;
   onProjectReady?: (doneData?: NexusProjectReadyDoneData) => void;
   onConversationId?: (conversationId: string) => void;
+  onThinkingStable?: () => void;
   projectContext?: {
     projectId: number;
     memorySummary?: string | null;
@@ -194,7 +195,7 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext } = options;
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const messagesRef = useRef<NexusMessage[]>([]);
@@ -444,6 +445,11 @@ export function useNexusChatStream(
                 activeConversationIdRef.current = doneConversationId;
               }
               onConversationId?.(doneConversationId);
+            }
+
+            // THINKING_STABLE — crystallization signal from Atlas
+            if ((meta as any).thinkingStable === true) {
+              onThinkingStable?.();
             }
 
             const { content: navCleanedText, route: routeFromText } = stripNavigateTo(fullText);

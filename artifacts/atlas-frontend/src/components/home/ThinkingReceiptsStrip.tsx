@@ -92,16 +92,19 @@ interface Props {
   isStreaming: boolean;
   /** Number of completed assistant turns — used to gate fetching. */
   turnCount: number;
+  /** True when Atlas emitted THINKING_STABLE — triggers faster poll + crystallized header. */
+  crystallized?: boolean;
 }
 
-const POLL_DELAY_MS = 4000; // extraction typically takes 2–4 s
+const POLL_DELAY_MS = 4000;         // standard extraction: 2–4 s
+const CRYSTALLIZED_DELAY_MS = 1500; // stable signal: extraction is near-instant
 
-export function ThinkingReceiptsStrip({ conversationId, isStreaming, turnCount }: Props) {
+export function ThinkingReceiptsStrip({ conversationId, isStreaming, turnCount, crystallized = false }: Props) {
   const { receipts, fetchReceipts, dismiss } = useThinkingReceipts(conversationId);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevStreaming = useRef(isStreaming);
 
-  // Schedule a fetch 4 s after streaming ends (server extraction is async)
+  // Schedule a fetch after streaming ends — faster when crystallized (THINKING_STABLE fired)
   useEffect(() => {
     const wasStreaming = prevStreaming.current;
     prevStreaming.current = isStreaming;
@@ -109,15 +112,17 @@ export function ThinkingReceiptsStrip({ conversationId, isStreaming, turnCount }
     if (!wasStreaming || isStreaming) return; // not a streaming→done transition
     if (!conversationId || turnCount < 1) return;
 
+    const delay = crystallized ? CRYSTALLIZED_DELAY_MS : POLL_DELAY_MS;
+
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       void fetchReceipts();
-    }, POLL_DELAY_MS);
+    }, delay);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isStreaming, conversationId, turnCount, fetchReceipts]);
+  }, [isStreaming, conversationId, turnCount, crystallized, fetchReceipts]);
 
   if (receipts.length === 0) return null;
 
@@ -136,17 +141,28 @@ export function ThinkingReceiptsStrip({ conversationId, isStreaming, turnCount }
           display: "flex",
           alignItems: "center",
           gap: 6,
-          opacity: 0.45,
+          opacity: crystallized ? 0.72 : 0.45,
         }}
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <polygon
-            points="5,1 9,5 5,9 1,5"
-            stroke="var(--atlas-gold)"
-            strokeWidth="1.2"
-            fill="none"
-          />
-        </svg>
+        {crystallized ? (
+          /* Crystallization — filled diamond */
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <polygon
+              points="5,1 9,5 5,9 1,5"
+              fill="var(--atlas-gold)"
+            />
+          </svg>
+        ) : (
+          /* Standard — outline diamond */
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <polygon
+              points="5,1 9,5 5,9 1,5"
+              stroke="var(--atlas-gold)"
+              strokeWidth="1.2"
+              fill="none"
+            />
+          </svg>
+        )}
         <span
           style={{
             fontSize: 9,
@@ -154,9 +170,10 @@ export function ThinkingReceiptsStrip({ conversationId, isStreaming, turnCount }
             letterSpacing: "0.14em",
             textTransform: "uppercase",
             color: "var(--atlas-gold)",
+            fontWeight: crystallized ? 600 : 400,
           }}
         >
-          captured
+          {crystallized ? "crystallized" : "captured"}
         </span>
       </div>
 

@@ -82,6 +82,8 @@ interface Props {
   hideComposer?: boolean;
   /** When set, the folder+plus button glows gold to indicate a workspace is ready to open. */
   handoffSignal?: NexusHandoffSignal | null;
+  /** True when Atlas emitted THINKING_STABLE — triggers faster receipt polling + crystallized UI. */
+  crystallized?: boolean;
 }
 
 const ASK_ATLAS_PLACEHOLDERS = [
@@ -239,6 +241,7 @@ export function AskAtlasSurface({
   subheader,
   hideComposer = false,
   handoffSignal,
+  crystallized = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -628,6 +631,7 @@ export function AskAtlasSurface({
           conversationId={conversationId}
           isStreaming={isStreaming}
           turnCount={messages.filter(m => m.role === "assistant" && !m.streaming).length}
+          crystallized={crystallized}
         />
 
       </div>

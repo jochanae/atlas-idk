@@ -574,6 +574,10 @@ async function ensureColumns(): Promise<void> {
       CREATE INDEX IF NOT EXISTS thinking_receipts_user_active_idx
         ON thinking_receipts (user_id, dismissed, created_at DESC)
     `);
+    await db.execute(sql`
+      ALTER TABLE thinking_receipts
+        ADD COLUMN IF NOT EXISTS is_stable BOOLEAN NOT NULL DEFAULT false
+    `);
     logger.info("ensureColumns: thinking_receipts table verified");
   } catch (err) {
     logger.warn({ err }, "ensureColumns: thinking_receipts table failed — server will start anyway");

@@ -52,6 +52,8 @@ export async function maybeExtractThinkingReceipts(opts: {
   turnIndex: number;
   userMessage: string;
   atlasResponse: string;
+  /** True when Atlas emitted THINKING_STABLE — use more aggressive extraction. */
+  stable?: boolean;
 }): Promise<void> {
   const key = `${opts.conversationId}:${opts.turnIndex}`;
   if (extractionInFlight.has(key)) return;
@@ -60,6 +62,11 @@ export async function maybeExtractThinkingReceipts(opts: {
   void (async () => {
     try {
       const exchange = `USER: ${opts.userMessage.slice(0, 1500)}\n\nATLAS: ${opts.atlasResponse.slice(0, 3000)}`;
+      const isStable = opts.stable === true;
+
+      const stabilityNote = isStable
+        ? `\n\nNOTE: Atlas flagged this exchange as a crystallization moment (THINKING_STABLE) — the thinking advanced meaningfully. Extract up to 5 receipts. Lower the confidence threshold to 55.`
+        : "";
 
       const response = await anthropic.messages.create({
         model: "claude-haiku-4-5",
@@ -70,8 +77,9 @@ export async function maybeExtractThinkingReceipts(opts: {
 
 EXCHANGE:
 ${exchange}
+${stabilityNote}
 
-Extract 0–3 thinking receipts. Only extract receipts with real substance — skip generic or obvious statements. If nothing notable emerged, return an empty array [].
+Extract 0–${isStable ? "5" : "3"} thinking receipts. Only extract receipts with real substance — skip generic or obvious statements. If nothing notable emerged, return an empty array [].
 
 Return ONLY valid JSON, no markdown, no explanation:
 
@@ -87,8 +95,8 @@ Return ONLY valid JSON, no markdown, no explanation:
 Rules:
 - headline examples: "Pricing tension", "Audience assumption", "Core commitment"
 - body is a single sentence — concrete, not vague
-- confidence: how useful and non-obvious this receipt is (70+ = strong; 60-69 = include; below 60 = omit)
-- max 3 receipts, ranked by confidence descending
+- confidence: how useful and non-obvious this receipt is (${isStable ? "55" : "60"}+ = include; below ${isStable ? "55" : "60"} = omit)
+- max ${isStable ? "5" : "3"} receipts, ranked by confidence descending
 - if nothing substantial emerged, return []`,
         }],
       });
@@ -99,8 +107,8 @@ Rules:
 
       for (const r of receipts) {
         await db.execute(sql`
-          INSERT INTO thinking_receipts (user_id, conversation_id, turn_index, headline, body, category, confidence)
-          VALUES (${opts.userId}, ${opts.conversationId}, ${opts.turnIndex}, ${r.headline}, ${r.body}, ${r.category}, ${r.confidence})
+          INSERT INTO thinking_receipts (user_id, conversation_id, turn_index, headline, body, category, confidence, is_stable)
+          VALUES (${opts.userId}, ${opts.conversationId}, ${opts.turnIndex}, ${r.headline}, ${r.body}, ${r.category}, ${r.confidence}, ${isStable})
         `);
       }
 

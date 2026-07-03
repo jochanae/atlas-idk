@@ -1894,6 +1894,7 @@ export default function Home() {
       return null;
     }
   });
+  const [askAtlasCrystallized, setAskAtlasCrystallized] = useState(false);
   const rememberAskAtlasConversationId = (conversationId: string) => {
     try { localStorage.setItem("atlas-ask-atlas-conversation-id", conversationId); } catch {}
     try { sessionStorage.setItem("atlas-ask-atlas-conversation-id", conversationId); } catch {}
@@ -2016,6 +2017,7 @@ export default function Home() {
       setAskAtlasConversationId(id);
       rememberAskAtlasConversationId(id);
     },
+    onThinkingStable: () => setAskAtlasCrystallized(true),
   });
   const askAtlasConversationActive = askAtlasChat.messages.length > 0;
   const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
@@ -5433,6 +5435,7 @@ export default function Home() {
         }}
         isSending={askAtlasBusy}
         isStreaming={askAtlasChat.isStreaming}
+        crystallized={askAtlasCrystallized}
         pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
         liveStep={askAtlasChat.liveStep}
         isListening={isListening}
