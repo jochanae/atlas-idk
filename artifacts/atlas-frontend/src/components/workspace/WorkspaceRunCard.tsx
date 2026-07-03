@@ -24,7 +24,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Bookmark } from "lucide-react";
+import { CheckCircle2, XCircle, Bookmark, Github } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
 import {
   addSnapshot,
@@ -46,7 +46,7 @@ interface Props {
   onTryToFix?: () => void;
 }
 
-type DerivedStatus = "running" | "applied" | "failed";
+type DerivedStatus = "running" | "applied" | "failed" | "pushed";
 type PreviewSource = "sandbox" | "generated" | "local" | "url" | null;
 
 interface DerivedRun {
@@ -61,6 +61,8 @@ interface DerivedRun {
   previewSource: PreviewSource;
   previewPath: string | null;
   error?: string;
+  /** Present when this run is a GitHub push receipt (durable, survives reload). */
+  githubPush?: { sha: string; url: string; repo?: string; branch?: string };
 }
 
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
@@ -103,10 +105,12 @@ function deriveRun(
     const deletes = msg.fileDeletes
       ?? (msg.fileDeletesJson ? (JSON.parse(msg.fileDeletesJson) as Array<{ path: string }>) : []);
     const proposal = msg.writeFileProposal?.path;
+    const push = msg.githubPush;
     const hasWork =
       edits.length > 0 ||
       deletes.length > 0 ||
       !!proposal ||
+      !!push ||
       ERROR_MARKERS.test(msg.content ?? "");
 
     if (!hasWork) continue;
@@ -140,6 +144,8 @@ function deriveRun(
       status = "failed";
       const m = msg.content?.match(ERROR_MARKERS);
       error = m?.[0];
+    } else if (push) {
+      status = "pushed";
     }
 
     let title = "";
@@ -189,6 +195,7 @@ function deriveRun(
       previewSource,
       previewPath,
       error,
+      githubPush: push,
     };
   }
   return null;
@@ -206,7 +213,7 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
 }
 
 const RECEIPT_TONE: Record<
-  "running" | "success" | "failed",
+  "running" | "success" | "failed" | "pushed",
   { border: string; ring: string; fg: string; iconBg: string; cardBg: string }
 > = {
   running: {
@@ -230,11 +237,19 @@ const RECEIPT_TONE: Record<
     iconBg: "rgba(248,113,113,0.12)",
     cardBg: "rgba(248,113,113,0.045)",
   },
+  pushed: {
+    border: "hsl(var(--border))",
+    ring: "transparent",
+    fg: "hsl(var(--card-foreground))",
+    iconBg: "hsl(var(--muted))",
+    cardBg: "hsl(var(--card))",
+  },
 };
 
-function ReceiptIcon({ status }: { status: "running" | "applied" | "failed" }) {
+function ReceiptIcon({ status }: { status: DerivedStatus }) {
   if (status === "applied") return <CheckCircle2 size={12} strokeWidth={1.75} />;
   if (status === "failed") return <XCircle size={12} strokeWidth={1.75} />;
+  if (status === "pushed") return <Github size={12} strokeWidth={1.75} />;
   return null;
 }
 
@@ -553,14 +568,26 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   // ── Render: receipt ───────────────────────────────────────────────────
   if (!run) return null;
 
-  const toneKey = run.status === "applied" ? "success" : run.status === "failed" ? "failed" : "running";
+  const toneKey =
+    run.status === "applied" ? "success"
+    : run.status === "failed" ? "failed"
+    : run.status === "pushed" ? "pushed"
+    : "running";
   const tone = RECEIPT_TONE[toneKey];
   const fileCount = run.files.length;
-  const kicker = run.status === "running" ? "Working" : run.status === "applied" ? "Run Complete" : "Build Unsuccessful";
+  const kicker =
+    run.status === "running" ? "Working"
+    : run.status === "applied" ? "Run Complete"
+    : run.status === "pushed" ? "Pushed to GitHub"
+    : "Build Unsuccessful";
   const elapsedMs =
     run.status === "running"
       ? now - run.createdAt
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
+  const shortSha = run.githubPush?.sha ? run.githubPush.sha.slice(0, 7) : "";
+  const pushSubtitle = run.githubPush
+    ? [run.githubPush.repo, shortSha, run.githubPush.branch].filter(Boolean).join(" · ")
+    : "";
 
   const noFreshArtifact = run.previewSource === null;
   const previewTitle = noFreshArtifact
@@ -683,10 +710,16 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
               marginTop: 2,
             }}
           >
-            {fileCount} {fileCount === 1 ? "file" : "files"} · {fmtElapsed(elapsedMs)}
-            {run.status === "failed" && run.error ? (
-              <> · <span style={{ color: RECEIPT_TONE.failed.fg }}>{run.error}</span></>
-            ) : null}
+            {run.status === "pushed" && pushSubtitle ? (
+              pushSubtitle
+            ) : (
+              <>
+                {fileCount} {fileCount === 1 ? "file" : "files"} · {fmtElapsed(elapsedMs)}
+                {run.status === "failed" && run.error ? (
+                  <> · <span style={{ color: RECEIPT_TONE.failed.fg }}>{run.error}</span></>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -774,6 +807,35 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           >
             Try to fix
           </button>
+        ) : run.status === "pushed" && run.githubPush ? (
+          <a
+            href={run.githubPush.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              flex: 1,
+              padding: "6px 10px",
+              fontSize: 11.5,
+              fontWeight: 500,
+              textAlign: "center",
+              background: "var(--atlas-gold-dim)",
+              border: "1px solid var(--atlas-gold-border)",
+              color: "var(--atlas-gold)",
+              borderRadius: 5,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "0.01em",
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
+            <Github size={12} strokeWidth={1.75} />
+            View commit
+          </a>
         ) : (
           <button
             type="button"
