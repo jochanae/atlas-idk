@@ -49,8 +49,8 @@ interface Props {
   onTryToFix?: () => void;
   receiptMessage?: ChatMessage | null;
   suppressGitHubReceipt?: boolean;
-  /** Phase 2B: pre-fetched latest run from execution_runs table.
-   *  When provided and isActive=false, used instead of deriveRun(messages). */
+  /** Phase 3: pre-fetched latest run from execution_runs table.
+   *  When null and isActive=false, no trailing card is rendered. */
   executionRun?: ApiRun | null;
 }
 
@@ -221,9 +221,6 @@ function adaptExecutionRun(
     ...(sketchImageUrl ? { sketchImageUrl } : {}),
   };
 }
-const ERROR_MARKERS =
-  /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
-
 const previewUrlStorageKey = (projectId: number | string) =>
   `atlas-preview-${projectId}`;
 
@@ -244,122 +241,26 @@ function fmtElapsed(ms: number): string {
   return r ? `${m}m ${r}s` : `${m}m`;
 }
 
-function deriveRun(
-  messages: ChatMessage[],
-  projectId: number,
-  projectPreviewUrl?: string | null,
-  options?: { suppressGitHubReceipt?: boolean },
-): DerivedRun | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role !== "assistant") continue;
-
-    const edits = msg.fileEdits
-      ?? (msg.fileEdit ? [msg.fileEdit] : undefined)
-      ?? (msg.fileEditsJson ? (JSON.parse(msg.fileEditsJson) as Array<{ path: string; language: string }>).map(e => ({ path: e.path, language: e.language, content: "" })) : []);
-    const deletes = msg.fileDeletes
-      ?? (msg.fileDeletesJson ? (JSON.parse(msg.fileDeletesJson) as Array<{ path: string }>) : []);
-    const proposal = msg.writeFileProposal?.path;
-    const push = options?.suppressGitHubReceipt ? undefined : msg.githubPush;
-    const sketchImages = msg.imageGen?.images ?? [];
-    const hasWork =
-      edits.length > 0 ||
-      deletes.length > 0 ||
-      !!proposal ||
-      !!push ||
-      sketchImages.length > 0;
-
-    if (!hasWork) continue;
-
-    // If the conversation has moved on past this run, hide the receipt card.
-    // Rules (any one sufficient):
-    //   1. User sent ≥2 messages after this run (clearly moved on regardless of streaming state)
-    //   2. User sent a message after the run AND a subsequent assistant reply exists (streaming or not)
-    const hasSubsequentExchange = (() => {
-      let userAfterCount = 0;
-      let foundAssistantAfter = false;
-      for (let k = i + 1; k < messages.length; k++) {
-        if (messages[k].role === "user") userAfterCount++;
-        if (messages[k].role === "assistant") foundAssistantAfter = true;
-      }
-      if (userAfterCount >= 2) return true;
-      if (userAfterCount >= 1 && foundAssistantAfter) return true;
-      return false;
-    })();
-    if (hasSubsequentExchange) return null;
-
-    const paths = new Set<string>();
-    for (const e of edits) if (e?.path) paths.add(e.path);
-    for (const d of deletes) if (d?.path) paths.add(d.path);
-    if (proposal) paths.add(proposal);
-    const files = Array.from(paths);
-    const produced = files.filter((p) => PRODUCED_EXT.test(p));
-
-    let status: DerivedStatus = "applied";
-    let error: string | undefined;
-    if (msg.streaming) status = "running";
-    else if (ERROR_MARKERS.test(msg.content ?? "")) {
-      status = "failed";
-      const m = msg.content?.match(ERROR_MARKERS);
-      error = m?.[0];
-    } else if (push) {
-      status = "pushed";
-    } else if (sketchImages.length > 0 && edits.length === 0 && deletes.length === 0 && !proposal) {
-      status = "sketched";
-    }
-
-    let title = "";
-    for (let j = i - 1; j >= 0; j--) {
-      if (messages[j].role === "user") {
-        title = (messages[j].content ?? "").trim();
-        break;
-      }
-    }
-    if (!title) {
-      title = (msg.content ?? "").split("\n").find((l) => l.trim()) ?? "Run";
-    }
-    title = title.length > 140 ? title.slice(0, 137) + "…" : title;
-
-    let previewSource: PreviewSource = null;
-    let previewPath: string | null = null;
-    const sandbox = produced.find((p) => p === "preview/output.html");
-    if (sandbox) {
-      previewSource = "sandbox";
-      previewPath = sandbox;
-    } else if (produced.length > 0) {
-      previewSource = "generated";
-      previewPath = produced[0];
-    } else if (files.some((p) => APP_FILE_RE.test(p))) {
-      previewSource = "local";
-    } else if ((projectPreviewUrl?.trim() || getSavedPreviewUrl(projectId))) {
-      previewSource = "url";
-    }
-
-    const createdAt = msg.sentAt ? new Date(msg.sentAt).getTime() : Date.now();
-    const elapsedMs =
-      typeof msg.executionTimeMs === "number" ? msg.executionTimeMs : null;
-
-    const associatedMessageId =
-      typeof msg.id === "number" ? msg.id : null;
-    const id = msg.id != null ? String(msg.id) : `msg-${i}-${createdAt}`;
-
-    return {
-      id,
-      associatedMessageId,
-      status,
-      title,
-      createdAt,
-      elapsedMs,
-      files,
-      produced,
-      previewSource,
-      previewPath,
-      error,
-      githubPush: push,
-      sketchImageUrl: sketchImages[0]?.imageUrl ?? undefined,
-    };
-  }
-  return null;
+function deriveGithubReceipt(msg: ChatMessage): DerivedRun | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const push = (msg as any).githubPush as GithubPushPayload | undefined;
+  if (!push) return null;
+  const title = ((msg.content ?? "").split("\n").find((l) => l.trim()) ?? "GitHub Push").slice(0, 140);
+  const createdAt = msg.sentAt ? new Date(msg.sentAt).getTime() : Date.now();
+  const id = msg.id != null ? String(msg.id) : `receipt-${createdAt}`;
+  return {
+    id,
+    associatedMessageId: typeof msg.id === "number" ? msg.id : null,
+    status: "pushed",
+    title,
+    createdAt,
+    elapsedMs: typeof msg.executionTimeMs === "number" ? msg.executionTimeMs : null,
+    files: [],
+    produced: [],
+    previewSource: null,
+    previewPath: null,
+    githubPush: push,
+  };
 }
 
 function findFileContent(messages: ChatMessage[], filePath: string): string | null {
@@ -605,7 +506,7 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
   );
 }
 
-export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, suppressGitHubReceipt, executionRun }: Props) {
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, executionRun }: Props) {
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
@@ -650,15 +551,12 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   // ── Receipt derivation ────────────────────────────────────────────────
   const run = useMemo(
     () => {
-      if (receiptMessage) return deriveRun([receiptMessage], projectId, projectPreviewUrl);
+      if (receiptMessage) return deriveGithubReceipt(receiptMessage);
       if (isActive) return null;
-      // Phase 2B: prefer the API-sourced execution_run when available.
-      // Falls back to deriveRun (message scan) when executionRun is not yet loaded
-      // or for projects with no recorded runs yet.
       if (executionRun) return adaptExecutionRun(executionRun, messages, projectPreviewUrl);
-      return deriveRun(messages, projectId, projectPreviewUrl, { suppressGitHubReceipt });
+      return null;
     },
-    [isActive, executionRun, messages, projectId, projectPreviewUrl, receiptMessage, suppressGitHubReceipt],
+    [isActive, executionRun, messages, projectPreviewUrl, receiptMessage],
   );
 
   const [now, setNow] = useState(() => Date.now());
