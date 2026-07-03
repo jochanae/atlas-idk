@@ -2491,6 +2491,7 @@ export function AxiomFlow({
           display: "flex", flexDirection: "column", gap: 4, zIndex: 6,
         }}>
           {([
+            { label: focused ? "⤡" : "⤢", title: focused ? "Exit focus mode" : "Focus mode", action: "focus" as const },
             { label: "⊙", title: "Fit to screen", action: "fit" as const },
             { label: "+", title: "Zoom in", action: "in" as const },
             { label: "−", title: "Zoom out", action: "out" as const },
