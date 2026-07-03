@@ -425,10 +425,11 @@ export function AskAtlasSurface({
                   Atlas
                 </span>
                 <div
+                  className="atlas-prose"
                   style={{
                     fontSize: 16.5,
                     lineHeight: 1.75,
-                    letterSpacing: "0.005em",
+                    letterSpacing: "0.015em",
                     color: "var(--atlas-fg)",
                     fontFamily: "var(--app-font-sans)",
                     whiteSpace: "pre-wrap",
@@ -585,7 +586,7 @@ export function AskAtlasSurface({
                   maxWidth: "82%",
                   fontSize: 16,
                   lineHeight: 1.7,
-                  letterSpacing: "0.005em",
+                  letterSpacing: "0.015em",
                   color: "var(--atlas-fg)",
                   fontFamily: "var(--app-font-sans)",
                   whiteSpace: "pre-wrap",

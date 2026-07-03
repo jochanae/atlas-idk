@@ -1412,4 +1412,31 @@ mark.atlas-search-hit.atlas-search-hit--active {
   border-color: var(--atlas-border) !important;
 }
 
+/* Atlas prose — contrast hierarchy for strong/em/small in assistant replies */
+.atlas-prose strong,
+.atlas-prose b {
+  font-weight: 650;
+  color: var(--atlas-fg);
+  opacity: 1;
+  letter-spacing: 0.008em;
+}
+.atlas-prose em,
+.atlas-prose i {
+  font-style: italic;
+  color: color-mix(in oklab, var(--atlas-gold) 55%, var(--atlas-fg) 45%);
+  opacity: 0.92;
+}
+.atlas-prose small,
+.atlas-prose .aside {
+  font-size: 0.9em;
+  opacity: 0.6;
+  color: color-mix(in oklab, var(--atlas-gold) 20%, var(--atlas-fg) 80%);
+  letter-spacing: 0.02em;
+}
+.atlas-prose h1, .atlas-prose h2, .atlas-prose h3 {
+  font-weight: 680;
+  letter-spacing: -0.005em;
+  color: var(--atlas-fg);
+  opacity: 1;
+}
 
