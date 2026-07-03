@@ -3556,7 +3556,7 @@ HARD RULE: Never answer from the context of a different project unless the user 
         // Token is available but no repo is linked to this project yet.
         // Atlas CAN create and link a repo by emitting REPO_LINK:{}.
         fileSourceLines.push(
-          "GitHub is authorized (token connected) but this project has no linked repository yet. If the user asks to push, commit, publish, or create a GitHub repo: you CAN do it right now — emit REPO_LINK:{} on its own line (no arguments needed). The server will create a new private GitHub repo named after this project, push the current workspace files, and link it automatically. Say one sentence confirming you are creating the repo (e.g. 'Creating and linking your GitHub repository now…'), then emit REPO_LINK:{}, then continue your response. Do NOT tell the user to go to GitHub manually."
+          "GitHub is authorized (token connected) but this project has no linked repository yet. If the user asks to push, commit, publish, create a repo, or link an existing repo: emit REPO_LINK:{} on its own line. The server handles full publish orchestration automatically — it checks whether a repo with this project's name already exists on GitHub; if it does, it links it; if not, it creates a new private one. You do NOT need to know in advance whether the repo exists. Say one sentence confirming you are publishing (e.g. 'Publishing your project to GitHub now…'), then emit REPO_LINK:{}, then continue. Do NOT tell the user to use CONNECTIONS tab, GitHub.com, or manual steps — REPO_LINK handles all of it."
         );
       } else {
         // No token at all — user needs to connect first.
