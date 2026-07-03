@@ -4184,10 +4184,14 @@ export default function Home() {
                   transform: inputFocused ? "translateY(-12px)" : "translateY(0)",
                   transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
                 }}>
-                  <h1 style={{
+                  <h1
+                    className="atlas-ambient-reveal-top"
+                    style={{
                     fontSize: "var(--ts-display-xl)", fontWeight: 300,
                     letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
                     color: askAtlasSurfaceVisible ? undefined : "var(--atlas-fg)",
+                    ["--atlas-reveal-opacity" as string]: askAtlasSurfaceVisible ? "1" : "0.85",
+                    ["--atlas-reveal-delay" as string]: "0ms",
                     opacity: askAtlasSurfaceVisible ? 1 : 0.85,
                     background: askAtlasSurfaceVisible
                       ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
@@ -4242,9 +4246,13 @@ export default function Home() {
                       </>
                     )}
                   </h1>
-                  <p style={{
+                  <p
+                    className="atlas-ambient-reveal-top"
+                    style={{
                     fontSize: "var(--ts-body)" as any,
                     color: askAtlasSurfaceVisible ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    ["--atlas-reveal-opacity" as string]: askAtlasSurfaceVisible ? "0.75" : "0.55",
+                    ["--atlas-reveal-delay" as string]: "150ms",
                     opacity: askAtlasSurfaceVisible ? 0.75 : 0.55,
                     margin: 0,
                     fontStyle: "italic",
@@ -4879,7 +4887,10 @@ export default function Home() {
             )}
 
 
-            <div style={{
+            <div
+              className="atlas-ambient-reveal-top"
+              style={{
+              ["--atlas-reveal-delay" as string]: "300ms",
               position: "relative",
               borderRadius: 14,
               padding: (inputFocused || hasInput || attachedFiles.length > 0) ? "12px 14px" : 0,
@@ -5210,6 +5221,10 @@ export default function Home() {
               pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
             };
             return (
+              <div
+                className="atlas-ambient-float-up"
+                style={{ "--atlas-reveal-delay": "450ms" } as React.CSSProperties}
+              >
               <div className="ambient-suggestion-chips-wrap" style={{
                 marginTop: 20,
                 display: "flex",
@@ -5303,6 +5318,7 @@ export default function Home() {
                     );
                   })}
                 </div>
+              </div>
               </div>
 
             );
