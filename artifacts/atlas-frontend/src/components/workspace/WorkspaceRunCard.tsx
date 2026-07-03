@@ -195,6 +195,7 @@ function deriveRun(
       previewSource,
       previewPath,
       error,
+      githubPush: push,
     };
   }
   return null;
