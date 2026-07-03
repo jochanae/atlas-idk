@@ -707,6 +707,7 @@ export function ChatStream(props: ChatStreamProps) {
                 projectId={projectId}
                 sessionId={sessionId || 0}
                 linkedRepo={linkedRepo as LinkedRepoLike extends infer T ? T : never}
+                priorUserMessage={messages.slice(0, i).reverse().find((m) => m.role === "user")?.content}
                 onPark={onPark}
                 onCommit={onCommit}
                 onRegenerate={() => onRegenerate(i)}

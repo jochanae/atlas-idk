@@ -1387,6 +1387,7 @@ export function AssistantBubble({
   onStreamActivityUpdate,
   onStreamActivityComplete,
   onCommitCardDone,
+  priorUserMessage,
   planState,
   planExecution,
   onPlanStateChange,
@@ -1418,6 +1419,7 @@ export function AssistantBubble({
   onStreamActivityUpdate?: (content: string) => void;
   onStreamActivityComplete?: () => void;
   onCommitCardDone?: () => void;
+  priorUserMessage?: string;
   planState?: PlanState;
   planExecution?: PlanExecution;
   onPlanStateChange?: (messageId: number, state: PlanState) => void;
@@ -1593,8 +1595,8 @@ export function AssistantBubble({
   const selfEdits = activeEdits.filter((e) => SELF_PATH_RE.test(e.path));
   const userEdits = activeEdits.filter((e) => !SELF_PATH_RE.test(e.path));
   const commitPayload = useMemo<CommitCardPayload | null>(
-    () => detectDecisionMoment(message.content),
-    [message.content]
+    () => detectDecisionMoment(message.content, priorUserMessage),
+    [message.content, priorUserMessage]
   );
 
   const setPlanStatus = (state: PlanState) => {

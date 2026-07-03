@@ -4,10 +4,11 @@ export type CommitCardPayload = {
   summary: string;
   severity: "blocker" | "decision";
   verb: "commit";
+  mode?: "build_ready" | "decision";
+  commitLabel?: string;
 };
 
-// These trigger words indicate Atlas is proposing something new.
-// Keep them specific to forward-looking decision language.
+// Forward-looking decision language — Atlas is proposing something new
 const DECISION_TRIGGERS = [
   "decided",
   "going with",
@@ -25,8 +26,7 @@ const DECISION_TRIGGERS = [
   "we'll go with",
 ];
 
-// If any of these appear, Atlas is summarizing existing context —
-// not proposing a new decision. Suppress the card.
+// Atlas is observing/summarizing existing context — not proposing a new decision
 const SUMMARY_SUPPRESSORS = [
   "from what i can see",
   "from what i've seen",
@@ -56,6 +56,70 @@ const SUMMARY_SUPPRESSORS = [
   "as far as i can tell",
   "looking at what",
   "from the codebase",
+  // Aesthetic / design-language observations — Atlas noting existing context, not deciding
+  "the aesthetic is already",
+  "aesthetic is locked",
+  "already locked in from",
+  "the design language is",
+  "design language is already",
+];
+
+// Atlas is evaluating the work — never a user-facing decision
+// If the title candidate starts with one of these, suppress the card.
+const SELF_EVAL_OPENERS = [
+  "this is a sharp",
+  "this is a clear",
+  "this is a well",
+  "this is a good",
+  "this is a strong",
+  "this is a solid",
+  "this is an interesting",
+  "that's a sharp",
+  "that's a clear",
+  "that's a good",
+  "that's a strong",
+  "sharp brief",
+  "well-shaped brief",
+  "clear brief",
+  "good brief",
+];
+
+// User has explicitly signaled build intent — card should name the next step
+const BUILD_INTENT_TRIGGERS = [
+  "initialize",
+  "initialize the project",
+  "build it out",
+  "build this out",
+  "build out",
+  "build it",
+  "let's build",
+  "go ahead and build",
+  "start building",
+  "kick it off",
+  "start the project",
+  "create the project",
+  "set it up",
+  "generate the",
+  "scaffold",
+];
+
+// Atlas is asking a question or pushing back — do not show BUILD READY
+const PUSHBACK_SIGNALS = [
+  "before we build",
+  "before building",
+  "before i build",
+  "not yet",
+  "i'd push on",
+  "the question i'd",
+  "i want to understand",
+  "what's your instinct",
+  "what do you mean by",
+  "can you clarify",
+  "which of these",
+  "which approach",
+  "what would you",
+  "one question",
+  "a few questions",
 ];
 
 const BLOCKER_TRIGGERS = ["block", "must", "critical"];
@@ -87,23 +151,71 @@ function truncate(text: string, max: number): string {
   return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
-export function detectDecisionMoment(message: string): CommitCardPayload | null {
-  const clean = message.trim();
+export function detectDecisionMoment(
+  atlasResponse: string,
+  userMessage?: string,
+): CommitCardPayload | null {
+  const clean = atlasResponse.trim();
   if (clean.length <= 150) return null;
-
   if (isCodeHeavy(clean)) return null;
 
   const lower = clean.toLowerCase();
+  const userLower = (userMessage ?? "").toLowerCase();
 
-  // Summaries and recaps should never show a commit card —
-  // Atlas is reporting what it found, not proposing something new.
+  // Atlas is summarizing/observing — not proposing a decision
   if (SUMMARY_SUPPRESSORS.some((s) => lower.includes(s))) return null;
 
+  // BUILD READY: user explicitly requested initialization/build AND Atlas isn't pushing back
+  const hasBuildIntent = BUILD_INTENT_TRIGGERS.some((t) => userLower.includes(t));
+  const atlasPushingBack = PUSHBACK_SIGNALS.some((s) => lower.includes(s));
+
+  if (hasBuildIntent && !atlasPushingBack && userMessage) {
+    const sentences = sentenceSplit(clean);
+    // Find the first sentence that isn't a self-evaluation opener
+    const confirmSentence =
+      sentences.find((s) => {
+        const sl = s.toLowerCase();
+        return !SELF_EVAL_OPENERS.some((e) => sl.startsWith(e));
+      }) ??
+      sentences[0] ??
+      clean;
+
+    return {
+      v: 1,
+      title: "Ready to initialize?",
+      summary: truncate(confirmSentence, 200),
+      severity: "decision",
+      verb: "commit",
+      mode: "build_ready",
+      commitLabel: "Initialize",
+    };
+  }
+
+  // Regular decision detection
   if (!DECISION_TRIGGERS.some((trigger) => lower.includes(trigger))) return null;
 
   const sentences = sentenceSplit(clean);
-  const title = truncate(sentences[0] ?? clean, 80);
-  const summarySource = sentences[1] ?? clean;
+
+  // Find the sentence that actually contains the trigger — that's the decision
+  const triggerSentence = sentences.find((s) => {
+    const sl = s.toLowerCase();
+    return DECISION_TRIGGERS.some((t) => sl.includes(t));
+  });
+
+  // Title candidate: the trigger sentence (not sentence[0], which is often Atlas's preamble)
+  const titleCandidate = triggerSentence ?? sentences[0] ?? clean;
+  const candidateLower = titleCandidate.toLowerCase();
+
+  // Suppress if the title is a self-evaluation ("This is a sharp brief." etc.)
+  if (SELF_EVAL_OPENERS.some((e) => candidateLower.startsWith(e))) return null;
+  // Also suppress if it's an observation re-check on the specific candidate
+  if (SUMMARY_SUPPRESSORS.some((s) => candidateLower.includes(s))) return null;
+
+  // Summary: the sentence after the trigger, as supporting context
+  const triggerIdx = triggerSentence ? sentences.indexOf(triggerSentence) : 0;
+  const summarySource = sentences[triggerIdx + 1] ?? sentences[1] ?? clean;
+
+  const title = truncate(titleCandidate, 80);
   const summary = truncate(summarySource, 200);
   const severity = BLOCKER_TRIGGERS.some((trigger) => lower.includes(trigger))
     ? "blocker"
@@ -115,5 +227,6 @@ export function detectDecisionMoment(message: string): CommitCardPayload | null 
     summary,
     severity,
     verb: "commit",
+    mode: "decision",
   };
 }

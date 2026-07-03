@@ -87,7 +87,7 @@ export function CommitCard({
             color: "var(--atlas-gold)",
           }}
         >
-          Decision moment
+          {payload.mode === "build_ready" ? "Build ready" : "Decision moment"}
         </span>
         <span
           style={{
@@ -158,7 +158,9 @@ export function CommitCard({
             opacity: saving ? 0.55 : 1,
           }}
         >
-          {saving === "committed" ? "Committing..." : "Commit"}
+          {saving === "committed"
+            ? `${payload.commitLabel ?? "Commit"}ting…`
+            : (payload.commitLabel ?? "Commit")}
         </button>
       </div>
     </div>
