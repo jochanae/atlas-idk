@@ -119,8 +119,7 @@ function deriveRun(
       deletes.length > 0 ||
       !!proposal ||
       !!push ||
-      sketchImages.length > 0 ||
-      ERROR_MARKERS.test(msg.content ?? "");
+      sketchImages.length > 0;
 
     if (!hasWork) continue;
 
