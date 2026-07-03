@@ -797,6 +797,11 @@ export function useChatStream(
                     role: "assistant", content: errorMsg, sentAt: new Date().toISOString(),
                   }]);
                   setActivityStream({ active: false, content: "" });
+                  // Clear chatPending and liveStep immediately so the WorkspaceRunCard
+                  // exits its WORKING state as soon as the error message is shown —
+                  // don't wait for the SSE reader to fully drain (the finally block).
+                  setChatPending(false);
+                  setLiveStep(null);
                   streamingFinished = true;
                 } else if (evtName === "done") {
                   // type-embedded: {"type":"done","content":"...","messageId":...,...}
