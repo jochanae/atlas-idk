@@ -678,15 +678,11 @@ export function ChatStream(props: ChatStreamProps) {
                   />
                 </div>
               )}
-              {/* Execution Journal — shows underneath Atlas's prose during active multi-step streams */}
-              {activityStream.active && i === messages.length - 1 && (
-                liveGeneration.shouldShow ? (
-                  <LiveGenerationCard
-                    mode={liveGeneration.mode as never}
-                    steps={liveGeneration.steps as never}
-                    isComplete={false}
-                  />
-                ) : isExecutionStream(activityStream.content) ? (
+              {/* Execution Journal — shows underneath Atlas's prose during active multi-step streams.
+                  Model A: WorkspaceRunCard.ActiveCard owns the live step feed, so we skip
+                  LiveGenerationCard here and only render the non-generation activity views. */}
+              {activityStream.active && i === messages.length - 1 && !liveGeneration.shouldShow && (
+                isExecutionStream(activityStream.content) ? (
                   <ExecutionJournal content={activityStream.content} isStreaming={true} />
                 ) : (
                   <StepProgress mode="stream" content={activityStream.content} lens={wsLens} />
