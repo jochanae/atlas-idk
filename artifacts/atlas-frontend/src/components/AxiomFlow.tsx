@@ -2319,7 +2319,7 @@ export function AxiomFlow({
 
       {/* Bottom-left controls: Center button + hint icon */}
       <div style={{
-        position: "absolute", bottom: 10, left: 14,
+        position: "absolute", bottom: 18, left: 14,
         display: "flex", alignItems: "center", gap: 6, zIndex: 6,
       }}>
         {/* Center map button — always visible so users can recover off-screen nodes */}
@@ -2484,6 +2484,48 @@ export function AxiomFlow({
           ?
         </div>
       </div>
+
+      {/* Bottom-right zoom controls: stacked +/- */}
+      {!flowLoading && !flowEmpty && nodes.length > 0 && (
+        <div style={{
+          position: "absolute", bottom: 18, right: 14,
+          display: "flex", flexDirection: "column", gap: 4, zIndex: 6,
+        }}>
+          {([
+            { label: "+", delta: 1.25, title: "Zoom in" },
+            { label: "−", delta: 1 / 1.25, title: "Zoom out" },
+          ] as const).map((btn) => (
+            <button
+              key={btn.label}
+              type="button"
+              title={btn.title}
+              aria-label={btn.title}
+              onClick={(e) => {
+                e.stopPropagation();
+                haptics.tap();
+                setZoom(z => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z * btn.delta)));
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+              style={{
+                width: 26, height: 26, borderRadius: 6,
+                border: `1px solid ${theme === "parchment" ? "rgba(146,64,14,0.22)" : "rgba(201,162,76,0.22)"}`,
+                background: theme === "parchment" ? "rgba(255,252,245,0.70)" : "rgba(10,10,12,0.55)",
+                color: theme === "parchment" ? "rgba(146,64,14,0.85)" : "rgba(201,162,76,0.85)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 14, lineHeight: 1, fontWeight: 400,
+                cursor: "pointer", userSelect: "none",
+                backdropFilter: "blur(6px)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: 0,
+              }}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
