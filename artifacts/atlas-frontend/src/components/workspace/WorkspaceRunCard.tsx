@@ -4,27 +4,23 @@
  * TWO MODES:
  *
  * 1. ACTIVE (chatPending=true or last message streaming):
- *    Card appears immediately, shimmers, and streams live step text as Atlas
- *    scans, reads, and writes. The gold shimmer sweep communicates that work
- *    is happening even during silent phases (file-read, second LLM call, etc.).
+ *    Single compact card. Shows the live atomic step ("Reading home.tsx",
+ *    "Writing App.tsx") as the headline, and a short task description as
+ *    the subtitle. Gold shimmer sweep + pulsing accent bar communicate
+ *    that work is in progress. No step history list — one card, one surface.
  *
  * 2. RECEIPT (generation complete, file output detected):
- *    Settles into the Run Complete / Run Failed summary card with Details +
- *    Preview buttons. Hides once the user has continued the conversation.
+ *    Transitions into Run Complete with a perimeter border animation.
+ *    Details + Preview buttons revealed. Hides once the user has continued.
  *
  * Props:
  *   chatPending — true while waiting for first token OR during agentic loops
  *   liveStep    — latest step event from SSE { verb, target?, status? }
  *   messages    — full ChatMessage[] for receipt derivation
- *
- * Buttons (receipt mode only):
- *   Details  → dispatches "axiom:open-changes"
- *   Preview  → dispatches "axiom:open-preview"
- *   Bookmark → toggles bookmark in atlas-history ledger
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Bookmark, Github, ImageIcon, Terminal, Eye, FilePenLine, Circle } from "lucide-react";
+import { CheckCircle2, XCircle, Bookmark, Github, ImageIcon, Terminal, Eye, FilePenLine, Circle, FileCode } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
 import type { GithubPushPayload } from "@/lib/githubPushReceipt";
@@ -69,23 +65,18 @@ interface DerivedRun {
   previewSource: PreviewSource;
   previewPath: string | null;
   error?: string;
-  /** Present when this run is a GitHub push receipt (durable, survives reload). */
   githubPush?: GithubPushPayload;
-  /** Present when this run is a sketch-only response (no file edits). */
   sketchImageUrl?: string;
 }
 
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
 const APP_FILE_RE = /(^|\/)(src\/|app\/|pages\/|routes\/|package\.json$|vite\.config|tailwind\.config)/i;
 
-/** Phase 2B: map an API-sourced execution_run to the DerivedRun shape used by this card. */
 function adaptExecutionRun(
   run: ApiRun,
   messages: ChatMessage[],
   projectPreviewUrl?: string | null,
 ): DerivedRun | null {
-  // Dismiss if conversation has moved on past this run (same threshold as hasSubsequentExchange).
-  // BUILD_RUN entries have messageId=null — they always show (never dismissed).
   if (run.messageId !== null) {
     const msgIdx = messages.findIndex(m => m.id === run.messageId);
     if (msgIdx !== -1) {
@@ -111,7 +102,6 @@ function adaptExecutionRun(
   else if (hasImageGen && !hasFileWork) status = "sketched";
   else status = "applied";
 
-  // Collect file paths from step targets
   const pathSet = new Set<string>();
   for (const step of run.steps) {
     if (
@@ -124,8 +114,6 @@ function adaptExecutionRun(
   const files = Array.from(pathSet);
   const produced = files.filter(p => PRODUCED_EXT.test(p));
 
-  // Title derivation — when files were written, lead with what was built.
-  // Only fall back to the user's message when there are no file artifacts.
   let title: string;
   if (files.length > 0) {
     const count = files.length;
@@ -133,10 +121,8 @@ function adaptExecutionRun(
     const label = names.join(", ") + (count > 2 ? ` +${count - 2} more` : "");
     title = `${count} file${count !== 1 ? "s" : ""} written — ${label}`;
   } else if (run.messageId !== null) {
-    // No file output — use the assistant response summary or the user's message
     title = run.summary || "Run";
   } else {
-    // BUILD_RUN or shell-only run — no associated message
     const firstStep = run.steps[0];
     title =
       run.summary ||
@@ -144,7 +130,6 @@ function adaptExecutionRun(
   }
   if (title.length > 140) title = title.slice(0, 137) + "…";
 
-  // Sketch image URL: look it up in the message that was the run response
   let sketchImageUrl: string | undefined;
   if (hasImageGen && run.messageId !== null) {
     const msg = messages.find(m => m.id === run.messageId);
@@ -152,7 +137,6 @@ function adaptExecutionRun(
     sketchImageUrl = (msg as any)?.imageGen?.images?.[0]?.imageUrl;
   }
 
-  // Preview source/path
   const hasAppFile = files.some(f => APP_FILE_RE.test(f));
   let previewSource: PreviewSource = null;
   let previewPath: string | null = null;
@@ -164,7 +148,6 @@ function adaptExecutionRun(
     previewPath = projectPreviewUrl;
   }
 
-  // GitHub push metadata: prefer rich message payload, fall back to step target
   let githubPush: GithubPushPayload | undefined;
   if (hasGithubPush) {
     if (run.messageId !== null) {
@@ -180,7 +163,6 @@ function adaptExecutionRun(
     }
   }
 
-  // Error text from the first failed step
   const failStep = run.steps.find(s => s.status === "fail");
   const error =
     run.status === "failed"
@@ -203,6 +185,7 @@ function adaptExecutionRun(
     ...(sketchImageUrl ? { sketchImageUrl } : {}),
   };
 }
+
 const previewUrlStorageKey = (projectId: number | string) =>
   `atlas-preview-${projectId}`;
 
@@ -268,10 +251,10 @@ const RECEIPT_TONE: Record<
     cardBg: "hsl(var(--card))",
   },
   success: {
-    border: "rgba(74,222,128,0.35)",
+    border: "rgba(74,222,128,0.45)",
     ring: "rgba(74,222,128,0.08)",
     fg: "#4ade80",
-    iconBg: "rgba(74,222,128,0.10)",
+    iconBg: "rgba(74,222,128,0.12)",
     cardBg: "hsl(var(--card))",
   },
   failed: {
@@ -305,28 +288,65 @@ function ReceiptIcon({ status }: { status: DerivedStatus }) {
   return null;
 }
 
-function liveStepMeta(step?: LiveStepItem): { Icon: LucideIcon; label: string; body: string } {
+/** Map a step verb+target to a display icon and short action label. */
+function liveStepMeta(step?: LiveStepItem): { Icon: LucideIcon; headline: string } {
   const verb = step?.verb ?? "";
+  const target = step?.target ?? "";
+  const filename = target ? target.split("/").pop() ?? target : "";
   const lower = verb.toLowerCase();
+
   if (/github[_-]?push|push/.test(lower)) {
-    return { Icon: Github, label: "Pushing to GitHub", body: step?.target ?? "Preparing commit" };
+    return { Icon: Github, headline: target ? `Pushing to ${target}` : "Pushing to GitHub" };
+  }
+  if (/writ|creat|generat/.test(lower)) {
+    return { Icon: FilePenLine, headline: filename ? `Writing ${filename}` : "Writing file" };
+  }
+  if (/patch|apply|line_patch/.test(lower)) {
+    return { Icon: FilePenLine, headline: filename ? `Patching ${filename}` : "Applying patch" };
+  }
+  if (/edit|file_edit/.test(lower)) {
+    return { Icon: FilePenLine, headline: filename ? `Editing ${filename}` : "Editing file" };
   }
   if (/read|inspect|scan|open/.test(lower)) {
-    return { Icon: Eye, label: "Reading file", body: step?.target ?? "Checking project files" };
+    return { Icon: Eye, headline: filename ? `Reading ${filename}` : "Reading file" };
   }
-  if (/edit|write|patch|apply|file_edit|line_patch/.test(lower)) {
-    return { Icon: FilePenLine, label: "Editing file", body: step?.target ?? "Applying changes" };
+  if (/command|terminal|shell|run|exec|install|build|test|check/.test(lower)) {
+    return { Icon: Terminal, headline: target ? `Running ${target}` : "Running command" };
   }
-  if (/command|terminal|shell|run|exec|install|build|test/.test(lower)) {
-    return { Icon: Terminal, label: "Running command", body: step?.target ?? verb };
+  if (/fetch|visit|scrape|research/.test(lower)) {
+    return { Icon: Eye, headline: target ? `Fetching ${target}` : "Fetching data" };
   }
-  return { Icon: Circle, label: "Working", body: step?.target ?? verb ?? "Thinking through the next step" };
+  if (/analyz|assess/.test(lower)) {
+    return { Icon: FileCode, headline: target ? `Analyzing ${target}` : "Analyzing request" };
+  }
+  if (verb) {
+    const display = target ? `${verb} ${filename || target}` : verb;
+    return { Icon: Circle, headline: display.length > 60 ? display.slice(0, 57) + "…" : display };
+  }
+  return { Icon: Circle, headline: "Working…" };
 }
 
-/** The shimmer live-communication card shown while Atlas is working. */
-function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) {
+/**
+ * Truncate user message to a short task description.
+ * Breaks at word boundary, max 58 chars. Strips markdown/code artifacts.
+ */
+function shortTaskGoal(msg: string): string {
+  const cleaned = msg
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "")
+    .replace(/#+\s*/g, "")
+    .replace(/\n+/g, " ")
+    .trim();
+  if (cleaned.length <= 58) return cleaned;
+  const cut = cleaned.slice(0, 58).replace(/\s+\S*$/, "");
+  return (cut || cleaned.slice(0, 55)) + "…";
+}
+
+/** The live execution card shown while Atlas is working. Single surface, no history list. */
+function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: string }) {
   const current = steps[steps.length - 1];
-  const { Icon, label, body } = liveStepMeta(current);
+  const { Icon, headline } = liveStepMeta(current);
+
   return (
     <div
       style={{
@@ -334,9 +354,9 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
         background: "hsl(var(--card))",
         border: "1px solid var(--atlas-gold-border)",
         borderRadius: 10,
-        padding: "10px 12px",
-        margin: "10px 0 4px",
-        width: "min(100%, 560px)",
+        padding: "10px 14px",
+        margin: "6px 0 4px",
+        width: "min(100%, 440px)",
         maxWidth: "100%",
         boxSizing: "border-box",
         overflow: "hidden",
@@ -349,15 +369,15 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
         style={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(90deg, transparent 0%, rgba(201,162,76,0.07) 50%, transparent 100%)",
+          background: "linear-gradient(90deg, transparent 0%, rgba(201,162,76,0.06) 50%, transparent 100%)",
           backgroundSize: "200% 100%",
-          animation: "wrc-shimmer 2.2s ease-in-out infinite",
+          animation: "wrc-shimmer 2.4s ease-in-out infinite",
           pointerEvents: "none",
           borderRadius: "inherit",
         }}
       />
 
-      {/* Left accent bar — animates opacity */}
+      {/* Left accent bar */}
       <div
         aria-hidden="true"
         style={{
@@ -372,102 +392,60 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
         }}
       />
 
-      <div style={{ paddingLeft: 8 }}>
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <span
-            aria-hidden="true"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 20,
-              height: 20,
-              borderRadius: 999,
-              background: "var(--atlas-gold-dim)",
-              color: "var(--atlas-gold)",
-              flexShrink: 0,
-              animation: "wrc-dot-pulse 1.4s ease-in-out infinite",
-            }}
-          >
-            <Icon size={12} strokeWidth={1.75} />
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 9,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: "var(--atlas-gold)",
-                opacity: 0.9,
-                lineHeight: 1.2,
-              }}
-            >
-              {label}
-            </div>
-            {(body || title) && (
-              <div
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                  color: "hsl(var(--card-foreground))",
-                  marginTop: 1,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  letterSpacing: "-0.005em",
-                }}
-              >
-                {body || title}
-              </div>
-            )}
-          </div>
-        </div>
+      <div style={{ paddingLeft: 8, display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Icon circle */}
+        <span
+          aria-hidden="true"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 22,
+            height: 22,
+            borderRadius: 999,
+            background: "var(--atlas-gold-dim)",
+            color: "var(--atlas-gold)",
+            flexShrink: 0,
+            animation: "wrc-dot-pulse 1.4s ease-in-out infinite",
+          }}
+        >
+          <Icon size={12} strokeWidth={1.75} />
+        </span>
 
-        {/* Step list — last 5 */}
-        {steps.length > 0 && (
+        {/* Text block */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Headline: the current action */}
           <div
             style={{
-              paddingTop: 6,
-              borderTop: "1px solid hsl(var(--border) / 0.5)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 3,
+              fontSize: 13,
+              fontWeight: 600,
+              color: "hsl(var(--card-foreground))",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              letterSpacing: "-0.01em",
+              lineHeight: 1.3,
             }}
           >
-            {steps.slice(-5).map((step, idx, arr) => {
-              const isCurrent = idx === arr.length - 1;
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    gap: 5,
-                    fontFamily: "var(--app-font-mono)",
-                    fontSize: 10,
-                    lineHeight: 1.4,
-                    color: isCurrent
-                      ? "var(--atlas-gold)"
-                      : "hsl(var(--muted-foreground) / 0.6)",
-                    transition: "color 300ms ease",
-                  }}
-                >
-                  <span style={{ flexShrink: 0, fontSize: 9, opacity: isCurrent ? 1 : 0.7 }}>
-                    {isCurrent ? "→" : "✓"}
-                  </span>
-                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {liveStepMeta(step).label}
-                    {step.target ? (
-                      <span style={{ opacity: 0.75 }}>{" "}{step.target}</span>
-                    ) : null}
-                  </span>
-                </div>
-              );
-            })}
+            {headline}
           </div>
-        )}
+          {/* Subtitle: short task goal */}
+          {taskGoal && (
+            <div
+              style={{
+                fontSize: 11,
+                color: "hsl(var(--muted-foreground) / 0.7)",
+                marginTop: 2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                letterSpacing: "0.005em",
+              }}
+            >
+              {taskGoal}
+            </div>
+          )}
+        </div>
       </div>
 
       <style>{`
@@ -476,12 +454,17 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
           100% { background-position:  200% center; }
         }
         @keyframes wrc-pulse-bar {
-          0%, 100% { opacity: 0.4; }
+          0%, 100% { opacity: 0.35; }
           50%       { opacity: 1; }
         }
         @keyframes wrc-dot-pulse {
           0%, 100% { opacity: 0.5; transform: scale(0.85); }
           50%       { opacity: 1;   transform: scale(1); }
+        }
+        @keyframes wrc-border-trace {
+          0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0); border-color: rgba(74,222,128,0.15); }
+          30%  { box-shadow: 0 0 0 4px rgba(74,222,128,0.12); border-color: rgba(74,222,128,0.6); }
+          100% { box-shadow: 0 0 0 3px rgba(74,222,128,0.06); border-color: rgba(74,222,128,0.45); }
         }
       `}</style>
     </div>
@@ -493,7 +476,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
 
-  // When a new generation starts, reset step history
+  // Reset step history when a new generation starts
   useEffect(() => {
     const nowPending = chatPending ?? false;
     if (nowPending && !prevPendingRef.current) {
@@ -519,12 +502,11 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   );
   const isActive = !receiptMessage && ((chatPending ?? false) || isStreaming);
 
-  // Last user message — title for the active card
-  const activeTitle = useMemo(() => {
+  // Task goal — short description from the last user message (NOT the full paragraph)
+  const taskGoal = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "user") {
-        const t = (messages[i].content ?? "").trim();
-        return t.length > 120 ? t.slice(0, 117) + "…" : t;
+        return shortTaskGoal((messages[i].content ?? "").trim());
       }
     }
     return "";
@@ -642,9 +624,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     return Array.from(vars);
   }, [isActive, messages]);
 
-  // ── Render: active (live communication) ───────────────────────────────
+  // ── Render: active (live execution) ───────────────────────────────────
   if (isActive) {
-    return <ActiveCard steps={liveSteps} title={activeTitle} />;
+    return <ActiveCard steps={liveSteps} taskGoal={taskGoal} />;
   }
 
   // ── Render: receipt ───────────────────────────────────────────────────
@@ -705,13 +687,13 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
         borderRadius: 10,
         padding: "10px 12px",
-        margin: "10px 0 4px",
-        width: "min(100%, 560px)",
+        margin: "6px 0 4px",
+        width: "min(100%, 440px)",
         maxWidth: "100%",
         boxSizing: "border-box",
         alignSelf: "flex-start",
-        transition: "border-color 240ms ease, box-shadow 240ms ease",
         cursor: "pointer",
+        animation: toneKey === "success" ? "wrc-border-trace 0.55s ease-out forwards" : undefined,
       }}
       data-run-id={run.id}
       data-run-status={run.status}
@@ -749,262 +731,178 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       <div style={{ display: "flex", alignItems: "center", gap: 9, paddingRight: 22 }}>
         <span
           style={{
-            flex: "0 0 auto",
-            width: 20,
-            height: 20,
-            borderRadius: 999,
-            background: tone.iconBg,
-            color: tone.fg,
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
+            width: 22,
+            height: 22,
+            borderRadius: 999,
+            background: tone.iconBg,
+            color: tone.fg,
+            flexShrink: 0,
           }}
         >
           <ReceiptIcon status={run.status} />
         </span>
+
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
               fontFamily: "var(--app-font-mono)",
-              fontSize: 9.5,
+              fontSize: 9,
               letterSpacing: "0.14em",
               textTransform: "uppercase",
               color: tone.fg,
+              opacity: 0.9,
               lineHeight: 1.2,
             }}
           >
             {kicker}
+            {elapsedMs != null && (
+              <span style={{ opacity: 0.6, marginLeft: 6 }}>{fmtElapsed(elapsedMs)}</span>
+            )}
           </div>
           <div
             style={{
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: 500,
-              letterSpacing: "-0.005em",
+              color: "hsl(var(--card-foreground))",
+              marginTop: 1,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              marginTop: 2,
+              letterSpacing: "-0.005em",
             }}
           >
-            {run.title}
-          </div>
-          <div
-            style={{
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 10.5,
-              color: "hsl(var(--muted-foreground))",
-              marginTop: 2,
-            }}
-          >
-            {run.status === "pushed" && pushSubtitle ? (
-              pushSubtitle
-            ) : run.status === "sketched" ? (
-              fmtElapsed(elapsedMs)
-            ) : (
-              <>
-                {fileCount} {fileCount === 1 ? "file" : "files"} · {fmtElapsed(elapsedMs)}
-                {run.status === "failed" && run.error ? (
-                  <> · <span style={{ color: RECEIPT_TONE.failed.fg }}>{run.error}</span></>
-                ) : null}
-              </>
-            )}
+            {run.status === "pushed" ? (pushSubtitle || run.title) : run.title}
           </div>
         </div>
       </div>
 
+      {/* Expanded detail: file list */}
       {expanded && run.files.length > 0 && (
         <div
           style={{
             marginTop: 8,
             paddingTop: 8,
-            borderTop: "1px dashed hsl(var(--border))",
+            borderTop: "1px solid hsl(var(--border) / 0.5)",
             display: "flex",
             flexDirection: "column",
             gap: 3,
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 10.5,
-            color: "hsl(var(--muted-foreground))",
-            maxHeight: 140,
-            overflowY: "auto",
           }}
         >
-          {run.files.slice(0, 12).map((path) => (
-            <div key={path} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {path}
-            </div>
-          ))}
-          {run.files.length > 12 && (
-            <div style={{ opacity: 0.6 }}>+{run.files.length - 12} more</div>
-          )}
-        </div>
-      )}
-
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          flexWrap: "wrap",
-          marginTop: 10,
-          paddingTop: 8,
-          borderTop: "1px solid hsl(var(--border))",
-        }}
-      >
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleDetails();
-          }}
-          style={{
-            flex: "1 1 120px",
-            minWidth: 0,
-            padding: "6px 10px",
-            fontSize: 11.5,
-            fontWeight: 500,
-            textAlign: "center",
-            background: "transparent",
-            border: "1px solid hsl(var(--border))",
-            color: "hsl(var(--card-foreground))",
-            borderRadius: 5,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            letterSpacing: "0.01em",
-          }}
-        >
-          Details
-        </button>
-        {run.status === "failed" ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onTryToFix?.();
-            }}
-            style={{
-              flex: "1 1 120px",
-              minWidth: 0,
-              padding: "6px 10px",
-              fontSize: 11.5,
-              fontWeight: 500,
-              textAlign: "center",
-              background: "rgba(248,113,113,0.10)",
-              border: "1px solid rgba(248,113,113,0.35)",
-              color: "#f87171",
-              borderRadius: 5,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              letterSpacing: "0.01em",
-            }}
-          >
-            Try to fix
-          </button>
-        ) : run.status === "sketched" ? null
-        : run.status === "pushed" && run.githubPush ? (
-          <a
-            href={run.githubPush.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              flex: "1 1 120px",
-              minWidth: 0,
-              padding: "6px 10px",
-              fontSize: 11.5,
-              fontWeight: 500,
-              textAlign: "center",
-              background: "var(--atlas-gold-dim)",
-              border: "1px solid var(--atlas-gold-border)",
-              color: "var(--atlas-gold)",
-              borderRadius: 5,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              letterSpacing: "0.01em",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-            }}
-          >
-            <Github size={12} strokeWidth={1.75} />
-            View commit
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              handlePreview();
-            }}
-            title={previewTitle}
-            style={{
-              flex: "1 1 120px",
-              minWidth: 0,
-              padding: "6px 10px",
-              fontSize: 11.5,
-              fontWeight: 500,
-              textAlign: "center",
-              background: "var(--atlas-gold-dim)",
-              border: "1px solid var(--atlas-gold-border)",
-              color: "var(--atlas-gold)",
-              borderRadius: 5,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              letterSpacing: "0.01em",
-            }}
-          >
-            Preview
-          </button>
-        )}
-      </div>
-
-      {/* Env var chip — shown when Atlas wrote code referencing env vars */}
-      {envVarsReferenced.length > 0 && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            window.dispatchEvent(new CustomEvent("axiom:open-env-panel"));
-          }}
-          style={{
-            marginTop: 8,
-            width: "100%",
-            padding: "7px 10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-            background: "rgba(201,162,76,0.05)",
-            border: "1px solid rgba(201,162,76,0.2)",
-            borderRadius: 6,
-            cursor: "pointer",
-            textAlign: "left",
-            fontFamily: "var(--app-font-mono)",
-          }}
-        >
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 2 }}>
-              Env vars referenced
-            </div>
+          {run.files.map((f) => (
             <div
+              key={f}
               style={{
-                fontSize: 10.5,
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10,
                 color: "hsl(var(--muted-foreground))",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
               }}
             >
-              {envVarsReferenced.join(", ")}
+              {f}
             </div>
-          </div>
-          <span style={{ fontSize: 10, color: "var(--atlas-gold)", opacity: 0.8, flexShrink: 0 }}>
-            Configure →
-          </span>
-        </button>
+          ))}
+          {envVarsReferenced.length > 0 && (
+            <div
+              style={{
+                marginTop: 4,
+                paddingTop: 6,
+                borderTop: "1px solid hsl(var(--border) / 0.4)",
+                fontSize: 10,
+                color: "hsl(var(--muted-foreground) / 0.7)",
+                fontFamily: "var(--app-font-mono)",
+              }}
+            >
+              env: {envVarsReferenced.join(", ")}
+            </div>
+          )}
+          {run.error && (
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 10.5,
+                color: "#f87171",
+                fontFamily: "var(--app-font-mono)",
+              }}
+            >
+              {run.error}
+            </div>
+          )}
+        </div>
       )}
+
+      {/* Action buttons — always visible in receipt mode */}
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          marginTop: 8,
+          paddingTop: 8,
+          borderTop: "1px solid hsl(var(--border) / 0.4)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); handleDetails(); }}
+          style={{
+            flex: 1,
+            fontSize: 11,
+            fontWeight: 500,
+            padding: "4px 0",
+            borderRadius: 6,
+            border: "1px solid hsl(var(--border) / 0.7)",
+            background: "transparent",
+            color: "hsl(var(--card-foreground) / 0.8)",
+            cursor: "pointer",
+            letterSpacing: "0.01em",
+          }}
+        >
+          Details
+        </button>
+        <button
+          type="button"
+          title={previewTitle}
+          onClick={(e) => { e.stopPropagation(); handlePreview(); }}
+          style={{
+            flex: 1,
+            fontSize: 11,
+            fontWeight: 500,
+            padding: "4px 0",
+            borderRadius: 6,
+            border: `1px solid ${tone.border}`,
+            background: toneKey === "success" ? "rgba(74,222,128,0.08)" : "transparent",
+            color: toneKey === "success" ? "#4ade80" : "hsl(var(--card-foreground) / 0.8)",
+            cursor: "pointer",
+            letterSpacing: "0.01em",
+          }}
+        >
+          Preview
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes wrc-border-trace {
+          0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0); border-color: rgba(74,222,128,0.15); }
+          35%  { box-shadow: 0 0 0 4px rgba(74,222,128,0.14); border-color: rgba(74,222,128,0.7); }
+          100% { box-shadow: 0 0 0 3px rgba(74,222,128,0.06); border-color: rgba(74,222,128,0.45); }
+        }
+        @keyframes wrc-shimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+        @keyframes wrc-pulse-bar {
+          0%, 100% { opacity: 0.35; }
+          50%       { opacity: 1; }
+        }
+        @keyframes wrc-dot-pulse {
+          0%, 100% { opacity: 0.5; transform: scale(0.85); }
+          50%       { opacity: 1;   transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 }
-
-export default WorkspaceRunCard;

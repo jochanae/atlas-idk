@@ -4984,6 +4984,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     try {
       const wsDir = await ensureProjectWorkspaceDir(projectId);
       for (const edit of responseFileEdits) {
+        writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
         const absPath = resolveWorkspacePath(wsDir, edit.path);
         await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
         await fsPromises.writeFile(absPath, edit.content, "utf-8");
@@ -5862,6 +5863,17 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   // Emit decision gate SSE event (before done) so the client renders the card immediately.
   if (decisionGate) {
     res.write(`data: ${JSON.stringify(decisionGate)}\n\n`);
+  }
+  // Emit live "Writing/Patching" steps so the run card shows real file names
+  // right before transitioning to the green "Run Complete" receipt state.
+  // Build-handoff turns already emitted per-file above; this covers all other turns.
+  if (!autoApplied) {
+    for (const edit of responseFileEdits) {
+      writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
+    }
+    for (const patch of responseLinePatches) {
+      writeStep(res, { verb: "Patching", target: (patch as { path: string }).path, phase: "build" });
+    }
   }
   const inputTokenCount = assistantUsage.inputTokens;
   res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);

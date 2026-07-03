@@ -8232,7 +8232,7 @@ export default function Workspace() {
               // Atlas is thinking rather than building.
               activityStream: isBuilding ? activityStream : { active: false, content: "" },
               liveGeneration,
-              liveStep: isBuilding ? liveStep : null,
+              liveStep: liveStep,
               thinkingBlock: thinkingState && (
                 <AtlasThinkingBlock thinkingState={thinkingState} />
               ),
