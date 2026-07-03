@@ -4887,7 +4887,10 @@ export default function Home() {
             )}
 
 
-            <div style={{
+            <div
+              className="atlas-ambient-reveal-top"
+              style={{
+              ["--atlas-reveal-delay" as string]: "300ms",
               position: "relative",
               borderRadius: 14,
               padding: (inputFocused || hasInput || attachedFiles.length > 0) ? "12px 14px" : 0,
