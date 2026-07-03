@@ -7109,6 +7109,34 @@ export default function Workspace() {
       } else {
         // GitHub push — existing commit flow
         const repoName = linkedRepo.fullName;
+
+        // Durable receipt: stamp the conversation with a githubPush payload so
+        // the run card can render the "Pushed to GitHub" variant after reload.
+        // liveStep.verb === "github_push" only covers the in-flight window;
+        // this message is the source of truth once the turn is over.
+        const firstUrl = records[0]?.commitUrl ?? "";
+        const shaMatch = firstUrl.match(/\/commit\/([0-9a-f]{7,40})/i);
+        const sha = shaMatch?.[1] ?? "";
+        if (sha) {
+          const fileCount = records.length;
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant" as const,
+              content: `Pushed ${fileCount} file${fileCount === 1 ? "" : "s"} to ${repoName} on ${branch}.`,
+              model: "system",
+              intentType: "BUILD",
+              sentAt: new Date().toISOString(),
+              githubPush: {
+                sha,
+                url: firstUrl,
+                repo: repoName,
+                branch,
+              },
+            },
+          ]);
+        }
+
         doSend(
           `[FILE_COMMITTED] ${records.length} file(s) committed to ${repoName}: ${filePaths}. Verify the build.`,
           sessionId,
