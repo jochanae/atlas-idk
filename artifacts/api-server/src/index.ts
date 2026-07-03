@@ -484,6 +484,51 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: projects.publish_token failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS execution_runs (
+        id          TEXT        PRIMARY KEY,
+        project_id  INTEGER     NOT NULL,
+        thread_id   INTEGER,
+        message_id  INTEGER,
+        mode        TEXT        NOT NULL DEFAULT 'conversation',
+        status      TEXT        NOT NULL DEFAULT 'running',
+        summary     TEXT,
+        receipts    JSONB,
+        started_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        completed_at TIMESTAMPTZ,
+        elapsed_ms  INTEGER
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS execution_runs_project_id_idx
+        ON execution_runs (project_id, started_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS execution_runs_message_id_idx
+        ON execution_runs (message_id)
+        WHERE message_id IS NOT NULL
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS execution_run_steps (
+        id         SERIAL      PRIMARY KEY,
+        run_id     TEXT        NOT NULL REFERENCES execution_runs(id) ON DELETE CASCADE,
+        verb       TEXT        NOT NULL,
+        target     TEXT,
+        status     TEXT        DEFAULT 'ok',
+        detail     TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS execution_run_steps_run_id_idx
+        ON execution_run_steps (run_id, created_at)
+    `);
+    logger.info("ensureColumns: execution_runs + execution_run_steps tables verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: execution_runs tables failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

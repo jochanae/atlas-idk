@@ -135,6 +135,28 @@ router.post("/builds", async (req, res): Promise<void> => {
       logger.warn({ err }, "builds: failed to persist result");
     }
 
+    // Record in execution_runs so BUILD_RUN shell runs are first-class run entities.
+    if (projectId) {
+      try {
+        const runId = randomUUID();
+        const runStatus = status === "success" ? "succeeded" : "failed";
+        await db.execute(sql`
+          INSERT INTO execution_runs
+            (id, project_id, thread_id, message_id, mode, status, summary, started_at, completed_at, elapsed_ms)
+          VALUES
+            (${runId}, ${projectId}, null, null, 'operational', ${runStatus},
+             ${command + " run"}, ${new Date(startedAt)}, now(), ${duration})
+        `);
+        await db.execute(sql`
+          INSERT INTO execution_run_steps (run_id, verb, target, status, detail)
+          VALUES (${runId}, 'BUILD_RUN', ${command}, ${runStatus === "succeeded" ? "ok" : "fail"}, ${errorSummary})
+        `);
+        logger.info({ runId, projectId, command, status: runStatus }, "execution_run: BUILD_RUN recorded");
+      } catch (err) {
+        logger.warn({ err }, "builds: execution_run persist failed — non-fatal");
+      }
+    }
+
     res.end();
   });
 

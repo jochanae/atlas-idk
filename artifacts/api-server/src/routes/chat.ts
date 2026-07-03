@@ -5580,6 +5580,83 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     previousContentByPath,
     chatMessageId: savedMsgId,
   });
+
+  // ── Execution run recorder — fire-and-forget after every turn with real work ──
+  // Triggers: file edits, file deletes, line patches, generated images, github push.
+  // Errors do NOT trigger runs; they can only change an existing run's status.
+  void (async () => {
+    try {
+      const _hasTrigger =
+        responseFileEdits.length > 0 ||
+        fileDeletes.length > 0 ||
+        responseLinePatches.length > 0 ||
+        (imageGenResult?.images?.length ?? 0) > 0 ||
+        !!githubPushResult;
+      if (!_hasTrigger || !projectId) return;
+
+      const _RUN_ERROR_RE = /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
+
+      const _runMode: string =
+        isFlowMode ? "flow"
+        : (responseFileEdits.length > 0 || fileDeletes.length > 0 || responseLinePatches.length > 0 || !!githubPushResult)
+          ? "operational"
+          : "conversation"; // image-only sketch
+
+      const _runStatus: string =
+        _RUN_ERROR_RE.test(persistContent) || !!githubPushResult?.error
+          ? "failed"
+          : "succeeded";
+
+      const _runId = crypto.randomUUID();
+      const _completedAt = new Date();
+      const _summary = runSummaryFromContent(persistContent);
+
+      await db.execute(sql`
+        INSERT INTO execution_runs
+          (id, project_id, thread_id, message_id, mode, status, summary, started_at, completed_at, elapsed_ms)
+        VALUES
+          (${_runId}, ${projectId}, ${sessionId ?? null}, ${savedMsgId ?? null},
+           ${_runMode}, ${_runStatus}, ${_summary},
+           ${_completedAt}, ${_completedAt}, 0)
+      `);
+
+      // Steps — one row per discrete action
+      const _steps: Array<{ verb: string; target: string | null; status: string; detail: string | null }> = [];
+      for (const _edit of responseFileEdits) {
+        _steps.push({ verb: "FILE_EDIT", target: _edit.path, status: "ok", detail: null });
+      }
+      for (const _del of fileDeletes) {
+        _steps.push({ verb: "FILE_DELETE", target: (_del as { path: string }).path, status: "ok", detail: null });
+      }
+      for (const _patch of responseLinePatches) {
+        _steps.push({ verb: "LINE_PATCH", target: (_patch as { path: string }).path, status: "ok", detail: null });
+      }
+      if (imageGenResult?.images?.length) {
+        for (const _img of imageGenResult.images.slice(0, 2)) {
+          _steps.push({ verb: "IMAGE_GEN", target: (_img.prompt ?? "image").slice(0, 80), status: "ok", detail: `model:${_img.model ?? "unknown"}` });
+        }
+      }
+      if (githubPushResult) {
+        _steps.push({
+          verb: "GITHUB_PUSH",
+          target: githubPushResult.branch ?? null,
+          status: githubPushResult.error ? "fail" : "ok",
+          detail: githubPushResult.error ?? `${githubPushResult.files?.length ?? 0} files`,
+        });
+      }
+
+      for (const _step of _steps) {
+        await db.execute(sql`
+          INSERT INTO execution_run_steps (run_id, verb, target, status, detail)
+          VALUES (${_runId}, ${_step.verb}, ${_step.target}, ${_step.status}, ${_step.detail})
+        `);
+      }
+
+      logger.info({ runId: _runId, projectId, mode: _runMode, status: _runStatus, stepCount: _steps.length }, "execution_run: recorded");
+    } catch (_runErr) {
+      logger.warn({ err: _runErr, projectId }, "execution_run: persist failed — non-fatal");
+    }
+  })();
   if (userId) {
     void extractUserMemoryInBackground({
       userId,
