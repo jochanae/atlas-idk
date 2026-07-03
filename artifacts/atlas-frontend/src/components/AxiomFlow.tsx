@@ -1174,6 +1174,7 @@ export function AxiomFlow({
     if (!projectId || hydrateLoading) return;
     setHydrateLoading(true);
     setHydrateError(null);
+    const toastId = toast.loading("Updating Flow Map…", { duration: Infinity });
     try {
       const r = await fetch(`/api/projects/${projectId}/flow/hydrate`, {
         method: "POST",
@@ -1182,6 +1183,7 @@ export function AxiomFlow({
       const data = await r.json() as { nodes?: ArchNode[]; edges?: ArchEdge[]; error?: string };
       if (!r.ok) {
         setHydrateError(data.error ?? "Hydration failed — try again");
+        toast.error(data.error ?? "Couldn't update Flow Map", { id: toastId });
         return;
       }
       // Apply radial layout (x/y returned by AI are ignored)
@@ -1196,6 +1198,7 @@ export function AxiomFlow({
       setFlowEmpty(false);
       setHydrateError(null);
       onHydrated?.(positioned.length);
+      toast.success(`Flow Map updated · ${positioned.length} node${positioned.length === 1 ? "" : "s"}`, { id: toastId, duration: 2200 });
       // Persist to DB immediately (no debounce)
       fetch(`/api/projects/${projectId}/flow`, {
         method: "PUT",
@@ -1205,6 +1208,7 @@ export function AxiomFlow({
       }).catch(() => {});
     } catch {
       setHydrateError("Network error — check your connection and try again");
+      toast.error("Network error — Flow Map didn't update", { id: toastId });
     } finally {
       setHydrateLoading(false);
     }
