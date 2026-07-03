@@ -568,14 +568,26 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   // ── Render: receipt ───────────────────────────────────────────────────
   if (!run) return null;
 
-  const toneKey = run.status === "applied" ? "success" : run.status === "failed" ? "failed" : "running";
+  const toneKey =
+    run.status === "applied" ? "success"
+    : run.status === "failed" ? "failed"
+    : run.status === "pushed" ? "pushed"
+    : "running";
   const tone = RECEIPT_TONE[toneKey];
   const fileCount = run.files.length;
-  const kicker = run.status === "running" ? "Working" : run.status === "applied" ? "Run Complete" : "Build Unsuccessful";
+  const kicker =
+    run.status === "running" ? "Working"
+    : run.status === "applied" ? "Run Complete"
+    : run.status === "pushed" ? "Pushed to GitHub"
+    : "Build Unsuccessful";
   const elapsedMs =
     run.status === "running"
       ? now - run.createdAt
       : run.elapsedMs ?? Math.max(0, Date.now() - run.createdAt);
+  const shortSha = run.githubPush?.sha ? run.githubPush.sha.slice(0, 7) : "";
+  const pushSubtitle = run.githubPush
+    ? [run.githubPush.repo, shortSha, run.githubPush.branch].filter(Boolean).join(" · ")
+    : "";
 
   const noFreshArtifact = run.previewSource === null;
   const previewTitle = noFreshArtifact
