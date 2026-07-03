@@ -2319,7 +2319,7 @@ export function AxiomFlow({
 
       {/* Bottom-left controls: Center button + hint icon */}
       <div style={{
-        position: "absolute", bottom: 10, left: 14,
+        position: "absolute", bottom: 18, left: 14,
         display: "flex", alignItems: "center", gap: 6, zIndex: 6,
       }}>
         {/* Center map button — always visible so users can recover off-screen nodes */}
