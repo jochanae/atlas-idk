@@ -4477,7 +4477,10 @@ export default function Workspace() {
     setThinkingState(prev => prev ? { ...prev, status: "streaming" } : prev);
   }, []);
   const handleThinkingDone = useCallback((payload: any) => {
-    setThinkingState(prev => prev ? { ...prev, status: "completed", developerLens: payload?.developerLens } : prev);
+    setThinkingState(prev => {
+      const base = prev ?? { status: "processing" as const, currentStep: null, history: [] };
+      return { ...base, status: "completed", developerLens: payload?.developerLens };
+    });
     if (payload?.autoApplied && Array.isArray(payload?.autoAppliedPaths) && payload.autoAppliedPaths.length > 0) {
       setPendingAutoApply(payload.autoAppliedPaths as string[]);
     } else {

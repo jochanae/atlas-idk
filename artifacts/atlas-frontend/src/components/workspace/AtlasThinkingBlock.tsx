@@ -47,9 +47,11 @@ export function AtlasThinkingBlock({ thinkingState }: Props) {
   const isProcessing = status === "processing";
 
   const collapsedLabels = useMemo(() => {
+    const model = developerLens?.routing?.activeModel;
+    if (model) return `✓ ${model}`;
     const labels = history.length > 0 ? history.map((step) => step.label) : currentStep ? [currentStep.label] : [];
-    return labels.length > 0 ? `✓ ${labels.join(" → ")}` : "✓ Thinking complete";
-  }, [currentStep, history]);
+    return labels.length > 0 ? `✓ ${labels.join(" → ")}` : "✓ done";
+  }, [currentStep, history, developerLens]);
 
   // During processing, show the current step label only if it's meaningful.
   // Routine scan/analyze phases collapse to a generic quiet label.
