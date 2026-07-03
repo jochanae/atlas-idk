@@ -1405,7 +1405,7 @@ function SourceTab({
   };
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ padding: "7px 14px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
         <span style={{ ...mono, fontSize: 9, letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.55 }}>
           Sources
