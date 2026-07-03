@@ -2164,6 +2164,19 @@ async function callModel(
 ): Promise<ModelCallResult> {
   const startedAt = performance.now();
   if (modelId === "gpt4o") {
+    // Token budget guard: ~4 chars per token; this org's gpt-4o TPM limit is 30k.
+    // If the payload exceeds ~25k estimated tokens, fall back to Claude silently
+    // to avoid the "request too large" 429 that the client sees as a generic error.
+    const estimatedTokens = Math.ceil(
+      (systemPrompt.length +
+        messages.reduce((sum, m) =>
+          sum + (typeof m.content === "string" ? m.content.length : JSON.stringify(m.content).length),
+        0)) / 4
+    );
+    if (estimatedTokens > 25000) {
+      return callModel("claude", systemPrompt, messages, imageData, onToken);
+    }
+
     const model = "gpt-4o";
     // Build OpenAI messages
     type OAIMsg = { role: "system" | "user" | "assistant"; content: string | Array<{ type: string; [k: string]: unknown }> };

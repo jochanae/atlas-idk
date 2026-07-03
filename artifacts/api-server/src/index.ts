@@ -529,6 +529,27 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: execution_runs tables failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS design_plans (
+        id           SERIAL      PRIMARY KEY,
+        project_id   INTEGER     NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        version      INTEGER     NOT NULL DEFAULT 1,
+        status       TEXT        NOT NULL DEFAULT 'draft',
+        body         JSONB       NOT NULL DEFAULT '{}'::jsonb,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        committed_at TIMESTAMPTZ
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS design_plans_project_id_idx
+        ON design_plans (project_id, version DESC)
+    `);
+    logger.info("ensureColumns: design_plans table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: design_plans table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {
