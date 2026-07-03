@@ -426,13 +426,16 @@ export function AskAtlasSurface({
                 </span>
                 <div
                   style={{
-                    fontSize: 16,
+                    fontSize: 16.5,
                     lineHeight: 1.75,
+                    letterSpacing: "0.005em",
                     color: "var(--atlas-fg)",
                     fontFamily: "var(--app-font-sans)",
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
-                    opacity: 0.92,
+                    opacity: 0.94,
+                    WebkitFontSmoothing: "antialiased",
+                    MozOsxFontSmoothing: "grayscale",
                   }}
                 >
                   {(msg.imageUrl || msg.pendingSketch) && (
@@ -581,7 +584,8 @@ export function AskAtlasSurface({
                   borderRadius: 12,
                   maxWidth: "82%",
                   fontSize: 16,
-                  lineHeight: 1.6,
+                  lineHeight: 1.7,
+                  letterSpacing: "0.005em",
                   color: "var(--atlas-fg)",
                   fontFamily: "var(--app-font-sans)",
                   whiteSpace: "pre-wrap",
