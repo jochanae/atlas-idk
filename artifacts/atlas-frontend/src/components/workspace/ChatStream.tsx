@@ -607,6 +607,25 @@ export function ChatStream(props: ChatStreamProps) {
           return null;
         }
 
+        if (msg.role === "assistant" && msg.githubPush) {
+          return (
+            <Fragment key={i}>
+              <div data-atlas-msg-idx={i} data-msg-idx={i}>
+                <WorkspaceRunCard
+                  projectId={projectId}
+                  messages={messages.slice(0, i + 1)}
+                  projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+                  chatPending={false}
+                  liveStep={null}
+                  receiptMessage={msg}
+                  onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+                />
+              </div>
+              {renderActivityForAnchor(i)}
+            </Fragment>
+          );
+        }
+
         return (
         <Fragment key={i}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
@@ -755,6 +774,7 @@ export function ChatStream(props: ChatStreamProps) {
         projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
         chatPending={chatPending}
         liveStep={liveStep}
+        suppressGitHubReceipt
         onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
       />
 
