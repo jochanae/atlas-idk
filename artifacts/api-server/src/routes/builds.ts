@@ -202,4 +202,73 @@ router.get("/projects/:projectId/builds", async (req, res): Promise<void> => {
   }
 });
 
+// ── GET /api/projects/:projectId/runs — list execution runs with steps ───────
+// Phase 2 read-only: confirms execution_runs is the durable truth source before
+// WorkspaceRunCard is wired to consume it.
+router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
+  const projectId = parseInt(req.params.projectId, 10);
+  if (isNaN(projectId)) { res.status(400).json({ error: "Invalid projectId" }); return; }
+
+  try {
+    // Fetch runs ordered newest-first
+    const runsResult = await db.execute(sql`
+      SELECT
+        id, project_id, thread_id, message_id, mode, status, summary,
+        receipts, started_at, completed_at, elapsed_ms
+      FROM execution_runs
+      WHERE project_id = ${projectId}
+      ORDER BY started_at DESC
+      LIMIT 50
+    `);
+
+    if (runsResult.rows.length === 0) {
+      res.json({ runs: [] });
+      return;
+    }
+
+    // Fetch all steps for the returned runs in one query
+    const runIds = runsResult.rows.map((r) => r.id as string);
+    const stepsResult = await db.execute(sql`
+      SELECT id, run_id, verb, target, status, detail, created_at
+      FROM execution_run_steps
+      WHERE run_id = ANY(${runIds})
+      ORDER BY run_id, created_at ASC
+    `);
+
+    // Group steps by run_id
+    const stepsByRunId = new Map<string, typeof stepsResult.rows>();
+    for (const step of stepsResult.rows) {
+      const rid = step.run_id as string;
+      if (!stepsByRunId.has(rid)) stepsByRunId.set(rid, []);
+      stepsByRunId.get(rid)!.push(step);
+    }
+
+    const runs = runsResult.rows.map((r) => ({
+      id: r.id,
+      projectId: r.project_id,
+      threadId: r.thread_id,
+      messageId: r.message_id,
+      mode: r.mode,
+      status: r.status,
+      summary: r.summary,
+      startedAt: r.started_at,
+      completedAt: r.completed_at,
+      elapsedMs: r.elapsed_ms,
+      steps: (stepsByRunId.get(r.id as string) ?? []).map((s) => ({
+        id: s.id,
+        verb: s.verb,
+        target: s.target,
+        status: s.status,
+        detail: s.detail,
+        createdAt: s.created_at,
+      })),
+    }));
+
+    res.json({ runs });
+  } catch (err) {
+    logger.warn({ err }, "runs: GET /projects/:id/runs failed");
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
 export default router;
