@@ -504,6 +504,16 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   );
   const isActive = !receiptMessage && ((chatPending ?? false) || isStreaming);
 
+  // Only show the active card when at least one BUILD-type step has arrived.
+  // Generic "Analyzing" / conversational turns must NOT show the card —
+  // the user asks a question, text streams back, no card needed.
+  // Build steps: read, write, patch, edit, push, install, shell, fetch.
+  const CONVERSATIONAL_VERBS = /^(analyz|assess)/i;
+  const hasBuildStep = useMemo(
+    () => liveSteps.some(s => !CONVERSATIONAL_VERBS.test(s.verb)),
+    [liveSteps],
+  );
+
   // Task goal — short description from the last user message (NOT the full paragraph)
   const taskGoal = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -627,7 +637,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   }, [isActive, messages]);
 
   // ── Render: active (live execution) ───────────────────────────────────
-  if (isActive) {
+  // Only show the build card when a real build action has been detected.
+  // Conversational questions never show this card — text just streams directly.
+  if (isActive && hasBuildStep) {
     return <ActiveCard steps={liveSteps} taskGoal={taskGoal} />;
   }
 
