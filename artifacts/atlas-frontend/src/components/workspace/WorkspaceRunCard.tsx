@@ -24,7 +24,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Bookmark } from "lucide-react";
+import { CheckCircle2, XCircle, Bookmark, Github } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
 import {
   addSnapshot,
@@ -46,7 +46,7 @@ interface Props {
   onTryToFix?: () => void;
 }
 
-type DerivedStatus = "running" | "applied" | "failed";
+type DerivedStatus = "running" | "applied" | "failed" | "pushed";
 type PreviewSource = "sandbox" | "generated" | "local" | "url" | null;
 
 interface DerivedRun {
@@ -61,6 +61,8 @@ interface DerivedRun {
   previewSource: PreviewSource;
   previewPath: string | null;
   error?: string;
+  /** Present when this run is a GitHub push receipt (durable, survives reload). */
+  githubPush?: { sha: string; url: string; repo?: string; branch?: string };
 }
 
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
