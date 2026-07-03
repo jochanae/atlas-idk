@@ -2076,7 +2076,7 @@ export function AssistantBubble({
 
         {/* Suppress text body when an image is attached — the sketch IS the response. */}
         {!(message.imageB64 || imageGenDataUrl || (message.imageGen?.images?.length ?? 0) > 0) && (
-        <div style={{ fontSize: 16.5, lineHeight: 1.75, letterSpacing: "0.005em", color: "var(--atlas-fg)", opacity: 0.94, fontFamily: "var(--app-font-sans)", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" as const }}>
+        <div className="atlas-prose" style={{ fontSize: 16.5, lineHeight: 1.75, letterSpacing: "0.015em", color: "var(--atlas-fg)", opacity: 0.94, fontFamily: "var(--app-font-sans)", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" as const }}>
           {message.streaming ? (
             <span style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
               {cleanedContent}
