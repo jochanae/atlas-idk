@@ -9381,7 +9381,7 @@ export default function Workspace() {
       <AtlasComposerSheet
         open={showComposerSheet}
         onClose={() => setShowComposerSheet(false)}
-        projects={(allProjects ?? []).map((p: any) => ({ id: p.id, name: p.name }))}
+        projects={(allProjects ?? []).filter((p: any) => p.id !== project?.id).map((p: any) => ({ id: p.id, name: p.name }))}
       />
 
 
