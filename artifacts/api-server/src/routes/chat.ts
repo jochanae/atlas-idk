@@ -1772,9 +1772,9 @@ function hasExistingCriticalFileChange(args: {
 
   return paths.some((path) => {
     if (!isCriticalPath(path)) return false;
-    // Without a repo tree, keep critical paths behind approval instead of
-    // assuming they are safe new files.
-    return !args.repoFiles || fileExistsInRepo(path, args.repoFiles);
+    // Only block when we have a repo tree and the critical file already exists in it.
+    // Without a repo tree, treat all writes as new file creation and allow them.
+    return args.repoFiles !== null && fileExistsInRepo(path, args.repoFiles);
   });
 }
 
@@ -4836,7 +4836,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       ? confidenceAssessment.confidence === "low" || confidenceAssessment.blast_radius === "wide"
         ? "I need explicit approval before making these changes. The risk is high enough that I recommend breaking this into smaller steps first."
         : "I need explicit approval before making these changes."
-      : "I need to provide a confidence assessment before proposing file changes. Please ask me to restate the scope and confidence first.";
+      : "These changes touch files that require confirmation before applying. Reply to confirm and I'll proceed.";
     displayContent = `${displayContent}\n\n${approvalMessage}`.trim();
   }
   // Extract PROACTIVE_ALERT token (strip from content before DB persistence)
