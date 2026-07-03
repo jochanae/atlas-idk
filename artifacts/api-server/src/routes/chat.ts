@@ -883,18 +883,23 @@ RULES:
 - Only use when the user explicitly asks to commit/push, or when the task says to open a PR
 - Do NOT push without user intent — file edits applied locally are always available for a manual push via the GitHubPushModal
 
-### Creating a GitHub repository for this project
-When the user asks to create a repo, publish, or push for the first time and GitHub is authorized but no repo is linked yet, emit:
+### Publishing this project to GitHub (create, link, or push)
+When the user wants to publish, push, create a repo, or get their project onto GitHub and GitHub is authorized, emit:
 
 REPO_LINK:{}
 
+The server handles the full orchestration automatically:
+- If the project already has a linked repo → confirms it and proceeds to push
+- If no repo is linked but one with this project's name exists on GitHub → links it automatically
+- If no repo exists at all → creates a new private repo, scaffolds it, and links it
+
 RULES:
 - Emit REPO_LINK:{} on its own line — exactly as shown, no extra text around it
-- Say one sentence BEFORE it confirming you are creating the repo, then emit the token, then continue
-- The server handles everything: creates a private repo named after this project, pushes scaffold files, and links it to the project automatically
-- Only emit when the system context says "GitHub is authorized (token connected) but this project has no linked repository"
-- Do NOT emit if there is already a linked repo — use GITHUB_PUSH instead
-- After REPO_LINK:{} is processed, a confirmation with the repo URL will be appended to your response automatically
+- Say one sentence BEFORE it (e.g. "Publishing your project to GitHub now…"), then emit the token, then continue
+- Emit even when you're unsure whether the repo exists — the server resolves the correct path
+- After REPO_LINK:{} is processed, a confirmation line is appended automatically — do not repeat it
+- To push after linking: emit GITHUB_PUSH:{...} in the same response, after REPO_LINK:{}
+- Only use GITHUB_PUSH (without REPO_LINK) when the system context confirms a repo is already linked
 
 ## Threshold Arrival — First Session
 When this is a fresh workspace and you have project memories from a Global shaping conversation, this is a Threshold moment — the user just crossed from discovery into execution. Your first message should:
@@ -4547,26 +4552,34 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     "REPO_LINK extraction result"
   );
 
-  // If Atlas requested a repo link, create + link it now
+  // If Atlas requested a repo link, orchestrate: already-linked → no-op, else create-or-link
   if (repoLinkRequested && resolvedGithubToken && projectId && project?.name) {
-    try {
-      const { bootstrapGitHubRepo } = await import("../lib/githubBootstrap");
-      const bootstrapResult = await bootstrapGitHubRepo({
-        token: resolvedGithubToken,
-        projectId,
-        projectName: project.name,
-      });
-      if (bootstrapResult.ok) {
-        const repoVerb = bootstrapResult.existingRepoLinked ? "Linked existing repository" : "Repository created and linked";
-        rawContent = (rawContent + `\n\n✅ **${repoVerb}:** [${bootstrapResult.repoName}](${bootstrapResult.htmlUrl})`).trim();
-        // Update repoData so the rest of the response pipeline knows the repo exists
-        repoData = { fullName: bootstrapResult.linkedRepo, defaultBranch: "main" };
-        writeStep(res, { verb: bootstrapResult.existingRepoLinked ? "Linked" : "Created", target: bootstrapResult.linkedRepo, phase: "done" });
-      } else {
-        rawContent = (rawContent + `\n\n⚠️ **Repo creation failed:** ${bootstrapResult.error}`).trim();
+    if (repoData?.fullName) {
+      // Project already has a linked repo — nothing to do; GITHUB_PUSH handles the push
+      writeStep(res, { verb: "Using", target: repoData.fullName, phase: "done" });
+      rawContent = (rawContent + `\n\n✅ **Repository already linked:** [${repoData.fullName}](https://github.com/${repoData.fullName})`).trim();
+    } else {
+      // No linked repo — bootstrapGitHubRepo proactively checks if one exists by name,
+      // links it if found, or creates it if not. No 422 errors bubble to the user.
+      try {
+        const { bootstrapGitHubRepo } = await import("../lib/githubBootstrap");
+        const bootstrapResult = await bootstrapGitHubRepo({
+          token: resolvedGithubToken,
+          projectId,
+          projectName: project.name,
+        });
+        if (bootstrapResult.ok) {
+          const repoVerb = bootstrapResult.existingRepoLinked ? "Linked existing repository" : "Repository created and linked";
+          rawContent = (rawContent + `\n\n✅ **${repoVerb}:** [${bootstrapResult.repoName}](${bootstrapResult.htmlUrl})`).trim();
+          // Update repoData so the rest of the pipeline (GITHUB_PUSH) can execute in this same turn
+          repoData = { fullName: bootstrapResult.linkedRepo, defaultBranch: "main" };
+          writeStep(res, { verb: bootstrapResult.existingRepoLinked ? "Linked" : "Created", target: bootstrapResult.linkedRepo, phase: "done" });
+        } else {
+          rawContent = (rawContent + `\n\n⚠️ **Repo setup failed:** ${bootstrapResult.error}`).trim();
+        }
+      } catch (repoErr) {
+        logger.warn({ err: String(repoErr), projectId }, "REPO_LINK bootstrap threw — non-fatal");
       }
-    } catch (repoErr) {
-      logger.warn({ err: String(repoErr), projectId }, "REPO_LINK bootstrap threw — non-fatal");
     }
   }
 

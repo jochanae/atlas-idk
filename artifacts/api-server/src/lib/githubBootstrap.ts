@@ -468,46 +468,41 @@ export async function bootstrapGitHubRepo(opts: {
   const meData = await meResp.json() as { login: string };
   const repoName = sanitizeRepoName(projectName);
 
-  // 2. Create the repository
-  const createResp = await fetch(`${GH_API}/user/repos`, {
-    method: "POST",
-    headers: ghHeaders(token),
-    body: JSON.stringify({
-      name: repoName,
-      description: opts.projectBrief?.purpose
-        ? opts.projectBrief.purpose.slice(0, 255)
-        : "Built with Axiom Atlas",
-      private: true,
-      auto_init: false,
-    }),
-  });
-
+  // 2. Proactive existence check — avoid a wasted create+422 round-trip.
+  //    GET the repo by name first; only create if it doesn't exist.
   let repoData: { full_name: string; html_url: string };
   let existingRepoLinked = false;
 
-  if (!createResp.ok) {
-    const errBody = await createResp.json() as { message?: string; errors?: Array<{ message?: string }> };
-    const msg = errBody.errors?.[0]?.message ?? errBody.message ?? "Unknown error";
+  const existingCheck = await fetch(
+    `${GH_API}/repos/${meData.login}/${repoName}`,
+    { headers: ghHeaders(token) }
+  );
 
-    // "already exists" — fetch the existing repo and link it instead of failing
-    const isAlreadyExists = msg.toLowerCase().includes("already exists") ||
-      (errBody.message ?? "").toLowerCase().includes("already exists");
+  if (existingCheck.ok) {
+    // Repo already exists under this account — link it, skip scaffold push
+    repoData = await existingCheck.json() as { full_name: string; html_url: string };
+    existingRepoLinked = true;
+  } else {
+    // Repo doesn't exist — create it
+    const createResp = await fetch(`${GH_API}/user/repos`, {
+      method: "POST",
+      headers: ghHeaders(token),
+      body: JSON.stringify({
+        name: repoName,
+        description: opts.projectBrief?.purpose
+          ? opts.projectBrief.purpose.slice(0, 255)
+          : "Built with Axiom Atlas",
+        private: true,
+        auto_init: false,
+      }),
+    });
 
-    if (!isAlreadyExists) {
+    if (!createResp.ok) {
+      const errBody = await createResp.json() as { message?: string; errors?: Array<{ message?: string }> };
+      const msg = errBody.errors?.[0]?.message ?? errBody.message ?? "Unknown error";
       return { ok: false, error: `Failed to create repo: ${msg}` };
     }
 
-    // Attempt to fetch the existing repo by owner/name
-    const existingResp = await fetch(
-      `${GH_API}/repos/${meData.login}/${repoName}`,
-      { headers: ghHeaders(token) }
-    );
-    if (!existingResp.ok) {
-      return { ok: false, error: `Repo already exists but could not be fetched (${existingResp.status})` };
-    }
-    repoData = await existingResp.json() as { full_name: string; html_url: string };
-    existingRepoLinked = true;
-  } else {
     repoData = await createResp.json() as { full_name: string; html_url: string };
   }
   const fullName = repoData.full_name;
