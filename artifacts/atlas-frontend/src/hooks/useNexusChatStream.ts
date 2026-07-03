@@ -160,6 +160,7 @@ export interface UseNexusChatStreamOptions {
   conversationId?: string | null;
   onData?: (data: unknown) => void;
   onProjectReady?: (doneData?: NexusProjectReadyDoneData) => void;
+  onConversationId?: (conversationId: string) => void;
   projectContext?: {
     projectId: number;
     memorySummary?: string | null;
@@ -193,7 +194,7 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, projectContext } = options;
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const messagesRef = useRef<NexusMessage[]>([]);
@@ -438,8 +439,11 @@ export function useNexusChatStream(
               (meta as any).imageGen = (meta as any).image_gen;
             }
             const doneConversationId = meta.conversationId;
-            if (!activeConversationIdRef.current && typeof doneConversationId === "string" && doneConversationId) {
-              activeConversationIdRef.current = doneConversationId;
+            if (typeof doneConversationId === "string" && doneConversationId) {
+              if (!activeConversationIdRef.current) {
+                activeConversationIdRef.current = doneConversationId;
+              }
+              onConversationId?.(doneConversationId);
             }
 
             const { content: navCleanedText, route: routeFromText } = stripNavigateTo(fullText);

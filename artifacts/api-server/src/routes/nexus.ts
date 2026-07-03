@@ -1707,8 +1707,14 @@ One pattern per line starting with "·". Short and specific. If nothing meaningf
     }
   })();
 
-  // Always source conversation context from the persisted Living Thread (last 40 turns)
-  const conversationHistory = dbMessages.slice(-40).map((m) => ({
+  // Source conversation context from the persisted Living Thread (last 40 turns).
+  // If the DB returns no messages but the client sent a conversationId + history,
+  // use the client history as a safety net (handles edge cases like first-turn race
+  // conditions or schema migration gaps where the row hasn't been committed yet).
+  const historySource = dbMessages.length > 0
+    ? dbMessages.slice(-40)
+    : (conversationId ? requestHistory.slice(-40) : []);
+  const conversationHistory = historySource.map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content,
   }));

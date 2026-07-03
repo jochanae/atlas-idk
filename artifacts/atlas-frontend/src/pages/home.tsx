@@ -1887,6 +1887,17 @@ export default function Home() {
       return null;
     }
   });
+  const [askAtlasConversationId, setAskAtlasConversationId] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem("atlas-ask-atlas-conversation-id") ?? localStorage.getItem("atlas-ask-atlas-conversation-id") ?? null;
+    } catch {
+      return null;
+    }
+  });
+  const rememberAskAtlasConversationId = (conversationId: string) => {
+    try { localStorage.setItem("atlas-ask-atlas-conversation-id", conversationId); } catch {}
+    try { sessionStorage.setItem("atlas-ask-atlas-conversation-id", conversationId); } catch {}
+  };
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
@@ -1999,8 +2010,12 @@ export default function Home() {
   const askAtlasChat = useNexusChatStream({
     focusProjectId: null,
     model: "claude",
-    conversationId: null,
+    conversationId: askAtlasConversationId,
     projectContext: null,
+    onConversationId: (id) => {
+      setAskAtlasConversationId(id);
+      rememberAskAtlasConversationId(id);
+    },
   });
   const askAtlasConversationActive = askAtlasChat.messages.length > 0;
   const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
@@ -2116,21 +2131,21 @@ export default function Home() {
   // thread-load effect populates nexusChat, not askAtlasChat.
   const askAtlasRestoreAttemptRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!askAtlasSurfaceOpen || !activeConversationId) return;
-    if (askAtlasRestoreAttemptRef.current === activeConversationId) return;
+    if (!askAtlasSurfaceOpen || !askAtlasConversationId) return;
+    if (askAtlasRestoreAttemptRef.current === askAtlasConversationId) return;
     if (askAtlasChat.messages.length > 0) {
-      askAtlasRestoreAttemptRef.current = activeConversationId;
+      askAtlasRestoreAttemptRef.current = askAtlasConversationId;
       return;
     }
-    askAtlasRestoreAttemptRef.current = activeConversationId;
-    fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { credentials: "include" })
+    askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+    fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(askAtlasConversationId)}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then((msgs: Array<{ role: string; content: string }>) => {
         const normalized = normalizeLoadedHomeMessages(msgs);
         if (normalized.length > 0) askAtlasChat.setMessages(normalized as any);
       })
       .catch(() => {});
-  }, [askAtlasSurfaceOpen, activeConversationId, askAtlasChat.messages.length, askAtlasChat.setMessages]);
+  }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasChat.messages.length, askAtlasChat.setMessages]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -2283,6 +2298,9 @@ export default function Home() {
       conversationThreadRequestRef.current = null;
       thinkOutLoudInlineRef.current = false;
       setActiveConversationId(null);
+      setAskAtlasConversationId(null);
+      try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+      try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
       nexusChat.setMessages([]);
       askAtlasChat.clearMessages();
       setEarnedTitle(null);
@@ -3575,6 +3593,9 @@ export default function Home() {
     conversationThreadRequestRef.current = null;
     thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
+    setAskAtlasConversationId(null);
+    try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+    try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
     nexusChat.clearMessages();
     askAtlasChat.clearMessages();
     setReviewingPlanIds(new Set());
@@ -5401,7 +5422,7 @@ export default function Home() {
         open={askAtlasSurfaceVisible}
         messages={askAtlasChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
-        conversationId={activeConversationId}
+        conversationId={askAtlasConversationId}
         input={input}
         setInput={setInput}
         hasAttachments={attachedFiles.length > 0}
