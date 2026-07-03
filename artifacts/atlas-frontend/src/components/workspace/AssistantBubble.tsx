@@ -1798,11 +1798,7 @@ export function AssistantBubble({
             </span>
           )}
         </div>
-        {modelUsedLabel && (
-          <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: -4, marginBottom: 7 }}>
-            {modelUsedLabel}
-          </div>
-        )}
+        {/* Model label removed — surfaced via "atlas · tap to inspect" developer lens */}
         {/* Memory chips — click to expand insight and park */}
         {message.memoryChips && message.memoryChips.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 5, marginBottom: 8 }}>
