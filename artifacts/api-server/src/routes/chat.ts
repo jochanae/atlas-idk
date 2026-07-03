@@ -2072,6 +2072,21 @@ type ModelCallResult = {
   usage: ModelCallUsage;
 };
 
+/**
+ * Returns true when the user message is clearly asking to create or edit a
+ * documentation-only file: README, markdown, plain text, docs, notes, changelogs,
+ * test instructions. These files have no visual/interaction design requirements and
+ * must bypass the Build Readiness gate (Design Plan, Experience Intent, Responsive
+ * Intent, and AM-DNA checks are irrelevant to them).
+ */
+function isDocumentationOnlyRequest(message: string): boolean {
+  // Explicit doc file extensions or canonical doc file names anywhere in the message.
+  const DOC_FILE_RE = /(?:^|[\s"'`(/\\])(?:readme|changelog|contributing|license|\.md\b|\.mdx\b|\.txt\b|\.rst\b)/i;
+  // Documentation-intent vocabulary that doesn't require a file name.
+  const DOC_INTENT_RE = /\b(?:docs?|documentation|notes?|test\s+instructions?|plain[\s-]text|markdown)\b/i;
+  return DOC_FILE_RE.test(message) || DOC_INTENT_RE.test(message);
+}
+
 function selectChatModelForMessage(message: string, workspaceLens?: string): ModelId {
   // BUILD lens is always handled by the builder (claude). gpt4o does not reliably emit
   // FILE_EDIT blocks — routing build requests through it produces planning prose instead
@@ -2649,7 +2664,7 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Advisory gate: runs before Builder starts. If gaps exist, returns a
   // structured readiness report instead of proceeding to the AI call.
   // Always bypassable via skipReadiness: true ("Build anyway").
-  if (buildMode && projectId && !(body as any).skipReadiness) {
+  if (buildMode && projectId && !(body as any).skipReadiness && !isDocumentationOnlyRequest(message)) {
     try {
       const readiness = await checkBuildReadiness(projectId);
       if (!readiness.ready) {
