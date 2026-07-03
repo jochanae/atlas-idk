@@ -1040,6 +1040,7 @@ export function AxiomFlow({
 
   const [zoom, setZoom] = useState(isMobile ? ZOOM_DEFAULT_MOBILE : ZOOM_DEFAULT_DESKTOP);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [focused, setFocused] = useState(false);
   const [activeCardNodeId, setActiveCardNodeId] = useState<string | null>(null);
   const [editingDetailsNodeId, setEditingDetailsNodeId] = useState<string | null>(null);
   const [detailsDraft, setDetailsDraft] = useState("");
