@@ -1326,6 +1326,16 @@ export function AxiomFlow({
     return () => observer.disconnect();
   }, [fitMap]);
 
+  // Focus Mode: refit after the layout swap so the graph re-centers in the
+  // new viewport, and close on Escape.
+  useEffect(() => {
+    const t = window.setTimeout(() => fitMap(), 60);
+    if (!focused) return () => window.clearTimeout(t);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFocused(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { window.clearTimeout(t); window.removeEventListener("keydown", onKey); };
+  }, [focused, fitMap]);
+
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     const ds = dragState.current;
     ds.dragging = true; ds.startX = e.clientX; ds.startY = e.clientY;
