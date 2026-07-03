@@ -5638,53 +5638,108 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
 
         // Resolve SHA of the base branch (try main then master)
         let baseSha: string | null = null;
+        let resolvedBase = baseBranch;
         for (const b of [baseBranch, baseBranch === "main" ? "master" : "main"]) {
           const refResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/ref/heads/${b}`, { headers: ghApiHeaders(ghToken), signal: AbortSignal.timeout(8_000) });
-          if (refResp.ok) { const d = await refResp.json() as { object: { sha: string } }; baseSha = d.object.sha; break; }
-        }
-        if (!baseSha) throw new Error(`Base branch '${baseBranch}' not found in ${repoFull}`);
-
-        // Create the push branch (ignore 422 "already exists")
-        const createResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/refs`, {
-          method: "POST",
-          headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
-          body: JSON.stringify({ ref: `refs/heads/${pushBranch}`, sha: baseSha }),
-          signal: AbortSignal.timeout(8_000),
-        });
-        if (!createResp.ok) {
-          const errText = await createResp.text();
-          if (!errText.includes("already exists")) throw new Error(`Branch creation failed: ${errText}`);
+          if (refResp.ok) { const d = await refResp.json() as { object: { sha: string } }; baseSha = d.object.sha; resolvedBase = b; break; }
         }
 
-        // Commit each file to the branch
         const committedFiles: GithubPushResult["files"] = [];
-        for (const edit of effectiveEdits) {
-          let currentSha: string | undefined;
-          const existingResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}?ref=${pushBranch}`, { headers: ghApiHeaders(ghToken), signal: AbortSignal.timeout(8_000) });
-          if (existingResp.ok) { const d = await existingResp.json() as { sha?: string }; currentSha = d.sha; }
 
-          const putBody: Record<string, unknown> = {
-            message: gpt.message,
-            content: Buffer.from(edit.content, "utf-8").toString("base64"),
-            branch: pushBranch,
-          };
-          if (currentSha) putBody.sha = currentSha;
-
-          const putResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}`, {
-            method: "PUT",
+        if (!baseSha) {
+          // Empty repo — no branches exist yet. Use Git Data API to create the initial commit.
+          // blobs → tree → commit → create ref (no parent needed)
+          const treeItems: Array<{ path: string; mode: string; type: string; sha: string }> = [];
+          for (const edit of effectiveEdits) {
+            const blobResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/blobs`, {
+              method: "POST",
+              headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+              body: JSON.stringify({ content: edit.content, encoding: "utf-8" }),
+              signal: AbortSignal.timeout(15_000),
+            });
+            if (!blobResp.ok) { committedFiles.push({ path: edit.path, error: await blobResp.text() }); continue; }
+            const blob = await blobResp.json() as { sha: string };
+            treeItems.push({ path: edit.path, mode: "100644", type: "blob", sha: blob.sha });
+            committedFiles.push({ path: edit.path });
+          }
+          const treeResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/trees`, {
+            method: "POST",
             headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
-            body: JSON.stringify(putBody),
+            body: JSON.stringify({ tree: treeItems }),
             signal: AbortSignal.timeout(15_000),
           });
-          if (!putResp.ok) {
-            committedFiles.push({ path: edit.path, error: await putResp.text() });
-          } else {
-            const d = await putResp.json() as { commit?: { sha?: string; html_url?: string } };
-            committedFiles.push({ path: edit.path, commitSha: d.commit?.sha, commitUrl: d.commit?.html_url });
+          if (!treeResp.ok) throw new Error(`Failed to create git tree: ${await treeResp.text()}`);
+          const tree = await treeResp.json() as { sha: string };
+
+          const commitResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/commits`, {
+            method: "POST",
+            headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+            body: JSON.stringify({ message: gpt.message, tree: tree.sha, parents: [] }),
+            signal: AbortSignal.timeout(15_000),
+          });
+          if (!commitResp.ok) throw new Error(`Failed to create initial commit: ${await commitResp.text()}`);
+          const commit = await commitResp.json() as { sha: string; html_url?: string };
+
+          // Create the default branch ref pointing at the new commit
+          const defaultBranch = pushBranch !== baseBranch ? pushBranch : baseBranch;
+          const refResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/refs`, {
+            method: "POST",
+            headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+            body: JSON.stringify({ ref: `refs/heads/${defaultBranch}`, sha: commit.sha }),
+            signal: AbortSignal.timeout(8_000),
+          });
+          if (!refResp.ok) {
+            const errText = await refResp.text();
+            if (!errText.includes("already exists")) throw new Error(`Failed to create ref: ${errText}`);
+          }
+          // Annotate each committed file with the commit SHA/URL
+          for (const f of committedFiles) {
+            if (!f.error) { f.commitSha = commit.sha; f.commitUrl = commit.html_url; }
+          }
+        } else {
+          // Normal path: repo already has commits — create/reuse branch and push via Contents API
+
+          // Create the push branch off the base (ignore 422 "already exists")
+          const createResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/refs`, {
+            method: "POST",
+            headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+            body: JSON.stringify({ ref: `refs/heads/${pushBranch}`, sha: baseSha }),
+            signal: AbortSignal.timeout(8_000),
+          });
+          if (!createResp.ok) {
+            const errText = await createResp.text();
+            if (!errText.includes("already exists")) throw new Error(`Branch creation failed: ${errText}`);
+          }
+
+          for (const edit of effectiveEdits) {
+            let currentSha: string | undefined;
+            const existingResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}?ref=${pushBranch}`, { headers: ghApiHeaders(ghToken), signal: AbortSignal.timeout(8_000) });
+            if (existingResp.ok) { const d = await existingResp.json() as { sha?: string }; currentSha = d.sha; }
+
+            const putBody: Record<string, unknown> = {
+              message: gpt.message,
+              content: Buffer.from(edit.content, "utf-8").toString("base64"),
+              branch: pushBranch,
+            };
+            if (currentSha) putBody.sha = currentSha;
+
+            const putResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}`, {
+              method: "PUT",
+              headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+              body: JSON.stringify(putBody),
+              signal: AbortSignal.timeout(15_000),
+            });
+            if (!putResp.ok) {
+              committedFiles.push({ path: edit.path, error: await putResp.text() });
+            } else {
+              const d = await putResp.json() as { commit?: { sha?: string; html_url?: string } };
+              committedFiles.push({ path: edit.path, commitSha: d.commit?.sha, commitUrl: d.commit?.html_url });
+            }
           }
         }
 
-        githubPushResult = { branch: pushBranch, message: gpt.message, files: committedFiles };
+        const effectivePushBranch = !baseSha ? (pushBranch !== baseBranch ? pushBranch : resolvedBase) : pushBranch;
+        githubPushResult = { branch: effectivePushBranch, message: gpt.message, files: committedFiles };
 
         // Open a PR if requested
         if (gpt.openPr) {
