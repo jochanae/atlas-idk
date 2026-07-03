@@ -2172,14 +2172,21 @@ function usageInsertValues(usage: ModelCallUsage) {
   };
 }
 
-function runSummaryFromContent(content: string): string {
-  const line = content
-    .replace(/```[\s\S]*?```/g, "")
-    .split("\n")
-    .map((part) => part.replace(/^#+\s*/, "").replace(/^[-*•]\s*/, "").trim())
-    .find(Boolean);
-  if (!line) return "Atlas response completed.";
-  return line.length > 120 ? `${line.slice(0, 117).trim()}...` : line;
+function runSummaryFromContent(content: string, fileEdits?: FileEdit[], fileDeletes?: Array<{ path: string }>, linePatches?: Array<{ path: string }>): string {
+  const allPaths = [
+    ...(fileEdits ?? []).map(e => e.path),
+    ...(fileDeletes ?? []).map(d => d.path),
+    ...(linePatches ?? []).map(p => p.path),
+  ];
+
+  if (allPaths.length > 0) {
+    const count = allPaths.length;
+    const names = allPaths.slice(0, 2).map(p => p.split("/").pop() ?? p);
+    const label = names.join(", ") + (count > 2 ? ` +${count - 2} more` : "");
+    return `${count} file${count !== 1 ? "s" : ""} written — ${label}`;
+  }
+
+  return "Build complete.";
 }
 
 function runMetadataInsertValues(content: string, fileEdits: FileEdit[] = []) {
@@ -5898,7 +5905,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
 
       const _runId = crypto.randomUUID();
       const _completedAt = new Date();
-      const _summary = runSummaryFromContent(persistContent);
+      const _summary = runSummaryFromContent(persistContent, responseFileEdits, fileDeletes, responseLinePatches);
 
       await db.execute(sql`
         INSERT INTO execution_runs

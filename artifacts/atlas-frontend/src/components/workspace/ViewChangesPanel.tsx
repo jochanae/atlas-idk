@@ -140,9 +140,19 @@ function adaptApiRunToActiveRun(run: ApiRun, projectName: string): ActiveRun {
   if (hasImageGen && !hasGithubPush && filePaths.length === 0) intent = "think";
 
   const failStep = run.steps.find((s) => s.status === "fail");
-  const summaryLine =
-    run.summary ??
-    (filePaths[0] ?? (hasGithubPush ? "GitHub push" : hasImageGen ? "Image generated" : "Build run"));
+  let summaryLine: string;
+  if (filePaths.length > 0) {
+    const count = filePaths.length;
+    const names = filePaths.slice(0, 2).map((p) => p.split("/").pop() ?? p);
+    const label = names.join(", ") + (count > 2 ? ` +${count - 2} more` : "");
+    summaryLine = `${count} file${count !== 1 ? "s" : ""} written — ${label}`;
+  } else if (hasGithubPush) {
+    summaryLine = "GitHub push";
+  } else if (hasImageGen) {
+    summaryLine = "Image generated";
+  } else {
+    summaryLine = run.summary ?? "Build run";
+  }
 
   return {
     id: run.id,
