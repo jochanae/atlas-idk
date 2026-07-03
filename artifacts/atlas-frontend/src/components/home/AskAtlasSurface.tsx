@@ -672,6 +672,23 @@ export function AskAtlasSurface({
       )}
       </div>
 
+      {/* Focus backdrop — subtle dim when composer is focused inside Ask Atlas. Tap to dismiss. */}
+      {!hideComposer && focused && (
+        <div
+          onMouseDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
+          onTouchStart={() => { textareaRef.current?.blur(); }}
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: isParchment ? "rgba(15,23,42,0.10)" : "rgba(0,0,0,0.28)",
+            transition: "opacity 200ms ease",
+            zIndex: 4,
+            pointerEvents: "auto",
+          }}
+        />
+      )}
+
       {/* Composer — transparent. Label above, textarea in middle, action row below. Hidden when home dock acts as composer. */}
       {!hideComposer && <div
         style={{
