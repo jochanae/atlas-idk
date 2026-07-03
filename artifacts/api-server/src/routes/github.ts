@@ -495,6 +495,11 @@ router.get("/projects/:projectId/commits", async (req, res): Promise<void> => {
     const repoPath = `${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`;
     const listResp = await fetch(`${GH_API}/repos/${repoPath}/commits?per_page=20`, { headers: ghHeaders(token) });
     if (!listResp.ok) {
+      // 409 = empty repository (no commits yet) — return empty list, not an error
+      if (listResp.status === 409) {
+        res.json({ commits: [], reason: "empty_repo" });
+        return;
+      }
       res.status(listResp.status).json({ error: "GitHub API error", detail: await listResp.text() });
       return;
     }
