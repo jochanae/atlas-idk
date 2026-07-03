@@ -2,6 +2,7 @@ import { Router } from "express";
 import { spawn, type ChildProcess } from "child_process";
 import http from "http";
 import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, unlinkSync, readdirSync, createReadStream, statSync } from "fs";
+import fsPromises from "fs/promises";
 import path from "path";
 import { logger } from "../lib/logger";
 import { projectWorkspaceDir } from "../lib/projectWorkspace";
@@ -849,8 +850,24 @@ router.post("/devserver/workspace/:projectId/start", (req, res): void => {
 
   (async () => {
     try {
-      // Install only if node_modules absent
-      if (!existsSync(path.join(wsDir, "node_modules"))) {
+      // Install if node_modules absent OR if package.json was modified after
+      // node_modules (i.e. Atlas added new deps like tailwindcss since last install).
+      const nmPath = path.join(wsDir, "node_modules");
+      const pkgJsonPath = path.join(wsDir, "package.json");
+      let needsInstall = !existsSync(nmPath);
+      if (!needsInstall) {
+        try {
+          const [pkgStat, nmStat] = await Promise.all([
+            fsPromises.stat(pkgJsonPath),
+            fsPromises.stat(nmPath),
+          ]);
+          if (pkgStat.mtimeMs > nmStat.mtimeMs) {
+            needsInstall = true;
+            addWsLog(st, "package.json updated — reinstalling dependencies…");
+          }
+        } catch { /* stat failed, proceed without reinstall */ }
+      }
+      if (needsInstall) {
         const mgr = detectPackageManager(wsDir);
         addWsLog(st, `Installing with ${mgr}…`);
         const installArgs = mgr === "pnpm"
