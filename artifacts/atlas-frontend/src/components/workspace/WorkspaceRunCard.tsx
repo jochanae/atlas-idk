@@ -317,7 +317,9 @@ function liveStepMeta(step?: LiveStepItem): { Icon: LucideIcon; headline: string
     return { Icon: Eye, headline: target ? `Fetching ${target}` : "Fetching data" };
   }
   if (/analyz|assess/.test(lower)) {
-    return { Icon: FileCode, headline: target ? `Analyzing ${target}` : "Analyzing request" };
+    // "Analyzing your request" is too generic to display as a headline — it looks frozen.
+    // Show "Working…" until a more specific step (read/write) arrives.
+    return { Icon: Circle, headline: "Working…" };
   }
   if (verb) {
     const display = target ? `${verb} ${filename || target}` : verb;
