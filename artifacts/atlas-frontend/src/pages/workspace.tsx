@@ -2503,6 +2503,8 @@ function TerminalPanel({
   const [nlMode, setNlMode] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [nlPending, setNlPending] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{ command: string; tier: number; reason: string } | null>(null);
+  const [confirmYes, setConfirmYes] = useState("");
 
 
   const killCommand = useCallback(() => {
@@ -2606,7 +2608,22 @@ function TerminalPanel({
         signal: abortCtrl.signal,
       });
 
-      if (!res.body) {
+      // Detect JSON response (requiresConfirmation or error) vs SSE stream
+      const isJsonResp = (res.headers.get("content-type") ?? "").includes("application/json");
+      if (isJsonResp) {
+        const data = await res.json() as { requiresConfirmation?: boolean; tier?: number; reason?: string; error?: string };
+        if (data.requiresConfirmation) {
+          setPendingConfirm({ command: trimmed, tier: data.tier ?? 2, reason: data.reason ?? "This command requires confirmation." });
+          setRunning(false);
+          return;
+        }
+        if (data.error) {
+          addLine(data.error, "error");
+          finalExitCode = 1;
+        } else {
+          finalExitCode = res.ok ? 0 : res.status;
+        }
+      } else if (!res.body) {
         const text = await res.text().catch(() => "");
         if (text) {
           outputChunks.push(text);
@@ -3148,6 +3165,81 @@ function TerminalPanel({
             {nlPending ? "atlas thinking…" : "running…"}
           </div>
         )}
+
+        {/* Inline confirmation prompt for tier-2 and tier-3 commands */}
+        {pendingConfirm && (
+          <div style={{
+            marginTop: 10, padding: "10px 12px",
+            background: "rgba(201,162,76,0.06)",
+            border: `1px solid rgba(201,162,76,0.28)`,
+            borderRadius: 8,
+            fontFamily: "var(--app-font-mono)",
+          }}>
+            <div style={{ color: "var(--atlas-gold)", fontSize: 11, marginBottom: 6, fontWeight: 600 }}>
+              ⚡ {pendingConfirm.tier === 3 ? "Permanent operation" : "Confirm command"}
+            </div>
+            <div style={{ color: termFgText, fontSize: 11, opacity: 0.8, marginBottom: 8 }}>
+              {pendingConfirm.reason}
+            </div>
+            <code style={{ display: "block", color: "rgba(201,162,76,0.85)", fontSize: 11, marginBottom: 10, opacity: 0.9 }}>
+              $ {pendingConfirm.command}
+            </code>
+            {pendingConfirm.tier === 3 ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: termFgText, fontSize: 11, opacity: 0.7 }}>Type YES to confirm:</span>
+                <input
+                  autoFocus
+                  value={confirmYes}
+                  onChange={e => setConfirmYes(e.target.value)}
+                  onKeyDown={async e => {
+                    if (e.key === "Enter" && confirmYes === "YES") {
+                      const cmd = pendingConfirm.command;
+                      setPendingConfirm(null); setConfirmYes("");
+                      setRunning(true);
+                      const abortCtrl = new AbortController();
+                      abortCtrlRef.current = abortCtrl;
+                      addLine(`$ ${cmd}`, "input");
+                      try {
+                        const r = await fetch("/api/terminal/exec", { method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, credentials: "include", signal: abortCtrl.signal, body: JSON.stringify({ command: cmd, confirmationToken: "YES", ...(projectId != null ? { projectId } : {}) }) });
+                        const reader2 = r.body?.getReader(); const dec2 = new TextDecoder(); let buf2 = ""; let code2: number | null = null;
+                        if (reader2) { while (true) { const { done, value } = await reader2.read(); if (done) break; buf2 += dec2.decode(value, { stream: true }); const blocks2 = buf2.split("\n\n"); buf2 = blocks2.pop() ?? ""; for (const b of blocks2) { let en = "output", ed = ""; for (const l of b.split("\n")) { if (l.startsWith("event: ")) en = l.slice(7).trim(); else if (l.startsWith("data: ")) ed = l.slice(6); } if (!ed) continue; let p: unknown = ed; try { p = JSON.parse(ed); } catch {} if (en === "done") { const m = typeof p === "string" ? (() => { try { return JSON.parse(p); } catch { return {}; } })() : p; code2 = typeof (m as any)?.exitCode === "number" ? (m as any).exitCode : 0; } else if (typeof p === "string") addLine(p, en === "stderr" ? "stderr" : "output"); } } }
+                        addLine(code2 === 0 ? "✔ Exit code 0" : `✕ Exit code ${code2}`, code2 === 0 ? "system" : "error");
+                      } catch { addLine("Command aborted.", "system"); }
+                      setRunning(false); abortCtrlRef.current = null;
+                    }
+                    if (e.key === "Escape") { setPendingConfirm(null); setConfirmYes(""); }
+                  }}
+                  placeholder="YES"
+                  style={{ background: "transparent", border: `1px solid rgba(201,162,76,0.35)`, borderRadius: 5, padding: "4px 8px", color: termFgText, fontFamily: "var(--app-font-mono)", fontSize: 11, outline: "none", width: 80 }}
+                />
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" onClick={async () => {
+                  const cmd = pendingConfirm.command;
+                  setPendingConfirm(null);
+                  setRunning(true);
+                  const abortCtrl = new AbortController();
+                  abortCtrlRef.current = abortCtrl;
+                  addLine(`$ ${cmd}`, "input");
+                  try {
+                    const r = await fetch("/api/terminal/exec", { method: "POST", headers: { "Content-Type": "application/json", ...getAuthHeaders() }, credentials: "include", signal: abortCtrl.signal, body: JSON.stringify({ command: cmd, confirmationToken: "confirmed", ...(projectId != null ? { projectId } : {}) }) });
+                    const reader2 = r.body?.getReader(); const dec2 = new TextDecoder(); let buf2 = ""; let code2: number | null = null;
+                    if (reader2) { while (true) { const { done, value } = await reader2.read(); if (done) break; buf2 += dec2.decode(value, { stream: true }); const blocks2 = buf2.split("\n\n"); buf2 = blocks2.pop() ?? ""; for (const b of blocks2) { let en = "output", ed = ""; for (const l of b.split("\n")) { if (l.startsWith("event: ")) en = l.slice(7).trim(); else if (l.startsWith("data: ")) ed = l.slice(6); } if (!ed) continue; let p: unknown = ed; try { p = JSON.parse(ed); } catch {} if (en === "done") { const m = typeof p === "string" ? (() => { try { return JSON.parse(p); } catch { return {}; } })() : p; code2 = typeof (m as any)?.exitCode === "number" ? (m as any).exitCode : 0; } else if (typeof p === "string") addLine(p, en === "stderr" ? "stderr" : "output"); } } }
+                    addLine(code2 === 0 ? "✔ Exit code 0" : `✕ Exit code ${code2}`, code2 === 0 ? "system" : "error");
+                  } catch { addLine("Command aborted.", "system"); }
+                  setRunning(false); abortCtrlRef.current = null;
+                }} style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(201,162,76,0.4)", background: "rgba(201,162,76,0.08)", color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", fontSize: 11, cursor: "pointer" }}>
+                  Run
+                </button>
+                <button type="button" onClick={() => setPendingConfirm(null)} style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid var(--atlas-border)", background: "transparent", color: termFgText, fontFamily: "var(--app-font-mono)", fontSize: 11, cursor: "pointer", opacity: 0.6 }}>
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Inline active input row */}
         <div style={{
           marginTop: 10, paddingTop: 8,
