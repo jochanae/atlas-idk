@@ -124,17 +124,19 @@ function deriveRun(
 
     if (!hasWork) continue;
 
-    // If the conversation has moved on past this run (user sent a new message
-    // that received a completed Atlas reply), hide the receipt card.
+    // If the conversation has moved on past this run, hide the receipt card.
+    // Rules (any one sufficient):
+    //   1. User sent ≥2 messages after this run (clearly moved on regardless of streaming state)
+    //   2. User sent a message after the run AND a subsequent assistant reply exists (streaming or not)
     const hasSubsequentExchange = (() => {
-      let foundUserAfterRun = false;
+      let userAfterCount = 0;
+      let foundAssistantAfter = false;
       for (let k = i + 1; k < messages.length; k++) {
-        if (messages[k].role === "user") { foundUserAfterRun = true; break; }
+        if (messages[k].role === "user") userAfterCount++;
+        if (messages[k].role === "assistant") foundAssistantAfter = true;
       }
-      if (!foundUserAfterRun) return false;
-      for (let k = i + 1; k < messages.length; k++) {
-        if (messages[k].role === "assistant" && !messages[k].streaming) return true;
-      }
+      if (userAfterCount >= 2) return true;
+      if (userAfterCount >= 1 && foundAssistantAfter) return true;
       return false;
     })();
     if (hasSubsequentExchange) return null;
