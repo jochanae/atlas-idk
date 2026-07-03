@@ -16,7 +16,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FolderGit2, X, FileCode2 } from "lucide-react";
 import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
-import { RunCard, dismissActiveRun, patchActiveRun, useAllRuns, type ActiveRun } from "@/components/home/ActiveRuns";
+import { RunCard, type ActiveRun } from "@/components/home/ActiveRuns";
+import { useProjectRuns, type ApiRun } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 
 // ── Shared badge logic (mirrors WorkspaceFilesPanel) ─────────────────────────
@@ -125,47 +126,39 @@ function messageRunId(message: TimelineMessage): string {
   return tagged ?? `message-${message.id ?? message.sentAt ?? "untagged"}`;
 }
 
-function messageTime(message: TimelineMessage, fallback: number): number {
-  const t = message.sentAt ? Date.parse(message.sentAt) : NaN;
-  return Number.isFinite(t) ? t : fallback;
-}
+/** Map an ApiRun from execution_runs to the ActiveRun shape used by RunCard. */
+function adaptApiRunToActiveRun(run: ApiRun, projectName: string): ActiveRun {
+  const hasGithubPush = run.steps.some((s) => s.verb === "GITHUB_PUSH");
+  const hasImageGen   = run.steps.some((s) => s.verb === "IMAGE_GEN");
+  const filePaths = run.steps
+    .filter((s) => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH")
+    .map((s) => s.target)
+    .filter((t): t is string => t !== null);
 
-function summarizeMessageRun(message: TimelineMessage): string {
-  const stripped = (message.content ?? "")
-    .replace(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "")
-    .replace(/LINE_PATCH_START[\s\S]*?LINE_PATCH_END/g, "")
-    .trim();
-  const firstLine = stripped.split("\n").map((line) => line.trim()).find(Boolean);
-  if (firstLine) return firstLine.slice(0, 120);
-  return "Workspace changes prepared";
-}
+  // intent: pick the most specific one the card renders meaningfully
+  let intent: ActiveRun["intent"] = "build";
+  if (hasImageGen && !hasGithubPush && filePaths.length === 0) intent = "think";
 
-function synthesizeRunsFromMessages(messages: TimelineMessage[], projectId: number, projectName: string): ActiveRun[] {
-  return messages
-    .filter((m) => m.role === "assistant" && ((m.fileEdits?.length ?? 0) > 0 || !!m.fileEdit || (m.linePatches?.length ?? 0) > 0 || /FILE_EDIT/i.test(m.content ?? "")))
-    .map((m, index) => {
-      const edits = m.fileEdits ?? (m.fileEdit ? [m.fileEdit] : []);
-      const patchPaths = (m.linePatches ?? []).map((p) => p.path);
-      const paths = Array.from(new Set([...edits.map((e) => e.path), ...patchPaths]));
-      const createdAt = messageTime(m, Date.now() - index);
-      return {
-        id: messageRunId(m),
-        projectId,
-        projectName,
-        intent: "build",
-        prompt: summarizeMessageRun(m),
-        sessionId: null,
-        status: m.streaming ? "running" : "completed",
-        createdAt,
-        completedAt: m.streaming ? null : createdAt,
-        attachmentNames: [],
-        streamedContent: m.content,
-        fileEdits: edits.map((e) => ({ path: e.path, content: e.content })),
-        appliedFiles: paths,
-        summaryLine: summarizeMessageRun(m),
-      } satisfies ActiveRun;
-    })
-    .reverse();
+  const failStep = run.steps.find((s) => s.status === "fail");
+  const summaryLine =
+    run.summary ??
+    (filePaths[0] ?? (hasGithubPush ? "GitHub push" : hasImageGen ? "Image generated" : "Build run"));
+
+  return {
+    id: run.id,
+    projectId: run.projectId,
+    projectName,
+    intent,
+    prompt: summaryLine,
+    sessionId: null,
+    status: run.status === "running" ? "running" : "completed",
+    createdAt: new Date(run.startedAt).getTime(),
+    completedAt: run.completedAt ? new Date(run.completedAt).getTime() : null,
+    error: run.status === "failed" ? (failStep?.detail ?? failStep?.verb ?? "Build failed") : undefined,
+    attachmentNames: [],
+    appliedFiles: filePaths,
+    summaryLine,
+  };
 }
 
 function collectFileRows(messages: TimelineMessage[]): FileRow[] {
@@ -232,71 +225,30 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
   );
 }
 
-// ── Run receipt: existing RunCard mounted on the Changes surface ─────────────
+// ── Run receipt: DB-backed runs from execution_runs via useProjectRuns ────────
 
 function WorkspaceRunCards({
   projectId,
   projectName,
-  messages,
   runId,
 }: {
   projectId: number;
   projectName: string;
-  messages: TimelineMessage[];
   runId?: string | null;
 }) {
-  const runs = useAllRuns();
-  const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
-  const [retryErrors, setRetryErrors] = useState<Map<string, string>>(new Map());
+  const { runs: apiRuns } = useProjectRuns(projectId);
   const [dismissedRunIds, setDismissedRunIds] = useState<Set<string>>(new Set());
 
-  const visibleRuns = useMemo(() => {
-    const composerRuns = runs.filter((r) => r.projectId === projectId);
-    const composerIds = new Set(composerRuns.map((r) => r.id));
-    const messageRuns = synthesizeRunsFromMessages(messages, projectId, projectName)
-      .filter((r) => !composerIds.has(r.id));
-    const projectRuns = [...composerRuns, ...messageRuns]
-      .filter((r) => !dismissedRunIds.has(r.id))
-      .sort((a, b) => b.createdAt - a.createdAt);
-    if (runId) return projectRuns.filter((r) => r.id === runId);
-    return projectRuns.slice(0, 3);
-  }, [dismissedRunIds, messages, projectId, projectName, runId, runs]);
+  const visibleRuns = useMemo((): ActiveRun[] => {
+    const adapted = apiRuns
+      .map((r) => adaptApiRunToActiveRun(r, projectName))
+      .filter((r) => !dismissedRunIds.has(r.id));
+    if (runId) return adapted.filter((r) => r.id === runId);
+    return adapted.slice(0, 5);
+  }, [apiRuns, dismissedRunIds, projectName, runId]);
 
   const handleDismiss = useCallback((run: ActiveRun) => {
     setDismissedRunIds((prev) => new Set(prev).add(run.id));
-    dismissActiveRun(run.id);
-  }, []);
-
-  const handleForceApply = useCallback(async (run: ActiveRun, filePath: string) => {
-    const fileEdit = run.fileEdits?.find((fe) => fe.path === filePath);
-    if (!fileEdit) return;
-    const key = `${run.id}:${filePath}`;
-
-    setRetryingFiles((prev) => new Set(prev).add(key));
-    setRetryErrors((prev) => { const m = new Map(prev); m.delete(key); return m; });
-
-    try {
-      const res = await fetch("/api/github/apply-local", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ files: [fileEdit], projectId: run.projectId }),
-      });
-
-      if (res.ok) {
-        patchActiveRun(run.id, {
-          applyErrors: (run.applyErrors ?? []).filter((ae) => ae.path !== filePath),
-          appliedFiles: [...(run.appliedFiles ?? []), filePath],
-        });
-      } else {
-        const errBody = await res.json().catch(() => ({})) as { error?: string };
-        setRetryErrors((prev) => new Map(prev).set(key, `Apply failed (${res.status}): ${errBody.error ?? "Server error"}`));
-      }
-    } catch (err) {
-      setRetryErrors((prev) => new Map(prev).set(key, `Apply failed: ${err instanceof Error ? err.message : String(err)}`));
-    } finally {
-      setRetryingFiles((prev) => { const s = new Set(prev); s.delete(key); return s; });
-    }
   }, []);
 
   if (visibleRuns.length === 0) return null;
@@ -313,9 +265,9 @@ function WorkspaceRunCards({
           run={run}
           onEnter={() => {}}
           onDismiss={() => handleDismiss(run)}
-          retryingFiles={retryingFiles}
-          retryErrors={retryErrors}
-          onForceApply={handleForceApply}
+          retryingFiles={new Set()}
+          retryErrors={new Map()}
+          onForceApply={() => Promise.resolve()}
         />
       ))}
     </div>
@@ -413,7 +365,6 @@ export function ViewChangesPanel({
       <WorkspaceRunCards
         projectId={projectId}
         projectName={projectName?.trim() || "Workspace"}
-        messages={filteredMessages}
         runId={runId}
       />
 
