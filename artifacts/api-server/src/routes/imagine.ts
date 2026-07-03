@@ -132,9 +132,11 @@ async function generateWithGeminiFlash(
 // POST /api/imagine
 //
 // Three-engine image generation:
-//   mode "render"    → Imagen 3 → DALL·E 3 → Gemini Flash
+//   mode "render"    → DALL·E 3 → Imagen 3 → Gemini Flash
 //   mode "schematic" → DALL·E 3 → Imagen 3 → Gemini Flash
 //
+// DALL·E 3 is primary for both modes — it produces higher-quality,
+// more realistic product renders than Imagen 3 or Gemini Flash.
 // Each engine is tried in order; if one fails, the next is attempted
 // so generation is never silently lost.
 //
@@ -158,26 +160,27 @@ router.post("/imagine", async (req, res): Promise<void> => {
   const images: GeneratedImage[] = [];
 
   if (mode === "render") {
-    // Primary: Imagen 3
     const enginePrompt = buildRenderPrompt(trimmedPrompt);
+
+    // Primary: DALL·E 3
     try {
-      const url = await generateWithGemini(enginePrompt, size);
-      if (url) {
-        images.push({ imageUrl: url, prompt: enginePrompt, model: "imagen-3", mode });
+      const result = await generateWithDalle(enginePrompt, size);
+      if (result) {
+        images.push({ imageUrl: result.url, prompt: result.revisedPrompt, model: "dall-e-3", mode });
       }
     } catch (err) {
-      logger.warn({ err }, "Imagen 3 failed for render mode — trying DALL·E fallback");
+      logger.warn({ err }, "DALL·E 3 failed for render mode — trying Imagen 3 fallback");
     }
 
-    // Fallback 1: DALL·E 3
+    // Fallback 1: Imagen 3
     if (images.length === 0) {
       try {
-        const result = await generateWithDalle(enginePrompt, size);
-        if (result) {
-          images.push({ imageUrl: result.url, prompt: result.revisedPrompt, model: "dall-e-3", mode });
+        const url = await generateWithGemini(enginePrompt, size);
+        if (url) {
+          images.push({ imageUrl: url, prompt: enginePrompt, model: "imagen-3", mode });
         }
       } catch (err) {
-        logger.warn({ err }, "DALL·E fallback failed for render mode — trying Gemini Flash");
+        logger.warn({ err }, "Imagen 3 fallback failed for render mode — trying Gemini Flash");
       }
     }
 
