@@ -2837,6 +2837,7 @@ function FlowNodeComponent({
   goalY = 250,
   palette,
   lens = "designer",
+  zoom = 1,
 }: {
   node: ArchNode;
   onFocus: (id: string, e: React.MouseEvent | React.TouchEvent) => void;
@@ -2848,6 +2849,7 @@ function FlowNodeComponent({
   goalY?: number;
   palette: FlowPalette;
   lens?: "designer" | "builder" | "storyteller";
+  zoom?: number;
 }) {
   const v = getNodeVisual(node, palette, lens);
   const icon = getNodeIcon(node);
