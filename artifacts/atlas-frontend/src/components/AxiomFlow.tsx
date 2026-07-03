@@ -1642,11 +1642,12 @@ export function AxiomFlow({
       ref={containerRef}
       className="relative h-full w-full overflow-hidden system-map-glow"
       style={{
-        borderRadius: compact ? 0 : 8,
+        borderRadius: focused ? 0 : (compact ? 0 : 8),
         background: palette.rootBg,
         transition: "box-shadow 1s ease",
         touchAction: "none",
         cursor: dragState.current.dragging ? "grabbing" : "grab",
+        ...(focused ? { position: "fixed", inset: 0, zIndex: 9999, height: "100dvh", width: "100vw" } : null),
       }}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
