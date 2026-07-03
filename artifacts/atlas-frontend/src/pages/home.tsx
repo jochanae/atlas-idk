@@ -4543,11 +4543,7 @@ export default function Home() {
                               {formatMessageTime(msg.createdAt)}
                             </div>
                           )}
-                          {!askAtlasSurfaceVisible && !msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
-                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: 2 }}>
-                              {formatModelUsedLabel(msg.modelUsed)}
-                            </div>
-                          )}
+                          {/* Model label removed — surfaced via "atlas · tap to inspect" developer lens */}
                         </div>
                        ) : (
                          <div style={{
