@@ -1,4 +1,4 @@
-import { Fragment, useMemo, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { Fragment, useEffect, useMemo, useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { StepProgress } from "@/components/workspace/StepProgress";
@@ -314,6 +314,20 @@ export function ChatStream(props: ChatStreamProps) {
     liveStep,
   } = props;
 
+  // ── Live-step latch ─────────────────────────────────────────────────────────
+  // When Atlas is executing steps (writing/reading files), we suppress the
+  // streaming assistant text and let the WorkspaceRunCard be the live view.
+  // We latch once liveStep appears so the text doesn't flicker back in between
+  // step events. The latch resets when chatPending flips back to false.
+  const hadLiveStepThisTurnRef = useRef(false);
+  useEffect(() => {
+    if (!chatPending) hadLiveStepThisTurnRef.current = false;
+  }, [chatPending]);
+  useEffect(() => {
+    if (liveStep != null) hadLiveStepThisTurnRef.current = true;
+  }, [liveStep]);
+  // True while Atlas is actively executing steps this turn (or between steps).
+  const suppressStreamingText = hadLiveStepThisTurnRef.current || liveStep != null;
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
@@ -579,6 +593,17 @@ export function ChatStream(props: ChatStreamProps) {
         // Skip all ledger messages from the chat stream — they belong in the Ledger panel.
         // Also skip any user message tagged for full suppression as part of a build chain.
         if (isLedgerMsg || suppressedLedgerSet.has(i)) {
+          return null;
+        }
+
+        // While Atlas is executing steps the WorkspaceRunCard is the live view.
+        // Suppress the last streaming assistant message so the card stands alone.
+        if (
+          suppressStreamingText &&
+          msg.role === "assistant" &&
+          msg.streaming &&
+          i === messages.length - 1
+        ) {
           return null;
         }
 
