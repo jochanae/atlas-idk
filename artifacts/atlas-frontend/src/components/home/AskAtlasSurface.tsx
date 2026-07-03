@@ -425,6 +425,7 @@ export function AskAtlasSurface({
                   Atlas
                 </span>
                 <div
+                  className="atlas-prose"
                   style={{
                     fontSize: 16.5,
                     lineHeight: 1.75,
