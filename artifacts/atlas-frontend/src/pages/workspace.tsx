@@ -285,6 +285,14 @@ export interface ChatMessage {
   repoSearch?: { query: string; files: Array<{ name: string; path: string; url: string }> };
   /** True when Atlas queued background extraction after this response. */
   extractionQueued?: boolean;
+  /** Durable receipt of a completed GitHub push. Source of truth after reload
+   *  (liveStep.verb === "github_push" only covers the in-flight window). */
+  githubPush?: {
+    sha: string;
+    url: string;
+    repo?: string;
+    branch?: string;
+  };
 }
 
 export type MemoryChip = { label: string; insight?: string; tier?: 1 | 2 | 3 | 4 | 5 };
