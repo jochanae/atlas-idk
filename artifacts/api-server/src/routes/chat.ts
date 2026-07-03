@@ -3735,7 +3735,7 @@ For a visual-only request ("show me what it looks like"): emit a single ARTIFACT
   }
 
   // Mode-specific instructions — these override the default disposition
-  const activeMode = buildMode ? "build" : (body.mode ?? "think").toLowerCase();
+  const activeMode = buildMode ? "build" : body.planMode ? "plan" : (body.mode ?? "think").toLowerCase();
   const modeInstructions: Record<string, string> = {
     build: `\n\n--- ACTIVE MODE: BUILD ---
 You are now in BUILD mode. This changes how you respond:
