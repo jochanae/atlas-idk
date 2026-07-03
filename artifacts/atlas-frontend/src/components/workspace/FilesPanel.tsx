@@ -1072,6 +1072,7 @@ export function FilesPanel({
               <div style={{ padding: "0 2px 10px", fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.65 }}>
                 Link a repository to this project:
               </div>
+
               {reposLoading && (
                 <div style={{ padding: "20px 12px", textAlign: "center", color: "var(--atlas-muted)", fontSize: 11, opacity: 0.45 }}>Loading…</div>
               )}
@@ -1092,21 +1093,25 @@ export function FilesPanel({
                 </button>
               ))}
             </div>
-          ) : (
-            <RepoControlBar
-              repoFullName={selectedRepo.fullName}
-              scanStatus={scanStatus}
-              importStatus={importStatus}
-              importResult={importResult}
-              permissionStatus={githubPermissionStatus}
-              statusLabel={githubStatusLabel}
-              onRunImport={runFullImport}
-              onHydrate={() => { if (selectedRepo && token) runAutoScan(selectedRepo, token); }}
-              onUnlink={unlinkRepo}
-              onConnectGitHub={() => { void connect(tokenInput || ""); }}
-              isUnlinking={isUnlinking}
-            />
-          )}
+          ) : (() => {
+            const effectiveRepo = selectedRepo ?? parseLinkedRepo(filesProject?.linkedRepo ?? null);
+            if (!effectiveRepo) return <div style={{ padding: "20px 12px", textAlign: "center", color: "var(--atlas-muted)", fontSize: 11, opacity: 0.45 }}>Loading…</div>;
+            return (
+              <RepoControlBar
+                repoFullName={effectiveRepo.fullName}
+                scanStatus={scanStatus}
+                importStatus={importStatus}
+                importResult={importResult}
+                permissionStatus={githubPermissionStatus}
+                statusLabel={githubStatusLabel}
+                onRunImport={runFullImport}
+                onHydrate={() => { if (effectiveRepo && token) runAutoScan(effectiveRepo, token); }}
+                onUnlink={unlinkRepo}
+                onConnectGitHub={() => { void connect(tokenInput || ""); }}
+                isUnlinking={isUnlinking}
+              />
+            );
+          })()}
         </div>
       )}
 

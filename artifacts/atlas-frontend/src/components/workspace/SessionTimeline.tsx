@@ -426,8 +426,8 @@ function ModifyNode({
       const out: DiffItem[] = [];
       node.linePatches.forEach((p, i) => {
         if (i > 0) out.push({ type: "ellipsis", count: 1 });
-        p.find.split("\n").forEach((line) => out.push({ type: "removed", line }));
-        p.replace.split("\n").forEach((line) => out.push({ type: "added", line }));
+        (p.find ?? "").split("\n").forEach((line) => out.push({ type: "removed", line }));
+        (p.replace ?? "").split("\n").forEach((line) => out.push({ type: "added", line }));
       });
       return out;
     }
@@ -436,14 +436,14 @@ function ModifyNode({
 
   const stat = useMemo(() => {
     if (node.fileEdit) {
-      const lines = node.fileEdit.content.split("\n").length;
+      const lines = (node.fileEdit.content ?? "").split("\n").length;
       return { added: lines, removed: 0 };
     }
     let added = 0;
     let removed = 0;
     (node.linePatches ?? []).forEach((p) => {
-      added += p.replace.split("\n").length;
-      removed += p.find.split("\n").length;
+      added += (p.replace ?? "").split("\n").length;
+      removed += (p.find ?? "").split("\n").length;
     });
     return { added, removed };
   }, [node.fileEdit, node.linePatches]);

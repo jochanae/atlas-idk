@@ -5597,9 +5597,39 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     error?: string;
   };
   let githubPushResult: GithubPushResult | null = null;
-  if (githubPushToken && project && fileEdits.length > 0) {
+  if (githubPushToken && project) {
     const gpt = githubPushToken as GithubPushToken;
-    try {
+
+    // When Atlas emitted GITHUB_PUSH but made no file edits this turn,
+    // fall back to pushing the project's workspace files from disk.
+    let effectiveEdits: Array<{ path: string; content: string }> = fileEdits.map((fe) => ({ path: fe.path, content: fe.content }));
+    if (effectiveEdits.length === 0) {
+      const wsDir = projectWorkspaceDir(projectId);
+      const IGNORE = new Set(["node_modules", ".git", "dist", ".next", ".cache", ".turbo", "build", "out", "coverage"]);
+      const collectFiles = async (dir: string, base: string): Promise<void> => {
+        let entries: import("node:fs").Dirent[];
+        try { entries = await fsPromises.readdir(dir, { withFileTypes: true }); } catch { return; }
+        for (const entry of entries) {
+          if (IGNORE.has(entry.name) || entry.name.startsWith(".")) continue;
+          const fullPath = nodePath.join(dir, entry.name);
+          const relPath = nodePath.join(base, entry.name);
+          if (entry.isDirectory()) {
+            await collectFiles(fullPath, relPath);
+          } else if (entry.isFile()) {
+            try {
+              const content = await fsPromises.readFile(fullPath, "utf-8");
+              effectiveEdits.push({ path: relPath, content });
+            } catch { /* binary or unreadable — skip */ }
+          }
+        }
+      };
+      await collectFiles(wsDir, "");
+    }
+
+    if (effectiveEdits.length === 0) {
+      githubPushResult = { branch: gpt.branch, message: gpt.message, files: [], error: "No files found in workspace to push." };
+    } else {
+      try {
       const repoFull = parseRepoFullName(project.linkedRepo);
       const ghToken = await resolveGithubTokenForRequest(userId, project.githubToken ?? null);
       if (repoFull && ghToken) {
@@ -5626,9 +5656,9 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           if (!errText.includes("already exists")) throw new Error(`Branch creation failed: ${errText}`);
         }
 
-        // Commit each file edit to the branch
+        // Commit each file to the branch
         const committedFiles: GithubPushResult["files"] = [];
-        for (const edit of fileEdits) {
+        for (const edit of effectiveEdits) {
           let currentSha: string | undefined;
           const existingResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}?ref=${pushBranch}`, { headers: ghApiHeaders(ghToken), signal: AbortSignal.timeout(8_000) });
           if (existingResp.ok) { const d = await existingResp.json() as { sha?: string }; currentSha = d.sha; }
@@ -5659,7 +5689,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         // Open a PR if requested
         if (gpt.openPr) {
           const prTitle = gpt.prTitle ?? gpt.message;
-          const prBody = gpt.prBody ?? `Automated commit by Atlas\n\nFiles changed:\n${fileEdits.map((e) => `- \`${e.path}\``).join("\n")}`;
+          const prBody = gpt.prBody ?? `Automated commit by Atlas\n\nFiles changed:\n${effectiveEdits.map((e) => `- \`${e.path}\``).join("\n")}`;
           const prResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/pulls`, {
             method: "POST",
             headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
@@ -5676,12 +5706,14 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         (finalPayload as Record<string, unknown>).githubPushResult = githubPushResult;
       } else {
         logger.warn({ hasRepo: !!repoFull, hasToken: !!ghToken }, "GITHUB_PUSH: missing repo or token");
+        githubPushResult = { branch: gpt.branch, message: gpt.message, files: [], error: "No linked repo or GitHub token found for this project." };
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       githubPushResult = { branch: (githubPushToken as GithubPushToken).branch, message: (githubPushToken as GithubPushToken).message, files: [], error: msg };
       logger.warn({ err }, "GITHUB_PUSH execution failed");
     }
+    } // close else (effectiveEdits.length > 0)
   }
 
   // Append browser visit analysis to the displayed message so users can read it in chat

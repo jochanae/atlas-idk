@@ -507,7 +507,7 @@ export async function bootstrapGitHubRepo(opts: {
       return { ok: false, error: `Failed to create repo: ${msg}` };
     }
 
-    repoData = await createResp.json() as { full_name: string; html_url: string };
+    repoData = await createResp.json() as { full_name: string; html_url: string; pushed_at: string | null; size: number };
   }
   const fullName = repoData.full_name;
 
