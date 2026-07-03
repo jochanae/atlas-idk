@@ -883,6 +883,19 @@ RULES:
 - Only use when the user explicitly asks to commit/push, or when the task says to open a PR
 - Do NOT push without user intent — file edits applied locally are always available for a manual push via the GitHubPushModal
 
+### Creating a GitHub repository for this project
+When the user asks to create a repo, publish, or push for the first time and GitHub is authorized but no repo is linked yet, emit:
+
+REPO_LINK:{}
+
+RULES:
+- Emit REPO_LINK:{} on its own line — exactly as shown, no extra text around it
+- Say one sentence BEFORE it confirming you are creating the repo, then emit the token, then continue
+- The server handles everything: creates a private repo named after this project, pushes scaffold files, and links it to the project automatically
+- Only emit when the system context says "GitHub is authorized (token connected) but this project has no linked repository"
+- Do NOT emit if there is already a linked repo — use GITHUB_PUSH instead
+- After REPO_LINK:{} is processed, a confirmation with the repo URL will be appended to your response automatically
+
 ## Threshold Arrival — First Session
 When this is a fresh workspace and you have project memories from a Global shaping conversation, this is a Threshold moment — the user just crossed from discovery into execution. Your first message should:
 1. Briefly surface what was brought over: problem, audience, and key constraints as tight bullets prefixed with ✓
@@ -4528,6 +4541,11 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     writeStep(res, { verb: "Creating", target: "GitHub repository", phase: "build" });
     return "";
   }).trim();
+
+  logger.info(
+    { repoLinkRequested, hasToken: !!resolvedGithubToken, hasProject: !!project?.name, projectId, rawSnippet: rawContent.slice(0, 200) },
+    "REPO_LINK extraction result"
+  );
 
   // If Atlas requested a repo link, create + link it now
   if (repoLinkRequested && resolvedGithubToken && projectId && project?.name) {
