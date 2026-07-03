@@ -43,6 +43,7 @@ interface Props {
   projectPreviewUrl?: string | null;
   chatPending?: boolean;
   liveStep?: { verb: string; target?: string; status?: string } | null;
+  onTryToFix?: () => void;
 }
 
 type DerivedStatus = "running" | "applied" | "failed";
@@ -206,25 +207,28 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
 
 const RECEIPT_TONE: Record<
   "running" | "success" | "failed",
-  { border: string; ring: string; fg: string; iconBg: string }
+  { border: string; ring: string; fg: string; iconBg: string; cardBg: string }
 > = {
   running: {
     border: "var(--atlas-gold-border)",
     ring: "transparent",
     fg: "var(--atlas-gold)",
     iconBg: "var(--atlas-gold-dim)",
+    cardBg: "hsl(var(--card))",
   },
   success: {
     border: "rgba(74,222,128,0.35)",
     ring: "rgba(74,222,128,0.08)",
     fg: "#4ade80",
     iconBg: "rgba(74,222,128,0.10)",
+    cardBg: "hsl(var(--card))",
   },
   failed: {
-    border: "rgba(248,113,113,0.35)",
-    ring: "rgba(248,113,113,0.08)",
+    border: "rgba(248,113,113,0.45)",
+    ring: "rgba(248,113,113,0.10)",
     fg: "#f87171",
-    iconBg: "rgba(248,113,113,0.10)",
+    iconBg: "rgba(248,113,113,0.12)",
+    cardBg: "rgba(248,113,113,0.045)",
   },
 };
 
@@ -392,7 +396,7 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
   );
 }
 
-export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep }: Props) {
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix }: Props) {
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
@@ -552,7 +556,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   const toneKey = run.status === "applied" ? "success" : run.status === "failed" ? "failed" : "running";
   const tone = RECEIPT_TONE[toneKey];
   const fileCount = run.files.length;
-  const kicker = run.status === "running" ? "Working" : run.status === "applied" ? "Run Complete" : "Run Failed";
+  const kicker = run.status === "running" ? "Working" : run.status === "applied" ? "Run Complete" : "Build Unsuccessful";
   const elapsedMs =
     run.status === "running"
       ? now - run.createdAt
@@ -584,7 +588,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       }}
       style={{
         position: "relative",
-        background: "hsl(var(--card))",
+        background: tone.cardBg,
         color: "hsl(var(--card-foreground))",
         border: `1px solid ${tone.border}`,
         boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
@@ -746,34 +750,56 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         >
           Details
         </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            handlePreview();
-          }}
-          title={previewTitle}
-          style={{
-            flex: 1,
-            padding: "6px 10px",
-            fontSize: 11.5,
-            fontWeight: 500,
-            textAlign: "center",
-            background: noFreshArtifact ? "transparent" : "var(--atlas-gold-dim)",
-            border: noFreshArtifact
-              ? "1px solid hsl(var(--border))"
-              : "1px solid var(--atlas-gold-border)",
-            color: noFreshArtifact
-              ? "hsl(var(--muted-foreground) / 0.75)"
-              : "var(--atlas-gold)",
-            borderRadius: 5,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            letterSpacing: "0.01em",
-          }}
-        >
-          Preview
-        </button>
+        {run.status === "failed" ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onTryToFix?.();
+            }}
+            style={{
+              flex: 1,
+              padding: "6px 10px",
+              fontSize: 11.5,
+              fontWeight: 500,
+              textAlign: "center",
+              background: "rgba(248,113,113,0.10)",
+              border: "1px solid rgba(248,113,113,0.35)",
+              color: "#f87171",
+              borderRadius: 5,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Try to fix
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              handlePreview();
+            }}
+            title={previewTitle}
+            style={{
+              flex: 1,
+              padding: "6px 10px",
+              fontSize: 11.5,
+              fontWeight: 500,
+              textAlign: "center",
+              background: "var(--atlas-gold-dim)",
+              border: "1px solid var(--atlas-gold-border)",
+              color: "var(--atlas-gold)",
+              borderRadius: 5,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Preview
+          </button>
+        )}
       </div>
 
       {/* Env var chip — shown when Atlas wrote code referencing env vars */}

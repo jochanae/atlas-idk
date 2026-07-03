@@ -746,6 +746,7 @@ export function ChatStream(props: ChatStreamProps) {
         projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
         chatPending={chatPending}
         liveStep={liveStep}
+        onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
       />
 
       <div ref={bottomRef} />
