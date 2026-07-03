@@ -1440,3 +1440,30 @@ mark.atlas-search-hit.atlas-search-hit--active {
   opacity: 1;
 }
 
+
+/* ── Ambient home stagger reveal ─────────────────────────────────────────
+   Applied to greeting, resume line, prompt input, action pills on mount.
+   Uses --atlas-reveal-opacity so elements can preserve a non-1 rest
+   opacity (e.g. subtitle at 0.55) after the animation resolves. */
+@keyframes atlas-ambient-reveal-top {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: var(--atlas-reveal-opacity, 1); transform: translateY(0); }
+}
+@keyframes atlas-ambient-float-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: var(--atlas-reveal-opacity, 1); transform: translateY(0); }
+}
+.atlas-ambient-reveal-top {
+  animation: atlas-ambient-reveal-top 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--atlas-reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.atlas-ambient-float-up {
+  animation: atlas-ambient-float-up 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--atlas-reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-ambient-reveal-top,
+  .atlas-ambient-float-up { animation: none !important; opacity: var(--atlas-reveal-opacity, 1) !important; transform: none !important; }
+}
