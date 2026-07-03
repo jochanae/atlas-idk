@@ -447,7 +447,7 @@ createRoot(document.getElementById('root')!).render(
 }
 
 export type BootstrapResult =
-  | { ok: true; linkedRepo: string; htmlUrl: string; repoName: string; previewUrl: string }
+  | { ok: true; linkedRepo: string; htmlUrl: string; repoName: string; previewUrl: string; existingRepoLinked?: boolean }
   | { ok: false; error: string; noToken?: boolean };
 
 export async function bootstrapGitHubRepo(opts: {
@@ -465,7 +465,7 @@ export async function bootstrapGitHubRepo(opts: {
   if (!meResp.ok) {
     return { ok: false, error: `GitHub auth failed (${meResp.status})` };
   }
-  await meResp.json();
+  const meData = await meResp.json() as { login: string };
   const repoName = sanitizeRepoName(projectName);
 
   // 2. Create the repository
@@ -482,73 +482,99 @@ export async function bootstrapGitHubRepo(opts: {
     }),
   });
 
+  let repoData: { full_name: string; html_url: string };
+  let existingRepoLinked = false;
+
   if (!createResp.ok) {
     const errBody = await createResp.json() as { message?: string; errors?: Array<{ message?: string }> };
     const msg = errBody.errors?.[0]?.message ?? errBody.message ?? "Unknown error";
-    return { ok: false, error: `Failed to create repo: ${msg}` };
-  }
 
-  const repoData = await createResp.json() as { full_name: string; html_url: string };
+    // "already exists" — fetch the existing repo and link it instead of failing
+    const isAlreadyExists = msg.toLowerCase().includes("already exists") ||
+      (errBody.message ?? "").toLowerCase().includes("already exists");
+
+    if (!isAlreadyExists) {
+      return { ok: false, error: `Failed to create repo: ${msg}` };
+    }
+
+    // Attempt to fetch the existing repo by owner/name
+    const existingResp = await fetch(
+      `${GH_API}/repos/${meData.login}/${repoName}`,
+      { headers: ghHeaders(token) }
+    );
+    if (!existingResp.ok) {
+      return { ok: false, error: `Repo already exists but could not be fetched (${existingResp.status})` };
+    }
+    repoData = await existingResp.json() as { full_name: string; html_url: string };
+    existingRepoLinked = true;
+  } else {
+    repoData = await createResp.json() as { full_name: string; html_url: string };
+  }
   const fullName = repoData.full_name;
 
   // 3. Create blobs for each scaffold file
-  const files = getScaffoldFiles(repoName, {
-    projectBrief: opts.projectBrief,
-    isCodeProject: opts.isCodeProject,
-    projectMemory: opts.projectMemory,
-  });
-  const blobResults = await Promise.all(
-    files.map(async (f) => {
-      const r = await fetch(`${GH_API}/repos/${fullName}/git/blobs`, {
-        method: "POST",
-        headers: ghHeaders(token),
-        body: JSON.stringify({ content: f.content, encoding: "utf-8" }),
-      });
-      if (!r.ok) throw new Error(`Blob creation failed for ${f.path}`);
-      const b = await r.json() as { sha: string };
-      return { path: f.path, sha: b.sha, mode: "100644" as const, type: "blob" as const };
-    }),
-  );
+  // 3–7. Only scaffold+commit when creating a brand-new repo.
+  // When linking an existing repo we skip these steps entirely — the repo
+  // already has content and we don't want to force-push scaffold files onto it.
+  if (!existingRepoLinked) {
+    const files = getScaffoldFiles(repoName, {
+      projectBrief: opts.projectBrief,
+      isCodeProject: opts.isCodeProject,
+      projectMemory: opts.projectMemory,
+    });
+    const blobResults = await Promise.all(
+      files.map(async (f) => {
+        const r = await fetch(`${GH_API}/repos/${fullName}/git/blobs`, {
+          method: "POST",
+          headers: ghHeaders(token),
+          body: JSON.stringify({ content: f.content, encoding: "utf-8" }),
+        });
+        if (!r.ok) throw new Error(`Blob creation failed for ${f.path}`);
+        const b = await r.json() as { sha: string };
+        return { path: f.path, sha: b.sha, mode: "100644" as const, type: "blob" as const };
+      }),
+    );
 
-  // 4. Create tree
-  const treeResp = await fetch(`${GH_API}/repos/${fullName}/git/trees`, {
-    method: "POST",
-    headers: ghHeaders(token),
-    body: JSON.stringify({ tree: blobResults }),
-  });
-  if (!treeResp.ok) return { ok: false, error: "Failed to create git tree" };
-  const treeData = await treeResp.json() as { sha: string };
+    // 4. Create tree
+    const treeResp = await fetch(`${GH_API}/repos/${fullName}/git/trees`, {
+      method: "POST",
+      headers: ghHeaders(token),
+      body: JSON.stringify({ tree: blobResults }),
+    });
+    if (!treeResp.ok) return { ok: false, error: "Failed to create git tree" };
+    const treeData = await treeResp.json() as { sha: string };
 
-  // 5. Create initial commit
-  const commitMessage = opts.isCodeProject === false
-    ? "Initial Atlas scaffold — docs project"
-    : "Initial Atlas scaffold — app project";
-  const commitResp = await fetch(`${GH_API}/repos/${fullName}/git/commits`, {
-    method: "POST",
-    headers: ghHeaders(token),
-    body: JSON.stringify({
-      message: commitMessage,
-      tree: treeData.sha,
-      parents: [],
-    }),
-  });
-  if (!commitResp.ok) return { ok: false, error: "Failed to create initial commit" };
-  const commitData = await commitResp.json() as { sha: string };
+    // 5. Create initial commit
+    const commitMessage = opts.isCodeProject === false
+      ? "Initial Atlas scaffold — docs project"
+      : "Initial Atlas scaffold — app project";
+    const commitResp = await fetch(`${GH_API}/repos/${fullName}/git/commits`, {
+      method: "POST",
+      headers: ghHeaders(token),
+      body: JSON.stringify({
+        message: commitMessage,
+        tree: treeData.sha,
+        parents: [],
+      }),
+    });
+    if (!commitResp.ok) return { ok: false, error: "Failed to create initial commit" };
+    const commitData = await commitResp.json() as { sha: string };
 
-  // 6. Create main branch ref
-  const refResp = await fetch(`${GH_API}/repos/${fullName}/git/refs`, {
-    method: "POST",
-    headers: ghHeaders(token),
-    body: JSON.stringify({ ref: "refs/heads/main", sha: commitData.sha }),
-  });
-  if (!refResp.ok) return { ok: false, error: "Failed to set main branch" };
+    // 6. Create main branch ref
+    const refResp = await fetch(`${GH_API}/repos/${fullName}/git/refs`, {
+      method: "POST",
+      headers: ghHeaders(token),
+      body: JSON.stringify({ ref: "refs/heads/main", sha: commitData.sha }),
+    });
+    if (!refResp.ok) return { ok: false, error: "Failed to set main branch" };
 
-  // 7. Set default branch to main
-  await fetch(`${GH_API}/repos/${fullName}`, {
-    method: "PATCH",
-    headers: ghHeaders(token),
-    body: JSON.stringify({ default_branch: "main" }),
-  });
+    // 7. Set default branch to main
+    await fetch(`${GH_API}/repos/${fullName}`, {
+      method: "PATCH",
+      headers: ghHeaders(token),
+      body: JSON.stringify({ default_branch: "main" }),
+    });
+  }
 
   // 8. Link the repo + set StackBlitz preview URL on the project
   const stackblitzUrl = `https://stackblitz.com/github/${fullName}`;
@@ -557,5 +583,5 @@ export async function bootstrapGitHubRepo(opts: {
     .set({ linkedRepo: fullName, previewUrl: stackblitzUrl })
     .where(eq(projectsTable.id, projectId));
 
-  return { ok: true, linkedRepo: fullName, htmlUrl: repoData.html_url, repoName, previewUrl: stackblitzUrl };
+  return { ok: true, linkedRepo: fullName, htmlUrl: repoData.html_url, repoName, previewUrl: stackblitzUrl, existingRepoLinked };
 }

@@ -4557,10 +4557,11 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         projectName: project.name,
       });
       if (bootstrapResult.ok) {
-        rawContent = (rawContent + `\n\n✅ **Repository created and linked:** [${bootstrapResult.repoName}](${bootstrapResult.htmlUrl})`).trim();
+        const repoVerb = bootstrapResult.existingRepoLinked ? "Linked existing repository" : "Repository created and linked";
+        rawContent = (rawContent + `\n\n✅ **${repoVerb}:** [${bootstrapResult.repoName}](${bootstrapResult.htmlUrl})`).trim();
         // Update repoData so the rest of the response pipeline knows the repo exists
         repoData = { fullName: bootstrapResult.linkedRepo, defaultBranch: "main" };
-        writeStep(res, { verb: "Linked", target: bootstrapResult.linkedRepo, phase: "done" });
+        writeStep(res, { verb: bootstrapResult.existingRepoLinked ? "Linked" : "Created", target: bootstrapResult.linkedRepo, phase: "done" });
       } else {
         rawContent = (rawContent + `\n\n⚠️ **Repo creation failed:** ${bootstrapResult.error}`).trim();
       }
