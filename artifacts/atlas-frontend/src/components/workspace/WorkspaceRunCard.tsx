@@ -24,8 +24,10 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Bookmark, Github, ImageIcon } from "lucide-react";
+import { CheckCircle2, XCircle, Bookmark, Github, ImageIcon, Terminal, Eye, FilePenLine, Circle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
+import type { GithubPushPayload } from "@/lib/githubPushReceipt";
 import {
   addSnapshot,
   toggleBookmark as toggleHistoryBookmark,
@@ -44,6 +46,8 @@ interface Props {
   chatPending?: boolean;
   liveStep?: { verb: string; target?: string; status?: string } | null;
   onTryToFix?: () => void;
+  receiptMessage?: ChatMessage | null;
+  suppressGitHubReceipt?: boolean;
 }
 
 type DerivedStatus = "running" | "applied" | "failed" | "pushed" | "sketched";
@@ -62,7 +66,7 @@ interface DerivedRun {
   previewPath: string | null;
   error?: string;
   /** Present when this run is a GitHub push receipt (durable, survives reload). */
-  githubPush?: { sha: string; url: string; repo?: string; branch?: string };
+  githubPush?: GithubPushPayload;
   /** Present when this run is a sketch-only response (no file edits). */
   sketchImageUrl?: string;
 }
@@ -96,6 +100,7 @@ function deriveRun(
   messages: ChatMessage[],
   projectId: number,
   projectPreviewUrl?: string | null,
+  options?: { suppressGitHubReceipt?: boolean },
 ): DerivedRun | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
@@ -107,7 +112,7 @@ function deriveRun(
     const deletes = msg.fileDeletes
       ?? (msg.fileDeletesJson ? (JSON.parse(msg.fileDeletesJson) as Array<{ path: string }>) : []);
     const proposal = msg.writeFileProposal?.path;
-    const push = msg.githubPush;
+    const push = options?.suppressGitHubReceipt ? undefined : msg.githubPush;
     const sketchImages = msg.imageGen?.images ?? [];
     const hasWork =
       edits.length > 0 ||
@@ -268,8 +273,28 @@ function ReceiptIcon({ status }: { status: DerivedStatus }) {
   return null;
 }
 
+function liveStepMeta(step?: LiveStepItem): { Icon: LucideIcon; label: string; body: string } {
+  const verb = step?.verb ?? "";
+  const lower = verb.toLowerCase();
+  if (/github[_-]?push|push/.test(lower)) {
+    return { Icon: Github, label: "Pushing to GitHub", body: step?.target ?? "Preparing commit" };
+  }
+  if (/read|inspect|scan|open/.test(lower)) {
+    return { Icon: Eye, label: "Reading file", body: step?.target ?? "Checking project files" };
+  }
+  if (/edit|write|patch|apply|file_edit|line_patch/.test(lower)) {
+    return { Icon: FilePenLine, label: "Editing file", body: step?.target ?? "Applying changes" };
+  }
+  if (/command|terminal|shell|run|exec|install|build|test/.test(lower)) {
+    return { Icon: Terminal, label: "Running command", body: step?.target ?? verb };
+  }
+  return { Icon: Circle, label: "Working", body: step?.target ?? verb ?? "Thinking through the next step" };
+}
+
 /** The shimmer live-communication card shown while Atlas is working. */
 function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) {
+  const current = steps[steps.length - 1];
+  const { Icon, label, body } = liveStepMeta(current);
   return (
     <div
       style={{
@@ -279,7 +304,9 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
         borderRadius: 10,
         padding: "10px 12px",
         margin: "10px 0 4px",
-        maxWidth: "88%",
+        width: "min(100%, 560px)",
+        maxWidth: "100%",
+        boxSizing: "border-box",
         overflow: "hidden",
       }}
       data-wrc-active="true"
@@ -316,20 +343,24 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
       <div style={{ paddingLeft: 8 }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          {/* Pulsing dot */}
           <span
             aria-hidden="true"
             style={{
-              display: "inline-block",
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              background: "var(--atlas-gold)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 20,
+              height: 20,
+              borderRadius: 999,
+              background: "var(--atlas-gold-dim)",
+              color: "var(--atlas-gold)",
               flexShrink: 0,
               animation: "wrc-dot-pulse 1.4s ease-in-out infinite",
             }}
-          />
-          <div>
+          >
+            <Icon size={12} strokeWidth={1.75} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
                 fontFamily: "var(--app-font-mono)",
@@ -341,9 +372,9 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
                 lineHeight: 1.2,
               }}
             >
-              Working
+              {label}
             </div>
-            {title && (
+            {(body || title) && (
               <div
                 style={{
                   fontSize: 12.5,
@@ -353,11 +384,10 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
-                  maxWidth: "85%",
                   letterSpacing: "-0.005em",
                 }}
               >
-                {title}
+                {body || title}
               </div>
             )}
           </div>
@@ -395,8 +425,8 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
                   <span style={{ flexShrink: 0, fontSize: 9, opacity: isCurrent ? 1 : 0.7 }}>
                     {isCurrent ? "→" : "✓"}
                   </span>
-                  <span>
-                    {step.verb}
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {liveStepMeta(step).label}
                     {step.target ? (
                       <span style={{ opacity: 0.75 }}>{" "}{step.target}</span>
                     ) : null}
@@ -426,7 +456,7 @@ function ActiveCard({ steps, title }: { steps: LiveStepItem[]; title: string }) 
   );
 }
 
-export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix }: Props) {
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, suppressGitHubReceipt }: Props) {
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
@@ -455,7 +485,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     () => messages.some(m => m.streaming),
     [messages],
   );
-  const isActive = (chatPending ?? false) || isStreaming;
+  const isActive = !receiptMessage && ((chatPending ?? false) || isStreaming);
 
   // Last user message — title for the active card
   const activeTitle = useMemo(() => {
@@ -470,8 +500,11 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
 
   // ── Receipt derivation ────────────────────────────────────────────────
   const run = useMemo(
-    () => (isActive ? null : deriveRun(messages, projectId, projectPreviewUrl)),
-    [isActive, messages, projectId, projectPreviewUrl],
+    () => {
+      if (receiptMessage) return deriveRun([receiptMessage], projectId, projectPreviewUrl);
+      return isActive ? null : deriveRun(messages, projectId, projectPreviewUrl, { suppressGitHubReceipt });
+    },
+    [isActive, messages, projectId, projectPreviewUrl, receiptMessage, suppressGitHubReceipt],
   );
 
   const [now, setNow] = useState(() => Date.now());
@@ -639,7 +672,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         borderRadius: 10,
         padding: "10px 12px",
         margin: "10px 0 4px",
-        maxWidth: "88%",
+        width: "min(100%, 560px)",
+        maxWidth: "100%",
+        boxSizing: "border-box",
         alignSelf: "flex-start",
         transition: "border-color 240ms ease, box-shadow 240ms ease",
         cursor: "pointer",
@@ -774,6 +809,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         style={{
           display: "flex",
           gap: 6,
+          flexWrap: "wrap",
           marginTop: 10,
           paddingTop: 8,
           borderTop: "1px solid hsl(var(--border))",
@@ -786,7 +822,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
             handleDetails();
           }}
           style={{
-            flex: 1,
+            flex: "1 1 120px",
+            minWidth: 0,
             padding: "6px 10px",
             fontSize: 11.5,
             fontWeight: 500,
@@ -810,7 +847,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
               onTryToFix?.();
             }}
             style={{
-              flex: 1,
+              flex: "1 1 120px",
+              minWidth: 0,
               padding: "6px 10px",
               fontSize: 11.5,
               fontWeight: 500,
@@ -834,7 +872,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
             rel="noopener noreferrer"
             onClick={(event) => event.stopPropagation()}
             style={{
-              flex: 1,
+              flex: "1 1 120px",
+              minWidth: 0,
               padding: "6px 10px",
               fontSize: 11.5,
               fontWeight: 500,
@@ -865,7 +904,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
             }}
             title={previewTitle}
             style={{
-              flex: 1,
+              flex: "1 1 120px",
+              minWidth: 0,
               padding: "6px 10px",
               fontSize: 11.5,
               fontWeight: 500,

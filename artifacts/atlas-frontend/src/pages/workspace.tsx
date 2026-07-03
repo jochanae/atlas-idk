@@ -121,6 +121,12 @@ import { submitForgeIntake } from "@/lib/forgeIntake";
 import { useCodegen } from "@/hooks/useCodegen";
 import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
 import { buildParkedEntryPayload } from "@/lib/parking";
+import {
+  appendGithubPushReceiptMarker,
+  parseGithubPushReceipt,
+  stripGithubPushReceiptMarker,
+  type GithubPushPayload,
+} from "@/lib/githubPushReceipt";
 
 
 export interface AlertPayload {
@@ -287,12 +293,7 @@ export interface ChatMessage {
   extractionQueued?: boolean;
   /** Durable receipt of a completed GitHub push. Source of truth after reload
    *  (liveStep.verb === "github_push" only covers the in-flight window). */
-  githubPush?: {
-    sha: string;
-    url: string;
-    repo?: string;
-    branch?: string;
-  };
+  githubPush?: GithubPushPayload;
 }
 
 export type MemoryChip = { label: string; insight?: string; tier?: 1 | 2 | 3 | 4 | 5 };
@@ -4520,11 +4521,13 @@ export default function Workspace() {
         inputTokens?: number | null; input_tokens?: number | null;
         outputTokens?: number | null; output_tokens?: number | null;
         costUsd?: number | string | null; cost_usd?: number | string | null;
+        githubPush?: GithubPushPayload | null; github_push?: GithubPushPayload | null;
       };
+      const githubPush = raw.githubPush ?? raw.github_push ?? parseGithubPushReceipt(m.content);
       return {
         id: m.id,
         role: m.role as "user" | "assistant",
-        content: m.content,
+        content: stripGithubPushReceiptMarker(m.content),
         terminalCmd: raw.terminalCmd ?? raw.terminal_cmd,
         terminalResult: raw.terminalResult ?? raw.terminal_result,
         modelUsed: raw.modelUsed ?? raw.model_used ?? null,
@@ -4548,6 +4551,7 @@ export default function Workspace() {
         })(),
         // Infer planMode from persisted runArtifacts so restored messages behave correctly.
         planMode: (m as unknown as { runArtifacts?: Array<{ type: string }> | null }).runArtifacts?.some((a) => a.type === "plan") ?? false,
+        ...(githubPush ? { githubPush } : {}),
       };
     },
     entries,
@@ -7119,22 +7123,44 @@ export default function Workspace() {
         const sha = shaMatch?.[1] ?? "";
         if (sha) {
           const fileCount = records.length;
+          const githubPush: GithubPushPayload = {
+            sha,
+            url: firstUrl,
+            repo: repoName,
+            branch,
+          };
+          const visibleContent = `Pushed ${fileCount} file${fileCount === 1 ? "" : "s"} to ${repoName} on ${branch}.`;
+          const tempId = -Date.now();
           setMessages((prev) => [
             ...prev,
             {
+              id: tempId,
               role: "assistant" as const,
-              content: `Pushed ${fileCount} file${fileCount === 1 ? "" : "s"} to ${repoName} on ${branch}.`,
+              content: visibleContent,
               model: "system",
               intentType: "BUILD",
               sentAt: new Date().toISOString(),
-              githubPush: {
-                sha,
-                url: firstUrl,
-                repo: repoName,
-                branch,
-              },
+              githubPush,
             },
           ]);
+          if (sessionId) {
+            void fetch(`/api/sessions/${sessionId}/messages`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                role: "assistant",
+                content: appendGithubPushReceiptMarker(visibleContent, githubPush),
+              }),
+            }).then(async (response) => {
+              if (!response.ok) return;
+              const saved = await response.json() as { id?: number };
+              if (typeof saved.id !== "number") return;
+              setMessages((prev) => prev.map((message) => (
+                message.id === tempId ? { ...message, id: saved.id } : message
+              )));
+            }).catch(() => {});
+          }
         }
 
         doSend(
