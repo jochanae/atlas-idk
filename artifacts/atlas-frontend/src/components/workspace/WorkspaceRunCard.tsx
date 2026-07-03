@@ -24,7 +24,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Bookmark, Github } from "lucide-react";
+import { CheckCircle2, XCircle, Bookmark, Github, ImageIcon } from "lucide-react";
 import type { ChatMessage } from "@/pages/workspace";
 import {
   addSnapshot,
@@ -46,7 +46,7 @@ interface Props {
   onTryToFix?: () => void;
 }
 
-type DerivedStatus = "running" | "applied" | "failed" | "pushed";
+type DerivedStatus = "running" | "applied" | "failed" | "pushed" | "sketched";
 type PreviewSource = "sandbox" | "generated" | "local" | "url" | null;
 
 interface DerivedRun {
@@ -63,6 +63,8 @@ interface DerivedRun {
   error?: string;
   /** Present when this run is a GitHub push receipt (durable, survives reload). */
   githubPush?: { sha: string; url: string; repo?: string; branch?: string };
+  /** Present when this run is a sketch-only response (no file edits). */
+  sketchImageUrl?: string;
 }
 
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
@@ -106,11 +108,13 @@ function deriveRun(
       ?? (msg.fileDeletesJson ? (JSON.parse(msg.fileDeletesJson) as Array<{ path: string }>) : []);
     const proposal = msg.writeFileProposal?.path;
     const push = msg.githubPush;
+    const sketchImages = msg.imageGen?.images ?? [];
     const hasWork =
       edits.length > 0 ||
       deletes.length > 0 ||
       !!proposal ||
       !!push ||
+      sketchImages.length > 0 ||
       ERROR_MARKERS.test(msg.content ?? "");
 
     if (!hasWork) continue;
@@ -146,6 +150,8 @@ function deriveRun(
       error = m?.[0];
     } else if (push) {
       status = "pushed";
+    } else if (sketchImages.length > 0 && edits.length === 0 && deletes.length === 0 && !proposal) {
+      status = "sketched";
     }
 
     let title = "";
@@ -196,6 +202,7 @@ function deriveRun(
       previewPath,
       error,
       githubPush: push,
+      sketchImageUrl: sketchImages[0]?.imageUrl ?? undefined,
     };
   }
   return null;
@@ -213,7 +220,7 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
 }
 
 const RECEIPT_TONE: Record<
-  "running" | "success" | "failed" | "pushed",
+  "running" | "success" | "failed" | "pushed" | "sketched",
   { border: string; ring: string; fg: string; iconBg: string; cardBg: string }
 > = {
   running: {
@@ -244,12 +251,20 @@ const RECEIPT_TONE: Record<
     iconBg: "hsl(var(--muted))",
     cardBg: "hsl(var(--card))",
   },
+  sketched: {
+    border: "var(--atlas-gold-border)",
+    ring: "rgba(201,162,76,0.07)",
+    fg: "var(--atlas-gold)",
+    iconBg: "var(--atlas-gold-dim)",
+    cardBg: "hsl(var(--card))",
+  },
 };
 
 function ReceiptIcon({ status }: { status: DerivedStatus }) {
   if (status === "applied") return <CheckCircle2 size={12} strokeWidth={1.75} />;
   if (status === "failed") return <XCircle size={12} strokeWidth={1.75} />;
   if (status === "pushed") return <Github size={12} strokeWidth={1.75} />;
+  if (status === "sketched") return <ImageIcon size={12} strokeWidth={1.75} />;
   return null;
 }
 
@@ -572,6 +587,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     run.status === "applied" ? "success"
     : run.status === "failed" ? "failed"
     : run.status === "pushed" ? "pushed"
+    : run.status === "sketched" ? "sketched"
     : "running";
   const tone = RECEIPT_TONE[toneKey];
   const fileCount = run.files.length;
@@ -579,6 +595,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     run.status === "running" ? "Working"
     : run.status === "applied" ? "Run Complete"
     : run.status === "pushed" ? "Pushed to GitHub"
+    : run.status === "sketched" ? "Sketch Complete"
     : "Build Unsuccessful";
   const elapsedMs =
     run.status === "running"
@@ -712,6 +729,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           >
             {run.status === "pushed" && pushSubtitle ? (
               pushSubtitle
+            ) : run.status === "sketched" ? (
+              fmtElapsed(elapsedMs)
             ) : (
               <>
                 {fileCount} {fileCount === 1 ? "file" : "files"} · {fmtElapsed(elapsedMs)}
@@ -807,7 +826,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           >
             Try to fix
           </button>
-        ) : run.status === "pushed" && run.githubPush ? (
+        ) : run.status === "sketched" ? null
+        : run.status === "pushed" && run.githubPush ? (
           <a
             href={run.githubPush.url}
             target="_blank"
