@@ -414,11 +414,21 @@ router.get("/github/tree", async (req, res): Promise<void> => {
 
   const resp = await fetch(`${GH_API}/repos/${repo}/git/trees/${branch}?recursive=1`, { headers: ghHeaders(token) });
   if (!resp.ok) {
+    // 409 = empty repository (no commits yet) — return an empty tree, not an error
+    if (resp.status === 409) {
+      res.json({ tree: [], branch, truncated: false, empty: true });
+      return;
+    }
     if (branch === "main") {
       const fallback = await fetch(`${GH_API}/repos/${repo}/git/trees/master?recursive=1`, { headers: ghHeaders(token) });
       if (fallback.ok) {
         const data = await fallback.json() as any;
         res.json({ tree: data.tree, branch: "master", truncated: data.truncated });
+        return;
+      }
+      // master also failed — check if that's also a 409
+      if (fallback.status === 409) {
+        res.json({ tree: [], branch: "main", truncated: false, empty: true });
         return;
       }
     }
