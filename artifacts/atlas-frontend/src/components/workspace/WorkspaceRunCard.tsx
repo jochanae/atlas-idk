@@ -213,7 +213,7 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
 }
 
 const RECEIPT_TONE: Record<
-  "running" | "success" | "failed",
+  "running" | "success" | "failed" | "pushed",
   { border: string; ring: string; fg: string; iconBg: string; cardBg: string }
 > = {
   running: {
@@ -237,11 +237,19 @@ const RECEIPT_TONE: Record<
     iconBg: "rgba(248,113,113,0.12)",
     cardBg: "rgba(248,113,113,0.045)",
   },
+  pushed: {
+    border: "hsl(var(--border))",
+    ring: "transparent",
+    fg: "hsl(var(--card-foreground))",
+    iconBg: "hsl(var(--muted))",
+    cardBg: "hsl(var(--card))",
+  },
 };
 
-function ReceiptIcon({ status }: { status: "running" | "applied" | "failed" }) {
+function ReceiptIcon({ status }: { status: DerivedStatus }) {
   if (status === "applied") return <CheckCircle2 size={12} strokeWidth={1.75} />;
   if (status === "failed") return <XCircle size={12} strokeWidth={1.75} />;
+  if (status === "pushed") return <Github size={12} strokeWidth={1.75} />;
   return null;
 }
 
