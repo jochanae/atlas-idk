@@ -2069,6 +2069,8 @@ export function AssistantBubble({
           </div>
         )}
 
+        {/* Suppress text body when an image is attached — the sketch IS the response. */}
+        {!(message.imageB64 || imageGenDataUrl || (message.imageGen?.images?.length ?? 0) > 0) && (
         <div style={{ fontSize: 16, lineHeight: 1.85, color: "var(--atlas-fg)", opacity: 0.9, fontFamily: "var(--app-font-sans)" }}>
           {message.streaming ? (
             <span style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
@@ -2090,6 +2092,7 @@ export function AssistantBubble({
             <MarkdownProse content={cleanedContent} />
           )}
         </div>
+        )}
 
         {message.researchResult && (
           <ResearchCard
@@ -2260,6 +2263,7 @@ export function AssistantBubble({
 
         {cleanedContent.trim() && !message.streaming && !commitPayload
           && !message.autoPushed
+          && !(message.imageB64 || imageGenDataUrl || (message.imageGen?.images?.length ?? 0) > 0)
           && !(message.fileEdits && message.fileEdits.length > 0) && (
           <div style={{ marginTop: 6 }}>
             <ThoughtForBadge
