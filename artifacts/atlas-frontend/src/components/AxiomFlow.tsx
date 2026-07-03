@@ -2909,7 +2909,11 @@ function FlowNodeComponent({
       <span
         title={node.label}
         style={{
-          fontSize: v.labelSize,
+          // Label size auto-scales with zoom so labels stay legible when
+          // zoomed out and don't balloon when zoomed in. Target on-screen
+          // range ~11–18px; parent applies scale(zoom), so pre-scale
+          // fontSize = clamp(labelSize, 11/zoom, 18/zoom).
+          fontSize: Math.max(11 / Math.max(zoom, 0.01), Math.min(18 / Math.max(zoom, 0.01), v.labelSize)),
           fontWeight: v.labelWeight,
           color: v.textColor,
           whiteSpace: "normal",
