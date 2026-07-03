@@ -144,6 +144,8 @@ function deriveRun(
       status = "failed";
       const m = msg.content?.match(ERROR_MARKERS);
       error = m?.[0];
+    } else if (push) {
+      status = "pushed";
     }
 
     let title = "";
