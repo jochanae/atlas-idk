@@ -4246,9 +4246,13 @@ export default function Home() {
                       </>
                     )}
                   </h1>
-                  <p style={{
+                  <p
+                    className="atlas-ambient-reveal-top"
+                    style={{
                     fontSize: "var(--ts-body)" as any,
                     color: askAtlasSurfaceVisible ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    ["--atlas-reveal-opacity" as string]: askAtlasSurfaceVisible ? "0.75" : "0.55",
+                    ["--atlas-reveal-delay" as string]: "150ms",
                     opacity: askAtlasSurfaceVisible ? 0.75 : 0.55,
                     margin: 0,
                     fontStyle: "italic",
