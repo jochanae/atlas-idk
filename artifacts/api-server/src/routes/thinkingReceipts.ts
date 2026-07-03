@@ -13,7 +13,7 @@ router.get("/thinking-receipts", async (req, res): Promise<void> => {
 
   const result = conversationId
     ? await db.execute(sql`
-        SELECT id, conversation_id, turn_index, headline, body, category, confidence, created_at
+        SELECT id, conversation_id, turn_index, headline, body, category, confidence, is_stable, created_at
         FROM thinking_receipts
         WHERE user_id = ${userId}
           AND conversation_id = ${conversationId}
@@ -22,7 +22,7 @@ router.get("/thinking-receipts", async (req, res): Promise<void> => {
         LIMIT ${lim}
       `)
     : await db.execute(sql`
-        SELECT id, conversation_id, turn_index, headline, body, category, confidence, created_at
+        SELECT id, conversation_id, turn_index, headline, body, category, confidence, is_stable, created_at
         FROM thinking_receipts
         WHERE user_id = ${userId}
           AND dismissed = false
@@ -58,6 +58,42 @@ router.delete("/thinking-receipts/:id", async (req, res): Promise<void> => {
     WHERE id = ${id} AND user_id = ${userId}
   `);
   res.status(204).end();
+});
+
+// GET /projects/:id/thinking-receipts
+// Returns receipts captured during the Ask Atlas conversation that created this project.
+// Looks up project.conversation_id, then fetches receipts for that conversation.
+router.get("/projects/:id/thinking-receipts", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const projectId = parseInt(req.params.id, 10);
+  if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+
+  // Resolve the project's source Ask Atlas conversation ID
+  const projectRow = await db.execute(sql`
+    SELECT conversation_id
+    FROM projects
+    WHERE id = ${projectId} AND user_id = ${userId}
+    LIMIT 1
+  `);
+  const row = (projectRow.rows ?? projectRow)[0] as { conversation_id?: string | null } | undefined;
+  const sourceConversationId = row?.conversation_id ?? null;
+
+  if (!sourceConversationId) {
+    res.json([]);
+    return;
+  }
+
+  const result = await db.execute(sql`
+    SELECT id, conversation_id, turn_index, headline, body, category, confidence, is_stable, created_at
+    FROM thinking_receipts
+    WHERE user_id = ${userId}
+      AND conversation_id = ${sourceConversationId}
+      AND dismissed = false
+    ORDER BY created_at ASC
+    LIMIT 20
+  `);
+
+  res.json(result.rows ?? result);
 });
 
 export default router;

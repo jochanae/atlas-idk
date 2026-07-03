@@ -1,6 +1,7 @@
 import type React from "react";
 import { ChatStream, type ChatStreamProps } from "@/components/workspace/ChatStream";
 import { ChatComposer, type ChatComposerProps } from "@/components/workspace/ChatComposer";
+import { WorkspaceReceiptsBar } from "@/components/workspace/WorkspaceReceiptsBar";
 
 /**
  * UnifiedConversationSurface
@@ -154,6 +155,8 @@ export function UnifiedConversationSurface({
 
   const conversation = (
     <>
+      {/* Thought carry-in — receipts from the Ask Atlas conversation that created this project */}
+      {projectId ? <WorkspaceReceiptsBar projectId={projectId} /> : null}
       {chatStreamProps ? <ChatStream {...chatStreamProps} /> : null}
       {betweenSlot}
       {composerProps ? <ChatComposer {...composerProps} /> : null}
