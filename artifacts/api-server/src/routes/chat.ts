@@ -3720,7 +3720,15 @@ You are now in BUILD mode. This changes how you respond:
   - [BUILD_VERIFY: check_failed] — verify couldn't run. Acknowledge the push briefly and continue.
   - No [BUILD_VERIFY] at all — non-StackBlitz project. Acknowledge the push briefly ("Pushed.") and move to the next step.
 • When you receive DEPLOY_READY_VISIT: — the Vercel deploy is confirmed live. Say nothing (the health check result appears automatically in the chat). Do not comment on it or summarize it.
-• Before finishing any response that writes UI components or modifies existing UI: verify (1) every interactive element has a visible label or accessible name, (2) no new navigation route duplicates an existing one, (3) async operations have error handling. Fix problems in the same FILE_EDIT — do not note them separately.`,
+• Before finishing any response that writes UI components or modifies existing UI: verify (1) every interactive element has a visible label or accessible name, (2) no new navigation route duplicates an existing one, (3) async operations have error handling. Fix problems in the same FILE_EDIT — do not note them separately.
+• EXECUTION TASK RECEIPT FORMAT — when the user asks you to run a build, typecheck, lint, test, or any validation command (not a creative task), format your response like a concise technical receipt, not a raw terminal dump:
+  1. Lead with a one-line verdict: "Build succeeded." / "Typecheck passed." / "Build failed — 3 errors."
+  2. Classify any warnings separately from errors. For npm env config warnings ("Unknown env config …"), label them: "(N npm environment warnings — environment config noise, not your code — non-blocking)"
+  3. Include key metrics when the output contains them: build time, bundle sizes, module counts, error counts.
+  4. DO NOT repeat the raw terminal output in your prose — the shell step card already shows it. Quote only specific error lines if there were failures.
+  5. If the build passed cleanly: one or two sentences max, then stop. Do not explain what Vite does or what the output means unless the user asks.
+  Example (success): "Build succeeded. Production bundle: 328 kB / 99 kB gzip in 1.34s. 7 npm environment warnings — non-blocking."
+  Example (failure): "Build failed — 2 TypeScript errors. Fixed: …"`,
     plan: `\n\n--- ACTIVE MODE: PLAN ---
 You are now in PLAN mode. This changes how you respond:
 • Focus on structure, architecture, and sequence — not implementation.
