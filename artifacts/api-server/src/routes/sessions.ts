@@ -112,49 +112,6 @@ router.get("/projects/:projectId/sessions", async (req, res): Promise<void> => {
   })));
 });
 
-router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
-  const params = ListSessionsParams.safeParse(req.params);
-  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const userId = (req as any).authUser.id as number;
-  if (!(await projectBelongsToUser(params.data.projectId, userId))) {
-    res.status(404).json({ error: "Project not found" }); return;
-  }
-
-  const runs = await db
-    .select({
-      id: sessionsTable.id,
-      projectId: sessionsTable.projectId,
-      title: sessionsTable.title,
-      mode: sessionsTable.mode,
-      status: sessionsTable.status,
-      messageCount: sessionsTable.messageCount,
-      totalInputTokens: (sessionsTable as any).totalInputTokens,
-      totalOutputTokens: (sessionsTable as any).totalOutputTokens,
-      totalCostUsd: (sessionsTable as any).totalCostUsd,
-      totalExecutionMs: (sessionsTable as any).totalExecutionMs,
-      runStatus: (sessionsTable as any).runStatus,
-      runSummary: (sessionsTable as any).runSummary,
-      runActions: (sessionsTable as any).runActions,
-      runArtifacts: (sessionsTable as any).runArtifacts,
-      createdAt: sessionsTable.createdAt,
-      updatedAt: sessionsTable.updatedAt,
-    })
-    .from(sessionsTable)
-    .where(and(
-      eq(sessionsTable.projectId, params.data.projectId),
-      isNotNull((sessionsTable as any).runStatus),
-    ))
-    .orderBy(desc(sessionsTable.updatedAt))
-    .limit(50);
-
-  res.json(runs.map(run => ({
-    ...run,
-    totalCostUsd: run.totalCostUsd == null ? null : Number(run.totalCostUsd),
-    createdAt: run.createdAt.toISOString(),
-    updatedAt: run.updatedAt.toISOString(),
-  })));
-});
-
 router.post("/projects/:projectId/sessions", async (req, res): Promise<void> => {
   const params = CreateSessionParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }

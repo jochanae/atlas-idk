@@ -271,4 +271,55 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
   }
 });
 
+// ── GET /api/runs/:id — fetch a single execution run (for /runs/:id page) ────
+router.get("/runs/:id", async (req, res): Promise<void> => {
+  const { id } = req.params;
+  if (!id) { res.status(400).json({ error: "Missing run id" }); return; }
+
+  try {
+    const runResult = await db.execute(sql`
+      SELECT id, project_id, thread_id, message_id, mode, status, summary,
+             started_at, completed_at, elapsed_ms
+      FROM execution_runs
+      WHERE id = ${id}
+      LIMIT 1
+    `);
+    if (runResult.rows.length === 0) {
+      res.status(404).json({ error: "Run not found" }); return;
+    }
+    const r = runResult.rows[0];
+
+    const stepsResult = await db.execute(sql`
+      SELECT id, run_id, verb, target, status, detail, created_at
+      FROM execution_run_steps
+      WHERE run_id = ${id}
+      ORDER BY created_at ASC
+    `);
+
+    res.json({
+      id: r.id,
+      projectId: r.project_id,
+      threadId: r.thread_id,
+      messageId: r.message_id,
+      mode: r.mode,
+      status: r.status,
+      summary: r.summary,
+      startedAt: r.started_at,
+      completedAt: r.completed_at,
+      elapsedMs: r.elapsed_ms,
+      steps: stepsResult.rows.map((s) => ({
+        id: s.id,
+        verb: s.verb,
+        target: s.target,
+        status: s.status,
+        detail: s.detail,
+        createdAt: s.created_at,
+      })),
+    });
+  } catch (err) {
+    logger.warn({ err }, "runs: GET /runs/:id failed");
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
 export default router;

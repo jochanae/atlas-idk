@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { X, CheckCircle, XCircle, Loader, Clock, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useBuildStream } from "./useBuildStream";
 import type { BuildCommand } from "./types";
@@ -34,6 +35,7 @@ export function BuildPanel() {
   const [open, setOpen] = useState(false);
   const [command, setCommand] = useState<BuildCommand>("typecheck");
   const [errExpanded, setErrExpanded] = useState(false);
+  const queryClient = useQueryClient();
   const { status, lines, result, run, cancel, reset } = useBuildStream();
   const outputRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +47,7 @@ export function BuildPanel() {
   const [patchSent, setPatchSent] = useState(false);
   const fixCommandRef = useRef<BuildCommand>("typecheck");
   const fixProjectIdRef = useRef<number | undefined>(undefined);
+  const currentProjectIdRef = useRef<number | undefined>(undefined);
 
   const inFixCycle = fixAttempt > 0;
   const atMaxAttempts = fixAttempt >= MAX_FIX_ATTEMPTS;
@@ -59,6 +62,7 @@ export function BuildPanel() {
       // Starting a manual build-run resets any active fix cycle
       setFixAttempt(0);
       setPatchSent(false);
+      currentProjectIdRef.current = detail.projectId;
       reset();
       setOpen(true);
       setTimeout(() => run(cmd, detail.projectId), 80);
@@ -89,6 +93,15 @@ export function BuildPanel() {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [lines.length]);
+
+  // ── Invalidate project runs list when a build completes ───────────────────
+  useEffect(() => {
+    if (!result) return;
+    const pid = currentProjectIdRef.current;
+    if (pid != null) {
+      void queryClient.invalidateQueries({ queryKey: ["project-runs", pid] });
+    }
+  }, [result, queryClient]);
 
   // ── Auto-expand error section on failure ───────────────────────────────────
   useEffect(() => {
