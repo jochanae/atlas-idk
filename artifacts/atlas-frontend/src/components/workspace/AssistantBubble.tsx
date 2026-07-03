@@ -1204,9 +1204,10 @@ function ClarifyCard({
 }
 
 // ── ReadinessGateCard ─────────────────────────────────────────────────────────
+// Advisory-only card — Atlas always proceeds. Collapsed by default when there
+// are gaps; the user can expand to see the full check list.
 function ReadinessGateCard({
   result,
-  onBuildAnyway,
 }: {
   result: {
     ready: boolean;
@@ -1215,21 +1216,38 @@ function ReadinessGateCard({
     summary: string;
     originalMessage?: string;
   };
-  onBuildAnyway?: (message: string) => void;
 }) {
+  const [expanded, setExpanded] = React.useState(false);
+
+  const warnCount = result.checks.filter(c => c.status === "warn").length;
+  const failCount = result.checks.filter(c => c.status === "fail").length;
+  const gapCount = warnCount + failCount;
+
+  const hasFail = failCount > 0;
+  const borderColor = result.ready
+    ? "rgba(74,222,128,0.18)"
+    : hasFail
+    ? "rgba(239,68,68,0.18)"
+    : "rgba(250,204,21,0.18)";
+  const accentColor = result.ready
+    ? "rgba(134,239,172,0.75)"
+    : hasFail
+    ? "rgba(252,165,165,0.75)"
+    : "rgba(253,224,71,0.7)";
+
   const statusIcon = (s: "pass" | "fail" | "warn") =>
     s === "pass" ? (
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="8" r="7" fill="rgba(74,222,128,0.12)" stroke="rgba(74,222,128,0.5)" strokeWidth="1.2" />
         <path d="M4.5 8.5l2.5 2.5 4.5-5" stroke="rgba(134,239,172,0.95)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ) : s === "warn" ? (
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
         <path d="M8 2L14.5 13.5H1.5L8 2Z" fill="rgba(250,204,21,0.1)" stroke="rgba(250,204,21,0.55)" strokeWidth="1.2" strokeLinejoin="round" />
         <path d="M8 6.5v3M8 11.5v.5" stroke="rgba(253,224,71,0.9)" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
     ) : (
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="8" r="7" fill="rgba(239,68,68,0.1)" stroke="rgba(239,68,68,0.45)" strokeWidth="1.2" />
         <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="rgba(252,165,165,0.9)" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
@@ -1238,118 +1256,106 @@ function ReadinessGateCard({
   const statusColor = (s: "pass" | "fail" | "warn") =>
     s === "pass" ? "rgba(134,239,172,0.8)" : s === "warn" ? "rgba(253,224,71,0.8)" : "rgba(252,165,165,0.8)";
 
-  const borderColor = result.ready
-    ? "rgba(74,222,128,0.22)"
-    : result.checks.some(c => c.status === "fail")
-    ? "rgba(239,68,68,0.22)"
-    : "rgba(250,204,21,0.22)";
-
-  const bgColor = result.ready
-    ? "rgba(74,222,128,0.04)"
-    : result.checks.some(c => c.status === "fail")
-    ? "rgba(239,68,68,0.04)"
-    : "rgba(250,204,21,0.04)";
+  // Collapsed summary line
+  const summaryLabel = result.ready
+    ? "Readiness checked — all clear"
+    : `${gapCount} gap${gapCount !== 1 ? "s" : ""} noted · building with current context`;
 
   return (
     <div style={{
-      marginTop: 12,
-      marginBottom: 12,
+      marginTop: 10,
+      marginBottom: 2,
       border: `1px solid ${borderColor}`,
-      borderRadius: 10,
-      background: bgColor,
+      borderRadius: 8,
+      background: "rgba(14,13,11,0.25)",
       overflow: "hidden",
     }}>
-      {/* Header */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "10px 14px",
-        borderBottom: `1px solid ${borderColor}`,
-        background: result.ready ? "rgba(74,222,128,0.05)" : "rgba(14,13,11,0.3)",
-      }}>
-        <span style={{
-          fontFamily: "var(--app-font-mono)",
-          fontSize: 9,
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          fontWeight: 700,
-          color: result.ready ? "rgba(134,239,172,0.9)" : "rgba(252,165,165,0.85)",
-        }}>
-          {result.ready ? "✓ Build Readiness — Clear" : "Build Readiness — Review Required"}
-        </span>
-        <span style={{
-          marginLeft: "auto",
-          fontFamily: "var(--app-font-mono)",
-          fontSize: 9,
-          color: "var(--atlas-muted)",
-          letterSpacing: "0.08em",
-        }}>
-          {result.confidence}% confidence
-        </span>
-      </div>
-
-      {/* Checks list */}
-      <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column" as const, gap: 8 }}>
-        {result.checks.map((check, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <span style={{ marginTop: 1, flexShrink: 0 }}>{statusIcon(check.status)}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 9.5,
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                color: statusColor(check.status),
-                marginBottom: 2,
-              }}>
-                {check.name}
-              </div>
-              <div style={{ fontSize: 11.5, color: "var(--atlas-fg)", opacity: 0.72, lineHeight: 1.55 }}>
-                {check.explanation}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer — bypass button when not ready */}
-      {!result.ready && onBuildAnyway && result.originalMessage && (
-        <div style={{
-          padding: "8px 14px 12px",
+      {/* Always-visible compact header — click to expand/collapse */}
+      <button
+        type="button"
+        onClick={() => setExpanded(e => !e)}
+        style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
-          borderTop: `1px solid ${borderColor}`,
+          gap: 8,
+          width: "100%",
+          padding: "7px 12px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left" as const,
+        }}
+      >
+        <span style={{
+          fontFamily: "var(--app-font-mono)",
+          fontSize: 8.5,
+          letterSpacing: "0.13em",
+          textTransform: "uppercase",
+          fontWeight: 700,
+          color: accentColor,
+          flexShrink: 0,
         }}>
-          <button
-            type="button"
-            onClick={() => onBuildAnyway(result.originalMessage!)}
-            style={{
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 9.5,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              color: "var(--atlas-muted)",
-              background: "transparent",
-              border: "1px solid var(--atlas-border)",
-              borderRadius: 5,
-              padding: "5px 12px",
-              cursor: "pointer",
-              transition: "color 140ms ease, border-color 140ms ease",
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-fg)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(201,162,76,0.4)";
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-muted)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--atlas-border)";
-            }}
-          >
-            Build anyway
-          </button>
+          Build readiness
+        </span>
+        <span style={{
+          fontFamily: "var(--app-font-mono)",
+          fontSize: 8.5,
+          color: "var(--atlas-muted)",
+          letterSpacing: "0.05em",
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap" as const,
+        }}>
+          · {summaryLabel}
+        </span>
+        <span style={{
+          fontFamily: "var(--app-font-mono)",
+          fontSize: 8.5,
+          color: "var(--atlas-muted)",
+          letterSpacing: "0.08em",
+          flexShrink: 0,
+          marginRight: 2,
+        }}>
+          {result.confidence}%
+        </span>
+        <svg
+          width="10" height="10" viewBox="0 0 10 10" fill="none"
+          style={{ flexShrink: 0, transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 180ms ease", opacity: 0.4 }}
+        >
+          <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {/* Expanded checks list */}
+      {expanded && (
+        <div style={{
+          borderTop: `1px solid ${borderColor}`,
+          padding: "8px 12px 10px",
+          display: "flex",
+          flexDirection: "column" as const,
+          gap: 7,
+        }}>
+          {result.checks.map((check, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
+              <span style={{ marginTop: 1, flexShrink: 0 }}>{statusIcon(check.status)}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  color: statusColor(check.status),
+                  marginBottom: 1,
+                }}>
+                  {check.name}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--atlas-fg)", opacity: 0.65, lineHeight: 1.5 }}>
+                  {check.explanation}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -2107,7 +2113,6 @@ export function AssistantBubble({
         {message.readinessResult && (
           <ReadinessGateCard
             result={message.readinessResult}
-            onBuildAnyway={onBuildAnyway}
           />
         )}
 

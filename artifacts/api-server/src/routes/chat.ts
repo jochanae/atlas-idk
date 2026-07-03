@@ -2073,18 +2073,32 @@ type ModelCallResult = {
 };
 
 /**
- * Returns true when the user message is clearly asking to create or edit a
- * documentation-only file: README, markdown, plain text, docs, notes, changelogs,
- * test instructions. These files have no visual/interaction design requirements and
- * must bypass the Build Readiness gate (Design Plan, Experience Intent, Responsive
- * Intent, and AM-DNA checks are irrelevant to them).
+ * Returns true when the Build Readiness gate should be skipped entirely.
+ *
+ * Two categories bypass:
+ *
+ * 1. Documentation / content files — README, markdown, plain text, docs, notes,
+ *    changelogs. No layout, responsive intent, or design system decisions apply.
+ *
+ * 2. Execution / validation tasks — "run a build", "typecheck only", "run typecheck",
+ *    "npm run build", etc. The user is asking Atlas to EXECUTE something that already
+ *    exists, not to CREATE or DESIGN anything. Design readiness checks are entirely
+ *    irrelevant; keying on the word "build" here would be a false positive.
  */
-function isDocumentationOnlyRequest(message: string): boolean {
+function shouldBypassReadinessGate(message: string): boolean {
+  // ── Category 1: documentation / content ──────────────────────────────────
   // Explicit doc file extensions or canonical doc file names anywhere in the message.
   const DOC_FILE_RE = /(?:^|[\s"'`(/\\])(?:readme|changelog|contributing|license|\.md\b|\.mdx\b|\.txt\b|\.rst\b)/i;
-  // Documentation-intent vocabulary that doesn't require a file name.
+  // Documentation-intent vocabulary.
   const DOC_INTENT_RE = /\b(?:docs?|documentation|notes?|test\s+instructions?|plain[\s-]text|markdown)\b/i;
-  return DOC_FILE_RE.test(message) || DOC_INTENT_RE.test(message);
+
+  // ── Category 2: execution / validation ───────────────────────────────────
+  // "run a/the build", "run typecheck", "typecheck only", "build/typecheck",
+  // "npm/pnpm/yarn run …", "compile the project", "verify the build".
+  // Does NOT match "build me a landing page" (no "run" prefix or execution noun).
+  const EXEC_RE = /\b(?:run\s+(?:a\s+|the\s+)?(?:build|typecheck|type[\s-]check|compile|lint|test)|typecheck[\s-]?only|build[/\\]typecheck|pnpm\s+run|npm\s+run|yarn\s+(?:run\s+)?(?:build|test|typecheck|check)|compile\s+(?:the\s+)?(?:project|code)|verify\s+(?:the\s+)?(?:build|project|compilation)|build[\s-]check|build[\s-]only|type[\s-]check[\s-]only)\b/i;
+
+  return DOC_FILE_RE.test(message) || DOC_INTENT_RE.test(message) || EXEC_RE.test(message);
 }
 
 function selectChatModelForMessage(message: string, workspaceLens?: string): ModelId {
@@ -2661,40 +2675,17 @@ router.post("/chat", async (req, res): Promise<void> => {
   const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount <= 4 && projectId);
 
   // ── Build Readiness Gate ──────────────────────────────────────────────────
-  // Advisory gate: runs before Builder starts. If gaps exist, returns a
-  // structured readiness report instead of proceeding to the AI call.
-  // Always bypassable via skipReadiness: true ("Build anyway").
-  if (buildMode && projectId && !(body as any).skipReadiness && !isDocumentationOnlyRequest(message)) {
+  // Advisory (non-blocking): runs before Builder starts and emits a compact
+  // preflight panel to the client. Atlas ALWAYS proceeds — the card is
+  // informational, not a roadblock. Two categories are skipped entirely:
+  //   • Documentation/content edits (README, .md, .txt, docs, notes…)
+  //   • Execution/validation tasks (run build, typecheck, npm run …)
+  // Both are detected by shouldBypassReadinessGate().
+  if (buildMode && projectId && !(body as any).skipReadiness && !shouldBypassReadinessGate(message)) {
     try {
       const readiness = await checkBuildReadiness(projectId);
-      if (!readiness.ready) {
-        const checkLines = readiness.checks
-          .map((c) => {
-            const icon = c.status === "pass" ? "✓" : c.status === "fail" ? "✗" : "⚠";
-            return `${icon} **${c.name}** — ${c.explanation}`;
-          })
-          .join("\n");
-        const content = `Before I build, a few things are worth confirming:\n\n${checkLines}\n\nWant me to proceed anyway, or should we resolve these first?`;
-        res.write(
-          `data: ${JSON.stringify({
-            type: "done",
-            content,
-            modelUsed: "system",
-            terminalCmd: null,
-            terminalResult: null,
-            surface: "system",
-            intentType: "readiness_gate",
-            catchPayload: null,
-            messageId: Date.now(),
-            model: "system",
-            readinessResult: { ...readiness, originalMessage: message },
-          })}\n\n`,
-        );
-        res.end();
-        return;
-      }
-      // Ready path: emit a compact preflight banner to the client before
-      // the Builder stream starts so the user sees the gate was checked.
+      // Always emit preflight — whether ready or not. Never block; always continue.
+      // The client renders this as a collapsible advisory card, not a gate.
       res.write(
         `data: ${JSON.stringify({
           type: "readiness_preflight",
@@ -2702,6 +2693,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         })}\n\n`,
       );
       (req as any)._readinessSummary = readiness.summary;
+      (req as any)._readinessConfidence = readiness.confidence;
     } catch (err) {
       req.log.warn({ err, projectId }, "build readiness check failed — proceeding without gate");
     }
