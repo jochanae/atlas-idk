@@ -49,7 +49,9 @@ export default function SketchReveal({
   className,
   style,
 }: SketchRevealProps) {
-  const [loaded, setLoaded] = useState(false);
+  // Data URLs are already in memory — no fetch/load event is needed.
+  // Pre-set loaded=true so the shimmer never flashes for base64 content.
+  const [loaded, setLoaded] = useState(() => typeof src === "string" && src.startsWith("data:"));
   const [errored, setErrored] = useState(false);
 
   useEffect(() => {
@@ -57,7 +59,11 @@ export default function SketchReveal({
   }, []);
 
   useEffect(() => {
-    setLoaded(false);
+    if (typeof src === "string" && src.startsWith("data:")) {
+      setLoaded(true);
+    } else {
+      setLoaded(false);
+    }
     setErrored(false);
   }, [src]);
 

@@ -2152,7 +2152,10 @@ export function AssistantBubble({
           </div>
         )}
 
-        {message.imageGen?.images?.map((img, i) => (
+        {/* Only render SketchReveal for imageGen when the image hasn't already been
+            extracted to imageB64 or imageGenDataUrl (those render at the img block above).
+            Rendering both causes SKETCHING… to get stuck below the already-loaded image. */}
+        {!message.imageB64 && !imageGenDataUrl && message.imageGen?.images?.map((img, i) => (
           <SketchReveal
             key={i}
             src={img.imageUrl}
