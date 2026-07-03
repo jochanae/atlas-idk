@@ -737,20 +737,26 @@ export function ChatStream(props: ChatStreamProps) {
         </div>
       )}
 
-      {activityStream.active && (messages.length === 0 || messages[messages.length - 1].role === "user") ? (
-        liveGeneration.shouldShow ? (
-          <LiveGenerationCard
-            mode={liveGeneration.mode as never}
-            steps={liveGeneration.steps as never}
-            isComplete={false}
-          />
-        ) : isExecutionStream(activityStream.content) ? (
+      {activityStream.active && (messages.length === 0 || messages[messages.length - 1].role === "user") && !liveGeneration.shouldShow ? (
+        isExecutionStream(activityStream.content) ? (
           <ExecutionJournal content={activityStream.content} isStreaming={true} />
         ) : (
           <StepProgress mode="stream" content={activityStream.content} lens={wsLens} />
         )
       ) : null}
       {thinkingBlock}
+
+      {/* Model A: single run card sits inline with the turn (above chips), not trailing after them.
+          ActiveCard streams live steps in place; on completion it settles into the receipt with
+          Details / Preview / Try to fix — same card, two phases. */}
+      <WorkspaceRunCard
+        projectId={projectId}
+        messages={messages}
+        projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+        chatPending={chatPending}
+        liveStep={liveStep}
+        onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+      />
 
       {showSuggestionChips && onSuggestionTap && (
         <SuggestionChipRail
@@ -761,14 +767,6 @@ export function ChatStream(props: ChatStreamProps) {
         />
       )}
 
-      <WorkspaceRunCard
-        projectId={projectId}
-        messages={messages}
-        projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
-        chatPending={chatPending}
-        liveStep={liveStep}
-        onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
-      />
 
       <div ref={bottomRef} />
 
