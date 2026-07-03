@@ -2170,6 +2170,7 @@ export function AxiomFlow({
               goalY={goalY}
               palette={palette}
               lens={lens}
+              zoom={zoom}
             />
           );
         })}
