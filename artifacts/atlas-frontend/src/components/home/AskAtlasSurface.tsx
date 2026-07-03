@@ -243,6 +243,7 @@ export function AskAtlasSurface({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [, setLocation] = useLocation();
   const [focused, setFocused] = useState(false);
+  const [restingCompact, setRestingCompact] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
