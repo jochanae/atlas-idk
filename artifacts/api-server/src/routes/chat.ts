@@ -26,6 +26,7 @@ import { runBuildCheck, runWorkspaceBuildCheck } from "./devserver";
 import fsPromises from "node:fs/promises";
 import nodePath from "node:path";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath } from "../lib/projectWorkspace";
+import { bootstrapLocalWorkspace, BOOTSTRAP_FILES } from "../lib/localBootstrap";
 import { runArtifactOrchestrator, loadProjectArtifactState } from "../lib/artifactOrchestrator";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
@@ -2770,7 +2771,23 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   // Local workspace tree — equivalent of repoTreeContext but for local-only projects
+  // Auto-bootstrap: if no GitHub repo is linked, no workspace directory exists yet,
+  // and the user's message has clear build/file intent, scaffold a minimal
+  // React/Vite + plain CSS workspace so Atlas can emit FILE_EDIT blocks immediately.
+  let workspaceWasBootstrapped = false;
   if (!repoData && projectId && needsCodeContext) {
+    const WORKSPACE_BOOTSTRAP_RE = /\b(create|make|build|write|edit|generate|add|scaffold|init|setup|file|component|page|route|app|project|readme|\.tsx?|\.jsx?|\.html?|\.css|\.json)\b/i;
+    const wsDir = projectWorkspaceDir(projectId);
+    const wsAlreadyExists = await fsPromises.stat(wsDir).then(() => true).catch(() => false);
+    if (!wsAlreadyExists && WORKSPACE_BOOTSTRAP_RE.test(message)) {
+      try {
+        await bootstrapLocalWorkspace(projectId);
+        workspaceWasBootstrapped = true;
+        req.log.info({ projectId }, "workspace auto-bootstrapped: React/Vite + plain CSS scaffold written");
+      } catch (err) {
+        req.log.warn({ err, projectId }, "workspace auto-bootstrap failed — continuing without workspace");
+      }
+    }
     try {
       localTreeContext = await buildLocalTreeContext(projectId);
     } catch {
@@ -3526,6 +3543,15 @@ HARD RULE: Never answer from the context of a different project unless the user 
     }
 
     systemPrompt += `\n\n--- FILE SOURCE CONTEXT ---\n${fileSourceLines.join("\n")}\n--- END FILE SOURCE CONTEXT ---`;
+  }
+
+  if (workspaceWasBootstrapped) {
+    systemPrompt += `\n\n--- WORKSPACE AUTO-INITIALIZED ---
+A minimal React/Vite + plain CSS workspace was just created for this project because no local workspace existed.
+Scaffold files written: ${BOOTSTRAP_FILES.join(", ")}.
+In your response: open with exactly one sentence telling the user the workspace is initialized and ready (e.g. "I've set up a React/Vite workspace for this project."), then immediately proceed with their request.
+FILE_EDIT blocks will apply directly to the local workspace — no GitHub setup needed.
+--- END WORKSPACE AUTO-INITIALIZED ---`;
   }
 
   if (recentRepoActivityContext) {
