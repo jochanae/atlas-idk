@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "DbMYjWUDlPQzYUTklA1qW"
+uri = "file://.local/atlas-architectural-audit.md"
+type = "text"
+title = "Atlas Architectural Audit"
