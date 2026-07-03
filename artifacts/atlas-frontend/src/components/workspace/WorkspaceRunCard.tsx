@@ -807,6 +807,35 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           >
             Try to fix
           </button>
+        ) : run.status === "pushed" && run.githubPush ? (
+          <a
+            href={run.githubPush.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              flex: 1,
+              padding: "6px 10px",
+              fontSize: 11.5,
+              fontWeight: 500,
+              textAlign: "center",
+              background: "var(--atlas-gold-dim)",
+              border: "1px solid var(--atlas-gold-border)",
+              color: "var(--atlas-gold)",
+              borderRadius: 5,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "0.01em",
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
+            <Github size={12} strokeWidth={1.75} />
+            View commit
+          </a>
         ) : (
           <button
             type="button"
