@@ -2505,6 +2505,7 @@ export function AxiomFlow({
                 e.stopPropagation();
                 haptics.tap();
                 if (btn.action === "fit") { fitMap(); return; }
+                if (btn.action === "focus") { setFocused(f => !f); return; }
                 // Pivot zoom around the VISIBLE canvas center (accounting for
                 // the top breadcrumb and bottom control insets) so content
                 // doesn't drift off-screen. Must match fitMap()'s insets.
