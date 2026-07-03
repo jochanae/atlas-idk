@@ -1754,15 +1754,16 @@ export function AssistantBubble({
           Reverted
         </span>
       )}
-      <div style={{ maxWidth: "min(100%, 74ch)", width: "100%" }}>
+      <div style={{ maxWidth: "min(100%, 74ch)", width: "100%", paddingLeft: 14, borderLeft: "1.5px solid rgba(201,162,76,0.13)" }}>
         <div
           style={{
             display: "flex", alignItems: "center", gap: 6,
             fontFamily: "var(--app-font-mono)", fontSize: 9,
             letterSpacing: "0.12em", textTransform: "uppercase",
-            color: "var(--atlas-gold)", opacity: 0.85, marginBottom: 7,
+            color: "var(--atlas-gold)", opacity: 0.85, marginBottom: 9,
           }}
         >
+          <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: "var(--atlas-gold)", boxShadow: "0 0 7px color-mix(in oklab, var(--atlas-gold) 55%, transparent)", opacity: 0.8 }} />
           <span>Atlas</span>
           {/* Model badge is telemetry — lives in Inspect, not the header */}
           {message.isDeepDive && (
@@ -2071,7 +2072,7 @@ export function AssistantBubble({
 
         {/* Suppress text body when an image is attached — the sketch IS the response. */}
         {!(message.imageB64 || imageGenDataUrl || (message.imageGen?.images?.length ?? 0) > 0) && (
-        <div style={{ fontSize: 16, lineHeight: 1.85, color: "var(--atlas-fg)", opacity: 0.9, fontFamily: "var(--app-font-sans)" }}>
+        <div style={{ fontSize: 15.5, lineHeight: 1.68, color: "var(--atlas-fg)", opacity: 0.92, fontFamily: "var(--app-font-sans)" }}>
           {message.streaming ? (
             <span style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
               {cleanedContent}

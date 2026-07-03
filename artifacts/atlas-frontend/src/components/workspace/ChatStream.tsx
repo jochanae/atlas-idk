@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { StepProgress } from "@/components/workspace/StepProgress";
@@ -32,6 +32,51 @@ type LiveGenerationLike = {
 };
 type LiveStepLike = { verb: string; target?: string; status?: string } | null;
 type PlanExecutionLike = PlanExecution;
+
+const PENDING_PHRASES = [
+  "Atlas is reading your message…",
+  "Loading context…",
+  "Thinking…",
+  "On it…",
+];
+
+function ChatPendingIndicator() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % PENDING_PHRASES.length), 2200);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div
+      className="atlas-bubble-in"
+      style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, paddingLeft: 14, borderLeft: "1.5px solid rgba(201,162,76,0.13)" }}
+    >
+      <span style={{
+        display: "flex", gap: 4, alignItems: "center",
+      }}>
+        {[0, 1, 2].map(i => (
+          <span key={i} style={{
+            width: 5, height: 5, borderRadius: "50%",
+            background: "var(--atlas-gold)",
+            opacity: 0.7,
+            animation: `atlas-pulse 1.4s ease-in-out ${i * 0.22}s infinite`,
+            flexShrink: 0,
+          }} />
+        ))}
+      </span>
+      <span style={{
+        fontFamily: "var(--app-font-mono)",
+        fontSize: 11,
+        letterSpacing: "0.06em",
+        color: "var(--atlas-muted)",
+        opacity: 0.75,
+        animation: "atlasTextFade 300ms ease-out",
+      }}>
+        {PENDING_PHRASES[idx]}
+      </span>
+    </div>
+  );
+}
 
 function isAutoVerifyMessage(msg: ChatMessage): boolean {
   return msg.displayAs === "autoVerify" || msg.content.startsWith("[FILE_COMMITTED]") || msg.content.startsWith("[LOCAL_APPLY_SUCCESS]");
@@ -754,6 +799,12 @@ export function ChatStream(props: ChatStreamProps) {
             Switch →
           </button>
         </div>
+      )}
+
+      {/* Immediate pending indicator — shows the instant chatPending=true, before any stream arrives.
+          This closes the "dead silence" gap where users couldn't tell if anything was happening. */}
+      {chatPending && !activityStream.active && !thinkingBlock && (messages.length === 0 || messages[messages.length - 1]?.role === "user") && (
+        <ChatPendingIndicator />
       )}
 
       {activityStream.active && (messages.length === 0 || messages[messages.length - 1].role === "user") && !liveGeneration.shouldShow ? (
