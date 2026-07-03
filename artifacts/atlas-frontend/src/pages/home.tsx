@@ -4184,10 +4184,14 @@ export default function Home() {
                   transform: inputFocused ? "translateY(-12px)" : "translateY(0)",
                   transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
                 }}>
-                  <h1 style={{
+                  <h1
+                    className="atlas-ambient-reveal-top"
+                    style={{
                     fontSize: "var(--ts-display-xl)", fontWeight: 300,
                     letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
                     color: askAtlasSurfaceVisible ? undefined : "var(--atlas-fg)",
+                    ["--atlas-reveal-opacity" as string]: askAtlasSurfaceVisible ? "1" : "0.85",
+                    ["--atlas-reveal-delay" as string]: "0ms",
                     opacity: askAtlasSurfaceVisible ? 1 : 0.85,
                     background: askAtlasSurfaceVisible
                       ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
