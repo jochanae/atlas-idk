@@ -3532,11 +3532,20 @@ HARD RULE: Never answer from the context of a different project unless the user 
     } else if (fileSource === "none") {
       fileSourceLines.push("No file source available. Do not emit FILE_READ_REQUEST, FILE_TREE_REQUEST, or FILE_EDIT — they cannot be fulfilled. If the user asks to edit files, tell them to link a GitHub repo or open the Files tab to initialize a local workspace.");
     }
-    // GitHub not connected — posture guidance for git/push requests
+    // GitHub not connected — posture guidance for git/push/create-repo requests
     if (!hasGithub) {
-      fileSourceLines.push(
-        "GitHub not connected. If the user asks to push, commit, create a repo, or do any git operation: state the limitation in one sentence, tell them to connect their GitHub account in the CONNECTIONS tab, then say you will detect the connection automatically and resume — do NOT list setup steps for them to follow. You own the continuation; they own the connection. Never enumerate numbered instructions about token scopes or tab navigation."
-      );
+      if (resolvedGithubToken) {
+        // Token is available but no repo is linked to this project yet.
+        // Atlas CAN create and link a repo by emitting REPO_LINK:{}.
+        fileSourceLines.push(
+          "GitHub is authorized (token connected) but this project has no linked repository yet. If the user asks to push, commit, publish, or create a GitHub repo: you CAN do it right now — emit REPO_LINK:{} on its own line (no arguments needed). The server will create a new private GitHub repo named after this project, push the current workspace files, and link it automatically. Say one sentence confirming you are creating the repo (e.g. 'Creating and linking your GitHub repository now…'), then emit REPO_LINK:{}, then continue your response. Do NOT tell the user to go to GitHub manually."
+        );
+      } else {
+        // No token at all — user needs to connect first.
+        fileSourceLines.push(
+          "GitHub not connected. If the user asks to push, commit, create a repo, or do any git operation: state the limitation in one sentence, tell them to connect their GitHub account in the CONNECTIONS tab, then say you will detect the connection automatically and resume — do NOT list setup steps for them to follow. You own the continuation; they own the connection. Never enumerate numbered instructions about token scopes or tab navigation."
+        );
+      }
     }
 
     // Workspace sync awareness — compare local workspace HEAD to GitHub latest commit
@@ -4187,18 +4196,35 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     const IG_MARKER = "\nIMAGE_GEN:";
     const IG_LOOKAHEAD = IG_MARKER.length + 1;
 
-    const flushSafe = () => {
-      // Advance emitPtr past any complete IMAGE_GEN lines, emitting clean text.
-      while (true) {
-        const markerIdx = streamAccum.indexOf(IG_MARKER, emitPtr);
+    // Protocol token markers to suppress from the SSE stream entirely.
+    // Each is always on its own line — suppress from marker to end of that line.
+    const SUPPRESS_MARKERS = ["\nIMAGE_GEN:", "\nREPO_LINK:"] as const;
+    const SUPPRESS_BOF = ["IMAGE_GEN:", "REPO_LINK:"] as const; // when at start of response
 
-        if (markerIdx === -1) {
-          // No IMAGE_GEN marker ahead — also handle IMAGE_GEN at very start of response
-          if (emitPtr === 0 && streamAccum.startsWith("IMAGE_GEN:")) {
-            // Entire response is an IMAGE_GEN token — suppress and wait
-            const lineEnd = streamAccum.indexOf("\n", "IMAGE_GEN:".length);
-            if (lineEnd !== -1) emitPtr = lineEnd + 1; // skip past it
-            break;
+    const flushSafe = () => {
+      // Advance emitPtr past any complete suppressed token lines, emitting clean text.
+      while (true) {
+        // Find the nearest suppression marker from emitPtr
+        let nearestMarkerIdx = -1;
+        let nearestMarkerLen = 0;
+        for (const marker of SUPPRESS_MARKERS) {
+          const idx = streamAccum.indexOf(marker, emitPtr);
+          if (idx !== -1 && (nearestMarkerIdx === -1 || idx < nearestMarkerIdx)) {
+            nearestMarkerIdx = idx;
+            nearestMarkerLen = marker.length;
+          }
+        }
+
+        if (nearestMarkerIdx === -1) {
+          // No suppression marker ahead — check if response starts with a suppressed token
+          if (emitPtr === 0) {
+            for (const bof of SUPPRESS_BOF) {
+              if (streamAccum.startsWith(bof)) {
+                const lineEnd = streamAccum.indexOf("\n", bof.length);
+                if (lineEnd !== -1) emitPtr = lineEnd + 1;
+                break;
+              }
+            }
           }
           // Safe to emit up to (length - IG_LOOKAHEAD) to avoid splitting a marker
           const safeEnd = Math.max(emitPtr, streamAccum.length - IG_LOOKAHEAD);
@@ -4210,18 +4236,18 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
           break;
         }
 
-        // Emit everything before the IMAGE_GEN marker
-        if (markerIdx > emitPtr) {
-          const beforeMarker = streamAccum.slice(emitPtr, markerIdx);
+        // Emit everything before the marker
+        if (nearestMarkerIdx > emitPtr) {
+          const beforeMarker = streamAccum.slice(emitPtr, nearestMarkerIdx);
           try { res.write(`data: ${JSON.stringify({ type: "token", content: beforeMarker })}\n\n`); } catch { /* client gone */ }
         }
-        emitPtr = markerIdx; // sit at the \n before IMAGE_GEN:
+        emitPtr = nearestMarkerIdx; // sit at the \n before the token
 
-        // Wait for the full IMAGE_GEN line to arrive (closing newline)
-        const lineEnd = streamAccum.indexOf("\n", markerIdx + IG_MARKER.length);
+        // Wait for the full token line to arrive (closing newline)
+        const lineEnd = streamAccum.indexOf("\n", nearestMarkerIdx + nearestMarkerLen);
         if (lineEnd === -1) break; // incomplete — wait for more chunks
 
-        // Skip past the entire IMAGE_GEN line; loop in case there are more
+        // Skip past the entire token line; loop to check for more
         emitPtr = lineEnd + 1;
       }
     };
@@ -4239,10 +4265,9 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         // DECISION_GATE: stop emitting from the gate marker onward
         const gateIdx = streamAccum.indexOf("\nDECISION_GATE:");
         if (gateIdx !== -1) {
-          // Emit only clean text before the gate marker
+          // Emit only clean text before the gate marker, stripping any protocol tokens
           const beforeGate = streamAccum.slice(emitPtr, gateIdx);
-          // Strip any IMAGE_GEN lines from the pre-gate segment too
-          const clean = beforeGate.replace(/\nIMAGE_GEN:[^\n]*/g, "");
+          const clean = beforeGate.replace(/\n(IMAGE_GEN|REPO_LINK):[^\n]*/g, "");
           if (clean) {
             try { res.write(`data: ${JSON.stringify({ type: "token", content: clean })}\n\n`); } catch { /* client gone */ }
           }
@@ -4493,6 +4518,38 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     } catch { /* ignore malformed tokens */ }
     return "";
   }).trim();
+
+  // Extract and strip REPO_LINK tokens — Atlas requests GitHub repo creation+link.
+  // Token format: REPO_LINK:{} — no arguments; server fills in project name + token.
+  const REPO_LINK_RE = /^REPO_LINK:\s*\{[^\n]*\}\s*$/gm;
+  let repoLinkRequested = false;
+  rawContent = rawContent.replace(REPO_LINK_RE, () => {
+    repoLinkRequested = true;
+    writeStep(res, { verb: "Creating", target: "GitHub repository", phase: "build" });
+    return "";
+  }).trim();
+
+  // If Atlas requested a repo link, create + link it now
+  if (repoLinkRequested && resolvedGithubToken && projectId && project?.name) {
+    try {
+      const { bootstrapGitHubRepo } = await import("../lib/githubBootstrap");
+      const bootstrapResult = await bootstrapGitHubRepo({
+        token: resolvedGithubToken,
+        projectId,
+        projectName: project.name,
+      });
+      if (bootstrapResult.ok) {
+        rawContent = (rawContent + `\n\n✅ **Repository created and linked:** [${bootstrapResult.repoName}](${bootstrapResult.htmlUrl})`).trim();
+        // Update repoData so the rest of the response pipeline knows the repo exists
+        repoData = { fullName: bootstrapResult.linkedRepo, defaultBranch: "main" };
+        writeStep(res, { verb: "Linked", target: bootstrapResult.linkedRepo, phase: "done" });
+      } else {
+        rawContent = (rawContent + `\n\n⚠️ **Repo creation failed:** ${bootstrapResult.error}`).trim();
+      }
+    } catch (repoErr) {
+      logger.warn({ err: String(repoErr), projectId }, "REPO_LINK bootstrap threw — non-fatal");
+    }
+  }
 
   // R6: IMAGE_REQUEST_RE auto-inject removed. The LLM emits IMAGE_GEN when it determines
   // image generation is appropriate. Overriding that decision post-hoc second-guesses
