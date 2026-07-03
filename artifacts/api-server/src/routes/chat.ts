@@ -3532,6 +3532,12 @@ HARD RULE: Never answer from the context of a different project unless the user 
     } else if (fileSource === "none") {
       fileSourceLines.push("No file source available. Do not emit FILE_READ_REQUEST, FILE_TREE_REQUEST, or FILE_EDIT — they cannot be fulfilled. If the user asks to edit files, tell them to link a GitHub repo or open the Files tab to initialize a local workspace.");
     }
+    // GitHub not connected — posture guidance for git/push requests
+    if (!hasGithub) {
+      fileSourceLines.push(
+        "GitHub not connected. If the user asks to push, commit, create a repo, or do any git operation: state the limitation in one sentence, tell them to connect their GitHub account in the CONNECTIONS tab, then say you will detect the connection automatically and resume — do NOT list setup steps for them to follow. You own the continuation; they own the connection. Never enumerate numbered instructions about token scopes or tab navigation."
+      );
+    }
 
     // Workspace sync awareness — compare local workspace HEAD to GitHub latest commit
     if (localWsExists && localWsDir && repoData?.fullName && resolvedGithubToken && needsCodeContext) {
@@ -4829,7 +4835,12 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       const jsonMatch = rawPlan.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-        if (parsed.title && Array.isArray(parsed.steps) && (parsed.steps as unknown[]).length >= 2) {
+        // Only surface a plan card when Atlas is actually proposing changes.
+        // Conversational/explanatory responses (estimatedChanges === 0) must not
+        // produce a plan card — it adds noise with no actionable content.
+        const estimatedChanges = Number(parsed.estimatedChanges ?? 0);
+        const hasEditSteps = Array.isArray(parsed.steps) && (parsed.steps as Array<{ stepType?: string }>).some((s) => s.stepType === "edit" || s.stepType === "push");
+        if (parsed.title && Array.isArray(parsed.steps) && (parsed.steps as unknown[]).length >= 2 && (estimatedChanges > 0 || hasEditSteps)) {
           const { type: _t, ...planRest } = parsed as Record<string, unknown>;
           const validAmFields = ["identity", "intent", "intent.purpose", "pages", "components", "data", "data.entities", "logic", "buildState"];
           const rawAmFields = Array.isArray(planRest.amFields) ? planRest.amFields as unknown[] : [];
