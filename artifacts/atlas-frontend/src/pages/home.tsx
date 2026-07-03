@@ -5221,6 +5221,10 @@ export default function Home() {
               pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
             };
             return (
+              <div
+                className="atlas-ambient-float-up"
+                style={{ ["--atlas-reveal-delay" as string]: "450ms" }}
+              >
               <div className="ambient-suggestion-chips-wrap" style={{
                 marginTop: 20,
                 display: "flex",
