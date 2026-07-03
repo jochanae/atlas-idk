@@ -710,10 +710,16 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
               marginTop: 2,
             }}
           >
-            {fileCount} {fileCount === 1 ? "file" : "files"} · {fmtElapsed(elapsedMs)}
-            {run.status === "failed" && run.error ? (
-              <> · <span style={{ color: RECEIPT_TONE.failed.fg }}>{run.error}</span></>
-            ) : null}
+            {run.status === "pushed" && pushSubtitle ? (
+              pushSubtitle
+            ) : (
+              <>
+                {fileCount} {fileCount === 1 ? "file" : "files"} · {fmtElapsed(elapsedMs)}
+                {run.status === "failed" && run.error ? (
+                  <> · <span style={{ color: RECEIPT_TONE.failed.fg }}>{run.error}</span></>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
       </div>
