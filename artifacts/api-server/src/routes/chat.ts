@@ -4171,28 +4171,81 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   try {
     let gateHalted = false;
     let streamAccum = "";
+    // emitPtr tracks how much of streamAccum has already been flushed to SSE.
+    // All controlled emission goes through emitPtr so IMAGE_GEN suppression and
+    // DECISION_GATE halting can co-exist without double-emitting.
+    let emitPtr = 0;
+    // IMAGE_GEN lines are always "\nIMAGE_GEN:{...single-line-json}\n".
+    // Hold back this many chars at the tail to catch partial "\nIMAGE_GEN:" prefixes
+    // that span chunk boundaries before we know if they're a real token line.
+    const IG_MARKER = "\nIMAGE_GEN:";
+    const IG_LOOKAHEAD = IG_MARKER.length + 1;
+
+    const flushSafe = () => {
+      // Advance emitPtr past any complete IMAGE_GEN lines, emitting clean text.
+      while (true) {
+        const markerIdx = streamAccum.indexOf(IG_MARKER, emitPtr);
+
+        if (markerIdx === -1) {
+          // No IMAGE_GEN marker ahead — also handle IMAGE_GEN at very start of response
+          if (emitPtr === 0 && streamAccum.startsWith("IMAGE_GEN:")) {
+            // Entire response is an IMAGE_GEN token — suppress and wait
+            const lineEnd = streamAccum.indexOf("\n", "IMAGE_GEN:".length);
+            if (lineEnd !== -1) emitPtr = lineEnd + 1; // skip past it
+            break;
+          }
+          // Safe to emit up to (length - IG_LOOKAHEAD) to avoid splitting a marker
+          const safeEnd = Math.max(emitPtr, streamAccum.length - IG_LOOKAHEAD);
+          if (safeEnd > emitPtr) {
+            const toEmit = streamAccum.slice(emitPtr, safeEnd);
+            try { res.write(`data: ${JSON.stringify({ type: "token", content: toEmit })}\n\n`); } catch { /* client gone */ }
+            emitPtr = safeEnd;
+          }
+          break;
+        }
+
+        // Emit everything before the IMAGE_GEN marker
+        if (markerIdx > emitPtr) {
+          const beforeMarker = streamAccum.slice(emitPtr, markerIdx);
+          try { res.write(`data: ${JSON.stringify({ type: "token", content: beforeMarker })}\n\n`); } catch { /* client gone */ }
+        }
+        emitPtr = markerIdx; // sit at the \n before IMAGE_GEN:
+
+        // Wait for the full IMAGE_GEN line to arrive (closing newline)
+        const lineEnd = streamAccum.indexOf("\n", markerIdx + IG_MARKER.length);
+        if (lineEnd === -1) break; // incomplete — wait for more chunks
+
+        // Skip past the entire IMAGE_GEN line; loop in case there are more
+        emitPtr = lineEnd + 1;
+      }
+    };
+
     modelResult = await callModel(
       activeModel,
       systemPrompt,
       dispatchMessages,
       allAttachments[0],
-      // Stream tokens — halt mid-stream if a DECISION_GATE marker is detected
+      // Stream tokens — suppress IMAGE_GEN lines; halt at DECISION_GATE
       (chunk: string) => {
-        if (gateHalted) return; // swallow all tokens after gate marker
+        if (gateHalted) return;
         streamAccum += chunk;
+
+        // DECISION_GATE: stop emitting from the gate marker onward
         const gateIdx = streamAccum.indexOf("\nDECISION_GATE:");
         if (gateIdx !== -1) {
-          // Emit only the text strictly before the gate marker
-          const beforeGate = streamAccum.slice(0, gateIdx);
-          const prevLen = streamAccum.length - chunk.length;
-          const toEmit = beforeGate.slice(prevLen);
-          if (toEmit) {
-            try { res.write(`data: ${JSON.stringify({ type: "token", content: toEmit })}\n\n`); } catch { /* client gone */ }
+          // Emit only clean text before the gate marker
+          const beforeGate = streamAccum.slice(emitPtr, gateIdx);
+          // Strip any IMAGE_GEN lines from the pre-gate segment too
+          const clean = beforeGate.replace(/\nIMAGE_GEN:[^\n]*/g, "");
+          if (clean) {
+            try { res.write(`data: ${JSON.stringify({ type: "token", content: clean })}\n\n`); } catch { /* client gone */ }
           }
+          emitPtr = streamAccum.length;
           gateHalted = true;
           return;
         }
-        try { res.write(`data: ${JSON.stringify({ type: "token", content: chunk })}\n\n`); } catch { /* client gone */ }
+
+        flushSafe();
       },
     );
   } catch (modelErr: unknown) {
