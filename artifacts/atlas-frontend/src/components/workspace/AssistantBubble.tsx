@@ -1217,7 +1217,7 @@ function ReadinessGateCard({
     originalMessage?: string;
   };
 }) {
-  const [expanded, setExpanded] = React.useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const warnCount = result.checks.filter(c => c.status === "warn").length;
   const failCount = result.checks.filter(c => c.status === "fail").length;
