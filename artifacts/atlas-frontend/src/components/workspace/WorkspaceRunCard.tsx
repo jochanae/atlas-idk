@@ -124,18 +124,41 @@ function adaptExecutionRun(
   const files = Array.from(pathSet);
   const produced = files.filter(p => PRODUCED_EXT.test(p));
 
-  // Title: prefer the user message that triggered this run, fall back to summary
-  let title = run.summary ?? "Run";
+  // Title derivation — anchor to the assistant message (messageId), then take
+  // the immediately preceding user message. Never reach past completedAt.
+  let title: string;
   if (run.messageId !== null) {
-    const msgIdx = messages.findIndex(m => m.id === run.messageId);
-    if (msgIdx > 0) {
-      for (let j = msgIdx - 1; j >= 0; j--) {
-        if (messages[j].role === "user") {
-          const t = (messages[j].content ?? "").trim();
-          if (t) { title = t; break; }
+    // Find the assistant message this run belongs to
+    const assistantIdx = messages.findIndex(m => m.id === run.messageId);
+    const cutoff = run.completedAt ? new Date(run.completedAt).getTime() : Infinity;
+    let found = "";
+    if (assistantIdx > 0) {
+      // Walk backwards from the assistant message — take the first user message
+      // immediately before it (not beyond it), and only if it predates completedAt.
+      for (let j = assistantIdx - 1; j >= 0; j--) {
+        const msg = messages[j];
+        if (msg.role === "user") {
+          // Reject if this user message was sent after the run completed
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const raw = (msg as any).createdAt;
+          const msgTime =
+            typeof raw === "number" ? raw
+            : typeof raw === "string" ? new Date(raw).getTime()
+            : 0;
+          if (msgTime === 0 || msgTime <= cutoff) {
+            found = (msg.content ?? "").trim();
+          }
+          break; // only the immediately preceding user message
         }
       }
     }
+    title = found || run.summary || "Run";
+  } else {
+    // BUILD_RUN or shell-only run — no associated message; use summary or first step label
+    const firstStep = run.steps[0];
+    title =
+      run.summary ||
+      (firstStep ? `${firstStep.verb}${firstStep.target ? ` ${firstStep.target}` : ""}` : "Build run");
   }
   if (title.length > 140) title = title.slice(0, 137) + "…";
 
