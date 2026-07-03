@@ -2490,7 +2490,20 @@ export function AxiomFlow({
               onClick={(e) => {
                 e.stopPropagation();
                 haptics.tap();
-                setZoom(z => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z * btn.delta)));
+                // Pivot zoom around the viewport center so content doesn't
+                // drift off-screen (transformOrigin is 0,0 + translate(pan)).
+                const rect = containerRef.current?.getBoundingClientRect();
+                const cx = rect ? rect.width / 2 : 0;
+                const cy = rect ? rect.height / 2 : 0;
+                setZoom(z => {
+                  const nz = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z * btn.delta));
+                  if (nz === z) return z;
+                  setPan(p => ({
+                    x: p.x + cx * (1 / nz - 1 / z),
+                    y: p.y + cy * (1 / nz - 1 / z),
+                  }));
+                  return nz;
+                });
               }}
               onMouseDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
