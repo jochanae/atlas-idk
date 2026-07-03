@@ -673,37 +673,92 @@ export function AskAtlasSurface({
       )}
       </div>
 
-      {/* Focus backdrop — subtle dim when composer is focused inside Ask Atlas. Tap to dismiss. */}
-      {!hideComposer && focused && (
+      {/* Focus backdrop — full-viewport dim when composer is focused. Tap to dismiss. */}
+      {!hideComposer && (
         <div
-          onMouseDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
-          onTouchStart={() => { textareaRef.current?.blur(); }}
-          aria-hidden
+          aria-hidden={!focused}
+          onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
           style={{
-            position: "absolute",
+            position: "fixed",
             inset: 0,
-            background: isParchment ? "rgba(15,23,42,0.10)" : "rgba(0,0,0,0.28)",
-            transition: "opacity 200ms ease",
-            zIndex: 4,
-            pointerEvents: "auto",
+            background: isParchment ? "rgba(244,236,216,0.55)" : "rgba(8,8,10,0.55)",
+            backdropFilter: isParchment ? "blur(14px) saturate(115%)" : "blur(6px) saturate(120%)",
+            WebkitBackdropFilter: isParchment ? "blur(14px) saturate(115%)" : "blur(6px) saturate(120%)",
+            opacity: focused ? 1 : 0,
+            pointerEvents: focused ? "auto" : "none",
+            transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+            zIndex: 55,
           }}
         />
       )}
 
-      {/* Composer — transparent. Label above, textarea in middle, action row below. Hidden when home dock acts as composer. */}
+      {/* Composer — transforms into a fixed bottom sheet when focused (matches workspace ChatComposer). */}
       {!hideComposer && <div
-        style={{
-          flexShrink: 0,
-          padding: "12px 14px calc(14px + env(safe-area-inset-bottom, 0px))",
-          background: "transparent",
+        style={focused ? {
+          position: "fixed",
+          left: 0, right: 0, bottom: 0,
+          height: "60vh",
+          zIndex: 60,
+          padding: "18px 16px calc(20px + env(safe-area-inset-bottom, 0px))",
+          background: isParchment ? "#f4ecd8" : "var(--atlas-surface, #0b0b0d)",
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          boxShadow: isParchment
+            ? "0 -24px 60px rgba(74, 53, 30, 0.18), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
+            : "0 -24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,76,0.18)",
           display: "flex",
           flexDirection: "column",
           gap: 8,
+          overflow: "hidden",
+          transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+        } as CSSProperties : {
+          flexShrink: 0,
+          padding: restingCompact
+            ? "2px 12px calc(4px + env(safe-area-inset-bottom, 0px))"
+            : "12px 14px calc(14px + env(safe-area-inset-bottom, 0px))",
+          background: "transparent",
+          display: "flex",
+          flexDirection: "column",
+          gap: restingCompact ? 4 : 8,
           position: "relative",
           zIndex: 5,
+          transition: "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), gap 200ms ease",
         }}
       >
-        {/* Portfolio Thinking · Not Building label */}
+        {/* Grip handle — visible in sheet mode; tap to collapse */}
+        {focused && (
+          <div
+            onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
+            style={{
+              alignSelf: "center", width: 44, height: 4, borderRadius: 999,
+              background: "rgba(201,162,76,0.35)", marginBottom: 6, cursor: "grab", flexShrink: 0,
+            }}
+            aria-label="Collapse composer"
+          />
+        )}
+        {/* Collapse chevron — resting mode only, matches workspace composer */}
+        {!focused && (
+          <button
+            type="button"
+            aria-label={restingCompact ? "Expand composer" : "Collapse composer"}
+            title={restingCompact ? "Expand composer" : "Collapse composer"}
+            onClick={() => setRestingCompact((v) => !v)}
+            style={{
+              position: "absolute", top: 4, right: 8, zIndex: 6,
+              width: 22, height: 22, padding: 0,
+              background: "transparent", border: "none",
+              color: "var(--atlas-muted)", opacity: 0.55, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: restingCompact ? "rotate(180deg)" : "none", transition: "transform 200ms ease" }}>
+              <path d="M3 4.5l3 3 3-3" />
+            </svg>
+          </button>
+        )}
+        {/* Portfolio Thinking · Not Building label — hidden in compact resting mode */}
+        {!restingCompact && (
         <div
           style={{
             display: "flex",
@@ -720,6 +775,7 @@ export function AskAtlasSurface({
         >
           <span>Portfolio Thinking · Not Building</span>
         </div>
+        )}
         <div
           className="atlas-composer-live"
           style={{
@@ -735,7 +791,8 @@ export function AskAtlasSurface({
             padding: "10px 12px",
 
             transition: "border-color 200ms ease, box-shadow 200ms ease",
-            minHeight: 72,
+            minHeight: focused ? 0 : (restingCompact ? 48 : 72),
+            flex: focused ? 1 : "none",
             ...getAuraVars("axiom", isParchment),
           } as CSSProperties}
         >
