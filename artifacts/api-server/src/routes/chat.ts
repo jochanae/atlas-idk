@@ -5647,54 +5647,30 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         const committedFiles: GithubPushResult["files"] = [];
 
         if (!baseSha) {
-          // Empty repo — no branches exist yet. Use Git Data API to create the initial commit.
-          // blobs → tree → commit → create ref (no parent needed)
-          const treeItems: Array<{ path: string; mode: string; type: string; sha: string }> = [];
+          // Empty repo — no branches exist yet.
+          // GitHub's Git Data API (blobs/trees/commits) returns 409 on completely
+          // uninitialized repos. Use the Contents API instead: PUT /contents/{path}
+          // works on empty repos and creates the initial commit automatically.
+          // Each file gets its own commit, but that's fine for an initial bootstrap.
+          const defaultBranch = pushBranch;
           for (const edit of effectiveEdits) {
-            const blobResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/blobs`, {
-              method: "POST",
+            const putBody: Record<string, unknown> = {
+              message: gpt.message,
+              content: Buffer.from(edit.content, "utf-8").toString("base64"),
+              branch: defaultBranch,
+            };
+            const putResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}`, {
+              method: "PUT",
               headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
-              body: JSON.stringify({ content: edit.content, encoding: "utf-8" }),
+              body: JSON.stringify(putBody),
               signal: AbortSignal.timeout(15_000),
             });
-            if (!blobResp.ok) { committedFiles.push({ path: edit.path, error: await blobResp.text() }); continue; }
-            const blob = await blobResp.json() as { sha: string };
-            treeItems.push({ path: edit.path, mode: "100644", type: "blob", sha: blob.sha });
-            committedFiles.push({ path: edit.path });
-          }
-          const treeResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/trees`, {
-            method: "POST",
-            headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
-            body: JSON.stringify({ tree: treeItems }),
-            signal: AbortSignal.timeout(15_000),
-          });
-          if (!treeResp.ok) throw new Error(`Failed to create git tree: ${await treeResp.text()}`);
-          const tree = await treeResp.json() as { sha: string };
-
-          const commitResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/commits`, {
-            method: "POST",
-            headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
-            body: JSON.stringify({ message: gpt.message, tree: tree.sha, parents: [] }),
-            signal: AbortSignal.timeout(15_000),
-          });
-          if (!commitResp.ok) throw new Error(`Failed to create initial commit: ${await commitResp.text()}`);
-          const commit = await commitResp.json() as { sha: string; html_url?: string };
-
-          // Create the default branch ref pointing at the new commit
-          const defaultBranch = pushBranch !== baseBranch ? pushBranch : baseBranch;
-          const refResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/refs`, {
-            method: "POST",
-            headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
-            body: JSON.stringify({ ref: `refs/heads/${defaultBranch}`, sha: commit.sha }),
-            signal: AbortSignal.timeout(8_000),
-          });
-          if (!refResp.ok) {
-            const errText = await refResp.text();
-            if (!errText.includes("already exists")) throw new Error(`Failed to create ref: ${errText}`);
-          }
-          // Annotate each committed file with the commit SHA/URL
-          for (const f of committedFiles) {
-            if (!f.error) { f.commitSha = commit.sha; f.commitUrl = commit.html_url; }
+            if (!putResp.ok) {
+              committedFiles.push({ path: edit.path, error: await putResp.text() });
+            } else {
+              const d = await putResp.json() as { commit?: { sha?: string; html_url?: string } };
+              committedFiles.push({ path: edit.path, commitSha: d.commit?.sha, commitUrl: d.commit?.html_url });
+            }
           }
         } else {
           // Normal path: repo already has commits — create/reuse branch and push via Contents API
