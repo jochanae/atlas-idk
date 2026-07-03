@@ -698,6 +698,8 @@ export function AskAtlasSurface({
           display: "flex",
           flexDirection: "column",
           gap: 8,
+          position: "relative",
+          zIndex: 5,
         }}
       >
         {/* Portfolio Thinking · Not Building label */}
