@@ -686,4 +686,13 @@ async function main() {
   });
 }
 
+process.on("unhandledRejection", (reason, promise) => {
+  logger.fatal({ reason, promise: String(promise) }, "Unhandled promise rejection — this is a bug");
+});
+
+process.on("uncaughtException", (err) => {
+  logger.fatal({ err }, "Uncaught exception — process will exit");
+  process.exit(1);
+});
+
 main();

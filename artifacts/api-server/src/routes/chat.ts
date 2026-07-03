@@ -5952,7 +5952,9 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     });
   }
   if (projectId) {
-    void maybeExtractGenome(projectId);
+    void maybeExtractGenome(projectId).catch((err) => {
+      logger.warn({ err, projectId }, "maybeExtractGenome failed — non-fatal");
+    });
   }
   if (projectId && message && displayContent) {
     void extractAndUpdateApplicationModel({
