@@ -5223,7 +5223,7 @@ export default function Home() {
             return (
               <div
                 className="atlas-ambient-float-up"
-                style={{ ["--atlas-reveal-delay" as string]: "450ms" }}
+                style={{ "--atlas-reveal-delay": "450ms" } as React.CSSProperties}
               >
               <div className="ambient-suggestion-chips-wrap" style={{
                 marginTop: 20,
