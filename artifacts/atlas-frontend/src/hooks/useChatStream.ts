@@ -828,7 +828,6 @@ export function useChatStream(
                   // out for the final message, so the user sees the reveal finish
                   // rather than a sudden jump to the full content.
                   await (pacer?.finish() ?? Promise.resolve());
-                  setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
                   streamingId = null;
                   if (!res) return;
           if (typeof res.content === "string") triggerGithubAutoLink(res.content);
@@ -863,7 +862,7 @@ export function useChatStream(
           const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
           const repoSearchPayload = res.repoSearch ?? null;
           const extractionQueuedFlag = res.extractionQueued ?? false;
-          setMessages((prev) => [...prev, {
+          setMessages((prev) => [...prev.filter((m) => m.id !== placeholderId), {
             ...res,
             id: res.messageId, role: "assistant",
             content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(), intentType: res.intentType,
