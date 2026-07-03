@@ -1067,7 +1067,7 @@ export function FilesPanel({
 
       {filesSubTab === "github" && (
         <div style={{ flex: 1, overflowY: "auto", padding: "10px 10px 14px" }} className="scrollbar-none">
-          {!selectedRepo ? (
+          {!selectedRepo && !filesProject?.linkedRepo ? (
             <div>
               <div style={{ padding: "0 2px 10px", fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.65 }}>
                 Link a repository to this project:
