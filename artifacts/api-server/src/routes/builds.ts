@@ -231,7 +231,7 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
     const stepsResult = await db.execute(sql`
       SELECT id, run_id, verb, target, status, detail, created_at
       FROM execution_run_steps
-      WHERE run_id = ANY(${runIds})
+      WHERE run_id IN ${runIds}
       ORDER BY run_id, created_at ASC
     `);
 
