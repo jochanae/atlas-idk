@@ -3547,10 +3547,19 @@ HARD RULE: Never answer from the context of a different project unless the user 
 
   if (workspaceWasBootstrapped) {
     systemPrompt += `\n\n--- WORKSPACE AUTO-INITIALIZED ---
-A minimal React/Vite + plain CSS workspace was just created for this project because no local workspace existed.
-Scaffold files written: ${BOOTSTRAP_FILES.join(", ")}.
-In your response: open with exactly one sentence telling the user the workspace is initialized and ready (e.g. "I've set up a React/Vite workspace for this project."), then immediately proceed with their request.
-FILE_EDIT blocks will apply directly to the local workspace — no GitHub setup needed.
+This project's local workspace was just auto-initialized with a minimal React/Vite + plain CSS scaffold.
+Scaffold files already written to disk by the system (do NOT re-edit or re-create these unless the user explicitly asks you to change them): ${BOOTSTRAP_FILES.join(", ")}.
+
+In your response follow exactly one of these three paths — pick the one that matches the user's request:
+
+PATH A — User only asked to initialize/scaffold/set up the workspace (no specific file requested):
+  Respond with exactly one sentence: confirm the workspace is ready and list the scaffold files. Stop. Do not emit any FILE_EDIT blocks. The scaffold is complete as-is.
+
+PATH B — User asked to create/edit a specific file (e.g. "create a README.md", "add a component"):
+  One sentence acknowledging the workspace is set up, then immediately emit FILE_EDIT blocks for the specific file(s) requested. Do not touch or re-emit the scaffold files.
+
+PATH C — User asked for something unrelated to files (explanation, question):
+  Answer normally. Do not emit FILE_EDIT blocks.
 --- END WORKSPACE AUTO-INITIALIZED ---`;
   }
 
