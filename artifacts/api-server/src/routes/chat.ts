@@ -4569,7 +4569,11 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
           projectName: project.name,
         });
         if (bootstrapResult.ok) {
-          const repoVerb = bootstrapResult.existingRepoLinked ? "Linked existing repository" : "Repository created and linked";
+          const repoVerb = bootstrapResult.autoScaffolded
+            ? "Linked and scaffolded repository"
+            : bootstrapResult.existingRepoLinked
+              ? "Linked existing repository"
+              : "Repository created and linked";
           rawContent = (rawContent + `\n\n✅ **${repoVerb}:** [${bootstrapResult.repoName}](${bootstrapResult.htmlUrl})`).trim();
           // Update repoData so the rest of the pipeline (GITHUB_PUSH) can execute in this same turn
           repoData = { fullName: bootstrapResult.linkedRepo, defaultBranch: "main" };

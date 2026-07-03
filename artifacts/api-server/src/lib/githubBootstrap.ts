@@ -447,7 +447,7 @@ createRoot(document.getElementById('root')!).render(
 }
 
 export type BootstrapResult =
-  | { ok: true; linkedRepo: string; htmlUrl: string; repoName: string; previewUrl: string; existingRepoLinked?: boolean }
+  | { ok: true; linkedRepo: string; htmlUrl: string; repoName: string; previewUrl: string; existingRepoLinked?: boolean; autoScaffolded?: boolean }
   | { ok: false; error: string; noToken?: boolean };
 
 export async function bootstrapGitHubRepo(opts: {
@@ -470,8 +470,9 @@ export async function bootstrapGitHubRepo(opts: {
 
   // 2. Proactive existence check — avoid a wasted create+422 round-trip.
   //    GET the repo by name first; only create if it doesn't exist.
-  let repoData: { full_name: string; html_url: string };
+  let repoData: { full_name: string; html_url: string; pushed_at: string | null; size: number };
   let existingRepoLinked = false;
+  let existingRepoIsEmpty = false;
 
   const existingCheck = await fetch(
     `${GH_API}/repos/${meData.login}/${repoName}`,
@@ -479,9 +480,12 @@ export async function bootstrapGitHubRepo(opts: {
   );
 
   if (existingCheck.ok) {
-    // Repo already exists under this account — link it, skip scaffold push
-    repoData = await existingCheck.json() as { full_name: string; html_url: string };
+    // Repo already exists under this account — link it.
+    // If it has never been pushed to (pushed_at === null, size === 0) we will
+    // still scaffold it below so the user never needs to tap "Hydrate" manually.
+    repoData = await existingCheck.json() as { full_name: string; html_url: string; pushed_at: string | null; size: number };
     existingRepoLinked = true;
+    existingRepoIsEmpty = !repoData.pushed_at || repoData.size === 0;
   } else {
     // Repo doesn't exist — create it
     const createResp = await fetch(`${GH_API}/user/repos`, {
@@ -508,10 +512,11 @@ export async function bootstrapGitHubRepo(opts: {
   const fullName = repoData.full_name;
 
   // 3. Create blobs for each scaffold file
-  // 3–7. Only scaffold+commit when creating a brand-new repo.
-  // When linking an existing repo we skip these steps entirely — the repo
-  // already has content and we don't want to force-push scaffold files onto it.
-  if (!existingRepoLinked) {
+  // 3–7. Scaffold+commit when creating a brand-new repo OR when linking an
+  // existing repo that has never had any pushes (empty repo). If the existing
+  // repo has content (pushed_at is set, size > 0) we skip scaffolding to
+  // preserve whatever the user already has there.
+  if (!existingRepoLinked || existingRepoIsEmpty) {
     const files = getScaffoldFiles(repoName, {
       projectBrief: opts.projectBrief,
       isCodeProject: opts.isCodeProject,
@@ -578,5 +583,5 @@ export async function bootstrapGitHubRepo(opts: {
     .set({ linkedRepo: fullName, previewUrl: stackblitzUrl })
     .where(eq(projectsTable.id, projectId));
 
-  return { ok: true, linkedRepo: fullName, htmlUrl: repoData.html_url, repoName, previewUrl: stackblitzUrl, existingRepoLinked };
+  return { ok: true, linkedRepo: fullName, htmlUrl: repoData.html_url, repoName, previewUrl: stackblitzUrl, existingRepoLinked, autoScaffolded: existingRepoLinked && existingRepoIsEmpty };
 }
