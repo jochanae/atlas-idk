@@ -5,7 +5,7 @@ import { StepProgress } from "@/components/workspace/StepProgress";
 import { AssistantBubble, type BuildGroupInfo } from "@/components/workspace/AssistantBubble";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
-import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
+// LiveGenerationCard removed (Model A) — WorkspaceRunCard.ActiveCard owns live streaming.
 import { ExecutionJournal, isExecutionStream } from "@/components/workspace/ExecutionJournal";
 import { TimelineRail } from "../TimelineRail";
 import { WriteFileCard } from "@/components/workspace/WriteFileCard";
@@ -678,15 +678,11 @@ export function ChatStream(props: ChatStreamProps) {
                   />
                 </div>
               )}
-              {/* Execution Journal — shows underneath Atlas's prose during active multi-step streams */}
-              {activityStream.active && i === messages.length - 1 && (
-                liveGeneration.shouldShow ? (
-                  <LiveGenerationCard
-                    mode={liveGeneration.mode as never}
-                    steps={liveGeneration.steps as never}
-                    isComplete={false}
-                  />
-                ) : isExecutionStream(activityStream.content) ? (
+              {/* Execution Journal — shows underneath Atlas's prose during active multi-step streams.
+                  Model A: WorkspaceRunCard.ActiveCard owns the live step feed, so we skip
+                  LiveGenerationCard here and only render the non-generation activity views. */}
+              {activityStream.active && i === messages.length - 1 && !liveGeneration.shouldShow && (
+                isExecutionStream(activityStream.content) ? (
                   <ExecutionJournal content={activityStream.content} isStreaming={true} />
                 ) : (
                   <StepProgress mode="stream" content={activityStream.content} lens={wsLens} />
@@ -741,20 +737,26 @@ export function ChatStream(props: ChatStreamProps) {
         </div>
       )}
 
-      {activityStream.active && (messages.length === 0 || messages[messages.length - 1].role === "user") ? (
-        liveGeneration.shouldShow ? (
-          <LiveGenerationCard
-            mode={liveGeneration.mode as never}
-            steps={liveGeneration.steps as never}
-            isComplete={false}
-          />
-        ) : isExecutionStream(activityStream.content) ? (
+      {activityStream.active && (messages.length === 0 || messages[messages.length - 1].role === "user") && !liveGeneration.shouldShow ? (
+        isExecutionStream(activityStream.content) ? (
           <ExecutionJournal content={activityStream.content} isStreaming={true} />
         ) : (
           <StepProgress mode="stream" content={activityStream.content} lens={wsLens} />
         )
       ) : null}
       {thinkingBlock}
+
+      {/* Model A: single run card sits inline with the turn (above chips), not trailing after them.
+          ActiveCard streams live steps in place; on completion it settles into the receipt with
+          Details / Preview / Try to fix — same card, two phases. */}
+      <WorkspaceRunCard
+        projectId={projectId}
+        messages={messages}
+        projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+        chatPending={chatPending}
+        liveStep={liveStep}
+        onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+      />
 
       {showSuggestionChips && onSuggestionTap && (
         <SuggestionChipRail
@@ -765,14 +767,6 @@ export function ChatStream(props: ChatStreamProps) {
         />
       )}
 
-      <WorkspaceRunCard
-        projectId={projectId}
-        messages={messages}
-        projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
-        chatPending={chatPending}
-        liveStep={liveStep}
-        onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
-      />
 
       <div ref={bottomRef} />
 
