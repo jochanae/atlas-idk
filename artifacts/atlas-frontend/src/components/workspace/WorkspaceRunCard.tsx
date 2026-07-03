@@ -105,10 +105,12 @@ function deriveRun(
     const deletes = msg.fileDeletes
       ?? (msg.fileDeletesJson ? (JSON.parse(msg.fileDeletesJson) as Array<{ path: string }>) : []);
     const proposal = msg.writeFileProposal?.path;
+    const push = msg.githubPush;
     const hasWork =
       edits.length > 0 ||
       deletes.length > 0 ||
       !!proposal ||
+      !!push ||
       ERROR_MARKERS.test(msg.content ?? "");
 
     if (!hasWork) continue;
