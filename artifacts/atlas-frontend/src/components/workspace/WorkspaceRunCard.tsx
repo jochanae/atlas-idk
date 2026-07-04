@@ -593,6 +593,12 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   );
   const isActive = !receiptMessage && ((chatPending ?? false) || isStreaming);
 
+  // While the run card owns the screen (active OR settled receipt), collapse the
+  // composer to compact so it doesn't cover the card content on mobile.
+  useReadingDensity("analysis", { active: isActive || !!receiptMessage });
+
+
+
   // Only show the active card when at least one BUILD-type step has arrived.
   // Generic "Analyzing" / conversational turns must NOT show the card —
   // the user asks a question, text streams back, no card needed.
