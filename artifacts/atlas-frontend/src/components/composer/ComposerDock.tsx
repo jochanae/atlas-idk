@@ -69,7 +69,7 @@ export function ComposerDock({
         aria-label={label}
         title={label}
         onPointerDown={(e) => { e.preventDefault(); }}
-        onClick={() => { haptics.tap(); restoreComposer(); }}
+        onClick={handleClick}
         style={{
           position: "fixed",
           right: `calc(${offsetRight}px + env(safe-area-inset-right, 0px))`,
