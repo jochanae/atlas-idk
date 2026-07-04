@@ -70,8 +70,6 @@ export function useAtlasStream(): UseAtlasStreamReturn {
     let streamedText = "";
 
     const pacer = createTextPacer({
-      rateMs: 8,
-      settleMs: 0,
       catchupAt: 300,
       onTick: (released) => {
         callbacks.onToken(released);

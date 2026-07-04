@@ -817,7 +817,7 @@ export function AskAtlasSurface({
             paddingBottom: 2,
           }}
         >
-          <span>Portfolio Thinking · Not Building</span>
+          <span>Portfolio Thinking</span>
         </div>
         )}
         <div

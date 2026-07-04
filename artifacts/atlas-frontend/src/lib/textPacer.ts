@@ -49,12 +49,17 @@ export interface TextPacer {
   released: () => number;
 }
 
-const PUNCT_PAUSE: Record<string, number> = {};
+const PUNCT_PAUSE: Record<string, number> = {
+  ".": 180, "!": 180, "?": 180,
+  ",": 80, ";": 80, ":": 80,
+  "—": 260, "–": 260,
+  "\n": 320,
+};
 
 export function createTextPacer(opts: TextPacerOptions): TextPacer {
-  const baseRate = opts.rateMs ?? 1;
+  const baseRate = opts.rateMs ?? 14;
   const catchupAt = opts.catchupAt ?? 900;
-  const settleMs = opts.settleMs ?? 0;
+  const settleMs = opts.settleMs ?? 140;
 
   let target = "";
   let released = 0;
