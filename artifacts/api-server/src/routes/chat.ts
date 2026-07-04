@@ -5866,14 +5866,13 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   }
   // Emit live "Writing/Patching" steps so the run card shows real file names
   // right before transitioning to the green "Run Complete" receipt state.
-  // Build-handoff turns already emitted per-file above; this covers all other turns.
-  if (!autoApplied) {
-    for (const edit of responseFileEdits) {
-      writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
-    }
-    for (const patch of responseLinePatches) {
-      writeStep(res, { verb: "Patching", target: (patch as { path: string }).path, phase: "build" });
-    }
+  // Emit for ALL turns — including autoApplied (local workspace writes) so the
+  // active build card is visible even when no agentic read/write tools were used.
+  for (const edit of responseFileEdits) {
+    writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
+  }
+  for (const patch of responseLinePatches) {
+    writeStep(res, { verb: "Patching", target: (patch as { path: string }).path, phase: "build" });
   }
   const inputTokenCount = assistantUsage.inputTokens;
   res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);

@@ -597,7 +597,7 @@ export function useChatStream(
             return appendGithubAutoLinkStatus(content, githubAutoLinkStatus);
           };
           pacer = createTextPacer({
-            rateMs: 3,
+            rateMs: 8,
             settleMs: 0,
             catchupAt: 300,
             onTick: (released) => {

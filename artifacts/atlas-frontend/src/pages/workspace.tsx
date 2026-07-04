@@ -5426,7 +5426,7 @@ export default function Workspace() {
     const prev = chatPendingRef.current;
     chatPendingRef.current = chatPending;
     if (prev && !chatPending) {
-      const t = setTimeout(() => invalidateProjectRuns(), 600);
+      const t = setTimeout(() => invalidateProjectRuns(), 1500);
       return () => clearTimeout(t);
     }
     return undefined;
