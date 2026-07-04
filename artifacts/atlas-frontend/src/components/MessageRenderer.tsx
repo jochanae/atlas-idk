@@ -184,22 +184,26 @@ export function MarkdownProse({ content }: { content: string }) {
       style={{
         color: "var(--atlas-fg)",
         maxWidth: "74ch",
-        fontSize: 16,
-        lineHeight: 1.85,
-        letterSpacing: "-0.005em",
+        fontSize: 16.5,
+        lineHeight: 1.75,
+        letterSpacing: "0.015em",
         overflowWrap: "anywhere",
         wordBreak: "break-word",
         minWidth: 0,
+        fontFamily: "var(--app-font-sans)",
+        WebkitFontSmoothing: "antialiased",
+        MozOsxFontSmoothing: "grayscale",
       }}
     >
       <ReactMarkdown
         components={{
           p: ({ children }) => (
             <p
-              className="text-[16px]"
               style={{
                 color: "var(--atlas-fg)",
-                lineHeight: 1.85,
+                fontSize: "inherit",
+                lineHeight: "inherit",
+                letterSpacing: "inherit",
                 marginBottom: "1.25em",
               }}
             >

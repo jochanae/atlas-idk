@@ -2078,20 +2078,9 @@ export function AssistantBubble({
         {!(message.imageB64 || imageGenDataUrl || (message.imageGen?.images?.length ?? 0) > 0) && (
         <div className="atlas-prose" style={{ fontSize: 16.5, lineHeight: 1.75, letterSpacing: "0.015em", color: "var(--atlas-fg)", opacity: 0.94, fontFamily: "var(--app-font-sans)", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" as const }}>
           {message.streaming ? (
-            <span style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
+            <span className="atlas-live-stream-text" style={{ opacity: 0.92, whiteSpace: "pre-wrap" }}>
               {cleanedContent}
-              <span
-                aria-hidden
-                style={{
-                  display: "inline-block",
-                  width: 8,
-                  height: "1em",
-                  background: "currentColor",
-                  marginLeft: 2,
-                  verticalAlign: "text-bottom",
-                  animation: "atlas-cursor-blink 1s step-end infinite",
-                }}
-              />
+              <span className="atlas-cursor" aria-hidden />
             </span>
           ) : (
             <MarkdownProse content={cleanedContent} />

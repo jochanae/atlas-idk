@@ -376,8 +376,10 @@ export function ChatStream(props: ChatStreamProps) {
   useEffect(() => {
     if (liveStep != null) hadLiveStepThisTurnRef.current = true;
   }, [liveStep]);
-  // True while Atlas is actively executing steps this turn (or between steps).
-  const suppressStreamingText = hadLiveStepThisTurnRef.current || liveStep != null;
+  // The conversation text is the primary live surface. Keep it visible even
+  // when step telemetry is present; otherwise replies appear to "flop" into
+  // view only after the stream completes.
+  const suppressStreamingText = false;
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
