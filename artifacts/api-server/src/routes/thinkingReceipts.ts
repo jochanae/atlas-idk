@@ -61,14 +61,14 @@ router.delete("/thinking-receipts/:id", async (req, res): Promise<void> => {
 });
 
 // GET /projects/:id/thinking-receipts
-// Returns receipts captured during the Ask Atlas conversation that created this project.
-// Looks up project.conversation_id, then fetches receipts for that conversation.
+// Returns receipts from (a) the Ask Atlas conversation that created this project
+// and (b) all workspace session turns for this project — unified into one stream.
 router.get("/projects/:id/thinking-receipts", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   const projectId = parseInt(req.params.id, 10);
   if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
 
-  // Resolve the project's source Ask Atlas conversation ID
+  // Resolve the project's source Ask Atlas conversation ID (may be null)
   const projectRow = await db.execute(sql`
     SELECT conversation_id
     FROM projects
@@ -78,19 +78,21 @@ router.get("/projects/:id/thinking-receipts", async (req, res): Promise<void> =>
   const row = (projectRow.rows ?? projectRow)[0] as { conversation_id?: string | null } | undefined;
   const sourceConversationId = row?.conversation_id ?? null;
 
-  if (!sourceConversationId) {
-    res.json([]);
-    return;
-  }
-
+  // Query both Ask Atlas receipts (via projects.conversation_id) and workspace
+  // session receipts (stored as 'ws-<sessionId>' conversation IDs) in one pass.
   const result = await db.execute(sql`
     SELECT id, conversation_id, turn_index, headline, body, category, confidence, is_stable, created_at
     FROM thinking_receipts
     WHERE user_id = ${userId}
-      AND conversation_id = ${sourceConversationId}
       AND dismissed = false
+      AND (
+        ${sourceConversationId ? sql`conversation_id = ${sourceConversationId} OR` : sql``}
+        conversation_id IN (
+          SELECT 'ws-' || id::text FROM sessions WHERE project_id = ${projectId}
+        )
+      )
     ORDER BY created_at ASC
-    LIMIT 20
+    LIMIT 30
   `);
 
   res.json(result.rows ?? result);

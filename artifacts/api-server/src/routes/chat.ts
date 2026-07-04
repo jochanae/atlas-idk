@@ -5,6 +5,7 @@ import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
+import { maybeExtractThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
 import { checkBuildReadiness } from "../lib/buildReadiness";
 import { eq, sql, and, gte, desc, ne, isNotNull, inArray } from "drizzle-orm";
@@ -5881,6 +5882,31 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   const inputTokenCount = assistantUsage.inputTokens;
   res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
   res.end();
+
+  // ── Workspace thinking receipt extraction ─────────────────────────────────
+  // Fire-and-forget Haiku extraction mirrors what nexus.ts does for Ask Atlas.
+  // This extends DECISION/TENSION/INSIGHT cards into workspace turns so Atlas's
+  // reasoning remains visible throughout execution, not just exploration.
+  // Skip: foundation mode, flow mode, very short responses, LOCAL_APPLY_SUCCESS
+  // mechanical turns (those emit no strategic reasoning worth capturing).
+  if (
+    !isFoundationMode &&
+    !isFlowMode &&
+    sessionId &&
+    projectId &&
+    fullText.length > 120 &&
+    !fullText.includes("[LOCAL_APPLY_SUCCESS]") &&
+    !fullText.includes("[BUILD_VERIFY")
+  ) {
+    void maybeExtractThinkingReceipts({
+      userId,
+      conversationId: `ws-${sessionId}`,
+      turnIndex: sessionMessageCount,
+      userMessage: message,
+      atlasResponse: fullText,
+    });
+  }
+
   void recordGenerationRunInBackground({
     projectId,
     userId,

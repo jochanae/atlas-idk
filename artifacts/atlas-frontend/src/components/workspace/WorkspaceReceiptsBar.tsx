@@ -269,26 +269,36 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
     try { return sessionStorage.getItem(storageKey(projectId)) === "1"; } catch { return false; }
   });
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
-  const hasFetched = useRef(false);
+  const knownIdsRef = useRef<Set<number>>(new Set());
 
-  // Fetch once per mount (project won't change within a workspace session)
-  useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-
-    void (async () => {
-      try {
-        const r = await fetch(`/api/projects/${projectId}/thinking-receipts`, {
-          credentials: "include",
-        });
-        if (!r.ok) return;
-        const data = (await r.json()) as Receipt[];
-        if (data.length > 0) setReceipts(data);
-      } catch {
-        // non-critical
-      }
-    })();
+  const fetchReceipts = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/projects/${projectId}/thinking-receipts`, {
+        credentials: "include",
+      });
+      if (!r.ok) return;
+      const data = (await r.json()) as Receipt[];
+      if (data.length === 0) return;
+      // Merge: add any receipts we haven't seen yet
+      const incoming = data.filter(d => !knownIdsRef.current.has(d.id));
+      if (incoming.length === 0) return;
+      incoming.forEach(d => knownIdsRef.current.add(d.id));
+      setReceipts(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const brand = incoming.filter(d => !existingIds.has(d.id));
+        return brand.length > 0 ? [...prev, ...brand] : prev;
+      });
+    } catch {
+      // non-critical
+    }
   }, [projectId]);
+
+  // Fetch on mount, then poll every 25 s to surface receipts from new workspace turns.
+  useEffect(() => {
+    void fetchReceipts();
+    const id = setInterval(() => void fetchReceipts(), 25_000);
+    return () => clearInterval(id);
+  }, [fetchReceipts]);
 
   const dismiss = useCallback(async (id: number) => {
     setDismissedIds(prev => new Set([...prev, id]));
