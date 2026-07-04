@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Sparkles, Terminal, MessageSquare } from "lucide-react";
-
-import { useActiveRunsCount } from "./home/ActiveRuns";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal, MessageSquare } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
 
@@ -30,7 +28,6 @@ type Props = {
   onOpenParking?: () => void;
   onOpenSpecify?: () => void;
   onOpenWrite?: () => void;
-  onOpenComposer?: () => void;
   onOpenShell?: () => void;
   onSelectConversation?: (id: string) => void;
   userLabel?: string | null;
@@ -38,8 +35,7 @@ type Props = {
 
 type ConversationItem = { id: string; title: string; createdAt?: string; messageCount?: number };
 
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenComposer, onOpenShell, onSelectConversation, userLabel }: Props) {
-  const activeRunsCount = useActiveRunsCount();
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, onSelectConversation, userLabel }: Props) {
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [conversationsExpanded, setConversationsExpanded] = useState(true);
@@ -451,7 +447,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           )}
 
           {/* TOOLS — collapsed by default */}
-          {(onOpenSpecify || onOpenWrite || onOpenComposer) && (
+          {(onOpenSpecify || onOpenWrite) && (
             <>
               <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
               <CollapsibleHeader
@@ -462,15 +458,6 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               />
               {toolsExpanded && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 4 }}>
-                  {onOpenComposer && (
-                    <NavRow
-                      icon={<Sparkles size={14} strokeWidth={1.6} />}
-                      label="Atlas Composer"
-                      sublabel={activeRunsCount > 0 ? `${activeRunsCount} running` : undefined}
-                      badge={activeRunsCount}
-                      onClick={() => { onOpenComposer(); onClose(); }}
-                    />
-                  )}
                   {onOpenShell && (
                     <NavRow icon={<Terminal size={14} strokeWidth={1.6} />} label="Shell" onClick={() => { onOpenShell(); onClose(); }} />
                   )}

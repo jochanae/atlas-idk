@@ -11,7 +11,6 @@ import { useListProjects } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
-import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
 import { ShellLogSheet } from "../components/ShellLogSheet";
 import { ParkingBadgeIcon } from "@/components/ParkingBadgeIcon";
 import { TimelineRail } from "../components/TimelineRail";
@@ -1832,7 +1831,6 @@ export default function Home() {
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
-  const [showComposerSheet, setShowComposerSheet] = useState(false);
   const [showShellSheet, setShowShellSheet] = useState(false);
   useEffect(() => {
     const open = () => setShowShellSheet(true);
@@ -5634,16 +5632,9 @@ export default function Home() {
           const target = homeFocus ?? committed[0]?.id ?? (projects ?? [])[0]?.id ?? null;
           if (target != null) setWriteOverlayProjectId(target);
         }}
-        onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
         onOpenShell={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-shell")); }}
         onSelectConversation={(id) => { setShowDrawer(false); void handleSwitchConversation(id); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
-      />
-
-      <AtlasComposerSheet
-        open={showComposerSheet}
-        onClose={() => setShowComposerSheet(false)}
-        projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name }))}
       />
 
       <ShellLogSheet
