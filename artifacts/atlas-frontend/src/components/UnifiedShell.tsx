@@ -1517,6 +1517,39 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
             >×</button>
           </div>
 
+          {/* Two-tab switch: Readiness (quantitative) · Pulse (Atlas assessment) */}
+          <div style={{ display: "flex", gap: 4, padding: "8px 12px 0", borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.08)" }}>
+            {(["readiness", "pulse"] as const).map((t) => {
+              const active = statusTab === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setStatusTab(t)}
+                  style={{
+                    flex: 1,
+                    padding: "8px 10px",
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: `2px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
+                    color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    marginBottom: -1,
+                    transition: "color 160ms ease, border-color 160ms ease",
+                  }}
+                >
+                  {t === "readiness" ? "Readiness" : "Pulse"}
+                </button>
+              );
+            })}
+          </div>
+
+          {statusTab === "readiness" && (<>
           {isAppProject ? (
             <div style={{ padding: "10px 14px 12px", display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", marginRight: 2 }}>Type</span>
@@ -1619,6 +1652,19 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
               </div>
             )}
           </div>
+          </>)}
+
+          {statusTab === "pulse" && (
+            <PulseTabPanel
+              projectId={projectId}
+              projectName={proj?.name ?? null}
+              readinessScore={canonicalScore}
+              decisionCount={decisionsCount}
+              hasRepo={repoLinked}
+              status={(ps.project as any)?.status ?? null}
+              onDone={() => setOpen(false)}
+            />
+          )}
 
           <button
             type="button"
