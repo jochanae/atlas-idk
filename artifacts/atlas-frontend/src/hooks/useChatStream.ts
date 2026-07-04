@@ -827,6 +827,10 @@ export function useChatStream(
                   // Drain any remaining buffered text BEFORE swapping the placeholder
                   // out for the final message, so the user sees the reveal finish
                   // rather than a sudden jump to the full content.
+                  if (typeof res?.content === "string" && res.content !== streamedText) {
+                    streamedText = res.content;
+                    pacer?.setTarget(res.content);
+                  }
                   await (pacer?.finish() ?? Promise.resolve());
                   streamingId = null;
                   if (!res) return;
