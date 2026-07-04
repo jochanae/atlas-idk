@@ -447,13 +447,22 @@ export function AskAtlasSurface({
                       style={{ marginTop: 0, marginBottom: displayContent ? 10 : 0 }}
                     />
                   )}
-                  <AskAtlasRenderer
-                    content={displayContent}
-                    projects={projects}
-                    onNavigate={(id) => void handleProjectOpen(id)}
-                    isParchment={isParchment}
-                    onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
-                  />
+                  {msg.role === "assistant" && msg.streaming ? (
+                    <span style={{ whiteSpace: "pre-wrap", opacity: 0.9 }}>
+                      {displayContent}
+                      <span className="atlas-cursor" aria-hidden />
+                    </span>
+                  ) : (
+                    <AskAtlasRenderer
+                      content={displayContent}
+                      projects={projects}
+                      onNavigate={(id) => void handleProjectOpen(id)}
+                      isParchment={isParchment}
+                      onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
+                    />
+                  )}
+
+
 
                 </div>
                 {tokenTarget && (
