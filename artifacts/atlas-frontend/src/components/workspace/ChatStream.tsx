@@ -379,6 +379,28 @@ export function ChatStream(props: ChatStreamProps) {
   }, [messages]);
   const suppressStreamingText = !!liveStep || (chatPending && inBuildChain);
 
+  // Inline run-card anchor. The run card should sit with the turn that produced
+  // it, not float below all messages. Rules:
+  //  - If a settled run exists and its associated assistant message is in view,
+  //    inject the card BEFORE that message (so order is: user → CARD → summary).
+  //  - Once backend splits the turn into intent + summary (execution-narrative
+  //    handoff), the run's messageId will point to the INTENT message and this
+  //    same anchor renders CARD between intent and summary.
+  //  - During active runs (chatPending/streaming) we fall back to the trailing
+  //    card — it's the live surface and there's no settled messageId yet.
+  const runAnchorIdx = useMemo(() => {
+    if (!execLatestRun?.messageId) return -1;
+    if (chatPending) return -1; // live: trailing card owns the surface
+    const idx = messages.findIndex(m => m.id === execLatestRun.messageId && m.role === "assistant");
+    if (idx === -1) return -1;
+    // Only anchor if this is the tail assistant turn — older runs already
+    // "belong" to their turn via scroll position; injecting mid-history is noisy.
+    const lastAssistantIdx = messages.reduce((a, m, i) => m.role === "assistant" ? i : a, -1);
+    if (idx !== lastAssistantIdx) return -1;
+    return idx;
+  }, [execLatestRun?.messageId, chatPending, messages]);
+
+
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
   // Intermediate rounds get suppressed; the final round shows a summary pill.
