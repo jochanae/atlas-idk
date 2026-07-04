@@ -263,7 +263,7 @@ export function MarkdownProse({ content }: { content: string }) {
             <ol className="ml-4 list-decimal" style={{ marginBottom: "1em", display: "flex", flexDirection: "column", gap: "0.5em" }}>{children}</ol>
           ),
           li: ({ children }) => (
-            <li className="text-[16px]" style={{ color: "var(--atlas-fg)", lineHeight: 1.8 }}>
+            <li style={{ color: "var(--atlas-fg)", fontSize: "inherit", lineHeight: "inherit", letterSpacing: "inherit" }}>
               {renderMarkdownChildren(children)}
             </li>
           ),
