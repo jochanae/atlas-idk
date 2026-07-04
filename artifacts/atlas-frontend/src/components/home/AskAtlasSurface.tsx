@@ -23,6 +23,7 @@ import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { type LiveStep } from "@/components/workspace/StepProgress";
 import SketchReveal from "@/components/chat/SketchReveal";
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
+import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 import { ParkSheet } from "@/components/ParkSheet";
 
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
