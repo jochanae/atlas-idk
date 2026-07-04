@@ -86,7 +86,7 @@ function adaptExecutionRun(
         if (messages[k].role === "user") userAfter++;
         else if (messages[k].role === "assistant") assistantAfter++;
       }
-      if (userAfter >= 2 || (userAfter >= 1 && assistantAfter >= 1)) return null;
+      if (userAfter >= 1) return null;
     }
   }
 
