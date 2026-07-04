@@ -8990,7 +8990,7 @@ export default function Workspace() {
         onClose={() => setShowHistorySheet(false)}
       />
 
-      <DeepDiveSheet
+      <ComposerDeepDive
         open={showDeepDive}
         onClose={() => setShowDeepDive(false)}
         initialContext={deepDiveContext}
