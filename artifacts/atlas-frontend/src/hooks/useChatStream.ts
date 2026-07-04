@@ -613,8 +613,6 @@ export function useChatStream(
             streamedText = "";
             tokenLineBuffer = "";
             pacer = createTextPacer({
-              rateMs: 8,
-              settleMs: 0,
               catchupAt: 300,
               onTick: (released) => {
                 setMessages((prev) =>
