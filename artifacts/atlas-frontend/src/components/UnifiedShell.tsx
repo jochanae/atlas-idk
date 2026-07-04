@@ -1942,24 +1942,28 @@ function ShellPlayButton({ visible }: { visible: boolean }) {
       aria-label={expanded ? "Launch preview (long-press to hide tabs)" : "Launch preview (long-press to show tabs)"}
       aria-expanded={expanded}
       style={{
+        // Glass pill enclosure — always visible, feels premium & intentional.
         background: active
-          ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
-          : hover
-          ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
-          : "transparent",
-        border: `1px solid ${hover || active ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "transparent"}`,
-        borderRadius: 8,
-        padding: "5px 6px",
+          ? "color-mix(in oklab, var(--atlas-gold) 20%, color-mix(in oklab, var(--atlas-surface) 70%, transparent))"
+          : "color-mix(in oklab, var(--atlas-surface) 55%, transparent)",
+        WebkitBackdropFilter: "blur(10px) saturate(1.1)",
+        backdropFilter: "blur(10px) saturate(1.1)",
+        border: `1px solid color-mix(in oklab, var(--atlas-gold) ${active ? 55 : hover ? 45 : 32}%, transparent)`,
+        borderRadius: 999,
+        padding: "5px 10px",
         cursor: "pointer",
-        color: hover || active ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 70%, var(--atlas-muted))",
-        opacity: hover || active ? 1 : 0.9,
+        color: "var(--atlas-gold)",
+        opacity: 1,
         lineHeight: 0,
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease",
+        transition: "background 160ms ease, border-color 160ms ease, box-shadow 200ms ease, transform 120ms ease",
         WebkitTapHighlightColor: "transparent",
-        boxShadow: hover || active ? "0 0 12px rgba(201,162,76,0.25)" : "none",
+        boxShadow: active
+          ? "0 0 14px color-mix(in oklab, var(--atlas-gold) 40%, transparent), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 25%, transparent)"
+          : `0 0 ${hover ? 12 : 8}px color-mix(in oklab, var(--atlas-gold) ${hover ? 30 : 18}%, transparent), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 18%, transparent)`,
+        transform: active ? "scale(0.96)" : "scale(1)",
         touchAction: "manipulation",
         flexShrink: 0,
       }}
@@ -1969,10 +1973,11 @@ function ShellPlayButton({ visible }: { visible: boolean }) {
           display: "inline-flex",
           transition: "transform 200ms cubic-bezier(.32,.72,0,1)",
           transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+          filter: "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-gold) 45%, transparent))",
         }}
       >
         {/* Play (filled) — matches Lucide Play size/stroke used in the subheader */}
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <polygon points="6 3 20 12 6 21 6 3" />
         </svg>
       </span>

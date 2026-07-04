@@ -923,25 +923,28 @@ export function ChatStream(props: ChatStreamProps) {
           aria-label="Scroll to latest"
           style={{
             position: "absolute",
-            bottom: 10,
-            right: 12,
-            width: 32,
-            height: 32,
+            bottom: 14,
+            right: 14,
+            width: 34,
+            height: 34,
             borderRadius: "50%",
-            background: "var(--atlas-surface)",
-            border: "1px solid var(--atlas-gold)",
+            background: "color-mix(in oklab, var(--atlas-surface) 55%, transparent)",
+            WebkitBackdropFilter: "blur(12px) saturate(1.1)",
+            backdropFilter: "blur(12px) saturate(1.1)",
+            border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
             color: "var(--atlas-gold)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+            boxShadow: "0 4px 18px rgba(0,0,0,0.25), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 18%, transparent), 0 0 10px color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
             zIndex: 50,
             pointerEvents: "auto",
+            transition: "background 160ms ease, border-color 160ms ease, transform 120ms ease",
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 3v10M4 9l4 4 4-4"/>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3.5v9M4.5 9L8 12.5 11.5 9"/>
           </svg>
         </button>
       )}
