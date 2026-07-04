@@ -870,19 +870,22 @@ export function ChatStream(props: ChatStreamProps) {
       ) : null}
       {thinkingBlock}
 
-      {/* Model A: single run card sits inline with the turn (above chips), not trailing after them.
-          ActiveCard streams live steps in place; on completion it settles into the receipt with
-          Details / Preview / Try to fix — same card, two phases. */}
-      <WorkspaceRunCard
-        projectId={projectId}
-        messages={messages}
-        projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
-        chatPending={chatPending}
-        liveStep={liveStep}
-        suppressGitHubReceipt
-        executionRun={execLatestRun}
-        onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
-      />
+      {/* Trailing run card. Owns the LIVE surface (chatPending/streaming) and
+          is the fallback receipt slot. When runAnchorIdx >= 0 the card renders
+          inline with its turn (see loop above) and this trailing instance is
+          suppressed so the receipt doesn't double-render. */}
+      {runAnchorIdx === -1 && (
+        <WorkspaceRunCard
+          projectId={projectId}
+          messages={messages}
+          projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+          chatPending={chatPending}
+          liveStep={liveStep}
+          suppressGitHubReceipt
+          executionRun={execLatestRun}
+          onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+        />
+      )}
 
       {showSuggestionChips && onSuggestionTap && (
         <SuggestionChipRail
