@@ -703,8 +703,18 @@ export function AskAtlasSurface({
       )}
       </div>
 
+      {/* Floating dock orb — only when the user has collapsed the composer to `docked`.
+          Ask Atlas post-first-message only; ambient/entry state is unaffected. */}
+      {!hideComposer && restingDocked && (
+        <ComposerDock
+          forceVisible
+          pending={isStreaming}
+          onRestore={() => setRestingState("full")}
+        />
+      )}
+
       {/* Focus backdrop — full-viewport dim when composer is focused. Tap to dismiss. */}
-      {!hideComposer && (
+      {!hideComposer && !restingDocked && (
         <div
           aria-hidden={!focused}
           onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
@@ -723,7 +733,7 @@ export function AskAtlasSurface({
       )}
 
       {/* Composer — transforms into a fixed bottom sheet when focused (matches workspace ChatComposer). */}
-      {!hideComposer && <div
+      {!hideComposer && !restingDocked && <div
         style={focused ? {
           position: "fixed",
           left: 0, right: 0, bottom: 0,
