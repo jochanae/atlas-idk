@@ -7,6 +7,7 @@ import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+import { ComposerDock } from "@/components/composer/ComposerDock";
 import { SessionSummaryPill } from "@/components/workspace/SessionSummaryPill";
 import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/composerAura";
 import { useThemeMode } from "@/lib/theme";
@@ -363,13 +364,16 @@ export function ChatComposer(props: ChatComposerProps) {
   const setUserComposerPreference = useShellStore((s) => s.setUserComposerPreference);
   // Compact mode applies only when the input isn't actively expanded as a sheet.
   const isCompact = composerVisibility === 'compact' && !sheetVisible;
+  const isDocked = composerVisibility === 'docked' && !sheetVisible;
   const isParchment = useThemeMode() === "parchment";
 
   return (
 
     <>
+      {/* Floating dock orb — self-gates on composerVisibility === 'docked'. */}
+      <ComposerDock pending={chatPending} />
       {/* Dimmed backdrop — tap to collapse the sheet. */}
-      {composerActive && (
+      {composerActive && !isDocked && (
         <div
           aria-hidden={!sheetVisible}
           onPointerDown={(e) => {
@@ -391,8 +395,8 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
         />
       )}
-      {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
-      {composerActive && (() => {
+      {/* Input — hidden when Terminal tab is active (terminal has its own input row) or when docked. */}
+      {composerActive && !isDocked && (() => {
         const wsLensContext: Record<WorkspaceLens, AuraContext> = {
           build:    "build",
           flow:     "think",
@@ -431,8 +435,8 @@ export function ChatComposer(props: ChatComposerProps) {
         {!sheetVisible && (
           <button
             type="button"
-            aria-label={isCompact ? "Expand composer" : "Collapse composer"}
-            title={isCompact ? "Expand composer" : "Collapse composer"}
+            aria-label={isCompact ? "Dock composer" : "Collapse composer"}
+            title={isCompact ? "Tap to dock — collapse to floating A" : "Collapse composer"}
             onClick={() => { haptics.tap(); toggleComposerCollapsed(); }}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 4,

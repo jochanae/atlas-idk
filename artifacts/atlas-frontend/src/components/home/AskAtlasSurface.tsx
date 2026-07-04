@@ -17,6 +17,7 @@ import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { AskAtlasRenderer } from "./AskAtlasRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+import { ComposerDock } from "@/components/composer/ComposerDock";
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { type LiveStep } from "@/components/workspace/StepProgress";
@@ -247,7 +248,11 @@ export function AskAtlasSurface({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [, setLocation] = useLocation();
   const [focused, setFocused] = useState(false);
-  const [restingCompact, setRestingCompact] = useState(false);
+  // Progressive collapse: full → compact → docked (post-first-message only).
+  // Ambient/entry state (no messages yet) is locked to full ↔ compact.
+  const [restingState, setRestingState] = useState<"full" | "compact" | "docked">("full");
+  const restingCompact = restingState === "compact";
+  const restingDocked = restingState === "docked";
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
@@ -699,8 +704,18 @@ export function AskAtlasSurface({
       )}
       </div>
 
+      {/* Floating dock orb — only when the user has collapsed the composer to `docked`.
+          Ask Atlas post-first-message only; ambient/entry state is unaffected. */}
+      {!hideComposer && restingDocked && (
+        <ComposerDock
+          forceVisible
+          pending={isStreaming}
+          onRestore={() => setRestingState("full")}
+        />
+      )}
+
       {/* Focus backdrop — full-viewport dim when composer is focused. Tap to dismiss. */}
-      {!hideComposer && (
+      {!hideComposer && !restingDocked && (
         <div
           aria-hidden={!focused}
           onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
@@ -719,7 +734,7 @@ export function AskAtlasSurface({
       )}
 
       {/* Composer — transforms into a fixed bottom sheet when focused (matches workspace ChatComposer). */}
-      {!hideComposer && <div
+      {!hideComposer && !restingDocked && <div
         style={focused ? {
           position: "fixed",
           left: 0, right: 0, bottom: 0,
@@ -766,9 +781,15 @@ export function AskAtlasSurface({
         {!focused && (
           <button
             type="button"
-            aria-label={restingCompact ? "Expand composer" : "Collapse composer"}
-            title={restingCompact ? "Expand composer" : "Collapse composer"}
-            onClick={() => setRestingCompact((v) => !v)}
+            aria-label={restingCompact ? "Dock composer" : "Collapse composer"}
+            title={restingCompact ? "Tap to dock — collapse to floating A" : "Collapse composer"}
+            onClick={() => setRestingState((s) => {
+              // Cycle: full → compact → docked → full.
+              // Docked only reachable when a conversation exists (post-first-message).
+              if (s === "full") return "compact";
+              if (s === "compact") return messages.length > 0 ? "docked" : "full";
+              return "full";
+            })}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 6,
               width: 22, height: 22, padding: 0,

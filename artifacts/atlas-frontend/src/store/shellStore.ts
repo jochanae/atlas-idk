@@ -43,8 +43,12 @@ export interface ActiveThread {
 // Composer visibility (see mem://design/composer-modes and
 // hooks/useComposerVisibility.ts). Stage artifacts and reading-density
 // hints register claims; the highest-priority claim wins:
-//   hidden > compact > full.
-export type ComposerVisibility = 'full' | 'compact' | 'hidden';
+//   hidden > docked > compact > full.
+//
+// `docked` is a user-only preference — the composer collapses to a
+// floating "A" orb, freeing the whole canvas. Claims never produce
+// `docked`; only the user does (via the composer chevron).
+export type ComposerVisibility = 'full' | 'compact' | 'docked' | 'hidden';
 export interface ComposerClaim {
   source: 'stage' | 'reading';
   kind: string;
@@ -156,7 +160,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
       const v = typeof sessionStorage !== 'undefined'
         ? sessionStorage.getItem('atlas-composer-pref')
         : null;
-      return v === 'compact' || v === 'full' ? v : null;
+      return v === 'compact' || v === 'full' || v === 'docked' ? v : null;
     } catch { return null; }
   })(),
   setUserComposerPreference: (pref) =>
@@ -172,9 +176,14 @@ export const useShellStore = create<ShellStore>((set, get) => ({
         composerVisibility: resolveVisibility(state.composerClaims, pref),
       };
     }),
+  // Progressive collapse cycle: full → compact → docked → full.
   toggleComposerCollapsed: () =>
     set((state) => {
-      const next: ComposerVisibility = state.composerVisibility === 'compact' ? 'full' : 'compact';
+      const current = state.userComposerPreference ?? (state.composerVisibility === 'compact' ? 'compact' : 'full');
+      const next: ComposerVisibility =
+        current === 'full' ? 'compact'
+        : current === 'compact' ? 'docked'
+        : 'full';
       try {
         if (typeof sessionStorage !== 'undefined') {
           sessionStorage.setItem('atlas-composer-pref', next);
