@@ -493,6 +493,39 @@ export function ChatStream(props: ChatStreamProps) {
     return { buildGroupMap: bgMap, suppressedLedgerSet: supLedger };
   }, [messages]);
 
+  // Precompute per-render values that were previously being derived inside messages.map,
+  // which caused O(n²) work on every render (once per row × two scans of the full array).
+  // Also memoize array transforms passed to child components so their memoization holds.
+  const lastAssistantIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return i;
+    }
+    return -1;
+  }, [messages]);
+
+  // priorUserMessage[i] = content of the closest user message with index < i.
+  const priorUserMessageByIndex = useMemo(() => {
+    const out: (string | undefined)[] = new Array(messages.length);
+    let last: string | undefined;
+    for (let i = 0; i < messages.length; i++) {
+      out[i] = last;
+      if (messages[i].role === "user") last = messages[i].content;
+    }
+    return out;
+  }, [messages]);
+
+  const historyBoundary = historyMsgCountRef.current ?? 0;
+
+  const timelineRailMessages = useMemo(
+    () => messages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      createdAt: m.sentAt,
+      hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0),
+      text: m.content,
+    })),
+    [messages]
+  );
+
   // ---- Inline activity interleaving -----------------------------------------
   // Assign each event to the index of the message AFTER which it should render
   // (based on timestamp). Events newer than the last message go at the tail.
