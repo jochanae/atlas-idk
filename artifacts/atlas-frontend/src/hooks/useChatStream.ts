@@ -15,7 +15,7 @@ import type { Plan } from "@/lib/plan";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
-import { createTextPacer, type TextPacer } from "@/lib/textPacer";
+import { type TextPacer } from "@/lib/textPacer";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
 type PriorMessage = Message;
@@ -596,17 +596,6 @@ export function useChatStream(
             const { content } = stripWriteFileSignal(noGh);
             return appendGithubAutoLinkStatus(content, githubAutoLinkStatus);
           };
-          // Pacer: decouples network token bursts from the visible reveal.
-          // See src/lib/textPacer.ts + mem://design/conversational-flow.
-          pacer = createTextPacer({
-            onTick: (released) => {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === placeholderId ? { ...m, content: renderFrom(released) } : m
-                )
-              );
-            },
-          });
           const triggerGithubAutoLink = (content: string) => {
             if (githubAutoLinkPromise) return;
             const { found } = stripGithubAutoLinkToolCall(content);
@@ -628,7 +617,7 @@ export function useChatStream(
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === placeholderId
-                    ? { ...m, content: renderFrom(streamedText.slice(0, pacer?.released() ?? 0)) }
+                    ? { ...m, content: renderFrom(streamedText) }
                     : m
                 )
               );
@@ -709,10 +698,13 @@ export function useChatStream(
                   const visibleChunk = safe.replace(TOKEN_LINE_RE, "").replace(/\n{3,}/g, "\n\n");
                   streamedText += visibleChunk;
                   triggerGithubAutoLink(streamedText);
-                  // Feed the pacer instead of writing to React state directly.
-                  // The pacer's rAF loop will release chars at human reading cadence
-                  // and call setMessages at most once per frame.
-                  if (visibleChunk) pacer?.push(visibleChunk);
+                  if (visibleChunk) {
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === placeholderId ? { ...m, content: renderFrom(streamedText) } : m
+                      )
+                    );
+                  }
                 } else if (evtName === "narration") {
                   // type-embedded: {"type":"narration","content":"text"}
                   const text = typeEmbedded
@@ -829,9 +821,7 @@ export function useChatStream(
                   // rather than a sudden jump to the full content.
                   if (typeof res?.content === "string" && res.content !== streamedText) {
                     streamedText = res.content;
-                    pacer?.setTarget(res.content);
                   }
-                  await (pacer?.finish() ?? Promise.resolve());
                   streamingId = null;
                   if (!res) return;
           if (typeof res.content === "string") triggerGithubAutoLink(res.content);
