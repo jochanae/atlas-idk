@@ -2805,6 +2805,55 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
   logger.info({ projectId, userId, hasProjectId: !!projectId, hasUserId: !!userId }, "chat terminal debug");
 
+  // ── EARLY PARALLEL QUERIES ────────────────────────────────────────────────
+  // Fire all DB queries that only need projectId/userId (not project metadata).
+  // These overlap with Batch 1 and the repo tree fetch, saving 300–500 ms/request.
+  const _cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const _earlyBatch2 = (!isFoundationMode && projectId) ? Promise.all([
+    db.select({ errorMessage: atlasErrorLogsTable.errorMessage, route: atlasErrorLogsTable.route, timestamp: atlasErrorLogsTable.timestamp })
+      .from(atlasErrorLogsTable)
+      .where(and(eq(atlasErrorLogsTable.projectId, String(projectId)), gte(atlasErrorLogsTable.createdAt, _cutoff)))
+      .orderBy(desc(atlasErrorLogsTable.createdAt)).limit(5)
+      .catch(() => [] as Array<{ errorMessage: string; route: string; timestamp: Date }>),
+    db.select({ fileCount: atlasSelfMapTable.fileCount }).from(atlasSelfMapTable)
+      .orderBy(desc(atlasSelfMapTable.createdAt)).limit(1)
+      .catch(() => [] as Array<{ fileCount: number }>),
+    userId
+      ? db.select({ id: projectsTable.id, name: projectsTable.name, status: projectsTable.status, description: projectsTable.description, memory: projectsTable.memory })
+          .from(projectsTable).where(and(eq(projectsTable.userId, userId), ne(projectsTable.id, projectId)))
+          .orderBy(desc(projectsTable.updatedAt)).limit(8)
+          .catch(() => [] as Array<{ id: number; name: string; status: string | null; description: string | null; memory: string | null }>)
+      : Promise.resolve([] as Array<{ id: number; name: string; status: string | null; description: string | null; memory: string | null }>),
+    db.select({ title: entriesTable.title, summary: entriesTable.summary, createdAt: entriesTable.createdAt })
+      .from(entriesTable).where(and(eq(entriesTable.projectId, projectId), eq(entriesTable.status, "committed")))
+      .orderBy(desc(entriesTable.createdAt)).limit(25)
+      .catch(() => [] as Array<{ title: string; summary: string | null; createdAt: Date }>),
+    db.select({ title: entriesTable.title, enrichmentJson: entriesTable.enrichmentJson, createdAt: entriesTable.createdAt })
+      .from(entriesTable).where(and(eq(entriesTable.projectId, projectId), eq(entriesTable.status, "parked")))
+      .orderBy(desc(entriesTable.createdAt)).limit(12)
+      .catch(() => [] as Array<{ title: string; enrichmentJson: string | null; createdAt: Date }>),
+    (projectId && userId)
+      ? db.execute(sql`SELECT headline, body, category, confidence FROM thinking_receipts WHERE user_id = ${userId} AND dismissed = false AND (conversation_id IN (SELECT 'ws-' || id::text FROM sessions WHERE project_id = ${projectId}) OR conversation_id = (SELECT conversation_id FROM projects WHERE id = ${projectId} AND user_id = ${userId} LIMIT 1)) ORDER BY confidence DESC, created_at DESC LIMIT 10`)
+          .then(r => (r.rows ?? r) as Array<{ headline: string; body: string; category: string; confidence: number }>)
+          .catch(() => [] as Array<{ headline: string; body: string; category: string; confidence: number }>)
+      : Promise.resolve([] as Array<{ headline: string; body: string; category: string; confidence: number }>),
+  ]) : null;
+
+  const _earlyBatch3 = (!isFoundationMode && projectId) ? Promise.all([
+    db.select({ identity: applicationModelsTable.identity, intent: applicationModelsTable.intent, buildState: applicationModelsTable.buildState })
+      .from(applicationModelsTable).where(eq(applicationModelsTable.projectId, projectId)).limit(1),
+    db.select({ creativePrinciples: projectDnaTable.creativePrinciples, experienceIntent: projectDnaTable.experienceIntent, visualSketches: projectDnaTable.visualSketches, status: projectDnaTable.status })
+      .from(projectDnaTable).where(eq(projectDnaTable.projectId, projectId)).limit(1),
+    db.select({ body: designPlansTable.body, version: designPlansTable.version, committedAt: designPlansTable.committedAt })
+      .from(designPlansTable).where(and(eq(designPlansTable.projectId, projectId), eq(designPlansTable.status, "committed")))
+      .orderBy(desc(designPlansTable.version)).limit(1)
+      .catch(() => [] as Array<{ body: unknown; version: number; committedAt: Date | null }>),
+    db.select({ status: designPlansTable.status })
+      .from(designPlansTable).where(eq(designPlansTable.projectId, projectId))
+      .orderBy(desc(designPlansTable.version)).limit(1)
+      .catch(() => [] as Array<{ status: string }>),
+  ]) : null;
+
   // Load project memory + repo info + node state from DB, plus user memory when authenticated.
   // Also check for Vercel connection so we know whether to defer BROWSER_VISIT until after deploy.
   const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow, userNarrativeRow, zipImportRow] = await Promise.all([
@@ -3094,61 +3143,17 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Detect portfolio-wide question so we can pull cross-project entries
   const isPortfolioQuestion = !isFoundationMode && PORTFOLIO_INTENT_RE.test(message);
 
-  // Run remaining DB queries in parallel — previously sequential, added 400-600ms per request
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [recentErrorsRows, selfMapRows, portfolioRows, committedRows, parkedRows, thinkingReceiptsRows] = await Promise.all([
-    db
-      .select({ errorMessage: atlasErrorLogsTable.errorMessage, route: atlasErrorLogsTable.route, timestamp: atlasErrorLogsTable.timestamp })
-      .from(atlasErrorLogsTable)
-      .where(and(eq(atlasErrorLogsTable.projectId, String(projectId)), gte(atlasErrorLogsTable.createdAt, cutoff)))
-      .orderBy(desc(atlasErrorLogsTable.createdAt))
-      .limit(5)
-      .catch(() => [] as Array<{ errorMessage: string; route: string; timestamp: Date }>),
-    db
-      .select({ fileCount: atlasSelfMapTable.fileCount })
-      .from(atlasSelfMapTable)
-      .orderBy(desc(atlasSelfMapTable.createdAt))
-      .limit(1)
-      .catch(() => [] as Array<{ fileCount: number }>),
-    userId
-      ? isFoundationMode
-        ? db.select({ id: projectsTable.id, name: projectsTable.name, status: projectsTable.status, description: projectsTable.description, memory: projectsTable.memory }).from(projectsTable).where(eq(projectsTable.userId, userId)).orderBy(desc(projectsTable.updatedAt)).limit(20).catch(() => [] as Array<{ id: number; name: string; status: string | null; description: string | null; memory: string | null }>)
-        : db.select({ id: projectsTable.id, name: projectsTable.name, status: projectsTable.status, description: projectsTable.description, memory: projectsTable.memory }).from(projectsTable).where(and(eq(projectsTable.userId, userId), ne(projectsTable.id, projectId))).orderBy(desc(projectsTable.updatedAt)).limit(8).catch(() => [] as Array<{ id: number; name: string; status: string | null; description: string | null; memory: string | null }>)
-      : Promise.resolve([] as Array<{ id: number; name: string; status: string | null; description: string | null; memory: string | null }>),
-    db
-      .select({ title: entriesTable.title, summary: entriesTable.summary, createdAt: entriesTable.createdAt })
-      .from(entriesTable)
-      .where(and(eq(entriesTable.projectId, projectId), eq(entriesTable.status, "committed")))
-      .orderBy(desc(entriesTable.createdAt))
-      .limit(25)
-      .catch(() => [] as Array<{ title: string; summary: string | null; createdAt: Date }>),
-    db
-      .select({ title: entriesTable.title, enrichmentJson: entriesTable.enrichmentJson, createdAt: entriesTable.createdAt })
-      .from(entriesTable)
-      .where(and(eq(entriesTable.projectId, projectId), eq(entriesTable.status, "parked")))
-      .orderBy(desc(entriesTable.createdAt))
-      .limit(12)
-      .catch(() => [] as Array<{ title: string; enrichmentJson: string | null; createdAt: Date }>),
-    !isFoundationMode && projectId && userId
-      ? db.execute(sql`
-          SELECT headline, body, category, confidence
-          FROM thinking_receipts
-          WHERE user_id = ${userId}
-            AND dismissed = false
-            AND (
-              conversation_id IN (SELECT 'ws-' || id::text FROM sessions WHERE project_id = ${projectId})
-              OR conversation_id = (
-                SELECT conversation_id FROM projects
-                WHERE id = ${projectId} AND user_id = ${userId}
-                LIMIT 1
-              )
-            )
-          ORDER BY confidence DESC, created_at DESC
-          LIMIT 10
-        `).then(r => (r.rows ?? r) as Array<{ headline: string; body: string; category: string; confidence: number }>)
-          .catch(() => [] as Array<{ headline: string; body: string; category: string; confidence: number }>)
-      : Promise.resolve([] as Array<{ headline: string; body: string; category: string; confidence: number }>),
-  ]);
+  // Await early-fired queries (started above before Batch 1, should already be resolved)
+  const cutoff = _cutoff;
+  const [recentErrorsRows, selfMapRows, portfolioRows, committedRows, parkedRows, thinkingReceiptsRows] =
+    _earlyBatch2 ? await _earlyBatch2 : [[], [], [], [], [], []] as [
+      Array<{ errorMessage: string; route: string; timestamp: Date }>,
+      Array<{ fileCount: number }>,
+      Array<{ id: number; name: string; status: string | null; description: string | null; memory: string | null }>,
+      Array<{ title: string; summary: string | null; createdAt: Date }>,
+      Array<{ title: string; enrichmentJson: string | null; createdAt: Date }>,
+      Array<{ headline: string; body: string; category: string; confidence: number }>,
+    ];
 
   const recentErrorContext = recentErrorsRows
     .map((e) => `Recent production errors detected: ${e.errorMessage} at ${e.route} — ${e.timestamp.toISOString()}`)
@@ -3184,50 +3189,25 @@ router.post("/chat", async (req, res): Promise<void> => {
   let latestDesignPlanStatus: string | null = null;
   if (projectId && !isFoundationMode) {
     try {
-      const [[amRow], [dnaRow]] = await Promise.all([
-        db.select({ identity: applicationModelsTable.identity, intent: applicationModelsTable.intent, buildState: applicationModelsTable.buildState })
-          .from(applicationModelsTable).where(eq(applicationModelsTable.projectId, projectId)).limit(1),
-        db.select({ creativePrinciples: projectDnaTable.creativePrinciples, experienceIntent: projectDnaTable.experienceIntent, visualSketches: projectDnaTable.visualSketches, status: projectDnaTable.status })
-          .from(projectDnaTable).where(eq(projectDnaTable.projectId, projectId)).limit(1),
-      ]);
-      if (amRow) {
-        projectDNARow = {
-          identity: amRow.identity,
-          intent: amRow.intent,
-          buildState: amRow.buildState,
-          creativePrinciples: dnaRow?.creativePrinciples ?? [],
-          experienceIntent: dnaRow?.experienceIntent ?? {},
-          visualSketches: dnaRow?.visualSketches ?? [],
-          dnaStatus: dnaRow?.status ?? {},
-        };
+      // Await early-fired batch (AM + DNA + both design plan queries run in parallel above)
+      const earlyB3 = _earlyBatch3 ? await _earlyBatch3 : null;
+      if (earlyB3) {
+        const [[amRow], [dnaRow], committedDPRows, latestDPRows] = earlyB3;
+        if (amRow) {
+          projectDNARow = {
+            identity: amRow.identity,
+            intent: amRow.intent,
+            buildState: amRow.buildState,
+            creativePrinciples: dnaRow?.creativePrinciples ?? [],
+            experienceIntent: dnaRow?.experienceIntent ?? {},
+            visualSketches: dnaRow?.visualSketches ?? [],
+            dnaStatus: dnaRow?.status ?? {},
+          };
+        }
+        committedDesignPlan = committedDPRows[0] ?? null;
+        latestDesignPlanStatus = committedDesignPlan ? "committed" : (latestDPRows[0]?.status ?? null);
       }
-    } catch { /* non-fatal — DNA enrichment is additive only */ }
-
-    try {
-      // Query 1: latest COMMITTED plan — authoritative body for the CONSTRAINTS block.
-      // Uses committed-only filter so a newer draft never displaces a committed plan.
-      const [committedDPRow] = await db
-        .select({ body: designPlansTable.body, version: designPlansTable.version, committedAt: designPlansTable.committedAt })
-        .from(designPlansTable)
-        .where(and(eq(designPlansTable.projectId, projectId), eq(designPlansTable.status, "committed")))
-        .orderBy(desc(designPlansTable.version))
-        .limit(1);
-      committedDesignPlan = committedDPRow ?? null;
-
-      // Query 2: latest plan of any status — for the continuity status label only.
-      // If a committed plan exists, always report "committed" regardless of any newer draft.
-      if (!committedDesignPlan) {
-        const [latestDPRow] = await db
-          .select({ status: designPlansTable.status })
-          .from(designPlansTable)
-          .where(eq(designPlansTable.projectId, projectId))
-          .orderBy(desc(designPlansTable.version))
-          .limit(1);
-        latestDesignPlanStatus = latestDPRow?.status ?? null;
-      } else {
-        latestDesignPlanStatus = "committed";
-      }
-    } catch { /* non-fatal — design plan enrichment is additive only */ }
+    } catch { /* non-fatal */ }
   }
 
   // Build layered system prompt — use project data already fetched in the first Promise.all
