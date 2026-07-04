@@ -58,6 +58,7 @@ export function UnifiedSubheader({
   topOffset = 50,
   showWorkspaceMenu = false,
   showLaunchWhenNoProject = false,
+  hideLaunchButton = false,
   onLaunch,
   hasConversation = true,
   expanded: controlledExpanded,
