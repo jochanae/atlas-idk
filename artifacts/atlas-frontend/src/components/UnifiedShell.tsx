@@ -1313,6 +1313,7 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
   const [, navigate] = useLocation();
   const isTinyMobile = useIsTinyScreen();
+  const isMobile = useIsMobile();
 
   const [open, setOpen] = useState(false);
   const [statusTab, setStatusTab] = useState<"readiness" | "pulse">("readiness");
