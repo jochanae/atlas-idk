@@ -4190,6 +4190,15 @@ export default function Workspace() {
     ? cidResolvedId
     : (Number(projectId) || Number(window.location.pathname.split('/project/')[1]?.split('/')[0]) || 0);
   const searchParams = new URLSearchParams(window.location.search);
+  // Synchronously pin both last-project keys during the render itself — before effects fire
+  // and before the browser can background the tab. Closes the mobile-refresh race window
+  // where the tab is suspended after first paint but before useEffect runs.
+  useState(() => {
+    if (id > 0) {
+      try { localStorage.setItem("atlas-last-project", String(id)); } catch {}
+      try { localStorage.setItem("atlas-last-project-id", String(id)); } catch {}
+    }
+  });
   const [showIntake, setShowIntake] = useState(false);
   const globalMode = searchParams.get("global") === "true";
   const effectiveId = globalMode ? 0 : id;
@@ -6077,7 +6086,10 @@ export default function Workspace() {
 
   // Persist last visited project for footer LEDGER shortcut
   useEffect(() => {
-    if (id) { try { localStorage.setItem("atlas-last-project", String(id)); } catch {} }
+    if (id) {
+      try { localStorage.setItem("atlas-last-project", String(id)); } catch {}
+      try { localStorage.setItem("atlas-last-project-id", String(id)); } catch {}
+    }
   }, [id]);
 
   // ensureSessionId + session bootstrap effect now owned by useChatStream.

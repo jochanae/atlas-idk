@@ -188,8 +188,9 @@ function RootRouteGate() {
       const lastProjectId =
         localStorage.getItem("atlas-last-project-id") ||
         localStorage.getItem("atlas-last-project");
-      if (lastProjectId) {
-        nav(`/project/${lastProjectId}`, { replace: true });
+      const lastId = Number(lastProjectId);
+      if (lastId > 0) {
+        nav(`/project/${lastId}`, { replace: true });
         return;
       }
     } catch {}
