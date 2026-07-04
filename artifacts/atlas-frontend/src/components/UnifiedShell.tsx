@@ -1730,6 +1730,252 @@ function MetaRow({ label, value, ok, onClick }: { label: string; value: string; 
 }
 
 
+// ── PulseTabPanel — inline Atlas Pulse content inside the unified status dropdown ──
+function PulseTabPanel({
+  projectId, projectName, readinessScore, decisionCount, hasRepo, status, onDone,
+}: {
+  projectId: number;
+  projectName: string | null;
+  readinessScore: number;
+  decisionCount: number;
+  hasRepo: boolean;
+  status: string | null;
+  onDone: () => void;
+}) {
+  const state = deriveLifecycle({
+    status,
+    readinessScore,
+    decisionCount,
+    hasRepo,
+  });
+  const meta = LIFECYCLE_META[state];
+  const qc = useQueryClient();
+  const updateProjectMutation = useUpdateProject();
+  const [justMarked, setJustMarked] = useState(false);
+
+  const { data: genome } = useQuery<{
+    health?: {
+      clarity?: number;
+      momentum?: "Low" | "Medium" | "High";
+      atlasState?: string;
+      risk?: string | null;
+      evidence?: {
+        signals?: { confidenceScore?: number };
+      };
+    };
+  }>({
+    queryKey: ["genome", projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/genome`, { credentials: "include" });
+      if (!res.ok) throw new Error("genome fetch failed");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  const clarity =
+    genome?.health?.evidence?.signals?.confidenceScore ??
+    genome?.health?.clarity ??
+    null;
+  const coherence = clarity != null
+    ? clarity >= 60 ? "High" : clarity >= 30 ? "Building" : "Early"
+    : (readinessScore >= 60 ? "High" : readinessScore >= 30 ? "Building" : "Early");
+  const momentum =
+    genome?.health?.momentum ??
+    (decisionCount >= 3 ? "Increasing" : decisionCount >= 1 ? "Steady" : "Nascent");
+
+  const handleMarkBuilt = () => {
+    updateProjectMutation.mutate(
+      { id: projectId, data: { status: "built" } as any },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          setJustMarked(true);
+          setTimeout(() => { setJustMarked(false); onDone(); }, 900);
+        },
+      }
+    );
+  };
+
+  return (
+    <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Current State */}
+      <div>
+        <div style={{
+          fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
+          letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.7, marginBottom: 5,
+        }}>Current State</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ color: meta.color, fontSize: 13 }}>{meta.glyph}</span>
+          <span style={{ color: "var(--atlas-fg)", fontSize: 13, fontWeight: 600 }}>{meta.label}</span>
+          <span style={{ color: "var(--atlas-muted)", fontSize: 11.5, opacity: 0.75 }}>— {meta.description}</span>
+        </div>
+      </div>
+
+      {/* Atlas Concludes */}
+      <div>
+        <div style={{
+          fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
+          letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.7, marginBottom: 6,
+        }}>Atlas Concludes</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+          <PulseRow k="Coherence" v={String(coherence)} />
+          <PulseRow k="Momentum" v={String(momentum)} />
+          <PulseRow k="Readiness" v={`${readinessScore}%`} />
+          {genome?.health?.risk && <PulseRow k="Risk" v={genome.health.risk} />}
+        </div>
+      </div>
+
+      {/* Mark as Built */}
+      {state !== "built" && (
+        <button
+          type="button"
+          onClick={handleMarkBuilt}
+          disabled={updateProjectMutation.isPending || justMarked}
+          style={{
+            width: "100%",
+            padding: "9px 10px",
+            borderRadius: 10,
+            border: `1px solid ${justMarked ? "rgba(120,180,160,0.55)" : "rgba(201,162,76,0.32)"}`,
+            background: justMarked ? "rgba(120,180,160,0.16)" : "rgba(201,162,76,0.10)",
+            color: justMarked ? "rgba(180,220,200,0.95)" : "var(--atlas-gold)",
+            cursor: updateProjectMutation.isPending ? "not-allowed" : "pointer",
+            fontSize: 12,
+            fontWeight: 600,
+            fontFamily: "var(--app-font-sans)",
+            letterSpacing: "0.02em",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            transition: "all 180ms ease",
+          }}
+        >
+          ✓ {justMarked ? "Marked as Built" : updateProjectMutation.isPending ? "Saving…" : "Mark as Built"}
+        </button>
+      )}
+
+      <div style={{
+        fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55,
+        fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+      }}>
+        Shaping and Committed are Atlas assessments — they shift as evidence accrues. Built is your call.
+      </div>
+      {/* Silence unused-var warning for projectName in the compact panel. */}
+      {false && <span>{projectName}</span>}
+    </div>
+  );
+}
+
+function PulseRow({ k, v }: { k: string; v: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+      <span style={{ color: "var(--atlas-muted)", opacity: 0.8, fontSize: 12 }}>{k}</span>
+      <span style={{ color: "var(--atlas-fg)", fontSize: 12 }}>{v}</span>
+    </div>
+  );
+}
+
+// ── ShellPlayButton — header-mounted Play; delegates to workspace via events ──
+function ShellPlayButton({ visible }: { visible: boolean }) {
+  const [hover, setHover] = useState(false);
+  const [active, setActive] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  const firedLongRef = useRef(false);
+
+  useEffect(() => {
+    const onSync = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail?.expanded === "boolean") setExpanded(detail.expanded);
+    };
+    window.addEventListener("axiom:workspace-subheader-state", onSync as EventListener);
+    return () => window.removeEventListener("axiom:workspace-subheader-state", onSync as EventListener);
+  }, []);
+
+  if (!visible) return null;
+
+  const clearTimer = () => {
+    if (timerRef.current) { window.clearTimeout(timerRef.current); timerRef.current = null; }
+  };
+
+  const onPointerDown = () => {
+    setActive(true);
+    firedLongRef.current = false;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      firedLongRef.current = true;
+      window.dispatchEvent(new CustomEvent("axiom:workspace-launch-longpress"));
+      try { navigator.vibrate?.(40); } catch { /* ignore */ }
+    }, 450);
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    setActive(false);
+    const wasLong = firedLongRef.current;
+    clearTimer();
+    if (e.pointerType === "touch" && !wasLong) {
+      window.dispatchEvent(new CustomEvent("axiom:workspace-launch-tap"));
+    }
+  };
+  const onPointerCancel = () => { setActive(false); clearTimer(); };
+  const onClick = () => {
+    if (firedLongRef.current) { firedLongRef.current = false; return; }
+    window.dispatchEvent(new CustomEvent("axiom:workspace-launch-tap"));
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") { setActive(false); clearTimer(); } }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setActive(false); }}
+      onContextMenu={(e) => e.preventDefault()}
+      title={expanded ? "Tap to launch · long-press to hide tabs" : "Tap to launch · long-press to show tabs"}
+      aria-label={expanded ? "Launch preview (long-press to hide tabs)" : "Launch preview (long-press to show tabs)"}
+      aria-expanded={expanded}
+      style={{
+        background: active
+          ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
+          : hover
+          ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+          : "transparent",
+        border: `1px solid ${hover || active ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "transparent"}`,
+        borderRadius: 8,
+        padding: "5px 6px",
+        cursor: "pointer",
+        color: hover || active ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 70%, var(--atlas-muted))",
+        opacity: hover || active ? 1 : 0.9,
+        lineHeight: 0,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease",
+        WebkitTapHighlightColor: "transparent",
+        boxShadow: hover || active ? "0 0 12px rgba(201,162,76,0.25)" : "none",
+        touchAction: "manipulation",
+        flexShrink: 0,
+      }}
+    >
+      <span
+        style={{
+          display: "inline-flex",
+          transition: "transform 200ms cubic-bezier(.32,.72,0,1)",
+          transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+        }}
+      >
+        {/* Play (filled) — matches Lucide Play size/stroke used in the subheader */}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <polygon points="6 3 20 12 6 21 6 3" />
+        </svg>
+      </span>
+    </button>
+  );
+}
+
+
+
+
 
 
 function ShellFooterIcon({ icon }: { icon: ShellNavIcon }) {
