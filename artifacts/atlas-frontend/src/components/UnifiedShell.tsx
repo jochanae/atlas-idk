@@ -1464,12 +1464,15 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
           role="dialog"
           aria-label="Project completion"
           style={{
-            position: isTinyMobile ? "fixed" : "absolute",
-            top: isTinyMobile ? 50 : "calc(100% + 8px)",
-            left: isTinyMobile ? 14 : undefined,
-            right: isTinyMobile ? 14 : 0,
-            width: isTinyMobile ? "auto" : 300,
-            maxWidth: isTinyMobile ? undefined : "calc(100vw - 24px)",
+            position: isMobile ? "fixed" : "absolute",
+            top: isMobile ? 56 : "calc(100% + 8px)",
+            left: isMobile ? 12 : undefined,
+            right: isMobile ? 12 : 0,
+            width: isMobile ? "auto" : 320,
+            maxWidth: isMobile ? undefined : "calc(100vw - 24px)",
+            maxHeight: isMobile ? "calc(100dvh - 72px)" : "calc(100dvh - 120px)",
+            display: "flex",
+            flexDirection: "column",
             background: "var(--atlas-bg)",
             backdropFilter: "blur(20px)",
             border: "1px solid var(--atlas-border)",
@@ -1481,6 +1484,7 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
             fontFamily: "var(--app-font-sans)",
           }}
         >
+          <div style={{ overflowY: "auto", overflowX: "hidden", flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" }}>
           <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.12)", display: "flex", alignItems: "center", gap: 10 }}>
             {isTinyMobile && (
               <svg width={PANEL_SIZE} height={PANEL_SIZE} viewBox={`0 0 ${PANEL_SIZE} ${PANEL_SIZE}`} aria-hidden="true" style={{ display: "block", flexShrink: 0 }}>
