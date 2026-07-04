@@ -777,19 +777,13 @@ export function AskAtlasSurface({
             aria-label="Collapse composer"
           />
         )}
-        {/* Collapse chevron — resting mode only, matches workspace composer */}
-        {!focused && (
+        {/* Dock toggle — one tap collapses to the floating "A". Only after first message. */}
+        {!focused && messages.length > 0 && (
           <button
             type="button"
-            aria-label={restingCompact ? "Dock composer" : "Collapse composer"}
-            title={restingCompact ? "Tap to dock — collapse to floating A" : "Collapse composer"}
-            onClick={() => setRestingState((s) => {
-              // Cycle: full → compact → docked → full.
-              // Docked only reachable when a conversation exists (post-first-message).
-              if (s === "full") return "compact";
-              if (s === "compact") return messages.length > 0 ? "docked" : "full";
-              return "full";
-            })}
+            aria-label={restingDocked ? "Restore composer" : "Dock composer"}
+            title={restingDocked ? "Restore composer" : "Minimize to floating A"}
+            onClick={() => setRestingState((s) => (s === "docked" ? "full" : "docked"))}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 6,
               width: 22, height: 22, padding: 0,
@@ -799,8 +793,11 @@ export function AskAtlasSurface({
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: restingCompact ? "rotate(180deg)" : "none", transition: "transform 200ms ease" }}>
-              <path d="M3 4.5l3 3 3-3" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="4 14 10 14 10 20" />
+              <polyline points="20 10 14 10 14 4" />
+              <line x1="14" y1="10" x2="21" y2="3" />
+              <line x1="3" y1="21" x2="10" y2="14" />
             </svg>
           </button>
         )}
