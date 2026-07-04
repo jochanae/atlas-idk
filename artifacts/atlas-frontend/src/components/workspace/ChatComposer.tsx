@@ -431,12 +431,12 @@ export function ChatComposer(props: ChatComposerProps) {
           transition: "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           ...auraVars,
         } as React.CSSProperties}>
-        {/* User-controlled collapse chevron — only in resting (non-sheet) mode. */}
+        {/* Dock toggle — one tap collapses composer to the floating "A". */}
         {!sheetVisible && (
           <button
             type="button"
-            aria-label={isCompact ? "Dock composer" : "Collapse composer"}
-            title={isCompact ? "Tap to dock — collapse to floating A" : "Collapse composer"}
+            aria-label="Dock composer"
+            title="Minimize to floating A"
             onClick={() => { haptics.tap(); toggleComposerCollapsed(); }}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 4,
@@ -447,8 +447,11 @@ export function ChatComposer(props: ChatComposerProps) {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCompact ? "rotate(180deg)" : "none", transition: "transform 200ms ease" }}>
-              <path d="M3 4.5l3 3 3-3" />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="4 14 10 14 10 20" />
+              <polyline points="20 10 14 10 14 4" />
+              <line x1="14" y1="10" x2="21" y2="3" />
+              <line x1="3" y1="21" x2="10" y2="14" />
             </svg>
           </button>
         )}

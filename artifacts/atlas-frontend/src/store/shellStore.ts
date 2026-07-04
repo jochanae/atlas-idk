@@ -176,14 +176,12 @@ export const useShellStore = create<ShellStore>((set, get) => ({
         composerVisibility: resolveVisibility(state.composerClaims, pref),
       };
     }),
-  // Progressive collapse cycle: full → compact → docked → full.
+  // Two-state toggle: full ↔ docked. One tap collapses to the floating "A";
+  // one tap on the orb restores full. Compact is reachable only via claims.
   toggleComposerCollapsed: () =>
     set((state) => {
-      const current = state.userComposerPreference ?? (state.composerVisibility === 'compact' ? 'compact' : 'full');
-      const next: ComposerVisibility =
-        current === 'full' ? 'compact'
-        : current === 'compact' ? 'docked'
-        : 'full';
+      const current = state.userComposerPreference ?? state.composerVisibility;
+      const next: ComposerVisibility = current === 'docked' ? 'full' : 'docked';
       try {
         if (typeof sessionStorage !== 'undefined') {
           sessionStorage.setItem('atlas-composer-pref', next);
