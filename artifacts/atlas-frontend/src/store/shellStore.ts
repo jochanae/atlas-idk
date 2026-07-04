@@ -160,7 +160,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
       const v = typeof sessionStorage !== 'undefined'
         ? sessionStorage.getItem('atlas-composer-pref')
         : null;
-      return v === 'compact' || v === 'full' ? v : null;
+      return v === 'compact' || v === 'full' || v === 'docked' ? v : null;
     } catch { return null; }
   })(),
   setUserComposerPreference: (pref) =>
@@ -176,9 +176,14 @@ export const useShellStore = create<ShellStore>((set, get) => ({
         composerVisibility: resolveVisibility(state.composerClaims, pref),
       };
     }),
+  // Progressive collapse cycle: full → compact → docked → full.
   toggleComposerCollapsed: () =>
     set((state) => {
-      const next: ComposerVisibility = state.composerVisibility === 'compact' ? 'full' : 'compact';
+      const current = state.userComposerPreference ?? (state.composerVisibility === 'compact' ? 'compact' : 'full');
+      const next: ComposerVisibility =
+        current === 'full' ? 'compact'
+        : current === 'compact' ? 'docked'
+        : 'full';
       try {
         if (typeof sessionStorage !== 'undefined') {
           sessionStorage.setItem('atlas-composer-pref', next);
