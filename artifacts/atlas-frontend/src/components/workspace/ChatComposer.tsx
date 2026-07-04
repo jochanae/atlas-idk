@@ -370,8 +370,10 @@ export function ChatComposer(props: ChatComposerProps) {
   return (
 
     <>
+      {/* Floating dock orb — self-gates on composerVisibility === 'docked'. */}
+      <ComposerDock pending={chatPending} />
       {/* Dimmed backdrop — tap to collapse the sheet. */}
-      {composerActive && (
+      {composerActive && !isDocked && (
         <div
           aria-hidden={!sheetVisible}
           onPointerDown={(e) => {
@@ -393,8 +395,8 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
         />
       )}
-      {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
-      {composerActive && (() => {
+      {/* Input — hidden when Terminal tab is active (terminal has its own input row) or when docked. */}
+      {composerActive && !isDocked && (() => {
         const wsLensContext: Record<WorkspaceLens, AuraContext> = {
           build:    "build",
           flow:     "think",
