@@ -1,46 +1,51 @@
-# Deep Dive as a composer verb
+## What's broken
 
-Kill the standalone `DeepDiveSheet`. Deep Dive becomes a two-state mode of the focused composer, shared by Ask Atlas and Workspace.
+The Changes tab is rendering the wrong receipt card at the top and using a bad time format:
 
-## Behavior
+1. `ViewChangesPanel` renders `<WorkspaceRunCards>` → which reuses the big **`RunCard`** from `home/ActiveRuns.tsx`. That component has its own expanded body with **Chat · Diff · Shell** tabs (`ActiveRuns.tsx` L1316–1731). That's the "odd component up in there" — it doesn't belong on the Timeline/Changes surface.
+2. In the screenshots, the row at the top of the tab was just a compact receipt pill: `● BUILD · React Healthy … · 2 files written — App.tsx, index.css · 24m ago ▽`. That compact pill needs to come back.
+3. `formatAgo` in `ActiveRuns.tsx` (L171) only renders `Ns` / `Nm ago` — never hours/days. A 6-hour-old run reads "400m ago". That's the "weird number by the time".
+4. The Timeline/Changes lens toggle currently renders as two small lowercase pills side-by-side; screenshots show them as capitalized `TIMELINE` / `CHANGES` pill segments matching the tab bar language.
 
-**State A — Brief (composer expanded, background blurred)**
-- User taps "↗ Deep Dive" affordance in the focused composer (or long-presses an Atlas message → prefills that message as context).
-- Composer grows a "Dive brief" section directly below the textarea:
-  - Prefilled context: current draft + optional selected message excerpt (editable).
-  - Three destination chips: ChatGPT · Perplexity · Gemini.
-- Primary button flips from Send → "Dive →".
-- Tapping a destination opens that tool in a new tab with context prefilled where the URL supports it (ChatGPT `?q=`, Perplexity `?q=`); Gemini copies to clipboard + opens + shows toast "Copied — paste in Gemini".
+Everything else on the page (subheader tabs, RunTimeline items, Changes list, Workspace git block) already matches the screenshots and stays as-is.
 
-**State B — Awaiting paste (same focused composer, still blurred)**
-- After launch, the brief collapses into a small "Dove with ChatGPT · <excerpt>" chip at the top of the composer.
-- Textarea is replaced by a single paste box: "Drop the answer here when you're back."
-- Two actions: "Bring in" (primary) · "Cancel dive" (secondary).
-- Bring in → composer collapses to normal, pasted answer is attached as **dive context** for the next send (rendered as a small "Dive result" chip above the textarea, expandable, removable).
+## Plan
 
-**No separate portal, no in-between page.** The focused/blurred composer is the waiting room.
+Frontend only. No backend changes.
 
-## Where it lives
+**1. Replace the big RunCard receipt with a compact receipt pill inside `ViewChangesPanel.tsx`**
 
-- One component: `ComposerDeepDive` used inside the existing focused-composer surface on both Ask Atlas home and Workspace.
-- Delete `src/components/DeepDiveSheet.tsx` and all `<DeepDiveSheet />` mount points.
+- Delete the `WorkspaceRunCards` component (L461–506) and its import of `RunCard` / `adaptApiRunToActiveRun` usage.
+- Add a small local `RunReceiptPill` that renders per run (top 1, or the filtered `runId`):
+  - Left: status dot (green/red) + `BUILD` mono tag.
+  - Middle: project name (ellipsis) + `·` + summary line (`N files written — a.tsx, b.css`).
+  - Right: relative time + a caret `▽` (non-interactive — this is a receipt, not an expander).
+- Style matches the screenshots (dark surface, gold border-left accent, mono tag, sans body, muted timestamp). Reuses existing atlas tokens.
+- One receipt per run, capped at the most recent 5 (same as today), or exactly the filtered `runId` when set.
 
-## Provenance (minimal)
+**2. Fix the relative-time formatter**
 
-The attached dive context carries `{ destination, excerpt, pastedAt }` so it can render as a chip and be included in the outgoing message payload. No backend schema change — it rides in the message body Atlas already receives.
+- Add a local `formatAgo` inside `ViewChangesPanel.tsx` that handles seconds → minutes → hours → days → date, so a 6-hour-old run reads `6h ago` instead of `360m ago`.
+- Leave the copy of `formatAgo` inside `ActiveRuns.tsx` alone for now (that surface has its own use); scope of this change is Timeline/Changes only.
 
-## Out of scope
+**3. Restore the Timeline/Changes toggle look**
 
-- Auto-fetching results server-side / Atlas-runs-the-dive.
-- Rendering the dive as a first-class Ledger/thread artifact card.
-- Both stay possible later; current scope is composer-integrated handoff + paste-back.
+- Keep the two-button toggle, but render the labels uppercased (`TIMELINE`, `CHANGES`) with the same segment-pill styling shown in the screenshots (active = gold fill, inactive = outlined). Same font-size/letter-spacing as the tab bar so both feel like one system.
 
-## Technical notes
+**4. No changes to**
 
-Files to touch:
-- `artifacts/atlas-frontend/src/components/DeepDiveSheet.tsx` — remove.
-- Composer surfaces on Ask Atlas (`components/home/AskAtlasSurface.tsx`) and Workspace (`pages/workspace.tsx`) — mount `ComposerDeepDive`, remove sheet triggers.
-- New: `artifacts/atlas-frontend/src/components/composer/ComposerDeepDive.tsx` — brief + awaiting-paste states, destination launch logic (ported from current sheet), local state machine (`idle | brief | awaiting | attached`).
-- Wire attached dive context into the send path so it travels with the next message.
+- `UnifiedSubheader.tsx` (CHANGES / BLUEPRINTS / OUTPUTS / CONSOLE tab bar is correct).
+- `RunTimeline` / `RunTimelineItem` step rendering.
+- `ChangesLens` per-file rows.
+- `WorkspaceBlock` git-status footer.
+- `ActiveRuns.tsx` (used elsewhere — leave untouched).
 
-Focused-composer container already handles blur + expand; Deep Dive slots into that expanded region — no new overlay layer.
+## Files touched
+
+- `artifacts/atlas-frontend/src/components/workspace/ViewChangesPanel.tsx` — remove `WorkspaceRunCards`, add compact `RunReceiptPill` + local `formatAgo`, restyle the toggle.
+
+## Verification
+
+- Load Ask Atlas + Workspace → open Changes tab: top shows compact BUILD receipt (no Chat/Diff/Shell tabs), toggle reads `TIMELINE` / `CHANGES`, times read `24m ago` / `6h ago` / `2d ago` correctly.
+- Run filter (`?runId=…`) still narrows to a single receipt.
+- Old runs with no THOUGHT still auto-switch to Changes lens.
