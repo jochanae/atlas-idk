@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, type FormEvent } from "react";
+import { useState, useRef, useEffect, useMemo, memo, type FormEvent } from "react";
 import { createEntry, useCreateEntry, getListEntriesQueryKey, useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, CornerUpLeft, Download, Pencil, Sparkles, X, MoreHorizontal, GitBranch, Share2, Archive, FileOutput } from "lucide-react";
