@@ -98,9 +98,15 @@ interface ShellStore {
   toggleComposerCollapsed: () => void;
   registerComposerClaim: (id: string, claim: ComposerClaim) => void;
   releaseComposerClaim: (id: string) => void;
+  /** Dock-scroll follow: hide the composer while the dock is scroll-hidden. */
+  hideComposerForScroll: () => void;
+  /** Dock-scroll follow: restore the composer when the dock comes back.
+   *  Defaults to compact unless the user had explicitly set full. */
+  showComposerFromScroll: () => void;
   /** Forces composer back to `full` and drops all stage claims + user pref.
    *  Wired to the gold "A" (atlas:focus-composer) and to send. */
   restoreComposer: () => void;
+
 }
 
 const emptyThread: ActiveThread = {
