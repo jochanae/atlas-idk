@@ -347,7 +347,18 @@ function shortTaskGoal(msg: string): string {
 /** The live execution card shown while Atlas is working. Single surface, no history list. */
 function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: string }) {
   const current = steps[steps.length - 1];
-  const { Icon, headline } = liveStepMeta(current);
+  const { headline: currentHeadline } = liveStepMeta(current);
+
+  // Deduplicate steps for display — collapse consecutive same-target entries
+  const displaySteps = useMemo(() => {
+    const seen = new Set<string>();
+    const out: LiveStepItem[] = [];
+    for (const s of steps) {
+      const key = `${s.verb}:${s.target}`;
+      if (!seen.has(key)) { seen.add(key); out.push(s); }
+    }
+    return out;
+  }, [steps]);
 
   return (
     <div
@@ -355,8 +366,8 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         position: "relative",
         background: "hsl(var(--card))",
         border: "1px solid var(--atlas-gold-border)",
-        borderRadius: 10,
-        padding: "10px 14px",
+        borderRadius: 12,
+        padding: "14px 16px",
         margin: "6px 0 4px",
         width: "min(100%, 440px)",
         maxWidth: "100%",
@@ -371,7 +382,7 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         style={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(90deg, transparent 0%, rgba(201,162,76,0.06) 50%, transparent 100%)",
+          background: "linear-gradient(90deg, transparent 0%, rgba(201,162,76,0.05) 50%, transparent 100%)",
           backgroundSize: "200% 100%",
           animation: "wrc-shimmer 2.4s ease-in-out infinite",
           pointerEvents: "none",
@@ -379,75 +390,139 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         }}
       />
 
-      {/* Left accent bar */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 2,
-          background: "var(--atlas-gold)",
-          borderRadius: "10px 0 0 10px",
-          animation: "wrc-pulse-bar 1.8s ease-in-out infinite",
-        }}
-      />
-
-      <div style={{ paddingLeft: 8, display: "flex", alignItems: "center", gap: 10 }}>
-        {/* Icon circle */}
+      {/* Title row */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: taskGoal ? 2 : 10 }}>
+        <div
+          style={{
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: "hsl(var(--card-foreground))",
+            letterSpacing: "-0.01em",
+            lineHeight: 1.35,
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {taskGoal || currentHeadline}
+        </div>
+        {/* Pulsing dot */}
         <span
           aria-hidden="true"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 22,
-            height: 22,
+            width: 7,
+            height: 7,
             borderRadius: 999,
-            background: "var(--atlas-gold-dim)",
-            color: "var(--atlas-gold)",
+            background: "var(--atlas-gold)",
             flexShrink: 0,
+            marginTop: 4,
             animation: "wrc-dot-pulse 1.4s ease-in-out infinite",
           }}
-        >
-          <Icon size={12} strokeWidth={1.75} />
-        </span>
+        />
+      </div>
 
-        {/* Text block */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Headline: the current action */}
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "hsl(var(--card-foreground))",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              letterSpacing: "-0.01em",
-              lineHeight: 1.3,
-            }}
-          >
-            {headline}
-          </div>
-          {/* Subtitle: short task goal */}
-          {taskGoal && (
-            <div
-              style={{
-                fontSize: 11,
-                color: "hsl(var(--muted-foreground) / 0.7)",
-                marginTop: 2,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                letterSpacing: "0.005em",
-              }}
-            >
-              {taskGoal}
-            </div>
-          )}
+      {/* Subtitle: current action */}
+      {taskGoal && currentHeadline && (
+        <div
+          style={{
+            fontSize: 11.5,
+            color: "hsl(var(--muted-foreground) / 0.65)",
+            marginBottom: 12,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            letterSpacing: "0.005em",
+          }}
+        >
+          {currentHeadline}
         </div>
+      )}
+
+      {/* Divider */}
+      {displaySteps.length > 0 && (
+        <div
+          aria-hidden="true"
+          style={{
+            height: 1,
+            background: "hsl(var(--border) / 0.5)",
+            marginBottom: 10,
+          }}
+        />
+      )}
+
+      {/* Step list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+        {displaySteps.map((s, i) => {
+          const isCurrentStep = i === displaySteps.length - 1;
+          const { headline: stepLabel } = liveStepMeta(s);
+          return (
+            <div
+              key={`${s.verb}-${s.target}-${i}`}
+              style={{ display: "flex", alignItems: "center", gap: 10 }}
+            >
+              {/* Step status icon */}
+              {isCurrentStep ? (
+                /* Spinning ring for the active step */
+                <span
+                  aria-label="running"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 18,
+                    height: 18,
+                    borderRadius: 999,
+                    border: "1.5px solid hsl(var(--muted-foreground) / 0.25)",
+                    borderTopColor: "var(--atlas-gold)",
+                    flexShrink: 0,
+                    animation: "wrc-spin 0.8s linear infinite",
+                  }}
+                />
+              ) : (
+                /* Checkmark circle for completed steps */
+                <span
+                  aria-label="done"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 18,
+                    height: 18,
+                    borderRadius: 999,
+                    border: "1.5px solid hsl(var(--muted-foreground) / 0.35)",
+                    flexShrink: 0,
+                    color: "hsl(var(--muted-foreground) / 0.5)",
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path d="M2 5.2l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              )}
+
+              {/* Step label */}
+              <span
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: isCurrentStep ? 500 : 400,
+                  color: isCurrentStep
+                    ? "hsl(var(--card-foreground))"
+                    : "hsl(var(--muted-foreground) / 0.6)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  minWidth: 0,
+                  letterSpacing: isCurrentStep ? "-0.005em" : "0",
+                }}
+              >
+                {stepLabel}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       <style>{`
@@ -462,6 +537,9 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         @keyframes wrc-dot-pulse {
           0%, 100% { opacity: 0.5; transform: scale(0.85); }
           50%       { opacity: 1;   transform: scale(1); }
+        }
+        @keyframes wrc-spin {
+          to { transform: rotate(360deg); }
         }
         @keyframes wrc-border-trace {
           0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0); border-color: rgba(74,222,128,0.15); }
@@ -699,8 +777,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         color: "hsl(var(--card-foreground))",
         border: `1px solid ${tone.border}`,
         boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
-        borderRadius: 10,
-        padding: "10px 12px",
+        borderRadius: 12,
+        padding: "14px 16px",
         margin: "6px 0 4px",
         width: "min(100%, 440px)",
         maxWidth: "100%",
@@ -853,9 +931,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       <div
         style={{
           display: "flex",
-          gap: 6,
-          marginTop: 8,
-          paddingTop: 8,
+          gap: 8,
+          marginTop: 12,
+          paddingTop: 12,
           borderTop: "1px solid hsl(var(--border) / 0.4)",
         }}
       >
@@ -864,13 +942,13 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           onClick={(e) => { e.stopPropagation(); handleDetails(); }}
           style={{
             flex: 1,
-            fontSize: 11,
+            fontSize: 12.5,
             fontWeight: 500,
-            padding: "4px 0",
-            borderRadius: 6,
+            padding: "9px 0",
+            borderRadius: 8,
             border: "1px solid hsl(var(--border) / 0.7)",
             background: "transparent",
-            color: "hsl(var(--card-foreground) / 0.8)",
+            color: "hsl(var(--card-foreground) / 0.85)",
             cursor: "pointer",
             letterSpacing: "0.01em",
           }}
@@ -883,13 +961,13 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           onClick={(e) => { e.stopPropagation(); handlePreview(); }}
           style={{
             flex: 1,
-            fontSize: 11,
+            fontSize: 12.5,
             fontWeight: 500,
-            padding: "4px 0",
-            borderRadius: 6,
+            padding: "9px 0",
+            borderRadius: 8,
             border: `1px solid ${tone.border}`,
             background: toneKey === "success" ? "rgba(74,222,128,0.08)" : "transparent",
-            color: toneKey === "success" ? "#4ade80" : "hsl(var(--card-foreground) / 0.8)",
+            color: toneKey === "success" ? "#4ade80" : "hsl(var(--card-foreground) / 0.85)",
             cursor: "pointer",
             letterSpacing: "0.01em",
           }}
