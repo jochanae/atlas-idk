@@ -182,7 +182,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
                 fontFamily: "var(--app-font-sans)",
               }}
             >
-              {hasSummary ? "What Atlas remembers" : "Last session"}
+              Atlas Memory
             </span>
             <button
               type="button"
