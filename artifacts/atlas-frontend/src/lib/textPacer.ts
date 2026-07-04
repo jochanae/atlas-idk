@@ -112,24 +112,17 @@ export function createTextPacer(opts: TextPacerOptions): TextPacer {
       firstCharSeen = true;
     }
 
-    // Catch-up: if backlog is large, gently trim the per-char delay — but
-    // never below ~9ms so text never blasts at terminal speed.
-    const effectiveRate = backlog > catchupAt
-      ? Math.max(9, baseRate * 0.7)
-      : baseRate;
+    // Catch-up: if backlog is large, use 1ms/char (fast drain without dumping).
+    // Must be LOWER than baseRate (smaller ms/char = faster).
+    const effectiveRate = backlog > catchupAt ? 1 : baseRate;
     let charsThisFrame = Math.max(1, Math.floor(elapsed / effectiveRate));
-    // Hard cap so a long stall doesn't dump visible bursts in one frame.
-    if (charsThisFrame > 8) charsThisFrame = 8;
+    // Hard cap — generous catch-up without blasting entire backlog in one frame.
+    if (charsThisFrame > 25) charsThisFrame = 25;
 
     // Walk forward char by char so we can honor punctuation pauses mid-frame.
     for (let i = 0; i < charsThisFrame && released < target.length; i++) {
       const ch = target[released];
       released++;
-      // Paragraph break = a full breath
-      if (ch === "\n" && target[released] === "\n") {
-        punctHoldUntil = now + 320;
-        break;
-      }
       const pause = PUNCT_PAUSE[ch];
       if (pause && /\s|$/.test(target[released] ?? " ")) {
         punctHoldUntil = now + pause;

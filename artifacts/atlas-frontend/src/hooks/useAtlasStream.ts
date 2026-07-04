@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { createTextPacer } from "@/lib/textPacer";
 
 export interface AtlasStreamEvent {
   type: "token" | "step" | "done" | "error" | "data";
@@ -68,6 +69,14 @@ export function useAtlasStream(): UseAtlasStreamReturn {
 
     let streamedText = "";
 
+    const pacer = createTextPacer({
+      rateMs: 3,
+      settleMs: 0,
+      catchupAt: 300,
+      onTick: (released) => {
+        callbacks.onToken(released);
+      },
+    });
 
     try {
       const res = await fetch(endpoint, {
@@ -161,7 +170,7 @@ export function useAtlasStream(): UseAtlasStreamReturn {
               if (evtName === "token") {
                 const token = JSON.parse(evtData) as string;
                 streamedText += token;
-                callbacks.onToken(streamedText);
+                pacer.push(token);
               } else if (evtName === "step") {
                 const step = JSON.parse(evtData) as {
                   verb?: string;
@@ -185,8 +194,9 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                 // tokens), pace that final target too instead of swapping it in.
                 if (typeof doneData.content === "string" && doneData.content !== streamedText) {
                   streamedText = doneData.content;
-                  callbacks.onToken(streamedText);
+                  pacer.setTarget(doneData.content);
                 }
+                await pacer.finish();
                 const finalText = doneData.content ?? streamedText;
                 callbacks.onDone(finalText, doneData);
               } else if (evtName === "image") {
@@ -204,7 +214,7 @@ export function useAtlasStream(): UseAtlasStreamReturn {
           }
         }
       } finally {
-        // stream ended — no pacer cleanup needed
+        pacer.abort();
       }
     } catch (err) {
       if ((err as Error)?.name === "AbortError") return;
