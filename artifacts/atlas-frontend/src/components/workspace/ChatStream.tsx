@@ -366,8 +366,18 @@ export function ChatStream(props: ChatStreamProps) {
 
   // Suppress the streaming prose bubble when live build steps are actively
   // flowing — the WorkspaceRunCard owns that surface during a build.
-  // During plain conversation (no liveStep), keep the text visible as it streams.
-  const suppressStreamingText = !!liveStep;
+  // Also suppress during the gap between agentic turns (chatPending=true but
+  // liveStep not yet set) when the last user message is a LOCAL_APPLY_SUCCESS
+  // auto-message — we're mid-build-chain and the prose would flash for 1-2s.
+  const inBuildChain = useMemo(() => {
+    const last = messages[messages.length - 1];
+    if (!last) return false;
+    return last.role === "user" && (
+      last.displayAs === "autoVerify" ||
+      (last.content ?? "").startsWith("[LOCAL_APPLY_SUCCESS]")
+    );
+  }, [messages]);
+  const suppressStreamingText = !!liveStep || (chatPending && inBuildChain);
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)

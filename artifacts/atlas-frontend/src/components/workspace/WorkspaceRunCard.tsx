@@ -592,12 +592,15 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     [liveSteps],
   );
 
-  // Task goal — short description from the last user message (NOT the full paragraph)
+  // Task goal — short description from the last REAL user message.
+  // Skip [LOCAL_APPLY_SUCCESS] auto-verify messages sent by the agentic loop.
   const taskGoal = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
-        return shortTaskGoal((messages[i].content ?? "").trim());
-      }
+      const m = messages[i];
+      if (m.role !== "user") continue;
+      if (m.displayAs === "autoVerify") continue;
+      if ((m.content ?? "").startsWith("[LOCAL_APPLY_SUCCESS]")) continue;
+      return shortTaskGoal((m.content ?? "").trim());
     }
     return "";
   }, [messages]);
@@ -640,14 +643,20 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       content = findFileContent(messages, run.previewPath);
     }
     const savedLiveUrl = getSavedPreviewUrl(projectId) || projectPreviewUrl || null;
+
+    // When no explicit preview source but build succeeded with files, open the
+    // Local Dev panel — the workspace dev server is running there.
+    const effectiveSource = run.previewSource
+      ?? (run.status === "applied" && run.files.length > 0 ? "local" : null);
+
     window.dispatchEvent(
       new CustomEvent("axiom:open-preview", {
         detail: {
-          source: run.previewSource ?? undefined,
+          source: effectiveSource ?? undefined,
           content: content ?? undefined,
-          emptyReason: run.previewSource ? undefined : (run.error ?? (run.status === "failed" ? "RUN_FAILED" : "NO_PREVIEWABLE_OUTPUT")),
-          runId: run.previewSource ? undefined : run.id,
-          liveUrl: run.previewSource ? undefined : savedLiveUrl,
+          emptyReason: effectiveSource ? undefined : (run.error ?? (run.status === "failed" ? "RUN_FAILED" : "NO_PREVIEWABLE_OUTPUT")),
+          runId: effectiveSource ? undefined : run.id,
+          liveUrl: effectiveSource ? undefined : savedLiveUrl,
         },
       }),
     );

@@ -126,7 +126,7 @@ export function AtlasThinkingBlock({ thinkingState }: Props) {
         )}
       </div>
 
-      {!isProcessing && (
+      {false && !isProcessing && (
         <div style={{ marginTop: 6 }}>
           <button
             type="button"
