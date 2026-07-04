@@ -12,7 +12,7 @@
 // we show the pill + an honest "No entries tagged for this run yet." hint
 // above the unfiltered list rather than pretending the view is filtered.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FolderGit2, X, FileCode2 } from "lucide-react";
 import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
@@ -118,6 +118,7 @@ interface FileRow {
   summary: string;
   messageId: number | string;
   projectId: number;
+  content?: string | null;
 }
 
 function messageRunId(message: TimelineMessage): string {
@@ -177,19 +178,42 @@ function collectFileRows(messages: TimelineMessage[]): FileRow[] {
     if (m.role !== "assistant") continue;
     const mid = m.id ?? `${m.sentAt ?? Math.random()}`;
     if (m.fileEdit?.path) {
-      rows.push({ path: m.fileEdit.path, summary: "rewrote file", messageId: mid, projectId: 0 });
+      rows.push({ path: m.fileEdit.path, summary: "rewrote file", messageId: mid, projectId: 0, content: (m.fileEdit as { content?: string }).content ?? null });
     }
     if (m.fileEdits) {
-      for (const fe of m.fileEdits) rows.push({ path: fe.path, summary: "rewrote file", messageId: mid, projectId: 0 });
+      for (const fe of m.fileEdits) rows.push({ path: fe.path, summary: "rewrote file", messageId: mid, projectId: 0, content: (fe as { content?: string }).content ?? null });
     }
     if (m.linePatches) {
-      for (const lp of m.linePatches) rows.push({ path: lp.path, summary: "patched lines", messageId: mid, projectId: 0 });
+      for (const lp of m.linePatches) rows.push({ path: lp.path, summary: "patched lines", messageId: mid, projectId: 0, content: null });
     }
   }
   return rows.reverse(); // newest first
 }
 
+function FileContentBlock({ content }: { content: string }) {
+  const ref = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = 0;
+  }, [content]);
+  return (
+    <pre ref={ref} style={{
+      margin: "6px 0 0", padding: "10px 12px",
+      borderRadius: 4,
+      background: "rgba(0,0,0,0.35)",
+      border: "1px solid rgba(201,162,76,0.1)",
+      fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+      color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
+      overflowX: "auto", overflowY: "auto",
+      maxHeight: 320,
+      whiteSpace: "pre",
+      wordBreak: "normal",
+    }}>{content}</pre>
+  );
+}
+
 function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }) {
+  const [expandedPath, setExpandedPath] = useState<string | null>(null);
+
   if (rows.length === 0) {
     return (
       <div style={{ padding: "18px 14px", fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5 }}>
@@ -199,38 +223,63 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
   }
   return (
     <div style={{ padding: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
-      {rows.map((r, i) => (
-        <div key={`${r.messageId}-${r.path}-${i}`} style={{
-          display: "flex", alignItems: "center", gap: 10,
-          padding: "8px 10px", borderRadius: 5,
-          border: "1px solid rgba(201,162,76,0.08)",
-          background: "rgba(255,255,255,0.015)",
-        }}>
-          <FileCode2 size={12} strokeWidth={1.6} style={{ color: "rgba(201,162,76,0.6)", flexShrink: 0 }} />
-          <span style={{
-            flex: 1, minWidth: 0,
-            fontFamily: "var(--app-font-mono)", fontSize: 11.5,
-            color: "var(--atlas-fg)", opacity: 0.9,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>{r.path}</span>
-          <span style={{
-            fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.6,
-            fontFamily: "var(--app-font-sans)", flexShrink: 0,
-          }}>{r.summary}</span>
-          <a
-            href={`/api/fs/${projectId}/preview?path=${encodeURIComponent(r.path)}`}
-            target="_blank" rel="noopener noreferrer"
-            style={{
-              fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              padding: "3px 7px", borderRadius: 3,
-              border: "1px solid rgba(201,162,76,0.3)",
-              color: "rgba(201,162,76,0.9)", textDecoration: "none",
-              flexShrink: 0,
+      {rows.map((r, i) => {
+        const isExpanded = expandedPath === `${r.messageId}-${r.path}-${i}`;
+        const hasContent = !!r.content;
+        return (
+          <div key={`${r.messageId}-${r.path}-${i}`} style={{
+            borderRadius: 5,
+            border: `1px solid ${isExpanded ? "rgba(201,162,76,0.2)" : "rgba(201,162,76,0.08)"}`,
+            background: isExpanded ? "rgba(201,162,76,0.03)" : "rgba(255,255,255,0.015)",
+            overflow: "hidden",
+          }}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "8px 10px",
+              cursor: hasContent ? "pointer" : "default",
             }}
-          >Open</a>
-        </div>
-      ))}
+              onClick={() => hasContent && setExpandedPath(isExpanded ? null : `${r.messageId}-${r.path}-${i}`)}
+            >
+              <FileCode2 size={12} strokeWidth={1.6} style={{ color: "rgba(201,162,76,0.6)", flexShrink: 0 }} />
+              <span style={{
+                flex: 1, minWidth: 0,
+                fontFamily: "var(--app-font-mono)", fontSize: 11.5,
+                color: "var(--atlas-fg)", opacity: 0.9,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>{r.path}</span>
+              <span style={{
+                fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.6,
+                fontFamily: "var(--app-font-sans)", flexShrink: 0,
+              }}>{r.summary}</span>
+              {hasContent && (
+                <span style={{
+                  fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
+                  textTransform: "uppercase", flexShrink: 0,
+                  color: "rgba(201,162,76,0.7)",
+                }}>{isExpanded ? "▲" : "▼"}</span>
+              )}
+              <a
+                href={`/api/fs/${projectId}/preview?path=${encodeURIComponent(r.path)}`}
+                target="_blank" rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  padding: "3px 7px", borderRadius: 3,
+                  border: "1px solid rgba(201,162,76,0.3)",
+                  color: "rgba(201,162,76,0.9)", textDecoration: "none",
+                  flexShrink: 0,
+                }}
+              >Open</a>
+            </div>
+            {isExpanded && r.content && (
+              <div style={{ padding: "0 10px 10px" }}>
+                <FileContentBlock content={r.content} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -342,6 +391,7 @@ export function ViewChangesPanel({
               summary: step.verb === "FILE_DELETE" ? "deleted" : step.verb === "LINE_PATCH" ? "patched lines" : "rewrote file",
               messageId: run.id,
               projectId,
+              content: step.content ?? null,
             });
           }
         }

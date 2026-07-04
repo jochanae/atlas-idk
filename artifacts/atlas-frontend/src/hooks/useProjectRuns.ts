@@ -7,6 +7,7 @@ export interface ApiRunStep {
   target: string | null;
   status: string;
   detail: string | null;
+  content: string | null;
   createdAt: string;
 }
 

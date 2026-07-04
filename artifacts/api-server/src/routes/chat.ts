@@ -2294,7 +2294,7 @@ type ExecutionRunRecorder = {
   complete: (args: {
     status: string;
     summary: string;
-    steps: Array<{ verb: string; target: string | null; status: string; detail: string | null }>;
+    steps: Array<{ verb: string; target: string | null; status: string; detail: string | null; content: string | null }>;
   }) => Promise<void>;
 };
 
@@ -2330,8 +2330,8 @@ async function startExecutionRunRecord(args: {
       `);
       for (const step of steps) {
         await db.execute(sql`
-          INSERT INTO execution_run_steps (run_id, verb, target, status, detail)
-          VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail})
+          INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content)
+          VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content})
         `);
       }
       logger.info({ runId, projectId: args.projectId, mode: args.mode, status, stepCount: steps.length }, "execution_run: recorded");
@@ -2345,16 +2345,16 @@ function buildExecutionRunSteps(args: {
   linePatches: Array<{ path: string }>;
   imageGenResult?: { images: Array<{ prompt?: string; model?: string }> };
   githubPushResult?: { branch?: string; error?: string; files?: unknown[] } | null;
-}): Array<{ verb: string; target: string | null; status: string; detail: string | null }> {
-  const steps: Array<{ verb: string; target: string | null; status: string; detail: string | null }> = [];
+}): Array<{ verb: string; target: string | null; status: string; detail: string | null; content: string | null }> {
+  const steps: Array<{ verb: string; target: string | null; status: string; detail: string | null; content: string | null }> = [];
   for (const edit of args.fileEdits) {
-    steps.push({ verb: "FILE_EDIT", target: edit.path, status: "ok", detail: null });
+    steps.push({ verb: "FILE_EDIT", target: edit.path, status: "ok", detail: null, content: (edit.content ?? "").slice(0, 50000) || null });
   }
   for (const del of args.fileDeletes) {
-    steps.push({ verb: "FILE_DELETE", target: del.path, status: "ok", detail: null });
+    steps.push({ verb: "FILE_DELETE", target: del.path, status: "ok", detail: null, content: null });
   }
   for (const patch of args.linePatches) {
-    steps.push({ verb: "LINE_PATCH", target: patch.path, status: "ok", detail: null });
+    steps.push({ verb: "LINE_PATCH", target: patch.path, status: "ok", detail: null, content: null });
   }
   if (args.imageGenResult?.images?.length) {
     for (const img of args.imageGenResult.images.slice(0, 2)) {
@@ -2363,6 +2363,7 @@ function buildExecutionRunSteps(args: {
         target: (img.prompt ?? "image").slice(0, 80),
         status: "ok",
         detail: `model:${img.model ?? "unknown"}`,
+        content: null,
       });
     }
   }
@@ -2372,6 +2373,7 @@ function buildExecutionRunSteps(args: {
       target: args.githubPushResult.branch ?? null,
       status: args.githubPushResult.error ? "fail" : "ok",
       detail: args.githubPushResult.error ?? `${args.githubPushResult.files?.length ?? 0} files`,
+      content: null,
     });
   }
   return steps;
@@ -6336,19 +6338,19 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       `);
 
       // Steps — one row per discrete action
-      const _steps: Array<{ verb: string; target: string | null; status: string; detail: string | null }> = [];
+      const _steps: Array<{ verb: string; target: string | null; status: string; detail: string | null; content: string | null }> = [];
       for (const _edit of responseFileEdits) {
-        _steps.push({ verb: "FILE_EDIT", target: _edit.path, status: "ok", detail: null });
+        _steps.push({ verb: "FILE_EDIT", target: _edit.path, status: "ok", detail: null, content: ((_edit as { content?: string }).content ?? "").slice(0, 50000) || null });
       }
       for (const _del of fileDeletes) {
-        _steps.push({ verb: "FILE_DELETE", target: (_del as { path: string }).path, status: "ok", detail: null });
+        _steps.push({ verb: "FILE_DELETE", target: (_del as { path: string }).path, status: "ok", detail: null, content: null });
       }
       for (const _patch of responseLinePatches) {
-        _steps.push({ verb: "LINE_PATCH", target: (_patch as { path: string }).path, status: "ok", detail: null });
+        _steps.push({ verb: "LINE_PATCH", target: (_patch as { path: string }).path, status: "ok", detail: null, content: null });
       }
       if (imageGenResult?.images?.length) {
         for (const _img of imageGenResult.images.slice(0, 2)) {
-          _steps.push({ verb: "IMAGE_GEN", target: (_img.prompt ?? "image").slice(0, 80), status: "ok", detail: `model:${_img.model ?? "unknown"}` });
+          _steps.push({ verb: "IMAGE_GEN", target: (_img.prompt ?? "image").slice(0, 80), status: "ok", detail: `model:${_img.model ?? "unknown"}`, content: null });
         }
       }
       if (githubPushResult) {
@@ -6357,13 +6359,14 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           target: githubPushResult.branch ?? null,
           status: githubPushResult.error ? "fail" : "ok",
           detail: githubPushResult.error ?? `${githubPushResult.files?.length ?? 0} files`,
+          content: null,
         });
       }
 
       for (const _step of _steps) {
         await db.execute(sql`
-          INSERT INTO execution_run_steps (run_id, verb, target, status, detail)
-          VALUES (${_runId}, ${_step.verb}, ${_step.target}, ${_step.status}, ${_step.detail})
+          INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content)
+          VALUES (${_runId}, ${_step.verb}, ${_step.target}, ${_step.status}, ${_step.detail}, ${_step.content})
         `);
       }
 

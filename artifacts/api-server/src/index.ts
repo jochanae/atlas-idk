@@ -536,6 +536,9 @@ async function ensureColumns(): Promise<void> {
       CREATE INDEX IF NOT EXISTS execution_run_steps_run_id_idx
         ON execution_run_steps (run_id, created_at)
     `);
+    await db.execute(sql`
+      ALTER TABLE execution_run_steps ADD COLUMN IF NOT EXISTS content TEXT
+    `);
     logger.info("ensureColumns: execution_runs + execution_run_steps tables verified");
   } catch (err) {
     logger.warn({ err }, "ensureColumns: execution_runs tables failed — server will start anyway");
