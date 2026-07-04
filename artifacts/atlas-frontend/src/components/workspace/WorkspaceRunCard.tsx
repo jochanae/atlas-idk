@@ -77,17 +77,27 @@ function adaptExecutionRun(
   messages: ChatMessage[],
   projectPreviewUrl?: string | null,
 ): DerivedRun | null {
+  // Anchor the trailing receipt to its own turn. If a newer user message has
+  // arrived after the run's associated assistant message, the receipt belongs
+  // to a prior conversation — suppress so it doesn't float below the new turn.
   if (run.messageId !== null) {
     const msgIdx = messages.findIndex(m => m.id === run.messageId);
     if (msgIdx !== -1) {
       let userAfter = 0;
-      let assistantAfter = 0;
       for (let k = msgIdx + 1; k < messages.length; k++) {
         if (messages[k].role === "user") userAfter++;
-        else if (messages[k].role === "assistant") assistantAfter++;
       }
       if (userAfter >= 1) return null;
+    } else {
+      // Associated message isn't in the loaded thread (pruned/older session).
+      // If the current tail is a user message, this receipt is orphaned — hide it.
+      const last = messages[messages.length - 1];
+      if (last?.role === "user") return null;
     }
+  } else {
+    // No message anchor at all — never trail this under a pending user turn.
+    const last = messages[messages.length - 1];
+    if (last?.role === "user") return null;
   }
 
   const hasGithubPush = run.steps.some(s => s.verb === "GITHUB_PUSH");
