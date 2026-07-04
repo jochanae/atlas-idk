@@ -8343,6 +8343,12 @@ export default function Workspace() {
               // Ledger, not the conversation. Filter them out of the inline feed.
               activityEvents: workspaceActivityItems.filter(item => item.type !== "decision"),
               onSuggestionTap: (text: string) => {
+                // When composer is docked (floating A), send the chip immediately
+                // instead of forcing the user to expand the composer to hit send.
+                if (composerVisibility === "docked") {
+                  doSend(text, sessionId ?? 0, messagesRef.current);
+                  return;
+                }
                 setInput((prev: string) => prev ? `${prev} ${text}` : text);
                 setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
               },
