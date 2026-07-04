@@ -781,12 +781,12 @@ export function ChatStream(props: ChatStreamProps) {
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
               <AssistantBubble
                 message={msg}
-                isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
-                isLatestAssistant={i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
+                isNew={msg.role === "assistant" && i >= historyBoundary && i === lastAssistantIdx}
+                isLatestAssistant={i === lastAssistantIdx}
                 projectId={projectId}
                 sessionId={sessionId || 0}
                 linkedRepo={linkedRepo as LinkedRepoLike extends infer T ? T : never}
-                priorUserMessage={messages.slice(0, i).reverse().find((m) => m.role === "user")?.content}
+                priorUserMessage={priorUserMessageByIndex[i]}
                 onPark={onPark}
                 onCommit={onCommit}
                 onRegenerate={() => onRegenerate(i)}
