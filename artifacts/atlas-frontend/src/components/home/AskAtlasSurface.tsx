@@ -1104,7 +1104,7 @@ export function AskAtlasSurface({
       </div>}
 
 
-      <DeepDiveSheet
+      <ComposerDeepDive
         open={showDeepDive}
         onClose={() => setShowDeepDive(false)}
         initialContext={deepDiveContext}
