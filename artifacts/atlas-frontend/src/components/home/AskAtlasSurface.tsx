@@ -259,7 +259,7 @@ export function AskAtlasSurface({
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
-  const [deepDiveContext, setDeepDiveContext] = useState("");
+  
   const isParchment = useThemeMode() === "parchment";
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
