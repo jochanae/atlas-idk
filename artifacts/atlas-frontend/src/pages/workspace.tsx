@@ -106,6 +106,8 @@ import { ParkSheet } from "@/components/ParkSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import { useComposerVisibility } from "@/hooks/useComposerVisibility";
 import { useShellStore } from "@/store/shellStore";
+import { useDockVisibility } from "@/hooks/useDockVisibility";
+
 import { MemoryTab } from "@/components/workspace/MemoryTab";
 import { BlueprintsTab } from "@/components/BlueprintsTab";
 import { BlueprintPanel } from "@/components/workspace/BlueprintPanel";
