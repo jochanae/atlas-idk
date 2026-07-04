@@ -1315,6 +1315,7 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   const isTinyMobile = useIsTinyScreen();
 
   const [open, setOpen] = useState(false);
+  const [statusTab, setStatusTab] = useState<"readiness" | "pulse">("readiness");
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
