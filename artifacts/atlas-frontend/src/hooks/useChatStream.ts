@@ -404,6 +404,7 @@ export function useChatStream(
           : {}),
         ...(forgeContext ? { forgeContext } : {}),
         ...(dbUrl ? { dbUrl } : {}),
+        ...(options?.displayAs ? { displayAs: options.displayAs } : {}),
       };
 
       const controller = new AbortController();

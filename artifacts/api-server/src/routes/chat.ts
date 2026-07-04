@@ -2615,6 +2615,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     forgeContext?: string;
     planMode?: boolean;
     previousLens?: string;
+    displayAs?: string;
   };
 
   const isFlowMode = !!body.flowMode;
@@ -5383,7 +5384,6 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   let savedMsgId: number | undefined;
   let intentMsgId: number | undefined;
   let summaryMsgId: number | undefined;
-  let executionRunRecorder: ExecutionRunRecorder | null = null;
   let autoName: string | undefined;
   if (generatedAutoName) autoName = generatedAutoName;
   if (!isFlowMode && !isScenarioMode) {
@@ -5432,19 +5432,6 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           .returning();
         intentMsgId = intentMsg.id;
         savedMsgId = intentMsg.id;
-
-        if (projectId) {
-          const runMode =
-            responseFileEdits.length > 0 || fileDeletes.length > 0 || responseLinePatches.length > 0 || !!githubPushToken
-              ? "operational"
-              : "conversation";
-          executionRunRecorder = await startExecutionRunRecord({
-            projectId,
-            sessionId,
-            messageId: intentMsg.id,
-            mode: runMode,
-          });
-        }
 
         try {
           res.write(`data: ${JSON.stringify({
@@ -6251,28 +6238,6 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       logger.warn({ err: summaryErr?.message }, "summary message insert failed — falling back to intent-only turn");
     }
 
-    if (executionRunRecorder && projectId) {
-      try {
-        const RUN_ERROR_RE = /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
-        const runStatus =
-          RUN_ERROR_RE.test(persistContent) || !!githubPushResult?.error
-            ? "failed"
-            : "succeeded";
-        await executionRunRecorder.complete({
-          status: runStatus,
-          summary: runSummaryFromContent(persistContent, responseFileEdits, fileDeletes, responseLinePatches),
-          steps: buildExecutionRunSteps({
-            fileEdits: responseFileEdits,
-            fileDeletes,
-            linePatches: responseLinePatches,
-            imageGenResult,
-            githubPushResult,
-          }),
-        });
-      } catch (runErr) {
-        logger.warn({ err: runErr, projectId }, "execution_run: completion failed — non-fatal");
-      }
-    }
   }
 
   const inputTokenCount = assistantUsage.inputTokens;
@@ -6315,9 +6280,11 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     chatMessageId: intentMsgId ?? savedMsgId,
   });
 
-  // ── Execution run recorder — fire-and-forget after non-split turns with real work ──
-  if (!splitBuildTurn) void (async () => {
+  // ── Execution run recorder — unified fire-and-forget for ALL turns with real work ──
+  // autoVerify turns (LOCAL_APPLY_SUCCESS loop) and turns with no artifacts skip silently.
+  void (async () => {
     try {
+      if (body.displayAs === "autoVerify") return;
       const _hasTrigger =
         responseFileEdits.length > 0 ||
         fileDeletes.length > 0 ||
