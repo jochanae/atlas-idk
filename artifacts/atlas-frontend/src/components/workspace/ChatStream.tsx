@@ -379,6 +379,28 @@ export function ChatStream(props: ChatStreamProps) {
   }, [messages]);
   const suppressStreamingText = !!liveStep || (chatPending && inBuildChain);
 
+  // Inline run-card anchor. The run card should sit with the turn that produced
+  // it, not float below all messages. Rules:
+  //  - If a settled run exists and its associated assistant message is in view,
+  //    inject the card BEFORE that message (so order is: user → CARD → summary).
+  //  - Once backend splits the turn into intent + summary (execution-narrative
+  //    handoff), the run's messageId will point to the INTENT message and this
+  //    same anchor renders CARD between intent and summary.
+  //  - During active runs (chatPending/streaming) we fall back to the trailing
+  //    card — it's the live surface and there's no settled messageId yet.
+  const runAnchorIdx = useMemo(() => {
+    if (!execLatestRun?.messageId) return -1;
+    if (chatPending) return -1; // live: trailing card owns the surface
+    const idx = messages.findIndex(m => m.id === execLatestRun.messageId && m.role === "assistant");
+    if (idx === -1) return -1;
+    // Only anchor if this is the tail assistant turn — older runs already
+    // "belong" to their turn via scroll position; injecting mid-history is noisy.
+    const lastAssistantIdx = messages.reduce((a, m, i) => m.role === "assistant" ? i : a, -1);
+    if (idx !== lastAssistantIdx) return -1;
+    return idx;
+  }, [execLatestRun?.messageId, chatPending, messages]);
+
+
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
   // Intermediate rounds get suppressed; the final round shows a summary pill.
@@ -691,6 +713,20 @@ export function ChatStream(props: ChatStreamProps) {
         return (
         <Fragment key={i}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
+          {i === runAnchorIdx && (
+            <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
+              <WorkspaceRunCard
+                projectId={projectId}
+                messages={messages.slice(0, i)}
+                projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+                chatPending={false}
+                liveStep={null}
+                suppressGitHubReceipt
+                executionRun={execLatestRun}
+                onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+              />
+            </div>
+          )}
           {msg.role === "user" ? (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
               {isAutoVerifyMessage(msg) ? (
@@ -834,19 +870,22 @@ export function ChatStream(props: ChatStreamProps) {
       ) : null}
       {thinkingBlock}
 
-      {/* Model A: single run card sits inline with the turn (above chips), not trailing after them.
-          ActiveCard streams live steps in place; on completion it settles into the receipt with
-          Details / Preview / Try to fix — same card, two phases. */}
-      <WorkspaceRunCard
-        projectId={projectId}
-        messages={messages}
-        projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
-        chatPending={chatPending}
-        liveStep={liveStep}
-        suppressGitHubReceipt
-        executionRun={execLatestRun}
-        onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
-      />
+      {/* Trailing run card. Owns the LIVE surface (chatPending/streaming) and
+          is the fallback receipt slot. When runAnchorIdx >= 0 the card renders
+          inline with its turn (see loop above) and this trailing instance is
+          suppressed so the receipt doesn't double-render. */}
+      {runAnchorIdx === -1 && (
+        <WorkspaceRunCard
+          projectId={projectId}
+          messages={messages}
+          projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+          chatPending={chatPending}
+          liveStep={liveStep}
+          suppressGitHubReceipt
+          executionRun={execLatestRun}
+          onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+        />
+      )}
 
       {showSuggestionChips && onSuggestionTap && (
         <SuggestionChipRail
