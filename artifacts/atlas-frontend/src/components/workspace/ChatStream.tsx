@@ -364,9 +364,10 @@ export function ChatStream(props: ChatStreamProps) {
     execLatestRun,
   } = props;
 
-  // Conversation text is the primary live surface. Keep it visible even when
-  // step telemetry is present; otherwise replies appear only after completion.
-  const suppressStreamingText = false;
+  // Suppress the streaming prose bubble when live build steps are actively
+  // flowing — the WorkspaceRunCard owns that surface during a build.
+  // During plain conversation (no liveStep), keep the text visible as it streams.
+  const suppressStreamingText = !!liveStep;
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
