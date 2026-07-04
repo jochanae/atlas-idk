@@ -182,15 +182,12 @@ export function MarkdownProse({ content }: { content: string }) {
     <div
       className="atlas-prose"
       style={{
-        color: "var(--atlas-fg)",
-        maxWidth: "74ch",
-        fontSize: 16.5,
-        lineHeight: 1.75,
-        letterSpacing: "0.015em",
+        // Inherit color/font/size/line-height/letter-spacing from the parent bubble
+        // so Workspace text tracks the surrounding surface (Ask Atlas parity).
+        // Only enforce wrapping and a safe min-width for flex/grid parents.
         overflowWrap: "anywhere",
         wordBreak: "break-word",
         minWidth: 0,
-        fontFamily: "var(--app-font-sans)",
         WebkitFontSmoothing: "antialiased",
         MozOsxFontSmoothing: "grayscale",
       }}
@@ -200,18 +197,19 @@ export function MarkdownProse({ content }: { content: string }) {
           p: ({ children }) => (
             <p
               style={{
-                color: "var(--atlas-fg)",
+                color: "inherit",
                 fontSize: "inherit",
                 lineHeight: "inherit",
                 letterSpacing: "inherit",
-                marginBottom: "1.25em",
+                // Tighter paragraph rhythm — closer to Ask Atlas's continuous flow.
+                marginBottom: "0.6em",
               }}
             >
               {renderMarkdownChildren(children)}
             </p>
           ),
           strong: ({ children }) => (
-            <strong className="font-semibold" style={{ color: "var(--atlas-fg)" }}>
+            <strong className="font-semibold" style={{ color: "inherit" }}>
               {renderMarkdownChildren(children)}
             </strong>
           ),
@@ -229,11 +227,12 @@ export function MarkdownProse({ content }: { content: string }) {
             }
             return (
               <code
-                className="rounded px-1.5 py-0.5 font-mono text-[13px]"
+                className="rounded px-1.5 py-0.5 font-mono"
                 style={{
                   background: "var(--atlas-surface)",
-                  color: "var(--atlas-fg)",
+                  color: "inherit",
                   border: "0.5px solid var(--atlas-border)",
+                  fontSize: "0.88em",
                 }}
               >
                 {children}
@@ -257,13 +256,23 @@ export function MarkdownProse({ content }: { content: string }) {
             return <CodeBlockCard language={lang} code={raw.replace(/\n+$/, "")} />;
           },
           ul: ({ children }) => (
-            <ul className="ml-4 list-disc" style={{ marginBottom: "1em", display: "flex", flexDirection: "column", gap: "0.5em" }}>{children}</ul>
+            <ul
+              className="ml-4 list-disc"
+              style={{ marginTop: "0.25em", marginBottom: "0.6em", display: "flex", flexDirection: "column", gap: "0.2em" }}
+            >
+              {children}
+            </ul>
           ),
           ol: ({ children }) => (
-            <ol className="ml-4 list-decimal" style={{ marginBottom: "1em", display: "flex", flexDirection: "column", gap: "0.5em" }}>{children}</ol>
+            <ol
+              className="ml-4 list-decimal"
+              style={{ marginTop: "0.25em", marginBottom: "0.6em", display: "flex", flexDirection: "column", gap: "0.2em" }}
+            >
+              {children}
+            </ol>
           ),
           li: ({ children }) => (
-            <li style={{ color: "var(--atlas-fg)", fontSize: "inherit", lineHeight: "inherit", letterSpacing: "inherit" }}>
+            <li style={{ color: "inherit", fontSize: "inherit", lineHeight: "inherit", letterSpacing: "inherit" }}>
               {renderMarkdownChildren(children)}
             </li>
           ),
