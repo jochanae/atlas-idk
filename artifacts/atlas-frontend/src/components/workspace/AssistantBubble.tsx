@@ -1340,7 +1340,7 @@ function ReadinessGateCard({
 }
 
 // ── AssistantBubble ───────────────────────────────────────────────────────────
-export function AssistantBubble({
+function AssistantBubbleImpl({
   message,
   isNew = false,
   isLatestAssistant = false,
