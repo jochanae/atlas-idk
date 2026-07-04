@@ -1670,16 +1670,18 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
               onDone={() => setOpen(false)}
             />
           )}
+          </div>
 
           <button
             type="button"
             onClick={() => go("/ledger")}
             style={{
               display: "block", width: "100%", padding: "10px 14px",
-              background: "transparent", border: "none", borderTop: "1px solid rgba(var(--atlas-muted-rgb),0.12)",
+              background: "var(--atlas-bg)",
+              border: "none", borderTop: "1px solid rgba(var(--atlas-muted-rgb),0.12)",
               cursor: "pointer", color: "var(--atlas-gold)", fontSize: 12, fontWeight: 600,
               fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "var(--ls-mono-cap)",
-              textAlign: "center",
+              textAlign: "center", flexShrink: 0,
             }}
           >
             Open Ledger →
