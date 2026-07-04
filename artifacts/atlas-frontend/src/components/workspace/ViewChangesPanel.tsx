@@ -12,16 +12,28 @@
 // rows — Timeline shows process steps (THOUGHT/READ/SEARCH/INSPECT/SUMMARY),
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FolderGit2, X, FileCode2, Eye, Search, Folder,
-  Lightbulb, Trash2, CheckCircle2,
+  Lightbulb, Trash2, CheckCircle2, ChevronDown,
 } from "lucide-react";
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
-import { RunCard, type ActiveRun } from "@/components/home/ActiveRuns";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
+
+// ── Relative time (seconds → minutes → hours → days → date) ───────────────────
+function formatAgo(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  if (s < 45) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(Date.now() - ms).toLocaleDateString();
+}
 
 // ── Shared badge logic ────────────────────────────────────────────────────────
 
@@ -124,47 +136,83 @@ interface FileRow {
   content?: string | null;
 }
 
-function adaptApiRunToActiveRun(run: ApiRun, projectName: string): ActiveRun {
-  const hasGithubPush = run.steps.some((s) => s.verb === "GITHUB_PUSH");
-  const hasImageGen   = run.steps.some((s) => s.verb === "IMAGE_GEN");
+// ── Compact receipt pill (replaces the old expandable RunCard on this surface) ─
+function summarizeRun(run: ApiRun): { tag: string; line: string } {
   const filePaths = run.steps
     .filter((s) => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH")
     .map((s) => s.target)
-    .filter((t): t is string => t !== null);
+    .filter((t): t is string => !!t);
+  const hasGithubPush = run.steps.some((s) => s.verb === "GITHUB_PUSH");
+  const hasImageGen = run.steps.some((s) => s.verb === "IMAGE_GEN");
 
-  let intent: ActiveRun["intent"] = "build";
-  if (hasImageGen && !hasGithubPush && filePaths.length === 0) intent = "think";
+  let tag = "BUILD";
+  if (hasImageGen && filePaths.length === 0 && !hasGithubPush) tag = "THINK";
+  else if (hasGithubPush && filePaths.length === 0) tag = "PUSH";
 
-  const failStep = run.steps.find((s) => s.status === "fail");
-  let summaryLine: string;
+  let line: string;
   if (filePaths.length > 0) {
-    const count = filePaths.length;
-    const names = filePaths.slice(0, 2).map((p) => p.split("/").pop() ?? p);
-    const label = names.join(", ") + (count > 2 ? ` +${count - 2} more` : "");
-    summaryLine = `${count} file${count !== 1 ? "s" : ""} written — ${label}`;
-  } else if (hasGithubPush) {
-    summaryLine = "GitHub push";
-  } else if (hasImageGen) {
-    summaryLine = "Image generated";
-  } else {
-    summaryLine = run.summary ?? "Build run";
-  }
+    const uniq = Array.from(new Set(filePaths));
+    const names = uniq.slice(0, 2).map((p) => p.split("/").pop() ?? p);
+    const suffix = uniq.length > 2 ? `, +${uniq.length - 2} more` : "";
+    line = `${uniq.length} file${uniq.length !== 1 ? "s" : ""} written — ${names.join(", ")}${suffix}`;
+  } else if (hasGithubPush) line = "GitHub push";
+  else if (hasImageGen) line = "Image generated";
+  else line = run.summary ?? "Build run";
 
-  return {
-    id: run.id,
-    projectId: run.projectId,
-    projectName,
-    intent,
-    prompt: summaryLine,
-    sessionId: null,
-    status: run.status === "running" ? "running" : "completed",
-    createdAt: new Date(run.startedAt).getTime(),
-    completedAt: run.completedAt ? new Date(run.completedAt).getTime() : null,
-    error: run.status === "failed" ? (failStep?.detail ?? failStep?.verb ?? "Build failed") : undefined,
-    attachmentNames: [],
-    appliedFiles: filePaths,
-    summaryLine,
-  };
+  return { tag, line };
+}
+
+function RunReceiptPill({ run, projectName }: { run: ApiRun; projectName: string }) {
+  const { tag, line } = summarizeRun(run);
+  const failed = run.status === "failed";
+  const running = run.status === "running";
+  const dotColor = failed
+    ? "rgba(220,80,80,0.9)"
+    : running
+    ? "rgba(201,162,76,0.9)"
+    : "rgba(100,200,120,0.9)";
+  const started = new Date(run.startedAt).getTime();
+  const anchor = run.completedAt ? new Date(run.completedAt).getTime() : started;
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "8px 12px",
+        borderRadius: 6,
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(201,162,76,0.12)",
+        borderLeft: `2px solid ${dotColor}`,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }}
+      />
+      <span
+        style={{
+          fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+          letterSpacing: "0.14em", textTransform: "uppercase",
+          padding: "2px 6px", borderRadius: 3,
+          background: "rgba(201,162,76,0.1)", color: "var(--atlas-gold)",
+          border: "1px solid rgba(201,162,76,0.22)", flexShrink: 0,
+        }}
+      >{tag}</span>
+      <span style={{
+        fontSize: 12, color: "var(--atlas-fg)", opacity: 0.9,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        flex: 1, minWidth: 0,
+      }}>
+        <span style={{ opacity: 0.65 }}>{projectName}</span>
+        <span style={{ opacity: 0.4, margin: "0 6px" }}>·</span>
+        <span>{line}</span>
+      </span>
+      <span style={{
+        fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+        color: "var(--atlas-muted)", opacity: 0.6, flexShrink: 0,
+      }}>{formatAgo(Date.now() - anchor)}</span>
+      <ChevronDown size={12} strokeWidth={1.6} style={{ color: "var(--atlas-muted)", opacity: 0.45, flexShrink: 0 }} aria-hidden />
+    </div>
+  );
 }
 
 function collectFileRows(messages: TimelineMessage[]): FileRow[] {
@@ -456,9 +504,9 @@ function RunTimeline({ steps }: { steps: ApiRunStep[] }) {
   );
 }
 
-// ── Run receipt: DB-backed runs rendered as RunCards ──────────────────────────
+// ── Run receipt list: compact pills (one per recent run) ─────────────────────
 
-function WorkspaceRunCards({
+function WorkspaceRunReceipts({
   projectId,
   projectName,
   runId,
@@ -468,19 +516,11 @@ function WorkspaceRunCards({
   runId?: string | null;
 }) {
   const { runs: apiRuns } = useProjectRuns(projectId);
-  const [dismissedRunIds, setDismissedRunIds] = useState<Set<string>>(new Set());
 
-  const visibleRuns = useMemo((): ActiveRun[] => {
-    const adapted = apiRuns
-      .map((r) => adaptApiRunToActiveRun(r, projectName))
-      .filter((r) => !dismissedRunIds.has(r.id));
-    if (runId) return adapted.filter((r) => r.id === runId);
-    return adapted.slice(0, 5);
-  }, [apiRuns, dismissedRunIds, projectName, runId]);
-
-  const handleDismiss = useCallback((run: ActiveRun) => {
-    setDismissedRunIds((prev) => new Set(prev).add(run.id));
-  }, []);
+  const visibleRuns = useMemo((): ApiRun[] => {
+    if (runId) return apiRuns.filter((r) => r.id === runId);
+    return apiRuns.slice(0, 5);
+  }, [apiRuns, runId]);
 
   if (visibleRuns.length === 0) return null;
 
@@ -491,15 +531,7 @@ function WorkspaceRunCards({
       borderBottom: "1px solid rgba(201,162,76,0.08)",
     }}>
       {visibleRuns.map((run) => (
-        <RunCard
-          key={run.id}
-          run={run}
-          onEnter={() => {}}
-          onDismiss={() => handleDismiss(run)}
-          retryingFiles={new Set()}
-          retryErrors={new Map()}
-          onForceApply={() => Promise.resolve()}
-        />
+        <RunReceiptPill key={run.id} run={run} projectName={projectName} />
       ))}
     </div>
   );
@@ -638,7 +670,7 @@ export function ViewChangesPanel({
         </div>
       )}
 
-      <WorkspaceRunCards
+      <WorkspaceRunReceipts
         projectId={projectId}
         projectName={projectName?.trim() || "Workspace"}
         runId={runId}
