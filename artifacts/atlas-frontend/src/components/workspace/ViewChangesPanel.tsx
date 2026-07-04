@@ -136,47 +136,83 @@ interface FileRow {
   content?: string | null;
 }
 
-function adaptApiRunToActiveRun(run: ApiRun, projectName: string): ActiveRun {
-  const hasGithubPush = run.steps.some((s) => s.verb === "GITHUB_PUSH");
-  const hasImageGen   = run.steps.some((s) => s.verb === "IMAGE_GEN");
+// ── Compact receipt pill (replaces the old expandable RunCard on this surface) ─
+function summarizeRun(run: ApiRun): { tag: string; line: string } {
   const filePaths = run.steps
     .filter((s) => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH")
     .map((s) => s.target)
-    .filter((t): t is string => t !== null);
+    .filter((t): t is string => !!t);
+  const hasGithubPush = run.steps.some((s) => s.verb === "GITHUB_PUSH");
+  const hasImageGen = run.steps.some((s) => s.verb === "IMAGE_GEN");
 
-  let intent: ActiveRun["intent"] = "build";
-  if (hasImageGen && !hasGithubPush && filePaths.length === 0) intent = "think";
+  let tag = "BUILD";
+  if (hasImageGen && filePaths.length === 0 && !hasGithubPush) tag = "THINK";
+  else if (hasGithubPush && filePaths.length === 0) tag = "PUSH";
 
-  const failStep = run.steps.find((s) => s.status === "fail");
-  let summaryLine: string;
+  let line: string;
   if (filePaths.length > 0) {
-    const count = filePaths.length;
-    const names = filePaths.slice(0, 2).map((p) => p.split("/").pop() ?? p);
-    const label = names.join(", ") + (count > 2 ? ` +${count - 2} more` : "");
-    summaryLine = `${count} file${count !== 1 ? "s" : ""} written — ${label}`;
-  } else if (hasGithubPush) {
-    summaryLine = "GitHub push";
-  } else if (hasImageGen) {
-    summaryLine = "Image generated";
-  } else {
-    summaryLine = run.summary ?? "Build run";
-  }
+    const uniq = Array.from(new Set(filePaths));
+    const names = uniq.slice(0, 2).map((p) => p.split("/").pop() ?? p);
+    const suffix = uniq.length > 2 ? `, +${uniq.length - 2} more` : "";
+    line = `${uniq.length} file${uniq.length !== 1 ? "s" : ""} written — ${names.join(", ")}${suffix}`;
+  } else if (hasGithubPush) line = "GitHub push";
+  else if (hasImageGen) line = "Image generated";
+  else line = run.summary ?? "Build run";
 
-  return {
-    id: run.id,
-    projectId: run.projectId,
-    projectName,
-    intent,
-    prompt: summaryLine,
-    sessionId: null,
-    status: run.status === "running" ? "running" : "completed",
-    createdAt: new Date(run.startedAt).getTime(),
-    completedAt: run.completedAt ? new Date(run.completedAt).getTime() : null,
-    error: run.status === "failed" ? (failStep?.detail ?? failStep?.verb ?? "Build failed") : undefined,
-    attachmentNames: [],
-    appliedFiles: filePaths,
-    summaryLine,
-  };
+  return { tag, line };
+}
+
+function RunReceiptPill({ run, projectName }: { run: ApiRun; projectName: string }) {
+  const { tag, line } = summarizeRun(run);
+  const failed = run.status === "failed";
+  const running = run.status === "running";
+  const dotColor = failed
+    ? "rgba(220,80,80,0.9)"
+    : running
+    ? "rgba(201,162,76,0.9)"
+    : "rgba(100,200,120,0.9)";
+  const started = new Date(run.startedAt).getTime();
+  const anchor = run.completedAt ? new Date(run.completedAt).getTime() : started;
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "8px 12px",
+        borderRadius: 6,
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(201,162,76,0.12)",
+        borderLeft: `2px solid ${dotColor}`,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }}
+      />
+      <span
+        style={{
+          fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+          letterSpacing: "0.14em", textTransform: "uppercase",
+          padding: "2px 6px", borderRadius: 3,
+          background: "rgba(201,162,76,0.1)", color: "var(--atlas-gold)",
+          border: "1px solid rgba(201,162,76,0.22)", flexShrink: 0,
+        }}
+      >{tag}</span>
+      <span style={{
+        fontSize: 12, color: "var(--atlas-fg)", opacity: 0.9,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        flex: 1, minWidth: 0,
+      }}>
+        <span style={{ opacity: 0.65 }}>{projectName}</span>
+        <span style={{ opacity: 0.4, margin: "0 6px" }}>·</span>
+        <span>{line}</span>
+      </span>
+      <span style={{
+        fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+        color: "var(--atlas-muted)", opacity: 0.6, flexShrink: 0,
+      }}>{formatAgo(Date.now() - anchor)}</span>
+      <ChevronDown size={12} strokeWidth={1.6} style={{ color: "var(--atlas-muted)", opacity: 0.45, flexShrink: 0 }} aria-hidden />
+    </div>
+  );
 }
 
 function collectFileRows(messages: TimelineMessage[]): FileRow[] {
