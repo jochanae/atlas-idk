@@ -435,8 +435,8 @@ export function ChatComposer(props: ChatComposerProps) {
         {!sheetVisible && (
           <button
             type="button"
-            aria-label={isCompact ? "Expand composer" : "Collapse composer"}
-            title={isCompact ? "Expand composer" : "Collapse composer"}
+            aria-label={isCompact ? "Dock composer" : "Collapse composer"}
+            title={isCompact ? "Tap to dock — collapse to floating A" : "Collapse composer"}
             onClick={() => { haptics.tap(); toggleComposerCollapsed(); }}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 4,
