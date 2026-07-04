@@ -384,20 +384,26 @@ export function ChatStream(props: ChatStreamProps) {
   //  - If a settled run exists and its associated assistant message is in view,
   //    inject the card BEFORE that message (so order is: user → CARD → summary).
   //  - Once backend splits the turn into intent + summary (execution-narrative
-  //    handoff), the run's messageId will point to the INTENT message and this
-  //    same anchor renders CARD between intent and summary.
+  //    handoff), the run's messageId points at the INTENT message and the card
+  //    renders immediately after that bubble (intent → CARD → summary).
   //  - During active runs (chatPending/streaming) we fall back to the trailing
   //    card — it's the live surface and there's no settled messageId yet.
-  const runAnchorIdx = useMemo(() => {
+  const runCardAfterIdx = useMemo(() => {
     if (!execLatestRun?.messageId) return -1;
     if (chatPending) return -1; // live: trailing card owns the surface
     const idx = messages.findIndex(m => m.id === execLatestRun.messageId && m.role === "assistant");
     if (idx === -1) return -1;
-    // Only anchor if this is the tail assistant turn — older runs already
-    // "belong" to their turn via scroll position; injecting mid-history is noisy.
+
+    const next = messages[idx + 1];
+    if (next?.role === "assistant") {
+      // Intent anchor: card sits after the intent bubble, before the summary.
+      return idx;
+    }
+
+    // Legacy single-assistant turn: card before the only assistant message.
     const lastAssistantIdx = messages.reduce((a, m, i) => m.role === "assistant" ? i : a, -1);
     if (idx !== lastAssistantIdx) return -1;
-    return idx;
+    return idx - 1;
   }, [execLatestRun?.messageId, chatPending, messages]);
 
 
@@ -713,20 +719,6 @@ export function ChatStream(props: ChatStreamProps) {
         return (
         <Fragment key={i}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
-          {i === runAnchorIdx && (
-            <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
-              <WorkspaceRunCard
-                projectId={projectId}
-                messages={messages.slice(0, i)}
-                projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
-                chatPending={false}
-                liveStep={null}
-                suppressGitHubReceipt
-                executionRun={execLatestRun}
-                onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
-              />
-            </div>
-          )}
           {msg.role === "user" ? (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
               {isAutoVerifyMessage(msg) ? (
@@ -808,6 +800,20 @@ export function ChatStream(props: ChatStreamProps) {
               )}
             </div>
           )}
+          {i === runCardAfterIdx && (
+            <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
+              <WorkspaceRunCard
+                projectId={projectId}
+                messages={messages.slice(0, i + 1)}
+                projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+                chatPending={false}
+                liveStep={null}
+                suppressGitHubReceipt
+                executionRun={execLatestRun}
+                onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+              />
+            </div>
+          )}
           {renderActivityForAnchor(i)}
         </Fragment>
         );
@@ -871,10 +877,10 @@ export function ChatStream(props: ChatStreamProps) {
       {thinkingBlock}
 
       {/* Trailing run card. Owns the LIVE surface (chatPending/streaming) and
-          is the fallback receipt slot. When runAnchorIdx >= 0 the card renders
+          is the fallback receipt slot. When runCardAfterIdx >= 0 the card renders
           inline with its turn (see loop above) and this trailing instance is
           suppressed so the receipt doesn't double-render. */}
-      {runAnchorIdx === -1 && (
+      {runCardAfterIdx === -1 && (
         <WorkspaceRunCard
           projectId={projectId}
           messages={messages}

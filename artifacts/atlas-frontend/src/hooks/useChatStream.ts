@@ -569,7 +569,7 @@ export function useChatStream(
             return;
           }
 
-          const placeholderId = -Date.now();
+          let placeholderId = -Date.now();
           streamingId = placeholderId;
           let streamedText = "";
           let tokenLineBuffer = "";
@@ -608,6 +608,36 @@ export function useChatStream(
               );
             },
           });
+          const resetSummaryPlaceholder = () => {
+            const nextPlaceholderId = -Date.now() - 1;
+            placeholderId = nextPlaceholderId;
+            streamingId = nextPlaceholderId;
+            streamedText = "";
+            tokenLineBuffer = "";
+            pacer = createTextPacer({
+              rateMs: 8,
+              settleMs: 0,
+              catchupAt: 300,
+              onTick: (released) => {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === placeholderId ? { ...m, content: renderFrom(released) } : m
+                  )
+                );
+              },
+            });
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: nextPlaceholderId,
+                role: "assistant",
+                content: "",
+                streaming: true,
+                sentAt: new Date().toISOString(),
+                model: sendCtxRef.current.wsModel,
+              },
+            ]);
+          };
           const triggerGithubAutoLink = (content: string) => {
             if (githubAutoLinkPromise) return;
             const { found } = stripGithubAutoLinkToolCall(content);
@@ -808,6 +838,28 @@ export function useChatStream(
                   setChatPending(false);
                   setLiveStep(null);
                   streamingFinished = true;
+                } else if (evtName === "intent_done") {
+                  const res = typeEmbedded ?? JSON.parse(evtData);
+                  const intentContent = typeof res?.content === "string" ? res.content : "";
+                  await (pacer?.finish() ?? Promise.resolve());
+                  const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : [])) as Array<{ path?: string; language?: string }>;
+                  const lps = (res.linePatches ?? []) as Array<{ path: string }>;
+                  const fds = (res.fileDeletes ?? []) as Array<{ path: string }>;
+                  setMessages((prev) => [
+                    ...prev.filter((m) => m.id !== placeholderId),
+                    {
+                      id: res.messageId,
+                      role: "assistant",
+                      content: intentContent,
+                      intentType: res.intentType ?? null,
+                      sentAt: new Date().toISOString(),
+                      model: sendCtxRef.current.wsModel,
+                      ...(fes.length > 0 ? { fileEdits: fes, fileEdit: fes[0] } : {}),
+                      ...(lps.length > 0 ? { linePatches: lps } : {}),
+                      ...(fds.length > 0 ? { fileDeletes: fds } : {}),
+                    },
+                  ]);
+                  resetSummaryPlaceholder();
                 } else if (evtName === "done") {
                   // type-embedded: {"type":"done","content":"...","messageId":...,...}
                   // event: format: data: {...} (JSON object)

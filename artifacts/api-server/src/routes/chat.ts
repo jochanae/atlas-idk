@@ -2215,6 +2215,168 @@ function runMetadataInsertValues(content: string, fileEdits: FileEdit[] = []) {
   };
 }
 
+/** Split assistant prose into intent (pre-run) and summary (post-run) for BUILD turns. */
+function splitBuildNarrativeContent(content: string): { intent: string; summary: string } {
+  const trimmed = content.trim();
+  if (!trimmed) {
+    return { intent: "Working on your request…", summary: "Done." };
+  }
+
+  const paragraphs = trimmed.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+  if (paragraphs.length >= 2 && paragraphs[0].length <= 320) {
+    return { intent: paragraphs[0], summary: paragraphs.slice(1).join("\n\n") };
+  }
+
+  const sentenceRe = /[^.!?]+[.!?]+(?:\s+|$)/g;
+  const sentences: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = sentenceRe.exec(trimmed)) !== null) {
+    sentences.push(match[0].trim());
+    if (sentences.length >= 2) break;
+  }
+
+  if (sentences.length >= 2) {
+    const intent = sentences.join(" ");
+    const summary = trimmed.slice(intent.length).trim();
+    if (summary.length > 0) return { intent, summary };
+  }
+
+  if (sentences.length === 1) {
+    const intent = sentences[0];
+    const summary = trimmed.slice(intent.length).trim();
+    if (summary.length > 0) return { intent, summary };
+  }
+
+  if (trimmed.length <= 220) {
+    return { intent: trimmed, summary: "Done." };
+  }
+
+  const cutAt = trimmed.lastIndexOf(" ", 180);
+  const intentEnd = cutAt > 60 ? cutAt : 180;
+  const intent = `${trimmed.slice(0, intentEnd).trim()}…`;
+  const summary = trimmed.slice(intentEnd).trim() || "Done.";
+  return { intent, summary };
+}
+
+function hasExecutionRunTrigger(args: {
+  fileEdits: FileEdit[];
+  fileDeletes: Array<{ path: string }>;
+  linePatches: Array<{ path: string }>;
+  imageCount: number;
+  hasGithubPush: boolean;
+}): boolean {
+  return (
+    args.fileEdits.length > 0 ||
+    args.fileDeletes.length > 0 ||
+    args.linePatches.length > 0 ||
+    args.imageCount > 0 ||
+    args.hasGithubPush
+  );
+}
+
+function shouldSplitBuildNarrative(args: {
+  workspaceLens: string;
+  isFlowMode: boolean;
+  isScenarioMode: boolean;
+  hasTrigger: boolean;
+}): boolean {
+  return (
+    args.workspaceLens === "build" &&
+    args.hasTrigger &&
+    !args.isFlowMode &&
+    !args.isScenarioMode
+  );
+}
+
+type ExecutionRunRecorder = {
+  runId: string;
+  startedAt: Date;
+  complete: (args: {
+    status: string;
+    summary: string;
+    steps: Array<{ verb: string; target: string | null; status: string; detail: string | null }>;
+  }) => Promise<void>;
+};
+
+async function startExecutionRunRecord(args: {
+  projectId: number;
+  sessionId: number | null | undefined;
+  messageId: number;
+  mode: string;
+}): Promise<ExecutionRunRecorder> {
+  const runId = crypto.randomUUID();
+  const startedAt = new Date();
+  await db.execute(sql`
+    INSERT INTO execution_runs
+      (id, project_id, thread_id, message_id, mode, status, summary, started_at)
+    VALUES
+      (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${args.messageId},
+       ${args.mode}, 'running', '', ${startedAt})
+  `);
+
+  return {
+    runId,
+    startedAt,
+    complete: async ({ status, summary, steps }) => {
+      const completedAt = new Date();
+      const elapsedMs = Math.max(0, completedAt.getTime() - startedAt.getTime());
+      await db.execute(sql`
+        UPDATE execution_runs
+        SET status = ${status},
+            summary = ${summary},
+            completed_at = ${completedAt},
+            elapsed_ms = ${elapsedMs}
+        WHERE id = ${runId}
+      `);
+      for (const step of steps) {
+        await db.execute(sql`
+          INSERT INTO execution_run_steps (run_id, verb, target, status, detail)
+          VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail})
+        `);
+      }
+      logger.info({ runId, projectId: args.projectId, mode: args.mode, status, stepCount: steps.length }, "execution_run: recorded");
+    },
+  };
+}
+
+function buildExecutionRunSteps(args: {
+  fileEdits: FileEdit[];
+  fileDeletes: Array<{ path: string }>;
+  linePatches: Array<{ path: string }>;
+  imageGenResult?: { images: Array<{ prompt?: string; model?: string }> };
+  githubPushResult?: { branch?: string; error?: string; files?: unknown[] } | null;
+}): Array<{ verb: string; target: string | null; status: string; detail: string | null }> {
+  const steps: Array<{ verb: string; target: string | null; status: string; detail: string | null }> = [];
+  for (const edit of args.fileEdits) {
+    steps.push({ verb: "FILE_EDIT", target: edit.path, status: "ok", detail: null });
+  }
+  for (const del of args.fileDeletes) {
+    steps.push({ verb: "FILE_DELETE", target: del.path, status: "ok", detail: null });
+  }
+  for (const patch of args.linePatches) {
+    steps.push({ verb: "LINE_PATCH", target: patch.path, status: "ok", detail: null });
+  }
+  if (args.imageGenResult?.images?.length) {
+    for (const img of args.imageGenResult.images.slice(0, 2)) {
+      steps.push({
+        verb: "IMAGE_GEN",
+        target: (img.prompt ?? "image").slice(0, 80),
+        status: "ok",
+        detail: `model:${img.model ?? "unknown"}`,
+      });
+    }
+  }
+  if (args.githubPushResult) {
+    steps.push({
+      verb: "GITHUB_PUSH",
+      target: args.githubPushResult.branch ?? null,
+      status: args.githubPushResult.error ? "fail" : "ok",
+      detail: args.githubPushResult.error ?? `${args.githubPushResult.files?.length ?? 0} files`,
+    });
+  }
+  return steps;
+}
+
 async function callModel(
   modelId: ModelId,
   systemPrompt: string,
@@ -5021,12 +5183,29 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   }
   const responseFileEdits = fileChangesAllowed ? fileEdits : [];
   const responseLinePatches = fileChangesAllowed ? linePatches : [];
+  const willTriggerExecutionRun = hasExecutionRunTrigger({
+    fileEdits: responseFileEdits,
+    fileDeletes,
+    linePatches: responseLinePatches,
+    imageCount: imageGenTokens.length,
+    hasGithubPush: !!githubPushToken,
+  });
+  const splitBuildTurn = shouldSplitBuildNarrative({
+    workspaceLens,
+    isFlowMode,
+    isScenarioMode,
+    hasTrigger: willTriggerExecutionRun,
+  });
+  const narrativeSplit = splitBuildTurn ? splitBuildNarrativeContent(persistContent) : null;
+  const intentPersistContent = narrativeSplit?.intent ?? persistContent;
+  const summaryBaseContent = narrativeSplit?.summary ?? persistContent;
 
   // Build handoff auto-apply: first response in a build handoff writes files directly to disk
   // so the user never needs to manually click Apply (eliminates the refresh race).
+  // Split BUILD turns defer auto-apply until after the intent message is persisted.
   let autoApplied = false;
   const autoAppliedPaths: string[] = [];
-  if (responseFileEdits.length > 0 && projectId) {
+  if (!splitBuildTurn && responseFileEdits.length > 0 && projectId) {
     try {
       const wsDir = await ensureProjectWorkspaceDir(projectId);
       for (const edit of responseFileEdits) {
@@ -5155,8 +5334,11 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     if (generatedImages.length > 0) imageGenResult = { images: generatedImages };
   }
 
-  // Persist assistant message — image generation runs first so imageB64 is available
+  // Persist assistant message(s) — image generation runs first so imageB64 is available
   let savedMsgId: number | undefined;
+  let intentMsgId: number | undefined;
+  let summaryMsgId: number | undefined;
+  let executionRunRecorder: ExecutionRunRecorder | null = null;
   let autoName: string | undefined;
   if (generatedAutoName) autoName = generatedAutoName;
   if (!isFlowMode && !isScenarioMode) {
@@ -5176,35 +5358,110 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           ],
         }
       : baseRunMetadata;
+    const sharedAssistantValues = {
+      sessionId,
+      role: "assistant" as const,
+      intentType: detectedIntentType,
+      catchPayload: undefined,
+      imageB64: imageB64Val,
+      imageMimeType: imageMimeTypeVal,
+      fileEditsJson: responseFileEdits.length > 0
+        ? JSON.stringify(responseFileEdits.map(e => ({ path: e.path, language: e.language })))
+        : null,
+      fileDeletesJson: fileDeletes.length > 0
+        ? JSON.stringify(fileDeletes.map((d: { path: string }) => ({ path: d.path })))
+        : null,
+      linePatchesJson: responseLinePatches.length > 0
+        ? JSON.stringify(responseLinePatches.map((p: { path: string }) => ({ path: p.path })))
+        : null,
+    };
     try {
-      const [savedMsg] = await db
-        .insert(chatMessagesTable)
-        .values({
-          sessionId,
-          role: "assistant",
-          content: persistContent,
-          intentType: detectedIntentType,
-          catchPayload: undefined,
-          ...usageInsertValues(assistantUsage),
-          ...runMetadata,
-          imageB64: imageB64Val,
-          imageMimeType: imageMimeTypeVal,
-          fileEditsJson: responseFileEdits.length > 0
-            ? JSON.stringify(responseFileEdits.map(e => ({ path: e.path, language: e.language })))
-            : null,
-          fileDeletesJson: fileDeletes.length > 0
-            ? JSON.stringify(fileDeletes.map((d: { path: string }) => ({ path: d.path })))
-            : null,
-          linePatchesJson: responseLinePatches.length > 0
-            ? JSON.stringify(responseLinePatches.map((p: { path: string }) => ({ path: p.path })))
-            : null,
-        })
-        .returning();
-      savedMsgId = savedMsg.id;
+      if (splitBuildTurn) {
+        const [intentMsg] = await db
+          .insert(chatMessagesTable)
+          .values({
+            ...sharedAssistantValues,
+            content: intentPersistContent,
+            ...runMetadata,
+          })
+          .returning();
+        intentMsgId = intentMsg.id;
+        savedMsgId = intentMsg.id;
+
+        if (projectId) {
+          const runMode =
+            responseFileEdits.length > 0 || fileDeletes.length > 0 || responseLinePatches.length > 0 || !!githubPushToken
+              ? "operational"
+              : "conversation";
+          executionRunRecorder = await startExecutionRunRecord({
+            projectId,
+            sessionId,
+            messageId: intentMsg.id,
+            mode: runMode,
+          });
+        }
+
+        try {
+          res.write(`data: ${JSON.stringify({
+            type: "intent_done",
+            messageId: intentMsg.id,
+            content: intentPersistContent,
+            intentType: detectedIntentType ?? null,
+            fileEdits: responseFileEdits.length > 0 ? responseFileEdits : undefined,
+            linePatches: responseLinePatches.length > 0 ? responseLinePatches : undefined,
+            fileDeletes: fileDeletes.length > 0 ? fileDeletes : undefined,
+          })}\n\n`);
+        } catch { /* client gone */ }
+
+        if (responseFileEdits.length > 0 && projectId) {
+          try {
+            const wsDir = await ensureProjectWorkspaceDir(projectId);
+            for (const edit of responseFileEdits) {
+              writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
+              const absPath = resolveWorkspacePath(wsDir, edit.path);
+              await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+              await fsPromises.writeFile(absPath, edit.content, "utf-8");
+              autoAppliedPaths.push(edit.path);
+            }
+            autoApplied = true;
+            logger.info({ projectId, count: autoAppliedPaths.length }, "Build handoff: auto-applied FILE_EDIT blocks to local workspace");
+          } catch (err) {
+            logger.warn({ err, projectId }, "Build handoff: auto-apply failed — user will need to click Apply");
+          }
+        }
+
+        await db
+          .update(sessionsTable)
+          .set({
+            messageCount: sql`${sessionsTable.messageCount} + 2`,
+            ...runMetadata,
+          })
+          .where(eq(sessionsTable.id, sessionId));
+      } else {
+        const [savedMsg] = await db
+          .insert(chatMessagesTable)
+          .values({
+            ...sharedAssistantValues,
+            content: persistContent,
+            ...usageInsertValues(assistantUsage),
+            ...runMetadata,
+          })
+          .returning();
+        savedMsgId = savedMsg.id;
+        await db
+          .update(sessionsTable)
+          .set({
+            messageCount: sql`${sessionsTable.messageCount} + 2`,
+            ...runMetadata,
+          })
+          .where(eq(sessionsTable.id, sessionId));
+      }
+
+      const planAnchorMsgId = intentMsgId ?? savedMsgId;
       // Persist plan to project_artifacts for cross-session queryability (fire-and-forget)
-      if (structuredPlanArtifact && projectId) {
+      if (structuredPlanArtifact && projectId && planAnchorMsgId) {
         const plan = structuredPlanArtifact;
-        const msgId = savedMsg.id;
+        const msgId = planAnchorMsgId;
         setImmediate(async () => {
           try {
             const existing = await db.select({ id: projectArtifactsTable.id })
@@ -5224,12 +5481,13 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         });
       }
       // Persist image version record if an image was generated
-      if (firstImage && savedMsg.id) {
+      const imageAnchorMsgId = intentMsgId ?? savedMsgId;
+      if (firstImage && imageAnchorMsgId) {
         try {
           await db.insert(imageVersionsTable).values({
             sessionId,
             projectId,
-            messageId: savedMsg.id,
+            messageId: imageAnchorMsgId,
             prompt: firstImage.prompt ?? message,
             imageB64: imageB64Val!,
             imageMimeType: imageMimeTypeVal ?? "image/png",
@@ -5240,13 +5498,6 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           logger.warn({ err: ivErr?.message }, "image_versions insert failed — non-fatal");
         }
       }
-      await db
-        .update(sessionsTable)
-        .set({
-          messageCount: sql`${sessionsTable.messageCount} + 2`,
-          ...runMetadata,
-        })
-        .where(eq(sessionsTable.id, sessionId));
     } catch (dbErr: any) {
       const errMsg = dbErr?.message ?? "";
       const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
@@ -5257,13 +5508,16 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           .values({
             sessionId,
             role: "assistant",
-            content: persistContent,
+            content: splitBuildTurn ? intentPersistContent : persistContent,
             intentType: detectedIntentType,
             catchPayload: undefined,
             imageB64: imageB64Val,
             imageMimeType: imageMimeTypeVal,
           })
           .returning();
+        if (splitBuildTurn) {
+          intentMsgId = savedMsg.id;
+        }
         savedMsgId = savedMsg.id;
         await db
           .update(sessionsTable)
@@ -5808,7 +6062,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   }
 
   // Append browser visit analysis to the displayed message so users can read it in chat
-  let fullText = displayContent;
+  let fullText = splitBuildTurn ? summaryBaseContent : displayContent;
   if (browserVisitResult) {
     const bv = browserVisitResult as {
       type: string; url: string; analysis?: string; isHealthy?: boolean;
@@ -5912,14 +6166,70 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   }
   // Emit live "Writing/Patching" steps so the run card shows real file names
   // right before transitioning to the green "Run Complete" receipt state.
-  // Emit for ALL turns — including autoApplied (local workspace writes) so the
-  // active build card is visible even when no agentic read/write tools were used.
-  for (const edit of responseFileEdits) {
-    writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
+  // Split BUILD turns already emitted steps during deferred auto-apply.
+  if (!(splitBuildTurn && autoApplied)) {
+    for (const edit of responseFileEdits) {
+      writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
+    }
+    for (const patch of responseLinePatches) {
+      writeStep(res, { verb: "Patching", target: (patch as { path: string }).path, phase: "build" });
+    }
   }
-  for (const patch of responseLinePatches) {
-    writeStep(res, { verb: "Patching", target: (patch as { path: string }).path, phase: "build" });
+
+  if (splitBuildTurn && !isFlowMode && !isScenarioMode) {
+    try {
+      res.write(`data: ${JSON.stringify({ type: "token", content: fullText })}\n\n`);
+    } catch { /* client gone */ }
+
+    try {
+      const [summaryMsg] = await db
+        .insert(chatMessagesTable)
+        .values({
+          sessionId,
+          role: "assistant",
+          content: fullText,
+          intentType: detectedIntentType,
+          catchPayload: undefined,
+          ...usageInsertValues(assistantUsage),
+        })
+        .returning();
+      summaryMsgId = summaryMsg.id;
+      savedMsgId = summaryMsg.id;
+      (finalPayload as { messageId?: number }).messageId = summaryMsg.id;
+      (finalPayload as { content?: string }).content = fullText;
+
+      await db
+        .update(sessionsTable)
+        .set({ messageCount: sql`${sessionsTable.messageCount} + 1` })
+        .where(eq(sessionsTable.id, sessionId));
+    } catch (summaryErr: any) {
+      logger.warn({ err: summaryErr?.message }, "summary message insert failed — falling back to intent-only turn");
+    }
+
+    if (executionRunRecorder && projectId) {
+      try {
+        const RUN_ERROR_RE = /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
+        const runStatus =
+          RUN_ERROR_RE.test(persistContent) || !!githubPushResult?.error
+            ? "failed"
+            : "succeeded";
+        await executionRunRecorder.complete({
+          status: runStatus,
+          summary: runSummaryFromContent(persistContent, responseFileEdits, fileDeletes, responseLinePatches),
+          steps: buildExecutionRunSteps({
+            fileEdits: responseFileEdits,
+            fileDeletes,
+            linePatches: responseLinePatches,
+            imageGenResult,
+            githubPushResult,
+          }),
+        });
+      } catch (runErr) {
+        logger.warn({ err: runErr, projectId }, "execution_run: completion failed — non-fatal");
+      }
+    }
   }
+
   const inputTokenCount = assistantUsage.inputTokens;
   res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
   res.end();
@@ -5957,13 +6267,11 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     startedAt: now,
     fileEdits: responseFileEdits,
     previousContentByPath,
-    chatMessageId: savedMsgId,
+    chatMessageId: intentMsgId ?? savedMsgId,
   });
 
-  // ── Execution run recorder — fire-and-forget after every turn with real work ──
-  // Triggers: file edits, file deletes, line patches, generated images, github push.
-  // Errors do NOT trigger runs; they can only change an existing run's status.
-  void (async () => {
+  // ── Execution run recorder — fire-and-forget after non-split turns with real work ──
+  if (!splitBuildTurn) void (async () => {
     try {
       const _hasTrigger =
         responseFileEdits.length > 0 ||
