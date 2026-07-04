@@ -279,13 +279,13 @@ export default function ParkingLot() {
           </svg>
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5, letterSpacing: "0.1em", textTransform: "uppercase" }}>atlas</span>
-          <span style={{ color: "var(--atlas-border)", fontSize: 11 }}>/</span>
-          <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Parking Lot</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, overflow: "hidden" }}>
+          <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5, letterSpacing: "0.1em", textTransform: "uppercase", flexShrink: 0 }}>atlas</span>
+          <span style={{ color: "var(--atlas-border)", fontSize: 11, flexShrink: 0 }}>/</span>
+          <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.1em", textTransform: "uppercase", flexShrink: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>Parking Lot</span>
           {totalCount > 0 && (
-            <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(201,162,76,0.1)", border: "1px solid rgba(201,162,76,0.25)", color: "rgba(201,162,76,0.75)", padding: "1px 8px", borderRadius: 20 }}>
-              {totalCount} waiting
+            <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(201,162,76,0.1)", border: "1px solid rgba(201,162,76,0.25)", color: "rgba(201,162,76,0.75)", padding: "1px 8px", borderRadius: 20, flexShrink: 0, whiteSpace: "nowrap" }}>
+              {totalCount}
             </span>
           )}
         </div>
@@ -300,8 +300,9 @@ export default function ParkingLot() {
             }}
             style={{
               background: "var(--atlas-surface)", border: "1px solid var(--atlas-gold-border)",
-              color: "var(--atlas-fg)", borderRadius: 6, padding: "4px 10px",
+              color: "var(--atlas-fg)", borderRadius: 6, padding: "4px 8px",
               fontSize: 11, fontFamily: "var(--app-font-mono)", cursor: "pointer", outline: "none", flexShrink: 0,
+              maxWidth: 120, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap",
             }}
           >
             <option value="">All Projects</option>
