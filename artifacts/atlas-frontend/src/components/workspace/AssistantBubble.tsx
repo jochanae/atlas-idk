@@ -682,6 +682,22 @@ function InlineDiffCard({
 
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 7, padding: "8px 10px", borderTop: "1px solid var(--atlas-border)" }}>
+          {fileEdits.length > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const text = fileEdits.length === 1
+                  ? fileEdits[0].content
+                  : fileEdits.map((ed) => `// ===== ${ed.path} =====\n${ed.content}`).join("\n\n");
+                void navigator.clipboard.writeText(text);
+              }}
+              title="Copy full file content"
+              style={{ padding: "5px 10px", borderRadius: 5, background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", cursor: "pointer", fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.06em" }}
+            >
+              Copy
+            </button>
+          )}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onReviewDiff(); }}

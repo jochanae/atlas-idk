@@ -307,6 +307,9 @@ export function ViewChangesPanel({
 }: Props) {
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
 
+  // DB-backed runs — persists across reloads
+  const { runs: dbRuns } = useProjectRuns(projectId);
+
   // Filter contract: if runId is set AND at least one message carries it,
   // filter honestly. Otherwise show the pill + hint and render unfiltered.
   const { filteredMessages, filteredActive, showEmptyHint } = useMemo(() => {
@@ -319,7 +322,35 @@ export function ViewChangesPanel({
     return { filteredMessages: messages, filteredActive: false, showEmptyHint: true };
   }, [messages, runId]);
 
-  const changeRows = useMemo(() => collectFileRows(filteredMessages), [filteredMessages]);
+  // Build file rows from DB-backed execution_run_steps — these survive reloads.
+  // Merge with in-memory message rows; DB rows go first (newest run first) and
+  // message rows fill in anything the DB doesn't have yet.
+  const changeRows = useMemo(() => {
+    const dbRows: FileRow[] = [];
+    const seenPaths = new Set<string>();
+    for (const run of dbRuns) {
+      if (runId && run.id !== runId) continue;
+      for (const step of run.steps) {
+        if (
+          (step.verb === "FILE_EDIT" || step.verb === "LINE_PATCH" || step.verb === "FILE_DELETE") &&
+          step.target
+        ) {
+          if (!seenPaths.has(step.target)) {
+            seenPaths.add(step.target);
+            dbRows.push({
+              path: step.target,
+              summary: step.verb === "FILE_DELETE" ? "deleted" : step.verb === "LINE_PATCH" ? "patched lines" : "rewrote file",
+              messageId: run.id,
+              projectId,
+            });
+          }
+        }
+      }
+    }
+    // Supplement with in-memory rows for anything not yet flushed to the DB
+    const msgRows = collectFileRows(filteredMessages).filter((r) => !seenPaths.has(r.path));
+    return [...dbRows, ...msgRows];
+  }, [dbRuns, filteredMessages, runId, projectId]);
 
   const clearRunFilter = () => {
     try {
