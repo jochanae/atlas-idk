@@ -85,6 +85,8 @@ interface Props {
   handoffSignal?: NexusHandoffSignal | null;
   /** True when Atlas emitted THINKING_STABLE — triggers faster receipt polling + crystallized UI. */
   crystallized?: boolean;
+  /** True while the thread restore fetch is in-flight — shows a skeleton instead of blank. */
+  isRestoring?: boolean;
 }
 
 const ASK_ATLAS_PLACEHOLDERS = [
@@ -243,6 +245,7 @@ export function AskAtlasSurface({
   hideComposer = false,
   handoffSignal,
   crystallized = false,
+  isRestoring = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -400,6 +403,47 @@ export function AskAtlasSurface({
         }}
       >
 
+
+        {isRestoring && messages.length === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
+            {[{ w: "72%", role: "user" }, { w: "88%", role: "assistant" }, { w: "60%", role: "user" }, { w: "94%", role: "assistant" }].map((item, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: item.role === "user" ? "flex-end" : "flex-start",
+                  gap: 6,
+                }}
+              >
+                <div style={{
+                  height: 8,
+                  width: 32,
+                  borderRadius: 4,
+                  background: "color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
+                  animation: `atlas-restore-pulse 1.6s ease-in-out ${i * 0.15}s infinite`,
+                }} />
+                <div style={{
+                  height: item.role === "assistant" ? 64 : 36,
+                  width: item.w,
+                  maxWidth: item.role === "user" ? "72%" : "100%",
+                  borderRadius: 10,
+                  background: item.role === "user"
+                    ? "color-mix(in oklab, var(--atlas-gold) 6%, transparent)"
+                    : "color-mix(in oklab, var(--atlas-fg) 5%, transparent)",
+                  border: `0.5px solid ${item.role === "user" ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)" : "color-mix(in oklab, var(--atlas-fg) 8%, transparent)"}`,
+                  animation: `atlas-restore-pulse 1.6s ease-in-out ${i * 0.15}s infinite`,
+                }} />
+              </div>
+            ))}
+            <style>{`
+              @keyframes atlas-restore-pulse {
+                0%, 100% { opacity: 0.35; }
+                50% { opacity: 0.7; }
+              }
+            `}</style>
+          </div>
+        )}
 
         {messages.map((msg, i) => {
           if (msg.kind === "genesis" && msg.genesisData) {

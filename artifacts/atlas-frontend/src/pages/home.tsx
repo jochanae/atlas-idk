@@ -2092,11 +2092,21 @@ export default function Home() {
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
     try { return localStorage.getItem("atlas-ask-atlas-surface-open") === "1"; } catch { return false; }
   });
+  // True while the thread restore fetch is in-flight. Initialized synchronously
+  // from localStorage so the surface is visible immediately on return (no blank flash).
+  const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
+    try {
+      const surfaceOpen = localStorage.getItem("atlas-ask-atlas-surface-open") === "1";
+      const convId = localStorage.getItem("atlas-ask-atlas-conversation-id") ?? sessionStorage.getItem("atlas-ask-atlas-conversation-id");
+      return surfaceOpen && !!convId;
+    } catch { return false; }
+  });
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
   // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
   // button and routes sends to askAtlasChat.
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && askAtlasChat.messages.length > 0;
+  // Also visible while restoring so the surface never flashes blank on return.
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -2128,25 +2138,35 @@ export default function Home() {
     } catch {}
   }, [askAtlasSurfaceOpen]);
 
-  // Restore Ask Atlas thread after hard refresh — the surface may be open (from
-  // lazy localStorage init) but askAtlasChat is empty because the standard
+  // Restore Ask Atlas thread after hard refresh or navigation return — the surface
+  // may be open (from localStorage) but askAtlasChat is empty because the standard
   // thread-load effect populates nexusChat, not askAtlasChat.
   const askAtlasRestoreAttemptRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!askAtlasSurfaceOpen || !askAtlasConversationId) return;
+    if (!askAtlasSurfaceOpen || !askAtlasConversationId) {
+      setIsAskAtlasRestoring(false);
+      return;
+    }
     if (askAtlasRestoreAttemptRef.current === askAtlasConversationId) return;
     if (askAtlasChat.messages.length > 0) {
       askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+      setIsAskAtlasRestoring(false);
       return;
     }
-    askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+    setIsAskAtlasRestoring(true);
     fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(askAtlasConversationId)}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then((msgs: Array<{ role: string; content: string }>) => {
         const normalized = normalizeLoadedHomeMessages(msgs);
         if (normalized.length > 0) askAtlasChat.setMessages(normalized as any);
+        askAtlasRestoreAttemptRef.current = askAtlasConversationId;
       })
-      .catch(() => {});
+      .catch(() => {
+        askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+      })
+      .finally(() => {
+        setIsAskAtlasRestoring(false);
+      });
   }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasChat.messages.length, askAtlasChat.setMessages]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
@@ -5438,6 +5458,7 @@ export default function Home() {
 
       <AskAtlasSurface
         open={askAtlasSurfaceVisible}
+        isRestoring={isAskAtlasRestoring && askAtlasChat.messages.length === 0}
         messages={askAtlasChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={askAtlasConversationId}
