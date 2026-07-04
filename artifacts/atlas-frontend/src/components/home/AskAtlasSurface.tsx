@@ -247,7 +247,11 @@ export function AskAtlasSurface({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [, setLocation] = useLocation();
   const [focused, setFocused] = useState(false);
-  const [restingCompact, setRestingCompact] = useState(false);
+  // Progressive collapse: full → compact → docked (post-first-message only).
+  // Ambient/entry state (no messages yet) is locked to full ↔ compact.
+  const [restingState, setRestingState] = useState<"full" | "compact" | "docked">("full");
+  const restingCompact = restingState === "compact";
+  const restingDocked = restingState === "docked";
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
