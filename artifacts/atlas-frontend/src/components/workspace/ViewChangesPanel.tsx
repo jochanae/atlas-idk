@@ -4,23 +4,26 @@
 //   [run pill]  (only when runId prop is set)
 //   Toggle:  Timeline | Changes
 //   Body:
-//     • Timeline lens → SessionTimeline (filtered when runId tags match)
-//     • Changes lens  → per-file rows built from message fileEdits/linePatches
-//   GitHub / Workspace block (unchanged behavior)
+//     • Timeline lens → RunTimeline (reads from execution_run_steps via useProjectRuns)
+//     • Changes lens  → per-file rows from DB-backed execution_run_steps
+//   GitHub / Workspace block
 //
-// Frontend-only. No new transport. If runId is set but no messages carry it,
-// we show the pill + an honest "No entries tagged for this run yet." hint
-// above the unfiltered list rather than pretending the view is filtered.
+// One run = one durable record. Both lenses read from the same execution_run_steps
+// rows — Timeline shows process steps (THOUGHT/READ/SEARCH/INSPECT/SUMMARY),
+// Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
 import { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FolderGit2, X, FileCode2 } from "lucide-react";
-import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
+import {
+  FolderGit2, X, FileCode2, Eye, Search, Folder,
+  Lightbulb, Trash2, CheckCircle2,
+} from "lucide-react";
+import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { RunCard, type ActiveRun } from "@/components/home/ActiveRuns";
-import { useProjectRuns, type ApiRun } from "@/hooks/useProjectRuns";
+import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 
-// ── Shared badge logic (mirrors WorkspaceFilesPanel) ─────────────────────────
+// ── Shared badge logic ────────────────────────────────────────────────────────
 
 function gitBadge(code: string): { label: string; color: string } | null {
   if (!code) return null;
@@ -111,7 +114,7 @@ function WorkspaceBlock({ projectId }: { projectId: number }) {
   );
 }
 
-// ── Changes lens: per-file rows from messages ────────────────────────────────
+// ── Changes lens: per-file rows from DB-backed execution_run_steps ─────────────
 
 interface FileRow {
   path: string;
@@ -121,13 +124,6 @@ interface FileRow {
   content?: string | null;
 }
 
-function messageRunId(message: TimelineMessage): string {
-  const tagged = (message as TimelineMessage & { runId?: string; run_id?: string }).runId
-    ?? (message as TimelineMessage & { runId?: string; run_id?: string }).run_id;
-  return tagged ?? `message-${message.id ?? message.sentAt ?? "untagged"}`;
-}
-
-/** Map an ApiRun from execution_runs to the ActiveRun shape used by RunCard. */
 function adaptApiRunToActiveRun(run: ApiRun, projectName: string): ActiveRun {
   const hasGithubPush = run.steps.some((s) => s.verb === "GITHUB_PUSH");
   const hasImageGen   = run.steps.some((s) => s.verb === "IMAGE_GEN");
@@ -136,7 +132,6 @@ function adaptApiRunToActiveRun(run: ApiRun, projectName: string): ActiveRun {
     .map((s) => s.target)
     .filter((t): t is string => t !== null);
 
-  // intent: pick the most specific one the card renders meaningfully
   let intent: ActiveRun["intent"] = "build";
   if (hasImageGen && !hasGithubPush && filePaths.length === 0) intent = "think";
 
@@ -187,7 +182,7 @@ function collectFileRows(messages: TimelineMessage[]): FileRow[] {
       for (const lp of m.linePatches) rows.push({ path: lp.path, summary: "patched lines", messageId: mid, projectId: 0, content: null });
     }
   }
-  return rows.reverse(); // newest first
+  return rows.reverse();
 }
 
 function FileContentBlock({ content }: { content: string }) {
@@ -204,9 +199,7 @@ function FileContentBlock({ content }: { content: string }) {
       fontFamily: "var(--app-font-mono)", fontSize: 10.5,
       color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
       overflowX: "auto", overflowY: "auto",
-      maxHeight: 320,
-      whiteSpace: "pre",
-      wordBreak: "normal",
+      maxHeight: 320, whiteSpace: "pre", wordBreak: "normal",
     }}>{content}</pre>
   );
 }
@@ -217,17 +210,18 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
   if (rows.length === 0) {
     return (
       <div style={{ padding: "18px 14px", fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5 }}>
-        No file changes recorded for this session yet.
+        No file changes recorded for this run yet.
       </div>
     );
   }
   return (
     <div style={{ padding: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
       {rows.map((r, i) => {
-        const isExpanded = expandedPath === `${r.messageId}-${r.path}-${i}`;
+        const key = `${r.messageId}-${r.path}-${i}`;
+        const isExpanded = expandedPath === key;
         const hasContent = !!r.content;
         return (
-          <div key={`${r.messageId}-${r.path}-${i}`} style={{
+          <div key={key} style={{
             borderRadius: 5,
             border: `1px solid ${isExpanded ? "rgba(201,162,76,0.2)" : "rgba(201,162,76,0.08)"}`,
             background: isExpanded ? "rgba(201,162,76,0.03)" : "rgba(255,255,255,0.015)",
@@ -238,7 +232,7 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
               padding: "8px 10px",
               cursor: hasContent ? "pointer" : "default",
             }}
-              onClick={() => hasContent && setExpandedPath(isExpanded ? null : `${r.messageId}-${r.path}-${i}`)}
+              onClick={() => hasContent && setExpandedPath(isExpanded ? null : key)}
             >
               <FileCode2 size={12} strokeWidth={1.6} style={{ color: "rgba(201,162,76,0.6)", flexShrink: 0 }} />
               <span style={{
@@ -254,8 +248,7 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
               {hasContent && (
                 <span style={{
                   fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
-                  textTransform: "uppercase", flexShrink: 0,
-                  color: "rgba(201,162,76,0.7)",
+                  textTransform: "uppercase", flexShrink: 0, color: "rgba(201,162,76,0.7)",
                 }}>{isExpanded ? "▲" : "▼"}</span>
               )}
               <a
@@ -264,11 +257,9 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
                 onClick={(e) => e.stopPropagation()}
                 style={{
                   fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  padding: "3px 7px", borderRadius: 3,
+                  textTransform: "uppercase", padding: "3px 7px", borderRadius: 3,
                   border: "1px solid rgba(201,162,76,0.3)",
-                  color: "rgba(201,162,76,0.9)", textDecoration: "none",
-                  flexShrink: 0,
+                  color: "rgba(201,162,76,0.9)", textDecoration: "none", flexShrink: 0,
                 }}
               >Open</a>
             </div>
@@ -284,7 +275,163 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
   );
 }
 
-// ── Run receipt: DB-backed runs from execution_runs via useProjectRuns ────────
+// ── RunTimeline: durable execution trace from execution_run_steps ─────────────
+
+const TIMELINE_VERBS = new Set([
+  "THOUGHT", "FILE_READ", "SEARCH", "INSPECT",
+  "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "SUMMARY",
+]);
+const EXPANDABLE_VERBS = new Set(["THOUGHT", "FILE_EDIT", "SUMMARY"]);
+const ALWAYS_OPEN_VERBS = new Set(["SUMMARY"]);
+
+function stepColor(verb: string): string {
+  const MAP: Record<string, string> = {
+    THOUGHT:    "rgba(147,130,220,0.85)",
+    FILE_READ:  "rgba(100,170,220,0.85)",
+    SEARCH:     "rgba(100,200,180,0.85)",
+    INSPECT:    "rgba(180,160,100,0.85)",
+    FILE_EDIT:  "rgba(201,162,76,0.95)",
+    LINE_PATCH: "rgba(201,162,76,0.75)",
+    FILE_DELETE:"rgba(220,80,80,0.85)",
+    SUMMARY:    "rgba(100,200,120,0.85)",
+  };
+  return MAP[verb] ?? "rgba(180,180,180,0.75)";
+}
+
+function stepLabel(verb: string): string {
+  const MAP: Record<string, string> = {
+    THOUGHT: "Thought", FILE_READ: "Read", SEARCH: "Search",
+    INSPECT: "Inspect", FILE_EDIT: "Edited", LINE_PATCH: "Patched",
+    FILE_DELETE: "Deleted", SUMMARY: "Summary",
+  };
+  return MAP[verb] ?? verb;
+}
+
+function StepIcon({ verb }: { verb: string }) {
+  const p = { size: 11, strokeWidth: 1.6 } as const;
+  if (verb === "THOUGHT")    return <Lightbulb    {...p} />;
+  if (verb === "FILE_READ")  return <Eye          {...p} />;
+  if (verb === "SEARCH")     return <Search       {...p} />;
+  if (verb === "INSPECT")    return <Folder       {...p} />;
+  if (verb === "FILE_EDIT")  return <FileCode2    {...p} />;
+  if (verb === "LINE_PATCH") return <FileCode2    {...p} />;
+  if (verb === "FILE_DELETE")return <Trash2       {...p} />;
+  if (verb === "SUMMARY")    return <CheckCircle2 {...p} />;
+  return null;
+}
+
+function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }) {
+  const color = stepColor(step.verb);
+  const canExpand = EXPANDABLE_VERBS.has(step.verb) && !!step.content;
+  const alwaysOpen = ALWAYS_OPEN_VERBS.has(step.verb);
+  const [open, setOpen] = useState(alwaysOpen);
+
+  const isTextVerb = step.verb === "THOUGHT" || step.verb === "SUMMARY";
+  const showTarget = !isTextVerb && step.verb !== "INSPECT" && !!step.target;
+
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+      {/* Hairline trace + dot */}
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        flexShrink: 0, width: 18, paddingTop: 8,
+      }}>
+        <div style={{
+          width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+          background: color, boxShadow: `0 0 5px ${color}`,
+        }} />
+        {!isLast && (
+          <div style={{
+            width: 1, flex: 1, minHeight: 10,
+            background: "rgba(201,162,76,0.1)", marginTop: 3,
+          }} />
+        )}
+      </div>
+
+      {/* Step body */}
+      <div style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 0 : 4 }}>
+        <div
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            cursor: canExpand && !alwaysOpen ? "pointer" : "default",
+            paddingTop: 4,
+          }}
+          onClick={() => canExpand && !alwaysOpen && setOpen((o) => !o)}
+        >
+          <span style={{ color, flexShrink: 0 }}>
+            <StepIcon verb={step.verb} />
+          </span>
+          <span style={{
+            fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.11em", textTransform: "uppercase",
+            color, flexShrink: 0, opacity: 0.9,
+          }}>
+            {stepLabel(step.verb)}
+          </span>
+          {showTarget && (
+            <span style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 11,
+              color: "var(--atlas-fg)", opacity: 0.8,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              flex: 1, minWidth: 0,
+            }}>{step.target}</span>
+          )}
+          {canExpand && !alwaysOpen && (
+            <span style={{
+              fontSize: 9, color: "rgba(201,162,76,0.45)",
+              fontFamily: "var(--app-font-mono)", flexShrink: 0, marginLeft: "auto",
+            }}>{open ? "▲" : "▼"}</span>
+          )}
+        </div>
+
+        {(open || alwaysOpen) && step.content && (
+          <pre style={{
+            margin: "4px 0 2px", padding: "8px 10px", borderRadius: 4,
+            background: "rgba(0,0,0,0.22)",
+            border: `1px solid ${color.replace(/[\d.]+\)$/, "0.12)")}`,
+            fontFamily: isTextVerb ? "var(--app-font-sans)" : "var(--app-font-mono)",
+            fontSize: isTextVerb ? 11.5 : 10.5,
+            color: "rgba(220,220,200,0.82)", lineHeight: 1.65,
+            overflowX: "auto", overflowY: "auto",
+            maxHeight: step.verb === "THOUGHT" ? 200 : 320,
+            whiteSpace: isTextVerb ? "pre-wrap" : "pre",
+            wordBreak: isTextVerb ? "break-word" : "normal",
+          }}>{step.content}</pre>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RunTimeline({ steps }: { steps: ApiRunStep[] }) {
+  const visible = steps.filter((s) => TIMELINE_VERBS.has(s.verb));
+
+  if (visible.length === 0) {
+    const hasLegacy = steps.some((s) =>
+      s.verb === "FILE_EDIT" || s.verb === "LINE_PATCH" || s.verb === "FILE_DELETE"
+    );
+    return (
+      <div style={{
+        padding: "18px 14px", fontSize: 11.5,
+        color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
+      }}>
+        {hasLegacy
+          ? "Execution trace not available — this run predates step capture. See Changes tab for what was written."
+          : "No execution steps recorded for this run."}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "12px 10px 14px", display: "flex", flexDirection: "column" }}>
+      {visible.map((step, i) => (
+        <RunTimelineItem key={`${step.id}-${i}`} step={step} isLast={i === visible.length - 1} />
+      ))}
+    </div>
+  );
+}
+
+// ── Run receipt: DB-backed runs rendered as RunCards ──────────────────────────
 
 function WorkspaceRunCards({
   projectId,
@@ -349,31 +496,32 @@ export function ViewChangesPanel({
   projectId,
   linkedRepo: _linkedRepo,
   messages,
-  pushHistory,
-  onRollbackPush,
+  pushHistory: _pushHistory,
+  onRollbackPush: _onRollbackPush,
   runId,
   projectName,
 }: Props) {
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
-
-  // DB-backed runs — persists across reloads
   const { runs: dbRuns } = useProjectRuns(projectId);
 
-  // Filter contract: if runId is set AND at least one message carries it,
-  // filter honestly. Otherwise show the pill + hint and render unfiltered.
-  const { filteredMessages, filteredActive, showEmptyHint } = useMemo(() => {
-    if (!runId) return { filteredMessages: messages, filteredActive: false, showEmptyHint: false };
+  // Timeline lens: find the target run (specific runId, or most recent).
+  const timelineRun = useMemo<ApiRun | null>(() => {
+    if (runId) return dbRuns.find((r) => r.id === runId) ?? null;
+    return dbRuns[0] ?? null;
+  }, [dbRuns, runId]);
+
+  // Changes lens: in-memory message fallback for paths not yet in the DB.
+  const filteredMessages = useMemo(() => {
+    if (!runId) return messages;
     const hits = messages.filter((m) => {
-      const tagged = (m as { runId?: string; run_id?: string }).runId ?? (m as { runId?: string; run_id?: string }).run_id;
-      return tagged === runId || messageRunId(m) === runId;
+      const tagged = (m as { runId?: string; run_id?: string }).runId
+        ?? (m as { runId?: string; run_id?: string }).run_id;
+      return tagged === runId;
     });
-    if (hits.length > 0) return { filteredMessages: hits, filteredActive: true, showEmptyHint: false };
-    return { filteredMessages: messages, filteredActive: false, showEmptyHint: true };
+    return hits.length > 0 ? hits : messages;
   }, [messages, runId]);
 
-  // Build file rows from DB-backed execution_run_steps — these survive reloads.
-  // Merge with in-memory message rows; DB rows go first (newest run first) and
-  // message rows fill in anything the DB doesn't have yet.
+  // Changes lens: DB-backed file rows, supplemented by in-memory fallback.
   const changeRows = useMemo(() => {
     const dbRows: FileRow[] = [];
     const seenPaths = new Set<string>();
@@ -382,22 +530,21 @@ export function ViewChangesPanel({
       for (const step of run.steps) {
         if (
           (step.verb === "FILE_EDIT" || step.verb === "LINE_PATCH" || step.verb === "FILE_DELETE") &&
-          step.target
+          step.target && !seenPaths.has(step.target)
         ) {
-          if (!seenPaths.has(step.target)) {
-            seenPaths.add(step.target);
-            dbRows.push({
-              path: step.target,
-              summary: step.verb === "FILE_DELETE" ? "deleted" : step.verb === "LINE_PATCH" ? "patched lines" : "rewrote file",
-              messageId: run.id,
-              projectId,
-              content: step.content ?? null,
-            });
-          }
+          seenPaths.add(step.target);
+          dbRows.push({
+            path: step.target,
+            summary: step.verb === "FILE_DELETE" ? "deleted"
+              : step.verb === "LINE_PATCH" ? "patched lines"
+              : "rewrote file",
+            messageId: run.id,
+            projectId,
+            content: step.content ?? null,
+          });
         }
       }
     }
-    // Supplement with in-memory rows for anything not yet flushed to the DB
     const msgRows = collectFileRows(filteredMessages).filter((r) => !seenPaths.has(r.path));
     return [...dbRows, ...msgRows];
   }, [dbRuns, filteredMessages, runId, projectId]);
@@ -407,15 +554,13 @@ export function ViewChangesPanel({
       const url = new URL(window.location.href);
       url.searchParams.delete("runId");
       window.history.replaceState({}, "", url.toString());
-      // Nudge a re-render by forcing local state change; parent re-reads on next nav.
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch {}
   };
 
   return (
     <div style={{
-      display: "flex", flexDirection: "column",
-      minHeight: "100%",
+      display: "flex", flexDirection: "column", minHeight: "100%",
       fontFamily: "var(--app-font-sans)", color: "var(--atlas-fg)",
     }}>
       {/* ── Run pill ── */}
@@ -438,9 +583,7 @@ export function ViewChangesPanel({
             flex: 1, minWidth: 0,
           }}>{runId}</span>
           <button
-            type="button"
-            onClick={clearRunFilter}
-            aria-label="Clear run filter"
+            type="button" onClick={clearRunFilter} aria-label="Clear run filter"
             style={{
               display: "flex", alignItems: "center", gap: 4,
               background: "transparent", border: "1px solid rgba(201,162,76,0.25)",
@@ -468,9 +611,7 @@ export function ViewChangesPanel({
           const active = lens === k;
           return (
             <button
-              key={k}
-              type="button"
-              onClick={() => setLens(k)}
+              key={k} type="button" onClick={() => setLens(k)}
               style={{
                 fontFamily: "var(--app-font-mono)", fontSize: 10,
                 letterSpacing: "0.12em", textTransform: "uppercase",
@@ -485,32 +626,23 @@ export function ViewChangesPanel({
         })}
       </div>
 
-      {/* ── Honest fallback hint ── */}
-      {showEmptyHint && (
-        <div style={{
-          padding: "8px 14px",
-          fontSize: 11, color: "var(--atlas-muted)", opacity: 0.65,
-          fontFamily: "var(--app-font-sans)", lineHeight: 1.5,
-          borderBottom: "1px solid rgba(201,162,76,0.06)",
-          background: "rgba(255,255,255,0.01)",
-        }}>
-          No entries tagged for this run yet. Showing all recent activity.
-        </div>
-      )}
-
       {/* ── Body ── */}
       {lens === "timeline" ? (
-        <SessionTimeline
-          messages={filteredMessages}
-          pushHistory={filteredActive ? [] : pushHistory}
-          onRollbackPush={onRollbackPush}
-          projectId={projectId}
-        />
+        timelineRun ? (
+          <RunTimeline steps={timelineRun.steps} />
+        ) : (
+          <div style={{
+            padding: "18px 14px", fontSize: 11.5,
+            color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
+          }}>
+            {runId ? "Run not found — it may still be loading." : "No runs yet for this project."}
+          </div>
+        )
       ) : (
         <ChangesLens rows={changeRows} projectId={projectId} />
       )}
 
-      {/* ── Workspace / GitHub block ── */}
+      {/* ── Workspace block ── */}
       <div style={{ borderTop: "1px solid rgba(201,162,76,0.08)", marginTop: "auto" }}>
         <WorkspaceBlock projectId={projectId} />
       </div>

@@ -4590,6 +4590,12 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   let terminalCmd: ChatTerminalCommand | null = null;
   let terminalResult: ChatTerminalResult | null = null;
 
+  // ── Intermediate step buffer — collects execution steps in order ───────────
+  // Pushed as each phase completes; saved to execution_run_steps at run-record time
+  // so Timeline can render a durable, ordered trace (THOUGHT → READ → SEARCH → EDIT).
+  type _IntStep = { verb: string; target: string | null; detail: string | null; content: string | null };
+  const _chatRunIntermediateSteps: _IntStep[] = [];
+
   // FILE_READ intercept — loop up to FILE_READ_MAX rounds so Atlas can request multiple
   // batches of files before emitting FILE_EDIT blocks. Previously single-shot: if the
   // model's follow-up response contained another FILE_READ_REQUEST, it was silently
@@ -4612,6 +4618,11 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     for (let readIter = 0; readIter < FILE_READ_MAX; readIter++) {
       const { paths: readPaths, cleanedContent: readCleanedContent } = extractFileReadRequest(rawContent);
       if (readPaths.length === 0) break; // No (more) file reads requested — exit loop
+
+      // Record a FILE_READ step for each path requested this round
+      for (const _fp of readPaths) {
+        _chatRunIntermediateSteps.push({ verb: "FILE_READ", target: _fp, detail: null, content: null });
+      }
 
       const fetchedFiles = await Promise.all(
         readPaths.map(async (fp): Promise<FetchedFile | { path: string; error: string } | null> => {
@@ -4695,6 +4706,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   {
     const { requested: treeRequested, cleanedContent: treeCleanedContent } = extractFileTreeRequest(rawContent);
     if (treeRequested) {
+      _chatRunIntermediateSteps.push({ verb: "INSPECT", target: "file-tree", detail: null, content: null });
       let treeResult: string;
       if (projectId) {
         try { treeResult = await buildLocalTreeContext(projectId); }
@@ -5075,6 +5087,9 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   if (repoSearchQuery && repoData?.fullName && resolvedGithubToken) {
     const files = await githubSearchCode(repoSearchQuery, repoData.fullName, resolvedGithubToken);
     repoSearchResult = { query: repoSearchQuery, files };
+  }
+  if (repoSearchQuery) {
+    _chatRunIntermediateSteps.push({ verb: "SEARCH", target: repoSearchQuery, detail: null, content: null });
   }
 
   // Extract FLOW_NODE lines before persisting
@@ -6337,8 +6352,27 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
            ${_completedAt}, ${_completedAt}, 0)
       `);
 
-      // Steps — one row per discrete action
+      // Build ordered steps: THOUGHT → intermediate (FILE_READ/SEARCH/INSPECT) → outcome → SUMMARY
       const _steps: Array<{ verb: string; target: string | null; status: string; detail: string | null; content: string | null }> = [];
+
+      // 0. THOUGHT — the AI's reasoning text for this turn
+      const _thoughtText = displayContent?.trim();
+      if (_thoughtText) {
+        _steps.push({
+          verb: "THOUGHT",
+          target: null,
+          status: "ok",
+          detail: _summary?.slice(0, 200) ?? null,
+          content: _thoughtText.slice(0, 8000),
+        });
+      }
+
+      // 1..N. Intermediate steps captured during streaming (FILE_READ, SEARCH, INSPECT)
+      for (const _is of _chatRunIntermediateSteps) {
+        _steps.push({ verb: _is.verb, target: _is.target, status: "ok", detail: _is.detail, content: _is.content });
+      }
+
+      // N+1..M. Outcome steps: file writes, deletes, patches, image gen, push
       for (const _edit of responseFileEdits) {
         _steps.push({ verb: "FILE_EDIT", target: _edit.path, status: "ok", detail: null, content: ((_edit as { content?: string }).content ?? "").slice(0, 50000) || null });
       }
@@ -6363,10 +6397,15 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         });
       }
 
-      for (const _step of _steps) {
+      // Last. SUMMARY — concise statement of what was done
+      if (_summary?.trim()) {
+        _steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: _summary });
+      }
+
+      for (const [_orderIdx, _step] of _steps.entries()) {
         await db.execute(sql`
-          INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content)
-          VALUES (${_runId}, ${_step.verb}, ${_step.target}, ${_step.status}, ${_step.detail}, ${_step.content})
+          INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
+          VALUES (${_runId}, ${_step.verb}, ${_step.target}, ${_step.status}, ${_step.detail}, ${_step.content}, ${_orderIdx})
         `);
       }
 

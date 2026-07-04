@@ -8,6 +8,7 @@ export interface ApiRunStep {
   status: string;
   detail: string | null;
   content: string | null;
+  orderIndex: number;
   createdAt: string;
 }
 
