@@ -8983,7 +8983,16 @@ export default function Workspace() {
       <ComposerDeepDive
         open={showDeepDive}
         onClose={() => setShowDeepDive(false)}
-        initialContext={deepDiveContext}
+        lastAtlasResponse={
+          (() => {
+            const arr = (messages ?? []) as any[];
+            for (let i = arr.length - 1; i >= 0; i--) {
+              const m = arr[i];
+              if (m?.role !== "user" && typeof m?.content === "string" && m.content.trim()) return m.content as string;
+            }
+            return undefined;
+          })()
+        }
         onPasteBack={(text) => {
           setInput((prev) => (prev.trim() ? `${prev.trim()}\n\n${text}` : text));
         }}
