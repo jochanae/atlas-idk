@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, projectArtifactsTable, projectsTable, applicationModelsTable } from "@workspace/db";
+import { db, pool, projectArtifactsTable, projectsTable, applicationModelsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
@@ -268,29 +268,40 @@ router.post("/projects/:id/artifacts", async (req, res): Promise<void> => {
       res.status(400).json({ error: "type and title are required" }); return;
     }
 
-    const existing = await db
-      .select({ id: projectArtifactsTable.id })
-      .from(projectArtifactsTable)
-      .where(and(eq(projectArtifactsTable.projectId, projectId), eq(projectArtifactsTable.type, type)));
+    // Atomic upsert: version computed in-query to avoid race conditions from
+    // concurrent saves hitting the (project_id, type, version) unique constraint.
+    const { rows } = await pool.query<{
+      id: number; project_id: number; type: string; version: number;
+      title: string; metadata: Record<string, unknown>; payload: Record<string, unknown>;
+      created_at: string;
+    }>(
+      `INSERT INTO project_artifacts (project_id, type, version, title, metadata, payload)
+       VALUES (
+         $1, $2,
+         (SELECT COALESCE(MAX(version), 0) + 1 FROM project_artifacts WHERE project_id = $1 AND type = $2),
+         $3, $4::jsonb, $5::jsonb
+       )
+       ON CONFLICT ON CONSTRAINT project_artifacts_version_uniq
+       DO UPDATE SET
+         title    = EXCLUDED.title,
+         metadata = EXCLUDED.metadata,
+         payload  = EXCLUDED.payload
+       RETURNING *`,
+      [projectId, type, title, JSON.stringify(metadata), JSON.stringify(payload)],
+    );
 
-    const version = existing.length + 1;
-
-    const [row] = await db
-      .insert(projectArtifactsTable)
-      .values({ projectId, type, version, title, metadata, payload })
-      .returning();
-
+    const row = rows[0];
     if (!row) { res.status(500).json({ error: "Insert failed" }); return; }
 
     res.status(201).json({
       id: row.id,
-      projectId: row.projectId,
+      projectId: row.project_id,
       type: row.type,
       version: row.version,
       title: row.title,
       metadata: row.metadata,
       payload: row.payload,
-      createdAt: row.createdAt.toISOString(),
+      createdAt: row.created_at,
     });
   } catch (err) {
     req.log.error({ err }, "POST /projects/:id/artifacts failed");
