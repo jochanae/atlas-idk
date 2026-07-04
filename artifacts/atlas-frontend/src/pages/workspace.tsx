@@ -37,6 +37,7 @@ import { InsightsPanel } from "../components/InsightsPanel";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
+import { WorkspacePlayBridge } from "../components/WorkspacePlayBridge";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
@@ -7656,23 +7657,33 @@ export default function Workspace() {
         hasProject={Boolean(project)}
         isMobile={isMobile}
         showWorkspaceMenu
+        hideLaunchButton
         onLaunch={() => {
-          // Preview-first toggle. Play ALWAYS surfaces the running app preview,
-          // regardless of which tab/module is currently active. Panel maximize
-          // is handled by each panel's own expand control — not here.
-          // If preview is already open in the launcher, close it (return to
-          // the previous view / acts as a publish-sheet placeholder toggle).
           if (launchModal.open && launchModal.mode === "preview") {
             setLaunchModal((s) => ({ ...s, open: false }));
             return;
           }
-          // Also reflect intent in mobile tab so closing returns to preview tab.
           if (isMobile) setMobileTab("preview");
           setLaunchModal({ open: true, mode: "preview" });
         }}
         expanded={subheaderOpen}
         onExpandedChange={setSubheaderOpen}
       />
+      <WorkspacePlayBridge
+        launchModalOpen={launchModal.open && launchModal.mode === "preview"}
+        onLaunch={() => {
+          if (launchModal.open && launchModal.mode === "preview") {
+            setLaunchModal((s) => ({ ...s, open: false }));
+            return;
+          }
+          if (isMobile) setMobileTab("preview");
+          setLaunchModal({ open: true, mode: "preview" });
+        }}
+        subheaderOpen={subheaderOpen}
+        setSubheaderOpen={setSubheaderOpen}
+        hasProject={Boolean(project)}
+      />
+
 
       {/* Session summary pill moved into the composer footer (gold-clock trigger). */}
 

@@ -12,6 +12,7 @@ type UnifiedSubheaderProps = {
   topOffset?: number;
   showWorkspaceMenu?: boolean;
   showLaunchWhenNoProject?: boolean;
+  hideLaunchButton?: boolean;
   onMenuAction?: (action: UnifiedSubheaderMenuAction) => void;
   onLaunch?: () => void;
   hasConversation?: boolean;
@@ -57,6 +58,7 @@ export function UnifiedSubheader({
   topOffset = 50,
   showWorkspaceMenu = false,
   showLaunchWhenNoProject = false,
+  hideLaunchButton = false,
   onLaunch,
   hasConversation = true,
   expanded: controlledExpanded,
@@ -134,7 +136,7 @@ export function UnifiedSubheader({
   };
 
   const showRow = expanded && hasProject;
-  const showLaunchButton = showWorkspaceMenu && (hasProject || showLaunchWhenNoProject);
+  const showLaunchButton = !hideLaunchButton && showWorkspaceMenu && (hasProject || showLaunchWhenNoProject);
   const showActionBar = showLaunchButton;
   const launchTitle = hasProject
     ? expanded
