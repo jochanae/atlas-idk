@@ -364,21 +364,8 @@ export function ChatStream(props: ChatStreamProps) {
     execLatestRun,
   } = props;
 
-  // ── Live-step latch ─────────────────────────────────────────────────────────
-  // When Atlas is executing steps (writing/reading files), we suppress the
-  // streaming assistant text and let the WorkspaceRunCard be the live view.
-  // We latch once liveStep appears so the text doesn't flicker back in between
-  // step events. The latch resets when chatPending flips back to false.
-  const hadLiveStepThisTurnRef = useRef(false);
-  useEffect(() => {
-    if (!chatPending) hadLiveStepThisTurnRef.current = false;
-  }, [chatPending]);
-  useEffect(() => {
-    if (liveStep != null) hadLiveStepThisTurnRef.current = true;
-  }, [liveStep]);
-  // The conversation text is the primary live surface. Keep it visible even
-  // when step telemetry is present; otherwise replies appear to "flop" into
-  // view only after the stream completes.
+  // Conversation text is the primary live surface. Keep it visible even when
+  // step telemetry is present; otherwise replies appear only after completion.
   const suppressStreamingText = false;
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
