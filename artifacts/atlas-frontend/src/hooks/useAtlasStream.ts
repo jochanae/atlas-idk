@@ -189,6 +189,13 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                   window.location.href = `/project/${projectId}`;
                   return;
                 }
+                // If the backend only sends the complete answer in the done
+                // payload (or sends a cleaned final that differs from streamed
+                // tokens), pace that final target too instead of swapping it in.
+                if (typeof doneData.content === "string" && doneData.content !== streamedText) {
+                  streamedText = doneData.content;
+                  pacer.setTarget(doneData.content);
+                }
                 await pacer.finish();
                 // Use content from meta if available (already cleaned)
                 // otherwise use accumulated streamedText

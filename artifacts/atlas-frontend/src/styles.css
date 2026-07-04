@@ -1035,6 +1035,15 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   animation: atlas-cursor-blink 700ms step-end infinite;
 }
 
+.atlas-live-stream-text {
+  font-size: 16.5px;
+  line-height: 1.75;
+  letter-spacing: 0.015em;
+  font-family: var(--app-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* ── First-run overlay animations ── */
 @keyframes atlas-overlay-fadein {
   from { opacity: 0; }

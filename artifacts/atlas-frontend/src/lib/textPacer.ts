@@ -122,8 +122,8 @@ export function createTextPacer(opts: TextPacerOptions): TextPacer {
       ? Math.max(9, baseRate * 0.7)
       : baseRate;
     let charsThisFrame = Math.max(1, Math.floor(elapsed / effectiveRate));
-    // Hard cap so a long stall doesn't dump hundreds of chars in one frame.
-    if (charsThisFrame > 40) charsThisFrame = 40;
+    // Hard cap so a long stall doesn't dump visible bursts in one frame.
+    if (charsThisFrame > 8) charsThisFrame = 8;
 
     // Walk forward char by char so we can honor punctuation pauses mid-frame.
     for (let i = 0; i < charsThisFrame && released < target.length; i++) {

@@ -448,7 +448,7 @@ export function AskAtlasSurface({
                     />
                   )}
                   {msg.role === "assistant" && msg.streaming ? (
-                    <span style={{ whiteSpace: "pre-wrap", opacity: 0.9 }}>
+                    <span className="atlas-live-stream-text" style={{ whiteSpace: "pre-wrap", opacity: 0.92 }}>
                       {displayContent}
                       <span className="atlas-cursor" aria-hidden />
                     </span>

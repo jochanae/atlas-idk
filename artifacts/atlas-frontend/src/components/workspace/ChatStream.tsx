@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { StepProgress } from "@/components/workspace/StepProgress";
@@ -364,20 +364,9 @@ export function ChatStream(props: ChatStreamProps) {
     execLatestRun,
   } = props;
 
-  // ── Live-step latch ─────────────────────────────────────────────────────────
-  // When Atlas is executing steps (writing/reading files), we suppress the
-  // streaming assistant text and let the WorkspaceRunCard be the live view.
-  // We latch once liveStep appears so the text doesn't flicker back in between
-  // step events. The latch resets when chatPending flips back to false.
-  const hadLiveStepThisTurnRef = useRef(false);
-  useEffect(() => {
-    if (!chatPending) hadLiveStepThisTurnRef.current = false;
-  }, [chatPending]);
-  useEffect(() => {
-    if (liveStep != null) hadLiveStepThisTurnRef.current = true;
-  }, [liveStep]);
-  // True while Atlas is actively executing steps this turn (or between steps).
-  const suppressStreamingText = hadLiveStepThisTurnRef.current || liveStep != null;
+  // Conversation text is the primary live surface. Keep it visible even when
+  // step telemetry is present; otherwise replies appear only after completion.
+  const suppressStreamingText = false;
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)

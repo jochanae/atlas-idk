@@ -15,6 +15,7 @@ import { useWorkspaceActivity } from "@/hooks/useWorkspaceActivity";
 import { useProjectRuns } from "@/hooks/useProjectRuns";
 
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+import { followScrollIfNearBottom } from "@/lib/textPacer";
 
 import { useChatLens } from "@/hooks/useChatLens";
 import { useComposerZip } from "@/hooks/useComposerZip";
@@ -6481,10 +6482,18 @@ export default function Workspace() {
     () => messages.filter((m) => m.role === "user").length,
     [messages],
   );
+  const streamingContentLength = useMemo(
+    () => messages.reduce((total, message) => total + (message.streaming ? message.content.length : 0), 0),
+    [messages],
+  );
   useSmartAutoScroll(chatPanelScrollRef, [messages.length, chatPending], {
     forceDeps: [userMsgCount],
     behavior: "auto",
   });
+  useEffect(() => {
+    if (!chatPending && streamingContentLength === 0) return;
+    followScrollIfNearBottom(chatPanelScrollRef.current, 160);
+  }, [chatPending, streamingContentLength]);
 
 
   // Close mobile panel on mobile→desktop resize
