@@ -2271,7 +2271,7 @@ function ShellFooter() {
         label: "Projects",
         icon: "projects",
         action: () => {
-          if (location === "/projects") {
+          if (location === "/projects" || location === "/home") {
             try {
               const lastId = localStorage.getItem("atlas-last-project") || localStorage.getItem("atlas-last-project-id");
               if (lastId && lastId !== "null" && lastId !== "undefined") {

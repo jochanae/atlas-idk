@@ -2881,6 +2881,15 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
       pendingNavProjectId = project.id;
       pendingNavProjectName = project.name;
 
+      // Link the Ask Atlas conversation so WorkspaceReceiptsBar can surface thinking receipts
+      if (effectiveConversationId) {
+        await db.execute(sql`
+          UPDATE projects
+          SET conversation_id = ${effectiveConversationId}
+          WHERE id = ${project.id} AND conversation_id IS NULL
+        `);
+      }
+
       // Attempt GitHub repo creation — graceful degradation if no token or API error
       let githubRepo: string | null = null;
       let githubHtmlUrl: string | null = null;
