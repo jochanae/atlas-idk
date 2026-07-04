@@ -12,6 +12,7 @@ type UnifiedSubheaderProps = {
   topOffset?: number;
   showWorkspaceMenu?: boolean;
   showLaunchWhenNoProject?: boolean;
+  hideLaunchButton?: boolean;
   onMenuAction?: (action: UnifiedSubheaderMenuAction) => void;
   onLaunch?: () => void;
   hasConversation?: boolean;
