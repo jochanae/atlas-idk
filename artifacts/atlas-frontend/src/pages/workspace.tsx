@@ -37,6 +37,7 @@ import { InsightsPanel } from "../components/InsightsPanel";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
+import { WorkspacePlayBridge } from "../components/WorkspacePlayBridge";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { AtlasComposerSheet } from "../components/AtlasComposerSheet";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
