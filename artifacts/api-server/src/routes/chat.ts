@@ -22,7 +22,7 @@ import {
 } from "../lib/terminalExecution";
 import { prepareProjectRepo } from "../lib/terminalSandbox";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
-import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE } from "../lib/atlasIdentity";
+import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { runBuildCheck, runWorkspaceBuildCheck } from "./devserver";
 import fsPromises from "node:fs/promises";
 import nodePath from "node:path";
@@ -3381,6 +3381,9 @@ HARD RULE: Never answer from the context of a different project unless the user 
 
   systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;
   systemPrompt += `\n\n${ATLAS_COMMUNICATION_STYLE}`;
+  if (!isFoundationMode) {
+    systemPrompt += `\n\n${ATLAS_DESIGN_INTELLIGENCE}`;
+  }
   if (userId && portfolioRows.length > 0) {
     const portfolioSummary = portfolioRows.map((p) => {
       const parts = [`- **${p.name}**`];
