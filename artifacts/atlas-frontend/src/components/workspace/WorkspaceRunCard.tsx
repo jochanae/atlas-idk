@@ -30,6 +30,7 @@ import {
   toggleBookmark as toggleHistoryBookmark,
   useAtlasHistory,
 } from "@/lib/atlas-history";
+import { useReadingDensity } from "@/hooks/useComposerVisibility";
 
 interface LiveStepItem {
   verb: string;
