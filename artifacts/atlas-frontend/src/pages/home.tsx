@@ -55,6 +55,7 @@ import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
+import { HomeArtifactLibrarySheet } from "@/components/HomeArtifactLibrarySheet";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
@@ -1953,6 +1954,8 @@ export default function Home() {
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
+  const [showLibrarySheet, setShowLibrarySheet] = useState(false);
+  const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
   // Ask Atlas is a standalone surface — see AskAtlasSurface.
   // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
   // the same purple-header surface. No inline routing, no split renderer.
@@ -4444,6 +4447,26 @@ export default function Home() {
                       Gone.
                     </div>
                   )}
+                  {nexusChat.messages.length > 0 && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                      <button
+                        onClick={() => setShowLibrarySheet(true)}
+                        title="Saved documents"
+                        style={{
+                          background: "transparent", border: "none", padding: "3px 6px", cursor: "pointer",
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          color: "var(--atlas-muted)", opacity: 0.45,
+                          fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.1em",
+                          textTransform: "uppercase", transition: "opacity 140ms",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
+                        onMouseLeave={e => (e.currentTarget.style.opacity = "0.45")}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2h8a1 1 0 011 1v11l-4-2-4 2V3a1 1 0 011-1z"/></svg>
+                        Library
+                      </button>
+                    </div>
+                  )}
                   {(nexusChat.messages as HomeMessage[]).map((msg, i) => {
                     const displayContent =
                       msg.role === "assistant"
@@ -4611,6 +4634,46 @@ export default function Home() {
                                   text={displayContent}
                                   onSend={(prompt) => { void nexusChat.send({ text: prompt }); }}
                                 />
+                              )}
+                              {!msg.streaming && displayContent.length > 350 && (
+                                <button
+                                  title={savedMsgIdxSet.has(i) ? "Saved to Library" : "Save to Library"}
+                                  onClick={async () => {
+                                    if (savedMsgIdxSet.has(i)) { setShowLibrarySheet(true); return; }
+                                    const headingMatch = displayContent.match(/^#{1,3}\s+(.+)/m);
+                                    const autoTitle = headingMatch
+                                      ? headingMatch[1].trim().slice(0, 80)
+                                      : displayContent.replace(/[#*_`]/g, "").trim().slice(0, 80);
+                                    try {
+                                      await fetch("/api/home-artifacts", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        credentials: "include",
+                                        body: JSON.stringify({
+                                          title: autoTitle,
+                                          content: displayContent,
+                                          type: /prd|product requirement/i.test(displayContent) ? "prd" : /plan|roadmap/i.test(displayContent) ? "plan" : /strateg/i.test(displayContent) ? "strategy" : /spec/i.test(displayContent) ? "spec" : "document",
+                                          conversationId: activeConversationId ?? undefined,
+                                        }),
+                                      });
+                                      setSavedMsgIdxSet(prev => new Set([...prev, i]));
+                                    } catch {}
+                                  }}
+                                  style={{
+                                    background: "transparent", border: "none", padding: "3px 2px", cursor: "pointer",
+                                    opacity: savedMsgIdxSet.has(i) ? 0.85 : 0.28,
+                                    color: savedMsgIdxSet.has(i) ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                                    lineHeight: 1, transition: "opacity 140ms, color 140ms",
+                                  }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.75"; (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-gold)"; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = savedMsgIdxSet.has(i) ? "0.85" : "0.28"; (e.currentTarget as HTMLButtonElement).style.color = savedMsgIdxSet.has(i) ? "var(--atlas-gold)" : "var(--atlas-muted)"; }}
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    {savedMsgIdxSet.has(i)
+                                      ? <path d="M4 2h8a1 1 0 011 1v11l-4-2-4 2V3a1 1 0 011-1z" fill="currentColor" fillOpacity="0.35"/>
+                                      : <path d="M4 2h8a1 1 0 011 1v11l-4-2-4 2V3a1 1 0 011-1z"/>}
+                                  </svg>
+                                </button>
                               )}
                             </div>
                           )}
@@ -6069,6 +6132,12 @@ export default function Home() {
       </div>
 
       <HandoffCinemaOverlay />
+
+      {/* Home Artifact Library — standalone docs/plans saved from Ask Atlas */}
+      <HomeArtifactLibrarySheet
+        open={showLibrarySheet}
+        onClose={() => setShowLibrarySheet(false)}
+      />
 
       {/* Quick-park sheet — opened from the composer Park icon. Mirrors workspace behavior. */}
       {showParkSheet && (

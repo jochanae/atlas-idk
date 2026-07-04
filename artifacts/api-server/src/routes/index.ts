@@ -61,6 +61,7 @@ import conversationsRouter from "./conversations";
 import feedbackRouter from "./feedback";
 import shareRouter from "./share";
 import publishRouter from "./publish";
+import homeArtifactsRouter from "./homeArtifacts";
 
 const router: IRouter = Router();
 
@@ -159,6 +160,9 @@ router.use(requireAuth, shareRouter);
 
 // Publish — permanent public deployment URLs for workspace builds
 router.use(requireAuth, publishRouter);
+
+// Home artifacts — standalone docs/plans saved from Ask Atlas (no project required)
+router.use(requireAuth, homeArtifactsRouter);
 
 // Self-repair routes — super_admin only
 router.use(requireAdmin, selfRouter);

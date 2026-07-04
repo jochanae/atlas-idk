@@ -599,6 +599,28 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: thinking_receipts table failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS home_artifacts (
+        id              SERIAL       PRIMARY KEY,
+        user_id         INTEGER      NOT NULL,
+        conversation_id TEXT,
+        type            TEXT         NOT NULL DEFAULT 'document',
+        title           TEXT         NOT NULL,
+        content         TEXT         NOT NULL,
+        created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
+        updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS home_artifacts_user_id_idx
+        ON home_artifacts (user_id, created_at DESC)
+    `);
+    logger.info("ensureColumns: home_artifacts table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: home_artifacts table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {
