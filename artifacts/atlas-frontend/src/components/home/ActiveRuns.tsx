@@ -316,6 +316,7 @@ async function _startRun(
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({
+        projectId: run.projectId,
         sessionId: session.id,
         message: run.prompt,
         history: [],
