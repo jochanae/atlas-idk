@@ -23,6 +23,7 @@ import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { type LiveStep } from "@/components/workspace/StepProgress";
 import SketchReveal from "@/components/chat/SketchReveal";
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
+import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 import { ParkSheet } from "@/components/ParkSheet";
 
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
@@ -642,17 +643,22 @@ export function AskAtlasSurface({
                   border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
                   borderRadius: 12,
                   maxWidth: "82%",
-                  fontSize: 16,
-                  lineHeight: 1.7,
-                  letterSpacing: "0.015em",
-                  color: "var(--atlas-fg)",
-                  fontFamily: "var(--app-font-sans)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
                 }}
               >
                 {renderMessageImages(msg)}
-                {msg.content}
+                <CollapsibleMessageText
+                  textStyle={{
+                    fontSize: 16,
+                    lineHeight: 1.7,
+                    letterSpacing: "0.015em",
+                    color: "var(--atlas-fg)",
+                    fontFamily: "var(--app-font-sans)",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {msg.content}
+                </CollapsibleMessageText>
               </div>
               {msg.content.length > 0 && (
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
