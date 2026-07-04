@@ -504,9 +504,9 @@ function RunTimeline({ steps }: { steps: ApiRunStep[] }) {
   );
 }
 
-// ── Run receipt: DB-backed runs rendered as RunCards ──────────────────────────
+// ── Run receipt list: compact pills (one per recent run) ─────────────────────
 
-function WorkspaceRunCards({
+function WorkspaceRunReceipts({
   projectId,
   projectName,
   runId,
@@ -516,19 +516,11 @@ function WorkspaceRunCards({
   runId?: string | null;
 }) {
   const { runs: apiRuns } = useProjectRuns(projectId);
-  const [dismissedRunIds, setDismissedRunIds] = useState<Set<string>>(new Set());
 
-  const visibleRuns = useMemo((): ActiveRun[] => {
-    const adapted = apiRuns
-      .map((r) => adaptApiRunToActiveRun(r, projectName))
-      .filter((r) => !dismissedRunIds.has(r.id));
-    if (runId) return adapted.filter((r) => r.id === runId);
-    return adapted.slice(0, 5);
-  }, [apiRuns, dismissedRunIds, projectName, runId]);
-
-  const handleDismiss = useCallback((run: ActiveRun) => {
-    setDismissedRunIds((prev) => new Set(prev).add(run.id));
-  }, []);
+  const visibleRuns = useMemo((): ApiRun[] => {
+    if (runId) return apiRuns.filter((r) => r.id === runId);
+    return apiRuns.slice(0, 5);
+  }, [apiRuns, runId]);
 
   if (visibleRuns.length === 0) return null;
 
@@ -539,15 +531,7 @@ function WorkspaceRunCards({
       borderBottom: "1px solid rgba(201,162,76,0.08)",
     }}>
       {visibleRuns.map((run) => (
-        <RunCard
-          key={run.id}
-          run={run}
-          onEnter={() => {}}
-          onDismiss={() => handleDismiss(run)}
-          retryingFiles={new Set()}
-          retryErrors={new Map()}
-          onForceApply={() => Promise.resolve()}
-        />
+        <RunReceiptPill key={run.id} run={run} projectName={projectName} />
       ))}
     </div>
   );
