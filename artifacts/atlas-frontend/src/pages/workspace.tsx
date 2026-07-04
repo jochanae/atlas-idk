@@ -101,7 +101,7 @@ import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer } from "@/components/workspace/ChatComposer";
 
-import { DeepDiveSheet } from "@/components/DeepDiveSheet";
+import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { ParkSheet } from "@/components/ParkSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import { useComposerVisibility } from "@/hooks/useComposerVisibility";
