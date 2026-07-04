@@ -5339,7 +5339,7 @@ export default function Workspace() {
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showDeepDive, setShowDeepDive] = useState(false);
-  const [deepDiveContext, setDeepDiveContext] = useState("");
+  
   const [cloningProject, setCloningProject] = useState(false);
   const updateProjectHeader = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
@@ -8474,16 +8474,6 @@ export default function Workspace() {
                 if (action === "more:console") { setLeftTab("terminal"); return; }
                 if (action === "more:changes") { setLeftTab("diff"); return; }
                 if (action === "more:deep-dive") {
-                  const recent = (messages ?? []).slice(-6).map((m: any) => {
-                    const role = m.role === "user" ? "ME" : "ATLAS";
-                    const text = typeof m.content === "string" ? m.content : "";
-                    return text ? `[${role}] ${text}` : "";
-                  }).filter(Boolean).join("\n\n");
-                  const projectLine = project?.name ? `Project: ${project.name}\n\n` : "";
-                  const draftLine = input.trim() ? `Current draft:\n${input.trim()}\n\n` : "";
-                  const recentLine = recent ? `Recent thread:\n${recent}\n\n` : "";
-                  const prompt = `I'm thinking through something in Axiom (a strategic thinking partner). Help me deep-dive this — challenge assumptions, surface what I'm missing, and end with a concrete recommendation I can bring back.\n\n${projectLine}${draftLine}${recentLine}`;
-                  setDeepDiveContext(prompt);
                   setShowDeepDive(true);
                   return;
                 }
@@ -8993,7 +8983,16 @@ export default function Workspace() {
       <ComposerDeepDive
         open={showDeepDive}
         onClose={() => setShowDeepDive(false)}
-        initialContext={deepDiveContext}
+        lastAtlasResponse={
+          (() => {
+            const arr = (messages ?? []) as any[];
+            for (let i = arr.length - 1; i >= 0; i--) {
+              const m = arr[i];
+              if (m?.role !== "user" && typeof m?.content === "string" && m.content.trim()) return m.content as string;
+            }
+            return undefined;
+          })()
+        }
         onPasteBack={(text) => {
           setInput((prev) => (prev.trim() ? `${prev.trim()}\n\n${text}` : text));
         }}

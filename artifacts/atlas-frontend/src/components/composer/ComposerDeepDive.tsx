@@ -2,43 +2,49 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 /**
- * ComposerDeepDive — Deep Dive as a composer verb (replaces DeepDiveSheet).
+ * ComposerDeepDive — frictionless scratchpad for taking a thought to another AI.
  *
- * Two states inside a focused-composer surface:
- *   brief    → prefilled context + destination chips. Launch opens external tool.
- *   awaiting → destination chip + paste box. Bring in returns text to caller.
+ * Philosophy (per product direction): Deep Dive is NOT "export this conversation."
+ * It's a clipboard-shaped surface. Start blank. One tiny header line for context.
+ * You type what you want. Optional one-tap helpers: Insert last Atlas response,
+ * Clear, Copy. Then pick a destination.
  *
- * Rendered as a bottom-anchored panel with a blurred backdrop so the
- * composer surface itself is the "waiting room" — no in-between page.
+ * Two states, same panel:
+ *   brief    → blank textarea + helpers + destination chips
+ *              (Gemini is a two-step: tap 1 copies, tap 2 opens Gemini)
+ *   awaiting → destination chip + paste-back box → Bring in
  */
 export function ComposerDeepDive({
   open,
   onClose,
-  initialContext,
+  lastAtlasResponse,
   onPasteBack,
 }: {
   open: boolean;
   onClose: () => void;
-  initialContext: string;
+  lastAtlasResponse?: string;
   onPasteBack?: (text: string) => void;
 }) {
   type Dest = "chatgpt" | "perplexity" | "gemini";
   const [phase, setPhase] = useState<"brief" | "awaiting">("brief");
-  const [context, setContext] = useState(initialContext);
+  const [context, setContext] = useState("");
   const [dest, setDest] = useState<Dest | null>(null);
   const [paste, setPaste] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copiedFlash, setCopiedFlash] = useState(false);
+  const [geminiArmed, setGeminiArmed] = useState(false); // two-step confirm
+
   const portalHost = typeof document !== "undefined" ? document.body : null;
 
   useEffect(() => {
     if (open) {
       setPhase("brief");
-      setContext(initialContext);
+      setContext("");
       setDest(null);
       setPaste("");
-      setCopied(false);
+      setCopiedFlash(false);
+      setGeminiArmed(false);
     }
-  }, [open, initialContext]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -61,20 +67,43 @@ export function ComposerDeepDive({
 
   if (!open || !portalHost) return null;
 
-  const launch = (target: Dest) => {
-    const encoded = encodeURIComponent(context);
+  // Hardcoded prefix — the ONLY thing added on top of the user's text.
+  const HEADER_LINE = "Discuss this with another AI. Paste the response back into Atlas when you're finished.\n\n";
+
+  const buildPayload = () => `${HEADER_LINE}${context.trim()}`;
+
+  const copyPayload = async () => {
+    try { await navigator.clipboard.writeText(buildPayload()); } catch { /* ignore */ }
+    setCopiedFlash(true);
+    setTimeout(() => setCopiedFlash(false), 1800);
+  };
+
+  const insertLast = () => {
+    if (!lastAtlasResponse) return;
+    setContext((prev) => (prev.trim() ? `${prev.trim()}\n\n${lastAtlasResponse}` : lastAtlasResponse));
+  };
+
+  const launch = async (target: Dest) => {
+    if (!context.trim()) return;
     setDest(target);
     if (target === "chatgpt") {
+      const encoded = encodeURIComponent(buildPayload());
       window.open(`https://chatgpt.com/?q=${encoded}`, "_blank");
+      setPhase("awaiting");
     } else if (target === "perplexity") {
+      const encoded = encodeURIComponent(buildPayload());
       window.open(`https://www.perplexity.ai/search?q=${encoded}`, "_blank");
+      setPhase("awaiting");
     } else {
-      navigator.clipboard.writeText(context).catch(() => {});
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2400);
-      setTimeout(() => window.open("https://gemini.google.com", "_blank"), 700);
+      // Two-step Gemini: first tap copies + arms, second tap opens Gemini.
+      if (!geminiArmed) {
+        await copyPayload();
+        setGeminiArmed(true);
+      } else {
+        window.open("https://gemini.google.com", "_blank");
+        setPhase("awaiting");
+      }
     }
-    setPhase("awaiting");
   };
 
   const bringIn = () => {
@@ -87,6 +116,17 @@ export function ComposerDeepDive({
   const goldBorderSoft = "color-mix(in oklab, var(--atlas-gold) 16%, transparent)";
   const panelBg = "color-mix(in oklab, var(--atlas-surface) 96%, transparent)";
   const inputBg = "color-mix(in oklab, var(--atlas-bg) 82%, transparent)";
+
+  const helperBtnStyle = (enabled: boolean): React.CSSProperties => ({
+    padding: "6px 10px", borderRadius: 8,
+    background: "transparent",
+    border: `1px solid ${goldBorderSoft}`,
+    color: enabled ? "var(--atlas-gold)" : "var(--atlas-muted)",
+    cursor: enabled ? "pointer" : "not-allowed",
+    opacity: enabled ? 1 : 0.5,
+    fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.1em",
+    textTransform: "uppercase",
+  });
 
   return createPortal(
     <div
@@ -138,47 +178,106 @@ export function ComposerDeepDive({
         {phase === "brief" ? (
           <>
             <div style={{ fontSize: 12.5, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
-              Edit the brief, then pick where to dive. Your composer stays open — come back and paste the answer in.
+              Research outside Atlas. Type what you want to explore, then pick where to dive. Paste the response back when you're done.
             </div>
+
             <textarea
               value={context}
-              onChange={(e) => setContext(e.target.value)}
+              onChange={(e) => { setContext(e.target.value); setGeminiArmed(false); }}
               rows={6}
               autoFocus
+              placeholder="What do you want to explore?"
               style={{
-                width: "100%", resize: "vertical", minHeight: 110, maxHeight: 260,
-                fontFamily: "var(--app-font-mono)", fontSize: 12, lineHeight: 1.55,
+                width: "100%", resize: "vertical", minHeight: 130, maxHeight: 280,
+                fontSize: 13.5, lineHeight: 1.55,
                 padding: "10px 12px", borderRadius: 12,
                 background: inputBg, border: `1px solid ${goldBorderSoft}`,
                 color: "var(--atlas-fg)", outline: "none",
               }}
             />
+
+            {/* Helper row */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={insertLast}
+                  disabled={!lastAtlasResponse}
+                  title={lastAtlasResponse ? "Insert last Atlas response" : "No Atlas response yet"}
+                  style={helperBtnStyle(!!lastAtlasResponse)}
+                >
+                  + Last Atlas reply
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setContext(""); setGeminiArmed(false); }}
+                  disabled={!context}
+                  style={helperBtnStyle(!!context)}
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={copyPayload}
+                  disabled={!context.trim()}
+                  style={helperBtnStyle(!!context.trim())}
+                >
+                  {copiedFlash ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.7,
+              fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+            }}>
+              One line is added on top: <span style={{ color: "var(--atlas-gold)" }}>"Discuss this with another AI. Paste the response back into Atlas when you're finished."</span>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               {([
                 { id: "chatgpt", label: "ChatGPT" },
                 { id: "perplexity", label: "Perplexity" },
-                { id: "gemini", label: "Gemini" },
-              ] as const).map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => launch(t.id)}
-                  disabled={!context.trim()}
-                  style={{
-                    padding: "11px 8px", borderRadius: 12,
-                    background: "rgba(201,162,76,0.10)",
-                    border: "1px solid rgba(201,162,76,0.32)",
-                    color: "var(--atlas-gold)",
-                    cursor: context.trim() ? "pointer" : "not-allowed",
-                    opacity: context.trim() ? 1 : 0.45,
-                    fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Dive → {t.label}
-                </button>
-              ))}
+                { id: "gemini", label: geminiArmed ? "Open Gemini →" : "Gemini" },
+              ] as const).map((t) => {
+                const isGeminiArmedBtn = t.id === "gemini" && geminiArmed;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => launch(t.id)}
+                    disabled={!context.trim()}
+                    style={{
+                      padding: "11px 8px", borderRadius: 12,
+                      background: isGeminiArmedBtn
+                        ? "var(--atlas-gold)"
+                        : "rgba(201,162,76,0.10)",
+                      border: "1px solid rgba(201,162,76,0.32)",
+                      color: isGeminiArmedBtn ? "var(--atlas-bg)" : "var(--atlas-gold)",
+                      cursor: context.trim() ? "pointer" : "not-allowed",
+                      opacity: context.trim() ? 1 : 0.45,
+                      fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      fontWeight: isGeminiArmedBtn ? 600 : 400,
+                    }}
+                  >
+                    {t.id === "gemini" ? t.label : `Dive → ${t.label}`}
+                  </button>
+                );
+              })}
             </div>
+
+            {geminiArmed && (
+              <div style={{
+                fontSize: 11.5, color: "var(--atlas-gold)",
+                fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                padding: "8px 10px", borderRadius: 8,
+                background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+                border: `1px solid ${goldBorderSoft}`,
+              }}>
+                Copied to clipboard. Tap <b>Open Gemini →</b> to go paste it.
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -206,12 +305,6 @@ export function ComposerDeepDive({
                 Edit
               </button>
             </div>
-
-            {copied && (
-              <div style={{ fontSize: 11, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em" }}>
-                COPIED — PASTE INTO GEMINI, THEN BRING THE ANSWER BACK
-              </div>
-            )}
 
             <div style={{
               fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)",

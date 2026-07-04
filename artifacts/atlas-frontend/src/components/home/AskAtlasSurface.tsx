@@ -259,7 +259,7 @@ export function AskAtlasSurface({
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
-  const [deepDiveContext, setDeepDiveContext] = useState("");
+  
   const isParchment = useThemeMode() === "parchment";
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -1008,15 +1008,6 @@ export function AskAtlasSurface({
                 onMenuAction={(action) => {
                   if (action === "park") { setShowParkSheet(true); return; }
                   if (action === "more:deep-dive") {
-                    const recent = messages.slice(-6).map((m) => {
-                      const role = m.role === "user" ? "ME" : "ATLAS";
-                      return m.content ? `[${role}] ${m.content}` : "";
-                    }).filter(Boolean).join("\n\n");
-                    const draftLine = input.trim() ? `Current draft:\n${input.trim()}\n\n` : "";
-                    const recentLine = recent ? `Recent thread:\n${recent}\n\n` : "";
-                    setDeepDiveContext(
-                      `I'm thinking through something in Axiom (a strategic thinking partner). Help me deep-dive this — challenge assumptions, surface what I'm missing, and end with a concrete recommendation I can bring back.\n\n${draftLine}${recentLine}`
-                    );
                     setShowDeepDive(true);
                     return;
                   }
@@ -1107,7 +1098,15 @@ export function AskAtlasSurface({
       <ComposerDeepDive
         open={showDeepDive}
         onClose={() => setShowDeepDive(false)}
-        initialContext={deepDiveContext}
+        lastAtlasResponse={
+          (() => {
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const m = messages[i];
+              if (m?.role !== "user" && m?.content) return m.content;
+            }
+            return undefined;
+          })()
+        }
         onPasteBack={(text) => {
           setInput(input.trim() ? `${input.trim()}\n\n${text}` : text);
         }}
