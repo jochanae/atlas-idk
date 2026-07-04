@@ -44,3 +44,4 @@
 - [Thinking Receipts Architecture](thinking-receipts.md) — fire-and-forget Haiku extraction after each Ask Atlas turn; thinking_receipts table; ThinkingReceiptsStrip polls 4s post-stream
 - [Axiom Project Intelligence Vision](axiom-project-intelligence-vision.md) — strategic boundary: Axiom is a project intelligence system, not a software builder; AM schema change deferred; full doc at .local/axiom-project-intelligence-vision.md
 - [Workspace Chat Latency Profile](workspace-chat-perf.md) — three sequential DB batches fixed (Batch 2+3 now fire as early promises); remaining bottlenecks: resolveGithubToken, repo tree fetch (3s timeout), file selector Haiku call (2s timeout)
+- [Nexus Workspace Spine](nexus-workspace-spine.md) — Phase 0+1 shipped; flag USE_NEXUS_WORKSPACE_CHAT activates WorkspaceConversationSurface; Phase 2 = migrate 12 useChatStream side effects to workspaceEventBus

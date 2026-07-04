@@ -100,6 +100,7 @@ import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer } from "@/components/workspace/ChatComposer";
+import { WorkspaceConversationSurface } from "@/components/workspace/WorkspaceConversationSurface";
 
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { ParkSheet } from "@/components/ParkSheet";
@@ -4388,6 +4389,9 @@ export default function Workspace() {
   const [showModelPicker, setShowModelPicker] = useState(() => {
     try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
   });
+  const useNexusWorkspaceChat = (() => {
+    try { return localStorage.getItem("USE_NEXUS_WORKSPACE_CHAT") === "1"; } catch { return false; }
+  })();
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
@@ -8247,7 +8251,8 @@ export default function Workspace() {
           <UnifiedConversationSurface
             mode="operational"
             projectId={id}
-            chatStreamProps={leftTab !== "review" && leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
+            streamSlot={useNexusWorkspaceChat ? <WorkspaceConversationSurface projectId={id} conversationId={sessionId ? String(sessionId) : undefined} /> : undefined}
+            chatStreamProps={useNexusWorkspaceChat ? null : leftTab !== "review" && leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
               scrollRef: chatPanelScrollRef,
               bottomRef: bottomRef,
               onScroll: (e) => {
