@@ -5487,7 +5487,7 @@ export default function Workspace() {
     };
   }, []);
   const initialSent = useRef(false);
-  const [openingMessage, setOpeningMessage] = useState<{ message: string; projectId: string | null } | null>(() => {
+  const [openingMessage, setOpeningMessage] = useState<{ message: string; projectId: string | null; attachments?: Array<{ base64: string; mediaType: string; name?: string }> } | null>(() => {
     try {
       // Quick Action V2 handoff (resume=quickaction): consume the
       // sessionStorage payload, hoist {intent, prompt} into the existing
@@ -5532,9 +5532,15 @@ export default function Workspace() {
         if (storedProjectId !== String(id)) {
           sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
           sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+          sessionStorage.removeItem("atlas-opening-attachments");
           return null;
         }
-        return { message: storedOpeningMessage, projectId: storedProjectId };
+        let openingAttachments: Array<{ base64: string; mediaType: string; name?: string }> | undefined;
+        try {
+          const rawAtts = sessionStorage.getItem("atlas-opening-attachments");
+          if (rawAtts) openingAttachments = JSON.parse(rawAtts) as Array<{ base64: string; mediaType: string; name?: string }>;
+        } catch {}
+        return { message: storedOpeningMessage, projectId: storedProjectId, attachments: openingAttachments };
       }
       return null;
     } catch {
@@ -6203,10 +6209,12 @@ export default function Workspace() {
     initialSent.current = true;
     setInput("");
     // Pass messagesRef.current so transferred thread messages are included as history context.
-    doSend(trimmedOpeningMessage, sessionId, messagesRef.current);
+    // Pass attachments so images from the homepage (Ask Atlas) carry into the first workspace message.
+    doSend(trimmedOpeningMessage, sessionId, messagesRef.current, undefined, openingMessage.attachments ?? undefined);
     try {
       sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
       sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      sessionStorage.removeItem("atlas-opening-attachments");
     } catch {}
     setOpeningMessage(null);
   }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef]);

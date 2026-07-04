@@ -88,6 +88,7 @@ const HOME_PENDING_PHRASES = [
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id";
 const OPENING_CONVERSATION_STORAGE_KEY = "atlas-opening-conversation";
+const OPENING_ATTACHMENTS_STORAGE_KEY = "atlas-opening-attachments";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
 const ASK_ATLAS_PORTFOLIO_SEED =
@@ -3200,6 +3201,16 @@ export default function Home() {
           sessionStorage.setItem(`atlas-cid-${project.conversationId}`, String(projectId));
         }
       } catch {}
+      if (imageFiles.length > 0) {
+        try {
+          const capped = imageFiles.slice(0, 4);
+          const atts = await Promise.all(capped.map(async (f) => {
+            const safe = await fileToBase64Safe(f);
+            return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
+          }));
+          sessionStorage.setItem(OPENING_ATTACHMENTS_STORAGE_KEY, JSON.stringify(atts));
+        } catch {}
+      }
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setActiveProjectId(projectId);
       if (project.conversationId) {
