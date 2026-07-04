@@ -4816,18 +4816,8 @@ export default function Workspace() {
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
   }, []);
 
-  // Composer follows the dock: when scroll/focus hides the dock, hide the
-  // composer too; when the dock returns, restore to compact (or full if the
-  // user had explicitly opened full). Keeps the two chrome layers in sync so
-  // they no longer chase each other. See mem://design/composer-modes.
-  const dockVisible = useDockVisibility();
-  useEffect(() => {
-    if (dockVisible) {
-      useShellStore.getState().showComposerFromScroll();
-    } else {
-      useShellStore.getState().hideComposerForScroll();
-    }
-  }, [dockVisible]);
+  // Composer no longer follows dock scroll — footer keeps its own scroll
+  // behavior; composer visibility is user-driven via the chevron only.
 
 
 
