@@ -199,11 +199,22 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
 
           {hasSummary ? (
             <>
-              <p style={{ margin: 0, padding: "10px 12px", fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)" }}>
-                {data!.summary}
-              </p>
+              <div style={{ padding: "12px 12px 10px", position: "relative" }}>
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute", left: 0, top: 12, bottom: 10, width: 2,
+                    background: "linear-gradient(180deg, color-mix(in oklab, var(--atlas-gold) 65%, transparent), color-mix(in oklab, var(--atlas-gold) 15%, transparent))",
+                    borderRadius: 2,
+                  }}
+                />
+                <p style={{ margin: 0, paddingLeft: 10, fontSize: 13, lineHeight: 1.6, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)" }}>
+                  {data!.summary}
+                </p>
+              </div>
               <div style={{ padding: "8px 12px 10px", borderTop: "1px solid color-mix(in oklab, var(--atlas-border, #2a2a36) 60%, transparent)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)" }}>
+                <span style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <Clock size={10} strokeWidth={2} aria-hidden />
                   {timeAgo(data!.summaryAt!)}
                 </span>
                 <button
@@ -224,9 +235,12 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
               </div>
             </>
           ) : (
-            <p style={{ margin: 0, padding: "12px", fontSize: 12.5, lineHeight: 1.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)" }}>
-              No session memory yet. Atlas will summarize your session when it ends.
-            </p>
+            <div style={{ padding: "18px 14px", textAlign: "center", fontFamily: "var(--app-font-sans)" }}>
+              <Clock size={18} strokeWidth={1.5} aria-hidden style={{ color: "color-mix(in oklab, var(--atlas-gold) 55%, transparent)", opacity: 0.7 }} />
+              <p style={{ margin: "8px 0 0", fontSize: 12.5, lineHeight: 1.5, color: "var(--atlas-muted)" }}>
+                Nothing to remember yet.<br />Atlas will hold onto what matters as you work.
+              </p>
+            </div>
           )}
         </div>
       )}
