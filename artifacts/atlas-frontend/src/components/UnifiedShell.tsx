@@ -32,7 +32,6 @@ import { ConversationsLauncher } from "@/components/ConversationsLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { getListProjectsQueryKey } from "@workspace/api-client-react";
 import {
   computeScoreFromNodeState,
   MODE_META,
