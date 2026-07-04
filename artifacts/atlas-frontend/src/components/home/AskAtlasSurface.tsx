@@ -770,9 +770,15 @@ export function AskAtlasSurface({
         {!focused && (
           <button
             type="button"
-            aria-label={restingCompact ? "Expand composer" : "Collapse composer"}
-            title={restingCompact ? "Expand composer" : "Collapse composer"}
-            onClick={() => setRestingCompact((v) => !v)}
+            aria-label={restingCompact ? "Dock composer" : "Collapse composer"}
+            title={restingCompact ? "Tap to dock — collapse to floating A" : "Collapse composer"}
+            onClick={() => setRestingState((s) => {
+              // Cycle: full → compact → docked → full.
+              // Docked only reachable when a conversation exists (post-first-message).
+              if (s === "full") return "compact";
+              if (s === "compact") return messages.length > 0 ? "docked" : "full";
+              return "full";
+            })}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 6,
               width: 22, height: 22, padding: 0,
