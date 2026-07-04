@@ -12,16 +12,28 @@
 // rows — Timeline shows process steps (THOUGHT/READ/SEARCH/INSPECT/SUMMARY),
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FolderGit2, X, FileCode2, Eye, Search, Folder,
-  Lightbulb, Trash2, CheckCircle2,
+  Lightbulb, Trash2, CheckCircle2, ChevronDown,
 } from "lucide-react";
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
-import { RunCard, type ActiveRun } from "@/components/home/ActiveRuns";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
+
+// ── Relative time (seconds → minutes → hours → days → date) ───────────────────
+function formatAgo(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  if (s < 45) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(Date.now() - ms).toLocaleDateString();
+}
 
 // ── Shared badge logic ────────────────────────────────────────────────────────
 
