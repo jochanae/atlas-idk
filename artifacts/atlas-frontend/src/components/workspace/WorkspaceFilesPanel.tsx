@@ -1008,6 +1008,33 @@ export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
               </span>
               <button
                 type="button"
+                title="Download this file"
+                onClick={() => {
+                  const name = (openFile ?? "file.txt").split("/").pop() || "file.txt";
+                  const blob = new Blob([editContent], { type: "text/plain;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = name;
+                  document.body.appendChild(a); a.click(); a.remove();
+                  URL.revokeObjectURL(url);
+                }}
+                disabled={!openFile || fileLoading}
+                style={{
+                  flexShrink: 0,
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "4px 10px", borderRadius: 6, cursor: openFile ? "pointer" : "default",
+                  border: "1px solid rgba(201,162,76,0.25)",
+                  background: "transparent",
+                  color: "var(--atlas-gold)",
+                  fontSize: 11.5, fontFamily: "var(--app-font-sans)", fontWeight: 600,
+                  opacity: openFile ? 0.85 : 0.35,
+                  transition: "all 150ms ease",
+                }}
+              >
+                <Download size={12} strokeWidth={1.8} />
+              </button>
+              <button
+                type="button"
                 onClick={() => saveMut.mutate()}
                 disabled={!isDirty || saveMut.isPending}
                 style={{
