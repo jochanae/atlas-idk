@@ -1435,19 +1435,8 @@ router.post("/github/apply-local", async (req, res): Promise<void> => {
     const isOwner = await assertProjectOwner(projectId, userId);
     if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
 
-    const [project] = await db
-      .select({ linkedRepo: projectsTable.linkedRepo })
-      .from(projectsTable)
-      .where(eq(projectsTable.id, projectId))
-      .limit(1);
-
-    const hasLinkedRepo = !!(project?.linkedRepo);
-    if (!hasLinkedRepo) {
-      writeRoot = await ensureProjectWorkspaceDir(projectId);
-      useProjectWorkspace = true;
-    } else {
-      writeRoot = "/home/runner/workspace";
-    }
+    writeRoot = await ensureProjectWorkspaceDir(projectId);
+    useProjectWorkspace = true;
   } else {
     writeRoot = "/home/runner/workspace";
   }
