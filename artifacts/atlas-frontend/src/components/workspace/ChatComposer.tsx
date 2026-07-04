@@ -363,6 +363,7 @@ export function ChatComposer(props: ChatComposerProps) {
   const setUserComposerPreference = useShellStore((s) => s.setUserComposerPreference);
   // Compact mode applies only when the input isn't actively expanded as a sheet.
   const isCompact = composerVisibility === 'compact' && !sheetVisible;
+  const isDocked = composerVisibility === 'docked' && !sheetVisible;
   const isParchment = useThemeMode() === "parchment";
 
   return (
