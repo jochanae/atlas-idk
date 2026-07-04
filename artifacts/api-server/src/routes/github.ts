@@ -1612,6 +1612,7 @@ router.post("/github/typecheck", async (req, res): Promise<void> => {
 
     const errors = output.split("\n")
       .filter(line => line.includes("): error TS"))
+      .filter(line => !/error TS(2307|7016):/.test(line))
       .map(line => {
         const m = line.match(/\((\d+),(\d+)\):\s+error\s+TS\d+:\s+(.+)/);
         if (m) return { line: parseInt(m[1] ?? "0"), col: parseInt(m[2] ?? "0"), message: (m[3] ?? line).trim() };
