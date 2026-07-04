@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
-import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable } from "@workspace/db";
+import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable, projectZipImportsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
@@ -2804,7 +2804,7 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Load project memory + repo info + node state from DB, plus user memory when authenticated.
   // Also check for Vercel connection so we know whether to defer BROWSER_VISIT until after deploy.
-  const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow, userNarrativeRow] = await Promise.all([
+  const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow, userNarrativeRow, zipImportRow] = await Promise.all([
     isFoundationMode
       ? Promise.resolve([] as Array<{ memory: string | null; linkedRepo: string | null; githubToken: string | null; nodeState: Record<string, unknown> | null; name: string; previewUrl: string | null; description: string | null; convState: string | null }>)
       : db
@@ -2847,6 +2847,15 @@ router.post("/chat", async (req, res): Promise<void> => {
           .then(r => ((r.rows ?? r)[0] as { global_narrative: string | null } | undefined) ?? null)
           .catch(() => null)
       : Promise.resolve(null),
+    // Zip import context — inject stored codebase into system prompt
+    !isFoundationMode && projectId
+      ? db.select({ fullContext: projectZipImportsTable.fullContext, fileName: projectZipImportsTable.fileName, fileCount: projectZipImportsTable.fileCount })
+          .from(projectZipImportsTable)
+          .where(eq(projectZipImportsTable.projectId, projectId))
+          .limit(1)
+          .then(r => r[0] ?? null)
+          .catch(() => null)
+      : Promise.resolve(null),
   ]);
   const [project] = projectRows;
   const incomingConvState = project?.convState ?? null;
@@ -2857,6 +2866,7 @@ router.post("/chat", async (req, res): Promise<void> => {
   const storedSessionSummary = sessionSummaryRow?.summary ?? null;
   const storedSessionSummaryAt = sessionSummaryRow?.summaryAt ?? null;
   const globalNarrative = (userNarrativeRow as any)?.global_narrative ?? null;
+  const zipContext = (zipImportRow as any)?.fullContext ?? null;
 
   // Auto-title: when this is the very first message in a session, use the user's
   // message text (truncated) as the session title, replacing any placeholder.
@@ -3690,6 +3700,11 @@ HARD RULE: Never answer from the context of a different project unless the user 
   }
   if (memoryText) {
     systemPrompt += `\n\n--- PROJECT MEMORY (what you already know — use this) ---\n${memoryText}\n--- END PROJECT MEMORY ---`;
+  }
+  // Zip import — the user uploaded their existing codebase. This is the actual source code.
+  // Atlas should treat this as the ground truth of what exists, not generate new code from scratch.
+  if (zipContext) {
+    systemPrompt += `\n\n--- IMPORTED CODEBASE (user uploaded this project — read and reason from it directly) ---\n${zipContext}\n--- END IMPORTED CODEBASE ---`;
   }
 
   // Inject committed decisions from the Decision Ledger (fetched in the parallel batch above)
