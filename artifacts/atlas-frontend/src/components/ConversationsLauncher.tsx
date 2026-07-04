@@ -227,16 +227,26 @@ function SessionRow({ s, onOpen }: { s: EnrichedSession; onOpen: () => void }) {
         onClick={onOpen}
         style={{
           width: "100%", textAlign: "left", cursor: "pointer",
-          padding: "10px 12px",
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.05)",
+          padding: "10px 12px 10px 14px",
+          background: "color-mix(in oklab, var(--atlas-gold) 3%, transparent)",
+          border: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
           borderRadius: 9,
           color: "var(--atlas-fg)", fontSize: 13,
           fontFamily: "var(--app-font-sans)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 10,
+          position: "relative",
+          transition: "background 160ms ease, border-color 160ms ease",
         }}
       >
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", left: 0, top: 10, bottom: 10, width: 2,
+            background: "linear-gradient(180deg, color-mix(in oklab, var(--atlas-gold) 55%, transparent), color-mix(in oklab, var(--atlas-gold) 12%, transparent))",
+            borderRadius: 2,
+          }}
+        />
         <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
           <span style={{
             width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
@@ -261,7 +271,7 @@ function SessionRow({ s, onOpen }: { s: EnrichedSession; onOpen: () => void }) {
         </span>
         <span style={{
           fontFamily: "var(--app-font-mono)", fontSize: 9.5,
-          color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em",
+          color: "color-mix(in oklab, var(--atlas-gold) 55%, var(--atlas-muted))", letterSpacing: "0.06em",
           flexShrink: 0,
         }}>
           {relativeTime(s.updatedAt || s.createdAt)}
