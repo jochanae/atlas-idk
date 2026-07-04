@@ -4059,8 +4059,12 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
               (priorAttempts > 0 ? ` You auto-resolved ${priorAttempts} error(s) across prior attempts.` : "");
           } else {
             const errorList = result.errors.join("\n");
+            const hasMissingFiles = result.errors.some((e) => e.startsWith("[MISSING FILE]"));
+            const missingFileHint = hasMissingFiles
+              ? "\n\nIMPORTANT — [MISSING FILE] errors mean source files that are imported but do not exist on disk. You MUST create them using FILE_EDIT blocks with the full file path and complete, working content. Do not edit the importing file to remove the import — create the missing file instead."
+              : "";
             buildVerifyAppend =
-              `\n\n[BUILD_VERIFY: errors found]\nBuild failed (attempt ${priorAttempts + 1}/3). Fix ALL errors using FILE_EDIT blocks. Do not explain — just emit the fixes. The files will be re-applied and re-verified.\n\nErrors:\n${errorList}`;
+              `\n\n[BUILD_VERIFY: errors found]\nBuild failed (attempt ${priorAttempts + 1}/3). Fix ALL errors using FILE_EDIT blocks. Do not explain — just emit the fixes. The files will be re-applied and re-verified.${missingFileHint}\n\nErrors:\n${errorList}`;
           }
         }
       } catch (bvErr) {

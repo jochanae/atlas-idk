@@ -173,10 +173,88 @@ export async function runWorkspaceBuildCheck(wsDir: string): Promise<BuildCheckR
       await capture(mgr, installArgs, wsDir).catch(() => {});
     }
 
+    // ── Phase 2a: scan for unresolvable bare-module imports ───────────────────
+    // Catches packages that are imported in source but missing from node_modules
+    // (e.g. react-router-dom listed nowhere in package.json). Auto-installs them
+    // so Atlas doesn't need to know about package management.
+    const BARE_IMPORT_RE = /(?:^|\n)\s*import\s[^'"]*['"]((?!\.)[^'"]+)['"]/gm;
+    const DYN_BARE_RE = /\bimport\(\s*['"]((?!\.)[^'"]+)['"]\s*\)/gm;
+    const SOURCE_BARE_RE = /\.(jsx?|tsx?)$/;
+    const SKIP_BARE = new Set(["node:fs", "node:path", "node:url", "node:crypto", "node:child_process", "node:os"]);
+
+    function barePackageName(spec: string): string {
+      // @scope/pkg → @scope/pkg; pkg/sub → pkg
+      if (spec.startsWith("@")) {
+        const parts = spec.split("/");
+        return parts.slice(0, 2).join("/");
+      }
+      return spec.split("/")[0];
+    }
+
+    const missingPackages = new Set<string>();
+    try {
+      const srcDir = path.join(wsDir, "src");
+      const rootsToScan = [existsSync(srcDir) ? srcDir : wsDir];
+      function scanForBare(dir: string): void {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) { scanForBare(full); continue; }
+          if (!SOURCE_BARE_RE.test(entry.name)) continue;
+          let src2: string;
+          try { src2 = readFileSync(full, "utf8"); } catch { continue; }
+          const specs = [
+            ...[...src2.matchAll(BARE_IMPORT_RE)].map((m) => m[1]),
+            ...[...src2.matchAll(DYN_BARE_RE)].map((m) => m[1]),
+          ];
+          for (const spec of specs) {
+            if (SKIP_BARE.has(spec)) continue;
+            const pkg = barePackageName(spec);
+            if (!pkg || pkg.startsWith(".")) continue;
+            const nmPath = path.join(wsDir, "node_modules", pkg);
+            if (!existsSync(nmPath)) missingPackages.add(pkg);
+          }
+        }
+      }
+      for (const root of rootsToScan) scanForBare(root);
+    } catch {}
+
+    if (missingPackages.size > 0) {
+      const pkgList = [...missingPackages];
+      await capture("npm", ["install", "--legacy-peer-deps", ...pkgList], wsDir).catch(() => {});
+    }
+
     await capture("npm", ["run", "build"], wsDir);
     return { clean: true, errors: [], duration: Date.now() - t0 };
   } catch (err: unknown) {
     const output = (err as { output?: string }).output ?? logs.join("");
+
+    // ── Auto-repair: missing npm packages detected in build output ─────────────
+    // Rollup emits "Rollup failed to resolve import "X"" for bare specifiers.
+    // Parse those, install the packages, and retry the build once.
+    const ROLLUP_BARE_RE = /Rollup failed to resolve import ["']([^"'@][^"'/]*)(?:\/[^"']*)?["']/g;
+    const VITE_BARE_RE = /Cannot find module ['"]([^'"@.][^'"]*?)['"] or its corresponding type declarations/g;
+    const autoInstall = new Set<string>();
+    for (const [, pkg] of output.matchAll(ROLLUP_BARE_RE)) autoInstall.add(pkg.trim());
+    for (const [, pkg] of output.matchAll(VITE_BARE_RE)) autoInstall.add(pkg.split("/")[0].trim());
+
+    if (autoInstall.size > 0) {
+      try {
+        const pkgList = [...autoInstall];
+        await capture("npm", ["install", "--legacy-peer-deps", ...pkgList], wsDir);
+        await capture("npm", ["run", "build"], wsDir);
+        return { clean: true, errors: [], duration: Date.now() - t0 };
+      } catch (retryErr: unknown) {
+        const retryOutput = (retryErr as { output?: string }).output ?? "";
+        const retryErrors = parseErrors(retryOutput);
+        return {
+          clean: false,
+          errors: retryErrors.length ? retryErrors : ["Build failed after auto-installing missing packages"],
+          duration: Date.now() - t0,
+        };
+      }
+    }
+
     const errors = parseErrors(output);
     return {
       clean: false,
