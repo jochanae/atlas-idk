@@ -2710,6 +2710,29 @@ function AssistantBubbleImpl({
   );
 }
 
+// Shallow-compare all non-function props. Function props (callbacks) are treated
+// as always equal — parents usually recreate them each render, and re-running
+// AssistantBubble (2700+ LOC) on every keystroke/streaming tick just to pick up
+// a new callback identity is the perf bug we're fixing. Callbacks are only
+// invoked on user interaction; by then, closures capture current state via
+// message identity (which IS compared).
+function assistantBubblePropsEqual(prev: Record<string, unknown>, next: Record<string, unknown>): boolean {
+  const keys = Object.keys(next);
+  if (keys.length !== Object.keys(prev).length) return false;
+  for (const k of keys) {
+    const a = prev[k];
+    const b = next[k];
+    if (Object.is(a, b)) continue;
+    if (typeof a === "function" && typeof b === "function") continue;
+    return false;
+  }
+  return true;
+}
+
+export const AssistantBubble = memo(AssistantBubbleImpl, assistantBubblePropsEqual as never);
+
+
+
 function MenuItem({
   icon, label, onClick, disabled, accent,
 }: {
