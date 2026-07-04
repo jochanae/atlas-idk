@@ -556,40 +556,11 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: isTinyMobile ? 2 : 4, maxWidth: isTinyMobile ? "min(200px, 100%)" : "min(320px, 100%)", minWidth: 0 }}>
-      {(() => {
-        const state = deriveLifecycle({
-          status: project?.status ?? null,
-          readinessScore: canonicalReadiness,
-          decisionCount: ps.decisions?.length ?? 0,
-          hasRepo: Boolean(project?.linkedRepo),
-        });
-        const meta = LIFECYCLE_META[state];
-        return (
-          <span
-            title={`${meta.label} — ${meta.description}${hasActive ? " · session active" : ""}`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              borderRadius: "50%",
-              boxShadow: `0 0 10px color-mix(in srgb, ${meta.color} 55%, transparent)`,
-              animation: state === "built" ? undefined : "atlas-lifecycle-pulse 2.6s ease-in-out infinite",
-            }}
-          >
-            <style>{`@keyframes atlas-lifecycle-pulse { 0%,100% { filter: drop-shadow(0 0 2px ${meta.color}); opacity: 0.85; } 50% { filter: drop-shadow(0 0 7px ${meta.color}); opacity: 1; } }`}</style>
-            <LifecycleGlyph
-              projectId={projectId}
-              projectName={name || "Project"}
-              status={(project?.status as "shaping" | "committed" | "built" | "archived" | undefined) ?? undefined}
-              readinessScore={canonicalReadiness}
-              decisionCount={ps.decisions?.length ?? 0}
-              hasRepo={Boolean(project?.linkedRepo)}
-              size={isTinyMobile ? 10 : 13}
-            />
-          </span>
-        );
-      })()}
+      {/* Unified Project Status — Readiness ring (right-side look) merged with Atlas Pulse.
+          Tap opens a two-tab panel: Readiness (default) and Pulse. */}
+      <ShellCompletionChip projectId={projectId} />
+      {/* Suppress unused-var warnings for canonicalReadiness/hasActive now that LifecycleGlyph is gone. */}
+      {false && <span>{String(canonicalReadiness)}{String(hasActive)}</span>}
       {renaming ? (
         <div style={{ display: "inline-flex", flexDirection: "column", minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
           <input
