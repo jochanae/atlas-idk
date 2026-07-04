@@ -12,7 +12,7 @@
 // rows — Timeline shows process steps (THOUGHT/READ/SEARCH/INSPECT/SUMMARY),
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
-import { useCallback, useMemo, useState, useRef, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FolderGit2, X, FileCode2, Eye, Search, Folder,
@@ -205,7 +205,12 @@ function FileContentBlock({ content }: { content: string }) {
 }
 
 function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }) {
-  const [expandedPath, setExpandedPath] = useState<string | null>(null);
+  // Auto-expand the first file when there are ≤3 files and content exists.
+  const firstKey = rows.length > 0 ? `${rows[0].messageId}-${rows[0].path}-0` : null;
+  const autoExpand = rows.length <= 3 && !!rows[0]?.content;
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
+    () => autoExpand && firstKey ? new Set([firstKey]) : new Set()
+  );
 
   if (rows.length === 0) {
     return (
@@ -218,21 +223,29 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
     <div style={{ padding: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
       {rows.map((r, i) => {
         const key = `${r.messageId}-${r.path}-${i}`;
-        const isExpanded = expandedPath === key;
+        const isExpanded = expandedPaths.has(key);
         const hasContent = !!r.content;
+        const toggle = () => {
+          if (!hasContent) return;
+          setExpandedPaths((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+          });
+        };
         return (
           <div key={key} style={{
             borderRadius: 5,
-            border: `1px solid ${isExpanded ? "rgba(201,162,76,0.2)" : "rgba(201,162,76,0.08)"}`,
-            background: isExpanded ? "rgba(201,162,76,0.03)" : "rgba(255,255,255,0.015)",
+            border: `1px solid ${isExpanded ? "rgba(201,162,76,0.22)" : "rgba(201,162,76,0.08)"}`,
+            background: isExpanded ? "rgba(201,162,76,0.04)" : "rgba(255,255,255,0.015)",
             overflow: "hidden",
           }}>
             <div style={{
-              display: "flex", alignItems: "center", gap: 10,
+              display: "flex", alignItems: "center", gap: 8,
               padding: "8px 10px",
               cursor: hasContent ? "pointer" : "default",
             }}
-              onClick={() => hasContent && setExpandedPath(isExpanded ? null : key)}
+              onClick={toggle}
             >
               <FileCode2 size={12} strokeWidth={1.6} style={{ color: "rgba(201,162,76,0.6)", flexShrink: 0 }} />
               <span style={{
@@ -242,14 +255,23 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>{r.path}</span>
               <span style={{
-                fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.6,
+                fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55,
                 fontFamily: "var(--app-font-sans)", flexShrink: 0,
+                fontStyle: "italic",
               }}>{r.summary}</span>
               {hasContent && (
-                <span style={{
-                  fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
-                  textTransform: "uppercase", flexShrink: 0, color: "rgba(201,162,76,0.7)",
-                }}>{isExpanded ? "▲" : "▼"}</span>
+                <button
+                  type="button"
+                  onClick={toggle}
+                  style={{
+                    fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
+                    textTransform: "uppercase", flexShrink: 0,
+                    background: isExpanded ? "rgba(201,162,76,0.14)" : "transparent",
+                    border: `1px solid rgba(201,162,76,${isExpanded ? "0.35" : "0.2"})`,
+                    color: `rgba(201,162,76,${isExpanded ? "1" : "0.7"})`,
+                    borderRadius: 3, padding: "2px 7px", cursor: "pointer",
+                  }}
+                >{isExpanded ? "▲ Hide" : "▼ View"}</button>
               )}
               <a
                 href={`/api/fs/${projectId}/preview?path=${encodeURIComponent(r.path)}`}
@@ -257,11 +279,11 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
                 onClick={(e) => e.stopPropagation()}
                 style={{
                   fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
-                  textTransform: "uppercase", padding: "3px 7px", borderRadius: 3,
-                  border: "1px solid rgba(201,162,76,0.3)",
-                  color: "rgba(201,162,76,0.9)", textDecoration: "none", flexShrink: 0,
+                  textTransform: "uppercase", padding: "2px 7px", borderRadius: 3,
+                  border: "1px solid rgba(201,162,76,0.18)",
+                  color: "rgba(201,162,76,0.6)", textDecoration: "none", flexShrink: 0,
                 }}
-              >Open</a>
+              >Open ↗</a>
             </div>
             {isExpanded && r.content && (
               <div style={{ padding: "0 10px 10px" }}>
@@ -298,7 +320,10 @@ function stepColor(verb: string): string {
   return MAP[verb] ?? "rgba(180,180,180,0.75)";
 }
 
-function stepLabel(verb: string): string {
+function stepLabel(verb: string, detail?: string | null): string {
+  if (verb === "THOUGHT" && detail && /^\d+s$/.test(detail)) {
+    return `Thought for ${detail}`;
+  }
   const MAP: Record<string, string> = {
     THOUGHT: "Thought", FILE_READ: "Read", SEARCH: "Search",
     INSPECT: "Inspect", FILE_EDIT: "Edited", LINE_PATCH: "Patched",
@@ -366,7 +391,7 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
             letterSpacing: "0.11em", textTransform: "uppercase",
             color, flexShrink: 0, opacity: 0.9,
           }}>
-            {stepLabel(step.verb)}
+            {stepLabel(step.verb, step.detail)}
           </span>
           {showTarget && (
             <span style={{
@@ -502,6 +527,7 @@ export function ViewChangesPanel({
   projectName,
 }: Props) {
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
+  const [lensAutoSet, setLensAutoSet] = useState(false);
   const { runs: dbRuns } = useProjectRuns(projectId);
 
   // Timeline lens: find the target run (specific runId, or most recent).
@@ -509,6 +535,22 @@ export function ViewChangesPanel({
     if (runId) return dbRuns.find((r) => r.id === runId) ?? null;
     return dbRuns[0] ?? null;
   }, [dbRuns, runId]);
+
+  // Auto-select "changes" for old runs that have no THOUGHT step.
+  // New runs (after step-capture was unified) will have THOUGHT, so they stay on "timeline".
+  // Only auto-switch once per run — don't override user's manual lens choice.
+  useEffect(() => {
+    if (!timelineRun || lensAutoSet) return;
+    const hasThought = timelineRun.steps.some((s) => s.verb === "THOUGHT");
+    if (!hasThought) setLens("changes");
+    setLensAutoSet(true);
+  }, [timelineRun, lensAutoSet]);
+
+  // Reset auto-set when the viewed run changes.
+  useEffect(() => {
+    setLensAutoSet(false);
+    setLens("timeline");
+  }, [runId]);
 
   // Changes lens: in-memory message fallback for paths not yet in the DB.
   const filteredMessages = useMemo(() => {

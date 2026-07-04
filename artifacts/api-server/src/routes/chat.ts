@@ -6324,12 +6324,13 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
 
       // 0. THOUGHT — the AI's reasoning text for this turn
       const _thoughtText = displayContent?.trim();
+      const _thoughtDurationS = Math.round((Date.now() - now.getTime()) / 1000);
       if (_thoughtText) {
         _steps.push({
           verb: "THOUGHT",
           target: null,
           status: "ok",
-          detail: _summary?.slice(0, 200) ?? null,
+          detail: `${_thoughtDurationS}s`,
           content: _thoughtText.slice(0, 8000),
         });
       }
