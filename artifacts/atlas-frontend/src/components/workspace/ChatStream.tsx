@@ -646,6 +646,18 @@ export function ChatStream(props: ChatStreamProps) {
           return null;
         }
 
+        // Agentic loops produce multiple consecutive streaming assistant messages.
+        // Suppress any that have no content yet and aren't the last — they'd
+        // show as empty "ATLAS · JUST NOW" rows with nothing in them.
+        if (
+          msg.role === "assistant" &&
+          msg.streaming &&
+          !msg.content?.trim() &&
+          i < messages.length - 1
+        ) {
+          return null;
+        }
+
         if (msg.role === "assistant" && msg.githubPush) {
           return (
             <Fragment key={i}>
