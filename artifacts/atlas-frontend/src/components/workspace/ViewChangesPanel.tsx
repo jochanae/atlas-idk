@@ -670,7 +670,7 @@ export function ViewChangesPanel({
         </div>
       )}
 
-      <WorkspaceRunCards
+      <WorkspaceRunReceipts
         projectId={projectId}
         projectName={projectName?.trim() || "Workspace"}
         runId={runId}
