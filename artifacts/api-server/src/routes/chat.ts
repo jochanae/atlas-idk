@@ -4980,7 +4980,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   // so the user never needs to manually click Apply (eliminates the refresh race).
   let autoApplied = false;
   const autoAppliedPaths: string[] = [];
-  if (responseFileEdits.length > 0 && projectId && buildMode) {
+  if (responseFileEdits.length > 0 && projectId && workspaceLens === "build") {
     try {
       const wsDir = await ensureProjectWorkspaceDir(projectId);
       for (const edit of responseFileEdits) {
