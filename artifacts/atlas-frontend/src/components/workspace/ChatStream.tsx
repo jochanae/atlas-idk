@@ -987,7 +987,7 @@ export function ChatStream(props: ChatStreamProps) {
           </svg>
         </button>
       )}
-      <TimelineRail bottomOffset={isMobile ? 228 : 110} messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))} />
+      <TimelineRail bottomOffset={isMobile ? 228 : 110} messages={timelineRailMessages} />
     </div>
   );
 }
