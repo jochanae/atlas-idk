@@ -454,6 +454,10 @@ export function AskAtlasSurface({
                     isParchment={isParchment}
                     onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
                   />
+                  {msg.role === "assistant" && msg.streaming && (
+                    <span className="atlas-cursor" aria-hidden />
+                  )}
+
 
                 </div>
                 {tokenTarget && (
