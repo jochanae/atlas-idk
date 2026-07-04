@@ -395,7 +395,7 @@ export function AskAtlasSurface({
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-y",
-          padding: "18px 20px 24px",
+          padding: restingDocked ? "18px 20px 96px" : "18px 20px 24px",
           display: "flex",
           flexDirection: "column",
           gap: 16,
