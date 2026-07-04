@@ -43,8 +43,12 @@ export interface ActiveThread {
 // Composer visibility (see mem://design/composer-modes and
 // hooks/useComposerVisibility.ts). Stage artifacts and reading-density
 // hints register claims; the highest-priority claim wins:
-//   hidden > compact > full.
-export type ComposerVisibility = 'full' | 'compact' | 'hidden';
+//   hidden > docked > compact > full.
+//
+// `docked` is a user-only preference — the composer collapses to a
+// floating "A" orb, freeing the whole canvas. Claims never produce
+// `docked`; only the user does (via the composer chevron).
+export type ComposerVisibility = 'full' | 'compact' | 'docked' | 'hidden';
 export interface ComposerClaim {
   source: 'stage' | 'reading';
   kind: string;
