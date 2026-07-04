@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useComposerVisibility } from "@/hooks/useComposerVisibility";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { StepProgress } from "@/components/workspace/StepProgress";
 import { AssistantBubble, type BuildGroupInfo } from "@/components/workspace/AssistantBubble";
