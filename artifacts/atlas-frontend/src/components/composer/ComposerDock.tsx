@@ -25,6 +25,11 @@ interface Props {
   offsetBottom?: number;
   /** Optional aria label override. */
   label?: string;
+  /** Force-render the dock regardless of shellStore visibility. Used by
+   *  surfaces (Ask Atlas) that manage their own dock state locally. */
+  forceVisible?: boolean;
+  /** Custom restore handler. When omitted, calls shellStore.restoreComposer. */
+  onRestore?: () => void;
 }
 
 export function ComposerDock({
@@ -32,11 +37,20 @@ export function ComposerDock({
   offsetRight = 16,
   offsetBottom = 84,
   label = "Restore composer",
+  forceVisible = false,
+  onRestore,
 }: Props) {
   const visibility = useShellStore((s) => s.composerVisibility);
   const restoreComposer = useShellStore((s) => s.restoreComposer);
 
-  if (visibility !== "docked") return null;
+  const shouldRender = forceVisible || visibility === "docked";
+  if (!shouldRender) return null;
+
+  const handleClick = () => {
+    haptics.tap();
+    if (onRestore) onRestore();
+    else restoreComposer();
+  };
 
   return (
     <>
