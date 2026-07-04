@@ -177,7 +177,23 @@ function RootRouteGate() {
 
   useEffect(() => {
     if (isLoading) return;
-    nav(user?.id ? "/home" : "/landing", { replace: true });
+    if (!user?.id) {
+      nav("/landing", { replace: true });
+      return;
+    }
+    // Phase 2 — lifecycle-aware landing:
+    // Returning users with an active project go directly to their workspace.
+    // Ask Atlas handles its own re-entry via askAtlasSurfaceOpen auto-resume.
+    try {
+      const lastProjectId =
+        localStorage.getItem("atlas-last-project-id") ||
+        localStorage.getItem("atlas-last-project");
+      if (lastProjectId) {
+        nav(`/project/${lastProjectId}`, { replace: true });
+        return;
+      }
+    } catch {}
+    nav("/home", { replace: true });
   }, [isLoading, nav, user]);
 
   return null;

@@ -1959,6 +1959,7 @@ export default function Home() {
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
+      try { sessionStorage.removeItem("atlas-ask-atlas-closed"); } catch {}
       setAskAtlasSurfaceOpen(true);
       if (detail?.seed) setInput(detail.seed);
       window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
@@ -2090,15 +2091,28 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    try { return localStorage.getItem("atlas-ask-atlas-surface-open") === "1"; } catch { return false; }
+    try {
+      if (localStorage.getItem("atlas-ask-atlas-surface-open") === "1") return true;
+      // Auto-resume: if the user had an Ask Atlas conversation and did NOT manually
+      // close the surface this browser session, re-open it so they land where they left off.
+      const manuallyClosed = sessionStorage.getItem("atlas-ask-atlas-closed") === "1";
+      if (manuallyClosed) return false;
+      const hasConvId = !!(
+        localStorage.getItem("atlas-ask-atlas-conversation-id") ??
+        sessionStorage.getItem("atlas-ask-atlas-conversation-id")
+      );
+      return hasConvId;
+    } catch { return false; }
   });
   // True while the thread restore fetch is in-flight. Initialized synchronously
   // from localStorage so the surface is visible immediately on return (no blank flash).
   const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
     try {
+      const manuallyClosed = sessionStorage.getItem("atlas-ask-atlas-closed") === "1";
+      if (manuallyClosed) return false;
       const surfaceOpen = localStorage.getItem("atlas-ask-atlas-surface-open") === "1";
       const convId = localStorage.getItem("atlas-ask-atlas-conversation-id") ?? sessionStorage.getItem("atlas-ask-atlas-conversation-id");
-      return surfaceOpen && !!convId;
+      return (surfaceOpen || !!convId) && !!convId;
     } catch { return false; }
   });
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
@@ -5499,6 +5513,7 @@ export default function Home() {
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                try { sessionStorage.setItem("atlas-ask-atlas-closed", "1"); } catch {}
                 setAskAtlasSurfaceOpen(false);
                 askAtlasChat.abort();
                 askAtlasChat.clearMessages();
