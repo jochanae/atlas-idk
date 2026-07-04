@@ -5339,7 +5339,7 @@ export default function Workspace() {
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showDeepDive, setShowDeepDive] = useState(false);
-  const [deepDiveContext, setDeepDiveContext] = useState("");
+  
   const [cloningProject, setCloningProject] = useState(false);
   const updateProjectHeader = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
