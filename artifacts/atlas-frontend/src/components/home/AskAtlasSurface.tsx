@@ -17,6 +17,7 @@ import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { AskAtlasRenderer } from "./AskAtlasRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+import { ComposerDock } from "@/components/composer/ComposerDock";
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { type LiveStep } from "@/components/workspace/StepProgress";
