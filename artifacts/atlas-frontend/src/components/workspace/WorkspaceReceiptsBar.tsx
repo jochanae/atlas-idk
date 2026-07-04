@@ -365,7 +365,7 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
             opacity: hasStable ? 0.85 : 0.5,
           }}
         >
-          thought carry-in · {visible.length}
+          thinking thread · {visible.length}
         </span>
         <svg
           width="8"

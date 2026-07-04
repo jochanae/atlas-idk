@@ -2914,7 +2914,7 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Run remaining DB queries in parallel — previously sequential, added 400-600ms per request
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [recentErrorsRows, selfMapRows, portfolioRows, committedRows, parkedRows] = await Promise.all([
+  const [recentErrorsRows, selfMapRows, portfolioRows, committedRows, parkedRows, thinkingReceiptsRows] = await Promise.all([
     db
       .select({ errorMessage: atlasErrorLogsTable.errorMessage, route: atlasErrorLogsTable.route, timestamp: atlasErrorLogsTable.timestamp })
       .from(atlasErrorLogsTable)
@@ -2947,6 +2947,25 @@ router.post("/chat", async (req, res): Promise<void> => {
       .orderBy(desc(entriesTable.createdAt))
       .limit(12)
       .catch(() => [] as Array<{ title: string; enrichmentJson: string | null; createdAt: Date }>),
+    !isFoundationMode && projectId && userId
+      ? db.execute(sql`
+          SELECT headline, body, category, confidence
+          FROM thinking_receipts
+          WHERE user_id = ${userId}
+            AND dismissed = false
+            AND (
+              conversation_id IN (SELECT 'ws-' || id::text FROM sessions WHERE project_id = ${projectId})
+              OR conversation_id = (
+                SELECT conversation_id FROM projects
+                WHERE id = ${projectId} AND user_id = ${userId}
+                LIMIT 1
+              )
+            )
+          ORDER BY confidence DESC, created_at DESC
+          LIMIT 10
+        `).then(r => (r.rows ?? r) as Array<{ headline: string; body: string; category: string; confidence: number }>)
+          .catch(() => [] as Array<{ headline: string; body: string; category: string; confidence: number }>)
+      : Promise.resolve([] as Array<{ headline: string; body: string; category: string; confidence: number }>),
   ]);
 
   const recentErrorContext = recentErrorsRows
@@ -3504,6 +3523,15 @@ HARD RULE: Never answer from the context of a different project unless the user 
       systemPrompt += `\n\n--- COMMITTED DECISIONS (Decision Ledger — reference these naturally, never cite entry numbers) ---\n${ledgerText}\n--- END COMMITTED DECISIONS ---`;
     }
 
+    // Inject thinking receipts — the extracted reasoning from prior Ask Atlas and
+    // workspace turns. These let Atlas reference and build on its own past thinking
+    // without requiring the user to re-explain context across sessions.
+    if (thinkingReceiptsRows.length > 0 && !isSelfContainedBuild) {
+      const receiptsText = thinkingReceiptsRows
+        .map(r => `[${r.category}] ${r.headline}: ${r.body}`)
+        .join("\n");
+      systemPrompt += `\n\n--- THINKING RECEIPTS (your captured reasoning from prior turns — reference these naturally as you continue; never list them all at once) ---\n${receiptsText}\n--- END THINKING RECEIPTS ---`;
+    }
     if (parkedRows.length > 0) {
       const parkedText = parkedRows.map(e => {
         let line = `• ${e.title}`;
