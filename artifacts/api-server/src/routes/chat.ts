@@ -2804,7 +2804,7 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Load project memory + repo info + node state from DB, plus user memory when authenticated.
   // Also check for Vercel connection so we know whether to defer BROWSER_VISIT until after deploy.
-  const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow] = await Promise.all([
+  const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow, userNarrativeRow] = await Promise.all([
     isFoundationMode
       ? Promise.resolve([] as Array<{ memory: string | null; linkedRepo: string | null; githubToken: string | null; nodeState: Record<string, unknown> | null; name: string; previewUrl: string | null; description: string | null; convState: string | null }>)
       : db
@@ -2841,6 +2841,12 @@ router.post("/chat", async (req, res): Promise<void> => {
           })
           .catch(() => null)
       : Promise.resolve(null),
+    // Global narrative — living cross-thread memory
+    userId
+      ? db.execute(sql`SELECT global_narrative FROM users WHERE id = ${userId} LIMIT 1`)
+          .then(r => ((r.rows ?? r)[0] as { global_narrative: string | null } | undefined) ?? null)
+          .catch(() => null)
+      : Promise.resolve(null),
   ]);
   const [project] = projectRows;
   const incomingConvState = project?.convState ?? null;
@@ -2850,6 +2856,7 @@ router.post("/chat", async (req, res): Promise<void> => {
   const sessionMessageCount = sessionRows[0]?.messageCount ?? 1;
   const storedSessionSummary = sessionSummaryRow?.summary ?? null;
   const storedSessionSummaryAt = sessionSummaryRow?.summaryAt ?? null;
+  const globalNarrative = (userNarrativeRow as any)?.global_narrative ?? null;
 
   // Auto-title: when this is the very first message in a session, use the user's
   // message text (truncated) as the session title, replacing any placeholder.
@@ -3674,6 +3681,12 @@ HARD RULE: Never answer from the context of a different project unless the user 
   }
   if (userMemoryText) {
     systemPrompt += `\n\n--- ABOUT THIS FOUNDER (durable facts about the person you work with — use naturally, never recite) ---\n${userMemoryText}\n--- END ABOUT THIS FOUNDER ---`;
+  }
+  // Global narrative — cross-thread conversational memory. This is the living context
+  // of what the user has been working through recently across ALL conversations.
+  // It gives Atlas continuity between threads — never reference it as a list or summary.
+  if (globalNarrative && !isSelfContainedBuild) {
+    systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH (living memory across all conversations — weave this in naturally when relevant, never recite it) ---\n${globalNarrative}\n--- END LIVING MEMORY ---`;
   }
   if (memoryText) {
     systemPrompt += `\n\n--- PROJECT MEMORY (what you already know — use this) ---\n${memoryText}\n--- END PROJECT MEMORY ---`;

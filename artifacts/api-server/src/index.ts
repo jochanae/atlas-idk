@@ -397,6 +397,17 @@ async function ensureColumns(): Promise<void> {
 
   try {
     await db.execute(sql`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS global_narrative     text,
+        ADD COLUMN IF NOT EXISTS global_narrative_at  timestamptz
+    `);
+    logger.info("ensureColumns: users.global_narrative columns verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: users.global_narrative failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS project_bookmarks (
         id          SERIAL PRIMARY KEY,
         project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

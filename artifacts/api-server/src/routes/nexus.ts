@@ -20,7 +20,7 @@ import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE } from "../lib/atlasIdentity"
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
-import { maybeExtractThinkingReceipts, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { maybeExtractThinkingReceipts, synthesizeGlobalNarrative, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 
 // In-memory cache for cross-project behavioral pattern analysis (30-min TTL per user)
 const patternCache = new Map<string, { text: string; ts: number }>();
@@ -1889,6 +1889,18 @@ One pattern per line starting with "·". Short and specific. If nothing meaningf
     systemPrompt += `\n\n--- CROSS-PROJECT BEHAVIORAL PATTERNS ---\n${crossProjectPatterns}\nUse these patterns only when the conversation explicitly touches on working habits, momentum, or stalled progress. Do not insert them into every response.\n--- END PATTERNS ---`;
   }
 
+  // Global narrative — living cross-thread memory. Read from user record, inject as
+  // natural context at the top of the memory stack so Atlas enters every conversation
+  // already holding the thread of what's been discussed recently.
+  const userNarrativeRow = await db.execute(sql`
+    SELECT global_narrative FROM users WHERE id = ${userId} LIMIT 1
+  `).then(r => ((r.rows ?? r)[0] as { global_narrative: string | null } | undefined) ?? null)
+    .catch(() => null);
+  const userGlobalNarrative = (userNarrativeRow as any)?.global_narrative ?? null;
+  if (userGlobalNarrative) {
+    systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH (living memory across all your conversations — weave this in naturally when relevant, never recite it) ---\n${userGlobalNarrative}\n--- END LIVING MEMORY ---`;
+  }
+
   // Inject thinking receipts — Ask Atlas now re-reads its own prior reasoning across all sessions
   const nexusReceiptsRows = await db.execute(sql`
     SELECT headline, body, category, confidence
@@ -2555,6 +2567,15 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
         stable: thinkingStable,
       });
     }
+
+    // Global narrative synthesis — builds the living cross-thread memory paragraph.
+    // Fires fire-and-forget after every Ask Atlas turn (both projectified and not),
+    // with a 4-min cooldown so it doesn't thrash on rapid sends.
+    void synthesizeGlobalNarrative({
+      userId,
+      userMessage: body.message ?? "",
+      atlasResponse: visibleContent,
+    });
 
     // Auto-capture DECISION signal to Ledger — fire-and-forget, never blocks stream
     if (surface?.type === "DECISION" && focusProjectId) {

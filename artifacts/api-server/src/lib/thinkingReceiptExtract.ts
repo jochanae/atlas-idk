@@ -220,3 +220,92 @@ Rules:
     }
   })();
 }
+
+// ── Global Narrative Memory ───────────────────────────────────────────────────
+// After each substantive Ask Atlas turn, synthesize a living 2–3 sentence
+// narrative of what's been discussed across all threads. Stored on the user
+// record and injected into every conversation start — both Ask Atlas and
+// workspace. This gives Atlas cross-thread continuity: it knows what you've
+// been working through, not just what it extracted from individual turns.
+
+const globalNarrativeInFlight = new Set<number>(); // userId gate — one at a time per user
+const NARRATIVE_MIN_LEN = 250; // skip trivial exchanges
+const NARRATIVE_COOLDOWN_MS = 4 * 60 * 1000; // max one update per 4 min per user
+
+export async function synthesizeGlobalNarrative(opts: {
+  userId: number;
+  userMessage: string;
+  atlasResponse: string;
+}): Promise<void> {
+  const exchangeLen = opts.userMessage.length + opts.atlasResponse.length;
+  if (exchangeLen < NARRATIVE_MIN_LEN) return;
+  if (globalNarrativeInFlight.has(opts.userId)) return;
+  globalNarrativeInFlight.add(opts.userId);
+
+  void (async () => {
+    try {
+      // Cooldown check — avoid thrashing on rapid turns
+      const existing = await db.execute(sql`
+        SELECT global_narrative_at FROM users WHERE id = ${opts.userId}
+      `).then(r => (r.rows ?? r)[0] as { global_narrative_at: string | null } | undefined)
+        .catch(() => undefined);
+
+      if (existing?.global_narrative_at) {
+        const age = Date.now() - new Date(existing.global_narrative_at).getTime();
+        if (age < NARRATIVE_COOLDOWN_MS) return;
+      }
+
+      // Fetch recent nexus messages for richer synthesis (not just the current turn)
+      const recentRows = await db.execute(sql`
+        SELECT role, content
+        FROM nexus_messages
+        WHERE user_id = ${opts.userId}
+          AND message_type IS DISTINCT FROM 'briefing'
+        ORDER BY created_at DESC
+        LIMIT 16
+      `).then(r => (r.rows ?? r) as Array<{ role: string; content: string }>)
+        .catch(() => [] as Array<{ role: string; content: string }>);
+
+      const recentExchange = recentRows.reverse()
+        .map(m => `${m.role === "user" ? "You" : "Atlas"}: ${String(m.content).slice(0, 400)}`)
+        .join("\n");
+
+      const resp = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 200,
+        messages: [{
+          role: "user",
+          content: `You are writing a private living memory note for an AI assistant called Atlas. It will be read at the start of future conversations to give Atlas genuine cross-thread continuity — the user should feel like Atlas picks up where things left off, not like they're starting over.
+
+Write 2–3 sentences. No bullets, no headers. Capture:
+- What the person has been working through or thinking about recently
+- Any named tensions, commitments, or open questions that came up
+- The direction or posture that feels most alive right now
+
+Tone: natural, colleague-level. Be specific — not "discussing a project" but "deciding whether to expand Axiom beyond developers before launch." If nothing notable is here, write one honest short sentence.
+
+Recent conversation (newest at bottom):
+${recentExchange}
+
+Living memory (2–3 sentences, no preamble):`,
+        }],
+      });
+
+      const narrative = resp.content[0]?.type === "text" ? resp.content[0].text.trim() : null;
+      if (!narrative || narrative.length < 20) return;
+
+      await db.execute(sql`
+        UPDATE users
+        SET    global_narrative    = ${narrative},
+               global_narrative_at = now()
+        WHERE  id = ${opts.userId}
+      `);
+
+      logger.info({ userId: opts.userId, len: narrative.length }, "global narrative updated");
+    } catch (err) {
+      logger.warn({ err }, "synthesizeGlobalNarrative failed — non-fatal");
+    } finally {
+      globalNarrativeInFlight.delete(opts.userId);
+    }
+  })();
+}
