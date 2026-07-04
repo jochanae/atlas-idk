@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { db } from "@workspace/db";
+import { db, entriesTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -17,6 +17,74 @@ type ThinkingReceipt = {
   category: ReceiptCategory;
   confidence: number;
 };
+
+/**
+ * Detects when a user message is asking about past reasoning, decisions, or prior context.
+ * Used by both nexus.ts and chat.ts to trigger cross-surface memory retrieval.
+ */
+export const MEMORY_QUERY_RE =
+  /\b(where|when|what|why|how|did|didn't|do you|don't you|can you|have we|haven't we).{0,30}(remember|recall|decide|decided|agree|agreed|discuss|discussed|commit|committed|tension|assumption|insight|question|figure out|figured out|said|mention|mentioned|land on|landed on)\b|\b(remind me|do you remember|earlier|before|last time|previously|past).{0,40}\?/i;
+
+/**
+ * Full-text + ILIKE search across thinking receipts for a user.
+ * Used for cross-surface retrieval when the user asks about prior reasoning.
+ * Optionally scoped to a specific project (workspace turns).
+ */
+export async function searchThinkingReceipts(opts: {
+  userId: number;
+  query: string;
+  projectId?: number;
+  limit?: number;
+}): Promise<Array<{ headline: string; body: string; category: string; confidence: number }>> {
+  try {
+    // Strip stop words so plainto_tsquery gets meaningful tokens
+    const cleaned = opts.query
+      .replace(/\b(where|when|what|why|how|do|did|can|have|you|we|i|me|the|a|an|is|was|were|are|been|it|that|this|there|about|around|on|in|at|to|for|of|with|by)\b/gi, " ")
+      .replace(/[?!.,]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120);
+
+    if (cleaned.length < 3) return [];
+
+    const rows = opts.projectId
+      ? await db.execute(sql`
+          SELECT headline, body, category, confidence
+          FROM thinking_receipts
+          WHERE user_id = ${opts.userId}
+            AND dismissed = false
+            AND (
+              conversation_id IN (SELECT 'ws-' || id::text FROM sessions WHERE project_id = ${opts.projectId})
+              OR conversation_id = (SELECT conversation_id FROM projects WHERE id = ${opts.projectId} LIMIT 1)
+            )
+            AND (
+              to_tsvector('english', headline || ' ' || body) @@ plainto_tsquery('english', ${cleaned})
+              OR headline ILIKE ${`%${cleaned}%`}
+              OR body ILIKE ${`%${cleaned}%`}
+            )
+          ORDER BY confidence DESC, created_at DESC
+          LIMIT ${opts.limit ?? 5}
+        `)
+      : await db.execute(sql`
+          SELECT headline, body, category, confidence
+          FROM thinking_receipts
+          WHERE user_id = ${opts.userId}
+            AND dismissed = false
+            AND (
+              to_tsvector('english', headline || ' ' || body) @@ plainto_tsquery('english', ${cleaned})
+              OR headline ILIKE ${`%${cleaned}%`}
+              OR body ILIKE ${`%${cleaned}%`}
+            )
+          ORDER BY confidence DESC, created_at DESC
+          LIMIT ${opts.limit ?? 5}
+        `);
+
+    return (rows.rows ?? rows) as Array<{ headline: string; body: string; category: string; confidence: number }>;
+  } catch (err) {
+    logger.warn({ err }, "searchThinkingReceipts failed — non-fatal");
+    return [];
+  }
+}
 
 function parseReceiptsJson(raw: string): ThinkingReceipt[] {
   try {
@@ -54,6 +122,8 @@ export async function maybeExtractThinkingReceipts(opts: {
   atlasResponse: string;
   /** True when Atlas emitted THINKING_STABLE — use more aggressive extraction. */
   stable?: boolean;
+  /** When provided, high-confidence Decision receipts (≥90) are auto-promoted to the Ledger. */
+  projectId?: number;
 }): Promise<void> {
   const key = `${opts.conversationId}:${opts.turnIndex}`;
   if (extractionInFlight.has(key)) return;
@@ -110,6 +180,33 @@ Rules:
           INSERT INTO thinking_receipts (user_id, conversation_id, turn_index, headline, body, category, confidence, is_stable)
           VALUES (${opts.userId}, ${opts.conversationId}, ${opts.turnIndex}, ${r.headline}, ${r.body}, ${r.category}, ${r.confidence}, ${isStable})
         `);
+      }
+
+      // Auto-promote high-confidence Decision receipts → Ledger (workspace turns only, where projectId is known)
+      if (opts.projectId) {
+        const toPromote = receipts.filter(r => r.category === "Decision" && r.confidence >= 90);
+        for (const r of toPromote) {
+          try {
+            await db.insert(entriesTable).values({
+              projectId: opts.projectId,
+              title: r.headline,
+              summary: r.body,
+              details: r.body,
+              status: "committed",
+              severity: "committed",
+              mode: "decide",
+              amField: "intent",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+            logger.info(
+              { userId: opts.userId, projectId: opts.projectId, headline: r.headline },
+              "thinking receipt auto-promoted to Ledger",
+            );
+          } catch (err) {
+            logger.warn({ err }, "auto-promote to Ledger failed — non-fatal");
+          }
+        }
       }
 
       logger.info(

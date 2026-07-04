@@ -20,7 +20,7 @@ import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE } from "../lib/atlasIdentity"
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
-import { maybeExtractThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { maybeExtractThinkingReceipts, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 
 // In-memory cache for cross-project behavioral pattern analysis (30-min TTL per user)
 const patternCache = new Map<string, { text: string; ts: number }>();
@@ -1888,6 +1888,31 @@ One pattern per line starting with "·". Short and specific. If nothing meaningf
   if (crossProjectPatterns) {
     systemPrompt += `\n\n--- CROSS-PROJECT BEHAVIORAL PATTERNS ---\n${crossProjectPatterns}\nUse these patterns only when the conversation explicitly touches on working habits, momentum, or stalled progress. Do not insert them into every response.\n--- END PATTERNS ---`;
   }
+
+  // Inject thinking receipts — Ask Atlas now re-reads its own prior reasoning across all sessions
+  const nexusReceiptsRows = await db.execute(sql`
+    SELECT headline, body, category, confidence
+    FROM thinking_receipts
+    WHERE user_id = ${userId}
+      AND dismissed = false
+    ORDER BY confidence DESC, created_at DESC
+    LIMIT 10
+  `).then(r => (r.rows ?? r) as Array<{ headline: string; body: string; category: string; confidence: number }>)
+    .catch(() => [] as Array<{ headline: string; body: string; category: string; confidence: number }>);
+  if (nexusReceiptsRows.length > 0) {
+    const receiptsText = nexusReceiptsRows.map(r => `[${r.category}] ${r.headline}: ${r.body}`).join("\n");
+    systemPrompt += `\n\n--- YOUR THINKING RECEIPTS (crystallized reasoning from prior conversations across all projects) ---\n${receiptsText}\nThese are genuine moments of insight, commitment, tension, or decision surfaced together. Let them shape how you respond — never read them out as a list, but reference them naturally when relevant.\n--- END THINKING RECEIPTS ---`;
+  }
+
+  // Cross-surface memory retrieval — user asking about prior reasoning triggers a targeted search
+  if (MEMORY_QUERY_RE.test(body.message ?? "")) {
+    const memoryHits = await searchThinkingReceipts({ userId, query: body.message ?? "" });
+    if (memoryHits.length > 0) {
+      const hitsText = memoryHits.map(r => `[${r.category}] ${r.headline}: ${r.body}`).join("\n");
+      systemPrompt += `\n\n--- MEMORY SEARCH (receipts matching the user's question) ---\n${hitsText}\nThe user is asking about something from a past conversation. Answer using these receipts specifically — cite the headline directly (e.g. "We have a [Category] on this: [headline]"). If none match, say you don't have a specific receipt on that topic.\n--- END MEMORY SEARCH ---`;
+    }
+  }
+
   if (focusProjectId) {
     const focusProject = projects.find(p => p.id === focusProjectId);
     if (focusProject) {

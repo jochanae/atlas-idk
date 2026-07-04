@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
-import { maybeExtractThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { maybeExtractThinkingReceipts, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
 import { checkBuildReadiness } from "../lib/buildReadiness";
 import { eq, sql, and, gte, desc, ne, isNotNull, inArray } from "drizzle-orm";
@@ -3532,6 +3532,16 @@ HARD RULE: Never answer from the context of a different project unless the user 
         .join("\n");
       systemPrompt += `\n\n--- THINKING RECEIPTS (your captured reasoning from prior turns — reference these naturally as you continue; never list them all at once) ---\n${receiptsText}\n--- END THINKING RECEIPTS ---`;
     }
+
+    // Cross-surface retrieval — when user asks about past reasoning, surface matching receipts
+    if (MEMORY_QUERY_RE.test(message) && !isSelfContainedBuild) {
+      const memoryHits = await searchThinkingReceipts({ userId, query: message, projectId });
+      if (memoryHits.length > 0) {
+        const hitsText = memoryHits.map(r => `[${r.category}] ${r.headline}: ${r.body}`).join("\n");
+        systemPrompt += `\n\n--- MEMORY SEARCH (receipts matching the user's question) ---\n${hitsText}\nThe user is asking about something from a past session. Answer using these receipts specifically — cite the headline directly (e.g. "We have a [Category] on this: [headline]"). If none of these match, say you don't have a specific receipt on that topic yet.\n--- END MEMORY SEARCH ---`;
+      }
+    }
+
     if (parkedRows.length > 0) {
       const parkedText = parkedRows.map(e => {
         let line = `• ${e.title}`;
@@ -5932,6 +5942,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       turnIndex: sessionMessageCount,
       userMessage: message,
       atlasResponse: fullText,
+      projectId,
     });
   }
 
