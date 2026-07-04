@@ -2258,7 +2258,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             {location !== "/home" && !isProjectRoute(location) && <HudToggleDot />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: isTinyMobile ? 3 : 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
-            <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />
+            <ShellPlayButton visible={location === "/workspace" || isProjectRoute(location)} />
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
 
