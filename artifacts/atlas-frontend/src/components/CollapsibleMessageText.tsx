@@ -9,7 +9,7 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode }
  */
 export function CollapsibleMessageText({
   children,
-  maxCollapsedPx = 168, // ~7 lines at 24px line-height
+  maxCollapsedPx = 144, // ~6 lines at 24px line-height — mobile-first cap
   fadeFromColor: _fadeFromColor,
   textStyle,
 }: {
@@ -31,8 +31,10 @@ export function CollapsibleMessageText({
   }, [children, maxCollapsedPx]);
 
   const collapsed = overflows && !expanded;
+  // Sharper obsidian-style fade: solid text until ~62%, then dissolves cleanly.
+  // Uses alpha mask so it blends into any background (dark or light) natively.
   const fadeMask = collapsed
-    ? "linear-gradient(to bottom, #000 0%, #000 55%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0) 100%)"
+    ? "linear-gradient(to bottom, #000 0%, #000 62%, rgba(0,0,0,0.55) 84%, rgba(0,0,0,0) 100%)"
     : undefined;
 
   return (
@@ -47,7 +49,16 @@ export function CollapsibleMessageText({
           maskRepeat: "no-repeat",
           WebkitMaskSize: "100% 100%",
           maskSize: "100% 100%",
-          transition: "max-height 200ms ease",
+          transition: "max-height 220ms ease",
+          cursor: overflows ? "pointer" : "default",
+        }}
+        onClick={(e) => {
+          if (!overflows) return;
+          // Only toggle on plain taps within the text region — don't hijack
+          // interactive children like links or buttons.
+          const target = e.target as HTMLElement;
+          if (target.closest("a,button")) return;
+          setExpanded((v) => !v);
         }}
       >
         <div ref={ref} style={textStyle}>
@@ -67,14 +78,18 @@ export function CollapsibleMessageText({
             border: "none",
             padding: 0,
             cursor: "pointer",
-            fontFamily: "var(--app-font-sans)",
-            fontSize: 13,
-            color: "var(--atlas-muted)",
-            opacity: 0.75,
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: expanded
+              ? "var(--atlas-muted)"
+              : "color-mix(in oklab, var(--atlas-gold) 88%, transparent)",
+            opacity: expanded ? 0.7 : 1,
             textAlign: "left",
           }}
         >
-          {expanded ? "Show less" : "Show more"}
+          {expanded ? "Show less" : "Show more +"}
         </button>
       )}
     </div>
