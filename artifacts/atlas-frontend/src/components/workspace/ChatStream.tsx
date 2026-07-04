@@ -713,6 +713,20 @@ export function ChatStream(props: ChatStreamProps) {
         return (
         <Fragment key={i}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
+          {i === runAnchorIdx && (
+            <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
+              <WorkspaceRunCard
+                projectId={projectId}
+                messages={messages.slice(0, i)}
+                projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+                chatPending={false}
+                liveStep={null}
+                suppressGitHubReceipt
+                executionRun={execLatestRun}
+                onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+              />
+            </div>
+          )}
           {msg.role === "user" ? (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
               {isAutoVerifyMessage(msg) ? (
