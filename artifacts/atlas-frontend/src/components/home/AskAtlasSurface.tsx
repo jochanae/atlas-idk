@@ -1098,7 +1098,15 @@ export function AskAtlasSurface({
       <ComposerDeepDive
         open={showDeepDive}
         onClose={() => setShowDeepDive(false)}
-        initialContext={deepDiveContext}
+        lastAtlasResponse={
+          (() => {
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const m = messages[i];
+              if (m?.role !== "user" && m?.content) return m.content;
+            }
+            return undefined;
+          })()
+        }
         onPasteBack={(text) => {
           setInput(input.trim() ? `${input.trim()}\n\n${text}` : text);
         }}
