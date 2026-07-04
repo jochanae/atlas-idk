@@ -1,8 +1,12 @@
-export default function App() {
+import { useState, useEffect } from 'react'
+import HabitTracker from './components/HabitTracker'
+
+function App() {
   return (
-    <div className="app">
-      <h1>Atlas Project</h1>
-      <p>Start editing to build your app.</p>
+    <div className="min-h-screen bg-gray-950 text-white">
+      <HabitTracker />
     </div>
-  );
+  )
 }
+
+export default App
