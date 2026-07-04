@@ -98,9 +98,15 @@ interface ShellStore {
   toggleComposerCollapsed: () => void;
   registerComposerClaim: (id: string, claim: ComposerClaim) => void;
   releaseComposerClaim: (id: string) => void;
+  /** Dock-scroll follow: hide the composer while the dock is scroll-hidden. */
+  hideComposerForScroll: () => void;
+  /** Dock-scroll follow: restore the composer when the dock comes back.
+   *  Defaults to compact unless the user had explicitly set full. */
+  showComposerFromScroll: () => void;
   /** Forces composer back to `full` and drops all stage claims + user pref.
    *  Wired to the gold "A" (atlas:focus-composer) and to send. */
   restoreComposer: () => void;
+
 }
 
 const emptyThread: ActiveThread = {
@@ -197,5 +203,35 @@ export const useShellStore = create<ShellStore>((set, get) => ({
     } catch {}
     set({ composerClaims: {}, composerVisibility: 'full', userComposerPreference: null });
   },
+  hideComposerForScroll: () =>
+    set((state) => {
+      // Snapshot pre-hide visibility into the claim so restore can consult it.
+      const preHide = state.composerVisibility;
+      const claim: ComposerClaim = { source: 'stage', kind: `scroll:${preHide}`, visibility: 'hidden' };
+      const next = { ...state.composerClaims, __scrollFollow__: claim };
+      return { composerClaims: next, composerVisibility: resolveVisibility(next, state.userComposerPreference) };
+    }),
+  showComposerFromScroll: () =>
+    set((state) => {
+      const prior = state.composerClaims.__scrollFollow__;
+      const next = { ...state.composerClaims };
+      delete next.__scrollFollow__;
+      // Rule: restore to compact unless the user had explicitly opened full.
+      const wasFull = prior?.kind === 'scroll:full';
+      const userWantsFull = state.userComposerPreference === 'full';
+      let pref = state.userComposerPreference;
+      if (!(wasFull && userWantsFull)) {
+        pref = 'compact';
+        try {
+          if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('atlas-composer-pref', 'compact');
+        } catch {}
+      }
+      return {
+        composerClaims: next,
+        userComposerPreference: pref,
+        composerVisibility: resolveVisibility(next, pref),
+      };
+    }),
 
 }));
+
