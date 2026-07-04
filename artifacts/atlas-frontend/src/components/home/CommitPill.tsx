@@ -164,6 +164,13 @@ function StoreCommitPill({ className = "", onArm, overrideLabel }: { className?:
           setTimeout(() => resetHandoff(), 80);
         } else if (projectId) {
           setShellMode("operational");
+          // Phase 3: fire the Replit adapter so the project launches in parallel
+          // with workspace navigation. LaunchPanel handles hasScaffold gracefully.
+          window.dispatchEvent(
+            new CustomEvent("axiom:launch-project", {
+              detail: { projectId, adapter: "replit-devserver" },
+            })
+          );
           navigate(`/project/${projectId}?source=commit-handoff`);
           setTimeout(() => resetHandoff(), 80);
         }
