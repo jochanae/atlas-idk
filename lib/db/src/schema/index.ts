@@ -33,3 +33,4 @@ export * from "./resume_snapshots";
 export * from "./capacity_pools";
 export * from "./agent_runs";
 export * from "./plan_artifacts";
+export * from "./project_tier1_memory";

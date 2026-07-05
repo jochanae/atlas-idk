@@ -670,6 +670,25 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: capacity_pools table failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_tier1_memory (
+        id serial PRIMARY KEY,
+        project_id integer NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+        building text NOT NULL DEFAULT '',
+        audience text NOT NULL DEFAULT '',
+        problem text NOT NULL DEFAULT '',
+        out_of_scope text NOT NULL DEFAULT '',
+        success_signal text NOT NULL DEFAULT '',
+        constraints text NOT NULL DEFAULT '',
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    logger.info("ensureColumns: project_tier1_memory table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: project_tier1_memory table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {
