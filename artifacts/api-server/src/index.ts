@@ -5,6 +5,7 @@ import { logger } from "./lib/logger";
 import { spawn } from "node:child_process";
 import { sql } from "drizzle-orm";
 import { startScheduledChecksWorker } from "./lib/scheduledChecksWorker";
+import { startCapacityResetWorker } from "./lib/capacityResetWorker";
 import { seedMissingGenomes, backfillEmptyGenomes, seedMissingSessionsForCommitted } from "./lib/genomeExtract";
 import { seedMissingApplicationModels } from "./routes/applicationModel";
 import { migrateGenomeToApplicationModel } from "./lib/projectDNA";
@@ -621,6 +622,27 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: home_artifacts table failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS capacity_pools (
+        user_id           INTEGER      PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        tier              TEXT         NOT NULL DEFAULT 'explorer',
+        monthly_allotment INTEGER      NOT NULL DEFAULT 30,
+        daily_allotment   INTEGER,
+        used_this_period  INTEGER      NOT NULL DEFAULT 0,
+        used_today        INTEGER      NOT NULL DEFAULT 0,
+        topup_balance     INTEGER      NOT NULL DEFAULT 0,
+        period_start      TIMESTAMPTZ  NOT NULL,
+        period_end        TIMESTAMPTZ  NOT NULL,
+        day_start         TIMESTAMPTZ  NOT NULL,
+        updated_at        TIMESTAMPTZ  NOT NULL DEFAULT now()
+      )
+    `);
+    logger.info("ensureColumns: capacity_pools table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: capacity_pools table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {
@@ -713,6 +735,7 @@ async function main() {
     logger.info({ port }, "Server listening");
     if (process.send) process.send("ready");
     startScheduledChecksWorker();
+    startCapacityResetWorker();
 
     backgroundInit().catch((err) => {
       logger.error({ err }, "backgroundInit failed — server still running");

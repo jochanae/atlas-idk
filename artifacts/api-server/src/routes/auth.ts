@@ -5,6 +5,7 @@ import { db } from "@workspace/db";
 import { usersTable, userSessionsTable } from "@workspace/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { Resend } from "resend";
+import { bootstrapCapacityPoolForUser } from "../lib/capacity";
 
 const router: IRouter = Router();
 const scryptAsync = promisify(scrypt);
@@ -97,6 +98,9 @@ async function getUserFromSupabaseToken(bearerToken: string): Promise<typeof use
       role,
       subscriptionTier: role === "super_admin" ? "founder" : "free",
     }).returning();
+    if (created) {
+      bootstrapCapacityPoolForUser(created.id).catch(() => {});
+    }
     return created ?? null;
   } catch {
     return null;
@@ -173,6 +177,8 @@ router.post("/auth/signup", async (req, res): Promise<void> => {
   }).returning();
 
   if (!user) { res.status(500).json({ error: "Failed to create account" }); return; }
+
+  bootstrapCapacityPoolForUser(user.id).catch(() => {});
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);

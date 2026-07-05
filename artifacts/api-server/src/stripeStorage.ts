@@ -1,5 +1,9 @@
 import { sql, eq } from 'drizzle-orm';
 import { db, usersTable } from '@workspace/db';
+import {
+  bootstrapCapacityPool,
+  subscriptionTierToCapacityTier,
+} from './lib/capacity';
 
 export class StripeStorage {
   async getProduct(productId: string) {
@@ -58,6 +62,10 @@ export class StripeStorage {
       .set(info)
       .where(eq(usersTable.id, userId))
       .returning();
+    if (user && info.subscriptionTier !== undefined) {
+      const tier = subscriptionTierToCapacityTier(user.subscriptionTier);
+      bootstrapCapacityPool(user.id, tier).catch(() => {});
+    }
     return user;
   }
 }
