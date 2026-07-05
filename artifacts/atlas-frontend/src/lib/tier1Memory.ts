@@ -84,11 +84,23 @@ export const EMPTY_TIER1: Tier1Answers = {
   constraints: "",
 };
 
+/** Compute missing field keys from an answers blob (fallback when backend omits). */
+export function computeMissingTier1Fields(answers: Tier1Answers): Tier1FieldKey[] {
+  return TIER1_QUESTIONS
+    .map((q) => q.key)
+    .filter((k) => !answers[k] || !answers[k].trim());
+}
+
 export async function getTier1Memory(projectId: number): Promise<Tier1Memory | null> {
   const r = await fetch(`/api/memory/tier1/${projectId}`, { credentials: "include" });
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`Tier1 GET failed: ${r.status}`);
-  return (await r.json()) as Tier1Memory;
+  const raw = (await r.json()) as Tier1Memory;
+  return {
+    ...raw,
+    missing: raw.missing ?? computeMissingTier1Fields(raw.answers),
+    skippedAt: raw.skippedAt ?? null,
+  };
 }
 
 export async function createTier1Memory(projectId: number, answers: Tier1Answers): Promise<Tier1Memory> {
