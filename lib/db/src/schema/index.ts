@@ -12,6 +12,7 @@ export * from "./admin";
 export * from "./invites";
 export * from "./readiness_snapshots";
 export * from "./nexus_messages";
+export * from "./nexus_conversations";
 export * from "./secrets";
 export * from "./gallery";
 export * from "./atlas_incidents";

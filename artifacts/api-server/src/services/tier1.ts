@@ -1,13 +1,16 @@
 import {
   db,
   entriesTable,
+  nexusConversationsTable,
   projectTier1MemoryTable,
   getTier1MissingFields,
+  TIER1_FIELD_KEYS,
+  type NexusTier1Buffer,
   type ProjectTier1Memory,
   type Tier1Answers,
   type Tier1FieldKey,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { assertProjectOwner } from "../lib/projectWorkspace";
 
 export const TIER1_FIELDS = [
@@ -24,9 +27,21 @@ export const TIER1_GUARDRAILS = `- Never batch-ask multiple foundational setup q
 - If the user pushes back on a question, call tier1_mark_skipped immediately and continue the actual conversation.
 - Foundational setup gathering is opportunistic, not the goal of any turn.`;
 
-/** One ledger entry per field write (tool path) or per bulk REST commit. */
-export async function appendTier1LedgerEntry(projectId: number, field?: Tier1FieldKey): Promise<void> {
-  const title = field ? `Tier 1 field updated: ${field}` : "Tier 1 memory set";
+export type Tier1LedgerMeta =
+  | Tier1FieldKey
+  | { source: "nexus_handoff"; fields: Tier1FieldKey[] };
+
+/** One ledger entry per field write (tool path) or per bulk REST/handoff commit. */
+export async function appendTier1LedgerEntry(
+  projectId: number,
+  meta?: Tier1LedgerMeta,
+): Promise<void> {
+  let title = "Tier 1 memory set";
+  if (typeof meta === "string") {
+    title = `Tier 1 field updated: ${meta}`;
+  } else if (meta?.source === "nexus_handoff") {
+    title = `Tier 1 memory set (nexus handoff: ${meta.fields.join(", ")})`;
+  }
   await db.insert(entriesTable).values({
     projectId,
     type: "Decision",
@@ -91,6 +106,42 @@ ${TIER1_GUARDRAILS}
 </tier1_status>`;
 }
 
+export type NexusTier1ConversationState = {
+  buffer: NexusTier1Buffer | null;
+  skippedAt: Date | null;
+};
+
+export function buildTier1BlockForNexusConversation(
+  state: NexusTier1ConversationState | null,
+): string {
+  if (state?.skippedAt) {
+    const filled = TIER1_FIELD_KEYS.filter((key) => state.buffer?.[key]?.trim());
+    return `
+<tier1_status scope="pre-project">
+SKIPPED. User opted out of setup questions. Do not ask about missing fields.
+Only capture answers with tier1_upsert_field if the user volunteers them unprompted.
+Buffered: ${filled.join(", ") || "none"}.
+${TIER1_GUARDRAILS}
+</tier1_status>`;
+  }
+
+  const filled = TIER1_FIELD_KEYS.filter((key) => state?.buffer?.[key]?.trim());
+  const missing = TIER1_FIELD_KEYS.filter((key) => !state?.buffer?.[key]?.trim());
+
+  return `
+<tier1_status scope="pre-project">
+The user has not selected a project yet. If they describe what they're
+building, who it's for, the problem, out-of-scope, success signal, or
+constraints — capture the field with tier1_upsert_field. It will be
+buffered on this conversation and flushed to the project's Tier 1 memory
+when they open/create a workspace.
+Buffered: ${filled.join(", ") || "none"}.
+Missing: ${missing.join(", ")}.
+Never interrogate. One field per turn max. Do not mention "Tier 1" by name.
+${TIER1_GUARDRAILS}
+</tier1_status>`;
+}
+
 const CONFIRMATION_RE =
   /^(yes|yeah|yep|yup|correct|right|that'?s right|that'?s it|exactly|sure|ok|okay|sounds good|affirmative)\b/i;
 
@@ -102,6 +153,29 @@ export function canPersistInferredConfidence(
   const prev = messages[messages.length - 2];
   if (last.role !== "user" || prev.role !== "assistant") return false;
   return CONFIRMATION_RE.test(last.content.trim());
+}
+
+export async function upsertTier1(
+  projectId: number,
+  answers: Partial<Tier1Answers>,
+): Promise<ProjectTier1Memory> {
+  const cols = answersToColumns(answers);
+  const existing = await loadTier1ForProject(projectId);
+
+  if (!existing) {
+    const [inserted] = await db
+      .insert(projectTier1MemoryTable)
+      .values({ projectId, ...cols })
+      .returning();
+    return inserted;
+  }
+
+  const [updated] = await db
+    .update(projectTier1MemoryTable)
+    .set(cols)
+    .where(eq(projectTier1MemoryTable.projectId, projectId))
+    .returning();
+  return updated;
 }
 
 export async function upsertTier1Field(
@@ -170,4 +244,137 @@ export async function markTier1Skipped(
   }
 
   return { ok: true };
+}
+
+// ── Nexus conversation buffer (pre-project Tier 1) ─────────────────────────
+
+export async function getNexusTier1Buffer(
+  conversationId: string,
+  userId: number,
+): Promise<NexusTier1ConversationState | null> {
+  const [row] = await db
+    .select({
+      tier1Buffer: nexusConversationsTable.tier1Buffer,
+      tier1SkippedAt: nexusConversationsTable.tier1SkippedAt,
+    })
+    .from(nexusConversationsTable)
+    .where(and(
+      eq(nexusConversationsTable.conversationId, conversationId),
+      eq(nexusConversationsTable.userId, userId),
+    ))
+    .limit(1);
+  if (!row) return null;
+  return { buffer: row.tier1Buffer ?? null, skippedAt: row.tier1SkippedAt ?? null };
+}
+
+async function ensureNexusConversationRow(conversationId: string, userId: number): Promise<void> {
+  await db
+    .insert(nexusConversationsTable)
+    .values({ conversationId, userId })
+    .onConflictDoNothing();
+}
+
+export async function upsertNexusTier1BufferField(
+  conversationId: string,
+  userId: number,
+  field: Tier1FieldKey,
+  value: string,
+  confidence: "explicit" | "inferred",
+): Promise<
+  | { ok: true; field: Tier1FieldKey; remaining: Tier1FieldKey[]; buffered: true }
+  | { ok: false; error: string }
+> {
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 2000) {
+    return { ok: false, error: "invalid_value" };
+  }
+
+  await ensureNexusConversationRow(conversationId, userId);
+  const state = await getNexusTier1Buffer(conversationId, userId);
+  const buffer = { ...(state?.buffer ?? {}) };
+  const existing = buffer[field]?.trim() ?? "";
+
+  if (confidence !== "explicit" && existing) {
+    return { ok: false, error: "needs_confirmation" };
+  }
+  if (confidence !== "explicit" && !existing) {
+    // inferred into empty slot is allowed when caller already validated confirmation
+  }
+
+  buffer[field] = trimmed;
+  await db
+    .update(nexusConversationsTable)
+    .set({ tier1Buffer: buffer })
+    .where(and(
+      eq(nexusConversationsTable.conversationId, conversationId),
+      eq(nexusConversationsTable.userId, userId),
+    ));
+
+  const remaining = TIER1_FIELD_KEYS.filter((key) => !buffer[key]?.trim());
+  return { ok: true, field, remaining, buffered: true };
+}
+
+export async function markNexusTier1Skipped(
+  conversationId: string,
+  userId: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  await ensureNexusConversationRow(conversationId, userId);
+  const now = new Date();
+  await db
+    .update(nexusConversationsTable)
+    .set({ tier1SkippedAt: now })
+    .where(and(
+      eq(nexusConversationsTable.conversationId, conversationId),
+      eq(nexusConversationsTable.userId, userId),
+    ));
+  return { ok: true };
+}
+
+export async function clearNexusTier1Buffer(
+  conversationId: string,
+  userId: number,
+): Promise<void> {
+  await db
+    .update(nexusConversationsTable)
+    .set({ tier1Buffer: null, tier1SkippedAt: null })
+    .where(and(
+      eq(nexusConversationsTable.conversationId, conversationId),
+      eq(nexusConversationsTable.userId, userId),
+    ));
+}
+
+/** Gap-fill project Tier 1 from a Nexus conversation buffer; never overwrites existing answers. */
+export async function flushNexusTier1BufferToProject(
+  conversationId: string,
+  projectId: number,
+  userId: number,
+): Promise<void> {
+  if (!(await assertProjectOwner(projectId, userId))) return;
+
+  const state = await getNexusTier1Buffer(conversationId, userId);
+  if (!state) return;
+
+  const existing = await loadTier1ForProject(projectId);
+  const merge: Partial<Tier1Answers> = {};
+
+  for (const key of TIER1_FIELD_KEYS) {
+    const incoming = state.buffer?.[key]?.trim();
+    if (!incoming) continue;
+    if (!existing?.[key]?.trim()) merge[key] = incoming;
+  }
+
+  if (Object.keys(merge).length > 0) {
+    await upsertTier1(projectId, merge);
+    await appendTier1LedgerEntry(projectId, {
+      source: "nexus_handoff",
+      fields: Object.keys(merge) as Tier1FieldKey[],
+    });
+  }
+
+  const afterMerge = await loadTier1ForProject(projectId);
+  if (state.skippedAt && !afterMerge) {
+    await markTier1Skipped(projectId, userId);
+  }
+
+  await clearNexusTier1Buffer(conversationId, userId);
 }

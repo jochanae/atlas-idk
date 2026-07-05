@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, userResumeSnapshotsTable } from "@workspace/db";
+import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, userResumeSnapshotsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { autoCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
@@ -21,6 +21,18 @@ import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCr
 import { ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, synthesizeGlobalNarrative, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import {
+  buildTier1BlockForNexusConversation,
+  buildTier1StatusBlock,
+  canPersistInferredConfidence,
+  flushNexusTier1BufferToProject,
+  getNexusTier1Buffer,
+  loadTier1ForProject,
+  markNexusTier1Skipped,
+  markTier1Skipped,
+  upsertNexusTier1BufferField,
+  upsertTier1Field,
+} from "../services/tier1";
 
 // In-memory cache for cross-project behavioral pattern analysis (30-min TTL per user)
 const patternCache = new Map<string, { text: string; ts: number }>();
@@ -569,6 +581,45 @@ const CREATE_PROJECT_TOOL: Anthropic.Tool = {
     required: ["name", "summary"],
   },
 };
+
+const TIER1_UPSERT_FIELD_TOOL: Anthropic.Tool = {
+  name: "tier1_upsert_field",
+  description:
+    "Save one Tier 1 project memory field. Use when the user has clearly answered one of the six foundational questions in conversation. Never guess — only call with the user's actual words (lightly cleaned).",
+  input_schema: {
+    type: "object",
+    properties: {
+      field: {
+        type: "string",
+        enum: [...TIER1_FIELD_KEYS],
+        description: "Which foundational field this answer satisfies",
+      },
+      value: { type: "string", description: "The user's answer, lightly cleaned" },
+      confidence: {
+        type: "string",
+        enum: ["explicit", "inferred"],
+        description: "explicit = user stated it directly; inferred = you paraphrased from context",
+      },
+    },
+    required: ["field", "value", "confidence"],
+  },
+};
+
+const TIER1_MARK_SKIPPED_TOOL: Anthropic.Tool = {
+  name: "tier1_mark_skipped",
+  description:
+    "Call ONLY when the user has clearly told you to stop asking Tier 1 questions (e.g. 'skip', 'stop asking that', 'I don't want to answer'). Prevents Atlas from asking again.",
+  input_schema: {
+    type: "object",
+    properties: {},
+  },
+};
+
+const NEXUS_AGENT_TOOLS: Anthropic.Tool[] = [
+  CREATE_PROJECT_TOOL,
+  TIER1_UPSERT_FIELD_TOOL,
+  TIER1_MARK_SKIPPED_TOOL,
+];
 
 const CONVERSATIONAL_EXPANSION_PROTOCOL = `--- ATLAS SHAPING FRAMEWORK ---
 You are gathering signal, not running an interview. Your job is to understand the idea well enough to create a workspace. This framework is internal scaffolding — never surface it to the user.
@@ -2236,6 +2287,26 @@ WHAT YOU SHOULD NOT DO:
     }
   }
 
+  let tier1ProjectId: number | null = focusProjectId;
+  if (!tier1ProjectId) {
+    const [boundConversationProject] = await db
+      .select({ id: projectsTable.id })
+      .from(projectsTable)
+      .where(and(
+        eq(projectsTable.userId, userId),
+        eq(projectsTable.conversationId, effectiveConversationId),
+      ))
+      .limit(1);
+    tier1ProjectId = boundConversationProject?.id ?? null;
+  }
+  if (tier1ProjectId) {
+    const tier1Row = await loadTier1ForProject(tier1ProjectId);
+    systemPrompt += buildTier1StatusBlock(tier1Row);
+  } else {
+    const conversationBuffer = await getNexusTier1Buffer(effectiveConversationId, userId);
+    systemPrompt += buildTier1BlockForNexusConversation(conversationBuffer);
+  }
+
   // Persist the user message to the Living Thread
   try {
     await db.insert(nexusMessagesTable).values({
@@ -2873,6 +2944,65 @@ WHAT YOU SHOULD NOT DO:
     });
   };
 
+  const tier1ContextMessages = [
+    ...conversationHistory,
+    { role: "user" as const, content: message },
+  ];
+
+  const extractToolUses = (finalMessage: Anthropic.Message): Anthropic.ToolUseBlock[] =>
+    finalMessage.content.filter((block): block is Anthropic.ToolUseBlock => block.type === "tool_use");
+
+  const runTier1UpsertFieldTool = async (toolUse: Anthropic.ToolUseBlock) => {
+    const input = isRecord(toolUse.input) ? toolUse.input : {};
+    const field = input.field;
+    const value = typeof input.value === "string" ? input.value : "";
+    const confidence = input.confidence;
+    if (
+      typeof field !== "string"
+      || !TIER1_FIELD_KEYS.includes(field as Tier1FieldKey)
+      || !value.trim()
+      || (confidence !== "explicit" && confidence !== "inferred")
+    ) {
+      return { ok: false as const, error: "invalid_input" };
+    }
+
+    req.log.info({
+      tool: "tier1_upsert_field",
+      field,
+      confidence,
+      projectId: tier1ProjectId,
+      conversationId: effectiveConversationId,
+    }, "nexus tier1 upsert");
+
+    if (confidence === "inferred" && !canPersistInferredConfidence(tier1ContextMessages)) {
+      return { ok: false as const, error: "needs_confirmation" };
+    }
+
+    if (tier1ProjectId) {
+      return upsertTier1Field(tier1ProjectId, userId, field as Tier1FieldKey, value);
+    }
+    return upsertNexusTier1BufferField(
+      effectiveConversationId,
+      userId,
+      field as Tier1FieldKey,
+      value,
+      confidence,
+    );
+  };
+
+  const runTier1MarkSkippedTool = async () => {
+    req.log.info({
+      tool: "tier1_mark_skipped",
+      projectId: tier1ProjectId,
+      conversationId: effectiveConversationId,
+    }, "nexus tier1 mark skipped");
+
+    if (tier1ProjectId) {
+      return markTier1Skipped(tier1ProjectId, userId);
+    }
+    return markNexusTier1Skipped(effectiveConversationId, userId);
+  };
+
   const findCreateProjectToolUse = (finalMessage: Anthropic.Message): Anthropic.ToolUseBlock | null => {
     for (const block of finalMessage.content) {
       if (block.type === "tool_use" && block.name === "create_project") {
@@ -2959,6 +3089,7 @@ WHAT YOU SHOULD NOT DO:
           SET conversation_id = ${effectiveConversationId}
           WHERE id = ${project.id} AND conversation_id IS NULL
         `);
+        await flushNexusTier1BufferToProject(effectiveConversationId, project.id, userId);
       }
 
       // Attempt GitHub repo creation — graceful degradation if no token or API error
@@ -3010,6 +3141,36 @@ WHAT YOU SHOULD NOT DO:
     }
   };
 
+  const runNexusTool = async (toolUse: Anthropic.ToolUseBlock): Promise<Record<string, unknown>> => {
+    switch (toolUse.name) {
+      case "create_project":
+        return runCreateProjectTool(toolUse);
+      case "tier1_upsert_field":
+        return runTier1UpsertFieldTool(toolUse);
+      case "tier1_mark_skipped":
+        return runTier1MarkSkippedTool();
+      default:
+        return { ok: false, error: "unknown_tool" };
+    }
+  };
+
+  const buildToolResultBlocks = async (
+    toolUses: Anthropic.ToolUseBlock[],
+  ): Promise<Anthropic.ToolResultBlockParam[]> => {
+    const results: Anthropic.ToolResultBlockParam[] = [];
+    for (const toolUse of toolUses) {
+      const result = await runNexusTool(toolUse);
+      const ok = result.ok !== false;
+      results.push({
+        type: "tool_result",
+        tool_use_id: toolUse.id,
+        content: JSON.stringify(result),
+        ...(!ok ? { is_error: true } : {}),
+      });
+    }
+    return results;
+  };
+
   const streamClaude = async (
     messagesForClaude: Anthropic.MessageParam[],
     options: { tools: boolean; startedAt: number; forceCreate?: boolean },
@@ -3057,7 +3218,7 @@ WHAT YOU SHOULD NOT DO:
       max_tokens: 8192,
       system: systemPrompt,
       messages: messagesForClaude,
-      ...(options.tools ? { tools: [CREATE_PROJECT_TOOL] } : {}),
+      ...(options.tools ? { tools: NEXUS_AGENT_TOOLS } : {}),
     });
 
     stream.on("text", (text) => {
@@ -3074,21 +3235,13 @@ WHAT YOU SHOULD NOT DO:
     stream.on("finalMessage", async (finalMessage) => {
       try {
         appendClaudeUsage(finalMessage, options.startedAt);
-        const toolUse = options.tools ? findCreateProjectToolUse(finalMessage) : null;
-        if (toolUse) {
-          const toolResult = await runCreateProjectTool(toolUse);
+        const toolUses = options.tools ? extractToolUses(finalMessage) : [];
+        if (toolUses.length > 0) {
+          const toolResults = await buildToolResultBlocks(toolUses);
           const continuationMessages: Anthropic.MessageParam[] = [
             ...messagesForClaude,
             { role: "assistant", content: finalMessage.content as Anthropic.MessageParam["content"] },
-            {
-              role: "user",
-              content: [{
-                type: "tool_result",
-                tool_use_id: toolUse.id,
-                content: JSON.stringify(toolResult),
-                ...(!toolResult.ok ? { is_error: true } : {}),
-              } as Anthropic.ToolResultBlockParam],
-            },
+            { role: "user", content: toolResults },
           ];
           streamClaude(continuationMessages, { tools: false, startedAt: performance.now() });
           return;
@@ -3300,6 +3453,10 @@ If no clear project name was discussed, use "New Project".`,
       .update(projectsTable)
       .set({ memory: JSON.stringify(memoryEntry) })
       .where(and(eq(projectsTable.id, targetProjectId), eq(projectsTable.userId, userId)));
+
+    if (handoffConversationId) {
+      await flushNexusTier1BufferToProject(handoffConversationId, targetProjectId, userId);
+    }
 
     res.json({ projectId: targetProjectId, projectName: brief.projectName, brief });
   } catch (err) {
