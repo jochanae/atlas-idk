@@ -4355,6 +4355,13 @@ export default function Workspace() {
     window.addEventListener("axiom:open-write", openWrite);
     return () => window.removeEventListener("axiom:open-write", openWrite);
   }, [isMobile]);
+  // ── Phase 2 lazy-panel safety flag ─────────────────────────────────────────
+  // Set localStorage.WORKSPACE_LAZY_PANELS = "0" in DevTools to disable all
+  // lazy-panel optimizations and restore original polling behaviour.
+  const lazyPanels = (() => {
+    try { return localStorage.getItem("WORKSPACE_LAZY_PANELS") !== "0"; } catch { return true; }
+  })();
+
   const [latestRun, setLatestRun] = useState<any | null>(null);
   const [previewReady, setPreviewReady] = useState(false);
   const workspaceMountedAtRef = useRef<number>(Date.now());
@@ -4379,11 +4386,13 @@ export default function Workspace() {
       } catch {}
     };
     void poll();
-    // 10s baseline — fast enough to catch a completed build but no longer
-    // hammering the server every 3s during a pure conversation.
-    const iv = setInterval(poll, 10_000);
+    // lazyPanels: stretch the idle poll to 30 s — the initial poll above fires
+    // immediately and chat streaming surfaces active-run state in real-time, so
+    // 30 s is plenty for the background completions check.
+    // Disable the flag (WORKSPACE_LAZY_PANELS=0) to restore the original 10 s.
+    const iv = setInterval(poll, lazyPanels ? 30_000 : 10_000);
     return () => clearInterval(iv);
-  }, [id, latestRunKey]);
+  }, [id, latestRunKey, lazyPanels]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
   const [showModelPicker, setShowModelPicker] = useState(() => {
