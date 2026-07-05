@@ -1390,6 +1390,31 @@ router.delete("/nexus/thread", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
+// Returns the in-progress Tier 1 buffer for an Ask Atlas conversation.
+// Used by the frontend to show Tier1ProgressCard before a project is created.
+router.get("/nexus/tier1-buffer", async (req, res): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+    const conversationId = req.query.conversationId as string | undefined;
+    if (!conversationId) {
+      res.status(400).json({ error: "conversationId is required" });
+      return;
+    }
+    const state = await getNexusTier1Buffer(conversationId, userId);
+    const missing = TIER1_FIELD_KEYS.filter(
+      (k) => !state?.buffer?.[k]?.trim(),
+    );
+    res.json({
+      buffer: state?.buffer ?? null,
+      skippedAt: state?.skippedAt ?? null,
+      missing,
+    });
+  } catch (err) {
+    req.log.error({ err }, "GET /nexus/tier1-buffer failed");
+    res.status(500).json({ error: "Failed to load tier1 buffer" });
+  }
+});
+
 router.post("/nexus/conversation/save", async (req, res): Promise<void> => {
   try {
     const userId = (req as any).authUser.id as number;
