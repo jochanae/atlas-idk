@@ -397,8 +397,9 @@ export function AskAtlasSurface({
 
         <AskAtlasTier1Chip conversationId={conversationId} />
 
-
+        {isRestoring && messages.length === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
+
             {[{ w: "72%", role: "user" }, { w: "88%", role: "assistant" }, { w: "60%", role: "user" }, { w: "94%", role: "assistant" }].map((item, i) => (
               <div
                 key={i}
