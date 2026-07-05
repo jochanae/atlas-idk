@@ -66,7 +66,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { hasBuildIntent } from "@/lib/askAtlasHelpers";
+import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 
 
 const PLACEHOLDERS = [
