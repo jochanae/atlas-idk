@@ -391,7 +391,7 @@ html, body {
   color: var(--text-muted) !important;
 }
 [data-theme="parchment"] .atlas-checkpoint-input:focus {
-  border-color: rgba(115, 92, 60, 0.55) !important;
+  border-color: rgba(59, 82, 115, 0.55) !important;
 }
 
 /* Frosted glass on overlays and sheet surfaces in light mode */
@@ -615,9 +615,9 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
 }
 [data-theme="parchment"] .atlas-rail-daychip {
   background: rgba(255,255,255,0.85) !important;
-  border-color: rgba(17,17,17,0.14) !important;
-  color: #5b3a1f !important;
-  box-shadow: 0 1px 3px rgba(17,17,17,0.06);
+  border-color: rgba(15,23,42,0.10) !important;
+  color: #3B5273 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.06);
 }
 
 /* ── Light-mode workspace composer contrast ── */
@@ -652,7 +652,7 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   backdrop-filter: blur(16px) saturate(120%);
 }
 [data-theme="parchment"] .atlas-home-header {
-  background: rgba(245, 241, 232, 0.92);
+  background: rgba(248, 249, 250, 0.92);
 }
 
 /* ── Mobile footer (theme-aware) ── */
@@ -661,7 +661,7 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   backdrop-filter: blur(20px);
 }
 [data-theme="parchment"] .atlas-mobile-footer {
-  background: rgba(245, 241, 232, 0.96);
+  background: rgba(248, 249, 250, 0.96);
 }
 
 /* ── App header (workspace top bar — theme-aware, frosted glass) ── */
@@ -685,7 +685,7 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   border-bottom: none;
 }
 [data-theme="parchment"] .atlas-app-header * {
-  --atlas-surface: #EDE9DF;
+  --atlas-surface: #F1F3F5;
 }
 [data-theme="parchment"] .atlas-app-header-row {
   box-shadow: none !important;
