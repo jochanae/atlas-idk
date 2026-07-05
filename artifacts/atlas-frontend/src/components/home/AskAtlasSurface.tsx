@@ -34,6 +34,14 @@ import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
 import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
+import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
+import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
+import {
+  ASK_ATLAS_PLACEHOLDERS,
+  extractNavigateTo,
+  findProjectOpenTarget,
+  renderMessageImages,
+} from "./askAtlasSurfaceUtils";
 
 
 export type AskAtlasMessage = {
