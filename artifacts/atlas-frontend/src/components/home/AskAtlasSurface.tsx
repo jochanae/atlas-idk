@@ -318,22 +318,11 @@ export function AskAtlasSurface({
 
   const handleProjectOpen = async (projectId: number) => {
     const route = `/project/${projectId}`;
-
-    try {
-      await fetch("/api/nexus/handoff", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: messages.slice(-10),
-          projectId,
-          conversationId,
-        }),
-      });
-    } catch {
-      // Handoff is best-effort; navigation should still feel immediate on failure.
-    }
-
+    await triggerNexusHandoff({
+      conversationId,
+      projectId,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    });
     setLocation(route);
   };
 
