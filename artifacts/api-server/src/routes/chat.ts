@@ -377,7 +377,17 @@ interface RepoTreeSnapshot {
   files: Set<string>;
 }
 
+// Module-level repo tree cache — eliminates the 3s GitHub API fetch on follow-up messages.
+// Keyed by `fullName:branch`. TTL is 90 s: long enough to cover a full multi-turn conversation
+// turn, short enough that a push between sessions won't serve a stale tree.
+const _repoTreeCache = new Map<string, { snapshot: RepoTreeSnapshot; expiresAt: number }>();
+const REPO_TREE_TTL_MS = 90_000;
+
 async function fetchRepoTree(fullName: string, token: string, branch = "main"): Promise<RepoTreeSnapshot | null> {
+  const cacheKey = `${fullName}:${branch}`;
+  const cached = _repoTreeCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.snapshot;
+
   try {
     let resp = await fetch(`${GH_API}/repos/${fullName}/git/trees/${branch}?recursive=1`, { headers: ghHeaders(token) });
     if (!resp.ok && branch === "main") {
@@ -394,10 +404,12 @@ async function fetchRepoTree(fullName: string, token: string, branch = "main"): 
       .map(f => `  ${f.path}`)
       .slice(0, 300); // cap at 300 files to keep context manageable
 
-    return {
+    const snapshot: RepoTreeSnapshot = {
       context: `${fullName} (${files.length} files${data.truncated ? ", truncated" : ""}):\n${files.join("\n")}`,
       files: new Set(data.tree.filter(f => f.type === "blob").map(f => normalizeRepoPath(f.path))),
     };
+    _repoTreeCache.set(cacheKey, { snapshot, expiresAt: Date.now() + REPO_TREE_TTL_MS });
+    return snapshot;
   } catch {
     return null;
   }
