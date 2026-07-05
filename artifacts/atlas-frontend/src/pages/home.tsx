@@ -2889,10 +2889,12 @@ export default function Home() {
               runRepoScan(p.id, githubRepo!.trim());
             }
           }
-          const dest = initialThought?.trim()
-            ? `/project/${p.id}?msg=${encodeURIComponent(initialThought.trim())}`
-            : `/project/${p.id}`;
-          setLocation(dest);
+          // Always open Forge intake on a fresh project — Tier1 is the entry point.
+          // If the user had an initial thought, save it so they can send it after intake.
+          if (initialThought?.trim()) {
+            try { sessionStorage.setItem(`atlas-post-intake-${p.id}`, initialThought.trim()); } catch {}
+          }
+          setLocation(`/project/${p.id}?intake=1`);
         },
         onError: (err: any) => {
           const msg = extractApiErrorMessage(err);
@@ -2929,9 +2931,9 @@ export default function Home() {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           if (data.conversationId) {
             try { sessionStorage.setItem(`atlas-cid-${data.conversationId}`, String(data.id)); } catch {}
-            setLocation(`/workspace/${data.conversationId}`);
+            setLocation(`/workspace/${data.conversationId}?intake=1`);
           } else {
-            setLocation(`/project/${data.id}`);
+            setLocation(`/project/${data.id}?intake=1`);
           }
         }
       })
@@ -4114,7 +4116,7 @@ export default function Home() {
                 }
                 runRepoScan(p.id, overlayRepoUrl);
                 sessionStorage.setItem("atlas-open-tab", "map");
-                setLocation(`/project/${p.id}`);
+                setLocation(`/project/${p.id}?intake=1`);
               },
               onError: (err: any) => {
                 setCreateError(extractApiErrorMessage(err) ?? "Failed to create project");
@@ -4138,7 +4140,7 @@ export default function Home() {
                   }).catch(() => {});
                 }
                 runRepoScan(p.id, overlayRepoUrl);
-                setLocation(`/project/${p.id}`);
+                setLocation(`/project/${p.id}?intake=1`);
               },
               onError: (err: any) => {
                 setCreateError(extractApiErrorMessage(err) ?? "Failed to create project");

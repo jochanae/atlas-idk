@@ -4276,6 +4276,20 @@ export default function Workspace() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Clean ?intake=1 from the URL immediately on mount (we already read it
+  // synchronously in the tier1SheetOpen useState initializer above).
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.has("intake")) {
+        sp.delete("intake");
+        const qs = sp.toString();
+        window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
   const [atlasGreeting, setAtlasGreeting] = useState<string | null>(null);
@@ -5403,7 +5417,12 @@ export default function Workspace() {
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
-  const [tier1SheetOpen, setTier1SheetOpen] = useState(false);
+  // Open immediately on new-project creation (?intake=1 URL param) — no
+  // async fetch needed. The auto-prompt effect below still handles the case
+  // where the user navigates directly to an existing project with no Tier1.
+  const [tier1SheetOpen, setTier1SheetOpen] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("intake") === "1"; } catch { return false; }
+  });
   const tier1ProjectId = Number.isFinite(id) && id > 0 ? id : null;
   const { memory: tier1Memory } = useTier1Memory(tier1ProjectId);
   const { detectedUrl: urlDetected, data: urlData, loading: urlLoading, error: urlError, dismiss: dismissUrl } = useUrlIntelligence(input);
@@ -9133,13 +9152,24 @@ export default function Workspace() {
         projectId={tier1ProjectId}
         projectName={project?.name ?? null}
         onClose={() => setTier1SheetOpen(false)}
-        onCommitted={() => {
+        onCommitted={(memory) => {
           notifyTier1Updated();
-          toast.success("Tier 1 committed — Atlas has the foundation now.");
+          // Focus the composer so the user can immediately start talking
+          setTimeout(() => {
+            try { textareaRef.current?.focus(); } catch {}
+          }, 180);
+          // If this was a fresh intake (?intake=1 flow), pre-fill a gentle
+          // first message so Atlas responds with the Tier1 context in scope.
+          const what = memory?.answers?.building?.trim();
+          if (what) {
+            setInput(`Foundation locked. I'm building: ${what}. Where should we start?`);
+          }
+          toast.success("Foundation set — Atlas has your Tier 1.", { duration: 3000 });
         }}
         onSkip={() => {
           if (tier1ProjectId) markTier1Skipped(tier1ProjectId);
-          toast("Skipped — Atlas will gather this in conversation.");
+          setTier1SheetOpen(false);
+          toast("Skipped — Atlas will gather this in conversation.", { duration: 2500 });
         }}
       />
 
