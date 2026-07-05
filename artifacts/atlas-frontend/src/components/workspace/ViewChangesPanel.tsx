@@ -568,13 +568,13 @@ export function ViewChangesPanel({
     return dbRuns[0] ?? null;
   }, [dbRuns, runId]);
 
-  // Auto-select "changes" for old runs that have no THOUGHT step.
-  // New runs (after step-capture was unified) will have THOUGHT, so they stay on "timeline".
-  // Only auto-switch once per run — don't override user's manual lens choice.
+  // Auto-select "changes" only when there are truly no timeline-able steps at all.
+  // FILE_EDIT, LINE_PATCH, etc. all render in the timeline — don't force "changes" just
+  // because THOUGHT is absent (THOUGHT steps are not always written).
   useEffect(() => {
     if (!timelineRun || lensAutoSet) return;
-    const hasThought = timelineRun.steps.some((s) => s.verb === "THOUGHT");
-    if (!hasThought) setLens("changes");
+    const hasAnyTimelineStep = timelineRun.steps.some((s) => TIMELINE_VERBS.has(s.verb));
+    if (!hasAnyTimelineStep) setLens("changes");
     setLensAutoSet(true);
   }, [timelineRun, lensAutoSet]);
 
