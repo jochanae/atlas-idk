@@ -2081,6 +2081,32 @@ function AssistantBubbleImpl({
           />
         )}
 
+        {message.structuredPlan && (
+          <PlanArtifactCardV2
+            plan={message.structuredPlan}
+            approval={message.commitApproval}
+            history={message.structuredPlanHistory}
+          />
+        )}
+
+        {message.thinkingReceipts && message.thinkingReceipts.length > 0 && (
+          <details style={{ marginTop: 8, fontSize: 11, color: "var(--atlas-muted)" }}>
+            <summary style={{ cursor: "pointer", opacity: 0.65, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", textTransform: "uppercase", fontSize: 10 }}>
+              {message.thinkingReceipts.filter(r => r.kind === "tool_call").length} tool call
+              {message.thinkingReceipts.filter(r => r.kind === "tool_call").length === 1 ? "" : "s"}
+            </summary>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 14, lineHeight: 1.55 }}>
+              {message.thinkingReceipts.map((r, i) => (
+                <li key={i} style={{ opacity: 0.8 }}>
+                  {r.kind === "tool_call" && <><span style={{ color: "var(--atlas-gold)" }}>→</span> {r.name}</>}
+                  {r.kind === "tool_result" && <><span style={{ color: r.ok ? "rgba(52,211,153,0.85)" : "rgba(248,113,113,0.9)" }}>{r.ok ? "✓" : "✕"}</span> {r.name}{typeof r.ms === "number" ? ` · ${r.ms}ms` : ""}</>}
+                  {r.kind === "step_end" && <span style={{ opacity: 0.55 }}>step {r.step}{typeof r.tokensOut === "number" ? ` · ${r.tokensOut}t` : ""}</span>}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+
         {message.decisionGate && (
           <DecisionGateCard
             gate={message.decisionGate}
