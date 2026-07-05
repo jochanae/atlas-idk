@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, Component, type ReactNode } from "react";
+import { useEffect, useRef, useState, lazy, Suspense, Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
@@ -10,7 +10,9 @@ import { UnifiedShell } from "@/components/UnifiedShell";
 import Home from "./pages/home";
 import Landing from "./pages/landing";
 import Login from "./pages/login";
-import Workspace from "./pages/workspace";
+// Phase 1: lazy-load workspace — 400 KB+ file splits into its own chunk so the
+// home/landing bundle stays small. Suspense boundary in UnifiedShellRoutes below.
+const Workspace = lazy(() => import("./pages/workspace"));
 import Projects from "./pages/projects";
 import Ledger from "./pages/ledger";
 import ParkingLot from "./pages/parking-lot";
@@ -162,11 +164,13 @@ function PageTransition() {
 function UnifiedShellRoutes() {
   return (
     <UnifiedShell>
-      <Switch>
-        <Route path="/home" component={Home} />
-        <Route path="/project/:projectId" component={Workspace} />
-        <Route path="/workspace/:conversationId" component={Workspace} />
-      </Switch>
+      <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100dvh" }}><LoadingSpinner /></div>}>
+        <Switch>
+          <Route path="/home" component={Home} />
+          <Route path="/project/:projectId" component={Workspace} />
+          <Route path="/workspace/:conversationId" component={Workspace} />
+        </Switch>
+      </Suspense>
     </UnifiedShell>
   );
 }
