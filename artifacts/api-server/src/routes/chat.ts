@@ -2379,6 +2379,154 @@ function buildExecutionRunSteps(args: {
   return steps;
 }
 
+type ExecutionRunStep = {
+  verb: string;
+  target: string | null;
+  status: string;
+  detail: string | null;
+  content: string | null;
+};
+
+/** Persist execution_runs + ordered execution_run_steps before the SSE response closes. */
+async function persistExecutionRun(args: {
+  projectId: number;
+  sessionId: number | null | undefined;
+  messageId: number | null | undefined;
+  userPrompt: string;
+  thoughtText: string | null;
+  startedAt: Date;
+  persistContent: string;
+  isFlowMode: boolean;
+  responseFileEdits: FileEdit[];
+  fileDeletes: Array<{ path: string }>;
+  responseLinePatches: Array<{ path: string }>;
+  intermediateSteps: Array<{ verb: string; target: string | null; detail: string | null; content: string | null }>;
+  imageGenResult?: { images: Array<{ prompt?: string; model?: string }> };
+  githubPushResult?: { branch?: string; error?: string; files?: unknown[] } | null;
+}): Promise<string | null> {
+  const hasTrigger =
+    args.responseFileEdits.length > 0 ||
+    args.fileDeletes.length > 0 ||
+    args.responseLinePatches.length > 0 ||
+    (args.imageGenResult?.images?.length ?? 0) > 0 ||
+    !!args.githubPushResult;
+  if (!hasTrigger) return null;
+
+  const RUN_ERROR_RE = /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
+  const runMode: string =
+    args.isFlowMode ? "flow"
+    : (args.responseFileEdits.length > 0 || args.fileDeletes.length > 0 || args.responseLinePatches.length > 0 || !!args.githubPushResult)
+      ? "operational"
+      : "conversation";
+  const runStatus: string =
+    RUN_ERROR_RE.test(args.persistContent) || !!args.githubPushResult?.error
+      ? "failed"
+      : "succeeded";
+
+  const completedAt = new Date();
+  const elapsedMs = Math.max(0, completedAt.getTime() - args.startedAt.getTime());
+  const summary = runSummaryFromContent(
+    args.persistContent,
+    args.responseFileEdits,
+    args.fileDeletes,
+    args.responseLinePatches,
+  );
+  const runId = crypto.randomUUID();
+
+  await db.execute(sql`
+    INSERT INTO execution_runs
+      (id, project_id, thread_id, message_id, mode, status, summary, started_at, completed_at, elapsed_ms)
+    VALUES
+      (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${args.messageId ?? null},
+       ${runMode}, ${runStatus}, ${summary},
+       ${args.startedAt}, ${completedAt}, ${elapsedMs})
+  `);
+
+  const steps: ExecutionRunStep[] = [];
+
+  const promptText = args.userPrompt.trim();
+  if (promptText) {
+    steps.push({
+      verb: "PROMPT",
+      target: null,
+      status: "ok",
+      detail: null,
+      content: promptText.slice(0, 8000),
+    });
+  }
+
+  const thoughtText = args.thoughtText?.trim();
+  const thoughtDurationS = Math.max(1, Math.round(elapsedMs / 1000));
+  if (thoughtText) {
+    steps.push({
+      verb: "THOUGHT",
+      target: null,
+      status: "ok",
+      detail: `${thoughtDurationS}s`,
+      content: thoughtText.slice(0, 8000),
+    });
+  }
+
+  for (const intermediateStep of args.intermediateSteps) {
+    steps.push({
+      verb: intermediateStep.verb,
+      target: intermediateStep.target,
+      status: "ok",
+      detail: intermediateStep.detail,
+      content: intermediateStep.content,
+    });
+  }
+
+  for (const edit of args.responseFileEdits) {
+    steps.push({
+      verb: "FILE_EDIT",
+      target: edit.path,
+      status: "ok",
+      detail: null,
+      content: (edit.content ?? "").slice(0, 50000) || null,
+    });
+  }
+  for (const del of args.fileDeletes) {
+    steps.push({ verb: "FILE_DELETE", target: del.path, status: "ok", detail: null, content: null });
+  }
+  for (const patch of args.responseLinePatches) {
+    steps.push({ verb: "LINE_PATCH", target: patch.path, status: "ok", detail: null, content: null });
+  }
+  if (args.imageGenResult?.images?.length) {
+    for (const img of args.imageGenResult.images.slice(0, 2)) {
+      steps.push({
+        verb: "IMAGE_GEN",
+        target: (img.prompt ?? "image").slice(0, 80),
+        status: "ok",
+        detail: `model:${img.model ?? "unknown"}`,
+        content: null,
+      });
+    }
+  }
+  if (args.githubPushResult) {
+    steps.push({
+      verb: "GITHUB_PUSH",
+      target: args.githubPushResult.branch ?? null,
+      status: args.githubPushResult.error ? "fail" : "ok",
+      detail: args.githubPushResult.error ?? `${args.githubPushResult.files?.length ?? 0} files`,
+      content: null,
+    });
+  }
+  if (summary.trim()) {
+    steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: summary });
+  }
+
+  for (const [orderIdx, step] of steps.entries()) {
+    await db.execute(sql`
+      INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
+      VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${orderIdx})
+    `);
+  }
+
+  logger.info({ runId, projectId: args.projectId, mode: runMode, status: runStatus, stepCount: steps.length }, "execution_run: recorded");
+  return runId;
+}
+
 async function callModel(
   modelId: ModelId,
   systemPrompt: string,
@@ -6220,8 +6368,37 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
 
   }
 
+  // ── Execution run recorder — await before SSE closes so steps are committed ──
+  // autoVerify turns (LOCAL_APPLY_SUCCESS loop) skip silently.
+  let recordedRunId: string | null = null;
+  if (body.displayAs !== "autoVerify" && projectId) {
+    try {
+      const thoughtText = splitBuildTurn
+        ? (intentPersistContent?.trim() || displayContent?.trim() || null)
+        : (displayContent?.trim() || null);
+      recordedRunId = await persistExecutionRun({
+        projectId,
+        sessionId,
+        messageId: intentMsgId ?? savedMsgId ?? null,
+        userPrompt: message,
+        thoughtText,
+        startedAt: now,
+        persistContent,
+        isFlowMode,
+        responseFileEdits,
+        fileDeletes,
+        responseLinePatches,
+        intermediateSteps: _chatRunIntermediateSteps,
+        imageGenResult,
+        githubPushResult,
+      });
+    } catch (runErr) {
+      logger.warn({ err: runErr, projectId }, "execution_run: persist failed — non-fatal");
+    }
+  }
+
   const inputTokenCount = assistantUsage.inputTokens;
-  res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), ...(recordedRunId ? { runId: recordedRunId } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
   res.end();
 
   // ── Workspace thinking receipt extraction ─────────────────────────────────
@@ -6260,108 +6437,6 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     chatMessageId: intentMsgId ?? savedMsgId,
   });
 
-  // ── Execution run recorder — unified fire-and-forget for ALL turns with real work ──
-  // autoVerify turns (LOCAL_APPLY_SUCCESS loop) and turns with no artifacts skip silently.
-  void (async () => {
-    try {
-      if (body.displayAs === "autoVerify") return;
-      const _hasTrigger =
-        responseFileEdits.length > 0 ||
-        fileDeletes.length > 0 ||
-        responseLinePatches.length > 0 ||
-        (imageGenResult?.images?.length ?? 0) > 0 ||
-        !!githubPushResult;
-      if (!_hasTrigger || !projectId) return;
-
-      const _RUN_ERROR_RE = /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
-
-      const _runMode: string =
-        isFlowMode ? "flow"
-        : (responseFileEdits.length > 0 || fileDeletes.length > 0 || responseLinePatches.length > 0 || !!githubPushResult)
-          ? "operational"
-          : "conversation"; // image-only sketch
-
-      const _runStatus: string =
-        _RUN_ERROR_RE.test(persistContent) || !!githubPushResult?.error
-          ? "failed"
-          : "succeeded";
-
-      const _runId = crypto.randomUUID();
-      const _completedAt = new Date();
-      const _summary = runSummaryFromContent(persistContent, responseFileEdits, fileDeletes, responseLinePatches);
-
-      await db.execute(sql`
-        INSERT INTO execution_runs
-          (id, project_id, thread_id, message_id, mode, status, summary, started_at, completed_at, elapsed_ms)
-        VALUES
-          (${_runId}, ${projectId}, ${sessionId ?? null}, ${savedMsgId ?? null},
-           ${_runMode}, ${_runStatus}, ${_summary},
-           ${_completedAt}, ${_completedAt}, 0)
-      `);
-
-      // Build ordered steps: THOUGHT → intermediate (FILE_READ/SEARCH/INSPECT) → outcome → SUMMARY
-      const _steps: Array<{ verb: string; target: string | null; status: string; detail: string | null; content: string | null }> = [];
-
-      // 0. THOUGHT — the AI's reasoning text for this turn
-      const _thoughtText = displayContent?.trim();
-      const _thoughtDurationS = Math.round((Date.now() - now.getTime()) / 1000);
-      if (_thoughtText) {
-        _steps.push({
-          verb: "THOUGHT",
-          target: null,
-          status: "ok",
-          detail: `${_thoughtDurationS}s`,
-          content: _thoughtText.slice(0, 8000),
-        });
-      }
-
-      // 1..N. Intermediate steps captured during streaming (FILE_READ, SEARCH, INSPECT)
-      for (const _is of _chatRunIntermediateSteps) {
-        _steps.push({ verb: _is.verb, target: _is.target, status: "ok", detail: _is.detail, content: _is.content });
-      }
-
-      // N+1..M. Outcome steps: file writes, deletes, patches, image gen, push
-      for (const _edit of responseFileEdits) {
-        _steps.push({ verb: "FILE_EDIT", target: _edit.path, status: "ok", detail: null, content: ((_edit as { content?: string }).content ?? "").slice(0, 50000) || null });
-      }
-      for (const _del of fileDeletes) {
-        _steps.push({ verb: "FILE_DELETE", target: (_del as { path: string }).path, status: "ok", detail: null, content: null });
-      }
-      for (const _patch of responseLinePatches) {
-        _steps.push({ verb: "LINE_PATCH", target: (_patch as { path: string }).path, status: "ok", detail: null, content: null });
-      }
-      if (imageGenResult?.images?.length) {
-        for (const _img of imageGenResult.images.slice(0, 2)) {
-          _steps.push({ verb: "IMAGE_GEN", target: (_img.prompt ?? "image").slice(0, 80), status: "ok", detail: `model:${_img.model ?? "unknown"}`, content: null });
-        }
-      }
-      if (githubPushResult) {
-        _steps.push({
-          verb: "GITHUB_PUSH",
-          target: githubPushResult.branch ?? null,
-          status: githubPushResult.error ? "fail" : "ok",
-          detail: githubPushResult.error ?? `${githubPushResult.files?.length ?? 0} files`,
-          content: null,
-        });
-      }
-
-      // Last. SUMMARY — concise statement of what was done
-      if (_summary?.trim()) {
-        _steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: _summary });
-      }
-
-      for (const [_orderIdx, _step] of _steps.entries()) {
-        await db.execute(sql`
-          INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
-          VALUES (${_runId}, ${_step.verb}, ${_step.target}, ${_step.status}, ${_step.detail}, ${_step.content}, ${_orderIdx})
-        `);
-      }
-
-      logger.info({ runId: _runId, projectId, mode: _runMode, status: _runStatus, stepCount: _steps.length }, "execution_run: recorded");
-    } catch (_runErr) {
-      logger.warn({ err: _runErr, projectId }, "execution_run: persist failed — non-fatal");
-    }
-  })();
   if (userId) {
     void extractUserMemoryInBackground({
       userId,

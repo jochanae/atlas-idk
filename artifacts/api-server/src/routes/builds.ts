@@ -228,10 +228,12 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
 
     // Fetch all steps for the returned runs in one query
     const runIds = runsResult.rows.map((r) => r.id as string);
-    const stepsResult = await db.execute(sql`
+    const stepsResult = runIds.length === 0
+      ? { rows: [] as Array<Record<string, unknown>> }
+      : await db.execute(sql`
       SELECT id, run_id, verb, target, status, detail, content, order_index, created_at
       FROM execution_run_steps
-      WHERE run_id IN ${runIds}
+      WHERE run_id IN (${sql.join(runIds.map((id) => sql`${id}`), sql`, `)})
       ORDER BY run_id, order_index ASC, id ASC
     `);
 
