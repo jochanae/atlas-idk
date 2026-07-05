@@ -14,10 +14,22 @@ export type Tier1Answers = {
   constraints: string;
 };
 
+export type Tier1FieldKey = keyof Tier1Answers;
+
 export type Tier1Memory = {
   answers: Tier1Answers;
   updatedAt: string;
+  /** ISO timestamp — set when the user explicitly told Atlas to stop asking. */
+  skippedAt?: string | null;
+  /** Field keys still empty. Backend-computed source of truth. */
+  missing?: Tier1FieldKey[];
 };
+
+/** Fired whenever Tier 1 memory may have changed (post-commit, post-chat turn). */
+export const TIER1_UPDATED_EVENT = "axiom:tier1-updated";
+export function notifyTier1Updated() {
+  window.dispatchEvent(new CustomEvent(TIER1_UPDATED_EVENT));
+}
 
 export const TIER1_QUESTIONS: Array<{
   key: keyof Tier1Answers;
