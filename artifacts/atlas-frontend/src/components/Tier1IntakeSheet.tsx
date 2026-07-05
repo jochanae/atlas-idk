@@ -31,11 +31,12 @@ type Props = {
   projectName?: string | null;
   onClose: () => void;
   onCommitted?: (memory: Tier1Memory) => void;
+  onSkip?: () => void;
 };
 
 const STEP_COUNT = TIER1_QUESTIONS.length; // 6 questions + 1 review
 
-export function Tier1IntakeSheet({ open, projectId, projectName, onClose, onCommitted }: Props) {
+export function Tier1IntakeSheet({ open, projectId, projectName, onClose, onCommitted, onSkip }: Props) {
   const [answers, setAnswers] = useState<Tier1Answers>(EMPTY_TIER1);
   const [step, setStep] = useState(0); // 0..STEP_COUNT (STEP_COUNT = review)
   const [existing, setExisting] = useState<Tier1Memory | null>(null);
