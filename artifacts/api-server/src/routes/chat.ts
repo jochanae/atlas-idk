@@ -29,8 +29,9 @@ import nodePath from "node:path";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath } from "../lib/projectWorkspace";
 import { bootstrapLocalWorkspace, BOOTSTRAP_FILES } from "../lib/localBootstrap";
 import { runArtifactOrchestrator, loadProjectArtifactState } from "../lib/artifactOrchestrator";
-import { shouldUseAgentLoop } from "../lib/agent-loop/flags";
+import { shouldUseAgentLoop, shouldUseStructuredPlan } from "../lib/agent-loop/flags";
 import { runAgentLoop } from "../lib/agent-loop/runner";
+import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -4608,6 +4609,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     writeStep(res, { verb: "Analyzing", target: "your request", phase: "analyze" });
 
     try {
+      const structuredPlanEnabled = shouldUseStructuredPlan(userId!);
+
       const loopResult = await runAgentLoop({
         res,
         abortSignal: abortController.signal,
@@ -4617,12 +4620,20 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         sessionId,
         userId: userId!,
         activeModel,
+        structuredPlanEnabled,
         writeStep,
       });
 
-      const { fullText, messageId, inputTokens, sideEffects } = loopResult;
+      const { fullText, messageId, inputTokens, sideEffects, planState } = loopResult;
       const responseFileEdits = sideEffects.fileEdits;
       const responseLinePatches = sideEffects.linePatches;
+
+      const planArtifact = structuredPlanEnabled && planState.latestPlanPayload
+        ? {
+            structured: planState.latestPlanPayload,
+            legacy: toLegacyPlanArtifact(planState.latestPlanPayload),
+          }
+        : undefined;
 
       res.write(`data: ${JSON.stringify({
         type: "done",
@@ -4638,6 +4649,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         fileEdits: responseFileEdits.length > 0 ? responseFileEdits : undefined,
         fileEdit: responseFileEdits.length > 0 ? responseFileEdits[0] : undefined,
         linePatches: responseLinePatches.length > 0 ? responseLinePatches : undefined,
+        ...(planArtifact ? { planArtifact: planArtifact.legacy, structuredPlan: planArtifact.structured } : {}),
+        ...(planState.activePlanId ? { planId: planState.activePlanId } : {}),
         developerLens: {
           routing: { activeModel: "gemini-3-flash-preview", provider: "google", fallbackTriggered: false },
           telemetry: { tokensPerSecond: 0, inputTokens: inputTokens ?? 0, executionStrategy: "agent_loop" },

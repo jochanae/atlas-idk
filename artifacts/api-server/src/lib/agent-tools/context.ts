@@ -1,4 +1,5 @@
 import type { Response } from "express";
+import type { ProposePlanPayload } from "./schemas/plan";
 
 export interface AgentFileEdit {
   path: string;
@@ -19,15 +20,25 @@ export interface AgentToolSideEffects {
   buildRunEmitted: boolean;
 }
 
+export interface AgentPlanState {
+  activePlanId: string | null;
+  latestPlanPayload: ProposePlanPayload | null;
+  hasApprovedCommitPlan: boolean;
+}
+
 export interface AgentToolContext {
   projectId: number;
   userId: number;
+  messageId?: number;
   workspaceDir: string;
   res: Response;
   sideEffects: AgentToolSideEffects;
+  planState: AgentPlanState;
+  structuredPlanEnabled: boolean;
   stepId: () => string;
   emitToolCall: (name: string, args: Record<string, unknown>) => void;
   emitToolResult: (name: string, ok: boolean, ms: number) => void;
+  emitNamedEvent: (event: string, data: object) => void;
   writeStep: (s: { verb: string; target?: string; phase: string }) => void;
 }
 
@@ -37,5 +48,13 @@ export function createSideEffects(): AgentToolSideEffects {
     linePatches: [],
     finishSummary: null,
     buildRunEmitted: false,
+  };
+}
+
+export function createPlanState(): AgentPlanState {
+  return {
+    activePlanId: null,
+    latestPlanPayload: null,
+    hasApprovedCommitPlan: false,
   };
 }

@@ -11,9 +11,19 @@ export const ATLAS_TOOLS_GUIDANCE = `You have tools. Use them instead of guessin
 - Never fabricate file contents. Always read_file first.
 - Verification is not optional after any write tool.`;
 
+export const ATLAS_PLANNING_GUIDANCE = `Planning discipline:
+- Multi-file or cross-layer work REQUIRES propose_plan before any write tool.
+- Step titles must be actionable ("Add /agent_runs table", not "database work").
+- Each step should name what would prove it done in the verification field.
+- Never describe the plan in prose after calling propose_plan — the artifact IS the plan.
+- After user commits (commit_plan approved), execute steps in order. Skip a step only by revising the plan.
+- Limits: step title ≤ 80 chars, detail ≤ 400 chars, ≤ 12 steps. Split into multiple plans if larger.`;
+
 export interface ComposeAtlasPromptOptions {
   /** When true, append agent tool usage guidance (agent loop path). */
   includeTools?: boolean;
+  /** When true, append structured plan discipline (USE_STRUCTURED_PLAN path). */
+  includePlanning?: boolean;
 }
 
 /**
@@ -26,6 +36,9 @@ export function composeAtlasPrompt(
   let prompt = basePrompt;
   if (roleSpecific?.includeTools) {
     prompt += `\n\n--- AGENT TOOLS ---\n${ATLAS_TOOLS_GUIDANCE}\n--- END AGENT TOOLS ---`;
+  }
+  if (roleSpecific?.includePlanning) {
+    prompt += `\n\n--- PLANNING ---\n${ATLAS_PLANNING_GUIDANCE}\n--- END PLANNING ---`;
   }
   return prompt;
 }

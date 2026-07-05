@@ -14,12 +14,15 @@ import { runTypecheckTool } from "./run-typecheck";
 import { runTestsTool } from "./run-tests";
 import { screenshotPreviewTool } from "./screenshot-preview";
 import { finishTool } from "./finish";
+import { proposePlanTool } from "./propose-plan";
+import { revisePlanTool } from "./revise-plan";
+import { commitPlanTool } from "./commit-plan";
 
-export { createSideEffects } from "./context";
-export type { AgentToolContext, AgentFileEdit, AgentLinePatch, AgentToolSideEffects } from "./context";
+export { createSideEffects, createPlanState } from "./context";
+export type { AgentToolContext, AgentFileEdit, AgentLinePatch, AgentToolSideEffects, AgentPlanState } from "./context";
 
-export function buildAgentTools(ctx: AgentToolContext) {
-  return {
+export function buildAgentTools(ctx: AgentToolContext, options?: { includePlanTools?: boolean }) {
+  const base = {
     read_file: readFileTool(ctx),
     search_codebase: searchCodebaseTool(ctx),
     list_dir: listDirTool(ctx),
@@ -35,5 +38,16 @@ export function buildAgentTools(ctx: AgentToolContext) {
     run_tests: runTestsTool(ctx),
     screenshot_preview: screenshotPreviewTool(ctx),
     finish: finishTool(ctx),
+  };
+
+  if (!options?.includePlanTools) {
+    return base;
+  }
+
+  return {
+    ...base,
+    propose_plan: proposePlanTool(ctx),
+    revise_plan: revisePlanTool(ctx),
+    commit_plan: commitPlanTool(ctx),
   };
 }
