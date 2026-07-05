@@ -866,6 +866,38 @@ export function useChatStream(
                     },
                   ]);
                   resetSummaryPlaceholder();
+                } else if (evtName === "tool_call") {
+                  // Agent loop tool execution — map tool name to a liveStep verb so
+                  // WorkspaceRunCard.ActiveCard renders and the user sees live progress
+                  // during the loop instead of a frozen screen for 10+ minutes.
+                  const tc = (typeEmbedded ?? JSON.parse(evtData)) as { name?: string; args?: Record<string, unknown> };
+                  const toolName = tc.name ?? "";
+                  const toolArgs = (tc.args ?? {}) as Record<string, unknown>;
+                  const TOOL_VERB: Record<string, string> = {
+                    edit_file: "Writing", line_patch: "Patching", read_file: "Reading",
+                    list_dir: "Listing", search_codebase: "Searching", run_typecheck: "Typechecking",
+                    run_tests: "Testing", search_memory: "Recalling", read_dna: "Reading",
+                    patch_dna: "Updating DNA", read_ledger: "Reading ledger",
+                    write_ledger_entry: "Updating ledger", git_diff: "Checking diff",
+                    screenshot_preview: "Previewing", propose_plan: "Planning",
+                    revise_plan: "Revising plan", commit_plan: "Committing", finish: "Finishing",
+                  };
+                  const verb = TOOL_VERB[toolName] ?? toolName.replace(/_/g, " ");
+                  const target = typeof toolArgs.path === "string" ? toolArgs.path
+                    : typeof toolArgs.query === "string" ? toolArgs.query
+                    : typeof toolArgs.question === "string" ? toolArgs.question
+                    : undefined;
+                  if (!suppressStepsRef.current) setLiveStep({ verb, target, status: undefined });
+                  onStepEvent?.({ verb, target });
+                } else if (evtName === "tool_result") {
+                  // Tool finished — keep liveStep as-is so the label stays visible
+                  // until the next tool call or the done event clears it.
+                } else if (evtName === "tool_approval_request") {
+                  // commit_plan requires explicit user approval before proceeding.
+                  const apReq = (typeEmbedded ?? JSON.parse(evtData)) as { toolName?: string };
+                  if (apReq.toolName === "commit_plan" && !suppressStepsRef.current) {
+                    setLiveStep({ verb: "Awaiting approval", target: undefined, status: undefined });
+                  }
                 } else if (evtName === "done") {
                   // type-embedded: {"type":"done","content":"...","messageId":...,...}
                   // event: format: data: {...} (JSON object)
