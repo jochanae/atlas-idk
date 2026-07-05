@@ -519,18 +519,11 @@ export function AskAtlasSurface({
                         projectTitle: tokenTarget.projectName,
                       });
                       // Best-effort handoff sync — never blocks navigation.
-                      try {
-                        await fetch("/api/nexus/handoff", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          credentials: "include",
-                          body: JSON.stringify({
-                            messages: messages.slice(-10),
-                            projectId: tokenTarget.projectId,
-                            conversationId,
-                          }),
-                        });
-                      } catch {}
+                      await triggerNexusHandoff({
+                        conversationId,
+                        projectId: tokenTarget.projectId,
+                        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+                      });
                     }}
                   />
                 )}
