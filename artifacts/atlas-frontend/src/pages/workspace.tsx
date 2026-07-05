@@ -4389,9 +4389,7 @@ export default function Workspace() {
   const [showModelPicker, setShowModelPicker] = useState(() => {
     try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
   });
-  const useNexusWorkspaceChat = (() => {
-    try { return localStorage.getItem("USE_NEXUS_WORKSPACE_CHAT") !== "0"; } catch { return true; }
-  })();
+  const useNexusWorkspaceChat = false;
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
