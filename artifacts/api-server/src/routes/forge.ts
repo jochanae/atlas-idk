@@ -4,6 +4,7 @@ import { z } from "zod";
 import { eq, desc, sql } from "drizzle-orm";
 import { db, projectFlowCanvasTable, projectsTable, nexusMessagesTable } from "@workspace/db";
 import { NODE_GENERATION_SYSTEM_PROMPT } from "../lib/nodeContract";
+import { upsertTier1, markTier1Skipped, appendTier1LedgerEntry } from "../services/tier1";
 
 const router: IRouter = Router();
 
@@ -113,8 +114,39 @@ router.post("/forge/intake", async (req, res) => {
     answers?: Record<string, string>;
     skipped?: boolean;
   };
-  req.log.info({ projectId, skipped }, "Forge intake answers received");
-  res.json({ ok: true, projectId, skipped: !!skipped });
+  const userId = (req as any).authUser?.id as number | undefined;
+
+  req.log.info({ projectId, skipped, hasAnswers: !!answers }, "Forge intake answers received");
+
+  if (!projectId || typeof projectId !== "number") {
+    res.status(400).json({ error: "projectId is required" });
+    return;
+  }
+
+  if (skipped) {
+    if (userId) {
+      const result = await markTier1Skipped(projectId, userId);
+      if (!result.ok) {
+        res.status(404).json({ error: result.error });
+        return;
+      }
+    }
+    res.json({ ok: true, projectId, skipped: true });
+    return;
+  }
+
+  if (answers && Object.keys(answers).length > 0) {
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    const tier1 = await upsertTier1(projectId, answers);
+    await appendTier1LedgerEntry(projectId);
+    res.json({ ok: true, projectId, tier1 });
+    return;
+  }
+
+  res.json({ ok: true, projectId, skipped: false });
 });
 
 router.post("/forge", async (req, res) => {

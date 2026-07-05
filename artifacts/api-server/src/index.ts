@@ -694,6 +694,22 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: project_tier1_memory table failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS nexus_conversations (
+        conversation_id text PRIMARY KEY,
+        user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tier1_buffer jsonb,
+        tier1_skipped_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    logger.info("ensureColumns: nexus_conversations table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: nexus_conversations table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {
