@@ -52,6 +52,9 @@ export function UserBubble({
   const [hov, setHov] = useState(false);
   const [copied, setCopied] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const isParchment = useThemeMode() === "parchment";
+  const bubbleBg = isParchment ? "rgba(59,82,115,0.08)" : "rgba(201,162,76,0.12)";
+  const bubbleBorder = isParchment ? "rgba(59,82,115,0.22)" : "rgba(201,162,76,0.3)";
 
   // Unified attachment list — prefer `attachments`, fall back to legacy single-image fields.
   const imgs = (attachments && attachments.length > 0)
