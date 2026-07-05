@@ -66,6 +66,12 @@ function resolveLinkedFullName(linkedRepo?: string | null): string | null {
 
 export default function Projects() {
   const isTinyMobile = useIsTinyScreen();
+  const isParchment = useThemeMode() === "parchment";
+  const greenFill = isParchment ? "rgba(22,163,74,0.14)" : "rgba(74,222,128,0.06)";
+  const greenFillHover = isParchment ? "rgba(22,163,74,0.22)" : "rgba(74,222,128,0.12)";
+  const greenBorder = isParchment ? "rgba(22,163,74,0.55)" : "rgba(74,222,128,0.25)";
+  const greenBorderHover = isParchment ? "rgba(22,163,74,0.75)" : "rgba(74,222,128,0.45)";
+  const greenText = isParchment ? "rgb(22,163,74)" : "rgba(74,222,128,0.75)";
   const { data: projectsRaw, isLoading: isLoadingData } = useListProjects({
     query: {
       queryKey: getListProjectsQueryKey(),
