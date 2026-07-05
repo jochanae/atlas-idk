@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Response } from "express";
 import { streamText, isStepCount, hasToolCall, gateway } from "ai";
 import { google } from "@ai-sdk/google";
+import { registerPendingApproval } from "./approvals";
 import { agentRunsTable, chatMessagesTable, db, planArtifactsTable, sessionsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { composeAtlasPrompt } from "../atlas-core";
@@ -170,15 +171,24 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
         emitToken(res, part.text);
       }
       if (part.type === "tool-approval-request") {
+        if (part.toolCall.toolName === "commit_plan") {
+          const planIdFromInput = (part.toolCall.input as { planId?: string }).planId;
+          if (planIdFromInput) {
+            registerPendingApproval(part.approvalId, {
+              planId: planIdFromInput,
+              projectId,
+              userId,
+              toolCallId: part.toolCall.toolCallId,
+            });
+          }
+          stopReason = "awaiting_plan_commit";
+        }
         emitNamedEvent(res, "tool_approval_request", {
           approvalId: part.approvalId,
           toolCallId: part.toolCall.toolCallId,
           toolName: part.toolCall.toolName,
           input: part.toolCall.input,
         });
-        if (part.toolCall.toolName === "commit_plan") {
-          stopReason = "awaiting_plan_commit";
-        }
       }
       if (part.type === "error") {
         stopReason = "error";
