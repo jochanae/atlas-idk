@@ -166,7 +166,11 @@ function summarizeRun(run: ApiRun): { tag: string; line: string } {
   return { tag, line };
 }
 
-function RunReceiptPill({ run, projectName }: { run: ApiRun; projectName: string }) {
+function RunReceiptPill({
+  run, projectName, onClick, selected,
+}: {
+  run: ApiRun; projectName: string; onClick?: () => void; selected?: boolean;
+}) {
   const { tag, line } = summarizeRun(run);
   const failed = run.status === "failed";
   const running = run.status === "running";
@@ -179,13 +183,19 @@ function RunReceiptPill({ run, projectName }: { run: ApiRun; projectName: string
   const anchor = run.completedAt ? new Date(run.completedAt).getTime() : started;
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
       style={{
         display: "flex", alignItems: "center", gap: 10,
         padding: "8px 12px",
         borderRadius: 6,
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(201,162,76,0.12)",
+        background: selected ? "rgba(201,162,76,0.07)" : "rgba(255,255,255,0.02)",
+        border: `1px solid ${selected ? "rgba(201,162,76,0.3)" : "rgba(201,162,76,0.12)"}`,
         borderLeft: `2px solid ${dotColor}`,
+        cursor: onClick ? "pointer" : "default",
+        WebkitTapHighlightColor: "transparent",
       }}
     >
       <span
@@ -214,7 +224,9 @@ function RunReceiptPill({ run, projectName }: { run: ApiRun; projectName: string
         fontSize: 10.5, fontFamily: "var(--app-font-mono)",
         color: "var(--atlas-muted)", opacity: 0.6, flexShrink: 0,
       }}>{formatAgo(Date.now() - anchor)}</span>
-      <ChevronDown size={12} strokeWidth={1.6} style={{ color: "var(--atlas-muted)", opacity: 0.45, flexShrink: 0 }} aria-hidden />
+      {onClick && (
+        <span style={{ fontSize: 9, color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0, fontFamily: "var(--app-font-mono)" }}>›</span>
+      )}
     </div>
   );
 }
@@ -325,17 +337,6 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
                   }}
                 >{isExpanded ? "▲ Hide" : "▼ View"}</button>
               )}
-              <a
-                href={`/api/fs/${projectId}/preview?path=${encodeURIComponent(r.path)}`}
-                target="_blank" rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
-                  textTransform: "uppercase", padding: "2px 7px", borderRadius: 3,
-                  border: "1px solid rgba(201,162,76,0.18)",
-                  color: "rgba(201,162,76,0.6)", textDecoration: "none", flexShrink: 0,
-                }}
-              >Open ↗</a>
             </div>
             {isExpanded && r.content && (
               <div style={{ padding: "0 10px 10px" }}>
@@ -508,18 +509,21 @@ function RunTimeline({ steps }: { steps: ApiRunStep[] }) {
   );
 }
 
-// ── Run receipt list: compact pills (one per recent run) ─────────────────────
+// ── Run receipt list: collapsible section (collapsed by default) ──────────────
 
 function WorkspaceRunReceipts({
   projectId,
   projectName,
   runId,
+  onSelectRun,
 }: {
   projectId: number;
   projectName: string;
   runId?: string | null;
+  onSelectRun?: (id: string) => void;
 }) {
   const { runs: apiRuns } = useProjectRuns(projectId);
+  const [expanded, setExpanded] = useState(false);
 
   const visibleRuns = useMemo((): ApiRun[] => {
     if (runId) return apiRuns.filter((r) => r.id === runId);
@@ -529,14 +533,53 @@ function WorkspaceRunReceipts({
   if (visibleRuns.length === 0) return null;
 
   return (
-    <div style={{
-      display: "flex", flexDirection: "column", gap: 6,
-      padding: "10px 14px",
-      borderBottom: "1px solid rgba(201,162,76,0.08)",
-    }}>
-      {visibleRuns.map((run) => (
-        <RunReceiptPill key={run.id} run={run} projectName={projectName} />
-      ))}
+    <div style={{ borderBottom: "1px solid rgba(201,162,76,0.08)" }}>
+      {/* Section header — tap to expand/collapse */}
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          width: "100%", padding: "8px 14px",
+          background: "transparent", border: "none", cursor: "pointer",
+          textAlign: "left", WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <span style={{
+          fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.14em", textTransform: "uppercase",
+          color: "var(--atlas-gold)", opacity: 0.7,
+        }}>Builds</span>
+        <span style={{
+          fontSize: 9, background: "rgba(201,162,76,0.12)",
+          color: "rgba(201,162,76,0.8)", border: "1px solid rgba(201,162,76,0.2)",
+          borderRadius: 3, padding: "1px 5px",
+          fontFamily: "var(--app-font-mono)",
+        }}>{visibleRuns.length}</span>
+        <ChevronDown
+          size={11} strokeWidth={1.6}
+          style={{
+            color: "var(--atlas-muted)", opacity: 0.45, marginLeft: "auto",
+            transform: expanded ? "rotate(180deg)" : "none",
+            transition: "transform 150ms ease",
+          }}
+          aria-hidden
+        />
+      </button>
+
+      {expanded && (
+        <div style={{ padding: "0 14px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+          {visibleRuns.map((run) => (
+            <RunReceiptPill
+              key={run.id}
+              run={run}
+              projectName={projectName}
+              selected={!!runId && run.id === runId}
+              onClick={onSelectRun ? () => onSelectRun(run.id) : undefined}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -636,6 +679,15 @@ export function ViewChangesPanel({
     } catch {}
   };
 
+  const setRunFilter = (id: string) => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("runId", id);
+      window.history.replaceState({}, "", url.toString());
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } catch {}
+  };
+
   return (
     <div style={{
       display: "flex", flexDirection: "column", minHeight: "100%",
@@ -678,6 +730,7 @@ export function ViewChangesPanel({
         projectId={projectId}
         projectName={projectName?.trim() || "Workspace"}
         runId={runId}
+        onSelectRun={setRunFilter}
       />
 
       {/* ── Toggle ── */}
