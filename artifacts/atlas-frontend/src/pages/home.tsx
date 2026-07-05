@@ -1954,7 +1954,7 @@ export default function Home() {
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
-      try { sessionStorage.removeItem("atlas-ask-atlas-closed"); } catch {}
+      askAtlasSession.clearClosed();
       setAskAtlasSurfaceOpen(true);
       if (detail?.seed) setInput(detail.seed);
       window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
