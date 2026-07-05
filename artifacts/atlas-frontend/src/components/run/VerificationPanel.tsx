@@ -58,6 +58,7 @@ export function VerificationPanel({
   onOutput,
   onRunStart,
 }: VerificationPanelProps) {
+  const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
   const [localStates, setLocalStates] = useState<Record<VerifyKind, VerifyKindState> | null>(null);
 
@@ -98,6 +99,14 @@ export function VerificationPanel({
   const handleRun = useCallback(async (kind: VerifyKind, parentRunId?: string) => {
     if (!projectId || runningKind) return;
     await run(kind, projectId, parentRunId);
+  }, [projectId, run, runningKind]);
+
+  const handleRunAll = useCallback(async () => {
+    if (!projectId || runningKind) return;
+    setExpanded(true);
+    for (const kind of VERIFY_KINDS) {
+      await run(kind, projectId);
+    }
   }, [projectId, run, runningKind]);
 
   // Listen for global verify-run events (Atlas inline chips, BUILD card actions)
