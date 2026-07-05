@@ -2086,29 +2086,19 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    try {
-      if (localStorage.getItem("atlas-ask-atlas-surface-open") === "1") return true;
-      // Auto-resume: if the user had an Ask Atlas conversation and did NOT manually
-      // close the surface this browser session, re-open it so they land where they left off.
-      const manuallyClosed = sessionStorage.getItem("atlas-ask-atlas-closed") === "1";
-      if (manuallyClosed) return false;
-      const hasConvId = !!(
-        localStorage.getItem("atlas-ask-atlas-conversation-id") ??
-        sessionStorage.getItem("atlas-ask-atlas-conversation-id")
-      );
-      return hasConvId;
-    } catch { return false; }
+    if (askAtlasSession.isSurfaceOpen()) return true;
+    // Auto-resume: if the user had an Ask Atlas conversation and did NOT manually
+    // close the surface this browser session, re-open it so they land where they left off.
+    if (askAtlasSession.isClosed()) return false;
+    return !!askAtlasSession.getConversationId();
   });
   // True while the thread restore fetch is in-flight. Initialized synchronously
-  // from localStorage so the surface is visible immediately on return (no blank flash).
+  // from storage so the surface is visible immediately on return (no blank flash).
   const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
-    try {
-      const manuallyClosed = sessionStorage.getItem("atlas-ask-atlas-closed") === "1";
-      if (manuallyClosed) return false;
-      const surfaceOpen = localStorage.getItem("atlas-ask-atlas-surface-open") === "1";
-      const convId = localStorage.getItem("atlas-ask-atlas-conversation-id") ?? sessionStorage.getItem("atlas-ask-atlas-conversation-id");
-      return (surfaceOpen || !!convId) && !!convId;
-    } catch { return false; }
+    if (askAtlasSession.isClosed()) return false;
+    const surfaceOpen = askAtlasSession.isSurfaceOpen();
+    const convId = askAtlasSession.getConversationId();
+    return (surfaceOpen || !!convId) && !!convId;
   });
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
