@@ -242,6 +242,14 @@ export interface ChatMessage {
   intentType?: string | null;
   plan?: Plan;
   planArtifact?: StructuredPlanArtifact;
+  /** Structured plan (v2) from backend `plan_proposed` / `plan_revised`. */
+  structuredPlan?: import("../lib/plan").PlanArtifactV2;
+  /** Prior versions preserved after a revision. */
+  structuredPlanHistory?: import("../lib/plan").PlanArtifactV2[];
+  /** Pending `commit_plan` approval request from the agent loop. */
+  commitApproval?: import("../lib/plan").PlanCommitApproval;
+  /** Compact tool-call/tool-result/step_end receipts from the agent loop. */
+  thinkingReceipts?: import("../lib/plan").ThinkingReceipt[];
   decisionGate?: StructuredDecisionGate;
   decisionGateResolved?: boolean;
   decisionGateSelectedValue?: string;
