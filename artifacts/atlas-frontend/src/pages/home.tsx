@@ -67,6 +67,7 @@ import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { askAtlasSession } from "@/lib/askAtlasSession";
 
 
 const PLACEHOLDERS = [
