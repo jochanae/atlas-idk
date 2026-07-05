@@ -32,6 +32,8 @@ import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
+import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 
 
 export type AskAtlasMessage = {
@@ -316,22 +318,11 @@ export function AskAtlasSurface({
 
   const handleProjectOpen = async (projectId: number) => {
     const route = `/project/${projectId}`;
-
-    try {
-      await fetch("/api/nexus/handoff", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: messages.slice(-10),
-          projectId,
-          conversationId,
-        }),
-      });
-    } catch {
-      // Handoff is best-effort; navigation should still feel immediate on failure.
-    }
-
+    await triggerNexusHandoff({
+      conversationId,
+      projectId,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    });
     setLocation(route);
   };
 
@@ -404,9 +395,11 @@ export function AskAtlasSurface({
         }}
       >
 
+        <AskAtlasTier1Chip conversationId={conversationId} />
 
         {isRestoring && messages.length === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
+
             {[{ w: "72%", role: "user" }, { w: "88%", role: "assistant" }, { w: "60%", role: "user" }, { w: "94%", role: "assistant" }].map((item, i) => (
               <div
                 key={i}
@@ -528,18 +521,11 @@ export function AskAtlasSurface({
                         projectTitle: tokenTarget.projectName,
                       });
                       // Best-effort handoff sync — never blocks navigation.
-                      try {
-                        await fetch("/api/nexus/handoff", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          credentials: "include",
-                          body: JSON.stringify({
-                            messages: messages.slice(-10),
-                            projectId: tokenTarget.projectId,
-                            conversationId,
-                          }),
-                        });
-                      } catch {}
+                      await triggerNexusHandoff({
+                        conversationId,
+                        projectId: tokenTarget.projectId,
+                        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+                      });
                     }}
                   />
                 )}
