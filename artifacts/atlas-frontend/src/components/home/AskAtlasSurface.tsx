@@ -791,11 +791,11 @@ export function AskAtlasSurface({
           height: "60vh",
           zIndex: 60,
           padding: "18px 16px calc(20px + env(safe-area-inset-bottom, 0px))",
-          background: isParchment ? "#f4ecd8" : "var(--atlas-surface, #0b0b0d)",
+          background: isParchment ? "#FFFFFF" : "var(--atlas-surface, #0b0b0d)",
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           boxShadow: isParchment
-            ? "0 -24px 60px rgba(74, 53, 30, 0.18), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
+            ? "0 -24px 60px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(15, 23, 42, 0.06)"
             : "0 -24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,76,0.18)",
           display: "flex",
           flexDirection: "column",
