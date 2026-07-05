@@ -1887,17 +1887,10 @@ export default function Home() {
       return null;
     }
   });
-  const [askAtlasConversationId, setAskAtlasConversationId] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem("atlas-ask-atlas-conversation-id") ?? localStorage.getItem("atlas-ask-atlas-conversation-id") ?? null;
-    } catch {
-      return null;
-    }
-  });
+  const [askAtlasConversationId, setAskAtlasConversationId] = useState<string | null>(() => askAtlasSession.getConversationId());
   const [askAtlasCrystallized, setAskAtlasCrystallized] = useState(false);
   const rememberAskAtlasConversationId = (conversationId: string) => {
-    try { localStorage.setItem("atlas-ask-atlas-conversation-id", conversationId); } catch {}
-    try { sessionStorage.setItem("atlas-ask-atlas-conversation-id", conversationId); } catch {}
+    askAtlasSession.setConversationId(conversationId);
   };
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
