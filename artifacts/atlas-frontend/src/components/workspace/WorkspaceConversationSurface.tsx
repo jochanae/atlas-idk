@@ -29,24 +29,91 @@ function TypingDots() {
   );
 }
 
+function deriveConversationId(projectId: number): string {
+  const key = `nexus_conv_${projectId}`;
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) return stored;
+    const id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+    return id;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
+function parseWriteFile(content: string): Array<{ path: string; fileContent: string }> {
+  const results: Array<{ path: string; fileContent: string }> = [];
+  const tokenRe = /WRITE_FILE:\s*(\{[^}]+\})/g;
+  let match: RegExpExecArray | null;
+  while ((match = tokenRe.exec(content)) !== null) {
+    try {
+      const meta = JSON.parse(match[1]) as { path?: string };
+      if (!meta.path) continue;
+      const before = content.slice(0, match.index);
+      const fenceEnd = before.lastIndexOf("```");
+      if (fenceEnd === -1) continue;
+      const fenceStart = before.lastIndexOf("```", fenceEnd - 1);
+      if (fenceStart === -1) continue;
+      const rawBlock = before.slice(fenceStart + 3, fenceEnd);
+      const firstNewline = rawBlock.indexOf("\n");
+      const fileContent = firstNewline === -1 ? rawBlock : rawBlock.slice(firstNewline + 1);
+      results.push({ path: meta.path, fileContent });
+    } catch {
+    }
+  }
+  return results;
+}
+
 export function WorkspaceConversationSurface({
   projectId,
-  conversationId: initialConversationId,
 }: WorkspaceConversationSurfaceProps) {
-  const [conversationId, setConversationId] = useState<string | null>(
-    initialConversationId ?? null
+  const [conversationId, setConversationId] = useState<string>(() =>
+    deriveConversationId(projectId)
   );
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
+  const prevStreamingRef = useRef(false);
+  const processedTokens = useRef(new Set<string>());
 
   const { messages, isStreaming, isPending, send, abort } = useNexusChatStream({
     focusProjectId: projectId,
     mode: "workspace",
-    conversationId: conversationId ?? undefined,
-    onConversationId: (id) => setConversationId(id),
+    conversationId,
+    onConversationId: (id) => {
+      setConversationId(id);
+      try { localStorage.setItem(`nexus_conv_${projectId}`, id); } catch { }
+    },
   });
+
+  useEffect(() => {
+    const wasStreaming = prevStreamingRef.current;
+    prevStreamingRef.current = isStreaming;
+    if (!wasStreaming || isStreaming) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant") return;
+    const writes = parseWriteFile(last.content);
+    for (const { path, fileContent } of writes) {
+      const dedupeKey = `${path}::${fileContent.length}`;
+      if (processedTokens.current.has(dedupeKey)) continue;
+      processedTokens.current.add(dedupeKey);
+      fetch("/api/nexus/write-file", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, path, content: fileContent }),
+      })
+        .then((r) => {
+          if (r.ok) {
+            window.dispatchEvent(new CustomEvent("axiom:file-edited", { detail: { path, projectId } }));
+            window.dispatchEvent(new CustomEvent("axiom:workspace-refresh", { detail: { projectId } }));
+          }
+        })
+        .catch(() => { });
+    }
+  }, [isStreaming, messages, projectId]);
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -213,7 +280,7 @@ export function WorkspaceConversationSurface({
                 color: "var(--atlas-fg, rgba(255,255,255,0.9))",
               }}
             >
-              Nexus workspace
+              Atlas workspace
             </span>
           </div>
         )}
@@ -221,6 +288,9 @@ export function WorkspaceConversationSurface({
         {messages.map((msg, i) => {
           const isUser = msg.role === "user";
           const isLast = i === messages.length - 1;
+          const displayContent = msg.content
+            .replace(/WRITE_FILE:\s*\{[^}]+\}/g, "")
+            .trim();
           return (
             <div
               key={msg.id ?? i}
@@ -254,7 +324,7 @@ export function WorkspaceConversationSurface({
                 ) : (
                   <>
                     <ReactMarkdown>
-                      {msg.content}
+                      {displayContent}
                     </ReactMarkdown>
                     {isLast && msg.streaming && <TypingDots />}
                   </>
@@ -386,35 +456,7 @@ export function WorkspaceConversationSurface({
               color: "var(--atlas-fg, rgba(255,255,255,0.9))",
             }}
           >
-            Nexus · workspace mode
-          </span>
-          <span
-            style={{
-              width: 4,
-              height: 4,
-              borderRadius: "50%",
-              background: "var(--atlas-gold, #c9a24c)",
-              opacity: 0.6,
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "var(--app-font-mono, monospace)",
-              fontSize: 10,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "var(--atlas-gold, #c9a24c)",
-              cursor: "pointer",
-            }}
-            onClick={() => {
-              try {
-                localStorage.setItem("USE_NEXUS_WORKSPACE_CHAT", "0");
-                window.location.reload();
-              } catch { /* ignore */ }
-            }}
-            title="Switch back to classic workspace chat"
-          >
-            ← classic
+            Atlas · workspace
           </span>
         </div>
       </div>
