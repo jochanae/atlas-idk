@@ -15,6 +15,9 @@ export function tier1MarkSkippedTool(ctx: AgentToolContext) {
         const result = await markTier1Skipped(ctx.projectId, ctx.userId);
         const ms = Math.round(performance.now() - started);
         ctx.emitToolResult("tier1_mark_skipped", result.ok, ms);
+        if (result.ok) {
+          ctx.emitNamedEvent("memory_update", { type: "tier1", skipped: true });
+        }
         return result;
       } catch (err) {
         const ms = Math.round(performance.now() - started);
