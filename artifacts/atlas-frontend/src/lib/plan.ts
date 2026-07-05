@@ -1,5 +1,46 @@
 export type PlanStepType = "analysis" | "edit" | "push" | "read" | "other";
 
+// ── Structured plan (v2) — matches backend `plan_proposed` / `plan_revised` / `plan_committed` SSE events.
+export type PlanArtifactStep = {
+  id: string;
+  order: number;
+  title: string;
+  detail: string;
+  layer: string;
+  touches: string[];
+  depends_on: string[];
+  verification: string | null;
+  risk: string | null;
+};
+
+export type PlanArtifactOpenQuestion = { id: string; text: string };
+
+export type PlanArtifactV2 = {
+  planId: string;
+  version: number;
+  parentId?: string | null;
+  title: string;
+  intent: string;
+  steps: PlanArtifactStep[];
+  open_questions?: PlanArtifactOpenQuestion[];
+  estimated_effort: string;
+  status: "proposed" | "committed" | "superseded" | "abandoned";
+  committedAt?: string | null;
+};
+
+export type PlanCommitApproval = {
+  approvalId: string;
+  toolCallId: string;
+  planId?: string;
+  status: "pending" | "approved" | "rejected";
+};
+
+export type ThinkingReceipt =
+  | { kind: "tool_call"; stepId?: string; name: string; args?: unknown; at: string }
+  | { kind: "tool_result"; stepId?: string; name: string; ok: boolean; ms?: number; at: string }
+  | { kind: "step_end"; step: number; tokensIn?: number; tokensOut?: number; at: string };
+
+
 export type StructuredPlanArtifact = {
   type: "plan";
   title: string;
