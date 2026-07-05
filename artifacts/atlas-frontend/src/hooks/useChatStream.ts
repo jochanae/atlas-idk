@@ -775,6 +775,66 @@ export function useChatStream(
                   setMessages((prev) =>
                     prev.map((m) => m.id === placeholderId ? { ...m, planArtifact: planPayload, awaitingPlan: false } : m)
                   );
+                } else if (evtName === "plan_proposed") {
+                  // Structured plan v2 (agent-loop `propose_plan` tool result).
+                  const payload = (typeEmbedded ?? JSON.parse(evtData)) as import("../lib/plan").PlanArtifactV2;
+                  const plan: import("../lib/plan").PlanArtifactV2 = { ...payload, status: "proposed" };
+                  setMessages((prev) =>
+                    prev.map((m) => m.id === placeholderId ? { ...m, structuredPlan: plan, awaitingPlan: false } : m)
+                  );
+                } else if (evtName === "plan_revised") {
+                  const payload = (typeEmbedded ?? JSON.parse(evtData)) as import("../lib/plan").PlanArtifactV2 & { note?: string };
+                  const plan: import("../lib/plan").PlanArtifactV2 = { ...payload, status: "proposed" };
+                  setMessages((prev) =>
+                    prev.map((m) => {
+                      if (m.id !== placeholderId) return m;
+                      const history = m.structuredPlanHistory ?? [];
+                      const prior = m.structuredPlan ? [...history, m.structuredPlan] : history;
+                      return { ...m, structuredPlan: plan, structuredPlanHistory: prior };
+                    })
+                  );
+                } else if (evtName === "plan_committed") {
+                  const payload = (typeEmbedded ?? JSON.parse(evtData)) as { planId: string; committedAt: string };
+                  setMessages((prev) =>
+                    prev.map((m) => {
+                      if (m.id !== placeholderId) return m;
+                      if (!m.structuredPlan || m.structuredPlan.planId !== payload.planId) return m;
+                      return {
+                        ...m,
+                        structuredPlan: { ...m.structuredPlan, status: "committed", committedAt: payload.committedAt },
+                        commitApproval: m.commitApproval ? { ...m.commitApproval, status: "approved" } : m.commitApproval,
+                      };
+                    })
+                  );
+                } else if (evtName === "tool_approval_request") {
+                  const payload = (typeEmbedded ?? JSON.parse(evtData)) as {
+                    approvalId: string; toolCallId: string; toolName: string; input?: { planId?: string };
+                  };
+                  if (payload.toolName === "commit_plan") {
+                    const approval: import("../lib/plan").PlanCommitApproval = {
+                      approvalId: payload.approvalId,
+                      toolCallId: payload.toolCallId,
+                      planId: payload.input?.planId,
+                      status: "pending",
+                    };
+                    setMessages((prev) =>
+                      prev.map((m) => m.id === placeholderId ? { ...m, commitApproval: approval } : m)
+                    );
+                  }
+                } else if (evtName === "tool_call" || evtName === "tool_result" || evtName === "step_end") {
+                  try {
+                    const payload = (typeEmbedded ?? JSON.parse(evtData)) as Record<string, unknown>;
+                    const at = new Date().toISOString();
+                    const receipt: import("../lib/plan").ThinkingReceipt =
+                      evtName === "tool_call"
+                        ? { kind: "tool_call", stepId: payload.stepId as string | undefined, name: String(payload.name ?? "tool"), args: payload.args, at }
+                        : evtName === "tool_result"
+                        ? { kind: "tool_result", stepId: payload.stepId as string | undefined, name: String(payload.name ?? "tool"), ok: Boolean(payload.ok), ms: typeof payload.ms === "number" ? payload.ms : undefined, at }
+                        : { kind: "step_end", step: Number(payload.step ?? 0), tokensIn: typeof payload.tokensIn === "number" ? payload.tokensIn : undefined, tokensOut: typeof payload.tokensOut === "number" ? payload.tokensOut : undefined, at };
+                    setMessages((prev) =>
+                      prev.map((m) => m.id === placeholderId ? { ...m, thinkingReceipts: [...(m.thinkingReceipts ?? []), receipt] } : m)
+                    );
+                  } catch { /* ignore malformed receipt */ }
                 } else if (evtName === "decision_gate") {
                   // Atlas reached a genuine implementation fork — halt stream and show gate card.
                   const gatePayload = (typeEmbedded ?? JSON.parse(evtData)) as import("../lib/plan").StructuredDecisionGate;
