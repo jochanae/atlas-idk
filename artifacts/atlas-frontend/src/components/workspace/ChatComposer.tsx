@@ -385,7 +385,7 @@ export function ChatComposer(props: ChatComposerProps) {
           style={{
             position: "fixed", inset: 0, zIndex: 55,
             background: isParchment
-              ? "color-mix(in oklab, #f4ecd8 55%, transparent)"
+              ? "rgba(226, 232, 240, 0.55)"
               : "rgba(8,8,10,0.55)",
             backdropFilter: isParchment ? "blur(14px) saturate(115%)" : "blur(6px) saturate(120%)",
             WebkitBackdropFilter: isParchment ? "blur(14px) saturate(115%)" : "blur(6px) saturate(120%)",
@@ -418,7 +418,7 @@ export function ChatComposer(props: ChatComposerProps) {
           display: "flex", flexDirection: "column",
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
           boxShadow: isParchment
-            ? "0 -24px 60px rgba(74, 53, 30, 0.18), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
+            ? "0 -24px 60px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(15, 23, 42, 0.06)"
             : "0 -24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,76,0.18)",
           transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           overflow: "hidden",

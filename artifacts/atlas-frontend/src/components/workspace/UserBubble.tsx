@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { haptic } from "@/lib/long-press-tip";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
+import { useThemeMode } from "@/lib/theme";
 
 const ICON_TOUCH_TARGET_STYLE: CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
 
@@ -51,6 +52,9 @@ export function UserBubble({
   const [hov, setHov] = useState(false);
   const [copied, setCopied] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const isParchment = useThemeMode() === "parchment";
+  const bubbleBg = isParchment ? "rgba(59,82,115,0.08)" : "rgba(201,162,76,0.12)";
+  const bubbleBorder = isParchment ? "rgba(59,82,115,0.22)" : "rgba(201,162,76,0.3)";
 
   // Unified attachment list — prefer `attachments`, fall back to legacy single-image fields.
   const imgs = (attachments && attachments.length > 0)
@@ -84,8 +88,8 @@ export function UserBubble({
             padding: "9px 13px",
             borderRadius: "12px 12px 4px 12px",
             width: "100%",
-            background: "rgba(201,162,76,0.12)",
-            border: "0.5px solid rgba(201,162,76,0.3)",
+            background: bubbleBg,
+            border: `0.5px solid ${bubbleBorder}`,
           }}
         >
           {/* Attachment thumbnail row — ABOVE the text, prominent, tap-to-expand */}
@@ -133,7 +137,7 @@ export function UserBubble({
 
           {content && (
             <CollapsibleMessageText
-              fadeFromColor="rgba(201,162,76,0.12)"
+              fadeFromColor={bubbleBg}
               textStyle={{
                 fontSize: 16,
                 lineHeight: 1.55,

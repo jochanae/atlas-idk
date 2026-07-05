@@ -11,6 +11,7 @@ import { API_BASE } from "@/lib/api";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { fetchGitHubStatus, type NormalizedGitHubStatus } from "@/hooks/useGitHub";
+import { useThemeMode } from "@/lib/theme";
 
 const sMono = { fontFamily: "'IBM Plex Mono', var(--app-font-mono)" } as const;
 const sSans = { fontFamily: "var(--app-font-sans)" } as const;
@@ -65,6 +66,12 @@ function resolveLinkedFullName(linkedRepo?: string | null): string | null {
 
 export default function Projects() {
   const isTinyMobile = useIsTinyScreen();
+  const isParchment = useThemeMode() === "parchment";
+  const greenFill = isParchment ? "rgba(22,163,74,0.14)" : "rgba(74,222,128,0.06)";
+  const greenFillHover = isParchment ? "rgba(22,163,74,0.22)" : "rgba(74,222,128,0.12)";
+  const greenBorder = isParchment ? "rgba(22,163,74,0.55)" : "rgba(74,222,128,0.25)";
+  const greenBorderHover = isParchment ? "rgba(22,163,74,0.75)" : "rgba(74,222,128,0.45)";
+  const greenText = isParchment ? "rgb(22,163,74)" : "rgba(74,222,128,0.75)";
   const { data: projectsRaw, isLoading: isLoadingData } = useListProjects({
     query: {
       queryKey: getListProjectsQueryKey(),
@@ -422,19 +429,19 @@ export default function Projects() {
                 textTransform: "uppercase",
                 padding: isTinyMobile ? "5px 6px" : "7px 12px",
                 borderRadius: 6,
-                border: "1px solid rgba(74,222,128,0.25)",
-                background: "rgba(74,222,128,0.06)",
-                color: "rgba(74,222,128,0.75)",
+                border: `1px solid ${greenBorder}`,
+                background: greenFill,
+                color: greenText,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
                 transition: "all 160ms ease",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(74,222,128,0.12)"; e.currentTarget.style.borderColor = "rgba(74,222,128,0.45)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(74,222,128,0.06)"; e.currentTarget.style.borderColor = "rgba(74,222,128,0.25)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = greenFillHover; e.currentTarget.style.borderColor = greenBorderHover; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = greenFill; e.currentTarget.style.borderColor = greenBorder; }}
             >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="rgba(74,222,128,0.75)">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill={greenText}>
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
               </svg>
               {!isTinyMobile && "Link Repos"}
@@ -453,14 +460,38 @@ export default function Projects() {
               textTransform: "uppercase",
               padding: isTinyMobile ? "5px 8px" : "7px 14px",
               borderRadius: 6,
-              border: "1px solid rgba(201,162,76,0.35)",
-              background: "rgba(201,162,76,0.07)",
-              color: createProject.isPending ? "var(--atlas-muted)" : "var(--atlas-gold)",
+              border: isParchment
+                ? "1px solid var(--atlas-gold)"
+                : "1px solid rgba(201,162,76,0.35)",
+              background: isParchment
+                ? "var(--atlas-gold)"
+                : "rgba(201,162,76,0.07)",
+              color: createProject.isPending
+                ? "var(--atlas-muted)"
+                : isParchment ? "#FFFFFF" : "var(--atlas-gold)",
               cursor: createProject.isPending ? "not-allowed" : "pointer",
               transition: "all 160ms ease",
+              boxShadow: isParchment ? "0 2px 6px rgba(15,23,42,0.14)" : "none",
             }}
-            onMouseEnter={(e) => { if (!createProject.isPending) { e.currentTarget.style.background = "rgba(201,162,76,0.14)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.6)"; } }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.35)"; }}
+            onMouseEnter={(e) => {
+              if (createProject.isPending) return;
+              if (isParchment) {
+                e.currentTarget.style.background = "#2C3F5A";
+                e.currentTarget.style.borderColor = "#2C3F5A";
+              } else {
+                e.currentTarget.style.background = "rgba(201,162,76,0.14)";
+                e.currentTarget.style.borderColor = "rgba(201,162,76,0.6)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (isParchment) {
+                e.currentTarget.style.background = "var(--atlas-gold)";
+                e.currentTarget.style.borderColor = "var(--atlas-gold)";
+              } else {
+                e.currentTarget.style.background = "rgba(201,162,76,0.07)";
+                e.currentTarget.style.borderColor = "rgba(201,162,76,0.35)";
+              }
+            }}
           >
             {createProject.isPending ? "…" : "+ New"}
           </button>
