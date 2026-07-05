@@ -6517,7 +6517,7 @@ export default function Workspace() {
             }),
           });
           if (!res.ok) throw new Error();
-          toast(`${title} saved to Artifacts.`);
+          if (res.status === 201) toast(`${title} saved to Artifacts.`);
         } catch {
           toast("Failed to save artifact.");
         }

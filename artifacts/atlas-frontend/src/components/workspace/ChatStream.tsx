@@ -401,10 +401,12 @@ export function ChatStream(props: ChatStreamProps) {
       return idx;
     }
 
-    // Legacy single-assistant turn: card before the only assistant message.
+    // Legacy single-assistant turn: card after the assistant message so the
+    // slice passed to WorkspaceRunCard always includes the message with the run's
+    // messageId (idx-1 excluded it, causing adaptExecutionRun to return null).
     const lastAssistantIdx = messages.reduce((a, m, i) => m.role === "assistant" ? i : a, -1);
     if (idx !== lastAssistantIdx) return -1;
-    return idx - 1;
+    return idx;
   }, [execLatestRun?.messageId, chatPending, messages]);
 
 

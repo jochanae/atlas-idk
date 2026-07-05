@@ -49,6 +49,21 @@ router.post("/artifacts", async (req, res): Promise<void> => {
   }
 
   try {
+    const existing = await db
+      .select()
+      .from(artifactsTable)
+      .where(and(
+        eq(artifactsTable.projectId, projectId),
+        eq(artifactsTable.userId, userId),
+        eq(artifactsTable.title, title),
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      res.status(200).json({ artifact: existing[0], alreadyExists: true });
+      return;
+    }
+
     const [artifact] = await db
       .insert(artifactsTable)
       .values({
