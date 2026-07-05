@@ -137,7 +137,7 @@ export function UserBubble({
 
           {content && (
             <CollapsibleMessageText
-              fadeFromColor="rgba(201,162,76,0.12)"
+              fadeFromColor={bubbleBg}
               textStyle={{
                 fontSize: 16,
                 lineHeight: 1.55,
