@@ -128,6 +128,8 @@ import { extractStrategicIntent } from "@/lib/forgeExtract";
 import { submitForgeIntake } from "@/lib/forgeIntake";
 import { useCodegen } from "@/hooks/useCodegen";
 import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
+import { Tier1IntakeSheet } from "@/components/Tier1IntakeSheet";
+import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey } from "@/lib/tier1Memory";
 import { buildParkedEntryPayload } from "@/lib/parking";
 import {
   appendGithubPushReceiptMarker,
@@ -5397,6 +5399,7 @@ export default function Workspace() {
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
+  const [tier1SheetOpen, setTier1SheetOpen] = useState(false);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showDeepDive, setShowDeepDive] = useState(false);
@@ -7078,6 +7081,31 @@ export default function Workspace() {
     window.addEventListener(FORGE_INTAKE_OPEN_EVENT, open as EventListener);
     return () => window.removeEventListener(FORGE_INTAKE_OPEN_EVENT, open as EventListener);
   }, []);
+
+  // Open the Tier1IntakeSheet from anywhere.
+  useEffect(() => {
+    const open = () => setTier1SheetOpen(true);
+    window.addEventListener(TIER1_INTAKE_OPEN_EVENT, open as EventListener);
+    return () => window.removeEventListener(TIER1_INTAKE_OPEN_EVENT, open as EventListener);
+  }, []);
+
+  // Auto-prompt Tier 1 intake once per project per browser session when the
+  // project has no Tier 1 memory yet. This is Forge as the true entry point:
+  // a new project surfaces the 6-question intake before Atlas starts talking.
+  useEffect(() => {
+    if (!id || !Number.isFinite(id) || id <= 0) return;
+    const key = tier1AutoPromptKey(id);
+    try { if (sessionStorage.getItem(key)) return; } catch { /* ignore */ }
+    let cancelled = false;
+    getTier1Memory(id)
+      .then((m) => {
+        if (cancelled) return;
+        try { sessionStorage.setItem(key, "1"); } catch { /* ignore */ }
+        if (!m) setTier1SheetOpen(true);
+      })
+      .catch(() => { /* silent — backend may be transiently down */ });
+    return () => { cancelled = true; };
+  }, [id]);
 
 
 
@@ -9070,6 +9098,16 @@ export default function Workspace() {
         onIntake={handleForgeIntake}
         onOpenProjectDna={() => setShowProjectSettings(true)}
         projectName={project?.name ?? null}
+      />
+
+      <Tier1IntakeSheet
+        open={tier1SheetOpen}
+        projectId={Number.isFinite(id) && id > 0 ? id : null}
+        projectName={project?.name ?? null}
+        onClose={() => setTier1SheetOpen(false)}
+        onCommitted={() => {
+          toast.success("Tier 1 committed — Atlas has the foundation now.");
+        }}
       />
 
       <HistoryBookmarksSheet
