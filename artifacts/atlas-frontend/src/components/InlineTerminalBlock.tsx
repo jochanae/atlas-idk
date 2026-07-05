@@ -177,8 +177,8 @@ export function InlineTerminalBlock({ terminalCmd, terminalResult, projectId }: 
     const fullText = `$ ${result.command}\n${outputText}\nExit code ${result.exitCode ?? "unknown"} · ${result.durationMs}ms`;
     return (
       <div style={baseStyle}>
-        <div style={{ color: "var(--atlas-fg)", marginBottom: 8 }}>○ Atlas ran <code>{result.command}</code></div>
-        <pre style={{ margin: "0 0 8px", whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--atlas-fg)", fontFamily: "var(--app-font-mono)" }}>
+        <div style={{ color: "var(--atlas-fg)", marginBottom: 8 }}>○ Atlas ran <code className="bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))] rounded px-1.5 py-0.5 font-mono">{result.command}</code></div>
+        <pre className="bg-[hsl(var(--code-bg)/0.75)] text-[hsl(var(--code-fg))] border border-[hsl(var(--code-border))] backdrop-blur-md" style={{ margin: "0 0 8px", whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "var(--app-font-mono)" }}>
           {outputText}
         </pre>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>

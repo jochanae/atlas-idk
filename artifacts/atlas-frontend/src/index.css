@@ -1,0 +1,60 @@
+/* ── Code / token / neutral-badge semantic tokens ─────────────────────────── */
+
+/* Dark mode — obsidian + gold (unchanged visuals) */
+:root,
+.dark {
+  --code-bg: 220 35% 9%;
+  --code-border: 37 40% 30%;
+  --code-fg: 210 15% 92%;
+  --code-muted-fg: 215 10% 60%;
+
+  --token-bg: 220 30% 12%;
+  --token-border: 37 50% 35%;
+  --token-fg: 37 90% 65%;
+
+  --badge-neutral-bg: 220 30% 14%;
+  --badge-neutral-fg: 210 15% 85%;
+}
+
+/* Light mode — frosted neutral, no amber */
+:root.light,
+.light,
+[data-theme="parchment"] {
+  --code-bg: 220 15% 96%;
+  --code-border: 35 25% 78%;
+  --code-fg: 220 25% 20%;
+  --code-muted-fg: 220 12% 42%;
+
+  --token-bg: 220 15% 94%;
+  --token-border: 35 30% 72%;
+  --token-fg: 220 30% 18%;
+
+  --badge-neutral-bg: 220 15% 93%;
+  --badge-neutral-fg: 220 25% 22%;
+}
+
+/* ── Prose overrides — markdown-rendered chat ─────────────────────────────── */
+.prose :where(code):not(pre code),
+.atlas-prose :where(code):not(pre code) {
+  background: hsl(var(--token-bg));
+  color: hsl(var(--token-fg));
+  border: 1px solid hsl(var(--token-border));
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-weight: 500;
+}
+
+.prose pre,
+.atlas-prose pre {
+  background: hsl(var(--code-bg));
+  color: hsl(var(--code-fg));
+  border: 1px solid hsl(var(--code-border));
+  backdrop-filter: blur(12px);
+}
+
+.prose pre code,
+.atlas-prose pre code {
+  background: transparent;
+  border: 0;
+  color: inherit;
+}

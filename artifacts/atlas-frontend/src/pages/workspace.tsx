@@ -3222,7 +3222,7 @@ function TerminalPanel({
             <div style={{ color: termFgText, fontSize: 11, opacity: 0.8, marginBottom: 8 }}>
               {pendingConfirm.reason}
             </div>
-            <code style={{ display: "block", color: "rgba(201,162,76,0.85)", fontSize: 11, marginBottom: 10, opacity: 0.9 }}>
+            <code className="block mb-2.5 bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))] rounded px-1.5 py-0.5" style={{ fontSize: 11, opacity: 0.9 }}>
               $ {pendingConfirm.command}
             </code>
             {pendingConfirm.tier === 3 ? (
@@ -3386,7 +3386,7 @@ function TerminalPanel({
                       cursor: "pointer", display: "flex", flexDirection: "column", gap: 2,
                     }}
                   >
-                    <code style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-gold)" }}>{it.cmd}</code>
+                    <code className="bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))] rounded px-1.5 py-0.5" style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)" }}>{it.cmd}</code>
                     <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)" }}>{it.desc}</span>
                   </button>
                 ))}
@@ -3454,7 +3454,7 @@ function TerminalPanel({
                           cursor: "pointer", display: "flex", flexDirection: "column", gap: 2,
                         }}
                       >
-                        <code style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-gold)" }}>{it.cmd}</code>
+                        <code className="bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))] rounded px-1.5 py-0.5" style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)" }}>{it.cmd}</code>
                         <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)" }}>{it.desc}</span>
                       </button>
                     ))}

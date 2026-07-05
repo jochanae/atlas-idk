@@ -30,12 +30,7 @@ function renderMarkdownChildren(children: ReactNode): ReactNode {
         FILE_PILL_EXACT_PATTERN.test(part) ? (
           <span
             key={`${part}-${index}`}
-            className="rounded px-1.5 py-0.5 font-mono text-[12px]"
-            style={{
-              background: "var(--atlas-surface)",
-              border: "0.5px solid var(--atlas-border)",
-              color: "var(--atlas-muted)",
-            }}
+            className="rounded px-1.5 py-0.5 font-mono text-[12px] bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))]"
           >
             {part}
           </span>
@@ -89,11 +84,7 @@ export function CodeBlockCard({ language, code }: { language: string; code: stri
 
   return (
     <div
-      className="mb-3 overflow-hidden rounded-lg"
-      style={{
-        background: "var(--atlas-surface)",
-        border: "0.5px solid var(--atlas-border)",
-      }}
+      className="mb-3 overflow-hidden rounded-lg bg-[hsl(var(--code-bg))] text-[hsl(var(--code-fg))] border border-[hsl(var(--code-border))]"
     >
       <div
         className="flex items-center justify-between px-3 py-2"
@@ -128,8 +119,8 @@ export function CodeBlockCard({ language, code }: { language: string; code: stri
       </div>
       <div style={{ position: "relative" }}>
         <pre
-          className="overflow-x-auto p-3 font-mono text-[13px] leading-relaxed"
-          style={{ margin: 0, color: "var(--atlas-fg)", background: "transparent" }}
+          className="overflow-x-auto p-3 font-mono text-[13px] leading-relaxed backdrop-blur-md"
+          style={{ margin: 0, color: "hsl(var(--code-fg))", background: "hsl(var(--code-bg) / 0.75)" }}
         >
           <code>{visibleCode}</code>
         </pre>
@@ -227,13 +218,8 @@ export function MarkdownProse({ content }: { content: string }) {
             }
             return (
               <code
-                className="rounded px-1.5 py-0.5 font-mono"
-                style={{
-                  background: "var(--atlas-surface)",
-                  color: "inherit",
-                  border: "0.5px solid var(--atlas-border)",
-                  fontSize: "0.88em",
-                }}
+                className="rounded px-1.5 py-0.5 font-mono bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))]"
+                style={{ fontSize: "0.88em" }}
               >
                 {children}
               </code>

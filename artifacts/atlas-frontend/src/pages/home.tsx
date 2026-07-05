@@ -485,13 +485,11 @@ function HomeMarkdown({ text }: { text: string }) {
             return <code style={{ fontFamily: "var(--app-font-mono)", fontSize: 12, whiteSpace: "pre-wrap" }}>{children}</code>;
           }
           return (
-            <code style={{
+            <code className="bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))]" style={{
               fontFamily: "var(--app-font-mono)",
               fontSize: 11,
-              background: "var(--atlas-surface)",
               padding: "1px 5px",
               borderRadius: 3,
-              color: "rgba(201,162,76,0.9)",
             }}>
               {children}
             </code>
@@ -675,14 +673,13 @@ function HomeThoughtCard({
         {isChoice ? (
           <HomeChoiceCard text={text} />
         ) : isCodeLike ? (
-          <pre style={{
+          <pre className="bg-[hsl(var(--code-bg)/0.75)] text-[hsl(var(--code-fg))] border border-[hsl(var(--code-border))] backdrop-blur-md" style={{
             margin: 0,
             whiteSpace: "pre-wrap",
             overflowX: "auto",
             fontFamily: "var(--app-font-mono)",
             fontSize: 12,
             lineHeight: 1.6,
-            color: "var(--atlas-fg)",
           }}>
             <code>{text.trim()}</code>
           </pre>

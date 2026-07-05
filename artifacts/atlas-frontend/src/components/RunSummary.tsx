@@ -60,10 +60,8 @@ function ActionRow({ action }: { action: RunAction }) {
         {action.target && (
           <>
             {" "}
-            <code style={{
+            <code className="bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))] rounded px-1.5 py-0.5" style={{
               fontFamily: "var(--app-font-mono)", fontSize: 11,
-              background: "var(--atlas-surface)", padding: "1px 6px", borderRadius: 3,
-              color: "rgba(201,162,76,0.9)",
             }}>{action.target}</code>
           </>
         )}
