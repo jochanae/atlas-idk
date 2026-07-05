@@ -17,6 +17,7 @@ import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
 import { createTextPacer, type TextPacer } from "@/lib/textPacer";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
+import { cacheRoutesFromBuildFiles } from "@/lib/scanRoutes";
 
 type PriorMessage = Message;
 
@@ -478,6 +479,7 @@ export function useChatStream(
               res.content = processPreviewableContent(res.content, onPreviewCode);
             }
             const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
+            if (fes.length > 0) cacheRoutesFromBuildFiles(projectId, fes);
             const lps = res.linePatches ?? [];
             const fds: Array<{ path: string }> = res.fileDeletes ?? [];
             const fms: Array<{ from: string; to: string }> = res.fileMoves ?? [];
@@ -840,6 +842,7 @@ export function useChatStream(
                   const intentContent = typeof res?.content === "string" ? res.content : "";
                   await (pacer?.finish() ?? Promise.resolve());
                   const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : [])) as Array<{ path?: string; language?: string }>;
+                  if (fes.length > 0) cacheRoutesFromBuildFiles(projectId, fes as Array<{ path?: string; content?: string; contents?: string }>);
                   const lps = (res.linePatches ?? []) as Array<{ path: string }>;
                   const fds = (res.fileDeletes ?? []) as Array<{ path: string }>;
                   setMessages((prev) => [
@@ -905,6 +908,7 @@ export function useChatStream(
             res.content = processPreviewableContent(res.content, onPreviewCode);
           }
           const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
+          if (fes.length > 0) cacheRoutesFromBuildFiles(projectId, fes);
           const lps = res.linePatches ?? [];
           const fds: Array<{ path: string }> = res.fileDeletes ?? [];
           const fms: Array<{ from: string; to: string }> = res.fileMoves ?? [];

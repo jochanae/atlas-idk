@@ -7,6 +7,7 @@ import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useIsMobile } from "@/hooks/useBreakpoints";
 import { useStageArtifact } from "@/hooks/useComposerVisibility";
 import { useApplicationModel } from "@/hooks/useApplicationModel";
+import { cacheScannedRoutes, scanRoutesFromSource } from "@/lib/scanRoutes";
 
 export type ManifestDecision = {
   firstArtifact: { name: string; description: string; steps: string[] };
@@ -297,17 +298,26 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [contentFullscreen, setContentFullscreen] = useState(false);
   const [cachedScanRoutes, setCachedScanRoutes] = useState<PreviewRoute[]>([]);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`atlas-scan-${projectId}`);
-      const scan = raw ? JSON.parse(raw) as { routes?: string[]; pages?: string[] } : null;
-      const routes = Array.isArray(scan?.routes) ? scan.routes : [];
-      setCachedScanRoutes(routes.map((route) => {
-        const path = normalizeRoutePath(route);
-        return { label: routeLabelFromPath(path), path, description: path };
-      }));
-    } catch {
-      setCachedScanRoutes([]);
-    }
+    const scanKey = `atlas-scan-${projectId}`;
+    const loadCachedScanRoutes = () => {
+      try {
+        const raw = localStorage.getItem(scanKey);
+        const scan = raw ? JSON.parse(raw) as { routes?: string[]; pages?: string[] } : null;
+        const routes = Array.isArray(scan?.routes) ? scan.routes : [];
+        setCachedScanRoutes(routes.map((route) => {
+          const path = normalizeRoutePath(route);
+          return { label: routeLabelFromPath(path), path, description: path };
+        }));
+      } catch {
+        setCachedScanRoutes([]);
+      }
+    };
+    loadCachedScanRoutes();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === scanKey || e.key === null) loadCachedScanRoutes();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [projectId, previewMode]);
   const previewRoutes = useMemo<PreviewRoute[]>(() => {
     const seen = new Set<string>();
@@ -496,6 +506,28 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   useEffect(() => {
     onWsRunningChange?.(wsDsStatus === "running");
   }, [wsDsStatus, onWsRunningChange]);
+
+  // After a workspace build completes, scan App.tsx routes from the local fs API.
+  const prevWsDsStatusRef = useRef<WsDsStatus>("idle");
+  useEffect(() => {
+    const prev = prevWsDsStatusRef.current;
+    prevWsDsStatusRef.current = wsDsStatus;
+    if (wsDsStatus !== "running" || prev === "running") return;
+    const appPaths = ["src/App.tsx", "src/App.jsx", "App.tsx", "App.jsx"];
+    void (async () => {
+      for (const path of appPaths) {
+        try {
+          const r = await fetch(`/api/fs/${projectId}/file?path=${encodeURIComponent(path)}`, { credentials: "include" });
+          if (!r.ok) continue;
+          const d = await r.json() as { content?: string };
+          if (d.content) {
+            cacheScannedRoutes(String(projectId), scanRoutesFromSource(d.content));
+            break;
+          }
+        } catch { /* non-fatal */ }
+      }
+    })();
+  }, [wsDsStatus, projectId]);
 
   // Auto-rebuild when parent signals new files have been written (rebuildTrigger increments)
   const prevRebuildTrigger = useRef(rebuildTrigger ?? 0);
