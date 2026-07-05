@@ -129,7 +129,9 @@ import { submitForgeIntake } from "@/lib/forgeIntake";
 import { useCodegen } from "@/hooks/useCodegen";
 import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
 import { Tier1IntakeSheet } from "@/components/Tier1IntakeSheet";
-import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey, markTier1Skipped, wasTier1Skipped } from "@/lib/tier1Memory";
+import { Tier1ProgressCard } from "@/components/Tier1ProgressCard";
+import { useTier1Memory } from "@/hooks/useTier1Memory";
+import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey, markTier1Skipped, wasTier1Skipped, notifyTier1Updated } from "@/lib/tier1Memory";
 import { buildParkedEntryPayload } from "@/lib/parking";
 import {
   appendGithubPushReceiptMarker,
@@ -5400,6 +5402,8 @@ export default function Workspace() {
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
   const [tier1SheetOpen, setTier1SheetOpen] = useState(false);
+  const tier1ProjectId = Number.isFinite(id) && id > 0 ? id : null;
+  const { memory: tier1Memory } = useTier1Memory(tier1ProjectId);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showDeepDive, setShowDeepDive] = useState(false);
