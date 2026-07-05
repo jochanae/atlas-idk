@@ -66,6 +66,7 @@ import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { HistoryBookmarksSheet } from "../components/HistoryBookmarksSheet";
+import { WorkspacePresetsBar } from "@/components/workspace/WorkspacePresetsBar";
 import { SessionHistorySheet } from "../components/SessionHistorySheet";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { RefreshCw } from "lucide-react";
@@ -5234,6 +5235,17 @@ export default function Workspace() {
       window.removeEventListener("axiom:close-project-menu", closeProjectMenu);
     };
   }, []);
+  // Preset apply — fired by WorkspacePresetsBar
+  useEffect(() => {
+    const onApplyPreset = (e: Event) => {
+      const { model, lens } = (e as CustomEvent<{ model: string; lens: import("@/hooks/useWorkspacePresets").WorkspaceLens }>).detail;
+      if (model) setWsModel(model);
+      if (lens) setWsLens(lens as WorkspaceLens);
+    };
+    window.addEventListener("axiom:apply-preset", onApplyPreset);
+    return () => window.removeEventListener("axiom:apply-preset", onApplyPreset);
+  }, [setWsModel, setWsLens]);
+
   // MAP surface detected in chat → nudge user to Flow tab via toast
   useEffect(() => {
     const onMapSurface = () => {
@@ -9675,6 +9687,11 @@ export default function Workspace() {
               <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>Model</span>
               <button onClick={() => setShowWsModelSheet(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}>×</button>
             </div>
+            <WorkspacePresetsBar
+              currentModel={wsModel}
+              currentLens={wsLens}
+              onClose={() => setShowWsModelSheet(false)}
+            />
             <div style={{ padding: "0 14px" }}>
               {([
                 { id: "multi", label: "Multi-Agent", sub: "Default · Atlas orchestrates Claude, GPT, Gemini & Haiku", available: true, icon: "★" },
