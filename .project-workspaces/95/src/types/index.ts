@@ -1,35 +1,30 @@
-export type FunnelStep = {
-  step: number
-  title: string
-  description: string
-  cta: string
-  conversionTarget: number
+export interface FunnelStep {
+  stage: string;
+  action: string;
+  cta?: string;
 }
 
-export type Funnel = {
-  id: string
-  name: string
-  prompt: string
-  steps: FunnelStep[]
-  status: 'active' | 'draft' | 'archived'
-  createdAt: string
-  updatedAt: string
-  leads: number
-  conversions: number
+export interface FunnelMetrics {
+  leads: number;
+  conversionRate: number;
+  clicks: number;
 }
 
-export type SocialLink = {
-  id: string
-  platform: string
-  url: string
-  label: string
-  active: boolean
-  clicks: number
+export interface Funnel {
+  id: string;
+  name: string;
+  prompt: string;
+  steps: FunnelStep[];
+  metrics: FunnelMetrics;
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export type MetricSnapshot = {
-  totalLeads: number
-  totalConversions: number
-  activeFunnels: number
-  conversionRate: number
+export interface SocialLink {
+  id: string;
+  platform: string;
+  url: string;
+  active: boolean;
+  icon?: string;
 }

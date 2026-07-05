@@ -1,143 +1,160 @@
-import React, { useState } from 'react'
-import type { Funnel } from '../types'
-import { useFunnelStore } from '../hooks/useFunnelStore'
+import { useState } from 'react';
+import { Funnel } from '../types';
 
-type Props = {
-  funnel: Funnel
+interface Props {
+  funnel: Funnel;
+  onArchive: () => void;
+  onDuplicate: () => void;
+  onUpdate: (updates: Partial<Funnel>) => void;
 }
 
-const STATUS_LABELS: Record<Funnel['status'], string> = {
-  active: 'Active',
-  draft: 'Draft',
-  archived: 'Archived',
-}
+const STAGE_COLORS: Record<string, string> = {
+  Awareness: '#F59E0B',
+  Engagement: '#D97706',
+  Interest: '#D97706',
+  Consideration: '#B45309',
+  Conversion: '#92400E',
+};
 
-const STATUS_COLORS: Record<Funnel['status'], string> = {
-  active: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-  draft: 'text-white/50 bg-white/5 border-white/10',
-  archived: 'text-white/30 bg-white/3 border-white/8',
-}
+export default function FunnelCard({ funnel, onArchive, onDuplicate, onUpdate }: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState(funnel.name);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-export function FunnelCard({ funnel }: Props) {
-  const [expanded, setExpanded] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const { updateFunnel, archiveFunnel, duplicateFunnel, deleteFunnel } = useFunnelStore()
-
-  const conversionRate =
-    funnel.leads > 0 ? ((funnel.conversions / funnel.leads) * 100).toFixed(1) : '0.0'
-
-  const handleStatusToggle = () => {
-    if (funnel.status === 'active') updateFunnel(funnel.id, { status: 'draft' })
-    else if (funnel.status === 'draft') updateFunnel(funnel.id, { status: 'active' })
-  }
-
-  const handleDelete = () => {
-    if (confirmDelete) {
-      deleteFunnel(funnel.id)
-    } else {
-      setConfirmDelete(true)
-      setTimeout(() => setConfirmDelete(false), 3000)
-    }
-  }
+  const saveEdit = () => {
+    if (nameInput.trim()) onUpdate({ name: nameInput.trim() });
+    setEditing(false);
+  };
 
   return (
     <div
-      className="rounded-2xl border border-glass-border backdrop-blur-glass shadow-glass overflow-hidden animate-fade-up"
-      style={{ background: 'rgba(255,255,255,0.03)' }}
+      className="rounded-2xl overflow-hidden transition-all duration-200"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${funnel.archived ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.09)'}`,
+      }}
     >
-      {/* Header */}
-      <button
-        onClick={() => setExpanded((e) => !e)}
-        aria-expanded={expanded}
-        aria-label={`${expanded ? 'Collapse' : 'Expand'} funnel: ${funnel.name}`}
-        className="w-full text-left px-4 py-3 flex items-start justify-between gap-3 active:bg-white/5"
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[funnel.status]}`}
-            >
-              {STATUS_LABELS[funnel.status]}
-            </span>
+      {/* Card header */}
+      <div className="px-4 py-3.5 flex items-center gap-3">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex-1 flex items-center gap-3 min-w-0 text-left"
+        >
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 3h10M3.5 6h7M5 9h4M6.5 12h1" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
           </div>
-          <p className="text-sm font-medium text-white/90 truncate">{funnel.name}</p>
-          <div className="flex items-center gap-3 mt-1">
-            <span className="text-xs text-white/40">{funnel.leads} leads</span>
-            <span className="text-xs text-amber-gold font-medium">{conversionRate}% conv.</span>
-          </div>
-        </div>
-        <span className="text-white/30 text-lg mt-0.5 flex-shrink-0">
-          {expanded ? '↑' : '↓'}
-        </span>
-      </button>
 
-      {/* Expanded content */}
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <input
+                autoFocus
+                className="text-sm font-medium bg-transparent text-white outline-none border-b border-amber-400/50 w-full"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onBlur={saveEdit}
+                onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <p className="text-sm font-medium text-white truncate">{funnel.name}</p>
+            )}
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[11px] text-white/30">{funnel.steps.length} steps</span>
+              <span className="text-[11px] text-white/20">·</span>
+              <span className="text-[11px] text-white/30">{funnel.metrics.leads} leads</span>
+              <span className="text-[11px] text-white/20">·</span>
+              <span className="text-[11px]" style={{ color: '#F59E0B' }}>{funnel.metrics.conversionRate}% CVR</span>
+            </div>
+          </div>
+        </button>
+
+        {/* Chevron */}
+        <svg
+          width="16" height="16" viewBox="0 0 16 16" fill="none"
+          className="transition-transform duration-200 flex-shrink-0"
+          style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <path d="M4 6l4 4 4-4" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+
+        {/* Menu */}
+        <div className="relative">
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
+            className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors duration-150"
+            style={{ background: menuOpen ? 'rgba(255,255,255,0.08)' : 'transparent' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="3" r="1.2" fill="rgba(255,255,255,0.4)" />
+              <circle cx="7" cy="7" r="1.2" fill="rgba(255,255,255,0.4)" />
+              <circle cx="7" cy="11" r="1.2" fill="rgba(255,255,255,0.4)" />
+            </svg>
+          </button>
+
+          {menuOpen && (
+            <div
+              className="absolute right-0 top-9 z-20 rounded-xl overflow-hidden w-40 py-1"
+              style={{
+                background: '#1E1E2A',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+              }}
+            >
+              {[
+                { label: 'Rename', action: () => { setEditing(true); setMenuOpen(false); } },
+                { label: 'Duplicate', action: () => { onDuplicate(); setMenuOpen(false); } },
+                { label: funnel.archived ? 'Unarchive' : 'Archive', action: () => { onArchive(); setMenuOpen(false); } },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  className="w-full text-left px-4 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/5 transition-colors duration-100"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded steps */}
       {expanded && (
-        <div className="border-t border-glass-border">
-          {/* Steps */}
-          <div className="px-4 py-3 space-y-3">
-            {funnel.steps.map((step) => (
-              <div
-                key={step.step}
-                className="flex gap-3"
-              >
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-gold/15 border border-amber-gold/30 flex items-center justify-center mt-0.5">
-                  <span className="text-xs text-amber-gold font-semibold">{step.step}</span>
+        <div
+          className="px-4 pb-4 space-y-2 border-t"
+          style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+        >
+          <div className="pt-3 space-y-2">
+            {funnel.steps.map((step, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div
+                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-black mt-0.5"
+                  style={{ background: STAGE_COLORS[step.stage] ?? '#F59E0B' }}
+                >
+                  {i + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white/85">{step.title}</p>
-                  <p className="text-xs text-white/45 leading-relaxed mt-0.5">{step.description}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-xs text-amber-muted/80 font-medium">CTA:</span>
-                    <span className="text-xs text-amber-light">{step.cta}</span>
-                    <span className="ml-auto text-xs text-white/30">~{step.conversionTarget}% target</span>
-                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                    style={{ color: STAGE_COLORS[step.stage] ?? '#F59E0B' }}>
+                    {step.stage}
+                  </p>
+                  <p className="text-xs text-white/65 leading-relaxed">{step.action}</p>
+                  {step.cta && (
+                    <p className="text-[11px] text-white/35 mt-1 italic">"{step.cta}"</p>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-
-          {/* Actions */}
-          <div className="border-t border-glass-border px-4 py-3 flex items-center gap-2 flex-wrap">
-            {funnel.status !== 'archived' && (
-              <button
-                onClick={handleStatusToggle}
-                aria-label={funnel.status === 'active' ? 'Set funnel to draft' : 'Set funnel to active'}
-                className="text-xs px-3 py-1.5 rounded-lg border border-glass-border text-white/60 hover:text-white/90 hover:bg-white/5 transition-all active:scale-95"
-              >
-                {funnel.status === 'active' ? '⏸ Pause' : '▶ Activate'}
-              </button>
-            )}
-            <button
-              onClick={() => duplicateFunnel(funnel.id)}
-              aria-label="Duplicate funnel"
-              className="text-xs px-3 py-1.5 rounded-lg border border-glass-border text-white/60 hover:text-white/90 hover:bg-white/5 transition-all active:scale-95"
-            >
-              ⧉ Duplicate
-            </button>
-            {funnel.status !== 'archived' && (
-              <button
-                onClick={() => archiveFunnel(funnel.id)}
-                aria-label="Archive funnel"
-                className="text-xs px-3 py-1.5 rounded-lg border border-glass-border text-white/60 hover:text-white/90 hover:bg-white/5 transition-all active:scale-95"
-              >
-                ↓ Archive
-              </button>
-            )}
-            <button
-              onClick={handleDelete}
-              aria-label={confirmDelete ? 'Confirm delete funnel' : 'Delete funnel'}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-all active:scale-95 ml-auto ${
-                confirmDelete
-                  ? 'border-red-500/50 text-red-400 bg-red-500/10'
-                  : 'border-glass-border text-white/30 hover:text-red-400 hover:border-red-500/30'
-              }`}
-            >
-              {confirmDelete ? 'Confirm delete' : '× Delete'}
-            </button>
-          </div>
         </div>
       )}
     </div>
-  )
+  );
 }

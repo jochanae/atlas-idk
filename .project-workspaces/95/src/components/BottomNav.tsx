@@ -1,63 +1,125 @@
-import React from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom';
 
-type NavItem = {
-  path: string
-  label: string
-  icon: string
-}
+const NAV_ITEMS = [
+  {
+    path: '/',
+    label: 'Funnels',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path
+          d="M3 4h14M5 8h10M7 12h6M9 16h2"
+          stroke={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    path: '/metrics',
+    label: 'Metrics',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="3" y="11" width="3" height="6" rx="1" fill={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'} />
+        <rect x="8.5" y="7" width="3" height="10" rx="1" fill={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'} />
+        <rect x="14" y="3" width="3" height="14" rx="1" fill={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'} />
+      </svg>
+    ),
+  },
+  {
+    path: '/links',
+    label: 'Links',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path
+          d="M8 12a4 4 0 005.657 0l2-2a4 4 0 00-5.657-5.657l-1 1"
+          stroke={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+        <path
+          d="M12 8a4 4 0 00-5.657 0l-2 2a4 4 0 005.657 5.657l1-1"
+          stroke={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    path: '/insights',
+    label: 'Insights',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="7" stroke={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'} strokeWidth="1.75" />
+        <path
+          d="M10 6v4l3 2"
+          stroke={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    path: '/map',
+    label: 'Map',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path
+          d="M2 5l5-2 6 3 5-2v12l-5 2-6-3-5 2V5z"
+          stroke={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'}
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M7 3v12M13 6v12" stroke={active ? '#F59E0B' : 'rgba(255,255,255,0.35)'} strokeWidth="1.75" />
+      </svg>
+    ),
+  },
+];
 
-const NAV_ITEMS: NavItem[] = [
-  { path: '/', label: 'Funnels', icon: '⚡' },
-  { path: '/metrics', label: 'Metrics', icon: '◎' },
-  { path: '/links', label: 'Links', icon: '⊕' },
-]
+export default function BottomNav() {
+  const location = useLocation();
+  const navigate = useNavigate();
 
-export function BottomNav() {
-  const location = useLocation()
-  const navigate = useNavigate()
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <nav
-      aria-label="Main navigation"
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-glass-border backdrop-blur-glass"
+      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-2 py-2"
       style={{
-        background: 'rgba(10,10,15,0.92)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        background: 'rgba(10,10,15,0.96)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        paddingBottom: 'env(safe-area-inset-bottom, 8px)',
       }}
     >
-      <div className="flex items-center justify-around px-2 py-2">
-        {NAV_ITEMS.map((item) => {
-          const isActive = location.pathname === item.path
-          return (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              aria-label={`Navigate to ${item.label}`}
-              aria-current={isActive ? 'page' : undefined}
-              className="flex flex-col items-center gap-1 px-6 py-2 rounded-2xl transition-all duration-200 active:scale-90"
-              style={{
-                background: isActive ? 'rgba(196,151,72,0.1)' : 'transparent',
-              }}
+      {NAV_ITEMS.map((item) => {
+        const active = isActive(item.path);
+        return (
+          <button
+            key={item.path}
+            onClick={() => navigate(item.path)}
+            className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-150 min-w-[56px]"
+            style={{
+              background: active ? 'rgba(245,158,11,0.1)' : 'transparent',
+            }}
+          >
+            {item.icon(active)}
+            <span
+              className="text-[10px] font-medium tracking-wide"
+              style={{ color: active ? '#F59E0B' : 'rgba(255,255,255,0.35)' }}
             >
-              <span
-                className={`text-xl transition-all duration-200 ${
-                  isActive ? 'opacity-100' : 'opacity-30'
-                }`}
-              >
-                {item.icon}
-              </span>
-              <span
-                className={`text-xs font-medium tracking-wide transition-all duration-200 ${
-                  isActive ? 'text-amber-gold' : 'text-white/30'
-                }`}
-              >
-                {item.label}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+              {item.label}
+            </span>
+          </button>
+        );
+      })}
     </nav>
-  )
+  );
 }

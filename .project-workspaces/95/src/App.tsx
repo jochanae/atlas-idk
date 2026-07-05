@@ -1,51 +1,28 @@
-import React from 'react'
-import { HashRouter, Routes, Route } from 'react-router-dom'
-import { BottomNav } from './components/BottomNav'
-import { FunnelsPage } from './pages/FunnelsPage'
-import { MetricsPage } from './pages/MetricsPage'
-import { LinksPage } from './pages/LinksPage'
+import { HashRouter, Routes, Route } from 'react-router-dom';
+import Header from './components/Header';
+import BottomNav from './components/BottomNav';
+import FunnelsPage from './pages/FunnelsPage';
+import MetricsPage from './pages/MetricsPage';
+import LinksPage from './pages/LinksPage';
+import InsightsPage from './pages/InsightsPage';
+import MapPage from './pages/MapPage';
 
 export default function App() {
   return (
     <HashRouter>
-      <div
-        className="relative min-h-screen w-full overflow-x-hidden"
-        style={{
-          background: 'linear-gradient(160deg, #0a0a0f 0%, #0f0f1a 40%, #0a0a12 100%)',
-        }}
-      >
-        {/* Ambient smoky gradient orbs */}
-        <div
-          aria-hidden="true"
-          className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden"
-        >
-          <div
-            className="absolute top-[-20%] right-[-10%] w-96 h-96 rounded-full opacity-20"
-            style={{
-              background: 'radial-gradient(circle, rgba(196,151,72,0.15) 0%, transparent 70%)',
-              filter: 'blur(60px)',
-            }}
-          />
-          <div
-            className="absolute bottom-[20%] left-[-15%] w-80 h-80 rounded-full opacity-15"
-            style={{
-              background: 'radial-gradient(circle, rgba(100,80,160,0.2) 0%, transparent 70%)',
-              filter: 'blur(80px)',
-            }}
-          />
-        </div>
-
-        {/* Page content */}
-        <main className="relative z-10">
+      <div className="min-h-screen bg-[#0A0A0F] text-white flex flex-col">
+        <Header />
+        <main className="flex-1 overflow-y-auto pb-24">
           <Routes>
             <Route path="/" element={<FunnelsPage />} />
             <Route path="/metrics" element={<MetricsPage />} />
             <Route path="/links" element={<LinksPage />} />
+            <Route path="/insights" element={<InsightsPage />} />
+            <Route path="/map" element={<MapPage />} />
           </Routes>
         </main>
-
         <BottomNav />
       </div>
     </HashRouter>
-  )
+  );
 }

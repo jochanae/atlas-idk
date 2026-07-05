@@ -1,108 +1,104 @@
-import React, { useState, useRef } from 'react'
-import { generateFunnel } from '../api/funnelGenerator'
-import type { Funnel } from '../types'
-import { useFunnelStore } from '../hooks/useFunnelStore'
+import { useState, useRef } from 'react';
+import { generateFunnel } from '../api/funnelGenerator';
+import { useFunnelStore } from '../hooks/useFunnelStore';
 
-export function FunnelPrompt() {
-  const [prompt, setPrompt] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [lastGenerated, setLastGenerated] = useState<string | null>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const { addFunnel } = useFunnelStore()
+export default function FunnelPrompt() {
+  const [prompt, setPrompt] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { addFunnel } = useFunnelStore();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleGenerate = async () => {
-    const trimmed = prompt.trim()
-    if (!trimmed || isGenerating) return
-    setIsGenerating(true)
-    setError(null)
+  const handleSubmit = async () => {
+    const trimmed = prompt.trim();
+    if (!trimmed || loading) return;
+    setLoading(true);
+    setError('');
     try {
-      const steps = await generateFunnel(trimmed)
-      const name = trimmed.length > 48 ? trimmed.slice(0, 48) + '…' : trimmed
-      addFunnel({
-        name,
-        prompt: trimmed,
-        steps,
-        status: 'active',
-        leads: Math.floor(Math.random() * 120) + 10,
-        conversions: Math.floor(Math.random() * 30) + 2,
-      })
-      setLastGenerated(name)
-      setPrompt('')
-      textareaRef.current?.blur()
+      const funnel = await generateFunnel(trimmed);
+      addFunnel(funnel);
+      setPrompt('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } catch {
-      setError('Generation failed. Try again.')
+      setError('Generation failed. Try again.');
     } finally {
-      setIsGenerating(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleGenerate()
+      e.preventDefault();
+      handleSubmit();
     }
-  }
+  };
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPrompt(e.target.value);
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
 
   return (
-    <div className="px-4 pt-6 pb-2">
-      <div className="mb-3">
-        <h1 className="text-xl font-semibold text-amber-gold tracking-wide">Funnel Studio</h1>
-        <p className="text-sm text-white/40 mt-0.5">Describe your offer. Generate a 3-step lead funnel.</p>
+    <div
+      className="rounded-2xl p-4 space-y-3"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <div
+          className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(245,158,11,0.15)' }}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M5 1L6.5 4H9.5L7 6L8 9L5 7.5L2 9L3 6L0.5 4H3.5L5 1Z" fill="#F59E0B" />
+          </svg>
+        </div>
+        <span className="text-xs font-medium text-white/60 tracking-wide">Describe your offer or audience</span>
       </div>
 
-      <div
-        className="rounded-2xl border border-glass-border bg-glass-surface backdrop-blur-glass shadow-glass p-4"
-        style={{ background: 'rgba(255,255,255,0.03)' }}
+      <textarea
+        ref={textareaRef}
+        value={prompt}
+        onChange={handleInput}
+        onKeyDown={handleKeyDown}
+        placeholder="e.g. Coaching program for busy moms who want to start freelancing…"
+        rows={2}
+        className="w-full bg-transparent text-sm text-white placeholder-white/25 resize-none outline-none leading-relaxed"
+        style={{ minHeight: '48px', maxHeight: '120px' }}
+        disabled={loading}
+      />
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
+
+      <button
+        onClick={handleSubmit}
+        disabled={!prompt.trim() || loading}
+        className="w-full py-3 rounded-xl text-sm font-semibold tracking-wide transition-all duration-150 flex items-center justify-center gap-2"
+        style={{
+          background: prompt.trim() && !loading
+            ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
+            : 'rgba(255,255,255,0.06)',
+          color: prompt.trim() && !loading ? '#000' : 'rgba(255,255,255,0.25)',
+        }}
       >
-        <textarea
-          ref={textareaRef}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="e.g. Sell my 1:1 coaching for freelance designers who want to double their rates…"
-          rows={3}
-          disabled={isGenerating}
-          aria-label="Funnel prompt input"
-          className="w-full bg-transparent text-white/85 placeholder-white/25 text-sm resize-none leading-relaxed disabled:opacity-50"
-        />
-
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-glass-border">
-          <span className="text-xs text-white/25">
-            {prompt.length > 0 ? `${prompt.length} chars` : 'Press Enter to generate'}
-          </span>
-          <button
-            onClick={handleGenerate}
-            disabled={!prompt.trim() || isGenerating}
-            aria-label="Generate funnel"
-            className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200
-              bg-amber-gold text-obsidian-900 shadow-amber
-              disabled:opacity-40 disabled:cursor-not-allowed
-              hover:bg-amber-light active:scale-95"
-          >
-            {isGenerating ? (
-              <>
-                <span className="inline-block w-3 h-3 border-2 border-obsidian-900/40 border-t-obsidian-900 rounded-full animate-spin" />
-                Generating…
-              </>
-            ) : (
-              'Generate Funnel'
-            )}
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <p className="mt-2 text-xs text-red-400 px-1">{error}</p>
-      )}
-
-      {lastGenerated && !isGenerating && (
-        <div className="mt-3 px-3 py-2 rounded-xl bg-amber-glow border border-amber-muted/30 animate-fade-up">
-          <p className="text-xs text-amber-light">
-            ✓ Funnel created — <span className="font-medium">"{lastGenerated}"</span>
-          </p>
-        </div>
-      )}
+        {loading ? (
+          <>
+            <svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="6" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
+              <path d="M7 1a6 6 0 016 6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            Generating funnel…
+          </>
+        ) : (
+          'Generate Funnel'
+        )}
+      </button>
     </div>
-  )
+  );
 }

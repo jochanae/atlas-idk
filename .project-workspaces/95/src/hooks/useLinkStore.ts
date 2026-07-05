@@ -1,59 +1,58 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { SocialLink } from '../types'
+import { useState, useEffect } from 'react';
+import { SocialLink } from '../types';
 
-const STORAGE_KEY = 'solopreneur_links'
+const STORAGE_KEY = 'funnelos_links';
 
-const DEFAULT_LINKS: SocialLink[] = [
-  { id: 'link_1', platform: 'Instagram', url: 'https://instagram.com', label: '@yourhandle', active: true, clicks: 0 },
-  { id: 'link_2', platform: 'Twitter / X', url: 'https://x.com', label: '@yourhandle', active: true, clicks: 0 },
-  { id: 'link_3', platform: 'LinkedIn', url: 'https://linkedin.com', label: 'Your Name', active: false, clicks: 0 },
-  { id: 'link_4', platform: 'Newsletter', url: 'https://yoursubstack.com', label: 'Weekly drops', active: true, clicks: 0 },
-]
+const DEFAULTS: SocialLink[] = [
+  { id: '1', platform: 'Instagram', url: '', active: false, icon: 'ig' },
+  { id: '2', platform: 'TikTok', url: '', active: false, icon: 'tt' },
+  { id: '3', platform: 'LinkedIn', url: '', active: false, icon: 'li' },
+  { id: '4', platform: 'Twitter / X', url: '', active: false, icon: 'tw' },
+  { id: '5', platform: 'YouTube', url: '', active: false, icon: 'yt' },
+];
 
-function loadLinks(): SocialLink[] {
+function load(): SocialLink[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as SocialLink[]) : DEFAULT_LINKS
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : DEFAULTS;
   } catch {
-    return DEFAULT_LINKS
+    return DEFAULTS;
   }
 }
 
-function saveLinks(links: SocialLink[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(links))
+function save(links: SocialLink[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
 }
 
 export function useLinkStore() {
-  const [links, setLinks] = useState<SocialLink[]>(loadLinks)
+  const [links, setLinks] = useState<SocialLink[]>(load);
 
   useEffect(() => {
-    saveLinks(links)
-  }, [links])
+    save(links);
+  }, [links]);
 
-  const toggleLink = useCallback((id: string) => {
-    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, active: !l.active } : l)))
-  }, [])
+  const toggleLink = (id: string) => {
+    setLinks((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, active: !l.active } : l))
+    );
+  };
 
-  const updateLink = useCallback((id: string, updates: Partial<SocialLink>) => {
-    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)))
-  }, [])
+  const updateLink = (id: string, url: string) => {
+    setLinks((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, url } : l))
+    );
+  };
 
-  const addLink = useCallback((link: Omit<SocialLink, 'id' | 'clicks'>) => {
-    const newLink: SocialLink = {
-      ...link,
-      id: `link_${Date.now()}`,
-      clicks: 0,
-    }
-    setLinks((prev) => [...prev, newLink])
-  }, [])
+  const addLink = (platform: string, url: string) => {
+    const link: SocialLink = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      platform,
+      url,
+      active: true,
+      icon: platform.slice(0, 2).toLowerCase(),
+    };
+    setLinks((prev) => [...prev, link]);
+  };
 
-  const removeLink = useCallback((id: string) => {
-    setLinks((prev) => prev.filter((l) => l.id !== id))
-  }, [])
-
-  const recordClick = useCallback((id: string) => {
-    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, clicks: l.clicks + 1 } : l)))
-  }, [])
-
-  return { links, toggleLink, updateLink, addLink, removeLink, recordClick }
+  return { links, toggleLink, updateLink, addLink };
 }
