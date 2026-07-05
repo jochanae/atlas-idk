@@ -3015,6 +3015,16 @@ router.post("/chat", async (req, res): Promise<void> => {
       .catch(() => [] as Array<{ status: string }>),
   ]) : null;
 
+  // Fire Tier 2 + Tier 3 memory loads early — they only need projectId/userId which are
+  // already known here. Waiting until after Batch 1 + system-prompt construction wastes
+  // 100–200 ms per request because these are pure DB reads with no upstream dependencies.
+  const _earlyTierMemory = (!isFoundationMode && !isFlowMode && projectId && userId)
+    ? Promise.all([
+        loadTier2Block(projectId).catch((): string | null => null),
+        loadTier3Block(userId).catch((): string | null => null),
+      ])
+    : null;
+
   // Load project memory + repo info + node state from DB, plus user memory when authenticated.
   // Also check for Vercel connection so we know whether to defer BROWSER_VISIT until after deploy.
   const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow, userNarrativeRow, zipImportRow] = await Promise.all([
@@ -3866,12 +3876,9 @@ HARD RULE: Never answer from the context of a different project unless the user 
   if (globalNarrative && !isSelfContainedBuild) {
     systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH (living memory across all conversations — weave this in naturally when relevant, never recite it) ---\n${globalNarrative}\n--- END LIVING MEMORY ---`;
   }
-  // Tier 2 + Tier 3 — project patterns and cross-project signals (lazy-loaded from DB)
+  // Tier 2 + Tier 3 — project patterns and cross-project signals (fired early above)
   if (projectId > 0 && !isSelfContainedBuild && !isFoundationMode && !isFlowMode) {
-    const [tier2Block, tier3Block] = await Promise.all([
-      loadTier2Block(projectId),
-      loadTier3Block(userId),
-    ]);
+    const [tier2Block, tier3Block] = _earlyTierMemory ? await _earlyTierMemory : [null, null];
     if (tier2Block) {
       systemPrompt += `\n\n--- PROJECT PATTERNS (behavioral patterns Atlas has noticed in this project over time — use naturally when relevant, never enumerate as a list) ---\n${tier2Block}\n--- END PROJECT PATTERNS ---`;
     }

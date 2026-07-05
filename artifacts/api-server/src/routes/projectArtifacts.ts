@@ -281,7 +281,7 @@ router.post("/projects/:id/artifacts", async (req, res): Promise<void> => {
          (SELECT COALESCE(MAX(version), 0) + 1 FROM project_artifacts WHERE project_id = $1 AND type = $2),
          $3, $4::jsonb, $5::jsonb
        )
-       ON CONFLICT ON CONSTRAINT project_artifacts_version_uniq
+       ON CONFLICT (project_id, type, version)
        DO UPDATE SET
          title    = EXCLUDED.title,
          metadata = EXCLUDED.metadata,
