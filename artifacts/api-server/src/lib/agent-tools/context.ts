@@ -35,6 +35,7 @@ export interface AgentToolContext {
   sideEffects: AgentToolSideEffects;
   planState: AgentPlanState;
   structuredPlanEnabled: boolean;
+  messages: Array<{ role: string; content: string }>;
   stepId: () => string;
   emitToolCall: (name: string, args: Record<string, unknown>) => void;
   emitToolResult: (name: string, ok: boolean, ms: number) => void;

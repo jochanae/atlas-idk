@@ -24,6 +24,17 @@ export const PutTier1MemoryBodySchema = z.object({
 
 export type Tier1Answers = z.infer<typeof Tier1AnswersSchema>;
 
+export const TIER1_FIELD_KEYS = [
+  "building",
+  "audience",
+  "problem",
+  "outOfScope",
+  "successSignal",
+  "constraints",
+] as const;
+
+export type Tier1FieldKey = (typeof TIER1_FIELD_KEYS)[number];
+
 export const projectTier1MemoryTable = pgTable("project_tier1_memory", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }).unique(),
@@ -33,10 +44,17 @@ export const projectTier1MemoryTable = pgTable("project_tier1_memory", {
   outOfScope: text("out_of_scope").notNull().default(""),
   successSignal: text("success_signal").notNull().default(""),
   constraints: text("constraints").notNull().default(""),
+  tier1SkippedAt: timestamp("tier1_skipped_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
 export type ProjectTier1Memory = typeof projectTier1MemoryTable.$inferSelect;
+
+export function getTier1MissingFields(
+  row: Pick<ProjectTier1Memory, Tier1FieldKey> | null | undefined,
+): Tier1FieldKey[] {
+  return TIER1_FIELD_KEYS.filter((key) => !row?.[key]?.trim());
+}
 
 export function serializeTier1Memory(row: ProjectTier1Memory) {
   return {
@@ -49,5 +67,7 @@ export function serializeTier1Memory(row: ProjectTier1Memory) {
       constraints: row.constraints,
     },
     updatedAt: row.updatedAt.toISOString(),
+    skippedAt: row.tier1SkippedAt?.toISOString() ?? null,
+    missing: getTier1MissingFields(row),
   };
 }

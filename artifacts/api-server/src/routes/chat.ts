@@ -32,6 +32,7 @@ import { runArtifactOrchestrator, loadProjectArtifactState } from "../lib/artifa
 import { shouldUseAgentLoop, shouldUseStructuredPlan } from "../lib/agent-loop/flags";
 import { runAgentLoop } from "../lib/agent-loop/runner";
 import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
+import { buildTier1StatusBlock, loadTier1ForProject } from "../services/tier1";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3478,6 +3479,9 @@ HARD RULE: Never answer from the context of a different project unless the user 
     continuityBlock += `\n--- END PROJECT CONTEXT ---`;
     systemPrompt += continuityBlock;
 
+    const tier1Row = await loadTier1ForProject(project.id);
+    systemPrompt += buildTier1StatusBlock(tier1Row);
+
     // SESSION RESUMPTION — inject only on the very first assistant turn of a new session
     // (no prior assistant messages in history) after a meaningful gap (≥3 hours).
     const SESSION_GAP_MS = 3 * 60 * 60 * 1000; // 3 hours
@@ -4605,6 +4609,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
       role: h.role as "user" | "assistant",
       content: h.content,
     }));
+    const loopMessages = [...historyMessages, { role: "user" as const, content: message }];
 
     writeStep(res, { verb: "Analyzing", target: "your request", phase: "analyze" });
 
@@ -4615,7 +4620,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         res,
         abortSignal: abortController.signal,
         systemPrompt,
-        messages: [...historyMessages, { role: "user" as const, content: message }],
+        messages: loopMessages,
         projectId,
         sessionId,
         userId: userId!,

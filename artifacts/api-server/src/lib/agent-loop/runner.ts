@@ -98,6 +98,7 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
     sideEffects,
     planState,
     structuredPlanEnabled,
+    messages,
     stepId: () => `step-${stepCounter}-${crypto.randomUUID().slice(0, 8)}`,
     emitToolCall: (name, args) => {
       emitNamedEvent(res, "tool_call", { name, args, stepId: ctx.stepId() });

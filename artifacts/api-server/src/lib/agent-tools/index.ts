@@ -17,6 +17,8 @@ import { finishTool } from "./finish";
 import { proposePlanTool } from "./propose-plan";
 import { revisePlanTool } from "./revise-plan";
 import { commitPlanTool } from "./commit-plan";
+import { tier1UpsertFieldTool } from "./tier1-upsert-field";
+import { tier1MarkSkippedTool } from "./tier1-mark-skipped";
 
 export { createSideEffects, createPlanState } from "./context";
 export type { AgentToolContext, AgentFileEdit, AgentLinePatch, AgentToolSideEffects, AgentPlanState } from "./context";
@@ -38,6 +40,8 @@ export function buildAgentTools(ctx: AgentToolContext, options?: { includePlanTo
     run_tests: runTestsTool(ctx),
     screenshot_preview: screenshotPreviewTool(ctx),
     finish: finishTool(ctx),
+    tier1_upsert_field: tier1UpsertFieldTool(ctx),
+    tier1_mark_skipped: tier1MarkSkippedTool(ctx),
   };
 
   if (!options?.includePlanTools) {

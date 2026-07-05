@@ -682,8 +682,13 @@ async function ensureColumns(): Promise<void> {
         out_of_scope text NOT NULL DEFAULT '',
         success_signal text NOT NULL DEFAULT '',
         constraints text NOT NULL DEFAULT '',
+        tier1_skipped_at timestamptz,
         updated_at timestamptz NOT NULL DEFAULT now()
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE project_tier1_memory
+        ADD COLUMN IF NOT EXISTS tier1_skipped_at timestamptz
     `);
     logger.info("ensureColumns: project_tier1_memory table verified");
   } catch (err) {
