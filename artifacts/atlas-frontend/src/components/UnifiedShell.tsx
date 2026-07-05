@@ -32,6 +32,7 @@ import { FilesLauncher } from "@/components/FilesLauncher";
 import { ConversationsLauncher } from "@/components/ConversationsLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
+import { getAuthHeaders } from "@/lib/api";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   computeScoreFromNodeState,
@@ -376,10 +377,50 @@ function repoNameFromFullName(fullName: string): string {
   return trimmed.split("/").filter(Boolean).pop() || trimmed;
 }
 
-function ShellBranchChip() {
+type BranchInfo = { name: string; sha: string; protected: boolean };
+
+function ShellBranchChip({ projectId, linkedRepo }: { projectId: number | null; linkedRepo: { fullName: string } | null }) {
   const [open, setOpen] = useState(false);
-  const branches = ["main"]; // TODO: wire to repo branches list
-  const current = "main";
+  const [branches, setBranches] = useState<BranchInfo[]>([]);
+  const [current, setCurrent] = useState("main");
+  const [loading, setLoading] = useState(false);
+
+  // Fetch branches when the dropdown opens for the first time or the repo changes
+  const fetched = useRef<string | null>(null);
+  useEffect(() => {
+    if (!linkedRepo) { setBranches([]); setCurrent("main"); return; }
+    if (fetched.current === linkedRepo.fullName) return;
+    setLoading(true);
+    const headers: Record<string, string> = { "Content-Type": "application/json", ...getAuthHeaders() };
+    const [repoOwner, ...repoParts] = linkedRepo.fullName.split("/");
+    const repoName = repoParts.join("/");
+    fetch(`/api/github/repos/${encodeURIComponent(repoOwner ?? "")}/${encodeURIComponent(repoName)}/branches`, {
+      credentials: "include",
+      headers,
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: { branches: BranchInfo[] }) => {
+        fetched.current = linkedRepo.fullName;
+        setBranches(data.branches ?? []);
+        // Default to "main", fall back to first available
+        const names = (data.branches ?? []).map((b: BranchInfo) => b.name);
+        const def = names.includes("main") ? "main" : names.includes("master") ? "master" : names[0] ?? "main";
+        setCurrent(prev => names.includes(prev) ? prev : def);
+      })
+      .catch(() => { setBranches([]); })
+      .finally(() => setLoading(false));
+  }, [linkedRepo]);
+
+  const select = (branch: string) => {
+    setCurrent(branch);
+    setOpen(false);
+    if (projectId != null) {
+      window.dispatchEvent(new CustomEvent("axiom:branch-changed", { detail: { projectId, branch } }));
+    }
+  };
+
+  const displayBranches = branches.length > 0 ? branches : [{ name: current, sha: "", protected: false }];
+
   return (
     <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
       <button
@@ -388,6 +429,7 @@ function ShellBranchChip() {
         title="Branch"
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={!linkedRepo}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -396,12 +438,12 @@ function ShellBranchChip() {
           border: "1px solid var(--atlas-border)",
           borderRadius: 999,
           padding: "3px 8px",
-          cursor: "pointer",
+          cursor: linkedRepo ? "pointer" : "default",
           color: "var(--atlas-fg)",
           fontFamily: "var(--app-font-mono, monospace)",
           fontSize: 11,
           letterSpacing: "0.04em",
-          opacity: 0.92,
+          opacity: linkedRepo ? 0.92 : 0.45,
           pointerEvents: "auto",
         }}
       >
@@ -416,7 +458,7 @@ function ShellBranchChip() {
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
-      {open && (
+      {open && linkedRepo && (
         <>
           <div onPointerDown={() => setOpen(false)} onTouchStart={() => setOpen(false)} onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
           <div
@@ -426,7 +468,9 @@ function ShellBranchChip() {
               top: "calc(100% + 6px)",
               left: 0,
               zIndex: 50,
-              minWidth: 180,
+              minWidth: 200,
+              maxHeight: 320,
+              overflowY: "auto",
               background: "color-mix(in oklab, var(--atlas-surface) 96%, transparent)",
               backdropFilter: "blur(18px)",
               border: "1px solid rgba(201,162,76,0.22)",
@@ -436,21 +480,21 @@ function ShellBranchChip() {
             }}
           >
             <div style={{ fontFamily: "var(--app-font-mono, monospace)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", padding: "6px 10px 4px" }}>
-              Branch
+              {loading ? "Loading branches…" : `Branches · ${displayBranches.length}`}
             </div>
-            {branches.map((b) => (
+            {displayBranches.map((b) => (
               <button
-                key={b}
+                key={b.name}
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={() => select(b.name)}
                 style={{
                   width: "100%",
                   textAlign: "left",
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  padding: "8px 10px",
-                  background: b === current ? "rgba(201,162,76,0.10)" : "transparent",
+                  padding: "7px 10px",
+                  background: b.name === current ? "rgba(201,162,76,0.10)" : "transparent",
                   border: "none",
                   borderRadius: 8,
                   color: "var(--atlas-fg)",
@@ -458,14 +502,19 @@ function ShellBranchChip() {
                   fontSize: 12,
                   cursor: "pointer",
                 }}
+                onMouseEnter={(e) => { if (b.name !== current) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseLeave={(e) => { if (b.name !== current) e.currentTarget.style.background = "transparent"; }}
               >
-                <span style={{ opacity: b === current ? 1 : 0, color: "var(--atlas-gold)" }}>✓</span>
-                <span>{b}</span>
+                <span style={{ width: 12, flexShrink: 0, color: "var(--atlas-gold)", opacity: b.name === current ? 1 : 0 }}>✓</span>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
+                {b.protected && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4, flexShrink: 0 }} aria-label="protected">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                )}
               </button>
             ))}
-            <div style={{ fontFamily: "var(--app-font-sans)", fontSize: 11, color: "var(--atlas-muted)", padding: "6px 10px 4px", opacity: 0.7 }}>
-              More branches coming soon.
-            </div>
           </div>
         </>
       )}
@@ -683,7 +732,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
-        {!isMobile && <ShellBranchChip />}
+        {!isMobile && <ShellBranchChip projectId={projectId} linkedRepo={linkedRepo} />}
         </>
 
       )}

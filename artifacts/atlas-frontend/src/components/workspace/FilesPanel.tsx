@@ -644,11 +644,25 @@ export function FilesPanel({
     onFileContext(null);
   }, [projectId]);
 
+  // Active branch — driven by axiom:branch-changed events from ShellBranchChip
+  const [activeBranch, setActiveBranch] = useState<string | null>(null);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { projectId: epid, branch } = (e as CustomEvent<{ projectId: number; branch: string }>).detail;
+      if (epid === projectId) setActiveBranch(branch === "default" ? null : branch);
+    };
+    window.addEventListener("axiom:branch-changed", handler);
+    return () => window.removeEventListener("axiom:branch-changed", handler);
+  }, [projectId]);
+  // Reset when project switches
+  useEffect(() => { setActiveBranch(null); }, [projectId]);
+
   const loadCommits = useCallback(async () => {
     setCommitsLoading(true);
     setCommitsError(null);
     try {
-      const res = await fetch(`/api/projects/${projectId}/commits`, { credentials: "include" });
+      const branchQuery = activeBranch ? `?branch=${encodeURIComponent(activeBranch)}` : "";
+      const res = await fetch(`/api/projects/${projectId}/commits${branchQuery}`, { credentials: "include" });
       const data = await res.json().catch(() => ({})) as { commits?: GhCommitSummary[]; reason?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setCommits(data.commits ?? []);
@@ -660,7 +674,7 @@ export function FilesPanel({
     } finally {
       setCommitsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, activeBranch]);
 
   useEffect(() => {
     if (filesSubTab !== "history") return;

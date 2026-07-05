@@ -440,6 +440,22 @@ router.get("/github/tree", async (req, res): Promise<void> => {
   res.json({ tree: data.tree, branch, truncated: data.truncated });
 });
 
+// GET /api/github/repos/:owner/:repo/branches — list all branches for a repo
+router.get("/github/repos/:owner/:repo/branches", async (req, res): Promise<void> => {
+  const token = await getToken(req);
+  if (!token) { res.status(401).json({ error: "Missing token" }); return; }
+  const { owner, repo } = req.params;
+  if (!owner || !repo) { res.status(400).json({ error: "Missing owner or repo" }); return; }
+  try {
+    const resp = await fetch(`${GH_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches?per_page=100`, { headers: ghHeaders(token) });
+    if (!resp.ok) { res.status(resp.status).json({ error: "GitHub API error", detail: await resp.text() }); return; }
+    const data = await resp.json() as Array<{ name: string; commit: { sha: string }; protected?: boolean }>;
+    res.json({ branches: data.map(b => ({ name: b.name, sha: b.commit.sha, protected: b.protected ?? false })) });
+  } catch (e) {
+    res.status(500).json({ error: "GitHub API error", detail: String(e) });
+  }
+});
+
 // GET /api/github/file
 router.get("/github/file", async (req, res): Promise<void> => {
   const token = await getToken(req);
@@ -482,9 +498,11 @@ router.get("/projects/:projectId/commits", async (req, res): Promise<void> => {
   const token = await resolveGithubTokenForRequest(userId, project.githubToken ?? null);
   if (!repo) { res.json({ commits: [], reason: "parse_error", raw: project.linkedRepo ?? null }); return; }
   if (!token) { res.json({ commits: [], reason: "no_token" }); return; }
-  console.log("[github commits] parsed repo", { owner: repo.owner, repo: repo.repo });
 
-  const cacheKey = `${project.id}:${repo.fullName}`;
+  // Optional branch filter — e.g. ?branch=feat/my-feature
+  const branchParam = typeof req.query.branch === "string" && req.query.branch ? req.query.branch : null;
+
+  const cacheKey = `${project.id}:${repo.fullName}:${branchParam ?? "default"}`;
   const cached = commitsCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     res.json(cached.payload);
@@ -493,7 +511,8 @@ router.get("/projects/:projectId/commits", async (req, res): Promise<void> => {
 
   try {
     const repoPath = `${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`;
-    const listResp = await fetch(`${GH_API}/repos/${repoPath}/commits?per_page=20`, { headers: ghHeaders(token) });
+    const branchQuery = branchParam ? `&sha=${encodeURIComponent(branchParam)}` : "";
+    const listResp = await fetch(`${GH_API}/repos/${repoPath}/commits?per_page=30${branchQuery}`, { headers: ghHeaders(token) });
     if (!listResp.ok) {
       // 409 = empty repository (no commits yet) — return empty list, not an error
       if (listResp.status === 409) {
