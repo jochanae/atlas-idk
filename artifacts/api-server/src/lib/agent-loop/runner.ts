@@ -2,10 +2,10 @@ import crypto from "node:crypto";
 import type { Response } from "express";
 import { streamText, isStepCount, hasToolCall, gateway } from "ai";
 import { google } from "@ai-sdk/google";
-import { agentRunsTable, chatMessagesTable, db, sessionsTable } from "@workspace/db";
+import { agentRunsTable, chatMessagesTable, db, planArtifactsTable, sessionsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { composeAtlasPrompt } from "../atlas-core";
-import { buildAgentTools, createSideEffects, type AgentToolContext, type AgentToolSideEffects } from "../agent-tools";
+import { buildAgentTools, createSideEffects, createPlanState, type AgentToolContext, type AgentToolSideEffects, type AgentPlanState } from "../agent-tools";
 import { ensureProjectWorkspaceDir } from "../projectWorkspace";
 import { logger } from "../logger";
 
@@ -18,6 +18,16 @@ function resolveAgentModel() {
   return google("gemini-3-flash-preview");
 }
 
+function stopAfterProposePlan(structuredPlanEnabled: boolean, planState: AgentPlanState) {
+  return ({ steps }: { steps: Array<{ toolCalls?: Array<{ toolName: string }> }> }) => {
+    if (!structuredPlanEnabled || steps.length === 0) return false;
+    const lastStep = steps[steps.length - 1];
+    const calledProposePlan = lastStep.toolCalls?.some((tc) => tc.toolName === "propose_plan");
+    if (!calledProposePlan) return false;
+    return !planState.hasApprovedCommitPlan;
+  };
+}
+
 export interface AgentLoopParams {
   res: Response;
   abortSignal: AbortSignal;
@@ -27,6 +37,7 @@ export interface AgentLoopParams {
   sessionId: number;
   userId: number;
   activeModel: string;
+  structuredPlanEnabled?: boolean;
   writeStep: (res: Response, s: { verb: string; target?: string; phase: string }) => void;
 }
 
@@ -37,6 +48,7 @@ export interface AgentLoopResult {
   outputTokens: number;
   stopReason: string;
   sideEffects: AgentToolSideEffects;
+  planState: AgentPlanState;
 }
 
 function emitNamedEvent(res: Response, event: string, data: object) {
@@ -63,12 +75,14 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
     sessionId,
     userId,
     activeModel,
+    structuredPlanEnabled = false,
     writeStep,
   } = params;
 
   const startedAt = new Date();
   const workspaceDir = await ensureProjectWorkspaceDir(projectId);
   const sideEffects = createSideEffects();
+  const planState = createPlanState();
   let stepCounter = 0;
   const toolsCalled: Array<{ name: string; ok: boolean; ms: number }> = [];
   let totalTokensIn = 0;
@@ -82,6 +96,8 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
     workspaceDir,
     res,
     sideEffects,
+    planState,
+    structuredPlanEnabled,
     stepId: () => `step-${stepCounter}-${crypto.randomUUID().slice(0, 8)}`,
     emitToolCall: (name, args) => {
       emitNamedEvent(res, "tool_call", { name, args, stepId: ctx.stepId() });
@@ -90,11 +106,15 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
       toolsCalled.push({ name, ok, ms });
       emitNamedEvent(res, "tool_result", { name, ok, ms, stepId: ctx.stepId() });
     },
+    emitNamedEvent: (event, data) => emitNamedEvent(res, event, data),
     writeStep: (s) => writeStep(res, s),
   };
 
-  const tools = buildAgentTools(ctx);
-  const finalSystem = composeAtlasPrompt(systemPrompt, { includeTools: true });
+  const tools = buildAgentTools(ctx, { includePlanTools: structuredPlanEnabled });
+  const finalSystem = composeAtlasPrompt(systemPrompt, {
+    includeTools: true,
+    includePlanning: structuredPlanEnabled,
+  });
 
   const modelMessages = messages.map((m) => ({
     role: m.role as "user" | "assistant",
@@ -108,7 +128,14 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
       system: finalSystem,
       messages: modelMessages,
       tools,
-      stopWhen: [isStepCount(STEP_LIMIT), hasToolCall("finish")],
+      stopWhen: [
+        isStepCount(STEP_LIMIT),
+        hasToolCall("finish"),
+        ...(structuredPlanEnabled ? [stopAfterProposePlan(structuredPlanEnabled, planState)] : []),
+      ],
+      ...(structuredPlanEnabled
+        ? { toolApproval: { commit_plan: "user-approval" as const } }
+        : {}),
       abortSignal,
       experimental_telemetry: { isEnabled: true },
       onStepFinish: async ({ toolCalls, toolResults, usage }) => {
@@ -121,6 +148,14 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
 
         const calledFinish = toolCalls?.some((tc) => tc.toolName === "finish");
         if (calledFinish) stopReason = "completed";
+
+        const calledProposePlan = toolCalls?.some((tc) => tc.toolName === "propose_plan");
+        if (calledProposePlan && structuredPlanEnabled && !planState.hasApprovedCommitPlan) {
+          stopReason = "awaiting_plan_commit";
+        }
+
+        const commitApproved = toolResults?.some((tr) => tr.toolName === "commit_plan");
+        if (commitApproved) planState.hasApprovedCommitPlan = true;
       },
     });
 
@@ -132,6 +167,17 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
       if (part.type === "text-delta") {
         fullText += part.text;
         emitToken(res, part.text);
+      }
+      if (part.type === "tool-approval-request") {
+        emitNamedEvent(res, "tool_approval_request", {
+          approvalId: part.approvalId,
+          toolCallId: part.toolCall.toolCallId,
+          toolName: part.toolCall.toolName,
+          input: part.toolCall.input,
+        });
+        if (part.toolCall.toolName === "commit_plan") {
+          stopReason = "awaiting_plan_commit";
+        }
       }
       if (part.type === "error") {
         stopReason = "error";
@@ -182,6 +228,15 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
       })
       .returning();
     messageId = saved?.id;
+    ctx.messageId = messageId;
+
+    if (planState.activePlanId && messageId) {
+      await db
+        .update(planArtifactsTable)
+        .set({ messageId })
+        .where(eq(planArtifactsTable.id, planState.activePlanId));
+    }
+
     await db
       .update(sessionsTable)
       .set({ messageCount: sql`${sessionsTable.messageCount} + 1` })
@@ -214,5 +269,6 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
     outputTokens: totalTokensOut,
     stopReason,
     sideEffects,
+    planState,
   };
 }
