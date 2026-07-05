@@ -709,7 +709,7 @@ export default function Showcase() {
             data-theme="parchment"
             style={{
               padding: 24,
-              background: "#F7F4ED",
+              background: "#F8F9FA",
               color: "#0F172A",
               ...(syncScroll
                 ? { height: "calc(100vh - 57px)", overflowY: "auto" }
