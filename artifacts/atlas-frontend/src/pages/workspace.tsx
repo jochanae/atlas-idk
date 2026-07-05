@@ -9107,17 +9107,38 @@ export default function Workspace() {
 
       <Tier1IntakeSheet
         open={tier1SheetOpen}
-        projectId={Number.isFinite(id) && id > 0 ? id : null}
+        projectId={tier1ProjectId}
         projectName={project?.name ?? null}
         onClose={() => setTier1SheetOpen(false)}
         onCommitted={() => {
+          notifyTier1Updated();
           toast.success("Tier 1 committed — Atlas has the foundation now.");
         }}
         onSkip={() => {
-          if (Number.isFinite(id) && id > 0) markTier1Skipped(id);
+          if (tier1ProjectId) markTier1Skipped(tier1ProjectId);
           toast("Skipped — Atlas will gather this in conversation.");
         }}
       />
+
+      {/* Live Tier 1 progress — floats above composer, fills in as Atlas
+          discovers each field in conversation. Hidden when complete or
+          dismissed. */}
+      {tier1ProjectId && (
+        <div
+          style={{
+            position: "fixed",
+            left: "50%",
+            transform: "translateX(-50%)",
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+            width: "min(560px, calc(100vw - 24px))",
+            zIndex: 40,
+            pointerEvents: "auto",
+          }}
+        >
+          <Tier1ProgressCard memory={tier1Memory} projectId={tier1ProjectId} />
+        </div>
+      )}
+
 
       <HistoryBookmarksSheet
         projectId={Number.isFinite(id) ? id : null}
