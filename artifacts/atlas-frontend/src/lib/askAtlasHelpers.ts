@@ -22,3 +22,42 @@ export function buildAskAtlasHandoffSeed(
     "Let's move this into the workspace and build.",
   ].join("\n");
 }
+
+/**
+ * Shared handoff trigger — fire the Nexus buffer flush when a conversation
+ * hands off to a project. Best-effort, never throws, never blocks navigation.
+ * Consolidates the previously-duplicated fetch call sites in AskAtlasSurface
+ * (2x) and home.tsx (1x).
+ */
+export function triggerNexusHandoff(opts: {
+  conversationId?: string | null;
+  projectId: number;
+  messages: Array<{ role: string; content: string }>;
+  authToken?: string | null;
+  limit?: number;
+}): Promise<void> {
+  const { conversationId, projectId, messages, authToken, limit = 10 } = opts;
+  const trimmed = messages
+    .slice(-limit)
+    .map((m) => ({ role: m.role, content: m.content }));
+  return fetch("/api/nexus/handoff", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      messages: trimmed,
+      projectId,
+      conversationId: conversationId ?? undefined,
+    }),
+  })
+    .then(() => undefined)
+    .catch((err) => {
+      if (import.meta.env?.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn("[nexus-handoff] failed", err);
+      }
+    });
+}
