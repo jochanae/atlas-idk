@@ -28,6 +28,7 @@ import Showcase from "./pages/showcase";
 import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
 import Pricing from "./pages/pricing";
+import Settings from "./pages/settings";
 import Help from "./pages/help";
 import Admin from "./pages/admin";
 
@@ -242,6 +243,7 @@ function Router() {
           <Route path="/terms" component={Terms} />
           <Route path="/privacy" component={Privacy} />
           <Route path="/pricing" component={Pricing} />
+          <Route path="/settings" component={Settings} />
           <Route path="/help" component={Help} />
           <Route path="/vault" component={Vault} />
           <Route path="/secrets" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
