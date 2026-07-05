@@ -54,6 +54,7 @@ import agentApprovalsRouter from "./agentApprovals";
 import codegenRouter from "./codegen";
 import errorsRouter from "./errors";
 import browserRouter from "./browser";
+import urlIntelligenceRouter from "./urlIntelligence";
 import deployRouter from "./deploy";
 import zipRouter from "./zip";
 import searchRouter from "./search";
@@ -115,6 +116,7 @@ router.use(requireAuth, projectArtifactsRouter);
 router.use(requireAuth, agentApprovalsRouter);
 router.use(requireAuth, codegenRouter);
 router.use(requireAuth, browserRouter);
+router.use(requireAuth, urlIntelligenceRouter);
 router.use(requireAuth, deployRouter);
 router.use(requireAuth, zipRouter);
 

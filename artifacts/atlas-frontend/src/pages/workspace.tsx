@@ -132,6 +132,8 @@ import { Tier1IntakeSheet } from "@/components/Tier1IntakeSheet";
 import { Tier1ProgressCard } from "@/components/Tier1ProgressCard";
 import { useTier1Memory } from "@/hooks/useTier1Memory";
 import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey, markTier1Skipped, wasTier1Skipped, notifyTier1Updated } from "@/lib/tier1Memory";
+import { UrlPreviewCard } from "@/components/workspace/UrlPreviewCard";
+import { useUrlIntelligence } from "@/hooks/useUrlIntelligence";
 import { buildParkedEntryPayload } from "@/lib/parking";
 import {
   appendGithubPushReceiptMarker,
@@ -5404,6 +5406,7 @@ export default function Workspace() {
   const [tier1SheetOpen, setTier1SheetOpen] = useState(false);
   const tier1ProjectId = Number.isFinite(id) && id > 0 ? id : null;
   const { memory: tier1Memory } = useTier1Memory(tier1ProjectId);
+  const { detectedUrl: urlDetected, data: urlData, loading: urlLoading, error: urlError, dismiss: dismissUrl } = useUrlIntelligence(input);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showDeepDive, setShowDeepDive] = useState(false);
@@ -6694,17 +6697,36 @@ export default function Workspace() {
       planMode: opts?.mode === "plan",
       buildMode: opts?.mode === "build",
     };
+
+    // ── URL intelligence — inject screenshot + scraped context ──────────────
+    const urlAttachment = urlData?.screenshotRaw
+      ? { base64: urlData.screenshotRaw.base64, mediaType: urlData.screenshotRaw.mediaType, name: `screenshot-${urlData.host}.jpg` }
+      : null;
+    const urlCtx = urlData
+      ? [
+          `[URL Context: ${urlData.url}]`,
+          urlData.title        ? `Title: ${urlData.title}` : null,
+          urlData.description  ? `Description: ${urlData.description}` : null,
+          urlData.detectedService ? `Platform: ${urlData.detectedService}` : null,
+          urlData.headings?.length ? `Headings: ${urlData.headings.slice(0, 6).join(" › ")}` : null,
+          urlData.text         ? `Content:\n${urlData.text.slice(0, 2500)}` : null,
+        ].filter(Boolean).join("\n")
+      : null;
+    const combinedCtx = [urlCtx, zipContext || null].filter(Boolean).join("\n\n---\n\n") || undefined;
+    // Reset the URL preview after send so it doesn't persist to the next message
+    if (urlData) dismissUrl();
+
     if (imageFiles.length > 0) {
       Promise.all(imageFiles.map(f =>
         fileToBase64Safe(f).then(({ base64, mediaType }) => ({ base64, mediaType, name: f.name }))
       ))
-        .then((attachments) => doSend(fullText, sid, current, zipContext || undefined, attachments, sendOpts))
+        .then((attachments) => doSend(fullText, sid, current, combinedCtx, [...(urlAttachment ? [urlAttachment] : []), ...attachments], sendOpts))
         .catch(() => {
           const fallbackText = fullText || `[Attached: ${imageFiles.map(f => f.name).join(", ")}]`;
-          doSend(fallbackText, sid, current, zipContext || undefined, undefined, sendOpts);
+          doSend(fallbackText, sid, current, combinedCtx, urlAttachment ? [urlAttachment] : undefined, sendOpts);
         });
     } else {
-      doSend(fullText, sid, current, zipContext || undefined, undefined, sendOpts);
+      doSend(fullText, sid, current, combinedCtx, urlAttachment ? [urlAttachment] : undefined, sendOpts);
     }
   };
 
@@ -9120,6 +9142,30 @@ export default function Workspace() {
           toast("Skipped — Atlas will gather this in conversation.");
         }}
       />
+
+      {/* URL intelligence preview card — appears when a URL is detected in
+          the input. Dismissed on send or by user. */}
+      {urlDetected && (urlData || urlLoading || urlError) && (
+        <div
+          style={{
+            position: "fixed",
+            left: "50%",
+            transform: "translateX(-50%)",
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 152px)",
+            width: "min(560px, calc(100vw - 24px))",
+            zIndex: 41,
+            pointerEvents: "auto",
+          }}
+        >
+          <UrlPreviewCard
+            url={urlDetected}
+            data={urlData}
+            loading={urlLoading}
+            error={urlError}
+            onDismiss={dismissUrl}
+          />
+        </div>
+      )}
 
       {/* Live Tier 1 progress — floats above composer, fills in as Atlas
           discovers each field in conversation. Hidden when complete or
