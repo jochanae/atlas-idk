@@ -6,6 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable, projectZipImportsTable, nexusConversationsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { loadTier2Block, loadTier3Block, synthesizeTier2Patterns, synthesizeTier3Signals, synthesizeGlobalNarrative } from "../lib/tierMemory";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
 import { checkBuildReadiness } from "../lib/buildReadiness";
 import { eq, sql, and, gte, desc, ne, isNotNull, inArray } from "drizzle-orm";
@@ -3865,6 +3866,19 @@ HARD RULE: Never answer from the context of a different project unless the user 
   if (globalNarrative && !isSelfContainedBuild) {
     systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH (living memory across all conversations — weave this in naturally when relevant, never recite it) ---\n${globalNarrative}\n--- END LIVING MEMORY ---`;
   }
+  // Tier 2 + Tier 3 — project patterns and cross-project signals (lazy-loaded from DB)
+  if (projectId > 0 && !isSelfContainedBuild && !isFoundationMode && !isFlowMode) {
+    const [tier2Block, tier3Block] = await Promise.all([
+      loadTier2Block(projectId),
+      loadTier3Block(userId),
+    ]);
+    if (tier2Block) {
+      systemPrompt += `\n\n--- PROJECT PATTERNS (behavioral patterns Atlas has noticed in this project over time — use naturally when relevant, never enumerate as a list) ---\n${tier2Block}\n--- END PROJECT PATTERNS ---`;
+    }
+    if (tier3Block) {
+      systemPrompt += `\n\n--- CROSS-PROJECT PATTERNS (how this person works across all their projects — reference naturally when relevant, never mention tiers or patterns by name) ---\n${tier3Block}\n--- END CROSS-PROJECT PATTERNS ---`;
+    }
+  }
   if (memoryText) {
     systemPrompt += `\n\n--- PROJECT MEMORY (what you already know — use this) ---\n${memoryText}\n--- END PROJECT MEMORY ---`;
   }
@@ -6560,6 +6574,17 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       atlasResponse: fullText,
       projectId,
     });
+  }
+
+  // ── Tier 2–5 fire-and-forget synthesis ────────────────────────────────────
+  if (projectId > 0 && userId && !isFoundationMode && !isFlowMode && fullText.length > 120) {
+    void synthesizeTier2Patterns(projectId, userId);
+  }
+  if (userId && !isFoundationMode && !isFlowMode && fullText.length > 120) {
+    void synthesizeTier3Signals(userId);
+  }
+  if (userId && !isFoundationMode && !isFlowMode && !isSelfContainedBuild && fullText.length > 120) {
+    void synthesizeGlobalNarrative({ userId, userMessage: message, atlasResponse: fullText });
   }
 
   void recordGenerationRunInBackground({

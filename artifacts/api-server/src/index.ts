@@ -710,6 +710,48 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: nexus_conversations table failed — server will start anyway");
   }
+
+  // Tier 2 — per-project behavioral pattern synthesis
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_tier2_patterns (
+        project_id    INTEGER PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        patterns      TEXT NOT NULL,
+        synthesized_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    logger.info("ensureColumns: project_tier2_patterns table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: project_tier2_patterns failed — server will start anyway");
+  }
+
+  // Tier 3 — cross-project behavioral signals (persisted; replaces in-memory patternCache)
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_tier3_signals (
+        user_id       INTEGER PRIMARY KEY,
+        signals       TEXT NOT NULL,
+        synthesized_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    logger.info("ensureColumns: user_tier3_signals table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: user_tier3_signals failed — server will start anyway");
+  }
+
+  // Tier 4 — portfolio-level intelligence synthesis
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_tier4_portfolio (
+        user_id       INTEGER PRIMARY KEY,
+        summary       TEXT NOT NULL,
+        synthesized_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    logger.info("ensureColumns: user_tier4_portfolio table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: user_tier4_portfolio failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

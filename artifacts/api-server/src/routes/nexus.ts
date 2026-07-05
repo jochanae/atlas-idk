@@ -34,8 +34,7 @@ import {
   upsertTier1Field,
 } from "../services/tier1";
 
-// In-memory cache for cross-project behavioral pattern analysis (30-min TTL per user)
-const patternCache = new Map<string, { text: string; ts: number }>();
+import { loadTier3Block, loadTier4Block, synthesizeTier3Signals, synthesizeTier4Portfolio } from "../lib/tierMemory";
 
 const router: IRouter = Router();
 
@@ -1700,31 +1699,13 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     return lines.join("\n");
   })();
 
-  // Cross-project behavioral pattern recognition — Haiku pass (30-min in-memory cache per user)
-  const crossProjectPatterns: string | null = await (async () => {
-    if (ideaMode || projects.length < 2) return null;
-    const cacheKey = `patterns:${userId}`;
-    const cached = patternCache.get(cacheKey);
-    if (cached && (Date.now() - cached.ts) < 30 * 60 * 1000) return cached.text;
-    try {
-      const summaries = projects.map(p => {
-        const c = committedEntries.filter(e => e.projectId === p.id).length;
-        const k = parkedEntries.filter(e => e.projectId === p.id).length;
-        return `${p.name}: ${c} committed decisions, ${k} parked`;
-      }).join("\n");
-      const resp = await anthropic.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 200,
-        system: `You detect behavioral patterns across a product portfolio. Look at commit/park ratios and identify 1-3 honest, specific patterns about HOW this person works across projects — not what they're building. Focus on: where decisions stall, which projects move vs. sit, repeated tendencies.
-One pattern per line starting with "·". Short and specific. If nothing meaningful: respond with exactly: none`,
-        messages: [{ role: "user", content: `Portfolio:\n${summaries}\nSessions this week: ${portfolioHealth?.sessionsThisWeek ?? 0}` }],
-      });
-      const text = ((resp.content[0] as { type: string; text?: string })?.text ?? "").trim();
-      if (!text || text.toLowerCase() === "none") return null;
-      patternCache.set(cacheKey, { text, ts: Date.now() });
-      return text;
-    } catch { return null; }
-  })();
+  // Tier 3 — cross-project behavioral signals (DB-backed, persisted across restarts)
+  // Fire-and-forget synthesis to refresh; read current value immediately for injection.
+  if (userId && projects.length >= 2 && !ideaMode) {
+    void synthesizeTier3Signals(userId);
+    void synthesizeTier4Portfolio(userId);
+  }
+  const crossProjectPatterns: string | null = ideaMode ? null : await loadTier3Block(userId);
 
   // Scheduled health check awareness — summarise per-project monitor status for Atlas
   const monitorContext = await (async () => {
@@ -1938,6 +1919,12 @@ One pattern per line starting with "·". Short and specific. If nothing meaningf
   }
   if (crossProjectPatterns) {
     systemPrompt += `\n\n--- CROSS-PROJECT BEHAVIORAL PATTERNS ---\n${crossProjectPatterns}\nUse these patterns only when the conversation explicitly touches on working habits, momentum, or stalled progress. Do not insert them into every response.\n--- END PATTERNS ---`;
+  }
+
+  // Tier 4 — portfolio intelligence (synthesized summary of all projects)
+  const tier4Summary = await loadTier4Block(userId);
+  if (tier4Summary) {
+    systemPrompt += `\n\n--- PORTFOLIO INTELLIGENCE (honest synthesis of the user's full project portfolio — reference naturally, only when relevant to the conversation) ---\n${tier4Summary}\n--- END PORTFOLIO INTELLIGENCE ---`;
   }
 
   // Global narrative — living cross-thread memory. Read from user record, inject as
