@@ -44,7 +44,7 @@ function gitBadge(code: string): { label: string; color: string } | null {
   if (x === "?" && y === "?") return { label: "?", color: "rgba(180,180,180,0.65)" };
   if (x === "A" || y === "A") return { label: "A", color: "rgba(100,200,120,0.85)" };
   if (x === "D" || y === "D") return { label: "D", color: "rgba(220,80,80,0.8)" };
-  if (x === "M" || y === "M") return { label: "M", color: "rgba(201,162,76,0.9)" };
+  if (x === "M" || y === "M") return { label: "M", color: "rgba(var(--atlas-gold-rgb), 0.9)" };
   if (x === "R" || y === "R") return { label: "R", color: "rgba(140,160,220,0.85)" };
   return { label: code.trim().slice(0, 1) || "~", color: "rgba(180,180,180,0.7)" };
 }
@@ -78,8 +78,8 @@ function WorkspaceBlock({ projectId }: { projectId: number }) {
         <span>Workspace</span>
         {entries.length > 0 && (
           <span style={{
-            fontSize: 9, background: "rgba(201,162,76,0.14)",
-            color: "rgba(201,162,76,0.9)", border: "1px solid rgba(201,162,76,0.22)",
+            fontSize: 9, background: "rgba(var(--atlas-gold-rgb), 0.14)",
+            color: "rgba(var(--atlas-gold-rgb), 0.9)", border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)",
             borderRadius: 3, padding: "1px 5px",
           }}>{entries.length}</span>
         )}
@@ -177,7 +177,7 @@ function RunReceiptPill({
   const dotColor = failed
     ? "rgba(220,80,80,0.9)"
     : running
-    ? "rgba(201,162,76,0.9)"
+    ? "rgba(var(--atlas-gold-rgb), 0.9)"
     : "rgba(100,200,120,0.9)";
   const started = new Date(run.startedAt).getTime();
   const anchor = run.completedAt ? new Date(run.completedAt).getTime() : started;
@@ -191,8 +191,8 @@ function RunReceiptPill({
         display: "flex", alignItems: "center", gap: 10,
         padding: "8px 12px",
         borderRadius: 6,
-        background: selected ? "rgba(201,162,76,0.07)" : "rgba(255,255,255,0.02)",
-        border: `1px solid ${selected ? "rgba(201,162,76,0.3)" : "rgba(201,162,76,0.12)"}`,
+        background: selected ? "rgba(var(--atlas-gold-rgb), 0.07)" : "rgba(255,255,255,0.02)",
+        border: `1px solid ${selected ? "rgba(var(--atlas-gold-rgb), 0.3)" : "rgba(var(--atlas-gold-rgb), 0.12)"}`,
         borderLeft: `2px solid ${dotColor}`,
         cursor: onClick ? "pointer" : "default",
         WebkitTapHighlightColor: "transparent",
@@ -207,8 +207,8 @@ function RunReceiptPill({
           fontFamily: "var(--app-font-mono)", fontSize: 9.5,
           letterSpacing: "0.14em", textTransform: "uppercase",
           padding: "2px 6px", borderRadius: 3,
-          background: "rgba(201,162,76,0.1)", color: "var(--atlas-gold)",
-          border: "1px solid rgba(201,162,76,0.22)", flexShrink: 0,
+          background: "rgba(var(--atlas-gold-rgb), 0.1)", color: "var(--atlas-gold)",
+          border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)", flexShrink: 0,
         }}
       >{tag}</span>
       <span style={{
@@ -259,7 +259,7 @@ function FileContentBlock({ content }: { content: string }) {
       margin: "6px 0 0", padding: "10px 12px",
       borderRadius: 4,
       background: "rgba(0,0,0,0.35)",
-      border: "1px solid rgba(201,162,76,0.1)",
+      border: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
       fontFamily: "var(--app-font-mono)", fontSize: 10.5,
       color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
       overflowX: "auto", overflowY: "auto",
@@ -300,8 +300,8 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
         return (
           <div key={key} style={{
             borderRadius: 5,
-            border: `1px solid ${isExpanded ? "rgba(201,162,76,0.22)" : "rgba(201,162,76,0.08)"}`,
-            background: isExpanded ? "rgba(201,162,76,0.04)" : "rgba(255,255,255,0.015)",
+            border: `1px solid ${isExpanded ? "rgba(var(--atlas-gold-rgb), 0.22)" : "rgba(var(--atlas-gold-rgb), 0.08)"}`,
+            background: isExpanded ? "rgba(var(--atlas-gold-rgb), 0.04)" : "rgba(255,255,255,0.015)",
             overflow: "hidden",
           }}>
             <div style={{
@@ -311,7 +311,7 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
             }}
               onClick={toggle}
             >
-              <FileCode2 size={12} strokeWidth={1.6} style={{ color: "rgba(201,162,76,0.6)", flexShrink: 0 }} />
+              <FileCode2 size={12} strokeWidth={1.6} style={{ color: "rgba(var(--atlas-gold-rgb), 0.6)", flexShrink: 0 }} />
               <span style={{
                 flex: 1, minWidth: 0,
                 fontFamily: "var(--app-font-mono)", fontSize: 11.5,
@@ -330,9 +330,9 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
                   style={{
                     fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
                     textTransform: "uppercase", flexShrink: 0,
-                    background: isExpanded ? "rgba(201,162,76,0.14)" : "transparent",
-                    border: `1px solid rgba(201,162,76,${isExpanded ? "0.35" : "0.2"})`,
-                    color: `rgba(201,162,76,${isExpanded ? "1" : "0.7"})`,
+                    background: isExpanded ? "rgba(var(--atlas-gold-rgb), 0.14)" : "transparent",
+                    border: `1px solid rgba(var(--atlas-gold-rgb), ${isExpanded ? "0.35" : "0.2"})`,
+                    color: `rgba(var(--atlas-gold-rgb), ${isExpanded ? "1" : "0.7"})`,
                     borderRadius: 3, padding: "2px 7px", cursor: "pointer",
                   }}
                 >{isExpanded ? "▲ Hide" : "▼ View"}</button>
@@ -365,8 +365,8 @@ function stepColor(verb: string): string {
     FILE_READ:  "rgba(100,170,220,0.85)",
     SEARCH:     "rgba(100,200,180,0.85)",
     INSPECT:    "rgba(180,160,100,0.85)",
-    FILE_EDIT:  "rgba(201,162,76,0.95)",
-    LINE_PATCH: "rgba(201,162,76,0.75)",
+    FILE_EDIT:  "rgba(var(--atlas-gold-rgb), 0.95)",
+    LINE_PATCH: "rgba(var(--atlas-gold-rgb), 0.75)",
     FILE_DELETE:"rgba(220,80,80,0.85)",
     SUMMARY:    "rgba(100,200,120,0.85)",
   };
@@ -421,7 +421,7 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
         {!isLast && (
           <div style={{
             width: 1, flex: 1, minHeight: 10,
-            background: "rgba(201,162,76,0.1)", marginTop: 3,
+            background: "rgba(var(--atlas-gold-rgb), 0.1)", marginTop: 3,
           }} />
         )}
       </div>
@@ -456,7 +456,7 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
           )}
           {canExpand && !alwaysOpen && (
             <span style={{
-              fontSize: 9, color: "rgba(201,162,76,0.45)",
+              fontSize: 9, color: "rgba(var(--atlas-gold-rgb), 0.45)",
               fontFamily: "var(--app-font-mono)", flexShrink: 0, marginLeft: "auto",
             }}>{open ? "▲" : "▼"}</span>
           )}
@@ -533,7 +533,7 @@ function WorkspaceRunReceipts({
   if (visibleRuns.length === 0) return null;
 
   return (
-    <div style={{ borderBottom: "1px solid rgba(201,162,76,0.08)" }}>
+    <div style={{ borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.08)" }}>
       {/* Section header — tap to expand/collapse */}
       <button
         type="button"
@@ -551,8 +551,8 @@ function WorkspaceRunReceipts({
           color: "var(--atlas-gold)", opacity: 0.7,
         }}>Builds</span>
         <span style={{
-          fontSize: 9, background: "rgba(201,162,76,0.12)",
-          color: "rgba(201,162,76,0.8)", border: "1px solid rgba(201,162,76,0.2)",
+          fontSize: 9, background: "rgba(var(--atlas-gold-rgb), 0.12)",
+          color: "rgba(var(--atlas-gold-rgb), 0.8)", border: "1px solid rgba(var(--atlas-gold-rgb), 0.2)",
           borderRadius: 3, padding: "1px 5px",
           fontFamily: "var(--app-font-mono)",
         }}>{visibleRuns.length}</span>
@@ -698,8 +698,8 @@ export function ViewChangesPanel({
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           padding: "10px 14px",
-          borderBottom: "1px solid rgba(201,162,76,0.1)",
-          background: "rgba(201,162,76,0.04)",
+          borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
+          background: "rgba(var(--atlas-gold-rgb), 0.04)",
         }}>
           <span style={{
             fontSize: 9.5, fontFamily: "var(--app-font-mono)",
@@ -716,7 +716,7 @@ export function ViewChangesPanel({
             type="button" onClick={clearRunFilter} aria-label="Clear run filter"
             style={{
               display: "flex", alignItems: "center", gap: 4,
-              background: "transparent", border: "1px solid rgba(201,162,76,0.25)",
+              background: "transparent", border: "1px solid rgba(var(--atlas-gold-rgb), 0.25)",
               color: "var(--atlas-muted)", cursor: "pointer",
               padding: "3px 7px", borderRadius: 3,
               fontFamily: "var(--app-font-mono)", fontSize: 9.5,
@@ -736,7 +736,7 @@ export function ViewChangesPanel({
       {/* ── Toggle ── */}
       <div style={{
         display: "flex", padding: "10px 14px 8px", gap: 4,
-        borderBottom: "1px solid rgba(201,162,76,0.08)",
+        borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.08)",
       }}>
         {(["timeline", "changes"] as const).map((k) => {
           const active = lens === k;
@@ -747,8 +747,8 @@ export function ViewChangesPanel({
                 fontFamily: "var(--app-font-mono)", fontSize: 10,
                 letterSpacing: "0.12em", textTransform: "uppercase",
                 padding: "5px 11px", borderRadius: 4,
-                background: active ? "rgba(201,162,76,0.14)" : "transparent",
-                border: `1px solid ${active ? "rgba(201,162,76,0.35)" : "rgba(201,162,76,0.12)"}`,
+                background: active ? "rgba(var(--atlas-gold-rgb), 0.14)" : "transparent",
+                border: `1px solid ${active ? "rgba(var(--atlas-gold-rgb), 0.35)" : "rgba(var(--atlas-gold-rgb), 0.12)"}`,
                 color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
                 cursor: "pointer",
               }}
@@ -774,7 +774,7 @@ export function ViewChangesPanel({
       )}
 
       {/* ── Workspace block ── */}
-      <div style={{ borderTop: "1px solid rgba(201,162,76,0.08)", marginTop: "auto" }}>
+      <div style={{ borderTop: "1px solid rgba(var(--atlas-gold-rgb), 0.08)", marginTop: "auto" }}>
         <WorkspaceBlock projectId={projectId} />
       </div>
     </div>
