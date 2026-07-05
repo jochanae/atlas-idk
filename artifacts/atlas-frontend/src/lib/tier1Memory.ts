@@ -112,3 +112,13 @@ export function openTier1IntakeSheet() {
 
 /** Sessionstorage key so we only auto-prompt once per project per browser session. */
 export const tier1AutoPromptKey = (projectId: number) => `atlas-tier1-autoprompted-${projectId}`;
+
+/** LocalStorage key: user explicitly skipped Tier 1 for this project — never auto-open again. */
+export const tier1SkippedKey = (projectId: number) => `atlas-tier1-skipped-${projectId}`;
+export function markTier1Skipped(projectId: number) {
+  try { localStorage.setItem(tier1SkippedKey(projectId), "1"); } catch { /* ignore */ }
+}
+export function wasTier1Skipped(projectId: number): boolean {
+  try { return localStorage.getItem(tier1SkippedKey(projectId)) === "1"; } catch { return false; }
+}
+
