@@ -3613,8 +3613,7 @@ export default function Home() {
     thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
     setAskAtlasConversationId(null);
-    try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
-    try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+    askAtlasSession.clearConversationId();
     nexusChat.clearMessages();
     askAtlasChat.clearMessages();
     setReviewingPlanIds(new Set());
@@ -5556,7 +5555,7 @@ export default function Home() {
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                try { sessionStorage.setItem("atlas-ask-atlas-closed", "1"); } catch {}
+                askAtlasSession.markClosed();
                 setAskAtlasSurfaceOpen(false);
                 askAtlasChat.abort();
                 askAtlasChat.clearMessages();
