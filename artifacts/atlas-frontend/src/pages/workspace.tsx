@@ -129,7 +129,7 @@ import { submitForgeIntake } from "@/lib/forgeIntake";
 import { useCodegen } from "@/hooks/useCodegen";
 import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
 import { Tier1IntakeSheet } from "@/components/Tier1IntakeSheet";
-import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey } from "@/lib/tier1Memory";
+import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey, markTier1Skipped, wasTier1Skipped } from "@/lib/tier1Memory";
 import { buildParkedEntryPayload } from "@/lib/parking";
 import {
   appendGithubPushReceiptMarker,
