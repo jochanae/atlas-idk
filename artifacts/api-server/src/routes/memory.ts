@@ -13,6 +13,7 @@ import {
   answersToColumns,
   appendTier1LedgerEntry,
   loadTier1ForProject,
+  upsertTier1,
 } from "../services/tier1";
 
 const router = Router();
@@ -40,19 +41,14 @@ router.post("/memory/tier1", async (req, res): Promise<void> => {
       return;
     }
 
-    const existing = await loadTier1ForProject(projectId);
-    if (existing) {
-      res.status(409).json({ error: "Tier 1 memory already exists for this project" });
-      return;
-    }
-
-    const [row] = await db
-      .insert(projectTier1MemoryTable)
-      .values({ projectId, ...answersToColumns(answers) })
-      .returning();
+    // Upsert: if Atlas already wrote partial fields via tier1_upsert_field between
+    // the time the intake sheet opened and the user hit Commit, the POST would have
+    // returned 409. Use upsertTier1 so the commit always succeeds — existing fields
+    // are overwritten with the user's explicit answers.
+    const row = await upsertTier1(projectId, answers);
 
     await appendTier1LedgerEntry(projectId);
-    logger.info({ projectId }, "Tier 1 memory created");
+    logger.info({ projectId }, "Tier 1 memory committed (upsert)");
     res.status(201).json(serializeTier1Memory(row));
   } catch (err) {
     req.log.error({ err }, "POST /memory/tier1 failed");
