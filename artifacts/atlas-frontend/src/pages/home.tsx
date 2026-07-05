@@ -2389,19 +2389,12 @@ export default function Home() {
       const projectId = Number(project.id);
       if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
       const effectiveConversationId = activeConversationId;
-      void fetch("/api/nexus/handoff", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: nexusChat.messages.map(m => ({ role: m.role, content: m.content })),
-          projectId: projectId,
-          conversationId: effectiveConversationId ?? undefined,
-        }),
-      }).catch(() => null);
+      void triggerNexusHandoff({
+        conversationId: effectiveConversationId,
+        projectId,
+        messages: nexusChat.messages.map((m) => ({ role: m.role, content: m.content })),
+        authToken,
+      });
       try {
         sessionStorage.setItem(THINK_FREELY_THREAD_STORAGE_KEY, JSON.stringify(messagesToKeep));
       } catch {}
