@@ -102,6 +102,29 @@ export const ListEntriesQueryParams = z.object({
   status: z.string().optional(),
 });
 
+// ── Capacity ──────────────────────────────────────────────────────────────
+
+export const CapacityEstimateBody = z.object({
+  kind: z.enum(["forge_codegen", "sketch_generation", "image_edit", "agent_execution"]),
+  payload: z.object({
+    prompt: z.string().optional(),
+    context: z.unknown().optional(),
+    model: z.string().optional(),
+  }).optional(),
+});
+
+export const CapacityConsumeBody = z.object({
+  kind: z.enum(["forge_codegen", "sketch_generation", "image_edit", "agent_execution"]),
+  estimateId: z.string().optional(),
+  actualCredits: z.number().nonnegative(),
+  actualTokens: z.number().nonnegative().optional(),
+  filesTouched: z.number().nonnegative().optional(),
+  componentsAdded: z.number().nonnegative().optional(),
+  runId: z.string().optional(),
+  ledgerEntryId: z.string().optional(),
+  model: z.string().optional(),
+});
+
 // ── Thoughts ──────────────────────────────────────────────────────────────
 
 export const CreateThoughtBody = z.object({

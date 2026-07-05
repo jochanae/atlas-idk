@@ -10,6 +10,10 @@ import {
 } from "@workspace/db/schema";
 import { eq, desc, count } from "drizzle-orm";
 import { getUserFromCookie } from "./auth";
+import {
+  bootstrapCapacityPool,
+  subscriptionTierToCapacityTier,
+} from "../lib/capacity";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -82,6 +86,11 @@ router.patch("/admin/users/:id", requireSuperAdmin, async (req, res): Promise<vo
 
   const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+
+  if (subscriptionTier !== undefined) {
+    const tier = subscriptionTierToCapacityTier(updated.subscriptionTier);
+    bootstrapCapacityPool(updated.id, tier).catch(() => {});
+  }
 
   res.json({ id: updated.id, email: updated.email, role: updated.role, subscriptionTier: updated.subscriptionTier });
 });
