@@ -31,11 +31,12 @@ type Props = {
   projectName?: string | null;
   onClose: () => void;
   onCommitted?: (memory: Tier1Memory) => void;
+  onSkip?: () => void;
 };
 
 const STEP_COUNT = TIER1_QUESTIONS.length; // 6 questions + 1 review
 
-export function Tier1IntakeSheet({ open, projectId, projectName, onClose, onCommitted }: Props) {
+export function Tier1IntakeSheet({ open, projectId, projectName, onClose, onCommitted, onSkip }: Props) {
   const [answers, setAnswers] = useState<Tier1Answers>(EMPTY_TIER1);
   const [step, setStep] = useState(0); // 0..STEP_COUNT (STEP_COUNT = review)
   const [existing, setExisting] = useState<Tier1Memory | null>(null);
@@ -332,6 +333,23 @@ export function Tier1IntakeSheet({ open, projectId, projectName, onClose, onComm
           >
             <ChevronLeft size={13} /> Back
           </button>
+          {onSkip && (
+            <button
+              type="button"
+              onClick={() => { onSkip(); onClose(); }}
+              title="Let Atlas gather this conversationally"
+              style={{
+                padding: "8px 10px", borderRadius: 8,
+                background: "transparent", border: "none",
+                color: "rgba(var(--atlas-muted-rgb),0.65)",
+                fontFamily: "var(--app-font-mono)", fontSize: 10,
+                letterSpacing: "0.14em", textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+            >
+              Skip — Atlas will ask
+            </button>
+          )}
           <div style={{ flex: 1 }} />
           <span style={{ ...monoLabel, color: "rgba(var(--atlas-muted-rgb), 0.5)" }}>⌘↵</span>
           {isReview ? (

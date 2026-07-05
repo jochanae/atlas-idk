@@ -129,7 +129,7 @@ import { submitForgeIntake } from "@/lib/forgeIntake";
 import { useCodegen } from "@/hooks/useCodegen";
 import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
 import { Tier1IntakeSheet } from "@/components/Tier1IntakeSheet";
-import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey } from "@/lib/tier1Memory";
+import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey, markTier1Skipped, wasTier1Skipped } from "@/lib/tier1Memory";
 import { buildParkedEntryPayload } from "@/lib/parking";
 import {
   appendGithubPushReceiptMarker,
@@ -7094,6 +7094,7 @@ export default function Workspace() {
   // a new project surfaces the 6-question intake before Atlas starts talking.
   useEffect(() => {
     if (!id || !Number.isFinite(id) || id <= 0) return;
+    if (wasTier1Skipped(id)) return; // user explicitly opted out — never auto-open
     const key = tier1AutoPromptKey(id);
     try { if (sessionStorage.getItem(key)) return; } catch { /* ignore */ }
     let cancelled = false;
@@ -9107,6 +9108,10 @@ export default function Workspace() {
         onClose={() => setTier1SheetOpen(false)}
         onCommitted={() => {
           toast.success("Tier 1 committed — Atlas has the foundation now.");
+        }}
+        onSkip={() => {
+          if (Number.isFinite(id) && id > 0) markTier1Skipped(id);
+          toast("Skipped — Atlas will gather this in conversation.");
         }}
       />
 
