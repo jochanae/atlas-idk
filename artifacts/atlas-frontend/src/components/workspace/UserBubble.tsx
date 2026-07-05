@@ -88,8 +88,8 @@ export function UserBubble({
             padding: "9px 13px",
             borderRadius: "12px 12px 4px 12px",
             width: "100%",
-            background: "rgba(201,162,76,0.12)",
-            border: "0.5px solid rgba(201,162,76,0.3)",
+            background: bubbleBg,
+            border: `0.5px solid ${bubbleBorder}`,
           }}
         >
           {/* Attachment thumbnail row — ABOVE the text, prominent, tap-to-expand */}
