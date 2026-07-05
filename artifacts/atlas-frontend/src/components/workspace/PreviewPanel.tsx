@@ -7,7 +7,7 @@ import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useIsMobile } from "@/hooks/useBreakpoints";
 import { useStageArtifact } from "@/hooks/useComposerVisibility";
 import { useApplicationModel } from "@/hooks/useApplicationModel";
-import { cacheScannedRoutes, scanRoutesFromSource } from "@/lib/scanRoutes";
+import { cacheScannedRoutes, detectRouterType, scanRoutesFromSource, type RouterType } from "@/lib/scanRoutes";
 
 export type ManifestDecision = {
   firstArtifact: { name: string; description: string; steps: string[] };
@@ -36,16 +36,19 @@ function normalizeRoutePath(route?: string | null, fallbackName?: string): strin
   return `/${name.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 }
 
-function withPreviewRoute(base: string, route: string): string {
-  if (!base) return base;
+function buildPreviewTarget(base: string, route: string, routerType: RouterType): string {
   const path = route.startsWith("/") ? route : `/${route}`;
-  if (path === "/") return base;
   try {
     const url = new URL(base, window.location.origin);
+    if (routerType === "hash") {
+      return `${url.origin}${url.pathname}#${path}`;
+    }
+    if (path === "/") return url.toString();
     url.pathname = `${url.pathname.replace(/\/$/, "")}${path}`;
     return url.toString();
   } catch {
-    return `${base.replace(/\/$/, "")}${path}`;
+    if (routerType === "hash") return `${base.replace(/#.*$/, "")}#${path}`;
+    return path === "/" ? base : `${base.replace(/\/$/, "")}${path}`;
   }
 }
 
@@ -297,17 +300,22 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
   const [contentFullscreen, setContentFullscreen] = useState(false);
   const [cachedScanRoutes, setCachedScanRoutes] = useState<PreviewRoute[]>([]);
+  const [routerType, setRouterType] = useState<RouterType>("browser");
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   useEffect(() => {
     const scanKey = `atlas-scan-${projectId}`;
     const loadCachedScanRoutes = () => {
       try {
         const raw = localStorage.getItem(scanKey);
-        const scan = raw ? JSON.parse(raw) as { routes?: string[]; pages?: string[] } : null;
+        const scan = raw ? JSON.parse(raw) as { routes?: string[]; pages?: string[]; routerType?: RouterType } : null;
         const routes = Array.isArray(scan?.routes) ? scan.routes : [];
         setCachedScanRoutes(routes.map((route) => {
           const path = normalizeRoutePath(route);
           return { label: routeLabelFromPath(path), path, description: path };
         }));
+        if (scan?.routerType === "hash" || scan?.routerType === "browser") {
+          setRouterType(scan.routerType);
+        }
       } catch {
         setCachedScanRoutes([]);
       }
@@ -521,7 +529,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
           if (!r.ok) continue;
           const d = await r.json() as { content?: string };
           if (d.content) {
-            cacheScannedRoutes(String(projectId), scanRoutesFromSource(d.content));
+            cacheScannedRoutes(String(projectId), scanRoutesFromSource(d.content), detectRouterType(d.content));
             break;
           }
         } catch { /* non-fatal */ }
@@ -827,14 +835,31 @@ ${t}
     raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
 
   const sMono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
-  const routedLiveUrl = liveUrl ? withPreviewRoute(liveUrl, selectedRoute) : "";
-  const routedWorkspacePreviewUrl = withPreviewRoute(`/api/preview/workspace/${projectId}/`, selectedRoute);
+  const workspacePreviewUrl = `/api/preview/workspace/${projectId}/`;
+
+  const navigatePreviewToRoute = (route: string, baseUrl: string) => {
+    const iframe = iframeRef.current;
+    if (!iframe || !baseUrl) return;
+    const target = buildPreviewTarget(baseUrl, route, routerType);
+    try {
+      iframe.contentWindow?.location.replace(target);
+    } catch {
+      iframe.src = target;
+    }
+  };
 
   const handleRouteSelect = (path: string) => {
     setSelectedRoute(path);
     setIframeError(false);
-    if (liveUrl || wsDsStatus === "running") setIframeLoading(true);
-    setReloadKey((k) => k + 1);
+    if (previewMode === "url" && liveUrl) {
+      navigatePreviewToRoute(path, liveUrl);
+    } else if (previewMode === "local" && wsDsStatus === "running") {
+      navigatePreviewToRoute(path, workspacePreviewUrl);
+    }
+  };
+  const handlePreviewIframeLoad = (baseUrl: string) => {
+    setIframeLoading(false);
+    if (selectedRoute !== "/") navigatePreviewToRoute(selectedRoute, baseUrl);
   };
   const routePickerButton = (
     <RoutePickerButton routes={previewRoutes} selected={selectedRoute} onSelect={handleRouteSelect} />
@@ -1312,10 +1337,10 @@ ${t}
                     <div style={{ fontSize: 9.5, ...sMono, color: "var(--atlas-muted)", opacity: 0.4 }}>Loading preview…</div>
                   </div>
                 )}
-                <iframe key={`${routedLiveUrl}-${reloadKey}`} src={routedLiveUrl} title="Preview"
+                <iframe ref={iframeRef} key={`${liveUrl}-${reloadKey}`} src={liveUrl} title="Preview"
                   style={{ border: "none", width: "100%", height: "100%", display: "block", background: "#fff" }}
                   sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-                  onLoad={() => setIframeLoading(false)}
+                  onLoad={() => handlePreviewIframeLoad(liveUrl)}
                   onError={() => { setIframeError(true); setIframeLoading(false); }}
                 />
               </div>
@@ -1351,8 +1376,9 @@ ${t}
               display: "flex", flexDirection: "column",
             }}>
               <iframe
-                  key={`fs-${routedLiveUrl}-${reloadKey}`}
-                  src={routedLiveUrl}
+                  ref={iframeRef}
+                  key={`fs-${liveUrl}-${reloadKey}`}
+                  src={liveUrl}
                 title="Preview fullscreen"
                 style={{ border: "none", flex: 1, width: "100%", background: "#fff" }}
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
@@ -1889,10 +1915,12 @@ ${t}
               {wsDsStatus === "running" && wsDsPort && (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
                   <iframe
+                    ref={iframeRef}
                     key={`ws-${projectId}-${wsDsPort}`}
-                    src={routedWorkspacePreviewUrl}
+                    src={workspacePreviewUrl}
                     title="Local Dev Preview"
                     style={{ flex: 1, border: "none", width: "100%", display: "block", background: "var(--atlas-bg)" }}
+                    onLoad={() => handlePreviewIframeLoad(workspacePreviewUrl)}
                   />
                   {/* Expand to fullscreen */}
                   <button
@@ -2158,11 +2186,13 @@ ${t}
         <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "#000", display: "flex", flexDirection: "column" }}>
           {previewMode === "local" && sessionId && !linkedRepo && wsDsPort && (
             <iframe
+              ref={iframeRef}
               key={`cfs-ws-${projectId}-${wsDsPort}`}
-              src={routedWorkspacePreviewUrl}
+              src={workspacePreviewUrl}
               title="Local Dev fullscreen"
               style={{ border: "none", flex: 1, width: "100%", background: "#fff" }}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              onLoad={() => handlePreviewIframeLoad(workspacePreviewUrl)}
             />
           )}
           {previewMode === "stackblitz" && linkedRepo && (
