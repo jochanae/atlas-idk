@@ -821,6 +821,10 @@ export function useChatStream(
                       prev.map((m) => m.id === placeholderId ? { ...m, commitApproval: approval } : m)
                     );
                   }
+                } else if (evtName === "memory_update") {
+                  try {
+                    window.dispatchEvent(new CustomEvent("axiom:tier1-updated"));
+                  } catch { /* ignore */ }
                 } else if (evtName === "tool_call" || evtName === "tool_result" || evtName === "step_end") {
                   try {
                     const payload = (typeEmbedded ?? JSON.parse(evtData)) as Record<string, unknown>;

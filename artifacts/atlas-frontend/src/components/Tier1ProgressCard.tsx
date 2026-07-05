@@ -4,9 +4,9 @@
  * Atlas discovers each field in conversation (via the backend
  * `tier1_upsert_field` tool). Tap to open the structured stepper.
  *
- * Renders NOTHING when:
- *   - Tier 1 is complete (all 6 filled)
- *   - The user dismissed the card this session
+ * When all 6 fields are filled, renders a compact one-line recall strip
+ * ("Building X · For Y · Problem Z") so the user can see what Atlas knows.
+ * The recall strip is dismissible per session.
  *
  * When the user has skipped, the card still shows (in a muted "opportunistic"
  * mode) so they can see Atlas quietly capturing fields in conversation.
@@ -35,14 +35,23 @@ const shortLabel: Record<Tier1FieldKey, string> = {
 };
 
 const dismissKey = (id: number) => `atlas-tier1-progress-dismissed-${id}`;
+const recallDismissKey = (id: number) => `atlas-tier1-recall-dismissed-${id}`;
+
+function truncate(s: string, max = 48): string {
+  if (!s) return "";
+  const trimmed = s.trim();
+  return trimmed.length > max ? trimmed.slice(0, max - 1) + "…" : trimmed;
+}
 
 export function Tier1ProgressCard({ memory, projectId }: Props) {
   const [dismissed, setDismissed] = useState(false);
+  const [recallDismissed, setRecallDismissed] = useState(false);
 
   useEffect(() => {
     if (!projectId) return;
     try {
       setDismissed(sessionStorage.getItem(dismissKey(projectId)) === "1");
+      setRecallDismissed(sessionStorage.getItem(recallDismissKey(projectId)) === "1");
     } catch { /* ignore */ }
   }, [projectId]);
 
@@ -52,8 +61,88 @@ export function Tier1ProgressCard({ memory, projectId }: Props) {
   const missing = memory?.missing ?? TIER1_QUESTIONS.map((q) => q.key);
   const filledCount = 6 - missing.length;
 
-  // Complete → nothing to show.
-  if (filledCount >= 6) return null;
+  // Complete → show recall strip (unless dismissed this session).
+  if (filledCount >= 6) {
+    if (recallDismissed) return null;
+
+    const building = truncate(answers?.building ?? "", 52);
+    const audience = truncate(answers?.audience ?? "", 36);
+    const problem = truncate(answers?.problem ?? "", 36);
+
+    const parts = [building, audience && `For ${audience}`, problem].filter(Boolean);
+    const summary = parts.join(" · ");
+
+    if (!summary) return null;
+
+    const recallWrap: CSSProperties = {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "7px 12px",
+      background: "rgba(var(--atlas-surface-rgb), 0.55)",
+      backdropFilter: "blur(12px) saturate(130%)",
+      WebkitBackdropFilter: "blur(12px) saturate(130%)",
+      border: "1px solid rgba(var(--atlas-gold-rgb), 0.15)",
+      borderRadius: 10,
+      color: "rgba(var(--atlas-fg-rgb), 0.75)",
+    };
+
+    return (
+      <div style={recallWrap} role="region" aria-label="Project memory">
+        <span style={{
+          width: 5, height: 5, borderRadius: "50%",
+          background: "var(--atlas-gold)",
+          opacity: 0.7,
+          flexShrink: 0,
+        }} />
+        <span
+          style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 10,
+            letterSpacing: "0.05em",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            flex: 1, minWidth: 0,
+          }}
+          title={summary}
+        >
+          {summary}
+        </span>
+        <button
+          type="button"
+          onClick={openTier1IntakeSheet}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 2,
+            padding: "2px 6px", borderRadius: 5,
+            background: "transparent",
+            border: "1px solid rgba(var(--atlas-gold-rgb), 0.2)",
+            color: "rgba(var(--atlas-gold-rgb), 0.7)",
+            fontFamily: "var(--app-font-mono)", fontSize: 9,
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            cursor: "pointer", flexShrink: 0,
+          }}
+          aria-label="Edit project memory"
+        >
+          Edit <ChevronRight size={9} />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            try { sessionStorage.setItem(recallDismissKey(projectId), "1"); } catch { /* ignore */ }
+            setRecallDismissed(true);
+          }}
+          aria-label="Dismiss"
+          style={{
+            width: 18, height: 18, borderRadius: 5,
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            background: "transparent", border: "none",
+            color: "rgba(var(--atlas-muted-rgb), 0.45)",
+            cursor: "pointer", flexShrink: 0,
+          }}
+        >
+          <X size={10} />
+        </button>
+      </div>
+    );
+  }
 
   const skipped = Boolean(memory?.skippedAt);
 

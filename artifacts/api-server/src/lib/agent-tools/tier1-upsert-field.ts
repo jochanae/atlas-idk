@@ -28,6 +28,9 @@ export function tier1UpsertFieldTool(ctx: AgentToolContext) {
         const result = await upsertTier1Field(ctx.projectId, ctx.userId, field, value);
         const ms = Math.round(performance.now() - started);
         ctx.emitToolResult("tier1_upsert_field", result.ok, ms);
+        if (result.ok) {
+          ctx.emitNamedEvent("memory_update", { type: "tier1", field, remaining: result.remaining });
+        }
         return result;
       } catch (err) {
         const ms = Math.round(performance.now() - started);

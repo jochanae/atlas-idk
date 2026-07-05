@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
-import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable, projectZipImportsTable } from "@workspace/db";
+import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable, projectZipImportsTable, nexusConversationsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
@@ -32,7 +32,7 @@ import { runArtifactOrchestrator, loadProjectArtifactState } from "../lib/artifa
 import { shouldUseAgentLoop, shouldUseStructuredPlan } from "../lib/agent-loop/flags";
 import { runAgentLoop } from "../lib/agent-loop/runner";
 import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
-import { buildTier1StatusBlock, loadTier1ForProject } from "../services/tier1";
+import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProject } from "../services/tier1";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3091,6 +3091,27 @@ router.post("/chat", async (req, res): Promise<void> => {
       db.update(sessionsTable).set({ title: autoTitle }).where(eq(sessionsTable.id, sessionId)).catch(() => {});
     }
   }
+  // Nexus buffer flush — on the very first workspace message for a session,
+  // pick up any Tier 1 context the user shared in the home Ask Atlas chat
+  // and gap-fill the project's Tier 1 memory (never overwrites existing answers).
+  if (sessionMessageCount === 0 && projectId > 0 && userId && !isFoundationMode && !isFlowMode) {
+    void (async () => {
+      try {
+        const [latestNexus] = await db
+          .select({ conversationId: nexusConversationsTable.conversationId })
+          .from(nexusConversationsTable)
+          .where(eq(nexusConversationsTable.userId, userId))
+          .orderBy(desc(nexusConversationsTable.createdAt))
+          .limit(1);
+        if (latestNexus?.conversationId) {
+          await flushNexusTier1BufferToProject(latestNexus.conversationId, projectId, userId);
+        }
+      } catch (err) {
+        logger.warn({ err }, "nexus tier1 buffer flush failed — non-fatal");
+      }
+    })();
+  }
+
   // Hoisted so auto-apply and file-source logic share the same flag
   // Keep build-handoff mode active for the first few turns so the audit/completion
   // rounds after LOCAL_APPLY_SUCCESS still run with the BUILD_HANDOFF system prompt.
