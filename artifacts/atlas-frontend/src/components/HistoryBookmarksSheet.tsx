@@ -190,15 +190,15 @@ export function HistoryBookmarksSheet({
   const fgMuted     = isParchment ? "#68707C"              : "rgba(244,236,220,0.45)";
   const fgDim       = isParchment ? "#9AA1AA"              : "rgba(244,236,220,0.38)";
   const fgSub       = isParchment ? "rgba(31,36,48,0.55)"  : "rgba(244,236,220,0.42)";
-  const rowBg       = isParchment ? "rgba(115,92,60,0.05)" : "rgba(255,255,255,0.02)";
-  const rowBgHover  = isParchment ? "rgba(115,92,60,0.10)" : "rgba(196,160,80,0.07)";
-  const rowBorder   = isParchment ? "rgba(115,92,60,0.15)" : "rgba(196,160,80,0.08)";
-  const rowBorderHover = isParchment ? "rgba(115,92,60,0.28)" : "rgba(196,160,80,0.22)";
-  const iconBg      = isParchment ? "rgba(115,92,60,0.10)" : "rgba(196,160,80,0.10)";
-  const iconColor   = isParchment ? "rgba(115,92,60,0.85)" : "rgba(228,196,128,0.85)";
-  const menuBg      = isParchment ? "#FFFDF8"              : "rgba(20,18,14,0.98)";
-  const menuBorder  = isParchment ? "rgba(115,92,60,0.22)" : "rgba(196,160,80,0.28)";
-  const autoTagBg   = isParchment ? "rgba(115,92,60,0.08)" : "rgba(255,255,255,0.05)";
+  const rowBg       = isParchment ? "rgba(59, 82, 115,0.05)" : "rgba(255,255,255,0.02)";
+  const rowBgHover  = isParchment ? "rgba(59, 82, 115,0.10)" : "rgba(196,160,80,0.07)";
+  const rowBorder   = isParchment ? "rgba(59, 82, 115,0.15)" : "rgba(196,160,80,0.08)";
+  const rowBorderHover = isParchment ? "rgba(59, 82, 115,0.28)" : "rgba(196,160,80,0.22)";
+  const iconBg      = isParchment ? "rgba(59, 82, 115,0.10)" : "rgba(196,160,80,0.10)";
+  const iconColor   = isParchment ? "rgba(59, 82, 115,0.85)" : "rgba(228,196,128,0.85)";
+  const menuBg      = isParchment ? "#FFFFFF"              : "rgba(20,18,14,0.98)";
+  const menuBorder  = isParchment ? "rgba(59, 82, 115,0.22)" : "rgba(196,160,80,0.28)";
+  const autoTagBg   = isParchment ? "rgba(59, 82, 115,0.08)" : "rgba(255,255,255,0.05)";
   const autoTagColor= isParchment ? "rgba(31,36,48,0.45)"  : "rgba(244,236,220,0.32)";
 
   if (!open) return null;
@@ -397,7 +397,7 @@ export function HistoryBookmarksSheet({
           gap: 10,
           padding: "12px 14px",
           borderRadius: 12,
-          background: isParchment ? "rgba(115,92,60,0.04)" : "rgba(255,255,255,0.025)",
+          background: isParchment ? "rgba(59, 82, 115,0.04)" : "rgba(255,255,255,0.025)",
           border: `1px solid ${bg.replace("0.14", "0.25").replace("0.10", "0.20")}`,
           transition: "background 140ms ease, border-color 140ms ease",
           cursor: "pointer",
@@ -409,7 +409,7 @@ export function HistoryBookmarksSheet({
           e.currentTarget.style.borderColor = color.replace("0.85", "0.4").replace("0.75", "0.35").replace("0.95", "0.45");
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = isParchment ? "rgba(115,92,60,0.04)" : "rgba(255,255,255,0.025)";
+          e.currentTarget.style.background = isParchment ? "rgba(59, 82, 115,0.04)" : "rgba(255,255,255,0.025)";
           e.currentTarget.style.borderColor = bg.replace("0.14", "0.25").replace("0.10", "0.20");
         }}
       >
@@ -515,17 +515,17 @@ export function HistoryBookmarksSheet({
   const sheetStyle: React.CSSProperties = {
     ...SHEET,
     background: isParchment
-      ? "linear-gradient(180deg, #FFFDF8 0%, #F7F4ED 100%)"
+      ? "linear-gradient(180deg, #FFFFFF 0%, #F8F9FA 100%)"
       : SHEET.background as string,
-    border: isParchment ? "1px solid rgba(115,92,60,0.22)" : SHEET.border as string,
-    boxShadow: isParchment ? "0 -12px 40px rgba(68,55,35,0.12)" : SHEET.boxShadow as string,
+    border: isParchment ? "1px solid rgba(59, 82, 115,0.22)" : SHEET.border as string,
+    boxShadow: isParchment ? "0 -12px 40px rgba(15, 23, 42,0.12)" : SHEET.boxShadow as string,
     color: isParchment ? "#1F2430" : SHEET.color as string,
   };
 
   const tabBarStyle: React.CSSProperties = {
     ...TAB_BAR,
-    background: isParchment ? "rgba(115,92,60,0.06)" : TAB_BAR.background as string,
-    border: isParchment ? "1px solid rgba(115,92,60,0.18)" : TAB_BAR.border as string,
+    background: isParchment ? "rgba(59, 82, 115,0.06)" : TAB_BAR.background as string,
+    border: isParchment ? "1px solid rgba(59, 82, 115,0.18)" : TAB_BAR.border as string,
   };
 
   return (
@@ -716,7 +716,7 @@ export function HistoryBookmarksSheet({
                       fontSize: 11.5,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      color: isParchment ? "rgba(115,92,60,0.65)" : "rgba(244,236,220,0.55)",
+                      color: isParchment ? "rgba(59, 82, 115,0.65)" : "rgba(244,236,220,0.55)",
                       fontWeight: 600,
                     }}
                   >
@@ -777,7 +777,7 @@ export function HistoryBookmarksSheet({
                       style={{
                         padding: "7px 12px",
                         borderRadius: 7,
-                        border: isParchment ? "1px solid rgba(115,92,60,0.18)" : "1px solid rgba(255,255,255,0.08)",
+                        border: isParchment ? "1px solid rgba(59, 82, 115,0.18)" : "1px solid rgba(255,255,255,0.08)",
                         background: "transparent",
                         color: isParchment ? "#68707C" : "rgba(244,236,220,0.5)",
                         fontSize: 12.5,
@@ -912,11 +912,11 @@ function TabButton({
 }) {
   const isParchment = useThemeMode() === "parchment";
   const accentColor = accent ? "rgba(140,200,160,0.95)" : (isParchment ? "rgba(115,72,14,0.98)" : "rgba(244,224,176,0.98)");
-  const accentBorder = accent ? "rgba(100,180,120,0.50)" : (isParchment ? "rgba(115,92,60,0.45)" : "rgba(196,160,80,0.45)");
+  const accentBorder = accent ? "rgba(100,180,120,0.50)" : (isParchment ? "rgba(59, 82, 115,0.45)" : "rgba(196,160,80,0.45)");
   const accentBg = accent
     ? "linear-gradient(180deg, rgba(60,160,80,0.18), rgba(60,160,80,0.08))"
     : (isParchment
-        ? "linear-gradient(180deg, rgba(115,92,60,0.14), rgba(115,92,60,0.07))"
+        ? "linear-gradient(180deg, rgba(59, 82, 115,0.14), rgba(59, 82, 115,0.07))"
         : "linear-gradient(180deg, rgba(196,160,80,0.22), rgba(196,160,80,0.10))");
 
   return (
@@ -1003,7 +1003,7 @@ function MenuRow({
         transition: "background 120ms ease",
       }}
       onMouseEnter={(e) =>
-        (e.currentTarget.style.background = isParchment ? "rgba(115,92,60,0.07)" : "rgba(255,255,255,0.05)")
+        (e.currentTarget.style.background = isParchment ? "rgba(59, 82, 115,0.07)" : "rgba(255,255,255,0.05)")
       }
       onMouseLeave={(e) =>
         (e.currentTarget.style.background = "transparent")
@@ -1147,7 +1147,7 @@ function CheckpointInspectPanel({
               style={{
                 fontSize: 10.5,
                 color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.35)",
-                background: isParchment ? "rgba(115,92,60,0.07)" : "rgba(255,255,255,0.06)",
+                background: isParchment ? "rgba(59, 82, 115,0.07)" : "rgba(255,255,255,0.06)",
                 borderRadius: 4,
                 padding: "1px 6px",
                 letterSpacing: "0.06em",
@@ -1160,7 +1160,7 @@ function CheckpointInspectPanel({
               style={{
                 fontSize: 10.5,
                 color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.35)",
-                background: isParchment ? "rgba(115,92,60,0.07)" : "rgba(255,255,255,0.06)",
+                background: isParchment ? "rgba(59, 82, 115,0.07)" : "rgba(255,255,255,0.06)",
                 borderRadius: 4,
                 padding: "1px 6px",
                 letterSpacing: "0.06em",
@@ -1317,7 +1317,7 @@ function InspectSection({ title, children }: { title: string; children: React.Re
           textTransform: "uppercase",
           color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.35)",
           padding: "0 2px 8px",
-          borderBottom: isParchment ? "1px solid rgba(115,92,60,0.18)" : "1px solid rgba(244,236,220,0.07)",
+          borderBottom: isParchment ? "1px solid rgba(59, 82, 115,0.18)" : "1px solid rgba(244,236,220,0.07)",
           marginBottom: 10,
         }}
       >

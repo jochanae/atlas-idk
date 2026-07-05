@@ -1542,7 +1542,7 @@ export function AxiomFlow({
     toast(`${lockedLabel || "Node"} defined`, {
       duration: 1600,
       style: {
-        color: theme === "parchment" ? "#F5F1E8" : "#0D0B09",
+        color: theme === "parchment" ? "#F8F9FA" : "#0D0B09",
         background: palette.goldText,
         border: "1px solid rgba(167,139,250,0.55)",
         boxShadow: "0 0 0 1px rgba(167,139,250,0.22), 0 0 28px rgba(167,139,250,0.5), 0 0 60px rgba(139,92,246,0.32)",
@@ -1698,7 +1698,7 @@ export function AxiomFlow({
       {drillLoading && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 28,
-          background: theme === "parchment" ? "rgba(247,244,237,0.88)" : "rgba(8,6,10,0.70)",
+          background: theme === "parchment" ? "rgba(248, 249, 250,0.88)" : "rgba(8,6,10,0.70)",
           backdropFilter: "blur(3px)",
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
@@ -1729,7 +1729,7 @@ export function AxiomFlow({
       {hydrateLoading && !flowEmpty && nodes.length > 0 && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 28,
-          background: theme === "parchment" ? "rgba(247,244,237,0.88)" : "rgba(8,6,10,0.82)",
+          background: theme === "parchment" ? "rgba(248, 249, 250,0.88)" : "rgba(8,6,10,0.82)",
           backdropFilter: "blur(3px)",
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",

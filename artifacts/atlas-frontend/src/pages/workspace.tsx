@@ -2834,18 +2834,18 @@ function TerminalPanel({
   // ── Theme-aware terminal palette ──────────────────────────────────────────
   const termBg      = isParchment ? "#F4EFE6" : "#0A0908";
   const termInputBg = isParchment ? "#EAE4D8" : "var(--atlas-bg)";
-  const termBorder  = isParchment ? "rgba(160,130,90,0.28)" : "var(--atlas-surface)";
+  const termBorder  = isParchment ? "rgba(15, 23, 42,0.28)" : "var(--atlas-surface)";
   const termPrompt  = isParchment ? "#8B3E0E" : "rgba(201,162,76,0.75)";
   const termCaret   = isParchment ? "rgba(139,62,14,0.9)" : "rgba(201,162,76,0.9)";
-  const termFgText  = isParchment ? "#2A1A0E" : "var(--atlas-fg)";
+  const termFgText  = isParchment ? "#05070F" : "var(--atlas-fg)";
 
   const colorFor = (kind: TerminalLine["kind"]) => {
     if (kind === "input")      return isParchment ? "rgba(146,64,14,0.88)"  : "rgba(201,162,76,0.92)";
     if (kind === "stderr")     return isParchment ? "rgba(160,70,10,0.9)"   : "rgba(252,165,100,0.88)";
-    if (kind === "system")     return isParchment ? "rgba(100,70,40,0.55)"  : "rgba(var(--atlas-muted-rgb),0.65)";
+    if (kind === "system")     return isParchment ? "rgba(77, 90, 110,0.55)"  : "rgba(var(--atlas-muted-rgb),0.65)";
     if (kind === "error")      return isParchment ? "rgba(170,30,30,0.9)"   : "rgba(252,100,100,0.88)";
     if (kind === "warning")    return isParchment ? "#8B3E0E"               : "var(--atlas-gold)";
-    if (kind === "commentary") return isParchment ? "rgba(100,70,40,0.72)"  : "var(--muted-foreground)";
+    if (kind === "commentary") return isParchment ? "rgba(77, 90, 110,0.72)"  : "var(--muted-foreground)";
     return termFgText;
   };
 
@@ -2899,9 +2899,9 @@ function TerminalPanel({
               animation: hasChanges || syncStatus === "pushing" ? "atlas-pulse 1.8s ease-in-out infinite" : "none",
             }} />
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ flexShrink: 0 }}>
-              <path d="M5.5 1v9M1 5.5l4.5-4.5 4.5 4.5" stroke={isParchment ? "#8B5E3C" : "rgba(201,162,76,0.7)"} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M5.5 1v9M1 5.5l4.5-4.5 4.5 4.5" stroke={isParchment ? "#3B5273" : "rgba(201,162,76,0.7)"} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.12em", color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.78)", textTransform: "uppercase" }}>
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.12em", color: isParchment ? "#3B5273" : "rgba(201,162,76,0.78)", textTransform: "uppercase" }}>
               Sync to GitHub
             </span>
             {hasChanges && (
@@ -2926,7 +2926,7 @@ function TerminalPanel({
             )}
             {!isDesktopView && (
               <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ marginLeft: "auto", flexShrink: 0, transform: syncOpen ? "rotate(180deg)" : "none", transition: "transform 160ms ease" }}>
-                <path d="M1 2.5l3 3 3-3" stroke={isParchment ? "#8B5E3C" : "rgba(201,162,76,0.5)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M1 2.5l3 3 3-3" stroke={isParchment ? "#3B5273" : "rgba(201,162,76,0.5)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}
             {isDesktopView && (
@@ -2951,17 +2951,17 @@ function TerminalPanel({
                   maxHeight: isDesktopView ? 120 : 160, overflowY: "auto",
                   padding: "6px 8px", borderRadius: 6,
                   border: `1px solid ${termBorder}`,
-                  background: isParchment ? "rgba(240,228,210,0.4)" : "rgba(255,255,255,0.02)",
+                  background: isParchment ? "rgba(241, 243, 245,0.4)" : "rgba(255,255,255,0.02)",
                 }}>
                   {syncFiles.map(f => (
-                    <div key={f} style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(100,70,40,0.78)" : "rgba(var(--atlas-muted-rgb),0.78)", letterSpacing: "0.04em", padding: "2px 0", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div key={f} style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(77, 90, 110,0.78)" : "rgba(var(--atlas-muted-rgb),0.78)", letterSpacing: "0.04em", padding: "2px 0", display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ color: "var(--atlas-gold)" }}>·</span>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(100,70,40,0.5)" : "rgba(var(--atlas-muted-rgb),0.45)", letterSpacing: "0.05em" }}>
+                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(77, 90, 110,0.5)" : "rgba(var(--atlas-muted-rgb),0.45)", letterSpacing: "0.05em" }}>
                   No tracked edits yet — Atlas writes files here when it self-updates.
                 </div>
               )}
@@ -2977,7 +2977,7 @@ function TerminalPanel({
                   spellCheck={false}
                   style={{
                     width: "100%", boxSizing: "border-box",
-                    background: isParchment ? "rgba(240,228,210,0.6)" : "rgba(255,255,255,0.04)",
+                    background: isParchment ? "rgba(241, 243, 245,0.6)" : "rgba(255,255,255,0.04)",
                     border: `1px solid ${termBorder}`,
                     borderRadius: 6, padding: "8px 10px",
                     fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)",
@@ -3166,7 +3166,7 @@ function TerminalPanel({
         fontSize: "var(--ts-micro)",
         letterSpacing: "0.14em",
         textTransform: "uppercase",
-        color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.72)",
+        color: isParchment ? "#3B5273" : "rgba(201,162,76,0.72)",
         borderBottom: `1px solid ${termBorder}`,
       }}>
         Output

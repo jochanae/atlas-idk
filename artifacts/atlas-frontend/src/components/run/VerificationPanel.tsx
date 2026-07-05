@@ -46,9 +46,9 @@ function pillColors(state: VerifyKindState, isParchment: boolean) {
     };
   }
   return {
-    bg: isParchment ? "rgba(100,70,40,0.08)" : "rgba(255,255,255,0.04)",
-    border: isParchment ? "rgba(160,130,90,0.22)" : "rgba(var(--atlas-muted-rgb),0.18)",
-    color: isParchment ? "rgba(100,70,40,0.55)" : "rgba(var(--atlas-muted-rgb),0.55)",
+    bg: isParchment ? "rgba(77, 90, 110,0.08)" : "rgba(255,255,255,0.04)",
+    border: isParchment ? "rgba(15, 23, 42,0.22)" : "rgba(var(--atlas-muted-rgb),0.18)",
+    color: isParchment ? "rgba(77, 90, 110,0.55)" : "rgba(var(--atlas-muted-rgb),0.55)",
   };
 }
 
@@ -130,14 +130,14 @@ export function VerificationPanel({
   const isParchment = typeof document !== "undefined"
     && document.documentElement.getAttribute("data-theme") === "parchment";
 
-  const borderColor = isParchment ? "rgba(160,130,90,0.28)" : "var(--atlas-surface)";
+  const borderColor = isParchment ? "rgba(15, 23, 42,0.28)" : "var(--atlas-surface)";
 
   return (
     <div style={{
       borderBottom: `1px solid ${borderColor}`,
       flexShrink: 0,
       background: isParchment
-        ? "linear-gradient(180deg, rgba(240,228,210,0.35), transparent 80%)"
+        ? "linear-gradient(180deg, rgba(241, 243, 245,0.35), transparent 80%)"
         : "linear-gradient(180deg, color-mix(in oklab, var(--atlas-gold) 4%, transparent), transparent 70%)",
     }}>
       {(() => {
@@ -186,7 +186,7 @@ export function VerificationPanel({
                 display: "inline-block",
                 transition: "transform 120ms ease",
                 transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
-                color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.72)",
+                color: isParchment ? "#3B5273" : "rgba(201,162,76,0.72)",
                 fontSize: 10,
               }}>▶</span>
               <span style={{
@@ -194,7 +194,7 @@ export function VerificationPanel({
                 fontSize: "var(--ts-micro)",
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.72)",
+                color: isParchment ? "#3B5273" : "rgba(201,162,76,0.72)",
               }}>
                 Verification
               </span>
@@ -204,7 +204,7 @@ export function VerificationPanel({
                 letterSpacing: "0.04em",
                 color: counts.failed > 0
                   ? (isParchment ? "rgba(170,30,30,0.85)" : "rgba(252,100,100,0.85)")
-                  : isParchment ? "rgba(100,70,40,0.6)" : "rgba(var(--atlas-muted-rgb),0.6)",
+                  : isParchment ? "rgba(77, 90, 110,0.6)" : "rgba(var(--atlas-muted-rgb),0.6)",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -255,7 +255,7 @@ export function VerificationPanel({
                 padding: "6px 8px",
                 borderRadius: 6,
                 border: `1px solid ${borderColor}`,
-                background: isParchment ? "rgba(240,228,210,0.25)" : "rgba(255,255,255,0.02)",
+                background: isParchment ? "rgba(241, 243, 245,0.25)" : "rgba(255,255,255,0.02)",
               }}
             >
               <span style={{
@@ -273,7 +273,7 @@ export function VerificationPanel({
                 fontFamily: "var(--app-font-mono)",
                 fontSize: "var(--ts-xs)",
                 letterSpacing: "0.04em",
-                color: isParchment ? "#2A1A0E" : "var(--atlas-fg)",
+                color: isParchment ? "#05070F" : "var(--atlas-fg)",
                 flexShrink: 0,
                 minWidth: 72,
               }}>
