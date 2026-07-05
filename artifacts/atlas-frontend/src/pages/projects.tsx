@@ -460,14 +460,38 @@ export default function Projects() {
               textTransform: "uppercase",
               padding: isTinyMobile ? "5px 8px" : "7px 14px",
               borderRadius: 6,
-              border: "1px solid rgba(201,162,76,0.35)",
-              background: "rgba(201,162,76,0.07)",
-              color: createProject.isPending ? "var(--atlas-muted)" : "var(--atlas-gold)",
+              border: isParchment
+                ? "1px solid var(--atlas-gold)"
+                : "1px solid rgba(201,162,76,0.35)",
+              background: isParchment
+                ? "var(--atlas-gold)"
+                : "rgba(201,162,76,0.07)",
+              color: createProject.isPending
+                ? "var(--atlas-muted)"
+                : isParchment ? "#FFFFFF" : "var(--atlas-gold)",
               cursor: createProject.isPending ? "not-allowed" : "pointer",
               transition: "all 160ms ease",
+              boxShadow: isParchment ? "0 2px 6px rgba(15,23,42,0.14)" : "none",
             }}
-            onMouseEnter={(e) => { if (!createProject.isPending) { e.currentTarget.style.background = "rgba(201,162,76,0.14)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.6)"; } }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.35)"; }}
+            onMouseEnter={(e) => {
+              if (createProject.isPending) return;
+              if (isParchment) {
+                e.currentTarget.style.background = "#2C3F5A";
+                e.currentTarget.style.borderColor = "#2C3F5A";
+              } else {
+                e.currentTarget.style.background = "rgba(201,162,76,0.14)";
+                e.currentTarget.style.borderColor = "rgba(201,162,76,0.6)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (isParchment) {
+                e.currentTarget.style.background = "var(--atlas-gold)";
+                e.currentTarget.style.borderColor = "var(--atlas-gold)";
+              } else {
+                e.currentTarget.style.background = "rgba(201,162,76,0.07)";
+                e.currentTarget.style.borderColor = "rgba(201,162,76,0.35)";
+              }
+            }}
           >
             {createProject.isPending ? "…" : "+ New"}
           </button>
