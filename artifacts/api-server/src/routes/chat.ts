@@ -29,6 +29,8 @@ import nodePath from "node:path";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath } from "../lib/projectWorkspace";
 import { bootstrapLocalWorkspace, BOOTSTRAP_FILES } from "../lib/localBootstrap";
 import { runArtifactOrchestrator, loadProjectArtifactState } from "../lib/artifactOrchestrator";
+import { shouldUseAgentLoop } from "../lib/agent-loop/flags";
+import { runAgentLoop } from "../lib/agent-loop/runner";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -4584,6 +4586,71 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     systemPrompt += `\n\n--- LAST SHELL EXECUTION ---\nCommand: \`${sr.cmd}\`\nStatus: ${statusLabel} in ${dur}\nOutput:\n${snippet || "(no output)"}\n--- END LAST SHELL EXECUTION ---`;
     if (sr.exitCode !== 0) {
       systemPrompt += `\n\nThe last shell command FAILED. If the user's message doesn't explicitly change direction, diagnose the failure and fix it — emit FILE_EDIT blocks to correct the issue, then SHELL_RUN to re-verify. Do not wait to be asked.`;
+    }
+  }
+
+  // ── Agent loop path (USE_AGENT_LOOP + allowlisted user) ─────────────────────
+  if (
+    shouldUseAgentLoop(userId) &&
+    projectId > 0 &&
+    !isFoundationMode &&
+    !isFlowMode &&
+    !isScenarioMode
+  ) {
+    const abortController = new AbortController();
+    req.on("close", () => abortController.abort());
+
+    const historyMessages = (history || []).map((h: { role: string; content: string }) => ({
+      role: h.role as "user" | "assistant",
+      content: h.content,
+    }));
+
+    writeStep(res, { verb: "Analyzing", target: "your request", phase: "analyze" });
+
+    try {
+      const loopResult = await runAgentLoop({
+        res,
+        abortSignal: abortController.signal,
+        systemPrompt,
+        messages: [...historyMessages, { role: "user" as const, content: message }],
+        projectId,
+        sessionId,
+        userId: userId!,
+        activeModel,
+        writeStep,
+      });
+
+      const { fullText, messageId, inputTokens, sideEffects } = loopResult;
+      const responseFileEdits = sideEffects.fileEdits;
+      const responseLinePatches = sideEffects.linePatches;
+
+      res.write(`data: ${JSON.stringify({
+        type: "done",
+        content: fullText,
+        modelUsed: "gemini-3-flash-preview",
+        terminalCmd: null,
+        terminalResult: null,
+        surface: "workspace",
+        intentType: null,
+        catchPayload: null,
+        model: activeModel,
+        messageId,
+        fileEdits: responseFileEdits.length > 0 ? responseFileEdits : undefined,
+        fileEdit: responseFileEdits.length > 0 ? responseFileEdits[0] : undefined,
+        linePatches: responseLinePatches.length > 0 ? responseLinePatches : undefined,
+        developerLens: {
+          routing: { activeModel: "gemini-3-flash-preview", provider: "google", fallbackTriggered: false },
+          telemetry: { tokensPerSecond: 0, inputTokens: inputTokens ?? 0, executionStrategy: "agent_loop" },
+        },
+      })}\n\n`);
+      res.end();
+      return;
+    } catch (agentErr) {
+      logger.error({ err: agentErr }, "agent loop path failed — falling back to legacy");
+      if (abortController.signal.aborted) {
+        res.end();
+        return;
+      }
     }
   }
 

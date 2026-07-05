@@ -31,3 +31,4 @@ export * from "./project_stack";
 export * from "./message_feedback";
 export * from "./resume_snapshots";
 export * from "./capacity_pools";
+export * from "./agent_runs";

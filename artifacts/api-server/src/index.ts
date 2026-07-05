@@ -445,6 +445,33 @@ async function ensureColumns(): Promise<void> {
 
   try {
     await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS agent_runs (
+        id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        message_id      integer REFERENCES chat_messages(id) ON DELETE SET NULL,
+        project_id      integer REFERENCES projects(id) ON DELETE CASCADE,
+        user_id         integer REFERENCES users(id) ON DELETE SET NULL,
+        step_count      integer NOT NULL DEFAULT 0,
+        stop_reason     text NOT NULL,
+        tools_called    jsonb NOT NULL DEFAULT '[]'::jsonb,
+        total_tokens_in integer NOT NULL DEFAULT 0,
+        total_tokens_out integer NOT NULL DEFAULT 0,
+        started_at      timestamptz NOT NULL DEFAULT now(),
+        ended_at        timestamptz
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_agent_runs_message_id ON agent_runs(message_id)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_agent_runs_project_user ON agent_runs(project_id, user_id)
+    `);
+    logger.info("ensureColumns: agent_runs table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: agent_runs table failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
       ALTER TABLE generation_runs
         ADD COLUMN IF NOT EXISTS chat_message_id integer
     `);

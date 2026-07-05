@@ -11,12 +11,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.8",
     "@anthropic-ai/sdk": "^0.92.0",
     "@google-cloud/storage": "^7.19.0",
     "@google/genai": "^1.51.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
+    "ai": "^7.0.14",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "drizzle-kit": "^0.31.9",
