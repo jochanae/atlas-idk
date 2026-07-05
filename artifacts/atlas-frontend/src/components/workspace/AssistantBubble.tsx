@@ -32,6 +32,7 @@ import { DecisionGateCard } from "./DecisionGateCard";
 import { haptic } from "@/lib/long-press-tip";
 import { runLinePatchTrustChecks, formatTrustErrors, type TrustCheckInput } from "./linePatchTrust";
 import { MessageFeedback } from "./MessageFeedback";
+import PlanArtifactCardV2 from "./PlanArtifactCardV2";
 
 
 import type {
