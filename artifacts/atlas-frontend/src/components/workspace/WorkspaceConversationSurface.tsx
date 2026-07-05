@@ -408,7 +408,7 @@ export function WorkspaceConversationSurface({
             }}
             onClick={() => {
               try {
-                localStorage.removeItem("USE_NEXUS_WORKSPACE_CHAT");
+                localStorage.setItem("USE_NEXUS_WORKSPACE_CHAT", "0");
                 window.location.reload();
               } catch { /* ignore */ }
             }}

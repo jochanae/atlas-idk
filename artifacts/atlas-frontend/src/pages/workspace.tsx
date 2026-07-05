@@ -4390,7 +4390,7 @@ export default function Workspace() {
     try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
   });
   const useNexusWorkspaceChat = (() => {
-    try { return localStorage.getItem("USE_NEXUS_WORKSPACE_CHAT") === "1"; } catch { return false; }
+    try { return localStorage.getItem("USE_NEXUS_WORKSPACE_CHAT") !== "0"; } catch { return true; }
   })();
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
