@@ -385,7 +385,7 @@ export function ChatComposer(props: ChatComposerProps) {
           style={{
             position: "fixed", inset: 0, zIndex: 55,
             background: isParchment
-              ? "color-mix(in oklab, #f4ecd8 55%, transparent)"
+              ? "rgba(226, 232, 240, 0.55)"
               : "rgba(8,8,10,0.55)",
             backdropFilter: isParchment ? "blur(14px) saturate(115%)" : "blur(6px) saturate(120%)",
             WebkitBackdropFilter: isParchment ? "blur(14px) saturate(115%)" : "blur(6px) saturate(120%)",
