@@ -8400,6 +8400,7 @@ export default function Workspace() {
               greetingLoading,
               resumeBrief,
               project,
+              tier1Memory,
               onStarterPrompt: (label) => {
                 setInput(label);
                 setTimeout(() => textareaRef.current?.focus(), 0);

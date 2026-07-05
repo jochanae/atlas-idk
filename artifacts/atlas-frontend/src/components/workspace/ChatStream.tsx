@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import type { Tier1Memory } from "@/lib/tier1Memory";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useComposerVisibility } from "@/hooks/useComposerVisibility";
 import { UserBubble } from "@/components/workspace/UserBubble";
@@ -268,6 +269,7 @@ export interface ChatStreamProps {
   greetingLoading?: boolean;
   resumeBrief?: ResumeBrief | null;
   project: ProjectLike;
+  tier1Memory?: Tier1Memory | null;
   onStarterPrompt: (label: string) => void;
 
   // long-thread banner
@@ -344,7 +346,7 @@ export function ChatStream(props: ChatStreamProps) {
     scrollRef, bottomRef, onScroll, showScrollBtn, onScrollToLatest,
     messages, chatPending, activityStream, liveGeneration, thinkingBlock, historyMsgCountRef,
     priorLoaded,
-    isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading, resumeBrief, project,
+    isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading, resumeBrief, project, tier1Memory,
     wsModel, wsLens, onSwitchToGemini,
     onEditUserMessage,
     projectId, sessionId, linkedRepo,
@@ -687,19 +689,44 @@ export function ChatStream(props: ChatStreamProps) {
             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
               Atlas is here…
             </div>
-          ) : (
-            <div style={{
-              maxWidth: 540,
-              color: "var(--atlas-fg)",
-              fontSize: 17,
-              lineHeight: 1.55,
-              fontWeight: 400,
-              letterSpacing: "-0.005em",
-              opacity: 0.92,
-            }}>
-              {atlasGreeting?.trim() || "What are we shaping here?"}
-            </div>
-          )}
+          ) : (() => {
+            const a = tier1Memory?.answers;
+            const hasRecall = a && (a.building?.trim() || a.audience?.trim() || a.problem?.trim());
+            if (hasRecall) {
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 540 }}>
+                  <div style={{ color: "var(--atlas-fg)", fontSize: 17, lineHeight: 1.55, fontWeight: 400, letterSpacing: "-0.005em", opacity: 0.92 }}>
+                    {atlasGreeting?.trim() || "Here's what I already know about this project."}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                    {a.building?.trim() && (
+                      <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+                        <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", letterSpacing: "0.1em", textTransform: "uppercase", minWidth: 56, flexShrink: 0 }}>Building</span>
+                        <span style={{ fontSize: 14, color: "var(--atlas-fg)", opacity: 0.78, lineHeight: 1.45 }}>{a.building}</span>
+                      </div>
+                    )}
+                    {a.audience?.trim() && (
+                      <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+                        <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", letterSpacing: "0.1em", textTransform: "uppercase", minWidth: 56, flexShrink: 0 }}>For</span>
+                        <span style={{ fontSize: 14, color: "var(--atlas-fg)", opacity: 0.78, lineHeight: 1.45 }}>{a.audience}</span>
+                      </div>
+                    )}
+                    {a.problem?.trim() && (
+                      <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+                        <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", letterSpacing: "0.1em", textTransform: "uppercase", minWidth: 56, flexShrink: 0 }}>Solving</span>
+                        <span style={{ fontSize: 14, color: "var(--atlas-fg)", opacity: 0.78, lineHeight: 1.45 }}>{a.problem}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div style={{ maxWidth: 540, color: "var(--atlas-fg)", fontSize: 17, lineHeight: 1.55, fontWeight: 400, letterSpacing: "-0.005em", opacity: 0.92 }}>
+                {atlasGreeting?.trim() || "What are we shaping here?"}
+              </div>
+            );
+          })()}
         </div>
       )}
 
