@@ -43,6 +43,9 @@ import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { PreviewPanel, type ManifestDecision } from "../components/workspace/PreviewPanel";
 import { LedgerPanel } from "../components/workspace/LedgerPanel";
+import { VerificationPanel } from "@/components/run/VerificationPanel";
+import { matchWhisperGateAction } from "@/lib/whisperGate";
+import { dispatchVerifyRun } from "@/lib/verification";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
@@ -2350,7 +2353,7 @@ function RightPanel({
       )}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} onHydrated={onHydrated} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} />}
-      {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} />}
+      {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} entries={entries} />}
       {tab === "write" && <WriteTab projectId={projectId} isMobile={isMobile} />}
     </div>
   );
@@ -2435,12 +2438,14 @@ function TerminalPanel({
   onCommandComplete,
   scenarioLens,
   projectId,
+  entries = [],
 }: {
   pendingCommand?: string | null;
   onCommandConsumed?: () => void;
   onCommandComplete?: (command: string, output: string, exitCode: number | null) => void;
   scenarioLens?: boolean;
   projectId?: number;
+  entries?: Entry[];
 }) {
   const termTheme = useThemeMode();
   const isParchment = termTheme === "parchment";
@@ -2846,6 +2851,15 @@ function TerminalPanel({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: termBg, overflow: "hidden", position: "relative" }}>
+      {/* ── Verification section ───────────────────────────────────────── */}
+      {!scenarioLens && projectId != null && (
+        <VerificationPanel
+          projectId={projectId}
+          entries={entries}
+          onOutput={(text, kind) => addLine(text, kind === "stderr" ? "stderr" : kind === "error" ? "error" : kind === "input" ? "input" : kind === "system" ? "system" : "output")}
+        />
+      )}
+
       {/* ── Sync to GitHub bar ─────────────────────────────────────────── */}
       {!scenarioLens && (() => {
         const expanded = syncOpen || isDesktopView;
@@ -3144,6 +3158,19 @@ function TerminalPanel({
       </div>
 
       {/* ── Main row: terminal (left) + optional desktop sidebar (right) ── */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <div style={{
+        flexShrink: 0,
+        padding: "8px 14px 4px",
+        fontFamily: "var(--app-font-mono)",
+        fontSize: "var(--ts-micro)",
+        letterSpacing: "0.14em",
+        textTransform: "uppercase",
+        color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.72)",
+        borderBottom: `1px solid ${termBorder}`,
+      }}>
+        Output
+      </div>
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row" }}>
       {/* Output log */}
       <div
@@ -3368,6 +3395,7 @@ function TerminalPanel({
           ))}
         </aside>
       )}
+      </div>
       </div>
 
       {/* ── Help drawer overlay (mobile + desktop) ──────────────────── */}
@@ -6667,8 +6695,14 @@ export default function Workspace() {
 
   const doSendFromComposer = useCallback((...args: Parameters<typeof doSend>) => {
     if (atlasGreeting) setAtlasGreeting(null);
+    const userText = typeof args[0] === "string" ? args[0] : "";
+    const gateAction = matchWhisperGateAction(userText);
+    if (gateAction && id) {
+      setLeftTab("terminal");
+      dispatchVerifyRun(gateAction.kind, Number(id));
+    }
     doSend(...args);
-  }, [atlasGreeting, doSend]);
+  }, [atlasGreeting, doSend, id]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -7476,6 +7510,25 @@ export default function Workspace() {
     }
   }, [messages]);
 
+  // ── Verification runner — detect VERIFY_RUN action in Atlas stream ───────
+  const verifyRunFiredRef = useRef(false);
+  useEffect(() => {
+    if (!activityStream.active) { verifyRunFiredRef.current = false; return; }
+    const match = activityStream.content.match(/VERIFY_RUN\s*:?\s*(typecheck|test|lint|build)/i);
+    if (match && !verifyRunFiredRef.current) {
+      verifyRunFiredRef.current = true;
+      setLeftTab("terminal");
+      window.dispatchEvent(
+        new CustomEvent("axiom:verify-run", {
+          detail: {
+            kind: match[1].toLowerCase() as "typecheck" | "test" | "lint" | "build",
+            projectId: id ? Number(id) : undefined,
+          },
+        })
+      );
+    }
+  }, [activityStream.content, activityStream.active, id]);
+
   // ── Build runner — detect BUILD_RUN action in Atlas stream ───────────────
   const buildRunFiredRef = useRef(false);
   useEffect(() => {
@@ -8249,7 +8302,7 @@ export default function Workspace() {
               />
             </div>
           ) : leftTab === "terminal" ? (
-            <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} projectId={project?.id} />
+            <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} projectId={project?.id} entries={entries || []} />
           ) : leftTab === "blueprints" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <BlueprintsTab projectId={id} manifestDecision={manifestDecision} manifestLoading={manifestLoading} onBuild={handleManifest} />

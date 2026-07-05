@@ -62,6 +62,7 @@ import feedbackRouter from "./feedback";
 import shareRouter from "./share";
 import publishRouter from "./publish";
 import homeArtifactsRouter from "./homeArtifacts";
+import verifyRouter from "./verify";
 
 const router: IRouter = Router();
 
@@ -139,6 +140,7 @@ router.use(requireAuth, designPlanRouter);
 router.use(requireAuth, checkpointsRouter);
 router.use(requireAuth, bookmarksRouter);
 router.use(requireAuth, buildsRouter);
+router.use(requireAuth, verifyRouter);
 router.use(requireAuth, readinessRouter);
 router.use(requireAuth, thinkingReceiptsRouter);
 router.use(requireAuth, intelligenceRouter);

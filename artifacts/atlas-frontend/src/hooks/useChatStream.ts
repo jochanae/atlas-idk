@@ -712,7 +712,7 @@ export function useChatStream(
                   // Buffer at line boundaries so prefixes split across SSE chunks
                   // (e.g. "CONV" + "_STATE:active") are still detected.
                   tokenLineBuffer += chunk;
-                  const TOKEN_LINE_RE = /^(IMAGE_GEN|CONV_STATE|PROJECT_READY|BROWSER_VISIT|MEMORY_T\d+|MEMORY_UPDATE|REPO_LINK|GITHUB_PUSH|BUILD_RUN):[^\n]*/gm;
+                  const TOKEN_LINE_RE = /^(IMAGE_GEN|CONV_STATE|PROJECT_READY|BROWSER_VISIT|MEMORY_T\d+|MEMORY_UPDATE|REPO_LINK|GITHUB_PUSH|BUILD_RUN|VERIFY_RUN):[^\n]*/gm;
                   const TOKEN_PREFIX_RE = /(^|\n)(I|II|IM|IMA|IMAG|IMAGE|IMAGE_|IMAGE_G|IMAGE_GE|IMAGE_GEN|C|CO|CON|CONV|CONV_|CONV_S|CONV_ST|CONV_STA|CONV_STAT|CONV_STATE|P|PR|PRO|PROJ|PROJE|PROJEC|PROJECT|PROJECT_|PROJECT_R|PROJECT_RE|PROJECT_REA|PROJECT_READ|PROJECT_READY|B|BR|BRO|BROW|BROWS|BROWSE|BROWSER|BROWSER_|BROWSER_V|BROWSER_VI|BROWSER_VIS|BROWSER_VISI|BROWSER_VISIT|BU|BUI|BUIL|BUILD|BUILD_|BUILD_R|BUILD_RU|BUILD_RUN|M|ME|MEM|MEMO|MEMOR|MEMORY|MEMORY_|MEMORY_T\d*|MEMORY_U|MEMORY_UP|MEMORY_UPD|MEMORY_UPDA|MEMORY_UPDAT|MEMORY_UPDATE|R|RE|REP|REPO|REPO_|REPO_L|REPO_LI|REPO_LIN|REPO_LINK|G|GI|GIT|GITH|GITHU|GITHUB|GITHUB_|GITHUB_P|GITHUB_PU|GITHUB_PUS|GITHUB_PUSH)$/;
                   // Split into safe portion (everything up to last newline) and a tail to keep buffering.
                   const lastNl = tokenLineBuffer.lastIndexOf("\n");
@@ -734,6 +734,12 @@ export function useChatStream(
                   if (buildRunMatch && typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent("axiom:build-run", {
                       detail: { command: buildRunMatch[1].toLowerCase(), projectId },
+                    }));
+                  }
+                  const verifyRunMatch = safe.match(/^VERIFY_RUN\s*:?\s*(typecheck|test|lint|build)/im);
+                  if (verifyRunMatch && typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("axiom:verify-run", {
+                      detail: { kind: verifyRunMatch[1].toLowerCase(), projectId },
                     }));
                   }
                   const visibleChunk = safe.replace(TOKEN_LINE_RE, "").replace(/\n{3,}/g, "\n\n");

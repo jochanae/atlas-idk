@@ -943,6 +943,14 @@ or
 BUILD_RUN: build
 This triggers the built-in Build Runner panel automatically — do NOT tell the user to open the Console tab or run npm/pnpm commands manually. The Build Runner is always available via the Command Palette (⌘K → Build section) and from within the workspace directly.
 
+VERIFY_RUN (suggest when verification would help — typecheck, tests, lint, or build):
+When the user asks to type check, verify, check for errors, run tests, lint, or validate the build, emit on its own line:
+VERIFY_RUN: typecheck
+VERIFY_RUN: test
+VERIFY_RUN: lint
+VERIFY_RUN: build
+This triggers the Console Verification panel — streams output into the Output section and records a ledger entry. Prefer VERIFY_RUN over BUILD_RUN when the user asks to verify or check (not just build).
+
 INTENT_TYPE (emit at the end of every response to declare your intent):
 On its own line at the very end of your response, emit one of:
 INTENT_TYPE: BUILD    — you wrote or proposed code/file changes

@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { StatusGlyph } from "../StatusGlyph";
 import { CapsuleTag } from "../CapsuleTag";
+import { dispatchVerifyRun, isVerificationEntry, isVerificationFailed, parseVerificationMeta } from "@/lib/verification";
 
 
 interface VaultSave {
@@ -30,9 +31,11 @@ function formatSnapshotDate(iso: string): string {
   }
 }
 
-function LedgerEntry({ entry }: { entry: Entry }) {
+function LedgerEntry({ entry, projectId }: { entry: Entry; projectId: number }) {
   const committed = entry.status === "committed";
   const severity = entry.severity as "blocker" | "parked" | "committed" | "neutral";
+  const verification = parseVerificationMeta(entry);
+  const isBuild = (entry.mode ?? "").toUpperCase() === "BUILD";
 
   const wrapperGradient = committed
     ? `linear-gradient(135deg,
@@ -120,11 +123,50 @@ function LedgerEntry({ entry }: { entry: Entry }) {
               background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
               border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 20%, var(--atlas-border))",
               color: "var(--atlas-gold)",
-            }}>
-              {entry.mode}
+            }}              >
+              {verification ? "Verified" : entry.mode}
             </span>
           )}
         </div>
+
+        {(isBuild && committed) && (
+          <div
+            style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 13px 8px 37px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {["View Changes", "Preview", "Type Check", "Tests"].map((label) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  if (label === "View Changes") {
+                    window.dispatchEvent(new CustomEvent("axiom:open-changes", { detail: { buildEntryId: entry.id } }));
+                  } else if (label === "Preview") {
+                    window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { buildEntryId: entry.id } }));
+                  } else if (label === "Type Check") {
+                    dispatchVerifyRun("typecheck", projectId, String(entry.id));
+                  } else if (label === "Tests") {
+                    dispatchVerifyRun("test", projectId, String(entry.id));
+                  }
+                }}
+                style={{
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 9,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 35%, var(--atlas-border))",
+                  background: "transparent",
+                  color: "var(--atlas-gold)",
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </article>
   );
@@ -139,7 +181,8 @@ export function LedgerPanel({
 }) {
 
   const allCommitted = entries.filter((e) => e.status === "committed");
-  const committedClean = allCommitted.filter((e) => !e.deviation);
+  const inTension = allCommitted.filter((e) => isVerificationFailed(e));
+  const committedCleanDisplay = allCommitted.filter((e) => !e.deviation && !isVerificationFailed(e));
   const overridden = allCommitted.filter((e) => e.deviation);
 
   const [showAdd, setShowAdd] = useState(false);
@@ -334,14 +377,33 @@ export function LedgerPanel({
                       Committed
                     </span>
                     <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.06em", color: "var(--atlas-muted)", marginLeft: "auto" }}>
-                      {committedClean.length}
+                      {committedCleanDisplay.length}
                     </span>
                   </div>
-                  {committedClean.length > 0 ? (
-                    committedClean.map((e) => <LedgerEntry key={e.id} entry={e} />)
+                  {committedCleanDisplay.length > 0 ? (
+                    committedCleanDisplay.map((e) => <LedgerEntry key={e.id} entry={e} projectId={projectId} />)
                   ) : (
                     <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.45, padding: "6px 2px", lineHeight: 1.55 }}>
                       No committed decisions yet.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: 22 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, padding: "0 2px" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: "var(--atlas-ember)", boxShadow: "0 0 6px color-mix(in oklab, var(--atlas-ember) 45%, transparent)" }} />
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: "var(--atlas-ember)" }}>
+                      In Tension
+                    </span>
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.06em", color: "var(--atlas-muted)", marginLeft: "auto" }}>
+                      {inTension.length}
+                    </span>
+                  </div>
+                  {inTension.length > 0 ? (
+                    inTension.map((e) => <LedgerEntry key={e.id} entry={e} projectId={projectId} />)
+                  ) : (
+                    <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, padding: "6px 2px", lineHeight: 1.55 }}>
+                      No open tensions.
                     </div>
                   )}
                 </div>
@@ -360,7 +422,7 @@ export function LedgerPanel({
                   </div>
                   {overridden.length > 0 ? (
                     <div style={{ opacity: 0.65 }}>
-                      {overridden.map((e) => <LedgerEntry key={e.id} entry={e} />)}
+                      {overridden.map((e) => <LedgerEntry key={e.id} entry={e} projectId={projectId} />)}
                     </div>
                   ) : (
                     <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, padding: "6px 2px", lineHeight: 1.55 }}>

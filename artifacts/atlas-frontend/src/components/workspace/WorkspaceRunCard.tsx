@@ -31,6 +31,7 @@ import {
   useAtlasHistory,
 } from "@/lib/atlas-history";
 import { useReadingDensity } from "@/hooks/useComposerVisibility";
+import { dispatchVerifyRun } from "@/lib/verification";
 
 interface LiveStepItem {
   verb: string;
@@ -957,6 +958,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       <div
         style={{
           display: "flex",
+          flexWrap: "wrap",
           gap: 8,
           marginTop: 12,
           paddingTop: 12,
@@ -967,7 +969,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           type="button"
           onClick={(e) => { e.stopPropagation(); handleDetails(); }}
           style={{
-            flex: 1,
+            flex: "1 1 45%",
             fontSize: 12.5,
             fontWeight: 500,
             padding: "9px 0",
@@ -979,14 +981,14 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
             letterSpacing: "0.01em",
           }}
         >
-          Details
+          View Changes
         </button>
         <button
           type="button"
           title={previewTitle}
           onClick={(e) => { e.stopPropagation(); handlePreview(); }}
           style={{
-            flex: 1,
+            flex: "1 1 45%",
             fontSize: 12.5,
             fontWeight: 500,
             padding: "9px 0",
@@ -1000,6 +1002,44 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         >
           Preview
         </button>
+        {(run.status === "applied" || run.status === "pushed") && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); dispatchVerifyRun("typecheck", projectId, run.id); }}
+              style={{
+                flex: "1 1 45%",
+                fontSize: 12,
+                fontWeight: 500,
+                padding: "8px 0",
+                borderRadius: 8,
+                border: "1px solid hsl(var(--border) / 0.7)",
+                background: "transparent",
+                color: "hsl(var(--card-foreground) / 0.85)",
+                cursor: "pointer",
+              }}
+            >
+              Type Check
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); dispatchVerifyRun("test", projectId, run.id); }}
+              style={{
+                flex: "1 1 45%",
+                fontSize: 12,
+                fontWeight: 500,
+                padding: "8px 0",
+                borderRadius: 8,
+                border: "1px solid hsl(var(--border) / 0.7)",
+                background: "transparent",
+                color: "hsl(var(--card-foreground) / 0.85)",
+                cursor: "pointer",
+              }}
+            >
+              Tests
+            </button>
+          </>
+        )}
       </div>
 
       <style>{`
