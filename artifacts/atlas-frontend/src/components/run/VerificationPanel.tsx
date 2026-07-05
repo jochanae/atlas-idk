@@ -322,7 +322,7 @@ export function VerificationPanel({
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
   );
 }
