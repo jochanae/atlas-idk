@@ -379,10 +379,11 @@ export function Tier1IntakeSheet({ open, projectId, projectName, onClose, onComm
               {step === STEP_COUNT - 1 ? <CornerDownLeft size={14} /> : <ChevronRight size={14} />}
             </button>
           )}
-        </div>
       </div>
     </div>
   );
+
+  return createPortal(body, document.body);
 }
 
 export default Tier1IntakeSheet;
