@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { haptic } from "@/lib/long-press-tip";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
+import { useThemeMode } from "@/lib/theme";
 
 const ICON_TOUCH_TARGET_STYLE: CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
 
