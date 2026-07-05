@@ -56,7 +56,11 @@ function WorkspaceBlock({ projectId }: { projectId: number }) {
     queryKey: ["vcp-gitstatus", projectId],
     queryFn: () =>
       fetch(`/api/fs/${projectId}/gitstatus`, { credentials: "include" }).then((r) => r.json()),
-    staleTime: 10_000,
+    // Phase 3: stretched from 10 s → 30 s to match the rest of the run-data
+    // refresh budget; window-focus refetches removed since git status changes
+    // are captured when Atlas actually writes files, not on tab-switch.
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   const files = data?.files ?? {};

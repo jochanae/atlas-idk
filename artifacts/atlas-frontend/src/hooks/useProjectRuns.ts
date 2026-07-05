@@ -26,7 +26,10 @@ export interface ApiRun {
   steps: ApiRunStep[];
 }
 
-export function useProjectRuns(projectId: number | undefined) {
+export function useProjectRuns(
+  projectId: number | undefined,
+  options?: { enabled?: boolean },
+) {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<{ runs: ApiRun[] }>({
@@ -38,9 +41,12 @@ export function useProjectRuns(projectId: number | undefined) {
       if (!res.ok) throw new Error(`runs fetch failed: ${res.status}`);
       return res.json() as Promise<{ runs: ApiRun[] }>;
     },
-    enabled: !!projectId,
+    // Phase 3: accept caller-level enabled gate; default true.
+    // refetchOnWindowFocus disabled — the workspace poller (30 s) and staleTime
+    // already keep data fresh; window-focus refetches add noise without value.
+    enabled: (options?.enabled ?? true) && !!projectId,
     staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const invalidate = useCallback(() => {

@@ -4376,10 +4376,15 @@ export default function Workspace() {
       try {
         const res = await fetch(`/api/projects/${id}/runs`);
         if (!res.ok) return;
-        const runs = await res.json();
-        const completed = Array.isArray(runs)
-          ? runs.find((r: any) => (r.runStatus ?? r.status) === "completed")
-          : null;
+        const data = await res.json();
+        // Normalise: API may return { runs: [...] } or a bare array.
+        const runsArray: any[] = Array.isArray(data) ? data : (Array.isArray(data?.runs) ? data.runs : []);
+        // Phase 3: write into the React Query cache so useProjectRuns in
+        // ViewChangesPanel reads from here — eliminates its duplicate request.
+        if (runsArray.length > 0) {
+          queryClient.setQueryData(["project-runs", id], { runs: runsArray });
+        }
+        const completed = runsArray.find((r: any) => (r.runStatus ?? r.status) === "completed") ?? null;
         if (completed) {
           setLatestRun((prev: any) => prev && latestRunKey(prev) === latestRunKey(completed) ? prev : completed);
         }
