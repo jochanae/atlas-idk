@@ -17,13 +17,10 @@ import Projects from "./pages/projects";
 import Ledger from "./pages/ledger";
 import ParkingLot from "./pages/parking-lot";
 import EntryDetail from "./pages/entry-detail";
-import Workshop from "./pages/workshop";
 import CodePage from "./pages/code";
 import ConnectorsPage from "./pages/connectors";
-import Vault from "./pages/vault";
 import MasterMap from "./pages/master-map";
 import RunPage from "./pages/run";
-import Showcase from "./pages/showcase";
 
 import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
@@ -237,7 +234,7 @@ function Router() {
           <Route path="/entry/:id" component={EntryDetail} />
           <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           
-          <Route path="/workshop" component={Workshop} />
+          <Route path="/workshop" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/code" component={CodePage} />
           <Route path="/connectors" component={ConnectorsPage} />
           <Route path="/terms" component={Terms} />
@@ -245,7 +242,7 @@ function Router() {
           <Route path="/pricing" component={Pricing} />
           <Route path="/settings" component={Settings} />
           <Route path="/help" component={Help} />
-          <Route path="/vault" component={Vault} />
+          <Route path="/vault" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/secrets" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/admin" component={Admin} />
           <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
@@ -253,7 +250,7 @@ function Router() {
           <Route path="/master-map" component={MasterMap} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/runs/:id" component={RunPage} />
-          <Route path="/showcase" component={Showcase} />
+          <Route path="/showcase" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route component={NotFound} />
         </Switch>
       )}
