@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import {
   db,
   entriesTable,
@@ -12,6 +13,8 @@ import {
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { assertProjectOwner } from "../lib/projectWorkspace";
+
+const anthropicClient = new Anthropic();
 
 export const TIER1_FIELDS = [
   ["building", "What are you building?"],
@@ -328,6 +331,115 @@ export async function markNexusTier1Skipped(
       eq(nexusConversationsTable.userId, userId),
     ));
   return { ok: true };
+}
+
+// ── Workspace chat Tier 1 tool extraction ─────────────────────────────────
+// Runs as a lightweight Haiku call after each workspace turn (legacy path).
+// The model is given the conversation + just-emitted response and asked to
+// identify any Tier 1 fields the user answered in this turn.
+// Returns the number of fields written (0 = nothing to surface on SSE).
+
+const WORKSPACE_TIER1_UPSERT_TOOL: Anthropic.Tool = {
+  name: "tier1_upsert_field",
+  description:
+    "Save one Tier 1 project memory field. Use when the user has clearly answered one of the six foundational questions in conversation. Never guess — only call with the user's actual words (lightly cleaned).",
+  input_schema: {
+    type: "object",
+    properties: {
+      field: {
+        type: "string",
+        enum: [...TIER1_FIELD_KEYS],
+        description: "Which foundational field this answer satisfies",
+      },
+      value: { type: "string", description: "The user's answer, lightly cleaned" },
+      confidence: {
+        type: "string",
+        enum: ["explicit", "inferred"],
+        description: "explicit = user stated it directly; inferred = you paraphrased from context",
+      },
+    },
+    required: ["field", "value", "confidence"],
+  },
+};
+
+const WORKSPACE_TIER1_SKIP_TOOL: Anthropic.Tool = {
+  name: "tier1_mark_skipped",
+  description:
+    "Call ONLY when the user has clearly told you to stop asking Tier 1 questions (e.g. 'skip', 'stop asking that', 'I don't want to answer'). Prevents Atlas from asking again.",
+  input_schema: {
+    type: "object",
+    properties: {},
+  },
+};
+
+const WORKSPACE_TIER1_TOOLS: Anthropic.Tool[] = [
+  WORKSPACE_TIER1_UPSERT_TOOL,
+  WORKSPACE_TIER1_SKIP_TOOL,
+];
+
+export async function runWorkspaceTier1Extraction(params: {
+  projectId: number;
+  userId: number;
+  userMessage: string;
+  assistantResponse: string;
+  history: Array<{ role: string; content: string }>;
+  tier1StatusBlock: string;
+}): Promise<{ fieldsWritten: number; skipped: boolean }> {
+  const { projectId, userId, userMessage, assistantResponse, history, tier1StatusBlock } = params;
+  if (!projectId || !userId) return { fieldsWritten: 0, skipped: false };
+
+  const existing = await loadTier1ForProject(projectId);
+  const missing = getTier1MissingFields(existing);
+  if (missing.length === 0 && !existing?.tier1SkippedAt) {
+    return { fieldsWritten: 0, skipped: false };
+  }
+
+  const recentMessages = [...(history ?? [])].slice(-6);
+  const extractMessages: Anthropic.MessageParam[] = [
+    ...recentMessages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user", content: userMessage },
+    { role: "assistant", content: assistantResponse },
+    {
+      role: "user",
+      content: `Review the conversation above. If the user answered any of the six foundational project questions (what they're building, who it's for, the problem it solves, what's out of scope, success signal, or constraints), call tier1_upsert_field for each. If the user asked to stop being asked, call tier1_mark_skipped. Otherwise call nothing.`,
+    },
+  ];
+
+  let fieldsWritten = 0;
+  let skipped = false;
+
+  try {
+    const resp = await anthropicClient.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 512,
+      system: tier1StatusBlock || "You are a memory extraction assistant.",
+      messages: extractMessages,
+      tools: WORKSPACE_TIER1_TOOLS,
+      tool_choice: { type: "auto" },
+    });
+
+    for (const block of resp.content) {
+      if (block.type !== "tool_use") continue;
+      if (block.name === "tier1_upsert_field") {
+        const input = block.input as { field?: string; value?: string; confidence?: string };
+        const field = input.field as Tier1FieldKey | undefined;
+        const value = input.value ?? "";
+        if (!field || !TIER1_FIELD_KEYS.includes(field)) continue;
+        const result = await upsertTier1Field(projectId, userId, field, value);
+        if (result.ok) fieldsWritten++;
+      } else if (block.name === "tier1_mark_skipped") {
+        await markTier1Skipped(projectId, userId);
+        skipped = true;
+      }
+    }
+  } catch {
+    /* non-fatal — extraction failure should never affect the chat response */
+  }
+
+  return { fieldsWritten, skipped };
 }
 
 export async function clearNexusTier1Buffer(

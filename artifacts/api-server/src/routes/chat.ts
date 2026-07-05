@@ -32,7 +32,7 @@ import { runArtifactOrchestrator, loadProjectArtifactState } from "../lib/artifa
 import { shouldUseAgentLoop, shouldUseStructuredPlan } from "../lib/agent-loop/flags";
 import { runAgentLoop } from "../lib/agent-loop/runner";
 import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
-import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProject } from "../services/tier1";
+import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProject, runWorkspaceTier1Extraction } from "../services/tier1";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -6508,6 +6508,28 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       });
     } catch (runErr) {
       logger.warn({ err: runErr, projectId }, "execution_run: persist failed — non-fatal");
+    }
+  }
+
+  // ── Tier 1 workspace tool extraction (legacy path) ────────────────────────
+  // Makes a lightweight Haiku call with tier1_upsert_field / tier1_mark_skipped
+  // tools to capture any Tier 1 fields the user answered in this turn.
+  // Runs before res.end() so we can emit memory_update SSE if fields were written.
+  if (projectId > 0 && userId && !isFoundationMode && !isFlowMode && !isScenarioMode && fullText.length > 40) {
+    try {
+      const tier1Result = await runWorkspaceTier1Extraction({
+        projectId,
+        userId,
+        userMessage: message,
+        assistantResponse: fullText,
+        history: history ?? [],
+        tier1StatusBlock: "",
+      });
+      if ((tier1Result.fieldsWritten > 0 || tier1Result.skipped) && !res.writableEnded && !res.destroyed) {
+        res.write(`event: memory_update\ndata: ${JSON.stringify({ type: "tier1", fieldsWritten: tier1Result.fieldsWritten })}\n\n`);
+      }
+    } catch (tier1Err) {
+      logger.warn({ err: tier1Err }, "workspace tier1 extraction failed — non-fatal");
     }
   }
 
