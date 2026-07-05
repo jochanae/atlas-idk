@@ -58,6 +58,7 @@ export function VerificationPanel({
   onOutput,
   onRunStart,
 }: VerificationPanelProps) {
+  const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
   const [localStates, setLocalStates] = useState<Record<VerifyKind, VerifyKindState> | null>(null);
 
@@ -100,6 +101,14 @@ export function VerificationPanel({
     await run(kind, projectId, parentRunId);
   }, [projectId, run, runningKind]);
 
+  const handleRunAll = useCallback(async () => {
+    if (!projectId || runningKind) return;
+    setExpanded(true);
+    for (const kind of VERIFY_KINDS) {
+      await run(kind, projectId);
+    }
+  }, [projectId, run, runningKind]);
+
   // Listen for global verify-run events (Atlas inline chips, BUILD card actions)
   useEffect(() => {
     const handler = (e: Event) => {
@@ -131,18 +140,106 @@ export function VerificationPanel({
         ? "linear-gradient(180deg, rgba(240,228,210,0.35), transparent 80%)"
         : "linear-gradient(180deg, color-mix(in oklab, var(--atlas-gold) 4%, transparent), transparent 70%)",
     }}>
-      <div style={{
-        padding: "9px 13px 6px",
-        fontFamily: "var(--app-font-mono)",
-        fontSize: "var(--ts-micro)",
-        letterSpacing: "0.14em",
-        textTransform: "uppercase",
-        color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.72)",
-      }}>
-        Verification
-      </div>
+      {(() => {
+        const counts = VERIFY_KINDS.reduce(
+          (acc, k) => {
+            const s = states[k].status;
+            if (s === "passed") acc.passed++;
+            else if (s === "failed") acc.failed++;
+            else if (s === "running") acc.running++;
+            else acc.never++;
+            return acc;
+          },
+          { passed: 0, failed: 0, running: 0, never: 0 },
+        );
+        const summary = runningKind
+          ? `running ${VERIFY_KIND_LABELS[runningKind]}…`
+          : counts.failed > 0
+            ? `✕ ${counts.failed} failing · ✓ ${counts.passed} · ${counts.never} never`
+            : counts.passed === VERIFY_KINDS.length
+              ? `✓ all ${counts.passed} checks passed`
+              : counts.never === VERIFY_KINDS.length
+                ? `${VERIFY_KINDS.length} checks · never run`
+                : `✓ ${counts.passed} · ${counts.never} never`;
+        const disabledAll = !projectId || !!runningKind;
+        return (
+          <div style={{ padding: "8px 13px", display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flex: 1,
+                minWidth: 0,
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span style={{
+                width: 10,
+                display: "inline-block",
+                transition: "transform 120ms ease",
+                transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+                color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.72)",
+                fontSize: 10,
+              }}>▶</span>
+              <span style={{
+                fontFamily: "var(--app-font-mono)",
+                fontSize: "var(--ts-micro)",
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.72)",
+              }}>
+                Verification
+              </span>
+              <span style={{
+                fontFamily: "var(--app-font-mono)",
+                fontSize: "var(--ts-tiny)",
+                letterSpacing: "0.04em",
+                color: counts.failed > 0
+                  ? (isParchment ? "rgba(170,30,30,0.85)" : "rgba(252,100,100,0.85)")
+                  : isParchment ? "rgba(100,70,40,0.6)" : "rgba(var(--atlas-muted-rgb),0.6)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                minWidth: 0,
+                flex: 1,
+              }}>
+                {summary}
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={disabledAll}
+              onClick={() => void handleRunAll()}
+              style={{
+                flexShrink: 0,
+                padding: "4px 10px",
+                borderRadius: 5,
+                border: `1px solid ${disabledAll ? borderColor : "rgba(201,162,76,0.45)"}`,
+                background: disabledAll ? "transparent" : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+                color: disabledAll ? "rgba(var(--atlas-muted-rgb),0.4)" : "var(--atlas-gold)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: "var(--ts-tiny)",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                cursor: disabledAll ? "not-allowed" : "pointer",
+                fontWeight: 600,
+              }}
+            >
+              {runningKind ? "…" : "Run all"}
+            </button>
+          </div>
+        );
+      })()}
 
-      <div style={{ padding: "0 13px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+      {expanded && <div style={{ padding: "0 13px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
         {VERIFY_KINDS.map((kind) => {
           const state = states[kind];
           const pill = pillColors(state, !!isParchment);
@@ -225,7 +322,7 @@ export function VerificationPanel({
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
   );
 }
