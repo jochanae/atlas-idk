@@ -32,6 +32,8 @@ import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
+import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 
 
 export type AskAtlasMessage = {
