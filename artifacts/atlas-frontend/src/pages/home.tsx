@@ -2314,8 +2314,7 @@ export default function Home() {
       thinkOutLoudInlineRef.current = false;
       setActiveConversationId(null);
       setAskAtlasConversationId(null);
-      try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
-      try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+      askAtlasSession.clearConversationId();
       nexusChat.setMessages([]);
       askAtlasChat.clearMessages();
       setEarnedTitle(null);
