@@ -11,6 +11,7 @@ import { API_BASE } from "@/lib/api";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { fetchGitHubStatus, type NormalizedGitHubStatus } from "@/hooks/useGitHub";
+import { useThemeMode } from "@/lib/theme";
 
 const sMono = { fontFamily: "'IBM Plex Mono', var(--app-font-mono)" } as const;
 const sSans = { fontFamily: "var(--app-font-sans)" } as const;
