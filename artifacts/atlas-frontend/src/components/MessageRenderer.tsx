@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 
 // ── Patterns ──────────────────────────────────────────────────────────────────
 const FILE_PILL_PATTERN = /(\b[\w-]+\.(?:tsx|ts|js|jsx|css|json|md|sql)\b)/gi;
@@ -184,6 +185,7 @@ export function MarkdownProse({ content }: { content: string }) {
       }}
     >
       <ReactMarkdown
+        remarkPlugins={[remarkBreaks]}
         components={{
           p: ({ children }) => (
             <p
