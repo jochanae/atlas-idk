@@ -187,7 +187,7 @@ export function AskAtlasSurface({
 
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
-  const typed = useTypewriter(ASK_ATLAS_PLACEHOLDERS, !showPlaceholder);
+  const typed = useAskAtlasTypewriter(ASK_ATLAS_PLACEHOLDERS, !showPlaceholder);
 
   if (!open) return null;
 
@@ -861,7 +861,7 @@ export function AskAtlasSurface({
         >
             <div style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 6 }}>
               {/* Left cluster: history, then +/⋯ from ComposerActions */}
-              <UtilityButton
+              <AskAtlasUtilityButton
                 ariaLabel="Where were we"
                 title="Where were we?"
                 onClick={() => void onOpenHistory()}
@@ -871,7 +871,7 @@ export function AskAtlasSurface({
                   <circle cx="12" cy="12" r="9" />
                   <polyline points="12 7 12 12 15 14" />
                 </svg>
-              </UtilityButton>
+              </AskAtlasUtilityButton>
               <ComposerActions
                 scope="ask-atlas"
                 hasProjectContext={false}
@@ -902,7 +902,7 @@ export function AskAtlasSurface({
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
               {/* Add-to-project — only when there's a conversation to capture */}
               {messages.length > 0 && (
-                <UtilityButton
+                <AskAtlasUtilityButton
                   ariaLabel="Create project from this conversation"
                   title={handoffSignal?.projectName ? `Start workspace: ${handoffSignal.projectName}` : "Create project from this conversation"}
                   onClick={() => onCreateProject?.()}
@@ -914,9 +914,9 @@ export function AskAtlasSurface({
                     <path d="M12 12v5" />
                     <path d="M9.5 14.5h5" />
                   </svg>
-                </UtilityButton>
+                </AskAtlasUtilityButton>
               )}
-              <UtilityButton
+              <AskAtlasUtilityButton
                 ariaLabel={isListening ? "Stop voice" : "Voice input"}
                 onClick={toggleVoice}
                 active={isListening}
@@ -927,7 +927,7 @@ export function AskAtlasSurface({
                   <line x1="12" y1="19" x2="12" y2="23" />
                   <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
-              </UtilityButton>
+              </AskAtlasUtilityButton>
               <button
                 type="button"
                 onPointerDown={(e) => {
