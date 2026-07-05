@@ -3479,7 +3479,7 @@ HARD RULE: Never answer from the context of a different project unless the user 
     continuityBlock += `\n--- END PROJECT CONTEXT ---`;
     systemPrompt += continuityBlock;
 
-    const tier1Row = await loadTier1ForProject(project.id);
+    const tier1Row = await loadTier1ForProject(projectId);
     systemPrompt += buildTier1StatusBlock(tier1Row);
 
     // SESSION RESUMPTION — inject only on the very first assistant turn of a new session
