@@ -34,6 +34,14 @@ import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
 import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
+import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
+import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
+import {
+  ASK_ATLAS_PLACEHOLDERS,
+  extractNavigateTo,
+  findProjectOpenTarget,
+  renderMessageImages,
+} from "./askAtlasSurfaceUtils";
 
 
 export type AskAtlasMessage = {
@@ -92,132 +100,6 @@ interface Props {
   isRestoring?: boolean;
 }
 
-const ASK_ATLAS_PLACEHOLDERS = [
-  "Ask the global view…",
-  "What's conflicting across projects…",
-  "Which project is most worth doing next…",
-  "Where are decisions stalling…",
-  "What pattern keeps repeating…",
-];
-
-const PROJECT_OPEN_INTENT_RE = /\b(go|jump|open|workspace|inside)\b|\binto\s+that\b/i;
-const NAVIGATE_TO_RE = /\bNAVIGATE_TO:\s*(\{[^\n]+\})/;
-
-function renderMessageImages(msg: AskAtlasMessage) {
-  const images = msg.attachments && msg.attachments.length > 0
-    ? msg.attachments
-    : (msg.imageUrl ? [{ mediaType: "", base64: "", name: undefined, _url: msg.imageUrl }] as Array<{
-        mediaType: string;
-        base64: string;
-        name?: string;
-        _url?: string;
-      }> : []);
-
-  if (images.length === 0) return null;
-
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.content ? 8 : 0 }}>
-      {images.map((img, idx) => {
-        const url = (img as { _url?: string })._url ?? `data:${img.mediaType};base64,${img.base64}`;
-        return (
-          <div key={idx} style={{ position: "relative" }}>
-            <img
-              src={url}
-              alt={img.name || "Attached"}
-              style={{
-                width: images.length === 1 ? "100%" : 110,
-                maxWidth: "100%",
-                height: images.length === 1 ? "auto" : 110,
-                maxHeight: images.length === 1 ? 320 : 110,
-                objectFit: "cover",
-                borderRadius: 8,
-                display: "block",
-                border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 25%, transparent)",
-              }}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-type NavigateTarget = { projectId: number; projectName: string } | null;
-
-function extractNavigateTo(content: string): { target: NavigateTarget; cleanContent: string } {
-  const match = content.match(NAVIGATE_TO_RE);
-  if (!match) return { target: null, cleanContent: content };
-  try {
-    const parsed = JSON.parse(match[1]) as { projectId?: unknown; projectName?: unknown };
-    if (typeof parsed.projectId === "number" && typeof parsed.projectName === "string") {
-      const cleanContent = content.replace(NAVIGATE_TO_RE, "").replace(/\n{3,}/g, "\n\n").trim();
-      return { target: { projectId: parsed.projectId, projectName: parsed.projectName }, cleanContent };
-    }
-  } catch {}
-  return { target: null, cleanContent: content };
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function findProjectOpenTarget(content: string, projects: AskAtlasProject[]) {
-  if (!PROJECT_OPEN_INTENT_RE.test(content)) return null;
-
-  for (const project of projects) {
-    const name = project.name.trim();
-    if (!name) continue;
-    const nameRe = new RegExp(`(^|[^a-z0-9])${escapeRegExp(name)}(?=$|[^a-z0-9])`, "i");
-    if (nameRe.test(content)) return project;
-  }
-
-  return null;
-}
-
-// Mirror of home.tsx's useTypewriter — same cadence so the surface feels native.
-function useTypewriter(phrases: string[], paused: boolean) {
-  const [display, setDisplay] = useState("");
-  const state = useRef({ phraseIdx: 0, charIdx: 0, phase: "typing" as "typing" | "erasing" });
-  const phrasesRef = useRef(phrases);
-  phrasesRef.current = phrases;
-
-  useEffect(() => {
-    if (paused) return;
-    let timer: ReturnType<typeof setTimeout>;
-
-    function tick() {
-      const s = state.current;
-      const phrase = phrasesRef.current[s.phraseIdx];
-      if (s.phase === "typing") {
-        if (s.charIdx < phrase.length) {
-          s.charIdx++;
-          setDisplay(phrase.slice(0, s.charIdx));
-          timer = setTimeout(tick, 38);
-        } else {
-          timer = setTimeout(() => {
-            s.phase = "erasing";
-            tick();
-          }, 2000);
-        }
-      } else {
-        if (s.charIdx > 0) {
-          s.charIdx--;
-          setDisplay(phrase.slice(0, s.charIdx));
-          timer = setTimeout(tick, 22);
-        } else {
-          s.phraseIdx = (s.phraseIdx + 1) % phrasesRef.current.length;
-          s.phase = "typing";
-          timer = setTimeout(tick, 200);
-        }
-      }
-    }
-
-    timer = setTimeout(tick, 600);
-    return () => clearTimeout(timer);
-  }, [paused]);
-
-  return display;
-}
 
 export function AskAtlasSurface({
   open,
@@ -305,7 +187,7 @@ export function AskAtlasSurface({
 
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
-  const typed = useTypewriter(ASK_ATLAS_PLACEHOLDERS, !showPlaceholder);
+  const typed = useAskAtlasTypewriter(ASK_ATLAS_PLACEHOLDERS, !showPlaceholder);
 
   if (!open) return null;
 
@@ -979,7 +861,7 @@ export function AskAtlasSurface({
         >
             <div style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 6 }}>
               {/* Left cluster: history, then +/⋯ from ComposerActions */}
-              <UtilityButton
+              <AskAtlasUtilityButton
                 ariaLabel="Where were we"
                 title="Where were we?"
                 onClick={() => void onOpenHistory()}
@@ -989,7 +871,7 @@ export function AskAtlasSurface({
                   <circle cx="12" cy="12" r="9" />
                   <polyline points="12 7 12 12 15 14" />
                 </svg>
-              </UtilityButton>
+              </AskAtlasUtilityButton>
               <ComposerActions
                 scope="ask-atlas"
                 hasProjectContext={false}
@@ -1020,7 +902,7 @@ export function AskAtlasSurface({
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
               {/* Add-to-project — only when there's a conversation to capture */}
               {messages.length > 0 && (
-                <UtilityButton
+                <AskAtlasUtilityButton
                   ariaLabel="Create project from this conversation"
                   title={handoffSignal?.projectName ? `Start workspace: ${handoffSignal.projectName}` : "Create project from this conversation"}
                   onClick={() => onCreateProject?.()}
@@ -1032,9 +914,9 @@ export function AskAtlasSurface({
                     <path d="M12 12v5" />
                     <path d="M9.5 14.5h5" />
                   </svg>
-                </UtilityButton>
+                </AskAtlasUtilityButton>
               )}
-              <UtilityButton
+              <AskAtlasUtilityButton
                 ariaLabel={isListening ? "Stop voice" : "Voice input"}
                 onClick={toggleVoice}
                 active={isListening}
@@ -1045,7 +927,7 @@ export function AskAtlasSurface({
                   <line x1="12" y1="19" x2="12" y2="23" />
                   <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
-              </UtilityButton>
+              </AskAtlasUtilityButton>
               <button
                 type="button"
                 onPointerDown={(e) => {
@@ -1116,91 +998,5 @@ export function AskAtlasSurface({
   );
 }
 
-function UtilityButton({
-  children,
-  ariaLabel,
-  title,
-  onClick,
-  tinted,
-  active,
-  glowing,
-}: {
-  children: React.ReactNode;
-  ariaLabel: string;
-  title?: string;
-  onClick?: () => void;
-  tinted?: boolean;
-  active?: boolean;
-  glowing?: boolean;
-}) {
-  return (
-    <>
-      {glowing && (
-        <style>{`
-          @keyframes ask-atlas-folder-glow {
-            0%, 100% { box-shadow: 0 0 6px color-mix(in oklab, var(--atlas-gold) 45%, transparent), 0 0 14px color-mix(in oklab, var(--atlas-gold) 20%, transparent); }
-            50% { box-shadow: 0 0 12px color-mix(in oklab, var(--atlas-gold) 75%, transparent), 0 0 24px color-mix(in oklab, var(--atlas-gold) 35%, transparent); }
-          }
-        `}</style>
-      )}
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={ariaLabel}
-        title={title ?? ariaLabel}
-        style={{
-          width: 34,
-          height: 34,
-          flexShrink: 0,
-          borderRadius: 10,
-          border: glowing ? "1px solid color-mix(in oklab, var(--atlas-gold) 55%, transparent)" : "1px solid transparent",
-          background: glowing
-            ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
-            : active
-              ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"
-              : tinted
-                ? "color-mix(in oklab, var(--atlas-gold) 6%, transparent)"
-                : "transparent",
-          color: glowing || active
-            ? "var(--atlas-gold)"
-            : tinted
-              ? "color-mix(in oklab, var(--atlas-gold) 85%, transparent)"
-              : "var(--atlas-muted)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: onClick ? "pointer" : "default",
-          padding: 0,
-          WebkitTapHighlightColor: "transparent",
-          transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
-          animation: glowing ? "ask-atlas-folder-glow 2s ease-in-out infinite" : undefined,
-        }}
-        onMouseEnter={(e) => {
-          if (!onClick) return;
-          const el = e.currentTarget as HTMLButtonElement;
-          el.style.background = glowing ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)" : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)";
-          el.style.color = "var(--atlas-gold)";
-        }}
-        onMouseLeave={(e) => {
-          const el = e.currentTarget as HTMLButtonElement;
-          el.style.background = glowing
-            ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
-            : active
-              ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"
-              : tinted
-                ? "color-mix(in oklab, var(--atlas-gold) 6%, transparent)"
-                : "transparent";
-          el.style.color = glowing || active
-            ? "var(--atlas-gold)"
-            : tinted
-              ? "color-mix(in oklab, var(--atlas-gold) 85%, transparent)"
-              : "var(--atlas-muted)";
-        }}
-      >
-        {children}
-      </button>
-    </>
-  );
-}
 
 export default AskAtlasSurface;

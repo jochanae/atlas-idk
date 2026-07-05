@@ -67,6 +67,7 @@ import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { askAtlasSession } from "@/lib/askAtlasSession";
 
 
 const PLACEHOLDERS = [
@@ -1886,17 +1887,10 @@ export default function Home() {
       return null;
     }
   });
-  const [askAtlasConversationId, setAskAtlasConversationId] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem("atlas-ask-atlas-conversation-id") ?? localStorage.getItem("atlas-ask-atlas-conversation-id") ?? null;
-    } catch {
-      return null;
-    }
-  });
+  const [askAtlasConversationId, setAskAtlasConversationId] = useState<string | null>(() => askAtlasSession.getConversationId());
   const [askAtlasCrystallized, setAskAtlasCrystallized] = useState(false);
   const rememberAskAtlasConversationId = (conversationId: string) => {
-    try { localStorage.setItem("atlas-ask-atlas-conversation-id", conversationId); } catch {}
-    try { sessionStorage.setItem("atlas-ask-atlas-conversation-id", conversationId); } catch {}
+    askAtlasSession.setConversationId(conversationId);
   };
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
@@ -1960,7 +1954,7 @@ export default function Home() {
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
-      try { sessionStorage.removeItem("atlas-ask-atlas-closed"); } catch {}
+      askAtlasSession.clearClosed();
       setAskAtlasSurfaceOpen(true);
       if (detail?.seed) setInput(detail.seed);
       window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
@@ -2092,29 +2086,19 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    try {
-      if (localStorage.getItem("atlas-ask-atlas-surface-open") === "1") return true;
-      // Auto-resume: if the user had an Ask Atlas conversation and did NOT manually
-      // close the surface this browser session, re-open it so they land where they left off.
-      const manuallyClosed = sessionStorage.getItem("atlas-ask-atlas-closed") === "1";
-      if (manuallyClosed) return false;
-      const hasConvId = !!(
-        localStorage.getItem("atlas-ask-atlas-conversation-id") ??
-        sessionStorage.getItem("atlas-ask-atlas-conversation-id")
-      );
-      return hasConvId;
-    } catch { return false; }
+    if (askAtlasSession.isSurfaceOpen()) return true;
+    // Auto-resume: if the user had an Ask Atlas conversation and did NOT manually
+    // close the surface this browser session, re-open it so they land where they left off.
+    if (askAtlasSession.isClosed()) return false;
+    return !!askAtlasSession.getConversationId();
   });
   // True while the thread restore fetch is in-flight. Initialized synchronously
-  // from localStorage so the surface is visible immediately on return (no blank flash).
+  // from storage so the surface is visible immediately on return (no blank flash).
   const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
-    try {
-      const manuallyClosed = sessionStorage.getItem("atlas-ask-atlas-closed") === "1";
-      if (manuallyClosed) return false;
-      const surfaceOpen = localStorage.getItem("atlas-ask-atlas-surface-open") === "1";
-      const convId = localStorage.getItem("atlas-ask-atlas-conversation-id") ?? sessionStorage.getItem("atlas-ask-atlas-conversation-id");
-      return (surfaceOpen || !!convId) && !!convId;
-    } catch { return false; }
+    if (askAtlasSession.isClosed()) return false;
+    const surfaceOpen = askAtlasSession.isSurfaceOpen();
+    const convId = askAtlasSession.getConversationId();
+    return (surfaceOpen || !!convId) && !!convId;
   });
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
@@ -2142,15 +2126,9 @@ export default function Home() {
     if (askAtlasSurfaceOpen) nexusChat.clearMessages();
   }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
 
-  // Persist Ask Atlas surface state to localStorage so it survives hard refresh.
+  // Persist Ask Atlas surface state so it survives hard refresh.
   useEffect(() => {
-    try {
-      if (askAtlasSurfaceOpen) {
-        localStorage.setItem("atlas-ask-atlas-surface-open", "1");
-      } else {
-        localStorage.removeItem("atlas-ask-atlas-surface-open");
-      }
-    } catch {}
+    askAtlasSession.setSurfaceOpen(askAtlasSurfaceOpen);
   }, [askAtlasSurfaceOpen]);
 
   // Restore Ask Atlas thread after hard refresh or navigation return — the surface
@@ -2336,8 +2314,7 @@ export default function Home() {
       thinkOutLoudInlineRef.current = false;
       setActiveConversationId(null);
       setAskAtlasConversationId(null);
-      try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
-      try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+      askAtlasSession.clearConversationId();
       nexusChat.setMessages([]);
       askAtlasChat.clearMessages();
       setEarnedTitle(null);
@@ -3636,8 +3613,7 @@ export default function Home() {
     thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
     setAskAtlasConversationId(null);
-    try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
-    try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+    askAtlasSession.clearConversationId();
     nexusChat.clearMessages();
     askAtlasChat.clearMessages();
     setReviewingPlanIds(new Set());
@@ -5579,7 +5555,7 @@ export default function Home() {
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                try { sessionStorage.setItem("atlas-ask-atlas-closed", "1"); } catch {}
+                askAtlasSession.markClosed();
                 setAskAtlasSurfaceOpen(false);
                 askAtlasChat.abort();
                 askAtlasChat.clearMessages();
