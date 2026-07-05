@@ -279,54 +279,50 @@ html, body {
 
 [data-theme="parchment"] {
   color-scheme: light;
-  /* Warm Ivory / Parchment — warm ivory luxury, gold accent preserved */
-  --atlas-gold-rgb: 139, 94, 60;
+  /* Platinum Frost — cool alabaster luxury, slate-blue accent. Replaces the
+     prior warm-ivory/parchment sepia base. Dark mode is untouched. */
+  --atlas-gold-rgb: 59, 82, 115;
 
-  /* Semantic warm-ivory tokens (light mode only) */
-  --bg-primary:       #F7F4ED;
-  --bg-surface:       #FFFDF8;
-  --bg-elevated:      #F2EDE3;
-  --text-primary:     #1F2430;
-  --text-secondary:   #4A5462;
-  --text-muted:       #5E6A78;
-  --border-soft:      rgba(115, 92, 60, 0.18);
-  --accent-gold:      #A87832;
-  --accent-gold-soft: rgba(168, 120, 50, 0.14);
-  --shadow-soft:      0 18px 45px rgba(68, 55, 35, 0.14);
-  --atlas-bg-rgb: 247, 244, 237;
-  --atlas-surface-rgb: 255, 253, 248;
-  --atlas-muted-rgb: 100, 116, 139;
-  --atlas-fg-rgb: 15, 23, 42;
-  --atlas-flow-pane-bg: #FFFDF8;
+  /* Semantic cool-neutral tokens (light mode only) */
+  --bg-primary:       #F8F9FA;
+  --bg-surface:       rgba(255, 255, 255, 0.80);
+  --bg-elevated:      #EEF0F3;
+  --text-primary:     #05070F;
+  --text-secondary:   #334155;
+  --text-muted:       #4D5A6E;
+  --border-soft:      rgba(15, 23, 42, 0.08);
+  --accent-gold:      #3B5273;
+  --accent-gold-soft: rgba(59, 82, 115, 0.12);
+  --shadow-soft:      0 18px 45px rgba(15, 23, 42, 0.08);
+  --atlas-bg-rgb: 248, 249, 250;
+  --atlas-surface-rgb: 255, 255, 255;
+  --atlas-muted-rgb: 77, 90, 110;
+  --atlas-fg-rgb: 5, 7, 15;
+  --atlas-flow-pane-bg: #FFFFFF;
 
   /* Home page theme overrides */
   --atlas-home-atmosphere: none;
   --atlas-home-bg-gradient: none;
   --atlas-home-header-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.06);
-  --atlas-nav-arch-fill: rgba(247,244,237,0.92);
-  --atlas-home-btn-bg: #FFFDF8;
+  --atlas-nav-arch-fill: rgba(248, 249, 250, 0.92);
+  --atlas-home-btn-bg: #FFFFFF;
 
-  /* Warm Ivory canvas + true-white raised surfaces
-     (contrast pass 2026-07-01: cards go true white so cream-on-cream stops
-     flattening; page bg stays warm). */
-  --atlas-bg:           #F5F1E8;
+  /* Cool platinum canvas + true-white raised surfaces */
+  --atlas-bg:           #F8F9FA;
   --atlas-surface:      #FFFFFF;
-  --atlas-surface-alt:  #FBF7EE;
+  --atlas-surface-alt:  #F1F3F5;
 
-  /* Obsidian typography — deeper headings for crisper hierarchy */
+  /* Near-black slate typography */
   --atlas-fg:           #05070F;
-  --atlas-muted:        #3E4A5C;
+  --atlas-muted:        #4D5A6E;
 
-  /* Signature gold accent — reserved for priority/interactive fills only.
-     Structural borders/dividers/glows are demoted to neutrals in parchment
-     (Phase 2 rebalance: 85% neutral / 15% accent). Dark mode untouched. */
-  --atlas-ember:        #6f4a30;
-  --atlas-ember-glow:   rgba(139, 94, 60, 0.20);
-  --atlas-gold:         #8B5E3C;                    /* fills — priority only */
-  --atlas-gold-dim:     rgba(139, 94, 60, 0.10);    /* selected/armed fill */
-  /* Demoted: gold-border + gold-glow now neutral slate in parchment.
-     Any component that reads these gets a neutral border in light mode
-     without any per-component edits. */
+  /* Slate-blue accent — replaces bronze in light mode. Reserved for
+     priority/interactive fills. Structural borders/dividers stay neutral. */
+  --atlas-ember:        #3B5273;
+  --atlas-ember-glow:   rgba(59, 82, 115, 0.20);
+  --atlas-gold:         #3B5273;                    /* fills — priority only */
+  --atlas-gold-dim:     rgba(59, 82, 115, 0.10);    /* selected/armed fill */
+  /* Structural borders remain neutral slate */
   --atlas-gold-border:  rgba(15, 23, 42, 0.14);
   --atlas-gold-glow:    rgba(15, 23, 42, 0.06);
   /* Intelligence status accent — purple, reserved for Ask Atlas idle dot,
@@ -336,22 +332,22 @@ html, body {
   --atlas-intel-dim:    rgba(109, 94, 245, 0.10);
   --atlas-phosphor:     #0284C7;
 
-  /* Search rail trigger — bronze on ice */
+  /* Search rail trigger — slate on frost */
   --atlas-search-btn-bg:     rgba(255,255,255,0.85);
-  --atlas-search-btn-border: rgba(139,94,60,0.55);
-  --atlas-search-btn-fg:     #6f4a30;
+  --atlas-search-btn-border: rgba(59, 82, 115, 0.45);
+  --atlas-search-btn-fg:     #3B5273;
 
   /* Frosted glass — translucent white over cool canvas */
-  --atlas-border:       rgba(15, 23, 42, 0.14);
-  --atlas-glass-bg:     rgba(255, 255, 255, 0.82);
+  --atlas-border:       rgba(15, 23, 42, 0.10);
+  --atlas-glass-bg:     rgba(255, 255, 255, 0.72);
   --atlas-glass-border: rgba(255, 255, 255, 0.95);
 
-  /* Cool occlusion shadows — bumped ~40% for real layer separation */
+  /* Cool occlusion shadows */
   --atlas-shadow-sm:    rgba(15,23,42,0.06);
   --atlas-shadow-md:    rgba(15,23,42,0.12);
   --atlas-shadow-lg:    rgba(15,23,42,0.18);
 
-  /* Hairline shadow, parchment tuning — cool slate wash over warm bg. */
+  /* Hairline shadow — cool slate wash */
   --atlas-header-shadow: 0 1px 0 rgba(15,23,42,0.06), 0 6px 14px rgba(15,23,42,0.08);
 
 
@@ -359,30 +355,31 @@ html, body {
   --atlas-brand-shield-bg:     #0F172A;
   --atlas-brand-shield-border: rgba(255, 255, 255, 0.15);
 
-  /* shadcn tokens — Frosted Ice mapping */
-  --background: 210 40% 98%;        /* #F8FAFC */
+  /* shadcn tokens — Platinum Frost mapping */
+  --background: 210 20% 98%;        /* #F8F9FA */
   --foreground: 222 47% 11%;        /* #0F172A */
   --border: 220 13% 91%;
   --input: 220 13% 91%;
-  --ring: 26 40% 39%;
+  --ring: 215 32% 34%;              /* slate blue */
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
-  --primary: 26 40% 39%;            /* gold — locked */
+  --primary: 215 32% 34%;           /* slate blue — locked */
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 96%;
+  --secondary: 210 20% 96%;
   --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 19% 38%;  /* #4D5A6E — AA on parchment */
-  --accent: 26 40% 39%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 19% 38%;
+  --accent: 215 32% 34%;
   --accent-foreground: 0 0% 100%;
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 222 47% 11%;
   --sidebar-border: 220 13% 91%;
-  --sidebar-accent: 210 40% 96%;
+  --sidebar-accent: 210 20% 96%;
   --sidebar-accent-foreground: 222 47% 11%;
 }
+
 
 /* HistoryBookmarksSheet checkpoint input — parchment override */
 [data-theme="parchment"] .atlas-checkpoint-input {
@@ -394,7 +391,7 @@ html, body {
   color: var(--text-muted) !important;
 }
 [data-theme="parchment"] .atlas-checkpoint-input:focus {
-  border-color: rgba(115, 92, 60, 0.55) !important;
+  border-color: rgba(59, 82, 115, 0.55) !important;
 }
 
 /* Frosted glass on overlays and sheet surfaces in light mode */
@@ -618,9 +615,9 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
 }
 [data-theme="parchment"] .atlas-rail-daychip {
   background: rgba(255,255,255,0.85) !important;
-  border-color: rgba(17,17,17,0.14) !important;
-  color: #5b3a1f !important;
-  box-shadow: 0 1px 3px rgba(17,17,17,0.06);
+  border-color: rgba(15,23,42,0.10) !important;
+  color: #3B5273 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.06);
 }
 
 /* ── Light-mode workspace composer contrast ── */
@@ -655,7 +652,7 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   backdrop-filter: blur(16px) saturate(120%);
 }
 [data-theme="parchment"] .atlas-home-header {
-  background: rgba(245, 241, 232, 0.92);
+  background: rgba(248, 249, 250, 0.92);
 }
 
 /* ── Mobile footer (theme-aware) ── */
@@ -664,7 +661,7 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   backdrop-filter: blur(20px);
 }
 [data-theme="parchment"] .atlas-mobile-footer {
-  background: rgba(245, 241, 232, 0.96);
+  background: rgba(248, 249, 250, 0.96);
 }
 
 /* ── App header (workspace top bar — theme-aware, frosted glass) ── */
@@ -688,7 +685,7 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   border-bottom: none;
 }
 [data-theme="parchment"] .atlas-app-header * {
-  --atlas-surface: #EDE9DF;
+  --atlas-surface: #F1F3F5;
 }
 [data-theme="parchment"] .atlas-app-header-row {
   box-shadow: none !important;

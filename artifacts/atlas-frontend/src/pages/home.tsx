@@ -5852,7 +5852,7 @@ export default function Home() {
         [data-theme="parchment"] .atlas-streaming-word-shimmer {
           --atlas-token-shimmer-base: color-mix(in oklab, var(--atlas-muted) 74%, var(--atlas-fg));
           --atlas-token-shimmer-glint: color-mix(in oklab, var(--atlas-gold) 30%, #f6f1ea);
-          text-shadow: 0 0 8px rgba(139,94,60,0.12);
+          text-shadow: 0 0 8px rgba(59, 82, 115,0.12);
         }
         .atlas-home-thought-card:hover {
           border-color: color-mix(in oklab, var(--atlas-gold) 24%, var(--atlas-border));

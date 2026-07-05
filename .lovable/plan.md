@@ -1,134 +1,95 @@
-# Plan: Unify workspace chat onto the Nexus conversation spine
-
-**Status:** Draft — needs user approval before execution.
-**Owner surface:** Frontend only. No backend edits from Lovable (backend handoff spec at the end).
-
----
-
 ## Goal
 
-Keep the workspace shell, panels, tabs, files, preview, ledger, terminal, workbench, run cards. Replace **only** the conversation engine with the same one Ask Atlas uses. One smart surface. Nexus becomes the brain behind the workspace chat; workspace tools still execute here.
+Kill the muddy warm-ivory/parchment base in light mode. Replace it with a clean platinum-frost neutral. Neutralize the bronze accent to cool slate blue. Dark obsidian theme stays byte-identical.
 
-Success test: user sends a message in workspace → same speed, same feel, same streaming rhythm as Ask Atlas → run cards, plans, files still fire.
+## Scope
 
----
+Frontend only — CSS tokens + a handful of components that hardcoded warm RGBs. No logic changes, no dark-mode edits, no rename of the `parchment` theme key (it stays as an internal identifier so `data-theme="parchment"` still switches modes without breaking `useThemeMode`, `theme.ts`, or the 200+ scoped selectors).
 
-## Ground truth (from scan)
+## The edits
 
-| File | Lines | Role |
-|---|---|---|
-| `hooks/useNexusChatStream.ts` | 691 | Powers Ask Atlas + home. Clean. Already used twice on `home.tsx`. |
-| `hooks/useChatStream.ts` | 1,121 | Workspace-only. Owns chat AND ~15 workspace side effects. |
-| `pages/workspace.tsx` | 9,678 | Mounts `useChatStream` and passes 20+ setters into it. |
+### 1. Rewrite the parchment token block — `src/styles.css` lines 280–385
 
-`useChatStream` is not a chat hook. It is the workspace's nervous system with chat bolted on. That is the reason for the slowness and why swapping is not one line.
+Swap warm values for cool platinum. Everything downstream reads these tokens through `color-mix(... var(--atlas-bg) ...)`, so retuning them cascades to the header, dock, composer glass, cards, sheets.
 
----
-
-## What `useChatStream` currently owns (must be re-homed)
-
-From reading the hook signature (`hooks/useChatStream.ts:70-115`):
-
-**Pure chat (moves to Nexus):**
-- `setMessages`, `setChatPending`, `setActivityStream`, `setSessionId`, message pacing, streaming, abort, prior-message hydration.
-
-**Workspace side effects (must move OUT of the chat hook):**
-1. `setDetectedLens` — lens routing → move to a Nexus stream listener in workspace.
-2. `setScenarioBuffer` — scenario capture → listener.
-3. `setLeftTab` / `setMobileTab` — tab switching from chat events → listener.
-4. `setPendingResolvedNodeIds` — flow node resolution → owned by FlowPanel via listener.
-5. `setAutoNameKey` — project auto-name trigger → listener.
-6. `onPreviewCode` — artifact → preview → owned by PreviewPanel via listener.
-7. `onFlowNodes` — flow updates → owned by FlowPanel via listener.
-8. `onStepEvent` — step progress → owned by StepProgress via listener.
-9. `onDoneEvent` — done payload fan-out (imageGen, plans, etc.) → listener.
-10. `setMemoryChips` — memory chip surfacing → listener.
-11. Session bootstrap / `ensureSessionId` — keep, but wrap on top of Nexus.
-12. Forge context, file context, plan events, artifact writes — listeners.
-
-Anything not in the "pure chat" list stays in workspace code as **subscriptions to a shared event bus**, not as setters passed into the chat hook.
-
----
-
-## Architecture after the swap
-
-```text
-WorkspacePage
-  ├─ WorkspaceShell (header, tabs)
-  ├─ WorkspacePanels (files, preview, ledger, flow, terminal, workbench, run cards)
-  │     └─ each panel subscribes to workspaceEventBus for the events it cares about
-  └─ WorkspaceConversationSurface
-        └─ useNexusChatStream({ projectId, mode: "workspace", onEvent: bus.emit })
-              └─ ChatStream + ChatComposer (already extracted)
+```
+--atlas-bg:            #F8F9FA   (was #F5F1E8 warm ivory)
+--atlas-surface:       #FFFFFF
+--atlas-surface-alt:   #F1F3F5   (was #FBF7EE cream)
+--bg-primary:          #F8F9FA
+--bg-surface:          rgba(255,255,255,0.80)
+--bg-elevated:         #EEF0F3
+--atlas-bg-rgb:        248, 249, 250
+--atlas-surface-rgb:   255, 255, 255
+--atlas-flow-pane-bg:  #FFFFFF
+--atlas-nav-arch-fill: rgba(248,249,250,0.92)
+--atlas-home-btn-bg:   #FFFFFF
+--atlas-glass-bg:      rgba(255,255,255,0.72)
+--atlas-glass-border:  rgba(255,255,255,0.95)
+--border-soft:         rgba(15,23,42,0.08)
+--atlas-border:        rgba(15,23,42,0.10)
 ```
 
-One hook. One message stream. Workspace-specific reactions become bus listeners owned by the panel that actually renders them.
+Foreground/text unchanged (already near-black slate `#05070F`).
 
----
+### 2. Neutralize the accent to slate blue (light mode only)
 
-## Phases
+```
+--atlas-gold:         #3B5273   (was #8B5E3C bronze)
+--atlas-gold-dim:     rgba(59, 82, 115, 0.10)
+--atlas-gold-glow:    rgba(59, 82, 115, 0.18)
+--atlas-gold-border:  rgba(59, 82, 115, 0.22)
+--atlas-gold-rgb:     59, 82, 115
+--atlas-ember:        #3B5273
+--atlas-ember-glow:   rgba(59, 82, 115, 0.20)
+--atlas-search-btn-border: rgba(59, 82, 115, 0.45)
+--atlas-search-btn-fg:     #3B5273
+--ring:               215 32% 34%   (shadcn ring token)
+--primary:            215 32% 34%
+--accent:             215 32% 34%
+```
 
-### Phase 0 — Backend handoff (blocker for phase 2, not phase 1)
+Dark mode gold (`#E6C687`) is untouched.
 
-Hand off to Cursor:
-- Add a `mode: "workspace" | "ask_atlas"` param to the Nexus chat endpoint (whatever `useNexusChatStream` POSTs to).
-- When `mode === "workspace"`, compose system prompt with the workspace-context variant (project id, active files, active tab context, available workspace tools).
-- Response shape unchanged. All existing signal lines (`NAVIGATE_TO`, `PROJECT_READY`, `MEMORY_CHIPS`, artifact JSON, step events) preserved.
+### 3. Sweep hardcoded warm RGBs inside `[data-theme="parchment"]` scoped rules — `src/styles.css`
 
-Until this ships, phase 1 runs with the existing Nexus prompt — usable but not workspace-aware.
+~15–20 literal substitutions where the CSS bypasses tokens. Targets: `rgba(240,228,210,*)`, `rgba(255,253,248,*)`, `rgba(139,94,60,*)`, `#EDE9DF`. Replace with `var(--atlas-bg)`, `var(--atlas-surface)`, `var(--atlas-border)`, or `rgba(59,82,115,*)` for accent-bearing rules.
 
-### Phase 1 — Frontend: dual-mount, no removal (safe)
+### 4. Neutralize component-level warm literals
 
-1. Create `src/lib/workspaceEventBus.ts` — tiny typed emitter (`emit`, `on`, `off`).
-2. Create `src/components/workspace/WorkspaceConversationSurface.tsx` that mounts `useNexusChatStream({ projectId, mode: "workspace" })` and renders `ChatStream` + `ChatComposer`.
-3. Add a **feature flag** `USE_NEXUS_WORKSPACE_CHAT` (localStorage key). When on, workspace.tsx renders the new surface; when off, current `useChatStream` path is untouched.
-4. Ship. User toggles the flag and compares speed/feel side by side.
+Files that hardcode warm RGBs in JS-side inline styles when `isParchment` is true:
 
-No side effects are wired yet in phase 1. Chat works, run cards / preview / flow do not react to messages. This is intentional — proves the speed win first.
+- `components/run/VerificationPanel.tsx`
+- `components/AxiomFlow.tsx` (31 warm refs — largest offender)
+- `components/HistoryBookmarksSheet.tsx`
+- `components/UserMenuDropdown.tsx`
+- `components/CommandPalette.tsx`
+- `components/home/AskAtlasSurface.tsx`
+- `components/workspace/AssistantBubble.tsx`
+- `pages/showcase.tsx`
+- `pages/master-map.tsx`
 
-### Phase 2 — Frontend: migrate side effects, panel by panel
+Swaps: `rgba(240,228,210,0.25)` → `rgba(15,23,42,0.04)`; warm borders → `rgba(15,23,42,0.10)`; bronze `#8B5E3C` labels → `#3B5273`. Route through tokens (`var(--atlas-bg)`, `var(--atlas-border)`, `var(--atlas-gold)`) wherever the branch permits, so the next retune is a one-file edit.
 
-For each of the 12 side effects above, in this order (lowest risk first):
-1. Preview artifact (`onPreviewCode`) → PreviewPanel subscribes.
-2. Flow nodes (`onFlowNodes`, `setPendingResolvedNodeIds`) → FlowPanel subscribes.
-3. Step events (`onStepEvent`) → StepProgress subscribes.
-4. Memory chips (`setMemoryChips`) → AtlasMemoryHUD subscribes.
-5. Lens / tab routing → workspace shell subscribes.
-6. Done-event fan-out (imageGen, plans, auto-name) → each owner subscribes.
+### 5. Kill lingering Tailwind `bg-amber-*` / `bg-yellow-*` in the workspace
 
-After each migration: verify parity, ship, move to next. Flag stays on for you, off for everyone else until phase 2 is done.
+Grep pass across `src/**/*.{tsx,ts}` for `bg-amber-`, `bg-yellow-`, `text-amber-`, `text-yellow-`, `border-amber-`, `border-yellow-`. Replace with semantic tokens (`bg-card`, `bg-muted`, `border-border`) or `bg-[hsl(var(--token-bg))]` where the class was signaling a warning state.
 
-### Phase 3 — Delete `useChatStream` and dead workspace code
+## What stays exactly as-is
 
-Only after phase 2 parity is proven. Removes ~1,100 lines and the 20+ setter props from workspace.tsx.
+- Dark mode `:root` / `.dark` token block in `styles.css`.
+- The `parchment` theme identifier and `useThemeMode` switching logic.
+- Gold-on-obsidian in dark mode.
+- `bg-red-*` / `bg-green-*` status colors (only warm/amber neutrals are targeted).
 
----
+## Verification after the swap
 
-## What does NOT change
+1. Build passes.
+2. Load `/settings`, `/workspace`, `/ledger`, `/home`, `/pricing` in light mode → no warm ivory anywhere. Backgrounds read as cool platinum `#F8F9FA`; accents read as slate blue.
+3. Toggle to dark mode → pixel-identical to current.
+4. Contrast: text on `#F8F9FA` uses `#05070F` (AAA), muted uses `#4D5A6E` (AA), slate-blue accent on white ≈ 7.4:1 (AAA).
+5. Re-screenshot the Console tab that started this thread — frosted crystal, not sepia parchment.
 
-- Ask Atlas — untouched.
-- Backend routes, streaming protocol, tool execution, run cards, Timeline, Changes, Ledger, prompts (except the workspace-mode variant in phase 0).
-- Workspace shell, panels, tabs, files, preview, terminal, workbench, LiveGeneration, GitHub push, mockup sandbox.
-- Any Zustand store (`shellStore`, `feederStore`).
+## Risk
 
----
-
-## Real risks
-
-1. **Nexus prompt is not workspace-aware.** Fixed by phase 0. Until then, workspace chat feels "smart but naive about the project." Acceptable in phase 1 because we're testing speed, not intelligence.
-2. **Signal-line coverage.** Nexus already handles `NAVIGATE_TO`, `PROJECT_READY`, `MEMORY_CHIPS`. Workspace's `useChatStream` handles more (artifact JSON, step events, plan events). Those need explicit listener parity in phase 2 or panels silently break.
-3. **Session model divergence.** `useChatStream` manages sessions differently than Nexus. `WorkspaceConversationSurface` needs a small session-bootstrap wrapper so existing sessions keep working.
-
----
-
-## Deliverables per phase
-
-- Phase 1: 2 new files (`workspaceEventBus.ts`, `WorkspaceConversationSurface.tsx`), ~30 lines added to `workspace.tsx` (flag branch), zero deletions.
-- Phase 2: one PR per side effect, each < 100 lines.
-- Phase 3: delete `useChatStream.ts`, prune ~500 lines from `workspace.tsx`.
-
----
-
-## Next exact step
-
-Approve this plan (or edit the phase order). On approval I execute **Phase 1 only** in one pass and ship it behind the flag. You test speed. We decide phase 2 after.
+Low. 87 warm hits in styles.css sounds scary but ~80% cascade from token retuning in step 1. Real hand-edit surface: ~15 CSS literals + ~10 component files.
