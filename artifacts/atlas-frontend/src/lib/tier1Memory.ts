@@ -14,10 +14,22 @@ export type Tier1Answers = {
   constraints: string;
 };
 
+export type Tier1FieldKey = keyof Tier1Answers;
+
 export type Tier1Memory = {
   answers: Tier1Answers;
   updatedAt: string;
+  /** ISO timestamp — set when the user explicitly told Atlas to stop asking. */
+  skippedAt?: string | null;
+  /** Field keys still empty. Backend-computed source of truth. */
+  missing?: Tier1FieldKey[];
 };
+
+/** Fired whenever Tier 1 memory may have changed (post-commit, post-chat turn). */
+export const TIER1_UPDATED_EVENT = "axiom:tier1-updated";
+export function notifyTier1Updated() {
+  window.dispatchEvent(new CustomEvent(TIER1_UPDATED_EVENT));
+}
 
 export const TIER1_QUESTIONS: Array<{
   key: keyof Tier1Answers;
@@ -72,11 +84,23 @@ export const EMPTY_TIER1: Tier1Answers = {
   constraints: "",
 };
 
+/** Compute missing field keys from an answers blob (fallback when backend omits). */
+export function computeMissingTier1Fields(answers: Tier1Answers): Tier1FieldKey[] {
+  return TIER1_QUESTIONS
+    .map((q) => q.key)
+    .filter((k) => !answers[k] || !answers[k].trim());
+}
+
 export async function getTier1Memory(projectId: number): Promise<Tier1Memory | null> {
   const r = await fetch(`/api/memory/tier1/${projectId}`, { credentials: "include" });
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`Tier1 GET failed: ${r.status}`);
-  return (await r.json()) as Tier1Memory;
+  const raw = (await r.json()) as Tier1Memory;
+  return {
+    ...raw,
+    missing: raw.missing ?? computeMissingTier1Fields(raw.answers),
+    skippedAt: raw.skippedAt ?? null,
+  };
 }
 
 export async function createTier1Memory(projectId: number, answers: Tier1Answers): Promise<Tier1Memory> {

@@ -129,7 +129,9 @@ import { submitForgeIntake } from "@/lib/forgeIntake";
 import { useCodegen } from "@/hooks/useCodegen";
 import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
 import { Tier1IntakeSheet } from "@/components/Tier1IntakeSheet";
-import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey, markTier1Skipped, wasTier1Skipped } from "@/lib/tier1Memory";
+import { Tier1ProgressCard } from "@/components/Tier1ProgressCard";
+import { useTier1Memory } from "@/hooks/useTier1Memory";
+import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey, markTier1Skipped, wasTier1Skipped, notifyTier1Updated } from "@/lib/tier1Memory";
 import { buildParkedEntryPayload } from "@/lib/parking";
 import {
   appendGithubPushReceiptMarker,
@@ -5400,6 +5402,8 @@ export default function Workspace() {
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
   const [tier1SheetOpen, setTier1SheetOpen] = useState(false);
+  const tier1ProjectId = Number.isFinite(id) && id > 0 ? id : null;
+  const { memory: tier1Memory } = useTier1Memory(tier1ProjectId);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showDeepDive, setShowDeepDive] = useState(false);
@@ -9103,17 +9107,38 @@ export default function Workspace() {
 
       <Tier1IntakeSheet
         open={tier1SheetOpen}
-        projectId={Number.isFinite(id) && id > 0 ? id : null}
+        projectId={tier1ProjectId}
         projectName={project?.name ?? null}
         onClose={() => setTier1SheetOpen(false)}
         onCommitted={() => {
+          notifyTier1Updated();
           toast.success("Tier 1 committed — Atlas has the foundation now.");
         }}
         onSkip={() => {
-          if (Number.isFinite(id) && id > 0) markTier1Skipped(id);
+          if (tier1ProjectId) markTier1Skipped(tier1ProjectId);
           toast("Skipped — Atlas will gather this in conversation.");
         }}
       />
+
+      {/* Live Tier 1 progress — floats above composer, fills in as Atlas
+          discovers each field in conversation. Hidden when complete or
+          dismissed. */}
+      {tier1ProjectId && (
+        <div
+          style={{
+            position: "fixed",
+            left: "50%",
+            transform: "translateX(-50%)",
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+            width: "min(560px, calc(100vw - 24px))",
+            zIndex: 40,
+            pointerEvents: "auto",
+          }}
+        >
+          <Tier1ProgressCard memory={tier1Memory} projectId={tier1ProjectId} />
+        </div>
+      )}
+
 
       <HistoryBookmarksSheet
         projectId={Number.isFinite(id) ? id : null}
