@@ -2126,15 +2126,9 @@ export default function Home() {
     if (askAtlasSurfaceOpen) nexusChat.clearMessages();
   }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
 
-  // Persist Ask Atlas surface state to localStorage so it survives hard refresh.
+  // Persist Ask Atlas surface state so it survives hard refresh.
   useEffect(() => {
-    try {
-      if (askAtlasSurfaceOpen) {
-        localStorage.setItem("atlas-ask-atlas-surface-open", "1");
-      } else {
-        localStorage.removeItem("atlas-ask-atlas-surface-open");
-      }
-    } catch {}
+    askAtlasSession.setSurfaceOpen(askAtlasSurfaceOpen);
   }, [askAtlasSurfaceOpen]);
 
   // Restore Ask Atlas thread after hard refresh or navigation return — the surface
