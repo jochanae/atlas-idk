@@ -18,7 +18,6 @@ import EntryDetail from "./pages/entry-detail";
 import Workshop from "./pages/workshop";
 import CodePage from "./pages/code";
 import ConnectorsPage from "./pages/connectors";
-import ProjectCompass from "./pages/project-compass";
 import Vault from "./pages/vault";
 import MasterMap from "./pages/master-map";
 
@@ -26,16 +25,13 @@ import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
 import Pricing from "./pages/pricing";
 import Help from "./pages/help";
-import Secrets from "./pages/secrets";
 import Admin from "./pages/admin";
 
 import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
 import { useAuth } from "@/hooks/useAuth";
-import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { useQuery } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,7 +88,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     );
   }
 }
-
 
 // ── Page Transition Spinner ───────────────────────────────────────────────────
 const SKIP_TRANSITION = ["/landing", "/login", "/reset-password"];
@@ -159,7 +154,6 @@ function PageTransition() {
   );
 }
 
-
 // ── Router ────────────────────────────────────────────────────────────────────
 function UnifiedShellRoutes() {
   return (
@@ -192,8 +186,6 @@ function Router() {
     import("@/lib/nav-history").then(({ pushNav }) => pushNav(location));
   }, [location]);
 
-
-
   return (
     <>
       {isUnifiedShellPath(location) ? (
@@ -211,23 +203,24 @@ function Router() {
           <Route path="/ledger" component={Ledger} />
           <Route path="/ledger/:projectId" component={Ledger} />
           <Route path="/parking" component={ParkingLot} />
-          <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/compass", { replace: true }), []); return null; }} />
+          <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
+          <Route path="/compass" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/entry/:id" component={EntryDetail} />
           <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           
           <Route path="/workshop" component={Workshop} />
           <Route path="/code" component={CodePage} />
           <Route path="/connectors" component={ConnectorsPage} />
-          <Route path="/compass" component={ProjectCompass} />
           <Route path="/terms" component={Terms} />
           <Route path="/privacy" component={Privacy} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/help" component={Help} />
           <Route path="/vault" component={Vault} />
-          <Route path="/secrets" component={Secrets} />
+          <Route path="/secrets" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/admin" component={Admin} />
           <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/map" component={MasterMap} />
+          <Route path="/master-map" component={MasterMap} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route component={NotFound} />
         </Switch>
