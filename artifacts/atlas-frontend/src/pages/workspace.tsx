@@ -9212,7 +9212,7 @@ export default function Workspace() {
       {/* Live Tier 1 progress — floats above composer, fills in as Atlas
           discovers each field in conversation. Hidden when complete or
           dismissed. */}
-      {tier1ProjectId && (
+      {tier1ProjectId && !useNexusWorkspaceChat && (
         <div
           style={{
             position: "fixed",
