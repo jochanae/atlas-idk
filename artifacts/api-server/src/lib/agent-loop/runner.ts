@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Response } from "express";
 import { streamText, isStepCount, hasToolCall, gateway } from "ai";
 import { google } from "@ai-sdk/google";
+import { anthropic } from "@ai-sdk/anthropic";
 import { registerPendingApproval } from "./approvals";
 import { agentRunsTable, chatMessagesTable, db, planArtifactsTable, sessionsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
@@ -15,6 +16,11 @@ const STEP_LIMIT = 50;
 function resolveAgentModel() {
   if (process.env.AI_GATEWAY_API_KEY) {
     return gateway("google/gemini-3-flash-preview");
+  }
+  // Fall back to Anthropic when no gateway key is configured.
+  // ANTHROPIC_API_KEY is always present; GOOGLE_GENERATIVE_AI_API_KEY is not.
+  if (process.env.ANTHROPIC_API_KEY) {
+    return anthropic("claude-sonnet-4-5");
   }
   return google("gemini-3-flash-preview");
 }
