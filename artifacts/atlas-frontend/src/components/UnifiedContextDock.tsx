@@ -183,6 +183,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const dockVisible = useDockVisibility();
   const [showAtlasHub, setShowAtlasHub] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
+  const [anchorHeld, setAnchorHeld] = useState(false);
+  const [absorbTick, setAbsorbTick] = useState(0);
+  useEffect(() => subscribeAnchorHeld(setAnchorHeld), []);
+  useEffect(() => subscribeAnchorAbsorb(() => setAbsorbTick((n) => n + 1)), []);
 
   // `--atlas-dock-height` stays STABLE at 64px (consumers that float ABOVE the
   // dock — overlays, action sheets — anchor to it and must not oscillate).
