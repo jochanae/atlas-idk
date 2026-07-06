@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# User project workspaces — files written by Atlas on behalf of users.
+# These are NOT Atlas platform code. They must never appear in this repo's git history.
+.project-workspaces/
