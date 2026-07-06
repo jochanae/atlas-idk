@@ -853,6 +853,9 @@ export function ChatComposer(props: ChatComposerProps) {
                   // Sending returns the composer to its default full state.
                   setUserComposerPreference(null);
                   handleSend({ mode: composerMode });
+                  // Collapse the expand-on-focus sheet after send so the
+                  // conversation and streaming response become the focus.
+                  textareaRef.current?.blur();
                 }}
                 disabled={chatPending ? !onAbort : (!(hasInput || hasAttachments) || createSessionPending)}
                 aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}
