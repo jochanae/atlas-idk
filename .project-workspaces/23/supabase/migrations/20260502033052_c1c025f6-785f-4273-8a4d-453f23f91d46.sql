@@ -1,1 +1,0 @@
-ALTER TABLE public.social_campaigns ADD COLUMN IF NOT EXISTS image_url TEXT;

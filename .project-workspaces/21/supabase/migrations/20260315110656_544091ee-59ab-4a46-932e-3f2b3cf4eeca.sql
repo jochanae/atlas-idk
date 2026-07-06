@@ -1,1 +1,0 @@
-ALTER TABLE public.memories ADD COLUMN member_id text DEFAULT null;

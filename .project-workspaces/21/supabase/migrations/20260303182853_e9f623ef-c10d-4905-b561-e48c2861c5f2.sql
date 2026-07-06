@@ -1,1 +1,0 @@
-ALTER TABLE public.custom_circles ADD COLUMN room_type text NOT NULL DEFAULT 'spatial';

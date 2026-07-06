@@ -1,1 +1,0 @@
-ALTER TABLE public.profiles ADD COLUMN roleplay_mode boolean NOT NULL DEFAULT false;

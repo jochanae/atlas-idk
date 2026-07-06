@@ -1,1 +1,0 @@
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS heygen_api_key_encrypted text DEFAULT NULL;

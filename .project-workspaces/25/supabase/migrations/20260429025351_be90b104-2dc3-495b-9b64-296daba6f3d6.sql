@@ -1,1 +1,0 @@
-ALTER TABLE public.board_items ADD COLUMN audio_reflection BOOLEAN NOT NULL DEFAULT false;

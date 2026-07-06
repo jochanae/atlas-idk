@@ -1,1 +1,0 @@
-ALTER TABLE public.profiles ADD COLUMN voice_trial_used boolean NOT NULL DEFAULT false;

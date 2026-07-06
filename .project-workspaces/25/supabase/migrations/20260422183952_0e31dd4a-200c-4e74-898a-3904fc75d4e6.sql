@@ -1,1 +1,0 @@
-DELETE FROM public.app_settings WHERE setting_key = 'landing_weekly_reflection';

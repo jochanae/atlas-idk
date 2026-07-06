@@ -1,4 +1,0 @@
-ALTER TABLE connections ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
-ALTER TABLE connections ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
-
-UPDATE connections SET is_archived = FALSE WHERE is_archived IS NULL;

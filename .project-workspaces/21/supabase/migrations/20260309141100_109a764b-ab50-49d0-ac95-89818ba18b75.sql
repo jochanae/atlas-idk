@@ -1,1 +1,0 @@
-ALTER TABLE public.connections ADD COLUMN IF NOT EXISTS origin_story text;

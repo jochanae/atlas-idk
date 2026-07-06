@@ -1,1 +1,0 @@
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS user_cached_traits jsonb DEFAULT NULL;

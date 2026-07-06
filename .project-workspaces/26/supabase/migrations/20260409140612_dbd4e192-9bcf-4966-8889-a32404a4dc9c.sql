@@ -1,1 +1,0 @@
-DELETE FROM public.user_footer_preferences;

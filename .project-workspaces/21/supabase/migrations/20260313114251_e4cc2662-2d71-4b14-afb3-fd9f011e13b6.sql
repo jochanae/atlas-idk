@@ -1,1 +1,0 @@
-SELECT vault.create_secret('https://huycpvtosdmesucrobdr.supabase.co', 'supabase_project_url');

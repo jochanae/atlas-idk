@@ -1,1 +1,0 @@
-DELETE FROM chat_messages WHERE id = '247caae5-53df-458c-8032-3ec99e445ba2';

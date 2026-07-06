@@ -1,2 +1,0 @@
-ALTER TABLE public.quick_notes ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT false;
-CREATE INDEX IF NOT EXISTS idx_quick_notes_user_pinned ON public.quick_notes(user_id, pinned, created_at DESC);

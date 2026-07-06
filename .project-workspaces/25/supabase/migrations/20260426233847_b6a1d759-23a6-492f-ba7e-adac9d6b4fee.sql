@@ -1,1 +1,0 @@
-ALTER TABLE public.sermons ADD COLUMN IF NOT EXISTS tradition text;

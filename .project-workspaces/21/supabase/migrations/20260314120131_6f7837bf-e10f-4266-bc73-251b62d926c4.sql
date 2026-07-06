@@ -1,1 +1,0 @@
-ALTER TABLE public.companion_plans ADD COLUMN goal_id uuid REFERENCES public.wellness_goals(id) ON DELETE SET NULL DEFAULT NULL;

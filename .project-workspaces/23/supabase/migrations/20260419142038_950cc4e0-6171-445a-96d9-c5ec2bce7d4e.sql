@@ -1,1 +1,0 @@
-ALTER VIEW public.pages_public SET (security_invoker = on);

@@ -1,1 +1,0 @@
-ALTER TABLE public.thread_connections ADD COLUMN invite_label text DEFAULT NULL;

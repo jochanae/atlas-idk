@@ -1,1 +1,0 @@
-ALTER TABLE public.virtual_gifts ENABLE ROW LEVEL SECURITY;

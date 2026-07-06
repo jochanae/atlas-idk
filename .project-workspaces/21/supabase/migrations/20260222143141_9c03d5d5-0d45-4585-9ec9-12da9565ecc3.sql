@@ -1,1 +1,0 @@
-ALTER TABLE public.companion_media ADD COLUMN usage_count integer NOT NULL DEFAULT 0;

@@ -1,9 +1,0 @@
-- [Project Health computation](project-health.md) — health is computed server-side on every GET /genome call, not cached; momentum from 7-day nexus message count
-- [Atlas Shaping & Threshold Architecture](atlas-shaping-threshold.md) — 5-dimension internal shaping model, PROJECT_READY signal, CommitPill states, Global boundaries
-- [Axiom Design Principles](axiom-design-principles.md) — three governing axioms: Recognition≠Commitment, Awareness≠Action, Possibility≠Materialization; CONV_STATE governor
-- [ManifestMode Architecture](manifest-mode.md) — V1 built: canvas overlay (not a tab), DNA→Targets→Materialize flow, client-side lock logic from genome data
-- [Continuity Architecture](continuity-architecture.md) — transcript (human) + Resume artifact (system) both survive handoff; transcript gap closed via two-layer approach
-- [Parking Lot two-tier enrichment](parking-lot-enrichment.md) — lite on park (category+complexity+whyItMatters), full on panel open; _level field distinguishes; ParkSheet is the canonical entry point
-- [Provenance Layer](provenance-layer.md) — planned ⓘ affordance for memory-backed claims; source types: Ledger/Resume/Repo/Conversation/Inference; build after memory architecture stabilizes
-- [Explainability Layer rules](explainability-layer.md) — three scopes (Project/Portfolio/Global), never store conclusions, no new tables, consume existing systems only
-- [Atlas Builder Actions](atlas-builder-actions.md) — FILE_EDIT/LINE_PATCH/DiffViewer/GitHubPushModal already live; requires linked GitHub repo; FILE_DELETE/MOVE still missing

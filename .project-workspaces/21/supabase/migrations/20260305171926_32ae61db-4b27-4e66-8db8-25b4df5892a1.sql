@@ -1,1 +1,0 @@
-ALTER TABLE public.connections ADD COLUMN IF NOT EXISTS heygen_avatar_id text DEFAULT NULL;

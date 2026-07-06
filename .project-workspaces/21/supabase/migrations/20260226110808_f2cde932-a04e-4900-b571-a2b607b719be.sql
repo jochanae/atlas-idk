@@ -1,1 +1,0 @@
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS mic_sensitivity integer NOT NULL DEFAULT 50;

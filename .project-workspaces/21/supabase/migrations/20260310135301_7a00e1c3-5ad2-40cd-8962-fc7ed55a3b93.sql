@@ -1,1 +1,0 @@
-UPDATE public.profiles SET onboarding_completed = false;

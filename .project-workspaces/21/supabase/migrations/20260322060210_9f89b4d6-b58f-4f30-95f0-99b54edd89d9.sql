@@ -1,1 +1,0 @@
-DELETE FROM chat_messages WHERE user_id = '4c54a4b7-8543-4798-aa33-9e6e074fad88' AND member_id = 'created-marcus-1771956719' AND content LIKE '%cannot create explicit content%'

@@ -1,1 +1,0 @@
-DELETE FROM chat_artifacts WHERE id IN ('859fbec3-6a7f-41f4-a2a7-8ee5d10e43a6','97a9064e-a1de-4856-a7d0-33eaa9baca9c');
