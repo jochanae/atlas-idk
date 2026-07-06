@@ -8540,6 +8540,13 @@ export default function Workspace() {
               },
               onSuggestionPark: (text: string) => handlePark(text),
               execLatestRun,
+              // Option 2: Nexus is the transport, ChatStream stays the shell.
+              // These overrides must come LAST so they win over the fields above.
+              ...(useNexusWorkspaceChat ? {
+                messages: nexusBridge.messages,
+                chatPending: nexusBridge.chatPending,
+                onSend: (msg: string) => nexusBridge.send(msg),
+              } : {}),
             } : null}
 
             betweenSlot={
