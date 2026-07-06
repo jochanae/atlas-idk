@@ -368,6 +368,26 @@ export function ChatComposer(props: ChatComposerProps) {
   const isDocked = composerVisibility === 'docked' && !sheetVisible;
   const isParchment = useThemeMode() === "parchment";
 
+  // Publish held state to the footer anchor so its halo breathes when a
+  // draft is being held or Atlas is mid-turn. Cleared when neither is true.
+  useEffect(() => {
+    setAnchorHeld(Boolean(hasInput || chatPending));
+    return () => setAnchorHeld(false);
+  }, [hasInput, chatPending]);
+
+  // Funnel collapse — plays the absorb animation on the sheet, fires the
+  // gold ripple inside the anchor, then drops the sheet by blurring/docking.
+  const [absorbing, setAbsorbing] = useState(false);
+  const runAbsorb = (finalize: () => void) => {
+    if (absorbing) return;
+    setAbsorbing(true);
+    triggerAnchorAbsorb();
+    window.setTimeout(() => {
+      finalize();
+      setAbsorbing(false);
+    }, ABSORB_DURATION_MS);
+  };
+
   return (
 
     <>
