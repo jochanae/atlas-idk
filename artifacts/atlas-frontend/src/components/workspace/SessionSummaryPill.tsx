@@ -44,6 +44,7 @@ type Props = {
 
 export function SessionSummaryPill({ projectId, onSummaryCleared, compact = false }: Props) {
   const [data, setData] = useState<SessionSummaryData | null>(null);
+  const [tier1, setTier1] = useState<Tier1Status | null>(null);
   const [open, setOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,11 +60,36 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
     }
   }, [projectId]);
 
+  const fetchTier1 = useCallback(async () => {
+    if (projectId == null) return;
+    try {
+      const res = await fetch(`/api/memory/tier1/${projectId}`, { credentials: "include" });
+      if (!res.ok) return;
+      const json: any = await res.json();
+      const fields = json?.fields ?? json?.data ?? {};
+      const knownFields = Object.keys(fields).filter((k) => {
+        const v = fields[k];
+        return v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
+      });
+      const total = 6;
+      const missing: string[] = Array.isArray(json?.missing) ? json.missing : [];
+      setTier1({
+        known: Math.min(knownFields.length, total),
+        total,
+        missing,
+        skipped: !!json?.skippedAt || !!json?.tier1SkippedAt,
+      });
+    } catch {
+    }
+  }, [projectId]);
+
   useEffect(() => {
     setData(null);
+    setTier1(null);
     setOpen(false);
     void fetchSummary();
-  }, [fetchSummary]);
+    void fetchTier1();
+  }, [fetchSummary, fetchTier1]);
 
   useEffect(() => {
     if (!open) return;
