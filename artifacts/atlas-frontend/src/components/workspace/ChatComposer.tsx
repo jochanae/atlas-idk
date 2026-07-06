@@ -611,21 +611,14 @@ export function ChatComposer(props: ChatComposerProps) {
           );
         })()}
 
-        {chatPending && (
-          <style>{`
-            @keyframes ejComposerPulse {
-              0%,100% { box-shadow: 0 0 0 1px rgba(201,162,76,0.22), 0 0 10px rgba(201,162,76,0.06); }
-              50%     { box-shadow: 0 0 0 1px rgba(201,162,76,0.55), 0 0 18px rgba(201,162,76,0.15); }
-            }
-          `}</style>
-        )}
         <div
           className="atlas-input-shell"
           style={{
             padding: "4px 4px",
-            transition: "box-shadow 400ms ease, border-radius 400ms ease",
-            borderRadius: chatPending ? 10 : 0,
-            animation: chatPending ? "ejComposerPulse 2.4s ease-in-out infinite" : "none",
+            borderRadius: 0,
+            boxShadow: "none",
+            border: "none",
+            animation: "none",
           }}
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
