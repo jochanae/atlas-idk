@@ -614,10 +614,32 @@ const TIER1_MARK_SKIPPED_TOOL: Anthropic.Tool = {
   },
 };
 
+const READ_FILE_TOOL: Anthropic.Tool = {
+  name: "read_file",
+  description: "Read the contents of a file in this project's workspace. Use this whenever you need to see code, config, or data that lives in the project — do NOT ask the user to paste files that are part of this workspace. If you can see a path in the file tree, you can read it here.",
+  input_schema: {
+    type: "object",
+    properties: {
+      path: {
+        type: "string",
+        description: "File path relative to the project root. Examples: 'src/pages/AssetsPage.jsx', 'src/components/AssetCard.jsx', 'package.json'",
+      },
+    },
+    required: ["path"],
+  },
+};
+
 const NEXUS_AGENT_TOOLS: Anthropic.Tool[] = [
   CREATE_PROJECT_TOOL,
   TIER1_UPSERT_FIELD_TOOL,
   TIER1_MARK_SKIPPED_TOOL,
+];
+
+// Workspace-mode tools: same base set + file reading capability.
+// Only used when focusProjectId is set (inside a project workspace).
+const NEXUS_WORKSPACE_TOOLS: Anthropic.Tool[] = [
+  ...NEXUS_AGENT_TOOLS,
+  READ_FILE_TOOL,
 ];
 
 const CONVERSATIONAL_EXPANSION_PROTOCOL = `--- ATLAS SHAPING FRAMEWORK ---
@@ -3206,6 +3228,41 @@ WHAT YOU SHOULD NOT DO:
     }
   };
 
+  const runReadFileTool = async (toolUse: Anthropic.ToolUseBlock): Promise<Record<string, unknown>> => {
+    const input = isRecord(toolUse.input) ? toolUse.input : {};
+    const filePath = typeof input.path === "string" ? input.path.trim() : "";
+    if (!filePath) return { ok: false, error: "path_required" };
+    if (!focusProjectId) return { ok: false, error: "no_project_context" };
+
+    try {
+      const workspaceDir = await ensureProjectWorkspaceDir(focusProjectId);
+      let absPath: string;
+      try {
+        absPath = resolveWorkspacePath(workspaceDir, filePath);
+      } catch {
+        return { ok: false, error: "invalid_path", path: filePath };
+      }
+
+      const content = await fsPromises.readFile(absPath, "utf-8");
+      // Cap at ~200KB to avoid context blowout; signal truncation so Atlas knows
+      const MAX_BYTES = 200_000;
+      const truncated = Buffer.byteLength(content, "utf-8") > MAX_BYTES;
+      const safeContent = truncated ? content.slice(0, MAX_BYTES) + "\n\n[...file truncated — first 200KB shown]" : content;
+      req.log.info({ projectId: focusProjectId, path: filePath, truncated }, "nexus read_file tool");
+      return { ok: true, path: filePath, content: safeContent, truncated };
+    } catch (err: any) {
+      const notFound = err?.code === "ENOENT";
+      return {
+        ok: false,
+        error: notFound ? "file_not_found" : "read_error",
+        path: filePath,
+        message: notFound
+          ? `File '${filePath}' does not exist in this project workspace. Check the file tree for the correct path.`
+          : String(err?.message ?? err),
+      };
+    }
+  };
+
   const runNexusTool = async (toolUse: Anthropic.ToolUseBlock): Promise<Record<string, unknown>> => {
     switch (toolUse.name) {
       case "create_project":
@@ -3214,6 +3271,8 @@ WHAT YOU SHOULD NOT DO:
         return runTier1UpsertFieldTool(toolUse);
       case "tier1_mark_skipped":
         return runTier1MarkSkippedTool();
+      case "read_file":
+        return runReadFileTool(toolUse);
       default:
         return { ok: false, error: "unknown_tool" };
     }
@@ -3283,7 +3342,7 @@ WHAT YOU SHOULD NOT DO:
       max_tokens: 8192,
       system: systemPrompt,
       messages: messagesForClaude,
-      ...(options.tools ? { tools: NEXUS_AGENT_TOOLS } : {}),
+      ...(options.tools ? { tools: focusProjectId ? NEXUS_WORKSPACE_TOOLS : NEXUS_AGENT_TOOLS } : {}),
     });
 
     stream.on("text", (text) => {
