@@ -8673,6 +8673,19 @@ export default function Workspace() {
                   return;
                 }
               },
+              // Option 2 overrides — route composer sends through Nexus.
+              ...(useNexusWorkspaceChat ? {
+                chatPending: nexusBridge.chatPending,
+                messages: nexusBridge.messages,
+                doSend: ((text: string) => nexusBridge.send(text)) as ChatComposerProps["doSend"],
+                handleSend: (() => {
+                  const text = (input ?? "").trim();
+                  if (!text) return;
+                  nexusBridge.send(text);
+                  setInput("");
+                }) as ChatComposerProps["handleSend"],
+                onAbort: () => nexusBridge.abort(),
+              } : {}),
             }}
 
           />
