@@ -1325,17 +1325,23 @@ async function persistNexusExecutionRun(args: {
       steps.push({ verb: "PROMPT", target: null, status: "ok", detail: null, content: promptText.slice(0, 8000) });
     }
 
-    // THOUGHT — total turn duration + Atlas response as expandable content
-    // Mirrors chat.ts: detail = "Xs", content = response text (shown when expanded)
+    // THOUGHT — duration label + brief reasoning excerpt (first sentence/s).
+    // This is the "what I was focused on" note — intentionally short so it reads
+    // as a reasoning caption, not the full response. The full response goes in SUMMARY.
     const thoughtDurationS = Math.max(1, Math.round(elapsedMs / 1000));
-    const thoughtContent = args.atlasResponse.trim();
-    if (thoughtContent) {
+    const fullResponse = args.atlasResponse.trim();
+    if (fullResponse) {
+      // Extract the first meaningful sentence (up to ~250 chars) as the thought excerpt.
+      const sentenceEnd = fullResponse.search(/[.!?]\s/);
+      const thoughtExcerpt = sentenceEnd > 0 && sentenceEnd < 250
+        ? fullResponse.slice(0, sentenceEnd + 1).trim()
+        : fullResponse.slice(0, 200).trim();
       steps.push({
         verb: "THOUGHT",
         target: null,
         status: "ok",
         detail: `${thoughtDurationS}s`,
-        content: thoughtContent.slice(0, 8000),
+        content: thoughtExcerpt,
       });
     }
 
@@ -1358,9 +1364,10 @@ async function persistNexusExecutionRun(args: {
       });
     }
 
-    // Note: SUMMARY is intentionally omitted for nexus workspace turns.
-    // THOUGHT already contains the full Atlas response, so adding SUMMARY
-    // would duplicate the same text in the Timeline.
+    // SUMMARY — the full Atlas response, distinct from the brief THOUGHT excerpt above.
+    if (fullResponse) {
+      steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: fullResponse.slice(0, 8000) });
+    }
 
     for (const [orderIdx, step] of steps.entries()) {
       await db.execute(sql`
