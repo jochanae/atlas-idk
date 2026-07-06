@@ -639,7 +639,19 @@ export function ChatComposer(props: ChatComposerProps) {
                   {chatPending ? "Strategizing…" : "Ready to strategize…"}
                 </div>
               ) : (
-                <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+                !hasInput && !inputFocused && (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute", top: 0, left: 2,
+                      color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1.6,
+                      opacity: 0.5, pointerEvents: "none",
+                      fontFamily: "var(--app-font-sans)",
+                    }}
+                  >
+                    Message Atlas…
+                  </div>
+                )
               )}
 
               <textarea
