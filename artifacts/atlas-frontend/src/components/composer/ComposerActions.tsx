@@ -94,7 +94,7 @@ const MORE_ITEMS: { id: ComposerMenuAction; label: string; workspaceOnly?: boole
   { id: "more:blueprints", label: "Blueprints", workspaceOnly: true },
   { id: "more:changes", label: "Changes", workspaceOnly: true },
   { id: "more:artifacts", label: "Artifacts", workspaceOnly: true },
-  { id: "more:console", label: "Console", workspaceOnly: true },
+  { id: "more:console", label: "Terminal", workspaceOnly: true },
   { id: "more:deep-dive", label: "Deep Dive" },
   { id: "more:rescan", label: "Rescan Repo", workspaceOnly: true },
 ];
