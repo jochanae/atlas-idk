@@ -611,21 +611,14 @@ export function ChatComposer(props: ChatComposerProps) {
           );
         })()}
 
-        {chatPending && (
-          <style>{`
-            @keyframes ejComposerPulse {
-              0%,100% { box-shadow: 0 0 0 1px rgba(201,162,76,0.22), 0 0 10px rgba(201,162,76,0.06); }
-              50%     { box-shadow: 0 0 0 1px rgba(201,162,76,0.55), 0 0 18px rgba(201,162,76,0.15); }
-            }
-          `}</style>
-        )}
         <div
           className="atlas-input-shell"
           style={{
             padding: "4px 4px",
-            transition: "box-shadow 400ms ease, border-radius 400ms ease",
-            borderRadius: chatPending ? 10 : 0,
-            animation: chatPending ? "ejComposerPulse 2.4s ease-in-out infinite" : "none",
+            borderRadius: 0,
+            boxShadow: "none",
+            border: "none",
+            animation: "none",
           }}
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
@@ -646,7 +639,19 @@ export function ChatComposer(props: ChatComposerProps) {
                   {chatPending ? "Strategizing…" : "Ready to strategize…"}
                 </div>
               ) : (
-                <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+                !hasInput && !inputFocused && (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute", top: 0, left: 2,
+                      color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1.6,
+                      opacity: 0.5, pointerEvents: "none",
+                      fontFamily: "var(--app-font-sans)",
+                    }}
+                  >
+                    Message Atlas…
+                  </div>
+                )
               )}
 
               <textarea
@@ -665,6 +670,9 @@ export function ChatComposer(props: ChatComposerProps) {
                   if (!isTouch && e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSend({ mode: composerMode });
+                    // Send collapses the composer: blur drops inputFocused →
+                    // sheet closes so the user can read the response.
+                    textareaRef.current?.blur();
                   } else {
                     handleKeyDown(e);
                   }
@@ -845,6 +853,9 @@ export function ChatComposer(props: ChatComposerProps) {
                   // Sending returns the composer to its default full state.
                   setUserComposerPreference(null);
                   handleSend({ mode: composerMode });
+                  // Collapse the expand-on-focus sheet after send so the
+                  // conversation and streaming response become the focus.
+                  textareaRef.current?.blur();
                 }}
                 disabled={chatPending ? !onAbort : (!(hasInput || hasAttachments) || createSessionPending)}
                 aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}

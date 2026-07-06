@@ -721,11 +721,11 @@ export function ChatStream(props: ChatStreamProps) {
                 </div>
               );
             }
-            return (
+            return atlasGreeting?.trim() ? (
               <div style={{ maxWidth: 540, color: "var(--atlas-fg)", fontSize: 17, lineHeight: 1.55, fontWeight: 400, letterSpacing: "-0.005em", opacity: 0.92 }}>
-                {atlasGreeting?.trim() || "What are we shaping here?"}
+                {atlasGreeting}
               </div>
-            );
+            ) : null;
           })()}
         </div>
       )}
