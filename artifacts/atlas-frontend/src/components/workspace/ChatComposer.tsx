@@ -370,8 +370,8 @@ export function ChatComposer(props: ChatComposerProps) {
   return (
 
     <>
-      {/* Floating dock orb — self-gates on composerVisibility === 'docked'. */}
-      <ComposerDock pending={chatPending} />
+      {/* Floating dock orb removed — the footer center "A" is the single
+          composer anchor. Tap it to restore the composer from docked. */}
       {/* Dimmed backdrop — tap to collapse the sheet. */}
       {composerActive && !isDocked && (
         <div
