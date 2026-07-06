@@ -190,6 +190,27 @@ export function AskAtlasSurface({
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
   const typed = useAskAtlasTypewriter(ASK_ATLAS_PLACEHOLDERS, !showPlaceholder);
 
+  // Publish held state to the footer anchor — halo breathes when a draft
+  // exists or a turn is streaming. Only meaningful when this surface is open.
+  useEffect(() => {
+    if (!open) return;
+    setAnchorHeld(Boolean(hasInput || isStreaming));
+    return () => setAnchorHeld(false);
+  }, [open, hasInput, isStreaming]);
+
+  // Funnel collapse — animates the sheet into the footer anchor + rings the
+  // gold ripple, then commits the actual dock state change.
+  const [absorbing, setAbsorbing] = useState(false);
+  const runAbsorb = (finalize: () => void) => {
+    if (absorbing) return;
+    setAbsorbing(true);
+    triggerAnchorAbsorb();
+    window.setTimeout(() => {
+      finalize();
+      setAbsorbing(false);
+    }, ABSORB_DURATION_MS);
+  };
+
   if (!open) return null;
 
   const canSubmit = (input.trim().length > 0 || hasAttachments) && !isSending;
