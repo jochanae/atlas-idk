@@ -103,8 +103,9 @@ import { InsightChip } from "@/components/workspace/InsightChip";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
-import { ChatComposer } from "@/components/workspace/ChatComposer";
+import { ChatComposer, type ChatComposerProps } from "@/components/workspace/ChatComposer";
 import { WorkspaceConversationSurface } from "@/components/workspace/WorkspaceConversationSurface";
+import { useNexusWorkspaceBridge } from "@/hooks/useNexusWorkspaceBridge";
 
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { ParkSheet } from "@/components/ParkSheet";
@@ -4461,6 +4462,8 @@ export default function Workspace() {
     try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
   });
   const useNexusWorkspaceChat = true;
+  // Option 2 bridge: Nexus is the transport, ChatStream stays the shell.
+  const nexusBridge = useNexusWorkspaceBridge(id);
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
@@ -8410,8 +8413,8 @@ export default function Workspace() {
           <UnifiedConversationSurface
             mode="operational"
             projectId={id}
-            streamSlot={useNexusWorkspaceChat ? <WorkspaceConversationSurface key={id} projectId={id} /> : undefined}
-            chatStreamProps={useNexusWorkspaceChat ? null : leftTab !== "review" && leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
+            streamSlot={undefined}
+            chatStreamProps={leftTab !== "review" && leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
               scrollRef: chatPanelScrollRef,
               bottomRef: bottomRef,
               onScroll: (e) => {
@@ -8537,6 +8540,13 @@ export default function Workspace() {
               },
               onSuggestionPark: (text: string) => handlePark(text),
               execLatestRun,
+              // Option 2: Nexus is the transport, ChatStream stays the shell.
+              // These overrides must come LAST so they win over the fields above.
+              ...(useNexusWorkspaceChat ? {
+                messages: nexusBridge.messages,
+                chatPending: nexusBridge.chatPending,
+                onSend: (msg: string) => nexusBridge.send(msg),
+              } : {}),
             } : null}
 
             betweenSlot={
@@ -8663,6 +8673,19 @@ export default function Workspace() {
                   return;
                 }
               },
+              // Option 2 overrides — route composer sends through Nexus.
+              ...(useNexusWorkspaceChat ? {
+                chatPending: nexusBridge.chatPending,
+                messages: nexusBridge.messages,
+                doSend: ((text: string) => nexusBridge.send(text)) as ChatComposerProps["doSend"],
+                handleSend: (() => {
+                  const text = (input ?? "").trim();
+                  if (!text) return;
+                  nexusBridge.send(text);
+                  setInput("");
+                }) as ChatComposerProps["handleSend"],
+                onAbort: () => nexusBridge.abort(),
+              } : {}),
             }}
 
           />
