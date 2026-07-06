@@ -18,7 +18,7 @@ import { logger } from "../lib/logger";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE, ATLAS_WORKSPACE_IDENTITY } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
-import { ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
+import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, synthesizeGlobalNarrative, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import {
@@ -2126,38 +2126,69 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   if (focusProjectId) {
     const focusProject = projects.find(p => p.id === focusProjectId);
     if (focusProject) {
-      if (focusProject?.linkedRepo) {
+      // FILE TREE INJECTION — source-of-truth priority:
+      //   1. Local workspace disk (same source as read_file) — always preferred.
+      //   2. GitHub tree — fallback only when local workspace is empty.
+      // This prevents the "two project states" problem where Atlas's system-prompt
+      // tree shows GitHub while read_file reads local disk and they disagree.
+      {
+        const SKIP_RE = /node_modules|\.git|\.next|dist\/|build\/|\.cache|__pycache__|\.DS_Store/;
+        let localFilePaths: string | null = null;
         try {
-          const repoFull = parseRepo(focusProject.linkedRepo ?? null);
-          const ghToken = resolvedGhToken;
-          if (repoFull && ghToken) {
-            const treeResp = await fetch(
-              `https://api.github.com/repos/${repoFull}/git/trees/main?recursive=1`,
-              {
-                headers: {
-                  Authorization: `Bearer ${ghToken}`,
-                  Accept: "application/vnd.github+json",
-                  "X-GitHub-Api-Version": "2022-11-28",
-                  "User-Agent": "Atlas-Nexus/1.0",
-                },
-                signal: AbortSignal.timeout(6000),
-              }
-            );
-            if (treeResp.ok) {
-              const treeData = await treeResp.json() as { tree?: Array<{ type?: string; path?: string }> };
-              const filePaths = (treeData.tree ?? [])
-                .filter((f: any) => f.type === "blob")
-                .map((f: any) => f.path)
-                .filter((p: string) => !p.includes("node_modules") && !p.includes(".git"))
-                .slice(0, 120)
-                .join("\n");
-              if (filePaths) {
-                systemPrompt += `\n\n--- ${focusProject.name.toUpperCase()} FILE TREE ---\n${filePaths}\n--- END FILE TREE ---`;
-              }
-            }
+          const workspaceDir = projectWorkspaceDir(focusProjectId);
+          const entries = await fsPromises.readdir(workspaceDir, { recursive: true });
+          const files = (entries as string[])
+            .filter((e: string) => !SKIP_RE.test(e))
+            .sort()
+            .slice(0, 150);
+          if (files.length > 0) {
+            localFilePaths = files.join("\n");
           }
         } catch {
-          // tree fetch failed silently — continue without it
+          // workspace dir may not exist yet — that's fine, fall through to GitHub
+        }
+
+        if (localFilePaths) {
+          // Local disk is the source of truth — matches what read_file sees.
+          // If a GitHub repo is also linked, note the distinction so Atlas never mixes sources.
+          const githubNote = focusProject.linkedRepo
+            ? ` (local workspace — source of truth for read_file; GitHub is an external sync target)`
+            : "";
+          systemPrompt += `\n\n--- ${focusProject.name.toUpperCase()} FILE TREE${githubNote} ---\n${localFilePaths}\n--- END FILE TREE ---`;
+        } else if (focusProject?.linkedRepo) {
+          // Local workspace is empty — fall back to GitHub tree with a clear label.
+          try {
+            const repoFull = parseRepo(focusProject.linkedRepo ?? null);
+            const ghToken = resolvedGhToken;
+            if (repoFull && ghToken) {
+              const treeResp = await fetch(
+                `https://api.github.com/repos/${repoFull}/git/trees/main?recursive=1`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${ghToken}`,
+                    Accept: "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "User-Agent": "Atlas-Nexus/1.0",
+                  },
+                  signal: AbortSignal.timeout(6000),
+                }
+              );
+              if (treeResp.ok) {
+                const treeData = await treeResp.json() as { tree?: Array<{ type?: string; path?: string }> };
+                const filePaths = (treeData.tree ?? [])
+                  .filter((f: any) => f.type === "blob")
+                  .map((f: any) => f.path)
+                  .filter((p: string) => !SKIP_RE.test(p))
+                  .slice(0, 120)
+                  .join("\n");
+                if (filePaths) {
+                  systemPrompt += `\n\n--- ${focusProject.name.toUpperCase()} FILE TREE (from GitHub — local workspace is empty; files written here will become the local source of truth) ---\n${filePaths}\n--- END FILE TREE ---`;
+                }
+              }
+            }
+          } catch {
+            // tree fetch failed silently — continue without it
+          }
         }
       }
 
