@@ -193,6 +193,20 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
     }
   }, [isStreaming, messages, pid]);
 
+  // run-completed emitter for the Nexus path — workspace.tsx's chatPending
+  // effect tracks useChatStream's chatPending (not the Nexus bridge), so it
+  // never fires for Nexus turns. This effect is the canonical emitter for the
+  // Nexus path; workspace.tsx remains the emitter for the classic path.
+  const prevPendingRef = useRef(false);
+  useEffect(() => {
+    const wasPending = prevPendingRef.current;
+    const nowPending = isPending || isStreaming;
+    prevPendingRef.current = nowPending;
+    if (wasPending && !nowPending && pid) {
+      workspaceEventBus.emit("run-completed", { projectId: pid });
+    }
+  }, [isPending, isStreaming, pid]);
+
   const chatMessages: ChatMessage[] = messages.map(toChatMessage);
   const chatPending = isPending || isStreaming;
 

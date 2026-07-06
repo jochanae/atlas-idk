@@ -4,7 +4,7 @@ import type React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { X } from "lucide-react";
-import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
+import { useWorkspaceEvent, workspaceEventBus } from "@/lib/workspaceEventBus";
 
 export function MemoryTab({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient();
@@ -40,6 +40,7 @@ export function MemoryTab({ projectId }: { projectId: number }) {
         body: JSON.stringify({ memory: draft.trim() || null }),
       });
       queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+      workspaceEventBus.emit("entry-changed", { projectId });
       setEditing(false);
     } finally {
       setSaving(false);
@@ -56,6 +57,7 @@ export function MemoryTab({ projectId }: { projectId: number }) {
         body: JSON.stringify({ memory: null }),
       });
       queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+      workspaceEventBus.emit("entry-changed", { projectId });
     } finally {
       setSaving(false);
     }
@@ -66,6 +68,7 @@ export function MemoryTab({ projectId }: { projectId: number }) {
     try {
       await fetch(`/api/projects/${projectId}/memory/${globalIdx}`, { method: "DELETE" });
       queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+      workspaceEventBus.emit("entry-changed", { projectId });
     } finally {
       setDeletingIndex(null);
     }

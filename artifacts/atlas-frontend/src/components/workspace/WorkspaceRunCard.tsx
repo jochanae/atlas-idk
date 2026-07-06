@@ -32,6 +32,8 @@ import {
 } from "@/lib/atlas-history";
 import { useReadingDensity } from "@/hooks/useComposerVisibility";
 import { dispatchVerifyRun } from "@/lib/verification";
+import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface LiveStepItem {
   verb: string;
@@ -580,6 +582,16 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   // AFTER this workspace session mounted. Prevents stale runs from a prior
   // session from floating into unrelated conversations.
   const mountedAtRef = useRef<number>(Date.now());
+
+  // Refresh the run list shown in the receipt immediately when a run completes.
+  // Without this, WorkspaceRunCard waits 30 s for the stale-time window to
+  // expire before showing the finished run's outputs.
+  const queryClient = useQueryClient();
+  useWorkspaceEvent("run-completed", ({ projectId: changedPid }) => {
+    if (changedPid === projectId) {
+      void queryClient.invalidateQueries({ queryKey: ["project-runs", projectId] });
+    }
+  }, [projectId, queryClient]);
 
   // Reset step history when a new generation starts
   useEffect(() => {

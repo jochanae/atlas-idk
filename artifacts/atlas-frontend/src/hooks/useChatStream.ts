@@ -910,6 +910,7 @@ export function useChatStream(
                   // Clear chatPending and liveStep immediately so the WorkspaceRunCard
                   // exits its WORKING state as soon as the error message is shown —
                   // don't wait for the SSE reader to fully drain (the finally block).
+                  workspaceEventBus.emit("run-completed", { projectId });
                   setChatPending(false);
                   setLiveStep(null);
                   streamingFinished = true;
@@ -1170,6 +1171,7 @@ export function useChatStream(
           // Always clear activity — done/error handlers may have already cleared it,
           // but if the stream closed without a proper done event this is the safety net.
           setActivityStream({ active: false, content: "" });
+          workspaceEventBus.emit("run-completed", { projectId });
           setChatPending(false);
           setLiveStep(null);
           prevLensRef.current = sendCtxRef.current.wsLens;
