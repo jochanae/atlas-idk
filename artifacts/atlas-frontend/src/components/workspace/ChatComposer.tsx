@@ -13,6 +13,7 @@ import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/comp
 import { useThemeMode } from "@/lib/theme";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
+import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
 // CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
 
 
