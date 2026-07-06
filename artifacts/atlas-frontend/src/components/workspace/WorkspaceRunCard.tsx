@@ -815,15 +815,18 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         color: "hsl(var(--card-foreground))",
         border: `1px solid ${tone.border}`,
         boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
-        borderRadius: 12,
-        padding: "14px 16px",
+        borderRadius: 10,
+        padding: "10px 12px",
         margin: "6px 0 4px",
-        width: "min(100%, 440px)",
+        width: "min(100%, 380px)",
         maxWidth: "100%",
         boxSizing: "border-box",
         alignSelf: "flex-start",
         cursor: "pointer",
-        animation: toneKey === "success" ? "wrc-border-trace 0.55s ease-out forwards" : undefined,
+        animation:
+          toneKey === "success" ? "wrc-border-flash-success 1.6s ease-out forwards"
+          : toneKey === "failed" ? "wrc-border-flash-failed 1.6s ease-out forwards"
+          : undefined,
       }}
       data-run-id={run.id}
       data-run-status={run.status}
