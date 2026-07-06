@@ -2439,13 +2439,23 @@ export default function Home() {
     ptrContainerRef,
   );
 
-  // Atlas Core center-button → focus composer
+  // Atlas Core center-button → restore composer + focus
+  // When the AskAtlas composer is docked, the textarea is unmounted, so we
+  // must restoreComposer() first and then poll for the ref (mirrors workspace).
   useEffect(() => {
     const onFocus = () => {
-      const el = textareaRef.current;
-      if (!el) return;
-      try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch {}
-      setTimeout(() => el.focus(), 60);
+      useShellStore.getState().restoreComposer();
+      let tries = 0;
+      const tryFocus = () => {
+        const el = textareaRef.current;
+        if (el) {
+          try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch {}
+          el.focus();
+          return;
+        }
+        if (tries++ < 12) setTimeout(tryFocus, 50);
+      };
+      setTimeout(tryFocus, 60);
     };
     window.addEventListener("atlas:focus-composer", onFocus);
     // Handle deferred focus from variant-switcher cross-page nav
