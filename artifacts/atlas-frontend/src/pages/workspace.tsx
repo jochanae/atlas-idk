@@ -2040,7 +2040,7 @@ function RightPanel({
     },
     ...(wsLens === "build" || wsLens === "scenario" ? [{
       id: "terminal" as RightTab,
-      label: "Console",
+      label: "Terminal",
       icon: (
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
           <rect x="1" y="2" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
