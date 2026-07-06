@@ -968,68 +968,62 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         </div>
       )}
 
-      {/* Action buttons — always visible in receipt mode */}
+      {/* Action buttons — compact receipt row. Verification lives in expand. */}
       <div
         style={{
           display: "flex",
-          flexWrap: "wrap",
-          gap: 8,
-          marginTop: 12,
-          paddingTop: 12,
+          gap: 6,
+          marginTop: 8,
+          paddingTop: 8,
           borderTop: "1px solid hsl(var(--border) / 0.4)",
+          justifyContent: "flex-end",
         }}
       >
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); handleDetails(); }}
           style={{
-            flex: "1 1 45%",
-            fontSize: 12.5,
+            fontSize: 11.5,
             fontWeight: 500,
-            padding: "9px 0",
-            borderRadius: 8,
-            border: "1px solid hsl(var(--border) / 0.7)",
+            padding: "5px 10px",
+            borderRadius: 6,
+            border: "1px solid transparent",
             background: "transparent",
-            color: "hsl(var(--card-foreground) / 0.85)",
+            color: "hsl(var(--card-foreground) / 0.75)",
             cursor: "pointer",
             letterSpacing: "0.01em",
           }}
         >
-          View Changes
+          Changes
         </button>
         <button
           type="button"
           title={previewTitle}
           onClick={(e) => { e.stopPropagation(); handlePreview(); }}
           style={{
-            flex: "1 1 45%",
-            fontSize: 12.5,
+            fontSize: 11.5,
             fontWeight: 500,
-            padding: "9px 0",
-            borderRadius: 8,
-            border: `1px solid ${tone.border}`,
-            background: toneKey === "success" ? "rgba(74,222,128,0.08)" : "transparent",
-            color: toneKey === "success" ? "#4ade80" : "hsl(var(--card-foreground) / 0.85)",
+            padding: "5px 10px",
+            borderRadius: 6,
+            border: "1px solid transparent",
+            background: "transparent",
+            color: "hsl(var(--card-foreground) / 0.75)",
             cursor: "pointer",
             letterSpacing: "0.01em",
           }}
         >
           Preview
         </button>
-        {(run.status === "applied" || run.status === "pushed") && (
+        {expanded && (run.status === "applied" || run.status === "pushed") && (
           <>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); dispatchVerifyRun("typecheck", projectId, run.id); }}
               style={{
-                flex: "1 1 45%",
-                fontSize: 12,
-                fontWeight: 500,
-                padding: "8px 0",
-                borderRadius: 8,
-                border: "1px solid hsl(var(--border) / 0.7)",
+                fontSize: 11.5, fontWeight: 500, padding: "5px 10px",
+                borderRadius: 6, border: "1px solid transparent",
                 background: "transparent",
-                color: "hsl(var(--card-foreground) / 0.85)",
+                color: "hsl(var(--card-foreground) / 0.75)",
                 cursor: "pointer",
               }}
             >
@@ -1039,14 +1033,10 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
               type="button"
               onClick={(e) => { e.stopPropagation(); dispatchVerifyRun("test", projectId, run.id); }}
               style={{
-                flex: "1 1 45%",
-                fontSize: 12,
-                fontWeight: 500,
-                padding: "8px 0",
-                borderRadius: 8,
-                border: "1px solid hsl(var(--border) / 0.7)",
+                fontSize: 11.5, fontWeight: 500, padding: "5px 10px",
+                borderRadius: 6, border: "1px solid transparent",
                 background: "transparent",
-                color: "hsl(var(--card-foreground) / 0.85)",
+                color: "hsl(var(--card-foreground) / 0.75)",
                 cursor: "pointer",
               }}
             >
@@ -1057,10 +1047,15 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       </div>
 
       <style>{`
-        @keyframes wrc-border-trace {
-          0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0); border-color: rgba(74,222,128,0.15); }
-          35%  { box-shadow: 0 0 0 4px rgba(74,222,128,0.14); border-color: rgba(74,222,128,0.7); }
-          100% { box-shadow: 0 0 0 3px rgba(74,222,128,0.06); border-color: rgba(74,222,128,0.45); }
+        @keyframes wrc-border-flash-success {
+          0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0);    border-color: hsl(var(--border)); }
+          25%  { box-shadow: 0 0 0 4px rgba(74,222,128,0.18); border-color: rgba(74,222,128,0.85); }
+          100% { box-shadow: 0 0 0 0 rgba(74,222,128,0);    border-color: hsl(var(--border)); }
+        }
+        @keyframes wrc-border-flash-failed {
+          0%   { box-shadow: 0 0 0 0 rgba(248,113,113,0);    border-color: hsl(var(--border)); }
+          25%  { box-shadow: 0 0 0 4px rgba(248,113,113,0.18); border-color: rgba(248,113,113,0.85); }
+          100% { box-shadow: 0 0 0 0 rgba(248,113,113,0);    border-color: hsl(var(--border)); }
         }
         @keyframes wrc-shimmer {
           0%   { background-position: -200% center; }
