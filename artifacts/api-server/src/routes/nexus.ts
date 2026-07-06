@@ -2532,6 +2532,21 @@ WHAT YOU SHOULD NOT DO:
     const { content: rawVisibleContent, memoryUpdated: parsedMemoryUpdated } = extractMemoryLines(rawContent);
     let visibleContent = rawVisibleContent;
     const memoryUpdated = parsedMemoryUpdated;
+
+    // Guard: if all content was stripped down to signal tokens with nothing left,
+    // do NOT persist a blank message to the thread — it replays as an empty
+    // assistant turn that confuses the model on the next request.
+    // Instead, surface a retriable error to the client.
+    if (!visibleContent.trim()) {
+      req.log.warn({ focusProjectId, conversationId: effectiveConversationId }, "nexus: empty response after token stripping — not persisting to DB");
+      writeStep({ verb: "Failed", target: "response", detail: "Model returned no content", status: "fail" });
+      if (!res.writableEnded && !res.destroyed) {
+        res.write(`event: error\ndata: ${JSON.stringify({ error: "empty_response", message: "Atlas didn't generate a response. Please try again." })}\n\n`);
+        res.end();
+      }
+      return;
+    }
+
     writeStep({ verb: "Saved", target: "response", detail: "Thread updated" });
 
     // Execute BROWSER_VISIT if Atlas emitted one — emit visiting step so UI shows the globe indicator
