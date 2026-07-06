@@ -8677,12 +8677,16 @@ export default function Workspace() {
               ...(useNexusWorkspaceChat ? {
                 chatPending: nexusBridge.chatPending,
                 messages: nexusBridge.messages,
-                doSend: ((text: string) => nexusBridge.send(text)) as ChatComposerProps["doSend"],
+                doSend: ((text: string) => {
+                  nexusBridge.send(text);
+                  try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
+                }) as ChatComposerProps["doSend"],
                 handleSend: (() => {
                   const text = (input ?? "").trim();
                   if (!text) return;
                   nexusBridge.send(text);
                   setInput("");
+                  try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
                 }) as ChatComposerProps["handleSend"],
                 onAbort: () => nexusBridge.abort(),
               } : {}),

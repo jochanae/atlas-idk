@@ -80,13 +80,7 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
     pid ? deriveConversationId(pid) : ""
   );
 
-  // Reset conversation id when the project changes.
-  useEffect(() => {
-    if (!pid) return;
-    setConversationId(deriveConversationId(pid));
-  }, [pid]);
-
-  const { messages, isStreaming, isPending, send, abort } = useNexusChatStream({
+  const { messages, isStreaming, isPending, send, abort, clearMessages } = useNexusChatStream({
     focusProjectId: pid || null,
     mode: "workspace",
     conversationId: conversationId || null,
@@ -97,6 +91,18 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
       }
     },
   });
+
+  // Reset conversation id + wipe in-memory messages when the project changes,
+  // so thread A never bleeds into thread B.
+  const prevPidRef = useRef<number>(pid);
+  useEffect(() => {
+    if (!pid) return;
+    if (prevPidRef.current !== pid) {
+      setConversationId(deriveConversationId(pid));
+      clearMessages();
+      prevPidRef.current = pid;
+    }
+  }, [pid, clearMessages]);
 
   // WRITE_FILE side-effect — fire once per completed assistant message.
   const prevStreamingRef = useRef(false);

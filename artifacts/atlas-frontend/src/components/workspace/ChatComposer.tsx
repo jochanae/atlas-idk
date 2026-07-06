@@ -691,10 +691,10 @@ export function ChatComposer(props: ChatComposerProps) {
                 rows={1}
                 style={{
                   width: "100%", background: "transparent", border: "none", outline: "none",
-                  color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.6,
+                  color: "var(--atlas-fg)", fontSize: isCompact ? 14 : 16, lineHeight: 1.55,
                   resize: "none", fontFamily: "var(--app-font-sans)",
                   position: "relative", zIndex: 1,
-                  minHeight: sheetVisible ? "calc(60vh - 160px)" : (isCompact ? 22 : 24),
+                  minHeight: sheetVisible ? "calc(60vh - 160px)" : (isCompact ? 22 : 26),
                   maxHeight: sheetVisible ? "calc(60vh - 160px)" : (isCompact ? 28 : (isMobile ? "25vh" : 180)),
                   overflowY: "auto", overscrollBehavior: "contain", display: "block",
                   padding: "2px 2px",
