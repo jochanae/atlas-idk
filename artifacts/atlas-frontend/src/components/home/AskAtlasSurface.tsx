@@ -155,6 +155,24 @@ export function AskAtlasSurface({
   // Manage object URLs for image previews
   useEffect(() => { ensureComposerAuraCSS(); }, []);
 
+  // Footer center "A" (atlas:focus-composer) must lift the local docked state
+  // so the composer remounts. The shell store's restoreComposer() is separate
+  // and doesn't touch this component's local restingState.
+  useEffect(() => {
+    const onFocus = () => {
+      setRestingState("full");
+      let tries = 0;
+      const tryFocus = () => {
+        const el = textareaRef.current;
+        if (el) { try { el.focus(); } catch {} return; }
+        if (tries++ < 12) setTimeout(tryFocus, 50);
+      };
+      setTimeout(tryFocus, 60);
+    };
+    window.addEventListener("atlas:focus-composer", onFocus);
+    return () => window.removeEventListener("atlas:focus-composer", onFocus);
+  }, []);
+
   useEffect(() => {
     const current = new Set(attachedFiles);
     for (const [file, url] of filePreviewUrls.current.entries()) {
