@@ -13,6 +13,7 @@ import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/comp
 import { useThemeMode } from "@/lib/theme";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
+import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
 // CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
 
 
@@ -367,6 +368,26 @@ export function ChatComposer(props: ChatComposerProps) {
   const isDocked = composerVisibility === 'docked' && !sheetVisible;
   const isParchment = useThemeMode() === "parchment";
 
+  // Publish held state to the footer anchor so its halo breathes when a
+  // draft is being held or Atlas is mid-turn. Cleared when neither is true.
+  useEffect(() => {
+    setAnchorHeld(Boolean(hasInput || chatPending));
+    return () => setAnchorHeld(false);
+  }, [hasInput, chatPending]);
+
+  // Funnel collapse — plays the absorb animation on the sheet, fires the
+  // gold ripple inside the anchor, then drops the sheet by blurring/docking.
+  const [absorbing, setAbsorbing] = useState(false);
+  const runAbsorb = (finalize: () => void) => {
+    if (absorbing) return;
+    setAbsorbing(true);
+    triggerAnchorAbsorb();
+    window.setTimeout(() => {
+      finalize();
+      setAbsorbing(false);
+    }, ABSORB_DURATION_MS);
+  };
+
   return (
 
     <>
@@ -420,15 +441,25 @@ export function ChatComposer(props: ChatComposerProps) {
           boxShadow: isParchment
             ? "0 -24px 60px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(15, 23, 42, 0.06)"
             : "0 -24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,76,0.18)",
-          transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transition: absorbing
+            ? "transform 260ms cubic-bezier(0.7,0,0.3,1), opacity 220ms ease-in"
+            : "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           overflow: "hidden",
+          transformOrigin: "50% 100%",
+          transform: absorbing ? "translateY(24px) scale(0.15, 0.28)" : undefined,
+          opacity: absorbing ? 0 : 1,
         } : {
           padding: isCompact ? "2px 12px 4px" : "12px 14px 14px",
           flexShrink: 0,
           position: "sticky",
           bottom: 0,
           zIndex: 30,
-          transition: "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transition: absorbing
+            ? "transform 260ms cubic-bezier(0.7,0,0.3,1), opacity 220ms ease-in"
+            : "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transformOrigin: "50% 100%",
+          transform: absorbing ? "translateY(24px) scale(0.15, 0.35)" : undefined,
+          opacity: absorbing ? 0 : 1,
           ...auraVars,
         } as React.CSSProperties}>
         {/* Dock toggle — one tap collapses composer to the floating "A". */}
@@ -437,7 +468,7 @@ export function ChatComposer(props: ChatComposerProps) {
             type="button"
             aria-label="Dock composer"
             title="Minimize to floating A"
-            onClick={() => { haptics.tap(); toggleComposerCollapsed(); }}
+            onClick={() => { haptics.tap(); runAbsorb(() => toggleComposerCollapsed()); }}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 4,
               width: 22, height: 22, padding: 0,
@@ -472,7 +503,7 @@ export function ChatComposer(props: ChatComposerProps) {
               type="button"
               aria-label="Collapse composer"
               title="Collapse composer"
-              onClick={() => { haptics.tap(); textareaRef.current?.blur(); }}
+              onClick={() => { haptics.tap(); runAbsorb(() => { textareaRef.current?.blur(); toggleComposerCollapsed(); }); }}
               style={{
                 position: "absolute", top: 10, right: 12, zIndex: 4,
                 width: 26, height: 26, padding: 0,

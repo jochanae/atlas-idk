@@ -36,6 +36,7 @@ import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
 import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
+import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
 import {
   ASK_ATLAS_PLACEHOLDERS,
   extractNavigateTo,
@@ -188,6 +189,27 @@ export function AskAtlasSurface({
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
   const typed = useAskAtlasTypewriter(ASK_ATLAS_PLACEHOLDERS, !showPlaceholder);
+
+  // Publish held state to the footer anchor — halo breathes when a draft
+  // exists or a turn is streaming. Only meaningful when this surface is open.
+  useEffect(() => {
+    if (!open) return;
+    setAnchorHeld(Boolean(hasInput || isStreaming));
+    return () => setAnchorHeld(false);
+  }, [open, hasInput, isStreaming]);
+
+  // Funnel collapse — animates the sheet into the footer anchor + rings the
+  // gold ripple, then commits the actual dock state change.
+  const [absorbing, setAbsorbing] = useState(false);
+  const runAbsorb = (finalize: () => void) => {
+    if (absorbing) return;
+    setAbsorbing(true);
+    triggerAnchorAbsorb();
+    window.setTimeout(() => {
+      finalize();
+      setAbsorbing(false);
+    }, ABSORB_DURATION_MS);
+  };
 
   if (!open) return null;
 
@@ -662,7 +684,12 @@ export function AskAtlasSurface({
           flexDirection: "column",
           gap: 8,
           overflow: "hidden",
-          transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transformOrigin: "50% 100%",
+          transform: absorbing ? "translateY(24px) scale(0.15, 0.28)" : undefined,
+          opacity: absorbing ? 0 : 1,
+          transition: absorbing
+            ? "transform 260ms cubic-bezier(0.7,0,0.3,1), opacity 220ms ease-in"
+            : "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1)",
         } as CSSProperties : {
           flexShrink: 0,
           padding: restingCompact
@@ -674,7 +701,12 @@ export function AskAtlasSurface({
           gap: restingCompact ? 4 : 8,
           position: "relative",
           zIndex: 5,
-          transition: "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), gap 200ms ease",
+          transformOrigin: "50% 100%",
+          transform: absorbing ? "translateY(24px) scale(0.15, 0.35)" : undefined,
+          opacity: absorbing ? 0 : 1,
+          transition: absorbing
+            ? "transform 260ms cubic-bezier(0.7,0,0.3,1), opacity 220ms ease-in"
+            : "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), gap 200ms ease",
         }}
       >
         {/* Grip handle — visible in sheet mode; tap to collapse */}
@@ -694,7 +726,7 @@ export function AskAtlasSurface({
             type="button"
             aria-label={restingDocked ? "Restore composer" : "Dock composer"}
             title={restingDocked ? "Restore composer" : "Minimize to floating A"}
-            onClick={() => setRestingState((s) => (s === "docked" ? "full" : "docked"))}
+            onClick={() => runAbsorb(() => setRestingState("docked"))}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 6,
               width: 22, height: 22, padding: 0,

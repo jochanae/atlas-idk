@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useListProjects } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useDockVisibility, dockVisibility } from "@/hooks/useDockVisibility";
+import { subscribeAnchorHeld, subscribeAnchorAbsorb } from "@/lib/atlasAnchor";
 
 const LAST_PROJECT_KEY = "atlas-last-project-id";
 
@@ -182,6 +183,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const dockVisible = useDockVisibility();
   const [showAtlasHub, setShowAtlasHub] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
+  const [anchorHeld, setAnchorHeld] = useState(false);
+  const [absorbTick, setAbsorbTick] = useState(0);
+  useEffect(() => subscribeAnchorHeld(setAnchorHeld), []);
+  useEffect(() => subscribeAnchorAbsorb(() => setAbsorbTick((n) => n + 1)), []);
 
   // `--atlas-dock-height` stays STABLE at 64px (consumers that float ABOVE the
   // dock — overlays, action sheets — anchor to it and must not oscillate).
@@ -590,72 +595,127 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
 
         {/* Center — Atlas Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <button
-            title="Atlas Core — tap to focus chat, hold 900ms to open Atlas Hub"
-            aria-label="Atlas Core. Tap to focus chat. Hold 900ms or right-click to open Atlas Hub."
-            className="udock-center"
-            onClick={handleAtlasClick}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              startLongPress();
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!resolveLongPress()) fireTap();
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              cancelLongPress();
-              setShowAtlasHub(true);
-            }}
-            onKeyDown={(e) => {
-              if (e.repeat) return;
-              if (e.key === "Enter" && e.shiftKey) {
+          <div style={{ position: "relative", width: 56, height: 56, marginTop: -26 }}>
+            {/* Breathing halo — only while composer has a draft or Atlas is pending. */}
+            <span
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: -10,
+                borderRadius: "50%",
+                pointerEvents: "none",
+                background: "radial-gradient(circle, rgba(201,162,76,0.28) 0%, rgba(201,162,76,0.12) 45%, rgba(201,162,76,0) 72%)",
+                animation: anchorHeld ? "atlasAnchorBreathe 2400ms ease-in-out infinite" : undefined,
+                opacity: anchorHeld ? undefined : 0,
+                transition: "opacity 320ms ease",
+              }}
+            />
+            {/* Contained absorb ripple — bounded strictly inside the ring. */}
+            <span
+              key={absorbTick}
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
+                pointerEvents: "none",
+                overflow: "hidden",
+              }}
+            >
+              {absorbTick > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "50%",
+                    background: "radial-gradient(circle, rgba(212,175,55,0.55) 0%, rgba(212,175,55,0.25) 42%, rgba(212,175,55,0) 72%)",
+                    animation: "atlasAnchorAbsorb 400ms cubic-bezier(0.1, 0.8, 0.3, 1) forwards",
+                    transformOrigin: "50% 50%",
+                  }}
+                />
+              )}
+            </span>
+            <button
+              title="Atlas Core — tap to focus chat, hold 900ms to open Atlas Hub"
+              aria-label="Atlas Core. Tap to focus chat. Hold 900ms or right-click to open Atlas Hub."
+              className="udock-center"
+              onClick={handleAtlasClick}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                startLongPress();
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!resolveLongPress()) fireTap();
+              }}
+              onContextMenu={(e) => {
                 e.preventDefault();
                 cancelLongPress();
                 setShowAtlasHub(true);
-              } else if (e.key === " " || e.key === "Spacebar") {
-                e.preventDefault();
-                startLongPress();
-              }
-            }}
-            onKeyUp={(e) => {
-              if (e.key === " " || e.key === "Spacebar") {
-                e.preventDefault();
-                if (!resolveLongPress()) fireTap();
-              } else if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                fireTap();
-              }
-            }}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              border: "2px solid var(--atlas-gold)",
-              background: "var(--atlas-bg)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              marginTop: -26,
-              flexShrink: 0,
-              boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
-              transition: "transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard)",
-              WebkitTapHighlightColor: "transparent",
-              touchAction: "none",
-            }}
-          >
-            <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden" }}>
-              <AxiomCenterSVG />
-            </div>
-          </button>
+              }}
+              onKeyDown={(e) => {
+                if (e.repeat) return;
+                if (e.key === "Enter" && e.shiftKey) {
+                  e.preventDefault();
+                  cancelLongPress();
+                  setShowAtlasHub(true);
+                } else if (e.key === " " || e.key === "Spacebar") {
+                  e.preventDefault();
+                  startLongPress();
+                }
+              }}
+              onKeyUp={(e) => {
+                if (e.key === " " || e.key === "Spacebar") {
+                  e.preventDefault();
+                  if (!resolveLongPress()) fireTap();
+                } else if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  fireTap();
+                }
+              }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                border: "2px solid var(--atlas-gold)",
+                background: "var(--atlas-bg)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0,
+                boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
+                transition: "transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard)",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "none",
+              }}
+            >
+              <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden" }}>
+                <AxiomCenterSVG />
+              </div>
+            </button>
+          </div>
         </div>
 
         {right.map(renderSlot)}
       </div>
+
+      {/* Anchor animation keyframes */}
+      <style>{`
+        @keyframes atlasAnchorBreathe {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50%      { opacity: 0.85; transform: scale(1.06); }
+        }
+        @keyframes atlasAnchorAbsorb {
+          0%   { opacity: 0; transform: scale(0.15); }
+          35%  { opacity: 1; }
+          100% { opacity: 0; transform: scale(1.05); }
+        }
+      `}</style>
 
       {/* Atlas Command — radial launcher portal */}
       {showAtlasHub && typeof document !== "undefined" && createPortal(
