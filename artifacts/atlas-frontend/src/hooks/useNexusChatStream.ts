@@ -113,6 +113,10 @@ export interface NexusMessage {
   visualCaption?: string | null;
   visualLoading?: boolean;
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
+  /** Suggestion chips — passed through from backend `nextSuggestions`. */
+  nextSuggestions?: string[] | null;
+  /** True when the backend queued background decision extraction after this turn. */
+  extractionQueued?: boolean;
 }
 
 export interface NexusHandoffSignal {
@@ -644,6 +648,9 @@ export function useNexusChatStream(
                     runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as string,
                     runSummary: (meta.runSummary ?? meta.run_summary ?? null) as string | null,
                     modelUsed: (meta.modelUsed ?? meta.model_used ?? null) as string | null,
+                    // Pass-through fields that the bridge was previously dropping:
+                    nextSuggestions: (meta.nextSuggestions as string[] | undefined) ?? null,
+                    extractionQueued: !!(meta.extractionQueued),
                   }
                 : m
             ));

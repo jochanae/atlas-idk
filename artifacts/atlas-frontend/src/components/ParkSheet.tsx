@@ -38,6 +38,8 @@ export function ParkSheet({ projectId: initialProjectId, projects, onClose, onOp
         data: buildParkedEntryPayload(trimmed),
       });
       void queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(activeProjectId, {}) });
+      // Also bust the parked-count badge (sidebar uses this key with a 30s staleTime)
+      void queryClient.invalidateQueries({ queryKey: ["entries", "parked-count"] });
       setStatus("done");
       onParked?.(trimmed);
       setTimeout(() => onClose(), 850);

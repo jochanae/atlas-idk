@@ -63,7 +63,19 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     id: idx + 1,
     role: nm.role,
     content: cleaned,
-    streaming: (nm as NexusMessage & { streaming?: boolean }).streaming ?? false,
+    streaming: nm.streaming ?? false,
+    // Surface-affecting fields that were previously dropped, causing chips,
+    // decision extraction, and artifact-save events to silently break on the
+    // Nexus workspace path.
+    ...(nm.nextSuggestions?.length ? { nextSuggestions: nm.nextSuggestions } : {}),
+    ...(nm.extractionQueued ? { extractionQueued: true } : {}),
+    imageGen: nm.imageGen as ChatMessage["imageGen"] ?? undefined,
+    modelUsed: nm.modelUsed ?? undefined,
+    surface: nm.surface as ChatMessage["surface"] ?? undefined,
+    executionTimeMs: nm.executionTimeMs ?? undefined,
+    inputTokens: nm.inputTokens ?? undefined,
+    outputTokens: nm.outputTokens ?? undefined,
+    costUsd: nm.costUsd ?? undefined,
   };
 }
 
@@ -147,6 +159,7 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
     const last = messages[messages.length - 1];
     if (!last || last.role !== "assistant") return;
     const writes = parseWriteFile(last.content);
+    let anyWriteSucceeded = false;
     for (const { path, fileContent } of writes) {
       const dedupeKey = `${path}::${fileContent.length}`;
       if (processedTokens.current.has(dedupeKey)) continue;
@@ -161,6 +174,12 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
           if (r.ok) {
             window.dispatchEvent(new CustomEvent("axiom:file-edited", { detail: { path, projectId: pid } }));
             window.dispatchEvent(new CustomEvent("axiom:workspace-refresh", { detail: { projectId: pid } }));
+            if (!anyWriteSucceeded) {
+              anyWriteSucceeded = true;
+              // Mirror the classic path: signal that an artifact was saved so
+              // PreviewPanel and other surfaces refresh.
+              window.dispatchEvent(new CustomEvent("axiom:artifact-saved"));
+            }
           }
         })
         .catch(() => { /* ignore */ });

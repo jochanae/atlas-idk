@@ -8524,6 +8524,10 @@ export default function Workspace() {
               onStreamActivityComplete: () => setActivityStream({ active: false, content: "" }),
               onCommitCardDone: () => {
                 queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
+                // Also invalidate the Decisions sub-tab (ViewChangesPanel uses this key)
+                // and project memory so MemoryTab refreshes immediately.
+                queryClient.invalidateQueries({ queryKey: ["run-decisions", id] });
+                queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
                 void refreshParkedEntries();
               },
               planStates: chatPlanStates,
