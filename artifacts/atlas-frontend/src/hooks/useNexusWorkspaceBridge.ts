@@ -64,8 +64,6 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     role: nm.role,
     content: cleaned,
     streaming: (nm as NexusMessage & { streaming?: boolean }).streaming ?? false,
-    imageB64: nm.imageB64,
-    imageMimeType: nm.imageMimeType,
   };
 }
 
