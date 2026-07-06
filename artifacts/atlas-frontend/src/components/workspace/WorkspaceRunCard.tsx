@@ -336,15 +336,16 @@ function liveStepMeta(step?: LiveStepItem): { Icon: LucideIcon; headline: string
   if (/read|inspect|scan|open/.test(lower)) {
     return { Icon: Eye, headline: filename ? `Reading ${filename}` : "Reading file" };
   }
-  if (/command|terminal|shell|run|exec|install|build|test|check/.test(lower)) {
+  if (/^tree$/.test(lower)) {
+    return { Icon: Eye, headline: "Reading project structure" };
+  }
+  if (/command|terminal|shell|exec|install|build|test|check/.test(lower)) {
     return { Icon: Terminal, headline: target ? `Running ${target}` : "Running command" };
   }
   if (/fetch|visit|scrape|research/.test(lower)) {
     return { Icon: Eye, headline: target ? `Fetching ${target}` : "Fetching data" };
   }
   if (/analyz|assess/.test(lower)) {
-    // "Analyzing your request" is too generic to display as a headline — it looks frozen.
-    // Show "Working…" until a more specific step (read/write) arrives.
     return { Icon: Circle, headline: "Working…" };
   }
   if (verb) {
@@ -370,12 +371,30 @@ function shortTaskGoal(msg: string): string {
   return (cut || cleaned.slice(0, 55)) + "…";
 }
 
+// Verbs that mean Atlas is actually writing, building, or executing something.
+// Anything not in this set is a read/think operation.
+const EXECUTION_VERBS = new Set([
+  "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "COMMAND", "SHELL",
+  "BUILD", "INSTALL", "TEST", "GITHUB_PUSH", "IMAGE_GEN", "RUN",
+]);
+
 /** The live execution card shown while Atlas is working.
  *  One card. One current step. Fixed height. No growing list. */
 function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: string }) {
   const current = steps[steps.length - 1];
-  const { headline: currentHeadline } = liveStepMeta(current);
   const stepCount = steps.length;
+
+  // If no execution verbs have fired yet, this is a thinking/reading turn —
+  // never say "Running [project]". Switch to a thinking label instead.
+  const hasExecutionStep = steps.some(s => EXECUTION_VERBS.has((s.verb ?? "").toUpperCase()));
+  const { headline: stepHeadline } = liveStepMeta(current);
+  const currentHeadline = hasExecutionStep
+    ? stepHeadline
+    : current?.verb?.toUpperCase() === "FILE_READ" || current?.verb?.toUpperCase() === "TREE"
+      ? "Reviewing project context"
+      : stepHeadline === "Working…" || !stepHeadline
+        ? "Thinking with Atlas"
+        : stepHeadline;
 
   return (
     <div
