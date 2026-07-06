@@ -602,7 +602,7 @@ function WorkspaceRunReceipts({
           fontSize: 9.5, fontFamily: "var(--app-font-mono)",
           letterSpacing: "0.14em", textTransform: "uppercase",
           color: "var(--atlas-gold)", opacity: 0.7,
-        }}>Builds</span>
+        }}>Runs</span>
         <span style={{
           fontSize: 9, background: "rgba(var(--atlas-gold-rgb), 0.12)",
           color: "rgba(var(--atlas-gold-rgb), 0.8)", border: "1px solid rgba(var(--atlas-gold-rgb), 0.2)",
