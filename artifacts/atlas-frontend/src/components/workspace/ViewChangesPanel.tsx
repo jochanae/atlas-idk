@@ -597,6 +597,152 @@ function WorkspaceRunReceipts({
   );
 }
 
+// ── DecisionsLens: ledger entries scoped to a specific run's message id ──────
+
+function decisionTone(severity: string, status: string): { fg: string; bg: string; label: string } {
+  if (status === "overridden") return { fg: "rgba(180,180,180,0.75)", bg: "rgba(180,180,180,0.10)", label: "Overridden" };
+  if (severity === "blocker")  return { fg: "rgba(248,113,113,0.9)",  bg: "rgba(248,113,113,0.12)", label: "Blocker" };
+  if (status === "committed" || severity === "committed")
+    return { fg: "rgba(74,222,128,0.9)",  bg: "rgba(74,222,128,0.10)", label: "Committed" };
+  if (status === "in_tension") return { fg: "rgba(var(--atlas-gold-rgb), 0.9)", bg: "rgba(var(--atlas-gold-rgb), 0.12)", label: "In Tension" };
+  return { fg: "rgba(180,180,180,0.8)", bg: "rgba(180,180,180,0.08)", label: status || "decision" };
+}
+
+function DecisionRow({ entry }: { entry: DecisionEntry }) {
+  const tone = decisionTone(entry.severity, entry.status);
+  return (
+    <a
+      href={`/entry/${entry.id}`}
+      style={{
+        display: "flex", gap: 10, alignItems: "flex-start",
+        padding: "10px 12px",
+        borderRadius: 6,
+        border: "1px solid rgba(var(--atlas-gold-rgb), 0.08)",
+        background: "rgba(255,255,255,0.02)",
+        textDecoration: "none", color: "inherit",
+      }}
+    >
+      <span style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 20, height: 20, borderRadius: 999,
+        background: tone.bg, color: tone.fg, flexShrink: 0, marginTop: 1,
+      }}>
+        {entry.severity === "blocker" ? <AlertTriangle size={11} strokeWidth={1.8} /> : <Scale size={11} strokeWidth={1.8} />}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6, marginBottom: 3,
+        }}>
+          <span style={{
+            fontSize: 9, fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.12em", textTransform: "uppercase",
+            color: tone.fg, opacity: 0.9,
+          }}>{tone.label}</span>
+          {entry.mode && (
+            <span style={{
+              fontSize: 9, fontFamily: "var(--app-font-mono)",
+              color: "var(--atlas-muted)", opacity: 0.55,
+              letterSpacing: "0.08em",
+            }}>· {entry.mode}</span>
+          )}
+        </div>
+        <div style={{
+          fontSize: 12.5, color: "var(--atlas-fg)", fontWeight: 500,
+          lineHeight: 1.35, letterSpacing: "-0.005em",
+          overflow: "hidden", textOverflow: "ellipsis",
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+        }}>{entry.title}</div>
+        {entry.summary && (
+          <div style={{
+            fontSize: 11, color: "var(--atlas-muted)", opacity: 0.7,
+            marginTop: 3, lineHeight: 1.5,
+            overflow: "hidden", textOverflow: "ellipsis",
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+          }}>{entry.summary}</div>
+        )}
+      </div>
+    </a>
+  );
+}
+
+function DecisionsLens({
+  projectId,
+  messageId,
+}: {
+  projectId: number;
+  messageId: number | null;
+}) {
+  const { data, isLoading, error } = useQuery<{ entries: DecisionEntry[] } | DecisionEntry[]>({
+    queryKey: ["run-decisions", projectId, messageId],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/entries`, { credentials: "include" });
+      if (!res.ok) throw new Error(`entries fetch failed: ${res.status}`);
+      return res.json();
+    },
+    enabled: !!projectId && messageId !== null,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const scoped = useMemo<DecisionEntry[]>(() => {
+    if (messageId === null) return [];
+    const raw: DecisionEntry[] = Array.isArray(data)
+      ? data
+      : Array.isArray((data as { entries?: DecisionEntry[] } | undefined)?.entries)
+        ? (data as { entries: DecisionEntry[] }).entries
+        : [];
+    return raw
+      .filter((e) => e.sourceMessageId === messageId)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [data, messageId]);
+
+  if (messageId === null) {
+    return (
+      <div style={{
+        padding: "18px 14px", fontSize: 11.5,
+        color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
+      }}>
+        This run isn't linked to a specific message — no decisions to attribute.
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{
+        padding: "18px 14px", fontSize: 11.5,
+        color: "var(--atlas-muted)", opacity: 0.5,
+      }}>Loading decisions…</div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        padding: "18px 14px", fontSize: 11.5,
+        color: "rgba(248,113,113,0.85)", opacity: 0.8, lineHeight: 1.55,
+      }}>Couldn't load decisions.</div>
+    );
+  }
+
+  if (scoped.length === 0) {
+    return (
+      <div style={{
+        padding: "18px 14px", fontSize: 11.5,
+        color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
+      }}>
+        No decisions were committed during this run.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "12px 12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+      {scoped.map((entry) => <DecisionRow key={entry.id} entry={entry} />)}
+    </div>
+  );
+}
+
 // ── Root component ────────────────────────────────────────────────────────────
 
 interface Props {
