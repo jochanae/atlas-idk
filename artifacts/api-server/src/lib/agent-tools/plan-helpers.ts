@@ -5,6 +5,7 @@ export async function writePlanCommittedLedgerEntry(
   projectId: number,
   title: string,
   intent: string,
+  sourceMessageId?: number | null,
 ): Promise<number | undefined> {
   const [row] = await db
     .insert(entriesTable)
@@ -17,6 +18,7 @@ export async function writePlanCommittedLedgerEntry(
       severity: "committed",
       mode: "plan_committed",
       amField: intent,
+      ...(sourceMessageId != null ? { sourceMessageId } : {}),
     })
     .returning({ id: entriesTable.id });
   return row?.id;

@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, userResumeSnapshotsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
+import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, userResumeSnapshotsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { autoCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
@@ -2685,6 +2685,33 @@ WHAT YOU SHOULD NOT DO:
       atlasResponse: visibleContent,
     });
 
+    // Mirror assistant turn into workspace chat_messages when a session is linked,
+    // so ledger entries can attribute to a chat_messages row.
+    let sourceChatMessageId: number | null = null;
+    if (sessionId) {
+      try {
+        const [chatMsg] = await db
+          .insert(chatMessagesTable)
+          .values({
+            sessionId,
+            role: "assistant",
+            content: visibleContent,
+            executionTimeMs: runMetadata.executionTimeMs,
+            inputTokens: runMetadata.inputTokens,
+            outputTokens: runMetadata.outputTokens,
+            costUsd: runMetadata.costUsd != null ? runMetadata.costUsd.toFixed(5) : null,
+            runStatus: runMetadata.runStatus,
+            runSummary: runMetadata.runSummary,
+            runActions: runMetadata.runActions,
+            runArtifacts: runMetadata.runArtifacts,
+          })
+          .returning({ id: chatMessagesTable.id });
+        sourceChatMessageId = chatMsg?.id ?? null;
+      } catch (dbErr) {
+        logger.warn({ err: dbErr }, "nexus: failed to mirror assistant message to chat_messages");
+      }
+    }
+
     // Auto-capture DECISION signal to Ledger — fire-and-forget, never blocks stream
     if (surface?.type === "DECISION" && focusProjectId) {
       void autoCaptureLedgerDecision({
@@ -2692,7 +2719,7 @@ WHAT YOU SHOULD NOT DO:
         userId,
         sessionId,
         content: visibleContent,
-        sourceMessageId: null,
+        sourceMessageId: sourceChatMessageId,
       });
     }
 
