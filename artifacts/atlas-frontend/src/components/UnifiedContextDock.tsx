@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useListProjects } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useDockVisibility, dockVisibility } from "@/hooks/useDockVisibility";
+import { subscribeAnchorHeld, subscribeAnchorAbsorb } from "@/lib/atlasAnchor";
 
 const LAST_PROJECT_KEY = "atlas-last-project-id";
 
