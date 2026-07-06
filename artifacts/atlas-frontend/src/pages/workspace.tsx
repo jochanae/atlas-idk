@@ -65,6 +65,7 @@ import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
+import AccountSummarySections from "@/components/workspace/AccountSummarySections";
 import { HistoryBookmarksSheet } from "../components/HistoryBookmarksSheet";
 import { WorkspacePresetsBar } from "@/components/workspace/WorkspacePresetsBar";
 import { SessionHistorySheet } from "../components/SessionHistorySheet";
