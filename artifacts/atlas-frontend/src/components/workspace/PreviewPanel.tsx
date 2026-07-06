@@ -1599,7 +1599,15 @@ ${t}
                 return `${days}d ago`;
               };
 
-              return artifacts.map(artifact => {
+              const visible = artifactBucket === "all" ? artifacts : artifacts.filter(a => bucketOf(a.type) === artifactBucket);
+              if (visible.length === 0) {
+                return (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4 }}>
+                    Nothing in this bucket yet.
+                  </div>
+                );
+              }
+              return visible.map(artifact => {
                 const cfg = TYPE_CONFIG[artifact.type] ?? {
                   label: artifact.type.toUpperCase().slice(0, 8),
                   color: "var(--atlas-muted)", bg: "rgba(255,255,255,0.03)", border: "var(--atlas-border)",
