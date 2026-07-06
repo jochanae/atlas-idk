@@ -3234,12 +3234,16 @@ WHAT YOU SHOULD NOT DO:
     if (!filePath) return { ok: false, error: "path_required" };
     if (!focusProjectId) return { ok: false, error: "no_project_context" };
 
+    // Show the user Atlas is actively reading — not silent
+    writeStep({ verb: "Reading", target: filePath });
+
     try {
       const workspaceDir = await ensureProjectWorkspaceDir(focusProjectId);
       let absPath: string;
       try {
         absPath = resolveWorkspacePath(workspaceDir, filePath);
       } catch {
+        writeStep({ verb: "Invalid path", target: filePath, status: "fail" });
         return { ok: false, error: "invalid_path", path: filePath };
       }
 
@@ -3249,15 +3253,17 @@ WHAT YOU SHOULD NOT DO:
       const truncated = Buffer.byteLength(content, "utf-8") > MAX_BYTES;
       const safeContent = truncated ? content.slice(0, MAX_BYTES) + "\n\n[...file truncated — first 200KB shown]" : content;
       req.log.info({ projectId: focusProjectId, path: filePath, truncated }, "nexus read_file tool");
+      writeStep({ verb: "Read", target: filePath, detail: `${content.split("\n").length} lines` });
       return { ok: true, path: filePath, content: safeContent, truncated };
     } catch (err: any) {
       const notFound = err?.code === "ENOENT";
+      writeStep({ verb: "Not found", target: filePath, status: "warn" });
       return {
         ok: false,
         error: notFound ? "file_not_found" : "read_error",
         path: filePath,
         message: notFound
-          ? `File '${filePath}' does not exist in this project workspace. Check the file tree for the correct path.`
+          ? `File '${filePath}' does not exist in the workspace directory. In your response, tell the user you looked for it and couldn't find it at that path, then try a common alternative path by calling read_file again (e.g. if you tried src/pages/X try src/components/X or just X). Only ask the user to locate it after at least one retry.`
           : String(err?.message ?? err),
       };
     }
