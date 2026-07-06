@@ -195,6 +195,15 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             const isOpen = expanded === a.id;
             const created = a.createdAt ?? a.created_at ?? "";
             const dateLabel = created ? new Date(created).toLocaleString() : "";
+            const typeStr = (a.type ?? "").toLowerCase();
+            const looksHtml = typeStr.includes("html") || /<\s*(html|body|div|section|main|!doctype)/i.test(a.content ?? "");
+            const sendToDraft = (e: React.MouseEvent) => {
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent("axiom:open-preview", {
+                detail: { source: "sandbox", content: a.content },
+              }));
+              toast("Sent to Draft preview.");
+            };
             return (
               <div key={a.id} style={{ border: "1px solid var(--atlas-border)", borderRadius: 10, background: "var(--atlas-card)", overflow: "hidden" }}>
                 <button
@@ -206,6 +215,17 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                     <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
                     {dateLabel && <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", marginTop: 2 }}>{dateLabel}</div>}
                   </div>
+                  {looksHtml && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={sendToDraft}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sendToDraft(e as unknown as React.MouseEvent); } }}
+                      style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.14)", border: "1px solid rgba(201,162,76,0.4)", color: "var(--atlas-gold)", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}
+                    >
+                      Preview
+                    </span>
+                  )}
                   <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "2px 6px", borderRadius: 6 }}>{a.type}</span>
                   <ChevronDown size={14} style={{ opacity: 0.6, transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 160ms" }} />
                 </button>
@@ -216,7 +236,10 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                       className="atlas-artifact-md"
                       dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(a.content) }}
                     />
-                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                      {looksHtml && (
+                        <button type="button" onClick={sendToDraft} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Send to Draft</button>
+                      )}
                       <button type="button" onClick={() => handleExport(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export MD</button>
                       <button type="button" onClick={() => handleExportPDF(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export PDF</button>
                       <button type="button" onClick={() => void handleDelete(a.id)} style={{ fontSize: "var(--ts-xs)", color: "rgb(229,115,115)", background: "transparent", border: "1px solid rgba(229,115,115,0.3)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Delete</button>
