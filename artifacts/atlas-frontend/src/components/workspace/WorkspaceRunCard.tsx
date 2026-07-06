@@ -569,6 +569,10 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
+  // Freshness gate: only surface trailing receipts for runs that started
+  // AFTER this workspace session mounted. Prevents stale runs from a prior
+  // session from floating into unrelated conversations.
+  const mountedAtRef = useRef<number>(Date.now());
 
   // Reset step history when a new generation starts
   useEffect(() => {
