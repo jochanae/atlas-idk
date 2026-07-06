@@ -523,11 +523,11 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
         {(open || alwaysOpen) && step.content && (
           <pre style={{
             margin: "4px 0 2px", padding: "8px 10px", borderRadius: 4,
-            background: "rgba(0,0,0,0.22)",
+            background: "rgba(var(--atlas-fg-rgb), 0.05)",
             border: `1px solid ${color.replace(/[\d.]+\)$/, "0.12)")}`,
             fontFamily: isTextVerb ? "var(--app-font-sans)" : "var(--app-font-mono)",
             fontSize: isTextVerb ? 11.5 : 10.5,
-            color: "rgba(220,220,200,0.82)", lineHeight: 1.65,
+            color: "var(--atlas-fg)", opacity: 0.85, lineHeight: 1.65,
             overflowX: "auto", overflowY: "auto",
             maxHeight: step.verb === "THOUGHT" ? 200 : 320,
             whiteSpace: isTextVerb ? "pre-wrap" : "pre",
