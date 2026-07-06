@@ -51,3 +51,7 @@ Thumbs.db
 # User project workspaces — files written by Atlas on behalf of users.
 # These are NOT Atlas platform code. They must never appear in this repo's git history.
 .project-workspaces/
+
+# Replit conversation attachments — screenshots and files attached by users in chat.
+# These are ephemeral inputs, not project assets.
+attached_assets/
