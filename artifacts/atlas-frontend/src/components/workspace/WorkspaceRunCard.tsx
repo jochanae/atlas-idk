@@ -355,21 +355,6 @@ function liveStepMeta(step?: LiveStepItem): { Icon: LucideIcon; headline: string
   return { Icon: Circle, headline: "Working…" };
 }
 
-/**
- * Truncate user message to a short task description.
- * Breaks at word boundary, max 58 chars. Strips markdown/code artifacts.
- */
-function shortTaskGoal(msg: string): string {
-  const cleaned = msg
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]+`/g, "")
-    .replace(/#+\s*/g, "")
-    .replace(/\n+/g, " ")
-    .trim();
-  if (cleaned.length <= 58) return cleaned;
-  const cut = cleaned.slice(0, 58).replace(/\s+\S*$/, "");
-  return (cut || cleaned.slice(0, 55)) + "…";
-}
 
 // Verbs that mean Atlas is actually writing, building, or executing something.
 // Anything not in this set is a read/think operation.
@@ -567,28 +552,55 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
 
 
 
-  // Only show the active card when at least one BUILD-type step has arrived.
-  // Generic "Analyzing" / conversational turns must NOT show the card —
-  // the user asks a question, text streams back, no card needed.
-  // Build steps: read, write, patch, edit, push, install, shell, fetch.
-  const CONVERSATIONAL_VERBS = /^(analyz|assess)/i;
+  // Only show the active card when at least one TOOL-USE step has arrived.
+  // Pure conversational turns (PROMPT/THOUGHT/SUMMARY/DECISION/ANALYZE) must
+  // never show a card — those are Atlas thinking, not Atlas executing.
+  // Tool-use = anything that touches the filesystem, shell, network, or build.
+  const PURE_CONVERSATION = new Set([
+    "PROMPT", "THOUGHT", "SUMMARY", "DECISION",
+    "ANALYZE", "ANALYZE_REQUEST", "ASSESS",
+  ]);
   const hasBuildStep = useMemo(
-    () => liveSteps.some(s => !CONVERSATIONAL_VERBS.test(s.verb)),
+    () => liveSteps.some(s => !PURE_CONVERSATION.has((s.verb ?? "").toUpperCase())),
     [liveSteps],
   );
 
-  // Task goal — short description from the last REAL user message.
-  // Skip [LOCAL_APPLY_SUCCESS] auto-verify messages sent by the agentic loop.
+  // Task goal — derived from what Atlas is actually DOING, not what the user said.
+  // The user message already appears in the chat bubble above; repeating it in
+  // the run card title makes no sense (e.g. "Lets do it. Im ready" as a run title).
   const taskGoal = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.role !== "user") continue;
-      if (m.displayAs === "autoVerify") continue;
-      if ((m.content ?? "").startsWith("[LOCAL_APPLY_SUCCESS]")) continue;
-      return shortTaskGoal((m.content ?? "").trim());
+    if (liveSteps.length === 0) return "";
+
+    // Highest priority: execution steps — describe the active write/build action.
+    const execStep = liveSteps.find(s => EXECUTION_VERBS.has((s.verb ?? "").toUpperCase()));
+    if (execStep) {
+      const v = (execStep.verb ?? "").toUpperCase();
+      const filename = execStep.target ? execStep.target.split("/").pop() ?? execStep.target : "";
+      if (v === "FILE_EDIT" || v === "LINE_PATCH") return filename ? `Editing ${filename}` : "Editing project files";
+      if (v === "FILE_DELETE") return filename ? `Removing ${filename}` : "Removing file";
+      if (v === "GITHUB_PUSH") return execStep.target ? `Pushing to ${execStep.target}` : "Pushing to GitHub";
+      if (v === "BUILD") return "Running build";
+      if (v === "INSTALL") return "Installing packages";
+      if (v === "TEST") return "Running tests";
+      if (v === "IMAGE_GEN") return "Generating image";
+      return filename ? `Running ${filename}` : "Running command";
     }
-    return "";
-  }, [messages]);
+
+    // Read-only steps — describe what Atlas is reviewing.
+    const readStep = liveSteps.find(s => {
+      const v = (s.verb ?? "").toUpperCase();
+      return v === "FILE_READ" || v === "TREE" || v === "FETCH";
+    });
+    if (readStep) {
+      const v = (readStep.verb ?? "").toUpperCase();
+      if (v === "TREE") return "Reading project structure";
+      if (v === "FETCH") return readStep.target ? `Fetching ${readStep.target}` : "Fetching data";
+      const filename = readStep.target ? readStep.target.split("/").pop() ?? readStep.target : "";
+      return filename ? `Reading ${filename}` : "Reviewing project files";
+    }
+
+    return "Working…";
+  }, [liveSteps]);
 
   // ── Receipt derivation ────────────────────────────────────────────────
   const run = useMemo(
