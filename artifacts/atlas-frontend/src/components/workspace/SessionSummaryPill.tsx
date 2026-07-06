@@ -6,6 +6,22 @@ type SessionSummaryData = {
   summaryAt: string | null;
 };
 
+type Tier1Status = {
+  known: number;
+  total: number;
+  missing: string[];
+  skipped: boolean;
+};
+
+const TIER1_FIELD_LABELS: Record<string, string> = {
+  projectName: "name",
+  projectKind: "kind",
+  successSignal: "success signal",
+  constraints: "constraints",
+  audience: "audience",
+  timeline: "timeline",
+};
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
@@ -28,6 +44,7 @@ type Props = {
 
 export function SessionSummaryPill({ projectId, onSummaryCleared, compact = false }: Props) {
   const [data, setData] = useState<SessionSummaryData | null>(null);
+  const [tier1, setTier1] = useState<Tier1Status | null>(null);
   const [open, setOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,11 +60,36 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
     }
   }, [projectId]);
 
+  const fetchTier1 = useCallback(async () => {
+    if (projectId == null) return;
+    try {
+      const res = await fetch(`/api/memory/tier1/${projectId}`, { credentials: "include" });
+      if (!res.ok) return;
+      const json: any = await res.json();
+      const fields = json?.fields ?? json?.data ?? {};
+      const knownFields = Object.keys(fields).filter((k) => {
+        const v = fields[k];
+        return v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
+      });
+      const total = 6;
+      const missing: string[] = Array.isArray(json?.missing) ? json.missing : [];
+      setTier1({
+        known: Math.min(knownFields.length, total),
+        total,
+        missing,
+        skipped: !!json?.skippedAt || !!json?.tier1SkippedAt,
+      });
+    } catch {
+    }
+  }, [projectId]);
+
   useEffect(() => {
     setData(null);
+    setTier1(null);
     setOpen(false);
     void fetchSummary();
-  }, [fetchSummary]);
+    void fetchTier1();
+  }, [fetchSummary, fetchTier1]);
 
   useEffect(() => {
     if (!open) return;
@@ -196,6 +238,32 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
               <X size={13} strokeWidth={2} />
             </button>
           </div>
+
+          {tier1 && (
+            <div style={{
+              padding: "8px 12px",
+              borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+              display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+              fontFamily: "var(--app-font-sans)", fontSize: 11.5,
+              color: "var(--atlas-muted)",
+            }}>
+              <span style={{
+                fontFamily: "var(--app-font-mono)", fontSize: 10,
+                letterSpacing: "0.12em", textTransform: "uppercase",
+                color: tier1.known === tier1.total ? "var(--atlas-gold)" : "var(--atlas-muted)",
+              }}>
+                Project intake · {tier1.known}/{tier1.total}
+              </span>
+              {tier1.skipped && tier1.known < tier1.total && (
+                <span style={{ color: "rgba(252,165,165,0.9)", fontSize: 10.5 }}>skipped</span>
+              )}
+              {tier1.missing.length > 0 && (
+                <span style={{ fontSize: 10.5, opacity: 0.85 }}>
+                  missing: {tier1.missing.slice(0, 3).map((m) => TIER1_FIELD_LABELS[m] ?? m).join(", ")}
+                </span>
+              )}
+            </div>
+          )}
 
           {hasSummary ? (
             <>

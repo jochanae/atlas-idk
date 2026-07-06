@@ -145,107 +145,124 @@ export default function AccountSummarySections(props: AccountSummaryProps) {
 
       <div style={dividerStyle} />
 
-      {/* ── PLAN (account-scoped) ── */}
-      <div style={labelStyle}>Your plan</div>
-      <button
-        type="button"
-        onClick={props.onManagePlan}
-        style={{
-          ...rowStyle,
-          width: "calc(100% - 12px)",
-          margin: "2px 6px",
-          background: "transparent",
-          border: "1px solid transparent",
-          borderRadius: 6,
-          cursor: "pointer",
-          textAlign: "left",
-        }}
-      >
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {/* ── PLAN (collapsible) ── */}
+      <details style={{ margin: "2px 0" }}>
+        <summary
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "6px 12px", cursor: "pointer", listStyle: "none",
+            fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            color: "var(--atlas-muted)", opacity: 0.75,
+          }}
+        >
+          <span>Your plan</span>
           <span style={{
-            fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-            padding: "3px 8px", borderRadius: 999,
-            background: "color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
-            border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+            fontFamily: "var(--app-font-mono)", fontSize: 10,
+            padding: "2px 7px", borderRadius: 999,
+            background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--atlas-gold) 32%, transparent)",
             color: "var(--atlas-gold)", letterSpacing: "0.06em",
+            textTransform: "none",
           }}>
             {plan?.tier_label ?? "—"}
           </span>
+        </summary>
+        <button
+          type="button"
+          onClick={props.onManagePlan}
+          style={{
+            ...rowStyle,
+            width: "calc(100% - 12px)",
+            margin: "2px 6px 6px",
+            background: "transparent",
+            border: "1px solid transparent",
+            borderRadius: 6,
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+        >
           <span style={{ fontSize: 11.5, color: "var(--atlas-muted)" }}>Manage plan</span>
-        </span>
-        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ color: "var(--atlas-muted)", opacity: 0.6 }}>
-          <path d="M4.5 2l3 4-3 4" />
-        </svg>
-      </button>
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ color: "var(--atlas-muted)", opacity: 0.6 }}>
+            <path d="M4.5 2l3 4-3 4" />
+          </svg>
+        </button>
+      </details>
 
-      {/* ── EXECUTION CAPACITY ── */}
-      <div style={{ ...labelStyle, marginTop: 4 }}>Execution capacity</div>
-      <div style={{ padding: "2px 12px 10px" }}>
-        <div style={{
-          display: "flex", alignItems: "baseline", justifyContent: "space-between",
-          fontFamily: "var(--app-font-sans)", marginBottom: 6,
-        }}>
-          <span style={{ fontSize: 13.5, color: "var(--atlas-fg)", fontWeight: 500 }}>
+      {/* ── EXECUTION CAPACITY (collapsible) ── */}
+      <details style={{ margin: "2px 0" }}>
+        <summary
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "6px 12px", cursor: "pointer", listStyle: "none",
+            fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            color: "var(--atlas-muted)", opacity: 0.75,
+          }}
+        >
+          <span>Execution capacity</span>
+          <span style={{
+            fontFamily: "var(--app-font-sans)", fontSize: 11,
+            color: "var(--atlas-fg)", textTransform: "none", letterSpacing: 0,
+          }}>
             {capacity ? `${capacity.remaining} / ${capacity.included}` : "—"}
           </span>
-          <span style={{ fontSize: 10.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>
-            Burst credits
-          </span>
-        </div>
-        <div style={{
-          height: 4, borderRadius: 999,
-          background: "rgba(201,162,76,0.14)", overflow: "hidden",
-        }}>
+        </summary>
+        <div style={{ padding: "2px 12px 10px" }}>
           <div style={{
-            height: "100%", width: `${pct}%`,
-            background: "linear-gradient(90deg, var(--atlas-gold), color-mix(in oklab, var(--atlas-gold) 60%, white))",
-            transition: "width 260ms ease",
-          }} />
-        </div>
-        <div style={{
-          marginTop: 6, display: "flex", gap: 6,
-        }}>
-          <button
-            type="button"
-            onClick={props.onAddCapacity}
-            style={{
-              flex: 1, padding: "6px 8px", borderRadius: 6,
-              background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 32%, transparent)",
-              color: "var(--atlas-gold)", cursor: "pointer",
-              fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-              letterSpacing: "0.08em", textTransform: "uppercase",
-            }}
-          >
-            Add capacity
-          </button>
-          <button
-            type="button"
-            onClick={props.onAutoTopup}
-            style={{
-              flex: 1, padding: "6px 8px", borderRadius: 6,
-              background: "transparent",
-              border: "1px solid var(--atlas-border)",
-              color: "var(--atlas-fg)", cursor: "pointer",
-              fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-              letterSpacing: "0.08em", textTransform: "uppercase",
-            }}
-          >
-            Auto top-up
-          </button>
-        </div>
-        {capacity?.cycle_reset_at && (
-          <div style={{
-            marginTop: 6, fontSize: 10.5,
-            fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
-            letterSpacing: "0.04em", opacity: 0.8,
+            height: 4, borderRadius: 999,
+            background: "rgba(201,162,76,0.14)", overflow: "hidden",
           }}>
-            Resets {relTime(capacity.cycle_reset_at)}
+            <div style={{
+              height: "100%", width: `${pct}%`,
+              background: "linear-gradient(90deg, var(--atlas-gold), color-mix(in oklab, var(--atlas-gold) 60%, white))",
+              transition: "width 260ms ease",
+            }} />
           </div>
-        )}
-      </div>
+          <div style={{ marginTop: 6, display: "flex", gap: 6 }}>
+            <button
+              type="button"
+              onClick={props.onAddCapacity}
+              style={{
+                flex: 1, padding: "6px 8px", borderRadius: 6,
+                background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--atlas-gold) 32%, transparent)",
+                color: "var(--atlas-gold)", cursor: "pointer",
+                fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+              }}
+            >
+              Add capacity
+            </button>
+            <button
+              type="button"
+              onClick={props.onAutoTopup}
+              style={{
+                flex: 1, padding: "6px 8px", borderRadius: 6,
+                background: "transparent",
+                border: "1px solid var(--atlas-border)",
+                color: "var(--atlas-fg)", cursor: "pointer",
+                fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+              }}
+            >
+              Auto top-up
+            </button>
+          </div>
+          {capacity?.cycle_reset_at && (
+            <div style={{
+              marginTop: 6, fontSize: 10.5,
+              fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
+              letterSpacing: "0.04em", opacity: 0.8,
+            }}>
+              Resets {relTime(capacity.cycle_reset_at)}
+            </div>
+          )}
+        </div>
+      </details>
 
       <div style={dividerStyle} />
+
     </>
   );
 }

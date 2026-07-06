@@ -9463,24 +9463,19 @@ export default function Workspace() {
                   <button
                     onClick={() => { setShowProjectMenu(false); setShowDrawer(true); }}
                     style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      width: "calc(100% - 12px)", margin: "6px",
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      margin: "6px",
                       background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
                       border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                      padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+                      padding: "7px 14px", borderRadius: 999, cursor: "pointer",
                     }}
                   >
-                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-gold)" }}>
-                        <path d="M3 6h10M3 6l3-3M3 6l3 3M13 10H3M13 10l-3-3M13 10l-3 3" />
-                      </svg>
-                      <span style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>
-                        Switch project
-                      </span>
-                    </span>
-                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ color: "var(--atlas-gold)", opacity: 0.5, flexShrink: 0 }}>
-                      <path d="M4.5 2l3 4-3 4" />
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-gold)" }}>
+                      <path d="M3 6h10M3 6l3-3M3 6l3 3M13 10H3M13 10l-3-3M13 10l-3 3" />
                     </svg>
+                    <span style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>
+                      Switch project
+                    </span>
                   </button>
                   {switchToExpanded && (
                     <div style={{ padding: "0 6px 6px", display: "flex", flexDirection: "column", gap: 2 }}>
