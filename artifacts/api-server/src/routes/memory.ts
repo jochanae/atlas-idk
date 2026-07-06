@@ -47,7 +47,7 @@ router.post("/memory/tier1", async (req, res): Promise<void> => {
     // are overwritten with the user's explicit answers.
     const row = await upsertTier1(projectId, answers);
 
-    await appendTier1LedgerEntry(projectId);
+    await appendTier1LedgerEntry(projectId, undefined, { mode: "manual" });
     logger.info({ projectId }, "Tier 1 memory committed (upsert)");
     res.status(201).json(serializeTier1Memory(row));
   } catch (err) {
@@ -117,7 +117,7 @@ router.put("/memory/tier1/:projectId", async (req, res): Promise<void> => {
       return;
     }
 
-    await appendTier1LedgerEntry(projectId);
+    await appendTier1LedgerEntry(projectId, undefined, { mode: "manual" });
     logger.info({ projectId, fields: Object.keys(updates) }, "Tier 1 memory updated");
     res.json(serializeTier1Memory(row));
   } catch (err) {

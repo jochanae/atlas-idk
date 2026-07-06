@@ -22,11 +22,12 @@ export function CommitCard({
   onDone,
 }: CommitCardProps) {
   const [saving, setSaving] = useState<"parked" | "committed" | null>(null);
+  const [done, setDone] = useState<"parked" | "committed" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const buildId = useMemo(makeBuildId, []);
 
   const save = async (status: "parked" | "committed") => {
-    if (saving) return;
+    if (saving || done) return;
     setSaving(status);
     setError(null);
     try {
@@ -49,7 +50,9 @@ export function CommitCard({
         }),
       });
       if (!res.ok) throw new Error(`Save failed (${res.status})`);
-      onDone();
+      setSaving(null);
+      setDone(status);
+      setTimeout(() => onDone(), 1800);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save this decision.");
       setSaving(null);
@@ -116,53 +119,78 @@ export function CommitCard({
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8 }}>
-        <button
-          type="button"
-          disabled={!!saving}
-          onClick={() => void save("parked")}
+      {done ? (
+        <div
           style={{
-            flex: 1,
-            padding: "7px 10px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            padding: "9px 10px",
             borderRadius: 7,
-            background: "transparent",
-            border: "1px solid var(--atlas-border)",
-            color: "var(--atlas-muted)",
-            cursor: saving ? "not-allowed" : "pointer",
+            background: done === "committed"
+              ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
+              : "color-mix(in oklab, var(--atlas-muted) 10%, transparent)",
+            border: `1px solid ${done === "committed" ? "color-mix(in oklab, var(--atlas-gold) 35%, transparent)" : "var(--atlas-border)"}`,
             fontFamily: "var(--app-font-mono)",
             fontSize: 10,
-            letterSpacing: "0.08em",
+            letterSpacing: "0.1em",
             textTransform: "uppercase",
-            opacity: saving ? 0.55 : 1,
+            color: done === "committed" ? "var(--atlas-gold)" : "var(--atlas-muted)",
           }}
         >
-          {saving === "parked" ? "Parking..." : "Park"}
-        </button>
-        <button
-          type="button"
-          disabled={!!saving}
-          onClick={() => void save("committed")}
-          style={{
-            flex: 1,
-            padding: "7px 10px",
-            borderRadius: 7,
-            background: "var(--atlas-gold)",
-            border: "1px solid var(--atlas-gold)",
-            color: "var(--atlas-bg)",
-            cursor: saving ? "not-allowed" : "pointer",
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            opacity: saving ? 0.55 : 1,
-          }}
-        >
-          {saving === "committed"
-            ? `${payload.commitLabel ?? "Commit"}ting…`
-            : (payload.commitLabel ?? "Commit")}
-        </button>
-      </div>
+          <span style={{ fontSize: 11 }}>{done === "committed" ? "✓" : "→"}</span>
+          {done === "committed" ? "Locked in" : "Parked"}
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            disabled={!!saving}
+            onClick={() => void save("parked")}
+            style={{
+              flex: 1,
+              padding: "7px 10px",
+              borderRadius: 7,
+              background: "transparent",
+              border: "1px solid var(--atlas-border)",
+              color: "var(--atlas-muted)",
+              cursor: saving ? "not-allowed" : "pointer",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              opacity: saving ? 0.55 : 1,
+            }}
+          >
+            {saving === "parked" ? "Parking…" : "Park"}
+          </button>
+          <button
+            type="button"
+            disabled={!!saving}
+            onClick={() => void save("committed")}
+            style={{
+              flex: 1,
+              padding: "7px 10px",
+              borderRadius: 7,
+              background: "var(--atlas-gold)",
+              border: "1px solid var(--atlas-gold)",
+              color: "var(--atlas-bg)",
+              cursor: saving ? "not-allowed" : "pointer",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              opacity: saving ? 0.55 : 1,
+            }}
+          >
+            {saving === "committed"
+              ? `${payload.commitLabel ?? "Commit"}ting…`
+              : (payload.commitLabel ?? "Commit")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

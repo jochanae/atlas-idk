@@ -141,7 +141,7 @@ router.post("/forge/intake", async (req, res) => {
       return;
     }
     const tier1 = await upsertTier1(projectId, answers);
-    await appendTier1LedgerEntry(projectId);
+    await appendTier1LedgerEntry(projectId, undefined, { mode: "manual" });
     res.json({ ok: true, projectId, tier1 });
     return;
   }

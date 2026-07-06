@@ -38,6 +38,7 @@ export type Tier1LedgerMeta =
 export async function appendTier1LedgerEntry(
   projectId: number,
   meta?: Tier1LedgerMeta,
+  opts?: { mode?: string; sourceMessageId?: number | null },
 ): Promise<void> {
   let title = "Tier 1 memory set";
   if (typeof meta === "string") {
@@ -50,6 +51,8 @@ export async function appendTier1LedgerEntry(
     type: "Decision",
     status: "committed",
     title,
+    mode: opts?.mode ?? "auto",
+    sourceMessageId: opts?.sourceMessageId ?? null,
   });
 }
 
