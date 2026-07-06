@@ -105,6 +105,7 @@ import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer } from "@/components/workspace/ChatComposer";
 import { WorkspaceConversationSurface } from "@/components/workspace/WorkspaceConversationSurface";
+import { useNexusWorkspaceBridge } from "@/hooks/useNexusWorkspaceBridge";
 
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { ParkSheet } from "@/components/ParkSheet";
