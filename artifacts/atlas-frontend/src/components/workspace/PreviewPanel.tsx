@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import { createPortal } from "react-dom";
 import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -759,6 +760,18 @@ ${t}
     return () => window.removeEventListener("axiom:preview-artifact", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wsDsStatus, liveUrl]);
+
+  // Bus-based subscriber for preview-code — parallel path to the DOM event so
+  // components that emit via the bus (not window.dispatchEvent) also update the panel.
+  useWorkspaceEvent("preview-code", ({ code }) => {
+    if (!code) return;
+    setSandboxInput(code);
+    setSandboxRendered(buildSrcdoc(code));
+    setSandboxExpanded(false);
+    try { localStorage.setItem(sandboxStorageKey, code); } catch {}
+    const hasRealProject = wsDsStatus === "running" || wsDsStatus === "starting" || wsDsStatus === "installing" || liveUrl;
+    if (!hasRealProject) setPreviewMode("sandbox");
+  }, [wsDsStatus, liveUrl, sandboxStorageKey]);
 
   // Refetch artifacts gallery when useChatStream persists a new html_preview.
   useEffect(() => {

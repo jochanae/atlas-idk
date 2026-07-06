@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { Session } from "@workspace/api-client-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { workspaceEventBus } from "@/lib/workspaceEventBus";
 import { useLocation } from "wouter";
 import { haptics } from "@/lib/haptics";
 import { sounds } from "@/lib/sounds";
@@ -1234,6 +1235,11 @@ export function AxiomFlow({
     onNodesChange?.(nodes);
     if (!projectId) {
       try { localStorage.setItem(storageKey, JSON.stringify(nodes)); } catch {}
+    }
+    // Broadcast node changes via the event bus so subscribers (e.g. workspace.tsx
+    // homeHandoffNodes memo) can react without polling localStorage.
+    if (nodes.length > 0) {
+      workspaceEventBus.emit("flow-nodes", { nodes });
     }
   }, [nodes, onNodesChange, storageKey, projectId]);
 

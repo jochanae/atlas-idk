@@ -19,6 +19,15 @@ export function MemoryTab({ projectId }: { projectId: number }) {
       void queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
     }
   }, [projectId, queryClient]);
+  // Refresh when the mobile UI navigates to the memory tab so users never see stale data.
+  useWorkspaceEvent("mobile-tab-change", ({ tab }) => {
+    if (tab === "memory") {
+      void queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+    }
+  }, [projectId, queryClient]);
+  // Track the most recent memory chips surfaced during a chat turn for display.
+  const [latestChips, setLatestChips] = useState<unknown[]>([]);
+  useWorkspaceEvent("memory-chips", ({ chips }) => { setLatestChips(chips); }, []);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);

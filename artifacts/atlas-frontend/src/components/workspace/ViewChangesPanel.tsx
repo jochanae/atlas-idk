@@ -833,6 +833,10 @@ export function ViewChangesPanel({
   useWorkspaceEvent("run-completed", ({ projectId: changedPid }) => {
     if (changedPid === projectId) invalidateDbRuns();
   }, [projectId, invalidateDbRuns]);
+  // Refresh when the user navigates to the changes/diff tab so the view is never stale.
+  useWorkspaceEvent("tab-change", ({ tab }) => {
+    if ((tab === "diff" || tab === "changes") && projectId) invalidateDbRuns();
+  }, [projectId, invalidateDbRuns]);
 
   // Timeline lens: find the target run (specific runId, or most recent).
   const timelineRun = useMemo<ApiRun | null>(() => {

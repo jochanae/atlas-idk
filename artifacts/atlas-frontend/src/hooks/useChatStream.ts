@@ -554,6 +554,7 @@ export function useChatStream(
                 }
                 return merged.slice(-12);
               });
+              workspaceEventBus.emit("memory-chips", { chips: normalizedChips });
             }
             if (res.resolvedNodes?.length) {
               setPendingResolvedNodeIds((prev) => {
@@ -769,6 +770,11 @@ export function useChatStream(
                   if (step?.verb) {
                     if (!suppressStepsRef.current) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
                     onStepEvent?.(step);
+                    workspaceEventBus.emit("step-event", {
+                      verb: step.verb,
+                      target: step.target,
+                      status: step.status as "ok" | "warn" | "fail" | undefined,
+                    });
                   }
                 } else if (evtName === "plan_start") {
                   // Server is now running the Haiku extraction pass. Signal UI to show "Structuring plan…".
@@ -960,6 +966,7 @@ export function useChatStream(
                     : undefined;
                   if (!suppressStepsRef.current) setLiveStep({ verb, target, status: undefined });
                   onStepEvent?.({ verb, target });
+                  workspaceEventBus.emit("step-event", { verb, target });
                 } else if (evtName === "tool_result") {
                   // Tool finished — keep liveStep as-is so the label stays visible
                   // until the next tool call or the done event clears it.
@@ -981,7 +988,10 @@ export function useChatStream(
                       firstUrlPrefix: res.imageGen?.images?.[0]?.imageUrl?.slice(0, 50),
                     });
                   }
-                  if (res) onDoneEvent?.(res);
+                  if (res) {
+                    onDoneEvent?.(res);
+                    workspaceEventBus.emit("done-event", { content: res.content ?? "", ...res });
+                  }
                   streamingFinished = true;
                   // Drain any remaining buffered text BEFORE swapping the placeholder
                   // out for the final message, so the user sees the reveal finish
@@ -1090,6 +1100,7 @@ export function useChatStream(
             window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
               detail: { content: previewHtmlEdit.content },
             }));
+            workspaceEventBus.emit("preview-code", { code: previewHtmlEdit.content, path: "preview/output.html" });
             // Persist to project_artifacts so it appears in the Artifacts tab.
             fetch(`/api/projects/${projectId}/artifacts`, {
               method: "POST",
@@ -1123,6 +1134,7 @@ export function useChatStream(
               }
               return merged.slice(-12);
             });
+            workspaceEventBus.emit("memory-chips", { chips: normalizedChips });
           }
           if (res.resolvedNodes?.length) {
             setPendingResolvedNodeIds((prev) => {

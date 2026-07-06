@@ -46,7 +46,7 @@ import { LedgerPanel } from "../components/workspace/LedgerPanel";
 import { VerificationPanel } from "@/components/run/VerificationPanel";
 import { matchWhisperGateAction } from "@/lib/whisperGate";
 import { dispatchVerifyRun } from "@/lib/verification";
-import { workspaceEventBus } from "@/lib/workspaceEventBus";
+import { workspaceEventBus, useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
@@ -4347,6 +4347,7 @@ export default function Workspace() {
   const [leftTab, setLeftTab] = useState<WorkspaceLeftTab>(() => {
     try {
       const urlTab = new URLSearchParams(window.location.search).get("leftTab");
+
       if (
         urlTab === "chat" ||
         urlTab === "diff" ||
@@ -4370,6 +4371,7 @@ export default function Workspace() {
     } catch {}
     return "chat";
   });
+  useEffect(() => { workspaceEventBus.emit("tab-change", { tab: leftTab }); }, [leftTab]);
   const focusedRunId = (() => {
     try { return new URLSearchParams(window.location.search).get("runId"); } catch { return null; }
   })();
@@ -4377,6 +4379,7 @@ export default function Workspace() {
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "insights" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
+  useEffect(() => { workspaceEventBus.emit("mobile-tab-change", { tab: mobileTab }); }, [mobileTab]);
   const [rightOpen, setRightOpen] = useState(() =>
     new URLSearchParams(window.location.search).get("view") === "flow"
   );
@@ -5188,6 +5191,7 @@ export default function Workspace() {
     setWsLensRaw(newLens);
     setDetectedLens(null);
     try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, newLens); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
+    workspaceEventBus.emit("lens-change", { lens: newLens });
     if (newLens === "scenario") {
       scenarioStartIdxRef.current = currentMessages.length;
     } else {
@@ -5553,6 +5557,12 @@ export default function Workspace() {
     }
   }, [chatPending, id, invalidateProjectRuns]);
 
+  // When Atlas finishes a turn (done-event), schedule a short-delay entry refresh
+  // so commits/parks recorded by the server are visible without a manual reload.
+  useWorkspaceEvent("done-event", () => {
+    setTimeout(() => workspaceEventBus.emit("entry-changed", { projectId: id }), 1200);
+  }, [id]);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
@@ -5896,6 +5906,10 @@ export default function Workspace() {
     ? projectState.parked
     : entries.filter((entry) => entry.status === "parked");
 
+  // Increment to re-read localStorage when AxiomFlow emits updated nodes.
+  const [flowNodesBusTick, setFlowNodesBusTick] = useState(0);
+  useWorkspaceEvent("flow-nodes", () => { setFlowNodesBusTick((t) => t + 1); });
+
   const homeHandoffNodes = useMemo<HomeHandoffNode[]>(() => {
     if (homeHandoffMeta?.nodes?.length) return homeHandoffMeta.nodes;
     try {
@@ -5914,7 +5928,8 @@ export default function Workspace() {
     } catch {
       return [];
     }
-  }, [homeHandoffMeta, id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeHandoffMeta, id, flowNodesBusTick]);
 
   const homeHandoffParkedTitles = useMemo(() => {
     if (homeHandoffMeta?.parkedTitles?.length) return homeHandoffMeta.parkedTitles;
@@ -9936,6 +9951,7 @@ export default function Workspace() {
                     setWsLensRaw(pendingLensSwitch);
                     setDetectedLens(null);
                     try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
+                    workspaceEventBus.emit("lens-change", { lens: pendingLensSwitch });
                     const cfg = LENS_CONFIG[pendingLensSwitch];
                     if (cfg.model) setWsModel(cfg.model);
                     scenarioStartIdxRef.current = -1;
@@ -9959,6 +9975,7 @@ export default function Workspace() {
                     setWsLensRaw(pendingLensSwitch);
                     setDetectedLens(null);
                     try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
+                    workspaceEventBus.emit("lens-change", { lens: pendingLensSwitch });
                     const cfg = LENS_CONFIG[pendingLensSwitch];
                     if (cfg.model) setWsModel(cfg.model);
                     setPendingLensSwitch(null);

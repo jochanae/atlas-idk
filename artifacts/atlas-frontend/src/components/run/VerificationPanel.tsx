@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Entry } from "@workspace/api-client-react";
 import { getListEntriesQueryKey } from "@workspace/api-client-react";
 import { useVerifyStream } from "@/hooks/useVerifyStream";
+import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import {
   VERIFY_KINDS,
   VERIFY_KIND_LABELS,
@@ -61,6 +62,10 @@ export function VerificationPanel({
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
   const [localStates, setLocalStates] = useState<Record<VerifyKind, VerifyKindState> | null>(null);
+  // Track the most recent Atlas step so we can contextualise verification output.
+  const [lastAtlasStep, setLastAtlasStep] = useState<{ verb: string; target?: string } | null>(null);
+  useWorkspaceEvent("step-event", ({ verb, target }) => { setLastAtlasStep({ verb, target }); }, []);
+  void lastAtlasStep; // consumed by future verification context display
 
   const baseStates = useMemo(() => buildVerifyStatesFromEntries(entries), [entries]);
 

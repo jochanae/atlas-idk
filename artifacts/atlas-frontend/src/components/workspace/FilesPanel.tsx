@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { updateProject, useUpdateProject, createProject, useCreateProject, useGetProject, getGetProjectQueryKey, useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
+import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGitHub } from "@/hooks/useGitHub";
@@ -469,6 +470,8 @@ export function FilesPanel({
     onCustom();
     return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("atlas-lens-changed", onCustom); };
   }, [projectId]);
+  // Also subscribe via the event bus so same-tab lens changes propagate immediately.
+  useWorkspaceEvent("lens-change", ({ lens }) => { setLensLocal(lens as WorkspaceLens); }, []);
   const wsLens: WorkspaceLens = wsLensProp ?? lensLocal;
   const updateProject = useUpdateProject();
   const createProject = useCreateProject();
