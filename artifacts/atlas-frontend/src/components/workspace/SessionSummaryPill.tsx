@@ -6,6 +6,22 @@ type SessionSummaryData = {
   summaryAt: string | null;
 };
 
+type Tier1Status = {
+  known: number;
+  total: number;
+  missing: string[];
+  skipped: boolean;
+};
+
+const TIER1_FIELD_LABELS: Record<string, string> = {
+  projectName: "name",
+  projectKind: "kind",
+  successSignal: "success signal",
+  constraints: "constraints",
+  audience: "audience",
+  timeline: "timeline",
+};
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
