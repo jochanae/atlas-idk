@@ -250,15 +250,20 @@ function RunReceiptPill({
         aria-hidden
         style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }}
       />
-      <span
-        style={{
-          fontFamily: "var(--app-font-mono)", fontSize: 9.5,
-          letterSpacing: "0.14em", textTransform: "uppercase",
-          padding: "2px 6px", borderRadius: 3,
-          background: "rgba(var(--atlas-gold-rgb), 0.1)", color: "var(--atlas-gold)",
-          border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)", flexShrink: 0,
-        }}
-      >{tag}</span>
+      {(() => {
+        const tone = tagTone(tag);
+        return (
+          <span
+            style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+              letterSpacing: "0.14em", textTransform: "uppercase",
+              padding: "2px 6px", borderRadius: 3,
+              background: tone.bg, color: tone.fg,
+              border: `1px solid ${tone.border}`, flexShrink: 0,
+            }}
+          >{tag}</span>
+        );
+      })()}
       <span style={{
         fontSize: 12, color: "var(--atlas-fg)", opacity: 0.9,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
