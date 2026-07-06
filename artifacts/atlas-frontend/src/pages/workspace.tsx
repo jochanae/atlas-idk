@@ -4462,6 +4462,8 @@ export default function Workspace() {
     try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
   });
   const useNexusWorkspaceChat = true;
+  // Option 2 bridge: Nexus is the transport, ChatStream stays the shell.
+  const nexusBridge = useNexusWorkspaceBridge(id);
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
