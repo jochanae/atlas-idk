@@ -742,7 +742,7 @@ function DecisionsLens({
         padding: "18px 14px", fontSize: 11.5,
         color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
       }}>
-        This run isn't linked to a specific message — no decisions to attribute.
+        No decisions were recorded during this run.
       </div>
     );
   }
