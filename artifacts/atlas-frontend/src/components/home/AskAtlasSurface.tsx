@@ -36,6 +36,7 @@ import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
 import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
+import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
 import {
   ASK_ATLAS_PLACEHOLDERS,
   extractNavigateTo,
