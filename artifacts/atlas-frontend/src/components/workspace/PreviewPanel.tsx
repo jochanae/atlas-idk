@@ -1503,6 +1503,45 @@ ${t}
             </button>
           </div>
 
+          {/* Bucket chips */}
+          {artifacts.length > 0 && (() => {
+            const counts: Record<string, number> = { all: artifacts.length, history: 0, sketch: 0, build: 0, design: 0, preview: 0, other: 0 };
+            for (const a of artifacts) counts[bucketOf(a.type)]++;
+            const CHIPS: Array<{ id: string; label: string; color: string }> = [
+              { id: "all",     label: "All",       color: "var(--atlas-gold)" },
+              { id: "history", label: "History",   color: "rgba(180,180,190,0.85)" },
+              { id: "sketch",  label: "Sketches",  color: "rgba(167,139,250,0.9)" },
+              { id: "build",   label: "Builds",    color: "rgba(52,211,153,0.85)" },
+              { id: "design",  label: "Design",    color: "var(--atlas-gold)" },
+              { id: "preview", label: "Previews",  color: "rgba(251,191,36,0.85)" },
+              { id: "other",   label: "Other",     color: "var(--atlas-muted)" },
+            ].filter(c => c.id === "all" || counts[c.id] > 0);
+            return (
+              <div style={{ flexShrink: 0, display: "flex", gap: 5, padding: "6px 10px", borderBottom: "1px solid var(--atlas-border)", background: "var(--atlas-bg)", overflowX: "auto" }} className="scrollbar-none">
+                {CHIPS.map(chip => {
+                  const active = artifactBucket === chip.id;
+                  return (
+                    <button
+                      key={chip.id}
+                      onClick={() => setArtifactBucket(chip.id)}
+                      style={{
+                        fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                        padding: "3px 8px", borderRadius: 10, cursor: "pointer", flexShrink: 0,
+                        color: active ? chip.color : "var(--atlas-muted)",
+                        background: active ? "rgba(0,0,0,0.35)" : "transparent",
+                        border: `1px solid ${active ? chip.color : "var(--atlas-border)"}`,
+                        opacity: active ? 1 : 0.55,
+                        transition: "opacity 140ms, border-color 140ms",
+                      }}
+                    >
+                      {chip.label} <span style={{ opacity: 0.5, marginLeft: 3 }}>{counts[chip.id]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
           {/* Gallery body */}
           <div style={{ flex: 1, overflowY: "auto", padding: "10px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
             {artifactsLoading && (
