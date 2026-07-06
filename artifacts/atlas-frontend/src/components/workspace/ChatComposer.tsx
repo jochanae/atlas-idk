@@ -503,7 +503,7 @@ export function ChatComposer(props: ChatComposerProps) {
               type="button"
               aria-label="Collapse composer"
               title="Collapse composer"
-              onClick={() => { haptics.tap(); textareaRef.current?.blur(); }}
+              onClick={() => { haptics.tap(); runAbsorb(() => { textareaRef.current?.blur(); toggleComposerCollapsed(); }); }}
               style={{
                 position: "absolute", top: 10, right: 12, zIndex: 4,
                 width: 26, height: 26, padding: 0,
