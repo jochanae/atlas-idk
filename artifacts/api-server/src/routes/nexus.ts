@@ -1277,6 +1277,92 @@ async function loadRecentNexusMessagesForConversation(
     .filter((message) => message.content.trim().length > 0);
 }
 
+/** Persist a nexus workspace conversation turn to execution_runs + execution_run_steps.
+ *  Nexus equivalent of persistExecutionRun() in chat.ts — runs fire-and-forget at the
+ *  end of every focusProjectId turn so the Timeline in ViewChangesPanel shows
+ *  conversation activity (reads, summary) not just build-runner steps. */
+async function persistNexusExecutionRun(args: {
+  projectId: number;
+  sessionId: number | null | undefined;
+  userMessage: string;
+  atlasResponse: string;
+  runActions: RunAction[];
+  startedAt: Date;
+}): Promise<void> {
+  try {
+    const completedAt = new Date();
+    const elapsedMs = Math.max(0, completedAt.getTime() - args.startedAt.getTime());
+    const runId = randomUUID();
+
+    // A target looks like a file path if it has no spaces and contains "/" or a file extension
+    const isFilePath = (t: string | null | undefined) =>
+      !!t && !t.includes(" ") && (t.includes("/") || /\.[a-zA-Z]{1,6}$/.test(t));
+
+    const fileReadActions = args.runActions.filter(
+      (a) => ["Reading", "Read", "Not found"].includes(a.verb) && isFilePath(a.target)
+    );
+    const mode = fileReadActions.length > 0 ? "operational" : "conversation";
+
+    const summary = fileReadActions.length > 0
+      ? `Read ${fileReadActions.length} file${fileReadActions.length === 1 ? "" : "s"} \u00b7 ${args.atlasResponse.slice(0, 80).replace(/\n/g, " ").trim()}\u2026`
+      : args.atlasResponse.slice(0, 120).replace(/\n/g, " ").trim();
+
+    await db.execute(sql`
+      INSERT INTO execution_runs
+        (id, project_id, thread_id, message_id, mode, status, summary, started_at, completed_at, elapsed_ms)
+      VALUES
+        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${null},
+         ${mode}, ${"succeeded"}, ${summary},
+         ${args.startedAt}, ${completedAt}, ${elapsedMs})
+    `);
+
+    type Step = { verb: string; target: string | null; status: string; detail: string | null; content: string | null };
+    const steps: Step[] = [];
+
+    // PROMPT — the user's instruction that kicked off this turn
+    const promptText = args.userMessage.trim();
+    if (promptText) {
+      steps.push({ verb: "PROMPT", target: null, status: "ok", detail: null, content: promptText.slice(0, 8000) });
+    }
+
+    // FILE_READ — deduplicate by path, keep last status (prefer "Not found" over "Reading")
+    const seenPaths = new Map<string, RunAction>();
+    for (const a of args.runActions) {
+      if (["Reading", "Read", "Not found"].includes(a.verb) && isFilePath(a.target)) {
+        const prev = seenPaths.get(a.target!);
+        // "Read" (success) or "Not found" (terminal) beat "Reading" (start) 
+        if (!prev || prev.verb === "Reading") seenPaths.set(a.target!, a);
+      }
+    }
+    for (const [, a] of seenPaths) {
+      steps.push({
+        verb: "FILE_READ",
+        target: a.target ?? null,
+        status: a.verb === "Not found" ? "fail" : "ok",
+        detail: a.detail ?? null,
+        content: null,
+      });
+    }
+
+    // SUMMARY — Atlas's full response
+    const summaryText = args.atlasResponse.trim();
+    if (summaryText) {
+      steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: summaryText.slice(0, 8000) });
+    }
+
+    for (const [orderIdx, step] of steps.entries()) {
+      await db.execute(sql`
+        INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
+        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${orderIdx})
+      `);
+    }
+
+    logger.info({ runId, projectId: args.projectId, mode, stepCount: steps.length }, "nexus: persisted execution_run for workspace turn");
+  } catch (err) {
+    logger.warn({ err }, "nexus: persistNexusExecutionRun failed — non-fatal");
+  }
+}
+
 // GET /api/nexus/thread — return a conversation thread (optionally scoped by conversationId)
 router.get("/nexus/thread", async (req, res): Promise<void> => {
   try {
@@ -2384,6 +2470,7 @@ WHAT YOU SHOULD NOT DO:
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
+  const turnStartedAt = new Date();
   const runActions: RunAction[] = [];
   const writeStep = (action: RunAction) => {
     const step: RunAction = { ...action, status: action.status ?? "ok" };
@@ -2707,6 +2794,20 @@ WHAT YOU SHOULD NOT DO:
     await updateSessionRunMetadata(sessionId, runMetadata).catch((err) => {
       logger.warn({ err }, "updateSessionRunMetadata failed — continuing");
     });
+
+    // Persist conversation turn to execution_runs + execution_run_steps so the Timeline
+    // in ViewChangesPanel shows this turn's activity (file reads, summary).
+    // Fire-and-forget — never blocks the stream.
+    if (focusProjectId) {
+      void persistNexusExecutionRun({
+        projectId: focusProjectId,
+        sessionId,
+        userMessage: body.message ?? "",
+        atlasResponse: visibleContent,
+        runActions,
+        startedAt: turnStartedAt,
+      });
+    }
 
     // Background genome extraction — non-blocking, rate-limited
     void maybeExtractGenome(focusProjectId ?? null, nexusMsgId);
