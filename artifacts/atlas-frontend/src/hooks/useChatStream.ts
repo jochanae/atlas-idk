@@ -16,6 +16,7 @@ import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
 import { createTextPacer, type TextPacer } from "@/lib/textPacer";
+import { workspaceEventBus } from "@/lib/workspaceEventBus";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 import { cacheRoutesFromBuildFiles } from "@/lib/scanRoutes";
 
@@ -533,6 +534,11 @@ export function useChatStream(
               costUsd: res.costUsd != null ? Number(res.costUsd) : null,
             }]);
             setActivityStream({ active: false, content: "" });
+            // When Atlas queued background extraction, emit entry-changed after a
+            // short delay to let the server write the extracted entries first.
+            if (extractionQueuedFlag) {
+              setTimeout(() => workspaceEventBus.emit("entry-changed", { projectId }), 2500);
+            }
             if (isScenario) {
               setScenarioBuffer((prev) => [
                 ...prev,
@@ -1066,6 +1072,11 @@ export function useChatStream(
             ...(res.reviewNotes?.length ? { reviewNotes: res.reviewNotes } : {}),
           }]);
           setActivityStream({ active: false, content: "" });
+          // When Atlas queued background extraction, emit entry-changed after a
+          // short delay to let the server write the extracted entries first.
+          if (extractionQueuedFlag) {
+            setTimeout(() => workspaceEventBus.emit("entry-changed", { projectId }), 2500);
+          }
           // MAP surface detected → nudge user to open Flow tab
           if ((res.surface as { type?: string } | null)?.type === "MAP") {
             window.dispatchEvent(new CustomEvent("axiom:surface-map"));

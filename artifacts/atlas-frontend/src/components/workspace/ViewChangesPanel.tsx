@@ -581,8 +581,13 @@ function WorkspaceRunReceipts({
   runId?: string | null;
   onSelectRun?: (id: string) => void;
 }) {
-  const { runs: apiRuns } = useProjectRuns(projectId);
+  const { runs: apiRuns, invalidate: invalidateApiRuns } = useProjectRuns(projectId);
   const [expanded, setExpanded] = useState(false);
+
+  // Refresh run list immediately when a run completes — no more 30s stale window.
+  useWorkspaceEvent("run-completed", ({ projectId: changedPid }) => {
+    if (changedPid === projectId) invalidateApiRuns();
+  }, [projectId, invalidateApiRuns]);
 
   const visibleRuns = useMemo((): ApiRun[] => {
     if (runId) return apiRuns.filter((r) => r.id === runId);
@@ -821,7 +826,13 @@ export function ViewChangesPanel({
 }: Props) {
   const [lens, setLens] = useState<"timeline" | "changes" | "decisions">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
-  const { runs: dbRuns } = useProjectRuns(projectId);
+  const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId);
+
+  // Refresh run list immediately when a run completes — eliminates the 30s lag
+  // before the Timeline and Changes lenses reflect the finished run.
+  useWorkspaceEvent("run-completed", ({ projectId: changedPid }) => {
+    if (changedPid === projectId) invalidateDbRuns();
+  }, [projectId, invalidateDbRuns]);
 
   // Timeline lens: find the target run (specific runId, or most recent).
   const timelineRun = useMemo<ApiRun | null>(() => {

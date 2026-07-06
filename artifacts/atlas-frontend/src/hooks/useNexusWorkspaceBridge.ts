@@ -185,20 +185,13 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
         })
         .catch(() => { /* ignore */ });
     }
-  }, [isStreaming, messages, pid]);
-
-  // run-completed emitter — fires when the Nexus engine finishes a turn.
-  // workspace.tsx subscribes to this to call invalidateProjectRuns() immediately
-  // instead of waiting for the old 1500ms setTimeout.
-  const prevPendingRef = useRef(false);
-  useEffect(() => {
-    const wasPending = prevPendingRef.current;
-    const nowPending = isPending || isStreaming;
-    prevPendingRef.current = nowPending;
-    if (wasPending && !nowPending && pid) {
-      workspaceEventBus.emit("run-completed", { projectId: pid });
+    // When Atlas queued a background decision extraction, emit entry-changed after
+    // a short delay to let the server finish writing the extracted entries before
+    // LedgerPanel, ViewChangesPanel, and MemoryTab refresh.
+    if (last.extractionQueued && pid) {
+      setTimeout(() => workspaceEventBus.emit("entry-changed", { projectId: pid }), 2500);
     }
-  }, [isPending, isStreaming, pid]);
+  }, [isStreaming, messages, pid]);
 
   const chatMessages: ChatMessage[] = messages.map(toChatMessage);
   const chatPending = isPending || isStreaming;

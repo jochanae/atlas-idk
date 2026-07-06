@@ -4,12 +4,21 @@ import type React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { X } from "lucide-react";
+import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 
 export function MemoryTab({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient();
   const { data: project, isLoading } = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
+
+  // Refresh project memory whenever an entry changes for this project — covers
+  // commit/park/extract paths so the tab never shows a stale memory snapshot.
+  useWorkspaceEvent("entry-changed", ({ projectId: changedPid }) => {
+    if (changedPid === projectId) {
+      void queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+    }
+  }, [projectId, queryClient]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
