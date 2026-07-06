@@ -363,6 +363,67 @@ const EXECUTION_VERBS = new Set([
   "BUILD", "INSTALL", "TEST", "GITHUB_PUSH", "IMAGE_GEN", "RUN",
 ]);
 
+/**
+ * Lightweight inline status shown for conversational/thinking-only turns.
+ * A single shimmer line — no card, no border, no title row.
+ * Disappears as soon as Atlas's response text begins streaming.
+ */
+function InlineThinkingPulse({ steps }: { steps: LiveStepItem[] }) {
+  const current = steps[steps.length - 1];
+  const verb = (current?.verb ?? "").toUpperCase();
+
+  const label =
+    verb === "TREE" ? "Reviewing project structure…"
+    : verb === "FILE_READ" && current?.target
+      ? `Reading ${current.target.split("/").pop() ?? current.target}…`
+    : verb === "FILE_READ" ? "Reviewing project files…"
+    : verb === "FETCH" ? "Fetching context…"
+    : verb === "THOUGHT" || verb === "SUMMARY" || verb === "DECISION" || verb === "PROMPT"
+      ? "Thinking…"
+    : steps.length > 0 ? "Thinking…"
+    : "Thinking…";
+
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        margin: "4px 0 2px",
+        padding: "5px 0",
+        position: "relative",
+        overflow: "hidden",
+      }}
+      data-wrc-thinking="true"
+    >
+      {/* Shimmer text */}
+      <span
+        style={{
+          fontFamily: "var(--app-font-mono, monospace)",
+          fontSize: 11.5,
+          letterSpacing: "0.06em",
+          color: "color-mix(in oklab, var(--atlas-gold) 55%, var(--atlas-muted))",
+          background:
+            "linear-gradient(90deg, color-mix(in oklab, var(--atlas-gold) 45%, transparent) 0%, color-mix(in oklab, var(--atlas-gold) 85%, transparent) 40%, color-mix(in oklab, var(--atlas-gold) 45%, transparent) 100%)",
+          backgroundSize: "200% auto",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+          animation: "wrc-text-shimmer 2.2s linear infinite",
+        }}
+      >
+        {label}
+      </span>
+      <style>{`
+        @keyframes wrc-text-shimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /** The live execution card shown while Atlas is working.
  *  One card. One current step. Fixed height. No growing list. */
 function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: string }) {
@@ -726,10 +787,16 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   }, [isActive, messages]);
 
   // ── Render: active (live execution) ───────────────────────────────────
-  // Only show the build card when a real build action has been detected.
-  // Conversational questions never show this card — text just streams directly.
-  if (isActive && hasBuildStep) {
-    return <ActiveCard steps={liveSteps} taskGoal={taskGoal} />;
+  if (isActive) {
+    if (hasBuildStep) {
+      // Real tool-use turn (file reads/writes, builds, etc.) → full run card.
+      return <ActiveCard steps={liveSteps} taskGoal={taskGoal} />;
+    }
+    // Conversational / thinking-only turn → lightweight inline shimmer only.
+    // No card, no title row, no step count — just "Thinking…" or
+    // "Reading [file]…" in a subtle animated gradient that disappears once
+    // Atlas's response text starts streaming.
+    return <InlineThinkingPulse steps={liveSteps} />;
   }
 
   // ── Render: receipt ───────────────────────────────────────────────────

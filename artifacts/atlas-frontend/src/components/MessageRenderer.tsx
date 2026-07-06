@@ -169,14 +169,95 @@ export function CodeBlockCard({ language, code }: { language: string; code: stri
 
 // ── MarkdownProse ─────────────────────────────────────────────────────────────
 
+// Stable components map — defined ONCE at module level so ReactMarkdown never
+// sees a "new" object and remounts its child tree. Without this, every parent
+// re-render (e.g. a streaming message tick) creates a fresh components object,
+// which forces ReactMarkdown to unmount → remount all rendered nodes, silently
+// resetting local state like CodeBlockCard's `expanded` flag.
+const MARKDOWN_COMPONENTS: import("react-markdown").Components = {
+  p: ({ children }) => (
+    <p
+      style={{
+        color: "inherit",
+        fontSize: "inherit",
+        lineHeight: "inherit",
+        letterSpacing: "inherit",
+        marginBottom: "0.6em",
+      }}
+    >
+      {renderMarkdownChildren(children)}
+    </p>
+  ),
+  strong: ({ children }) => (
+    <strong className="font-semibold" style={{ color: "inherit" }}>
+      {renderMarkdownChildren(children)}
+    </strong>
+  ),
+  code: ({ children, className }) => {
+    const isBlock = Boolean(className);
+    if (isBlock) {
+      return (
+        <code
+          className={`${className ?? ""} block whitespace-pre-wrap font-mono text-[13px]`}
+          style={{ color: "var(--atlas-fg)" }}
+        >
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code
+        className="rounded px-1.5 py-0.5 font-mono bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))]"
+        style={{ fontSize: "0.88em" }}
+      >
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => {
+    let lang = "code";
+    let raw = "";
+    const childArray = Children.toArray(children);
+    for (const c of childArray) {
+      if (isValidElement<{ className?: string; children?: ReactNode }>(c)) {
+        const cls = (c.props as { className?: string }).className ?? "";
+        const m = /language-([\w+-]+)/.exec(cls);
+        if (m) lang = m[1];
+        raw += extractText((c.props as { children?: ReactNode }).children);
+      } else if (typeof c === "string") {
+        raw += c;
+      }
+    }
+    return <CodeBlockCard language={lang} code={raw.replace(/\n+$/, "")} />;
+  },
+  ul: ({ children }) => (
+    <ul
+      className="ml-4 list-disc"
+      style={{ marginTop: "0.25em", marginBottom: "0.6em", display: "flex", flexDirection: "column", gap: "0.2em" }}
+    >
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol
+      className="ml-4 list-decimal"
+      style={{ marginTop: "0.25em", marginBottom: "0.6em", display: "flex", flexDirection: "column", gap: "0.2em" }}
+    >
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => (
+    <li style={{ color: "inherit", fontSize: "inherit", lineHeight: "inherit", letterSpacing: "inherit" }}>
+      {renderMarkdownChildren(children)}
+    </li>
+  ),
+};
+
 export function MarkdownProse({ content }: { content: string }) {
   return (
     <div
       className="atlas-prose"
       style={{
-        // Inherit color/font/size/line-height/letter-spacing from the parent bubble
-        // so Workspace text tracks the surrounding surface (Ask Atlas parity).
-        // Only enforce wrapping and a safe min-width for flex/grid parents.
         overflowWrap: "anywhere",
         wordBreak: "break-word",
         minWidth: 0,
@@ -184,88 +265,7 @@ export function MarkdownProse({ content }: { content: string }) {
         MozOsxFontSmoothing: "grayscale",
       }}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkBreaks]}
-        components={{
-          p: ({ children }) => (
-            <p
-              style={{
-                color: "inherit",
-                fontSize: "inherit",
-                lineHeight: "inherit",
-                letterSpacing: "inherit",
-                // Tighter paragraph rhythm — closer to Ask Atlas's continuous flow.
-                marginBottom: "0.6em",
-              }}
-            >
-              {renderMarkdownChildren(children)}
-            </p>
-          ),
-          strong: ({ children }) => (
-            <strong className="font-semibold" style={{ color: "inherit" }}>
-              {renderMarkdownChildren(children)}
-            </strong>
-          ),
-          code: ({ children, className }) => {
-            const isBlock = Boolean(className);
-            if (isBlock) {
-              return (
-                <code
-                  className={`${className ?? ""} block whitespace-pre-wrap font-mono text-[13px]`}
-                  style={{ color: "var(--atlas-fg)" }}
-                >
-                  {children}
-                </code>
-              );
-            }
-            return (
-              <code
-                className="rounded px-1.5 py-0.5 font-mono bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))]"
-                style={{ fontSize: "0.88em" }}
-              >
-                {children}
-              </code>
-            );
-          },
-          pre: ({ children }) => {
-            let lang = "code";
-            let raw = "";
-            const childArray = Children.toArray(children);
-            for (const c of childArray) {
-              if (isValidElement<{ className?: string; children?: ReactNode }>(c)) {
-                const cls = c.props.className ?? "";
-                const m = /language-([\w+-]+)/.exec(cls);
-                if (m) lang = m[1];
-                raw += extractText(c.props.children);
-              } else if (typeof c === "string") {
-                raw += c;
-              }
-            }
-            return <CodeBlockCard language={lang} code={raw.replace(/\n+$/, "")} />;
-          },
-          ul: ({ children }) => (
-            <ul
-              className="ml-4 list-disc"
-              style={{ marginTop: "0.25em", marginBottom: "0.6em", display: "flex", flexDirection: "column", gap: "0.2em" }}
-            >
-              {children}
-            </ul>
-          ),
-          ol: ({ children }) => (
-            <ol
-              className="ml-4 list-decimal"
-              style={{ marginTop: "0.25em", marginBottom: "0.6em", display: "flex", flexDirection: "column", gap: "0.2em" }}
-            >
-              {children}
-            </ol>
-          ),
-          li: ({ children }) => (
-            <li style={{ color: "inherit", fontSize: "inherit", lineHeight: "inherit", letterSpacing: "inherit" }}>
-              {renderMarkdownChildren(children)}
-            </li>
-          ),
-        }}
-      >
+      <ReactMarkdown remarkPlugins={[remarkBreaks]} components={MARKDOWN_COMPONENTS}>
         {content}
       </ReactMarkdown>
     </div>
