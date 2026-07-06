@@ -171,6 +171,7 @@ async function countProjectMessages(projectId: number): Promise<number> {
 async function upsertObjects(
   projectId: number,
   objects: Array<{ type: string; title: string; summary?: string }>,
+  sourceMessageId?: number | null,
 ): Promise<void> {
   for (const obj of objects) {
     if (!obj.title?.trim()) continue;
@@ -201,12 +202,14 @@ async function upsertObjects(
         summary,
         status: "committed",
         severity: "committed",
+        mode: "auto",
+        ...(sourceMessageId != null ? { sourceMessageId } : {}),
       });
     }
   }
 }
 
-export async function runGenomeExtraction(projectId: number): Promise<void> {
+export async function runGenomeExtraction(projectId: number, sourceMessageId?: number | null): Promise<void> {
   const [conversationText, committedEntriesText, projectMetadata] = await Promise.all([
     loadConversationText(projectId),
     loadCommittedEntries(projectId),
@@ -291,14 +294,14 @@ Rules:
   await updateProjectDNA(projectId, dnaUpdate);
 
   if (Array.isArray(parsed.objects) && parsed.objects.length > 0) {
-    await upsertObjects(projectId, parsed.objects);
+    await upsertObjects(projectId, parsed.objects, sourceMessageId);
   }
 
   setCooldown(projectId);
   logger.info({ projectId, stage: parsed.stage, confidence: parsed.confidenceScore }, "genome extraction complete");
 }
 
-export async function maybeExtractGenome(projectId: number | null | undefined): Promise<void> {
+export async function maybeExtractGenome(projectId: number | null | undefined, sourceMessageId?: number | null): Promise<void> {
   if (!projectId) return;
 
   // Check both cooldown and in-flight before doing anything
@@ -314,7 +317,7 @@ export async function maybeExtractGenome(projectId: number | null | undefined): 
     extractionInFlight.add(projectId);
     setCooldown(projectId);
 
-    void runGenomeExtraction(projectId)
+    void runGenomeExtraction(projectId, sourceMessageId)
       .catch(err => {
         // On failure, clear the cooldown so a retry is allowed after
         // the remaining window lapses (or immediately on next request).

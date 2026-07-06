@@ -124,6 +124,8 @@ export async function maybeExtractThinkingReceipts(opts: {
   stable?: boolean;
   /** When provided, high-confidence Decision receipts (≥90) are auto-promoted to the Ledger. */
   projectId?: number;
+  /** Chat message ID to attribute auto-promoted ledger entries to. */
+  messageId?: number | null;
 }): Promise<void> {
   const key = `${opts.conversationId}:${opts.turnIndex}`;
   if (extractionInFlight.has(key)) return;
@@ -196,6 +198,7 @@ Rules:
               severity: "committed",
               mode: "decide",
               amField: "intent",
+              ...(opts.messageId != null ? { sourceMessageId: opts.messageId } : {}),
               createdAt: new Date(),
               updatedAt: new Date(),
             });

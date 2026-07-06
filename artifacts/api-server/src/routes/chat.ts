@@ -6594,6 +6594,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       userMessage: message,
       atlasResponse: fullText,
       projectId,
+      messageId: (intentMsgId ?? savedMsgId) ?? null,
     });
   }
 
@@ -6630,7 +6631,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     });
   }
   if (projectId) {
-    void maybeExtractGenome(projectId).catch((err) => {
+    void maybeExtractGenome(projectId, (intentMsgId ?? savedMsgId) ?? null).catch((err) => {
       logger.warn({ err, projectId }, "maybeExtractGenome failed — non-fatal");
     });
   }
