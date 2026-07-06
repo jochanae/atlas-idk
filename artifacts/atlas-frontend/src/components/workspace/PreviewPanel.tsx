@@ -239,6 +239,17 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
 
   const artifacts = artifactsData?.artifacts ?? [];
   const [expandedArtifactId, setExpandedArtifactId] = useState<number | null>(null);
+  const [artifactBucket, setArtifactBucket] = useState<string>("all");
+
+  // Group each artifact type into a coarse bucket for the filter chips.
+  const bucketOf = (t: string): "history" | "sketch" | "build" | "design" | "preview" | "other" => {
+    if (t.startsWith("history") || t.includes("message") || t.includes("response") || t.includes("thought")) return "history";
+    if (t === "visual_sketch" || t === "pipeline_sketch" || t.includes("sketch")) return "sketch";
+    if (t === "build_output" || t.includes("build")) return "build";
+    if (t === "design_plan" || t === "blueprint_snapshot") return "design";
+    if (t === "html_preview" || t === "landing_draft" || t === "export_package") return "preview";
+    return "other";
+  };
 
   // Device switcher
   type DeviceSize = "phone" | "tablet" | "desktop";
