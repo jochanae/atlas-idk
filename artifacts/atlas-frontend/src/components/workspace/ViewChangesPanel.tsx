@@ -159,12 +159,23 @@ function summarizeRun(run: ApiRun): { tag: string; line: string } {
     .filter((s) => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH")
     .map((s) => s.target)
     .filter((t): t is string => !!t);
+  const readCount = run.steps.filter((s) => s.verb === "FILE_READ").length;
+  const searchCount = run.steps.filter((s) => s.verb === "SEARCH" || s.verb === "INSPECT").length;
   const hasGithubPush = run.steps.some((s) => s.verb === "GITHUB_PUSH");
   const hasImageGen = run.steps.some((s) => s.verb === "IMAGE_GEN");
+  const hasDecision = run.steps.some((s) => s.verb === "DECISION");
+  const hasThought = run.steps.some((s) => s.verb === "THOUGHT");
 
-  let tag = "BUILD";
-  if (hasImageGen && filePaths.length === 0 && !hasGithubPush) tag = "THINK";
-  else if (hasGithubPush && filePaths.length === 0) tag = "PUSH";
+  // Tag reflects what the run actually did — not everything is a BUILD.
+  let tag: string;
+  if (filePaths.length > 0) tag = "BUILD";
+  else if (hasGithubPush) tag = "PUSH";
+  else if (hasImageGen) tag = "IMAGE";
+  else if (hasDecision) tag = "DECISION";
+  else if (searchCount > 0) tag = "RESEARCH";
+  else if (readCount > 0) tag = "READ";
+  else if (hasThought) tag = "THINK";
+  else tag = "CHAT";
 
   let line: string;
   if (filePaths.length > 0) {
@@ -174,9 +185,33 @@ function summarizeRun(run: ApiRun): { tag: string; line: string } {
     line = `${uniq.length} file${uniq.length !== 1 ? "s" : ""} written — ${names.join(", ")}${suffix}`;
   } else if (hasGithubPush) line = "GitHub push";
   else if (hasImageGen) line = "Image generated";
-  else line = run.summary ?? "Build run";
+  else if (readCount > 0) line = `Read ${readCount} file${readCount !== 1 ? "s" : ""}${run.summary ? ` · ${run.summary}` : ""}`;
+  else if (searchCount > 0) line = `${searchCount} lookup${searchCount !== 1 ? "s" : ""}${run.summary ? ` · ${run.summary}` : ""}`;
+  else line = run.summary ?? (hasThought ? "Reasoning" : "Conversation");
 
   return { tag, line };
+}
+
+// Distinct tint per tag so BUILD isn't the only visible category.
+function tagTone(tag: string): { fg: string; bg: string; border: string } {
+  switch (tag) {
+    case "BUILD":
+      return { fg: "var(--atlas-gold)", bg: "rgba(var(--atlas-gold-rgb), 0.10)", border: "rgba(var(--atlas-gold-rgb), 0.22)" };
+    case "PUSH":
+      return { fg: "rgba(140,160,220,0.95)", bg: "rgba(140,160,220,0.10)", border: "rgba(140,160,220,0.25)" };
+    case "IMAGE":
+      return { fg: "rgba(200,140,220,0.95)", bg: "rgba(200,140,220,0.10)", border: "rgba(200,140,220,0.25)" };
+    case "DECISION":
+      return { fg: "rgba(100,200,120,0.95)", bg: "rgba(100,200,120,0.10)", border: "rgba(100,200,120,0.25)" };
+    case "RESEARCH":
+    case "READ":
+      return { fg: "rgba(180,200,220,0.85)", bg: "rgba(180,200,220,0.06)", border: "rgba(180,200,220,0.18)" };
+    case "THINK":
+      return { fg: "rgba(180,160,240,0.9)", bg: "rgba(180,160,240,0.08)", border: "rgba(180,160,240,0.22)" };
+    case "CHAT":
+    default:
+      return { fg: "rgba(200,200,200,0.8)", bg: "rgba(200,200,200,0.06)", border: "rgba(200,200,200,0.18)" };
+  }
 }
 
 function RunReceiptPill({
