@@ -78,6 +78,14 @@ function WorkspaceBlock({ projectId }: { projectId: number }) {
 
   const files = data?.files ?? {};
   const entries = Object.entries(files);
+  const modifiedCount = entries.length;
+  const status: { label: string; tone: string } = isLoading
+    ? { label: "Checking…", tone: "rgba(200,200,200,0.6)" }
+    : !data
+      ? { label: "Not tracked", tone: "rgba(200,200,200,0.55)" }
+      : modifiedCount === 0
+        ? { label: "Clean", tone: "rgba(100,200,120,0.9)" }
+        : { label: `${modifiedCount} file${modifiedCount !== 1 ? "s" : ""} modified`, tone: "rgba(var(--atlas-gold-rgb), 0.9)" };
 
   return (
     <div style={{ padding: "10px 14px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -88,23 +96,20 @@ function WorkspaceBlock({ projectId }: { projectId: number }) {
         textTransform: "uppercase", opacity: 0.7, paddingBottom: 4,
       }}>
         <FolderGit2 size={11} strokeWidth={1.7} />
-        <span>Workspace</span>
-        {entries.length > 0 && (
-          <span style={{
-            fontSize: 9, background: "rgba(var(--atlas-gold-rgb), 0.14)",
-            color: "rgba(var(--atlas-gold-rgb), 0.9)", border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)",
-            borderRadius: 3, padding: "1px 5px",
-          }}>{entries.length}</span>
-        )}
+        <span>Current State</span>
+        <span style={{
+          marginLeft: "auto",
+          fontSize: 9, padding: "1px 6px", borderRadius: 3,
+          background: "rgba(255,255,255,0.03)",
+          border: `1px solid ${status.tone.replace(/[\d.]+\)$/, "0.35)")}`,
+          color: status.tone, letterSpacing: "0.1em",
+        }}>{status.label}</span>
       </div>
-      {isLoading && (
-        <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5 }}>
-          Checking workspace…
-        </div>
-      )}
       {!isLoading && entries.length === 0 && (
-        <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.45, lineHeight: 1.55 }}>
-          {data ? "Workspace is clean — no local changes." : "Not a git repo, or no workspace yet."}
+        <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.55 }}>
+          {data
+            ? "Everything Atlas wrote has landed. Nothing waiting to apply."
+            : "No workspace tracking for this project yet."}
         </div>
       )}
       {entries.length > 0 && (
