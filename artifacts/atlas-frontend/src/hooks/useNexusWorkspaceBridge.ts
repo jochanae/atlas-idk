@@ -81,7 +81,7 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
     pid ? deriveConversationId(pid) : ""
   );
 
-  const { messages, isStreaming, isPending, liveStep, send, abort, clearMessages } = useNexusChatStream({
+  const { messages, isStreaming, isPending, liveStep, setMessages, send, abort, clearMessages } = useNexusChatStream({
     focusProjectId: pid || null,
     mode: "workspace",
     conversationId: conversationId || null,
@@ -102,8 +102,39 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
       setConversationId(deriveConversationId(pid));
       clearMessages();
       prevPidRef.current = pid;
+      historyLoadedRef.current = false; // allow re-load for new project
     }
   }, [pid, clearMessages]);
+
+  // Load prior conversation history on mount (and on project switch).
+  // This restores messages that would otherwise be lost when the user navigates
+  // away and returns. Briefing messages (the "Here's what I know" opener) are
+  // filtered out — they're not real conversation turns.
+  const historyLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!pid || !conversationId || historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+    fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(conversationId)}&focusProjectId=${pid}`, {
+      credentials: "include",
+    })
+      .then((r) => {
+        if (!r.ok) return null;
+        return r.json() as Promise<Array<{ id: number; role: string; content: string; isBriefing?: boolean }>>;
+      })
+      .then((msgs) => {
+        if (!msgs || msgs.length === 0) return;
+        const real = msgs.filter((m) => !m.isBriefing && (m.role === "user" || m.role === "assistant"));
+        if (real.length === 0) return;
+        const nexusMsgs: NexusMessage[] = real.map((m) => ({
+          id: String(m.id),
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+        setMessages(nexusMsgs);
+      })
+      .catch(() => { /* non-fatal — just starts with empty history */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pid, conversationId]);
 
   // WRITE_FILE side-effect — fire once per completed assistant message.
   const prevStreamingRef = useRef(false);

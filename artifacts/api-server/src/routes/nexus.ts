@@ -1358,11 +1358,9 @@ async function persistNexusExecutionRun(args: {
       });
     }
 
-    // SUMMARY — Atlas's full response
-    const summaryText = args.atlasResponse.trim();
-    if (summaryText) {
-      steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: summaryText.slice(0, 8000) });
-    }
+    // Note: SUMMARY is intentionally omitted for nexus workspace turns.
+    // THOUGHT already contains the full Atlas response, so adding SUMMARY
+    // would duplicate the same text in the Timeline.
 
     for (const [orderIdx, step] of steps.entries()) {
       await db.execute(sql`

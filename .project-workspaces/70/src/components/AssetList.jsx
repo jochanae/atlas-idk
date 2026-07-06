@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const CATEGORY_COLORS = {
   'Watches': '#fbbf24',
@@ -30,7 +31,7 @@ function CategoryDot({ category }) {
 }
 
 export default function AssetList({ assets }) {
-  const [expanded, setExpanded] = useState(null)
+  const navigate = useNavigate()
 
   if (assets.length === 0) {
     return (
@@ -44,7 +45,6 @@ export default function AssetList({ assets }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       {assets.map((asset, i) => {
-        const isExpanded = expanded === asset.id
         const color = CATEGORY_COLORS[asset.category] || '#888'
         const isUp = asset.change24h >= 0
 
@@ -52,7 +52,8 @@ export default function AssetList({ assets }) {
           <div key={asset.id}>
             <div
               className="asset-row"
-              onClick={() => setExpanded(isExpanded ? null : asset.id)}
+              onClick={() => navigate(`/assets/${asset.id}`)}
+              style={{ cursor: 'pointer' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {/* Left */}
@@ -93,7 +94,7 @@ export default function AssetList({ assets }) {
                   )}
                 </div>
 
-                {/* Chevron */}
+                {/* Chevron — now signals navigation, not expand */}
                 <svg
                   width="14"
                   height="14"
@@ -103,56 +104,12 @@ export default function AssetList({ assets }) {
                     marginLeft: 8,
                     flexShrink: 0,
                     color: 'rgba(255,255,255,0.2)',
-                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s ease'
+                    transform: 'rotate(-90deg)'
                   }}
                 >
                   <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-
-              {/* Expanded detail */}
-              {isExpanded && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTop: '1px solid rgba(255,255,255,0.05)',
-                    marginLeft: 11
-                  }}
-                >
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
-                    {asset.notes}
-                  </p>
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 8,
-                      marginTop: 10
-                    }}
-                  >
-                    <span
-                      className="category-pill"
-                      style={{
-                        background: color + '15',
-                        color: color,
-                        border: `1px solid ${color}25`
-                      }}
-                    >
-                      {asset.category}
-                    </span>
-                    <span
-                      className="category-pill"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        color: 'rgba(255,255,255,0.4)'
-                      }}
-                    >
-                      Acquired {asset.acquired}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Divider */}
