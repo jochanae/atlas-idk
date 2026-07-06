@@ -2629,8 +2629,9 @@ WHAT YOU SHOULD NOT DO:
         });
 
     // Persist the assistant response to the Living Thread
+    let nexusMsgId: number | null = null;
     try {
-      await db.insert(nexusMessagesTable).values({
+      const [nexusMsg] = await db.insert(nexusMessagesTable).values({
         userId,
         role: "assistant",
         content: visibleContent,
@@ -2638,20 +2639,22 @@ WHAT YOU SHOULD NOT DO:
         sessionId,
         conversationId: effectiveConversationId,
         ...(hasMessageType ? { messageType: "message" } : {}),
-      });
+      }).returning({ id: nexusMessagesTable.id });
+      nexusMsgId = nexusMsg?.id ?? null;
     } catch (dbErr: any) {
       const errMsg = dbErr?.message ?? "";
       const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
       if (isMissingColumn) {
         logger.warn({ dbErr: errMsg }, "DB schema behind on nexus assistant insert — falling back to core insert");
-        await db.insert(nexusMessagesTable).values({
+        const [nexusMsg] = await db.insert(nexusMessagesTable).values({
           userId,
           role: "assistant",
           content: visibleContent,
           projectId: focusProjectId ?? null,
           sessionId,
           conversationId: effectiveConversationId,
-        });
+        }).returning({ id: nexusMessagesTable.id });
+        nexusMsgId = nexusMsg?.id ?? null;
       } else {
         throw dbErr;
       }
@@ -2661,7 +2664,7 @@ WHAT YOU SHOULD NOT DO:
     });
 
     // Background genome extraction — non-blocking, rate-limited
-    void maybeExtractGenome(focusProjectId ?? null);
+    void maybeExtractGenome(focusProjectId ?? null, nexusMsgId);
 
     // Thinking receipt extraction — Ask Atlas turns only (no project focus)
     // Fires after every unprojectified turn; rate-limited by (conversationId, turnIndex).
