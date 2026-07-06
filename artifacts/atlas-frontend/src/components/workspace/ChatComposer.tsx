@@ -649,7 +649,7 @@ export function ChatComposer(props: ChatComposerProps) {
                       fontFamily: "var(--app-font-sans)",
                     }}
                   >
-                    Message Atlas…
+                    Ask Atlas…
                   </div>
                 )
               )}
