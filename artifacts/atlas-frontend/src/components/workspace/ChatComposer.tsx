@@ -468,7 +468,7 @@ export function ChatComposer(props: ChatComposerProps) {
             type="button"
             aria-label="Dock composer"
             title="Minimize to floating A"
-            onClick={() => { haptics.tap(); toggleComposerCollapsed(); }}
+            onClick={() => { haptics.tap(); runAbsorb(() => toggleComposerCollapsed()); }}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 4,
               width: 22, height: 22, padding: 0,
