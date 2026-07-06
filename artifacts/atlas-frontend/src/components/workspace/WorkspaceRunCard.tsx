@@ -262,19 +262,21 @@ const RECEIPT_TONE: Record<
     iconBg: "var(--atlas-gold-dim)",
     cardBg: "hsl(var(--card))",
   },
+  // Success/failed borders are momentary status flashes — the persistent
+  // resting state is neutral so the card doesn't scream in the thread.
   success: {
-    border: "rgba(74,222,128,0.45)",
-    ring: "rgba(74,222,128,0.08)",
+    border: "hsl(var(--border))",
+    ring: "transparent",
     fg: "#4ade80",
     iconBg: "rgba(74,222,128,0.12)",
     cardBg: "hsl(var(--card))",
   },
   failed: {
-    border: "rgba(248,113,113,0.45)",
-    ring: "rgba(248,113,113,0.10)",
+    border: "hsl(var(--border))",
+    ring: "transparent",
     fg: "#f87171",
     iconBg: "rgba(248,113,113,0.12)",
-    cardBg: "rgba(248,113,113,0.045)",
+    cardBg: "hsl(var(--card))",
   },
   pushed: {
     border: "hsl(var(--border))",
