@@ -1474,3 +1474,9 @@ mark.atlas-search-hit.atlas-search-hit--active {
   .atlas-ambient-reveal-top,
   .atlas-ambient-float-up { animation: none !important; opacity: var(--atlas-reveal-opacity, 1) !important; transform: none !important; }
 }
+
+/* Bottom sheet slide-up for project/account sheet (mobile). */
+@keyframes atlas-sheet-in {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}

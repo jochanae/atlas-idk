@@ -65,6 +65,7 @@ import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
+import AccountSummarySections from "@/components/workspace/AccountSummarySections";
 import { HistoryBookmarksSheet } from "../components/HistoryBookmarksSheet";
 import { WorkspacePresetsBar } from "@/components/workspace/WorkspacePresetsBar";
 import { SessionHistorySheet } from "../components/SessionHistorySheet";
@@ -9332,11 +9333,32 @@ export default function Workspace() {
             the shell header since the trigger lives in the shell. ── */}
       {showProjectMenu && createPortal(
         <>
-          <div onClick={() => setShowProjectMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+          <div
+            onClick={() => setShowProjectMenu(false)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 9998,
+              background: isMobile ? "rgba(0,0,0,0.55)" : "transparent",
+              backdropFilter: isMobile ? "blur(4px)" : undefined,
+            }}
+          />
            <div
              ref={projectMenuRef}
              className="atlas-popover"
-             style={{
+             style={isMobile ? {
+               position: "fixed",
+               left: 0, right: 0, bottom: 0,
+               zIndex: 9999,
+               width: "100%",
+               maxHeight: "calc(100vh - 60px)",
+               overflowY: "auto",
+               WebkitOverflowScrolling: "touch",
+               overscrollBehavior: "contain",
+               borderRadius: "16px 16px 0 0",
+               borderTop: "1px solid rgba(201,162,76,0.22)",
+               boxShadow: "0 -12px 48px rgba(0,0,0,0.55)",
+               paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
+               animation: "atlas-sheet-in 220ms cubic-bezier(0.22,1,0.36,1)",
+             } : {
                position: "fixed",
                top: 56,
                left: "50%",
@@ -9350,6 +9372,29 @@ export default function Workspace() {
                overscrollBehavior: "contain",
              }}
            >
+            {isMobile && (
+              <div style={{
+                width: 40, height: 4, borderRadius: 999,
+                background: "var(--atlas-border)",
+                margin: "10px auto 6px", opacity: 0.7,
+              }} />
+            )}
+            <AccountSummarySections
+              projectName={project?.name ?? null}
+              workspaceLabel="Workspace · main"
+              updatedLabel={project?.updatedAt ? new Date(project.updatedAt).toLocaleString() : null}
+              lastSessionTitle={null}
+              readinessLabel={
+                displayedReadinessScore >= 60 ? "Ready to Build"
+                : displayedReadinessScore >= 30 ? "Shaping"
+                : "Exploring"
+              }
+              memoryStatus="healthy"
+              onManagePlan={() => { setShowProjectMenu(false); setLocation("/account/plan"); }}
+              onAddCapacity={() => { setShowProjectMenu(false); setLocation("/account/plan?add=capacity"); }}
+              onAutoTopup={() => { setShowProjectMenu(false); setLocation("/account/plan?section=auto-topup"); }}
+            />
+
             {isMobile && (
               <details
                 style={{ margin: "8px 6px 6px", borderRadius: 8 }}
