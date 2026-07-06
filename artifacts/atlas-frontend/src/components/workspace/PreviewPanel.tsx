@@ -1069,14 +1069,6 @@ ${t}
                 background: "rgba(201,162,76,0.7)", pointerEvents: "none",
               }} />
             )}
-            {/* Dot indicator on Artifacts tab when it has items but isn't active */}
-            {m === "generated" && artifacts.length > 0 && previewMode !== "generated" && (
-              <span style={{
-                position: "absolute", top: 5, right: "calc(50% - 14px)",
-                width: 4, height: 4, borderRadius: "50%",
-                background: "rgba(201,162,76,0.7)", pointerEvents: "none",
-              }} />
-            )}
           </button>
         ))}
         </div>{/* end scroll container */}
@@ -1375,6 +1367,31 @@ ${t}
               position: "fixed", inset: 0, zIndex: 99999, background: "#000",
               display: "flex", flexDirection: "column",
             }}>
+              {/* Top bar — sits above iframe, never overlaps content */}
+              <div style={{
+                flexShrink: 0,
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "0 14px",
+                height: "calc(env(safe-area-inset-top, 0px) + 40px)",
+                paddingTop: "env(safe-area-inset-top, 0px)",
+                background: "rgba(10,10,10,0.95)",
+                borderBottom: "1px solid rgba(201,162,76,0.15)",
+              }}>
+                <button
+                  onClick={() => setMobileFullscreen(false)}
+                  aria-label="Exit fullscreen"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "var(--atlas-muted, #888)",
+                    fontSize: 11, fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.08em", padding: "4px 0",
+                  }}
+                >
+                  <span style={{ fontSize: 13, lineHeight: 1 }}>←</span>
+                  <span>Back to Workspace</span>
+                </button>
+              </div>
               <iframe
                   ref={iframeRef}
                   key={`fs-${liveUrl}-${reloadKey}`}
@@ -1383,27 +1400,6 @@ ${t}
                 style={{ border: "none", flex: 1, width: "100%", background: "#fff" }}
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
               />
-              <button
-                onClick={() => setMobileFullscreen(false)}
-                aria-label="Exit fullscreen"
-                style={{
-                  position: "fixed",
-                  top: "calc(env(safe-area-inset-top, 0px) + 12px)",
-                  right: "calc(env(safe-area-inset-right, 0px) + 12px)",
-                  zIndex: 100000,
-                  padding: "8px 14px", borderRadius: 999,
-                  background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
-                  border: "1px solid rgba(201,162,76,0.35)",
-                  color: "var(--atlas-gold, #c9a24c)",
-                  fontSize: 12, fontFamily: "var(--app-font-mono)",
-                  letterSpacing: "0.08em", cursor: "pointer",
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-                }}
-              >
-                <span style={{ fontSize: 14, lineHeight: 1 }}>✕</span>
-                <span>EXIT</span>
-              </button>
             </div>,
             document.body
           )}
@@ -2184,6 +2180,41 @@ ${t}
       {/* Content fullscreen portal — Local Dev and StackBlitz expand */}
       {contentFullscreen && typeof document !== "undefined" && createPortal(
         <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "#000", display: "flex", flexDirection: "column" }}>
+          {/* Top bar — sits above iframe, never overlaps content */}
+          <div style={{
+            flexShrink: 0,
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "0 14px",
+            height: "calc(env(safe-area-inset-top, 0px) + 40px)",
+            paddingTop: "env(safe-area-inset-top, 0px)",
+            background: "rgba(10,10,10,0.95)",
+            borderBottom: "1px solid rgba(201,162,76,0.15)",
+          }}>
+            <button
+              onClick={() => setContentFullscreen(false)}
+              aria-label="Exit fullscreen"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "none", border: "none", cursor: "pointer",
+                color: "var(--atlas-muted, #888)",
+                fontSize: 11, fontFamily: "var(--app-font-mono)",
+                letterSpacing: "0.08em", padding: "4px 0",
+              }}
+            >
+              <span style={{ fontSize: 13, lineHeight: 1 }}>←</span>
+              <span>Back to Workspace</span>
+            </button>
+            {previewMode === "local" && (
+              <span style={{ marginLeft: "auto", fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "uppercase" }}>
+                Local Dev · Running from workspace disk
+              </span>
+            )}
+            {previewMode === "stackblitz" && linkedRepo && (
+              <span style={{ marginLeft: "auto", fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "uppercase" }}>
+                StackBlitz · {linkedRepo.fullName}
+              </span>
+            )}
+          </div>
           {previewMode === "local" && sessionId && !linkedRepo && wsDsPort && (
             <iframe
               ref={iframeRef}
@@ -2204,27 +2235,6 @@ ${t}
               allow="cross-origin-isolated"
             />
           )}
-          <button
-            onClick={() => setContentFullscreen(false)}
-            aria-label="Exit fullscreen"
-            style={{
-              position: "fixed",
-              top: "calc(env(safe-area-inset-top, 0px) + 12px)",
-              right: "calc(env(safe-area-inset-right, 0px) + 12px)",
-              zIndex: 100000,
-              padding: "8px 14px", borderRadius: 999,
-              background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
-              border: "1px solid rgba(201,162,76,0.35)",
-              color: "var(--atlas-gold, #c9a24c)",
-              fontSize: 12, fontFamily: "var(--app-font-mono)",
-              letterSpacing: "0.08em", cursor: "pointer",
-              display: "inline-flex", alignItems: "center", gap: 6,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-            }}
-          >
-            <span style={{ fontSize: 14, lineHeight: 1 }}>✕</span>
-            <span>EXIT</span>
-          </button>
         </div>,
         document.body
       )}
