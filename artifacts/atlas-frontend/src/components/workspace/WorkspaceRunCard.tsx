@@ -60,6 +60,7 @@ interface DerivedRun {
   associatedMessageId: number | null;
   status: DerivedStatus;
   title: string;
+  executiveSummary?: string;
   createdAt: number;
   elapsedMs: number | null;
   files: string[];
@@ -107,6 +108,16 @@ function adaptExecutionRun(
   const hasFileWork = run.steps.some(
     s => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH",
   );
+
+  // Pure conversational turns — only PROMPT/THOUGHT/SUMMARY with no real tool
+  // invocations (FILE_READ, FILE_EDIT, COMMAND, etc.). Never show a receipt card.
+  const CONVERSATIONAL_ONLY = new Set(["PROMPT", "THOUGHT", "SUMMARY", "DECISION"]);
+  const hasRealExecution = run.steps.some(s => !CONVERSATIONAL_ONLY.has(s.verb));
+  if (!hasRealExecution && !hasGithubPush && !hasImageGen && !hasFileWork) return null;
+
+  // Extract executive summary from the SUMMARY step (nexus workspace turns write this).
+  const summaryStep = run.steps.find(s => s.verb === "SUMMARY");
+  const executiveSummary = summaryStep?.content?.trim() || undefined;
 
   let status: DerivedStatus;
   if (run.status === "failed") status = "failed";
@@ -186,6 +197,7 @@ function adaptExecutionRun(
     associatedMessageId: run.messageId,
     status,
     title,
+    ...(executiveSummary ? { executiveSummary } : {}),
     createdAt: new Date(run.startedAt).getTime(),
     elapsedMs: run.elapsedMs,
     files,
@@ -358,21 +370,12 @@ function shortTaskGoal(msg: string): string {
   return (cut || cleaned.slice(0, 55)) + "…";
 }
 
-/** The live execution card shown while Atlas is working. Single surface, no history list. */
+/** The live execution card shown while Atlas is working.
+ *  One card. One current step. Fixed height. No growing list. */
 function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: string }) {
   const current = steps[steps.length - 1];
   const { headline: currentHeadline } = liveStepMeta(current);
-
-  // Deduplicate steps for display — collapse consecutive same-target entries
-  const displaySteps = useMemo(() => {
-    const seen = new Set<string>();
-    const out: LiveStepItem[] = [];
-    for (const s of steps) {
-      const key = `${s.verb}:${s.target}`;
-      if (!seen.has(key)) { seen.add(key); out.push(s); }
-    }
-    return out;
-  }, [steps]);
+  const stepCount = steps.length;
 
   return (
     <div
@@ -404,8 +407,8 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         }}
       />
 
-      {/* Title row */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: taskGoal ? 2 : 10 }}>
+      {/* Title row: task goal + pulsing dot */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
         <div
           style={{
             fontSize: 13.5,
@@ -420,9 +423,8 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
             whiteSpace: "nowrap",
           }}
         >
-          {taskGoal || currentHeadline}
+          {taskGoal || "Working…"}
         </div>
-        {/* Pulsing dot */}
         <span
           aria-hidden="true"
           style={{
@@ -431,112 +433,61 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
             borderRadius: 999,
             background: "var(--atlas-gold)",
             flexShrink: 0,
-            marginTop: 4,
+            marginTop: 5,
             animation: "wrc-dot-pulse 1.4s ease-in-out infinite",
           }}
         />
       </div>
 
-      {/* Subtitle: current action */}
-      {taskGoal && currentHeadline && (
-        <div
+      {/* Divider */}
+      <div aria-hidden="true" style={{ height: 1, background: "hsl(var(--border) / 0.45)", marginBottom: 10 }} />
+
+      {/* Single rotating current step */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Spinning ring */}
+        <span
+          aria-label="running"
           style={{
-            fontSize: 11.5,
-            color: "hsl(var(--muted-foreground) / 0.65)",
-            marginBottom: 12,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 18,
+            height: 18,
+            borderRadius: 999,
+            border: "1.5px solid hsl(var(--muted-foreground) / 0.2)",
+            borderTopColor: "var(--atlas-gold)",
+            flexShrink: 0,
+            animation: "wrc-spin 0.8s linear infinite",
+          }}
+        />
+        <span
+          style={{
+            fontSize: 12.5,
+            fontWeight: 500,
+            color: "hsl(var(--card-foreground))",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            letterSpacing: "0.005em",
+            flex: 1,
+            minWidth: 0,
+            letterSpacing: "-0.005em",
           }}
         >
-          {currentHeadline}
-        </div>
-      )}
-
-      {/* Divider */}
-      {displaySteps.length > 0 && (
-        <div
-          aria-hidden="true"
-          style={{
-            height: 1,
-            background: "hsl(var(--border) / 0.5)",
-            marginBottom: 10,
-          }}
-        />
-      )}
-
-      {/* Step list */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-        {displaySteps.map((s, i) => {
-          const isCurrentStep = i === displaySteps.length - 1;
-          const { headline: stepLabel } = liveStepMeta(s);
-          return (
-            <div
-              key={`${s.verb}-${s.target}-${i}`}
-              style={{ display: "flex", alignItems: "center", gap: 10 }}
-            >
-              {/* Step status icon */}
-              {isCurrentStep ? (
-                /* Spinning ring for the active step */
-                <span
-                  aria-label="running"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 18,
-                    height: 18,
-                    borderRadius: 999,
-                    border: "1.5px solid hsl(var(--muted-foreground) / 0.25)",
-                    borderTopColor: "var(--atlas-gold)",
-                    flexShrink: 0,
-                    animation: "wrc-spin 0.8s linear infinite",
-                  }}
-                />
-              ) : (
-                /* Checkmark circle for completed steps */
-                <span
-                  aria-label="done"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 18,
-                    height: 18,
-                    borderRadius: 999,
-                    border: "1.5px solid hsl(var(--muted-foreground) / 0.35)",
-                    flexShrink: 0,
-                    color: "hsl(var(--muted-foreground) / 0.5)",
-                  }}
-                >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                    <path d="M2 5.2l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              )}
-
-              {/* Step label */}
-              <span
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: isCurrentStep ? 500 : 400,
-                  color: isCurrentStep
-                    ? "hsl(var(--card-foreground))"
-                    : "hsl(var(--muted-foreground) / 0.6)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  flex: 1,
-                  minWidth: 0,
-                  letterSpacing: isCurrentStep ? "-0.005em" : "0",
-                }}
-              >
-                {stepLabel}
-              </span>
-            </div>
-          );
-        })}
+          {currentHeadline || "Working…"}
+        </span>
+        {/* Step counter — subtle breadcrumb */}
+        {stepCount > 1 && (
+          <span
+            style={{
+              fontSize: 10.5,
+              color: "hsl(var(--muted-foreground) / 0.45)",
+              flexShrink: 0,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {stepCount}
+          </span>
+        )}
       </div>
 
       <style>{`
@@ -544,21 +495,12 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
           0%   { background-position: -200% center; }
           100% { background-position:  200% center; }
         }
-        @keyframes wrc-pulse-bar {
-          0%, 100% { opacity: 0.35; }
-          50%       { opacity: 1; }
-        }
         @keyframes wrc-dot-pulse {
           0%, 100% { opacity: 0.5; transform: scale(0.85); }
           50%       { opacity: 1;   transform: scale(1); }
         }
         @keyframes wrc-spin {
           to { transform: rotate(360deg); }
-        }
-        @keyframes wrc-border-trace {
-          0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0); border-color: rgba(74,222,128,0.15); }
-          30%  { box-shadow: 0 0 0 4px rgba(74,222,128,0.12); border-color: rgba(74,222,128,0.6); }
-          100% { box-shadow: 0 0 0 3px rgba(74,222,128,0.06); border-color: rgba(74,222,128,0.45); }
         }
       `}</style>
     </div>
@@ -911,6 +853,26 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           </div>
         </div>
       </div>
+
+      {/* Executive summary — shown when available (nexus workspace turns) */}
+      {run.executiveSummary && (
+        <div
+          style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px solid hsl(var(--border) / 0.4)",
+            fontSize: 12,
+            color: "hsl(var(--card-foreground) / 0.75)",
+            lineHeight: 1.55,
+            display: "-webkit-box",
+            WebkitLineClamp: expanded ? undefined : 3,
+            WebkitBoxOrient: "vertical" as const,
+            overflow: expanded ? "visible" : "hidden",
+          }}
+        >
+          {run.executiveSummary}
+        </div>
+      )}
 
       {/* Expanded detail: file list */}
       {expanded && run.files.length > 0 && (
