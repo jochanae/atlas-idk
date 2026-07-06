@@ -897,7 +897,7 @@ export function ViewChangesPanel({
         display: "flex", padding: "10px 14px 8px", gap: 4,
         borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.08)",
       }}>
-        {(["timeline", "changes"] as const).map((k) => {
+        {(["timeline", "changes", "decisions"] as const).map((k) => {
           const active = lens === k;
           return (
             <button
