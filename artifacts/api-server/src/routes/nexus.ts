@@ -16,7 +16,7 @@ import { findSemanticTensionsForProject } from "./tensions";
 import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
-import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE } from "../lib/atlasIdentity";
+import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE, ATLAS_WORKSPACE_IDENTITY } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
@@ -1887,10 +1887,18 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     }
   }
 
-  // Build system prompt
-  let systemPrompt = ideaMode
-      ? `${NEXUS_SYSTEM_PROMPT}\n\n${IDEA_MODE_POSTURE}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: true\n--- END SESSION CONTEXT ---`
-      : `${NEXUS_SYSTEM_PROMPT}\n\n${CONVERSATIONAL_EXPANSION_PROTOCOL}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: false\n--- END SESSION CONTEXT ---`;
+  // Build system prompt.
+  // Workspace turns (focusProjectId set) get ATLAS_WORKSPACE_IDENTITY — not the home-screen prompt.
+  // The home prompt explicitly says "you are on the home screen, no file access" which is wrong
+  // inside a project workspace and was causing every workspace conversation to start miscalibrated.
+  let systemPrompt: string;
+  if (focusProjectId) {
+    systemPrompt = `${ATLAS_WORKSPACE_IDENTITY}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: false\n--- END SESSION CONTEXT ---`;
+  } else if (ideaMode) {
+    systemPrompt = `${NEXUS_SYSTEM_PROMPT}\n\n${IDEA_MODE_POSTURE}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: true\n--- END SESSION CONTEXT ---`;
+  } else {
+    systemPrompt = `${NEXUS_SYSTEM_PROMPT}\n\n${CONVERSATIONAL_EXPANSION_PROTOCOL}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: false\n--- END SESSION CONTEXT ---`;
+  }
   systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;
   systemPrompt += `\n\n${ATLAS_COMMUNICATION_STYLE}`;
   let vault: Awaited<ReturnType<typeof loadVaultContext>> = { imageBlocks: [], systemNote: "", hasImages: false };
