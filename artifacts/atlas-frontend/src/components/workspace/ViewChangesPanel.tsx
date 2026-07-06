@@ -16,11 +16,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FolderGit2, X, FileCode2, Eye, Search, Folder,
-  Lightbulb, Trash2, CheckCircle2, ChevronDown,
+  Lightbulb, Trash2, CheckCircle2, ChevronDown, Scale, AlertTriangle,
 } from "lucide-react";
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
+
+// ── Decision entry (subset of Entry schema we need for the Decisions lens) ────
+interface DecisionEntry {
+  id: number;
+  title: string;
+  summary?: string | null;
+  mode?: string | null;
+  verb?: string | null;
+  severity: string;
+  status: string;
+  sourceMessageId?: number | null;
+  createdAt: string;
+}
 
 // ── Relative time (seconds → minutes → hours → days → date) ───────────────────
 function formatAgo(ms: number): string {
