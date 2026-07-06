@@ -670,6 +670,9 @@ export function ChatComposer(props: ChatComposerProps) {
                   if (!isTouch && e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSend({ mode: composerMode });
+                    // Send collapses the composer: blur drops inputFocused →
+                    // sheet closes so the user can read the response.
+                    textareaRef.current?.blur();
                   } else {
                     handleKeyDown(e);
                   }
