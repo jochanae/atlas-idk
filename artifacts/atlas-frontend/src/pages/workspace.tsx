@@ -9382,7 +9382,7 @@ export default function Workspace() {
             <AccountSummarySections
               projectName={project?.name ?? null}
               workspaceLabel="Workspace · main"
-              updatedLabel={project?.updated_at ? new Date(project.updated_at).toLocaleString() : null}
+              updatedLabel={project?.updatedAt ? new Date(project.updatedAt).toLocaleString() : null}
               lastSessionTitle={null}
               readinessLabel={
                 displayedReadinessScore >= 60 ? "Ready to Build"
