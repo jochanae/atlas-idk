@@ -5838,6 +5838,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
 
   // Auto-create ledger entries for resolved nodes — skipped in scenario mode
   if (!isScenarioMode && resolvedNodes.length > 0) {
+    const attributionMessageId = intentMsgId ?? savedMsgId;
     try {
       await Promise.all(resolvedNodes.map(nodeId =>
         db.insert(entriesTable).values({
@@ -5850,6 +5851,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           severity: "committed",
           mode: "decide",
           amField: "intent",
+          ...(attributionMessageId != null ? { sourceMessageId: attributionMessageId } : {}),
           createdAt: new Date(),
           updatedAt: new Date(),
         })

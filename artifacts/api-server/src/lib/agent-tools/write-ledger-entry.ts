@@ -28,6 +28,7 @@ export function writeLedgerEntryTool(_ctx: AgentToolContext) {
             severity: "committed",
             mode: verb,
             amField: amField ?? null,
+            ...(_ctx.messageId != null ? { sourceMessageId: _ctx.messageId } : {}),
           })
           .returning({ id: entriesTable.id });
         const ms = Math.round(performance.now() - started);

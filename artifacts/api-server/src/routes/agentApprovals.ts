@@ -51,7 +51,7 @@ router.post("/agent/approvals/:approvalId", async (req, res) => {
       .set({ status: "committed", committedAt })
       .where(eq(planArtifactsTable.id, planId));
 
-    await writePlanCommittedLedgerEntry(plan.projectId, plan.title, plan.intent);
+    await writePlanCommittedLedgerEntry(plan.projectId, plan.title, plan.intent, plan.messageId);
 
     res.json({ ok: true, planId, committedAt: committedAt.toISOString() });
   } else {

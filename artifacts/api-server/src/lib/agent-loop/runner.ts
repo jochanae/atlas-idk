@@ -97,9 +97,25 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
   let stopReason = "completed";
   let fullText = "";
 
+  let messageId: number | undefined;
+  try {
+    const [placeholder] = await db
+      .insert(chatMessagesTable)
+      .values({
+        sessionId,
+        role: "assistant",
+        content: "",
+      })
+      .returning({ id: chatMessagesTable.id });
+    messageId = placeholder?.id;
+  } catch (dbErr) {
+    logger.warn({ err: dbErr }, "agent loop: failed to pre-create assistant message row");
+  }
+
   const ctx: AgentToolContext = {
     projectId,
     userId,
+    messageId,
     workspaceDir,
     res,
     sideEffects,
@@ -228,24 +244,39 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
     fullText = sideEffects.finishSummary;
   }
 
-  let messageId: number | undefined;
   try {
-    const [saved] = await db
-      .insert(chatMessagesTable)
-      .values({
-        sessionId,
-        role: "assistant",
-        content: fullText,
-        inputTokens: totalTokensIn || null,
-        outputTokens: totalTokensOut || null,
-        fileEditsJson: sideEffects.fileEdits.length > 0 ? JSON.stringify(sideEffects.fileEdits) : null,
-        linePatchesJson: sideEffects.linePatches.length > 0 ? JSON.stringify(sideEffects.linePatches) : null,
-        runStatus: stopReason === "completed" ? "completed" : stopReason,
-        runSummary: sideEffects.finishSummary,
-      })
-      .returning();
-    messageId = saved?.id;
-    ctx.messageId = messageId;
+    if (messageId) {
+      await db
+        .update(chatMessagesTable)
+        .set({
+          content: fullText,
+          inputTokens: totalTokensIn || null,
+          outputTokens: totalTokensOut || null,
+          fileEditsJson: sideEffects.fileEdits.length > 0 ? JSON.stringify(sideEffects.fileEdits) : null,
+          linePatchesJson: sideEffects.linePatches.length > 0 ? JSON.stringify(sideEffects.linePatches) : null,
+          runStatus: stopReason === "completed" ? "completed" : stopReason,
+          runSummary: sideEffects.finishSummary,
+        })
+        .where(eq(chatMessagesTable.id, messageId));
+      ctx.messageId = messageId;
+    } else {
+      const [saved] = await db
+        .insert(chatMessagesTable)
+        .values({
+          sessionId,
+          role: "assistant",
+          content: fullText,
+          inputTokens: totalTokensIn || null,
+          outputTokens: totalTokensOut || null,
+          fileEditsJson: sideEffects.fileEdits.length > 0 ? JSON.stringify(sideEffects.fileEdits) : null,
+          linePatchesJson: sideEffects.linePatches.length > 0 ? JSON.stringify(sideEffects.linePatches) : null,
+          runStatus: stopReason === "completed" ? "completed" : stopReason,
+          runSummary: sideEffects.finishSummary,
+        })
+        .returning();
+      messageId = saved?.id;
+      ctx.messageId = messageId;
+    }
 
     if (planState.activePlanId && messageId) {
       await db

@@ -1,7 +1,7 @@
 # Handoff: Ledger → Message Attribution Fix
 
 **Date:** 2026-07-06
-**Repo:** `Axiom-Atlas` (backend)
+**Repo:** atlas-idk (`Axiom-Atlas` backend)
 **Scope:** Backend only. No frontend changes. No migrations. No new tables.
 **Prerequisite for:** Run Details → Decisions tab (deferred until this lands)
 
@@ -42,13 +42,22 @@ Check:
 
 **Deliverable of Phase 0:** short note in the PR description — "early insert is safe" OR "early insert is unsafe because X". If unsafe, stop and propose a shadow correlation key (uuid generated at loop start, reconciled to `message.id` at end); do **not** implement or migrate — bring it back for review.
 
+### Phase 0 result (implemented branch)
+
+**Early insert is safe.**
+
+1. Agent-loop SSE only emits `messageId` in the final `done` event; streaming uses a negative placeholder id until then.
+2. `useChatStream` is buffer-based during stream and reconciles to `res.messageId` at `done` — pre-existing DB row is invisible to the client until done.
+3. No `chat_messages` insert listeners, realtime subscriptions, or embedding hooks in this codebase.
+4. Legacy build path (`runMetadataInsertValues`) remains insert-only; agent loop is the only path changed to insert-then-update.
+
 ---
 
 ## Phase 1 — Implementation (only if Phase 0 says safe)
 
 ### 1. Insert assistant `chat_messages` row at loop start
 
-In the agent-loop entrypoint (the caller of `runAgentLoop` / the tool loop in `chat.ts` / `runner.ts`, whichever owns assistant message creation today):
+In the agent-loop entrypoint (`runner.ts`):
 
 - Insert the assistant row **before** invoking the tool loop, with:
   - `role: "assistant"`
@@ -62,9 +71,9 @@ In the agent-loop entrypoint (the caller of `runAgentLoop` / the tool loop in `c
 Update these to accept and pass `sourceMessageId` from `ctx.messageId`:
 
 - `write_ledger_entry` (agent tool) — add `sourceMessageId: ctx.messageId` to the insert values.
-- `writePlanCommittedLedgerEntry` — same.
-- `autoCaptureLedgerDecision` (nexus) — replace the explicit `sourceMessageId: null` with the caller-provided id; plumb it from the nexus write path.
-- Resolved-node inserts in `chat.ts` — same.
+- `writePlanCommittedLedgerEntry` — same; passed from `commit_plan` (`ctx.messageId`) and `agentApprovals` (`plan.messageId`).
+- `autoCaptureLedgerDecision` (nexus) — when `sessionId` is set, mirror assistant turn into `chat_messages` and pass that id; otherwise null (Ask Atlas without workspace session).
+- Resolved-node inserts in `chat.ts` — `sourceMessageId: intentMsgId ?? savedMsgId`.
 
 Leave user/API park paths alone; they already work.
 

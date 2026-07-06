@@ -38,7 +38,7 @@ export function commitPlanTool(ctx: AgentToolContext) {
             .set({ status: "committed", committedAt })
             .where(eq(planArtifactsTable.id, planId));
 
-          await writePlanCommittedLedgerEntry(ctx.projectId, plan.title, plan.intent);
+          await writePlanCommittedLedgerEntry(ctx.projectId, plan.title, plan.intent, ctx.messageId);
 
           ctx.planState.hasApprovedCommitPlan = true;
           ctx.emitNamedEvent("plan_committed", {
