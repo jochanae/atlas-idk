@@ -7,7 +7,7 @@ import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
-import { ComposerDock } from "@/components/composer/ComposerDock";
+// ComposerDock removed — footer center "A" is the single composer anchor.
 import { SessionSummaryPill } from "@/components/workspace/SessionSummaryPill";
 import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/composerAura";
 import { useThemeMode } from "@/lib/theme";
