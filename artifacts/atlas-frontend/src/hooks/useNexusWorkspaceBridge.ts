@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNexusChatStream, type NexusMessage, type NexusLiveStep } from "./useNexusChatStream";
 import type { ChatMessage } from "@/pages/workspace";
+import { workspaceEventBus } from "@/lib/workspaceEventBus";
 
 function deriveConversationId(projectId: number): string {
   const key = `nexus_conv_${projectId}`;
@@ -185,6 +186,19 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
         .catch(() => { /* ignore */ });
     }
   }, [isStreaming, messages, pid]);
+
+  // run-completed emitter — fires when the Nexus engine finishes a turn.
+  // workspace.tsx subscribes to this to call invalidateProjectRuns() immediately
+  // instead of waiting for the old 1500ms setTimeout.
+  const prevPendingRef = useRef(false);
+  useEffect(() => {
+    const wasPending = prevPendingRef.current;
+    const nowPending = isPending || isStreaming;
+    prevPendingRef.current = nowPending;
+    if (wasPending && !nowPending && pid) {
+      workspaceEventBus.emit("run-completed", { projectId: pid });
+    }
+  }, [isPending, isStreaming, pid]);
 
   const chatMessages: ChatMessage[] = messages.map(toChatMessage);
   const chatPending = isPending || isStreaming;

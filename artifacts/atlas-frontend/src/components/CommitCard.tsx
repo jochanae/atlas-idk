@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CommitCardPayload } from "../lib/DecisionCatchEngine";
+import { workspaceEventBus } from "@/lib/workspaceEventBus";
 
 type CommitCardProps = {
   payload: CommitCardPayload;
@@ -52,6 +53,9 @@ export function CommitCard({
       if (!res.ok) throw new Error(`Save failed (${res.status})`);
       setSaving(null);
       setDone(status);
+      // Notify all surfaces that an entry was created — LedgerPanel,
+      // ViewChangesPanel Decisions tab, and parked-count badge all subscribe.
+      workspaceEventBus.emit("entry-changed", { projectId });
       setTimeout(() => onDone(), 1800);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save this decision.");

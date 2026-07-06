@@ -46,6 +46,7 @@ import { LedgerPanel } from "../components/workspace/LedgerPanel";
 import { VerificationPanel } from "@/components/run/VerificationPanel";
 import { matchWhisperGateAction } from "@/lib/whisperGate";
 import { dispatchVerifyRun } from "@/lib/verification";
+import { workspaceEventBus } from "@/lib/workspaceEventBus";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
@@ -5545,11 +5546,12 @@ export default function Workspace() {
     const prev = chatPendingRef.current;
     chatPendingRef.current = chatPending;
     if (prev && !chatPending) {
-      const t = setTimeout(() => invalidateProjectRuns(), 1500);
-      return () => clearTimeout(t);
+      // Emit on the bus first so all subscribers (ViewChangesPanel, etc.) can
+      // react immediately, then invalidate the runs query without artificial lag.
+      workspaceEventBus.emit("run-completed", { projectId: id });
+      invalidateProjectRuns();
     }
-    return undefined;
-  }, [chatPending, invalidateProjectRuns]);
+  }, [chatPending, id, invalidateProjectRuns]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
@@ -8524,6 +8526,9 @@ export default function Workspace() {
               onStreamActivityComplete: () => setActivityStream({ active: false, content: "" }),
               onCommitCardDone: () => {
                 queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
+                // Emit on the event bus — LedgerPanel, ViewChangesPanel Decisions, and
+                // parked-count badge all subscribe and will refresh immediately.
+                workspaceEventBus.emit("entry-changed", { projectId: id });
                 // Also invalidate the Decisions sub-tab (ViewChangesPanel uses this key)
                 // and project memory so MemoryTab refreshes immediately.
                 queryClient.invalidateQueries({ queryKey: ["run-decisions", id] });

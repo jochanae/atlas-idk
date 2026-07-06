@@ -13,7 +13,7 @@
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FolderGit2, X, FileCode2, Eye, Search, Folder,
   Lightbulb, Trash2, CheckCircle2, ChevronDown, Scale, AlertTriangle,
@@ -21,6 +21,7 @@ import {
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
+import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 
 // ── Decision entry (subset of Entry schema we need for the Decisions lens) ────
 interface DecisionEntry {
@@ -717,6 +718,7 @@ function DecisionsLens({
   projectId: number;
   messageId: number | null;
 }) {
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery<{ entries: DecisionEntry[] } | DecisionEntry[]>({
     queryKey: ["run-decisions", projectId, messageId],
     queryFn: async () => {
@@ -728,6 +730,14 @@ function DecisionsLens({
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
+
+  // Immediately refresh when any entry changes for this project —
+  // eliminates the 30s staleTime lag after commit/park.
+  useWorkspaceEvent("entry-changed", ({ projectId: changedPid }) => {
+    if (changedPid === projectId) {
+      void queryClient.invalidateQueries({ queryKey: ["run-decisions", projectId] });
+    }
+  }, [projectId, queryClient]);
 
   const scoped = useMemo<DecisionEntry[]>(() => {
     if (messageId === null) return [];

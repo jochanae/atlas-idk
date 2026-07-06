@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { StatusGlyph } from "../StatusGlyph";
 import { CapsuleTag } from "../CapsuleTag";
 import { dispatchVerifyRun, isVerificationEntry, isVerificationFailed, parseVerificationMeta } from "@/lib/verification";
+import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 
 
 interface VaultSave {
@@ -190,6 +191,14 @@ export function LedgerPanel({
   const createEntry = useCreateEntry();
   const queryClient = useQueryClient();
   const { data: ledgerProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
+
+  // Subscribe to the event bus so any entry mutation (commit, park, extract)
+  // triggers an immediate refetch — no more 30s stale window.
+  useWorkspaceEvent("entry-changed", ({ projectId: changedPid }) => {
+    if (changedPid === projectId) {
+      void queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(projectId, {}) });
+    }
+  }, [projectId, queryClient]);
 
   const [vaultSaving, setVaultSaving] = useState(false);
   const [vaultSaved, setVaultSaved] = useState(false);

@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 type WorkspaceEventMap = {
   "lens-change": { lens: string };
   "tab-change": { tab: string };
@@ -9,6 +11,10 @@ type WorkspaceEventMap = {
   "preview-code": { code: string; path?: string };
   "auto-name": { key: number };
   "scenario-buffer": { text: string };
+  /** Fired whenever an entry is created, updated, or changed status (commit/park/extract). */
+  "entry-changed": { projectId: number };
+  /** Fired when a chat run (classic or Nexus) transitions from pending to complete. */
+  "run-completed": { projectId: number; messageId?: number | null };
 };
 
 type EventListener<T> = (data: T) => void;
@@ -42,3 +48,25 @@ class WorkspaceEventBus {
 }
 
 export const workspaceEventBus = new WorkspaceEventBus();
+
+/**
+ * React hook — subscribes to a workspaceEventBus event for the lifetime of the
+ * component (or until deps change).  Callback is stable-ref'd so callers don't
+ * need to memoize it themselves.
+ *
+ * @example
+ *   useWorkspaceEvent("entry-changed", ({ projectId }) => {
+ *     if (projectId === myProjectId) void queryClient.invalidateQueries(...);
+ *   }, [myProjectId]);
+ */
+export function useWorkspaceEvent<K extends keyof WorkspaceEventMap>(
+  event: K,
+  callback: (data: WorkspaceEventMap[K]) => void,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  deps: any[] = [],
+): void {
+  useEffect(() => {
+    return workspaceEventBus.on(event, callback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event, ...deps]);
+}

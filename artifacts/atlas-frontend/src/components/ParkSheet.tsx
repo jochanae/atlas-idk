@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useCreateEntry, getListEntriesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { buildParkedEntryPayload } from "@/lib/parking";
+import { workspaceEventBus } from "@/lib/workspaceEventBus";
 
 interface ParkSheetProject {
   id: number;
@@ -40,6 +41,8 @@ export function ParkSheet({ projectId: initialProjectId, projects, onClose, onOp
       void queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(activeProjectId, {}) });
       // Also bust the parked-count badge (sidebar uses this key with a 30s staleTime)
       void queryClient.invalidateQueries({ queryKey: ["entries", "parked-count"] });
+      // Notify all bus subscribers so surfaces update immediately without polling.
+      workspaceEventBus.emit("entry-changed", { projectId: activeProjectId });
       setStatus("done");
       onParked?.(trimmed);
       setTimeout(() => onClose(), 850);

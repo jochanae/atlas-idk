@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 
 export const PARKED_COUNT_QUERY_KEY = ["entries", "parked-count"] as const;
 
@@ -14,12 +15,20 @@ async function fetchParkedCount(): Promise<number> {
 }
 
 export function useParkedCount(): number {
+  const queryClient = useQueryClient();
   const { data = 0 } = useQuery({
     queryKey: PARKED_COUNT_QUERY_KEY,
     queryFn: fetchParkedCount,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
+
+  // Subscribe to the event bus so the badge refreshes immediately after any
+  // park action — no more 30s wait caused by staleTime.
+  useWorkspaceEvent("entry-changed", () => {
+    void queryClient.invalidateQueries({ queryKey: PARKED_COUNT_QUERY_KEY });
+  });
+
   return data;
 }
 
