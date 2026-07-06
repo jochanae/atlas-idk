@@ -457,15 +457,39 @@ export function ChatComposer(props: ChatComposerProps) {
         )}
         {/* Grip handle — visible only in expanded sheet mode. */}
         {sheetVisible && (
-          <div
-            onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
-            style={{
-              alignSelf: "center", width: 44, height: 4, borderRadius: 999,
-              background: "rgba(201,162,76,0.35)", marginBottom: 10, cursor: "grab",
-              flexShrink: 0,
-            }}
-            aria-label="Collapse composer"
-          />
+          <>
+            <div
+              onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
+              style={{
+                alignSelf: "center", width: 44, height: 4, borderRadius: 999,
+                background: "rgba(201,162,76,0.35)", marginBottom: 10, cursor: "grab",
+                flexShrink: 0,
+              }}
+              aria-label="Collapse composer"
+            />
+            {/* Collapse chevron — mirror of the expand slot in the docked bar. */}
+            <button
+              type="button"
+              aria-label="Collapse composer"
+              title="Collapse composer"
+              onClick={() => { haptics.tap(); textareaRef.current?.blur(); }}
+              style={{
+                position: "absolute", top: 10, right: 12, zIndex: 4,
+                width: 26, height: 26, padding: 0,
+                background: "transparent", border: "none",
+                color: "var(--atlas-muted)", opacity: 0.65, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 14 14 14 14 20" />
+                <polyline points="4 10 10 10 10 4" />
+                <line x1="14" y1="14" x2="21" y2="21" />
+                <line x1="10" y1="10" x2="3" y2="3" />
+              </svg>
+            </button>
+          </>
         )}
         {/* Hidden file input — unrestricted multi-mime; used by drag-drop/legacy callers.
             Primary picker is the unified ComposerActions sheet below. */}

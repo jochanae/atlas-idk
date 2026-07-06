@@ -4889,12 +4889,20 @@ export default function Workspace() {
       useShellStore.getState().restoreComposer();
       setMobileTab("chat");
       setRightOpen(false);
-      const el = textareaRef.current;
-      if (!el) return;
-      setTimeout(() => {
-        try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch {}
-        el.focus();
-      }, 80);
+      // Poll for the textarea — when composer was docked, the input mounts
+      // only after restoreComposer() triggers a re-render, so the ref may be
+      // null on this tick. Retry for up to ~600ms.
+      let tries = 0;
+      const tryFocus = () => {
+        const el = textareaRef.current;
+        if (el) {
+          try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch {}
+          el.focus();
+          return;
+        }
+        if (tries++ < 12) setTimeout(tryFocus, 50);
+      };
+      setTimeout(tryFocus, 60);
     };
     window.addEventListener("atlas:focus-composer", onFocus);
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
