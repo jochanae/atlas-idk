@@ -1325,6 +1325,20 @@ async function persistNexusExecutionRun(args: {
       steps.push({ verb: "PROMPT", target: null, status: "ok", detail: null, content: promptText.slice(0, 8000) });
     }
 
+    // THOUGHT — total turn duration + Atlas response as expandable content
+    // Mirrors chat.ts: detail = "Xs", content = response text (shown when expanded)
+    const thoughtDurationS = Math.max(1, Math.round(elapsedMs / 1000));
+    const thoughtContent = args.atlasResponse.trim();
+    if (thoughtContent) {
+      steps.push({
+        verb: "THOUGHT",
+        target: null,
+        status: "ok",
+        detail: `${thoughtDurationS}s`,
+        content: thoughtContent.slice(0, 8000),
+      });
+    }
+
     // FILE_READ — deduplicate by path, keep last status (prefer "Not found" over "Reading")
     const seenPaths = new Map<string, RunAction>();
     for (const a of args.runActions) {
