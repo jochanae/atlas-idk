@@ -622,15 +622,8 @@ export function AskAtlasSurface({
       )}
       </div>
 
-      {/* Floating dock orb — only when the user has collapsed the composer to `docked`.
-          Ask Atlas post-first-message only; ambient/entry state is unaffected. */}
-      {!hideComposer && restingDocked && (
-        <ComposerDock
-          forceVisible
-          pending={isStreaming}
-          onRestore={() => setRestingState("full")}
-        />
-      )}
+      {/* Floating dock orb removed — the footer center "A" is the single
+          composer anchor across Ask Atlas and Workspace. */}
 
       {/* Focus backdrop — full-viewport dim when composer is focused. Tap to dismiss. */}
       {!hideComposer && !restingDocked && (
