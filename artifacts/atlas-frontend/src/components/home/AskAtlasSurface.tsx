@@ -17,7 +17,7 @@ import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { AskAtlasRenderer } from "./AskAtlasRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
-import { ComposerDock } from "@/components/composer/ComposerDock";
+// ComposerDock removed — footer center "A" is the single composer anchor.
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { type LiveStep } from "@/components/workspace/StepProgress";
@@ -622,15 +622,8 @@ export function AskAtlasSurface({
       )}
       </div>
 
-      {/* Floating dock orb — only when the user has collapsed the composer to `docked`.
-          Ask Atlas post-first-message only; ambient/entry state is unaffected. */}
-      {!hideComposer && restingDocked && (
-        <ComposerDock
-          forceVisible
-          pending={isStreaming}
-          onRestore={() => setRestingState("full")}
-        />
-      )}
+      {/* Floating dock orb removed — the footer center "A" is the single
+          composer anchor across Ask Atlas and Workspace. */}
 
       {/* Focus backdrop — full-viewport dim when composer is focused. Tap to dismiss. */}
       {!hideComposer && !restingDocked && (
