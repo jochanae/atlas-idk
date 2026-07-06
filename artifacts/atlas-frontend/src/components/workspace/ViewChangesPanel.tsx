@@ -928,6 +928,8 @@ export function ViewChangesPanel({
             {runId ? "Run not found — it may still be loading." : "No runs yet for this project."}
           </div>
         )
+      ) : lens === "decisions" ? (
+        <DecisionsLens projectId={projectId} messageId={timelineRun?.messageId ?? null} />
       ) : (
         <ChangesLens rows={changeRows} projectId={projectId} />
       )}
