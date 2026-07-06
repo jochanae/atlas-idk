@@ -239,6 +239,32 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
             </button>
           </div>
 
+          {tier1 && (
+            <div style={{
+              padding: "8px 12px",
+              borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+              display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+              fontFamily: "var(--app-font-sans)", fontSize: 11.5,
+              color: "var(--atlas-muted)",
+            }}>
+              <span style={{
+                fontFamily: "var(--app-font-mono)", fontSize: 10,
+                letterSpacing: "0.12em", textTransform: "uppercase",
+                color: tier1.known === tier1.total ? "var(--atlas-gold)" : "var(--atlas-muted)",
+              }}>
+                Project intake · {tier1.known}/{tier1.total}
+              </span>
+              {tier1.skipped && tier1.known < tier1.total && (
+                <span style={{ color: "rgba(252,165,165,0.9)", fontSize: 10.5 }}>skipped</span>
+              )}
+              {tier1.missing.length > 0 && (
+                <span style={{ fontSize: 10.5, opacity: 0.85 }}>
+                  missing: {tier1.missing.slice(0, 3).map((m) => TIER1_FIELD_LABELS[m] ?? m).join(", ")}
+                </span>
+              )}
+            </div>
+          )}
+
           {hasSummary ? (
             <>
               <div style={{ padding: "12px 12px 10px", position: "relative" }}>
