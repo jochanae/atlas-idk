@@ -684,7 +684,12 @@ export function AskAtlasSurface({
           flexDirection: "column",
           gap: 8,
           overflow: "hidden",
-          transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transformOrigin: "50% 100%",
+          transform: absorbing ? "translateY(24px) scale(0.15, 0.28)" : undefined,
+          opacity: absorbing ? 0 : 1,
+          transition: absorbing
+            ? "transform 260ms cubic-bezier(0.7,0,0.3,1), opacity 220ms ease-in"
+            : "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1)",
         } as CSSProperties : {
           flexShrink: 0,
           padding: restingCompact
@@ -696,7 +701,12 @@ export function AskAtlasSurface({
           gap: restingCompact ? 4 : 8,
           position: "relative",
           zIndex: 5,
-          transition: "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), gap 200ms ease",
+          transformOrigin: "50% 100%",
+          transform: absorbing ? "translateY(24px) scale(0.15, 0.35)" : undefined,
+          opacity: absorbing ? 0 : 1,
+          transition: absorbing
+            ? "transform 260ms cubic-bezier(0.7,0,0.3,1), opacity 220ms ease-in"
+            : "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), gap 200ms ease",
         }}
       >
         {/* Grip handle — visible in sheet mode; tap to collapse */}
