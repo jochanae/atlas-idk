@@ -764,7 +764,7 @@ export function ViewChangesPanel({
   runId,
   projectName,
 }: Props) {
-  const [lens, setLens] = useState<"timeline" | "changes">("timeline");
+  const [lens, setLens] = useState<"timeline" | "changes" | "decisions">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
   const { runs: dbRuns } = useProjectRuns(projectId);
 
