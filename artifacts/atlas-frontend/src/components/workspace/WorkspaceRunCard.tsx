@@ -634,7 +634,12 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     () => {
       if (receiptMessage) return deriveGithubReceipt(receiptMessage);
       if (isActive) return null;
-      if (executionRun) return adaptExecutionRun(executionRun, messages, projectPreviewUrl);
+      if (executionRun) {
+        const startedAt = new Date(executionRun.startedAt).getTime();
+        // Suppress stale runs that predate this session's mount.
+        if (Number.isFinite(startedAt) && startedAt < mountedAtRef.current - 2000) return null;
+        return adaptExecutionRun(executionRun, messages, projectPreviewUrl);
+      }
       return null;
     },
     [isActive, executionRun, messages, projectPreviewUrl, receiptMessage],
