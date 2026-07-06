@@ -28,6 +28,7 @@ import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
 import { AskAtlasSurface } from "@/components/home/AskAtlasSurface";
+import { CrystallizeSheet } from "@/components/home/CrystallizeSheet";
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
 import { FocusModeAura } from "@/components/FocusModeAura";
 
@@ -3870,6 +3871,48 @@ export default function Home() {
     }
   }, [handleHandoff, nexusChat.handoffSignal, performCreateProjectFromConversation]);
 
+  const [crystallizeSheetOpen, setCrystallizeSheetOpen] = useState(false);
+
+  const handleCrystallizeToExisting = useCallback(async (projectId: number, _projectName: string) => {
+    const conversationMessages = nexusChat.messages.map((m) => ({
+      role: m.role as string,
+      content: typeof m.content === "string" ? m.content : "",
+    })).filter(m => m.content.trim());
+    const res = await fetch("/api/nexus/handoff", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        messages: conversationMessages,
+        projectId,
+        conversationId: askAtlasConversationId,
+      }),
+    });
+    if (!res.ok) throw new Error("Handoff failed");
+    queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    setActiveProjectId(projectId);
+    setLocation(`/project/${projectId}`);
+  }, [nexusChat.messages, askAtlasConversationId, queryClient, setActiveProjectId, setLocation]);
+
+  const handleCrystallizePortfolioNote = useCallback(async () => {
+    const conversationMessages = nexusChat.messages.map((m) => ({
+      role: m.role as string,
+      content: typeof m.content === "string" ? m.content : "",
+    })).filter(m => m.content.trim());
+    const res = await fetch("/api/nexus/handoff", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        messages: conversationMessages,
+        conversationId: askAtlasConversationId,
+        ideaMode: true,
+      }),
+    });
+    if (!res.ok) throw new Error("Handoff failed");
+    queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+  }, [nexusChat.messages, askAtlasConversationId, queryClient]);
+
   return (
     <div
       ref={ptrContainerRef}
@@ -5545,6 +5588,7 @@ export default function Home() {
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
         onCreateProject={handleAskAtlasCreateProject}
+        onCrystallize={() => setCrystallizeSheetOpen(true)}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => {
@@ -5728,6 +5772,17 @@ export default function Home() {
       <ShellLogSheet
         open={showShellSheet}
         onClose={() => setShowShellSheet(false)}
+      />
+
+      <CrystallizeSheet
+        open={crystallizeSheetOpen}
+        onClose={() => setCrystallizeSheetOpen(false)}
+        projects={projects ?? []}
+        handoffSignal={nexusChat.handoffSignal}
+        hasConversation={(nexusChat.messages?.length ?? 0) > 0}
+        onNewWorkspace={() => { setCrystallizeSheetOpen(false); handleAskAtlasCreateProject(); }}
+        onExistingProject={handleCrystallizeToExisting}
+        onPortfolioNote={handleCrystallizePortfolioNote}
       />
 
       {writeOverlayProjectId != null && createPortal(

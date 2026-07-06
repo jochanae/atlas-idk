@@ -82,6 +82,9 @@ interface Props {
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
   onCreateProject?: (nameOverride?: string) => void;
+  /** When provided, clicking the crystallize button opens the destination picker
+   *  sheet instead of immediately creating a new project. */
+  onCrystallize?: () => void;
   onAddAsset?: () => void;
   onMore?: () => void;
   onFiles?: (files: File[]) => void;
@@ -119,6 +122,7 @@ export function AskAtlasSurface({
   toggleVoice,
   onOpenHistory,
   onCreateProject,
+  onCrystallize,
   onAddAsset,
   onMore,
   onFiles,
@@ -973,9 +977,9 @@ export function AskAtlasSurface({
               {/* Add-to-project — only when there's a conversation to capture */}
               {messages.length > 0 && (
                 <AskAtlasUtilityButton
-                  ariaLabel="Create project from this conversation"
-                  title={handoffSignal?.projectName ? `Start workspace: ${handoffSignal.projectName}` : "Create project from this conversation"}
-                  onClick={() => onCreateProject?.()}
+                  ariaLabel="Crystallize conversation"
+                  title={handoffSignal?.projectName ? `Crystallize: ${handoffSignal.projectName}` : "Crystallize conversation…"}
+                  onClick={() => onCrystallize ? onCrystallize() : onCreateProject?.()}
                   tinted
                   glowing={!!handoffSignal?.projectName}
                 >
