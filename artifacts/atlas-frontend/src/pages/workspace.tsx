@@ -8413,8 +8413,8 @@ export default function Workspace() {
           <UnifiedConversationSurface
             mode="operational"
             projectId={id}
-            streamSlot={useNexusWorkspaceChat ? <WorkspaceConversationSurface key={id} projectId={id} /> : undefined}
-            chatStreamProps={useNexusWorkspaceChat ? null : leftTab !== "review" && leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
+            streamSlot={undefined}
+            chatStreamProps={leftTab !== "review" && leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
               scrollRef: chatPanelScrollRef,
               bottomRef: bottomRef,
               onScroll: (e) => {
