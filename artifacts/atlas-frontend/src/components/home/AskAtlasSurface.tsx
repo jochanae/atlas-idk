@@ -726,10 +726,7 @@ export function AskAtlasSurface({
             type="button"
             aria-label={restingDocked ? "Restore composer" : "Dock composer"}
             title={restingDocked ? "Restore composer" : "Minimize to floating A"}
-            onClick={() => {
-              if (restingState === "docked") { setRestingState("full"); return; }
-              runAbsorb(() => setRestingState("docked"));
-            }}
+            onClick={() => runAbsorb(() => setRestingState("docked"))}
             style={{
               position: "absolute", top: 4, right: 8, zIndex: 6,
               width: 22, height: 22, padding: 0,
