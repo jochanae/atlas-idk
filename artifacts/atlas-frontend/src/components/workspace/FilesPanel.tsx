@@ -1051,6 +1051,52 @@ export function FilesPanel({
         </div>
       )}
 
+      {/* Source-of-truth label — shown whenever a sub-tab is active so users
+          always know whether they're looking at live workspace files or GitHub. */}
+      {canBrowseGitHub && (filesSubTab === "files" || filesSubTab === "github" || filesSubTab === "history") && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "4px 12px",
+            borderBottom: "1px solid var(--atlas-border)",
+            flexShrink: 0,
+            background: filesSubTab === "files"
+              ? "rgba(201,162,76,0.04)"
+              : "transparent",
+          }}
+        >
+          {filesSubTab === "files" && (
+            <>
+              <span style={{ width: 5, height: 5, borderRadius: 999, background: "rgba(201,162,76,0.7)", flexShrink: 0 }} />
+              <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-gold)", opacity: 0.85, textTransform: "uppercase" }}>
+                GitHub · remote sync view
+              </span>
+              <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, marginLeft: 2 }}>
+                — Atlas reads from workspace disk
+              </span>
+            </>
+          )}
+          {filesSubTab === "github" && (
+            <>
+              <span style={{ width: 5, height: 5, borderRadius: 999, background: "rgba(148,163,184,0.5)", flexShrink: 0 }} />
+              <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)", opacity: 0.7, textTransform: "uppercase" }}>
+                GitHub · linked repository
+              </span>
+            </>
+          )}
+          {filesSubTab === "history" && (
+            <>
+              <span style={{ width: 5, height: 5, borderRadius: 999, background: "rgba(148,163,184,0.5)", flexShrink: 0 }} />
+              <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)", opacity: 0.7, textTransform: "uppercase" }}>
+                GitHub · commit history
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Inline errors for unlink */}
       {unlinkRepoError && (
         <div style={{ margin: "4px 6px 0", padding: "6px 10px", borderRadius: 5, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 6 }}>
