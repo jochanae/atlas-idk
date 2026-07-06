@@ -66,6 +66,7 @@ import publishRouter from "./publish";
 import homeArtifactsRouter from "./homeArtifacts";
 import verifyRouter from "./verify";
 import capacityRouter from "./capacity";
+import accountRouter from "./account";
 import memoryRouter from "./memory";
 
 const router: IRouter = Router();
@@ -123,6 +124,7 @@ router.use(requireAuth, zipRouter);
 // Stats
 router.use(requireAuth, statsRouter);
 router.use(requireAuth, capacityRouter);
+router.use(requireAuth, accountRouter);
 router.use(requireAuth, memoryRouter);
 
 // Nexus — global command space (mode, not a project)
