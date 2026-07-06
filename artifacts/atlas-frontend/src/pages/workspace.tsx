@@ -8554,6 +8554,7 @@ export default function Workspace() {
               ...(useNexusWorkspaceChat ? {
                 messages: nexusBridge.messages,
                 chatPending: nexusBridge.chatPending,
+                liveStep: nexusBridge.liveStep,
                 onSend: (msg: string) => nexusBridge.send(msg),
               } : {}),
             } : null}
@@ -8685,6 +8686,7 @@ export default function Workspace() {
               // Option 2 overrides — route composer sends through Nexus.
               ...(useNexusWorkspaceChat ? {
                 chatPending: nexusBridge.chatPending,
+                liveStep: nexusBridge.liveStep,
                 messages: nexusBridge.messages,
                 doSend: ((text: string) => {
                   nexusBridge.send(text);

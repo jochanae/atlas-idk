@@ -13,7 +13,7 @@
  * WorkspaceConversationSurface so file writes still land on disk.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNexusChatStream, type NexusMessage } from "./useNexusChatStream";
+import { useNexusChatStream, type NexusMessage, type NexusLiveStep } from "./useNexusChatStream";
 import type { ChatMessage } from "@/pages/workspace";
 
 function deriveConversationId(projectId: number): string {
@@ -70,6 +70,7 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
 export interface NexusWorkspaceBridge {
   messages: ChatMessage[];
   chatPending: boolean;
+  liveStep: NexusLiveStep | null;
   send: (text: string) => void;
   abort: () => void;
 }
@@ -80,7 +81,7 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
     pid ? deriveConversationId(pid) : ""
   );
 
-  const { messages, isStreaming, isPending, send, abort, clearMessages } = useNexusChatStream({
+  const { messages, isStreaming, isPending, liveStep, send, abort, clearMessages } = useNexusChatStream({
     focusProjectId: pid || null,
     mode: "workspace",
     conversationId: conversationId || null,
@@ -147,5 +148,5 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
     [send]
   );
 
-  return { messages: chatMessages, chatPending, send: sendText, abort };
+  return { messages: chatMessages, chatPending, liveStep, send: sendText, abort };
 }
