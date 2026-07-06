@@ -656,7 +656,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
               <textarea
                 ref={textareaRef}
-                aria-label="Message Atlas"
+                aria-label="Ask Atlas"
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoResize(); }}
                 onFocus={() => setInputFocused(true)}
