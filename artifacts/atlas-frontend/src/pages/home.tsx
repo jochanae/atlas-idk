@@ -2142,7 +2142,7 @@ export default function Home() {
   // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
   // button and routes sends to askAtlasChat.
   // Also visible while restoring so the surface never flashes blank on return.
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring);
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring || !!activeProjectCtx);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
