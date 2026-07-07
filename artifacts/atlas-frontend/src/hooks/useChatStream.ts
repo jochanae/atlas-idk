@@ -210,6 +210,12 @@ export function useChatStream(
   const suppressStepsRef = useRef(suppressSteps ?? false);
   useEffect(() => { suppressStepsRef.current = suppressSteps ?? false; }, [suppressSteps]);
 
+  // WhisperGate intent for the current in-flight turn. Server emits an early
+  // `intent` SSE event (before any tokens stream). On CHAT we force-suppress
+  // step display AND clear any liveStep that may have been set optimistically.
+  // Reset per turn in sendMessage.
+  const whisperIntentRef = useRef<"CHAT" | "DECIDE" | "BUILD" | null>(null);
+
   // ---- message state ----
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesRef = useRef<ChatMessage[]>([]);
