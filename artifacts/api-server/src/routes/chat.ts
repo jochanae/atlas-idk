@@ -34,6 +34,7 @@ import { shouldUseAgentLoop, shouldUseStructuredPlan } from "../lib/agent-loop/f
 import { runAgentLoop } from "../lib/agent-loop/runner";
 import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
 import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProject, runWorkspaceTier1Extraction } from "../services/tier1";
+import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
