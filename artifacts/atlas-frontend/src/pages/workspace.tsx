@@ -5723,14 +5723,32 @@ export default function Workspace() {
         return resumeBrief?.threadSummary ?? resumeBrief?.intent ?? null;
       } catch { return resumeBrief?.threadSummary ?? null; }
     })();
+    // Recent events: last committed run + last few assistant turns with file edits.
+    const recentEvents: string[] = [];
+    if (latestRun) {
+      const label = latestRun.summary ?? latestRun.title ?? latestRun.runStatus ?? "run completed";
+      recentEvents.push(`Run: ${String(label).slice(0, 80)}`);
+    }
+    for (let i = messages.length - 1; i >= 0 && recentEvents.length < 5; i--) {
+      const m = messages[i];
+      const edits = (m as any).fileEdits?.length ?? ((m as any).fileEdit ? 1 : 0);
+      if (m.role === "assistant" && edits > 0) {
+        recentEvents.push(`Edited ${edits} file${edits === 1 ? "" : "s"}`);
+      }
+    }
+    // Unresolved decisions: anything not committed / locked in the entries feed.
+    const unresolvedDecisions = (entries ?? [])
+      .filter((e: any) => e?.type === "Decision" && e?.status && e.status !== "committed" && !e?.lockedAt)
+      .slice(0, 6)
+      .map((e: any) => ({ id: e.id as number, title: String(e.title ?? "").slice(0, 120) }));
     setActiveProjectContext({
       projectId: id,
       sessionId: sessionId ?? null,
       projectName: project.name,
       memoryBrief,
       lastUserGoal,
-      recentEvents: [],
-      unresolvedDecisions: [],
+      recentEvents,
+      unresolvedDecisions,
     });
     return () => {
       try {
@@ -5738,7 +5756,7 @@ export default function Workspace() {
         if (!next.startsWith(`/project/${id}`)) clearActiveProjectContext();
       } catch { clearActiveProjectContext(); }
     };
-  }, [id, project, sessionId, messages, resumeBrief]);
+  }, [id, project, sessionId, messages, resumeBrief, latestRun, entries]);
   const addLocalMessage = useCallback((role: "user" | "assistant", content: string) => {
     setMessages((prev) => [
       ...prev,
