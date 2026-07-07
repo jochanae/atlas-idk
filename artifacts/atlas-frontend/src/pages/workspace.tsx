@@ -5744,7 +5744,7 @@ export default function Workspace() {
       .map((e: any) => ({ id: e.id as number, title: String(e.title ?? "").slice(0, 120) }));
     setActiveProjectContext({
       projectId: id,
-      sessionId: sessionId ?? null,
+      sessionId: sessionId ?? projectState.activeSession?.id ?? null,
       projectName: project.name,
       memoryBrief,
       lastUserGoal,
@@ -5758,7 +5758,7 @@ export default function Workspace() {
         if (!next.startsWith(`/project/${id}`)) clearActiveProjectContext();
       } catch { clearActiveProjectContext(); }
     };
-  }, [id, project, sessionId, messages, resumeBrief, latestRun, entries]);
+  }, [id, project, projectState.activeSession?.id, sessionId, messages, resumeBrief, latestRun, entries]);
   const addLocalMessage = useCallback((role: "user" | "assistant", content: string) => {
     setMessages((prev) => [
       ...prev,
