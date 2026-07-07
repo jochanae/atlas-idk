@@ -266,7 +266,10 @@ interface Props {
 export function WorkspaceReceiptsBar({ projectId }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [collapsed, setCollapsed] = useState(() => {
-    try { return sessionStorage.getItem(storageKey(projectId)) === "1"; } catch { return false; }
+    try {
+      const stored = sessionStorage.getItem(storageKey(projectId));
+      return stored === null ? true : stored === "1";
+    } catch { return true; }
   });
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
   const knownIdsRef = useRef<Set<number>>(new Set());
