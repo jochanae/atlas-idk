@@ -3887,6 +3887,14 @@ export default function Home() {
 
   const [crystallizeSheetOpen, setCrystallizeSheetOpen] = useState(false);
 
+  // Auto-blueprint is opt-in: only request it when the source conversation
+  // actually produced a BUILD-intent turn. Otherwise the handoff stays a pure
+  // thinking capture and workspace opens quiet (no forced planning noise).
+  const conversationHasBuildIntent = useMemo(
+    () => (nexusChat.messages as HomeMessage[]).some((m) => m.intentType === "BUILD"),
+    [nexusChat.messages],
+  );
+
   const handleCrystallizeToExisting = useCallback(async (projectId: number, _projectName: string) => {
     const conversationMessages = nexusChat.messages.map((m) => ({
       role: m.role as string,
@@ -3900,13 +3908,14 @@ export default function Home() {
         messages: conversationMessages,
         projectId,
         conversationId: askAtlasConversationId,
+        requestBuild: conversationHasBuildIntent,
       }),
     });
     if (!res.ok) throw new Error("Handoff failed");
     queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     setActiveProjectId(projectId);
     setLocation(`/project/${projectId}`);
-  }, [nexusChat.messages, askAtlasConversationId, queryClient, setActiveProjectId, setLocation]);
+  }, [nexusChat.messages, askAtlasConversationId, queryClient, setActiveProjectId, setLocation, conversationHasBuildIntent]);
 
   const handleCrystallizePortfolioNote = useCallback(async () => {
     const conversationMessages = nexusChat.messages.map((m) => ({
@@ -3921,6 +3930,7 @@ export default function Home() {
         messages: conversationMessages,
         conversationId: askAtlasConversationId,
         ideaMode: true,
+        requestBuild: false,
       }),
     });
     if (!res.ok) throw new Error("Handoff failed");
