@@ -99,6 +99,10 @@ const ASK_ATLAS_PORTFOLIO_SEED =
   "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
 
 function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
+  const ctx = useActiveProjectContext();
+  const restoreWorkspaceChip = () => {
+    window.dispatchEvent(new CustomEvent("axiom:restore-workspace-context-chip"));
+  };
   // Header title rotation stripped (Pass 1). Header is permanently
   // "Ask Atlas"; the project name lives in the CommitPill only.
   return (
@@ -110,7 +114,28 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
         }
       `}</style>
       <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
-        <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8, flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={ctx ? restoreWorkspaceChip : undefined}
+          title={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
+          aria-label={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
+          disabled={!ctx}
+          style={{
+            position: "relative",
+            display: "inline-flex",
+            width: 18,
+            height: 18,
+            flexShrink: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            border: 0,
+            background: "transparent",
+            cursor: ctx ? "pointer" : "default",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8, flexShrink: 0 }}>
           <span
             aria-hidden
             style={{
@@ -134,7 +159,8 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
               boxShadow: "0 0 8px rgba(139,92,246,0.6)",
             }}
           />
-        </span>
+          </span>
+        </button>
         <span
           title="Ask Atlas"
           style={{
