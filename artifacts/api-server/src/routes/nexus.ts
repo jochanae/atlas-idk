@@ -10,6 +10,8 @@ import { autoCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { vectorSearch, buildRagBlock } from "../lib/embeddings";
+import { classifyIntent } from "../lib/whisperGate";
+import { detectDecisionCatch } from "../lib/decisionCatch";
 import { getGithubTokenForUser, bootstrapGitHubRepo } from "../lib/githubBootstrap";
 import { extractPageUrls, screenshotUrlsToBlocks, buildUrlNote } from "../lib/urlScreenshot";
 import { findSemanticTensionsForProject } from "./tensions";
@@ -2890,6 +2892,34 @@ WHAT YOU SHOULD NOT DO:
       atlasResponse: visibleContent,
     });
 
+    let catchPayload: Awaited<ReturnType<typeof detectDecisionCatch>> = null;
+    if (focusProjectId) {
+      try {
+        const whisper = await classifyIntent({
+          message,
+          history: conversationHistory,
+          hasProjectContext: true,
+        });
+        const catchIntent =
+          whisper.intent === "CHAT"
+            ? "think"
+            : whisper.intent === "DECIDE"
+              ? "decide"
+              : "build";
+        catchPayload = await detectDecisionCatch({
+          projectId: focusProjectId,
+          userId,
+          userText: message,
+          assistantText: visibleContent,
+          intent: catchIntent,
+          confidence: whisper.confidence,
+          sessionId,
+        });
+      } catch (err) {
+        logger.warn({ err: String(err) }, "decisionCatch: nexus detection failed");
+      }
+    }
+
     // Mirror assistant turn into workspace chat_messages when a session is linked,
     // so ledger entries can attribute to a chat_messages row.
     let sourceChatMessageId: number | null = null;
@@ -2901,6 +2931,7 @@ WHAT YOU SHOULD NOT DO:
             sessionId,
             role: "assistant",
             content: visibleContent,
+            catchPayload: catchPayload ?? undefined,
             executionTimeMs: runMetadata.executionTimeMs,
             inputTokens: runMetadata.inputTokens,
             outputTokens: runMetadata.outputTokens,
@@ -2933,7 +2964,7 @@ WHAT YOU SHOULD NOT DO:
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.
     // Send done immediately — HUD clears now regardless of image generation speed.
-    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(thinkingStable ? { thinkingStable: true } : {}), ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
+    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, catchPayload: catchPayload ?? undefined, ...(thinkingStable ? { thinkingStable: true } : {}), ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
 
     // Persist conv_state to project so workspace always opens with the correct posture.
     // Non-blocking: runs after SSE done is flushed so it never delays the stream.

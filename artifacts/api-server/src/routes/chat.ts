@@ -35,6 +35,7 @@ import { runAgentLoop } from "../lib/agent-loop/runner";
 import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
 import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProject, runWorkspaceTier1Extraction } from "../services/tier1";
 import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
+import { detectDecisionCatch } from "../lib/decisionCatch";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -2768,6 +2769,7 @@ router.post("/chat", async (req, res): Promise<void> => {
   // when the classifier hasn't run yet (e.g. slash commands that short-circuit).
   // Reassigned once classifyIntent() completes below.
   let whisperIntent: WhisperIntent = "BUILD";
+  let whisperConfidence = 0.7;
   const writeStep = (res: Response, s: { verb: string; target?: string; phase: string }) => {
     // Suppress step events on pure CHAT turns — they render as "run cards" in
     // the UI and are the #1 source of "hello triggered a build" noise.
@@ -3000,6 +3002,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       hasProjectContext: !!projectId,
     });
     whisperIntent = whisper.intent;
+    whisperConfidence = whisper.confidence;
     // Tell the client immediately so it can suppress step UI / run cards.
     // Client hook (useChatStream) listens for evtName === "intent".
     res.write(`data: ${JSON.stringify({ type: "intent", intent: whisper.intent, confidence: whisper.confidence, reason: whisper.reason, fallback: whisper.fallback })}\n\n`);
@@ -5729,6 +5732,25 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     if (generatedImages.length > 0) imageGenResult = { images: generatedImages };
   }
 
+  let catchPayload: Awaited<ReturnType<typeof detectDecisionCatch>> = null;
+  if (projectId && userId && !isFlowMode && !isScenarioMode) {
+    const catchIntent =
+      whisperIntent === "CHAT"
+        ? "think"
+        : whisperIntent === "DECIDE"
+          ? "decide"
+          : "build";
+    catchPayload = await detectDecisionCatch({
+      projectId,
+      userId,
+      userText: message,
+      assistantText: persistContent,
+      intent: catchIntent,
+      confidence: whisperConfidence,
+      sessionId,
+    });
+  }
+
   // Persist assistant message(s) — image generation runs first so imageB64 is available
   let savedMsgId: number | undefined;
   let intentMsgId: number | undefined;
@@ -5756,7 +5778,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       sessionId,
       role: "assistant" as const,
       intentType: detectedIntentType,
-      catchPayload: undefined,
+      catchPayload: catchPayload ?? undefined,
       imageB64: imageB64Val,
       imageMimeType: imageMimeTypeVal,
       fileEditsJson: responseFileEdits.length > 0
@@ -5891,7 +5913,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
             role: "assistant",
             content: splitBuildTurn ? intentPersistContent : persistContent,
             intentType: detectedIntentType,
-            catchPayload: undefined,
+            catchPayload: catchPayload ?? undefined,
             imageB64: imageB64Val,
             imageMimeType: imageMimeTypeVal,
           })
@@ -5940,7 +5962,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     terminalResult,
     surface,
     intentType: detectedIntentType ?? null,
-    catchPayload: null,
+    catchPayload: catchPayload ?? null,
     alertPayload: alertPayload ?? undefined,
     model: activeModel,
     memoryChips: allChips.length > 0 ? allChips : undefined,
@@ -6572,7 +6594,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
           role: "assistant",
           content: fullText,
           intentType: detectedIntentType,
-          catchPayload: undefined,
+          catchPayload: catchPayload ?? undefined,
           ...usageInsertValues(assistantUsage),
         })
         .returning();
