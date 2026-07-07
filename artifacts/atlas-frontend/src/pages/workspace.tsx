@@ -9506,10 +9506,43 @@ export default function Workspace() {
            >
             {isMobile && (
               <div style={{
-                width: 40, height: 4, borderRadius: 999,
-                background: "var(--atlas-border)",
-                margin: "10px auto 6px", opacity: 0.7,
-              }} />
+                position: "sticky",
+                top: 0,
+                zIndex: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "10px 12px 2px",
+                background: "var(--atlas-surface)",
+              }}>
+                <div style={{
+                  width: 40, height: 4, borderRadius: 999,
+                  background: "var(--atlas-border)",
+                  opacity: 0.7,
+                }} />
+                <button
+                  type="button"
+                  onClick={() => setShowProjectMenu(false)}
+                  aria-label="Close project menu"
+                  title="Close"
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: 4,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 999,
+                    border: "1px solid rgba(var(--atlas-muted-rgb),0.18)",
+                    background: "color-mix(in oklab, var(--atlas-fg) 5%, transparent)",
+                    color: "var(--atlas-fg)",
+                    cursor: "pointer",
+                    fontSize: 20,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             )}
             <AccountSummarySections
               projectName={project?.name ?? null}
