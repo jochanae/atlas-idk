@@ -804,8 +804,8 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
           style={{
             position: "fixed",
             top: 56,
-            left: "50%",
-            transform: "translateX(-50%)",
+            left: 16,
+            maxWidth: "calc(100vw - 32px)",
             zIndex: 60,
             display: "inline-flex",
             alignItems: "center",
@@ -820,8 +820,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             letterSpacing: "0.08em",
             textTransform: "uppercase",
             color: "var(--atlas-gold, #C9A84C)",
+            whiteSpace: "nowrap",
           }}
         >
+
           <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgb(139,92,246)" }} />
           <span>In: {name}</span>
           <button
