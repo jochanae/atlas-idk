@@ -33,6 +33,7 @@ import { ConversationsLauncher } from "@/components/ConversationsLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { getAuthHeaders } from "@/lib/api";
+import { askAtlasSession } from "@/lib/askAtlasSession";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   computeScoreFromNodeState,
@@ -526,6 +527,7 @@ function ShellBranchChip({ projectId, linkedRepo }: { projectId: number | null; 
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const isMobile = useIsMobile();
   const isTinyMobile = useIsTinyScreen();
+  const [, setLocation] = useLocation();
   const ps = useProjectState(projectId);
   const { data: intelligence } = useProjectIntelligence(projectId);
   const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
@@ -568,6 +570,15 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
     window.dispatchEvent(new CustomEvent("axiom:open-projects-drawer"));
   }, []);
 
+  const openAskAtlas = useCallback(() => {
+    askAtlasSession.clearClosed();
+    askAtlasSession.setSurfaceOpen(true);
+    setLocation("/home");
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
+    }, 30);
+  }, [setLocation]);
+
   const beginRename = useCallback(() => {
     setDraft(project?.name ?? "");
     setError(null);
@@ -609,6 +620,59 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
       {/* Unified Project Status — Readiness ring (right-side look) merged with Atlas Pulse.
           Tap opens a two-tab panel: Readiness (default) and Pulse. */}
       <ShellCompletionChip projectId={projectId} />
+      <button
+        type="button"
+        onClick={openAskAtlas}
+        title="Open Ask Atlas"
+        aria-label="Open Ask Atlas conversation"
+        style={{
+          position: "relative",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          width: 20,
+          height: 20,
+          marginRight: isTinyMobile ? 1 : 2,
+          padding: 0,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8 }}>
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 999,
+              background: "rgb(167,139,250)",
+              opacity: 0.45,
+              animation: "ask-atlas-title-ping 1.6s cubic-bezier(0,0,0.2,1) infinite",
+            }}
+          />
+          <span
+            aria-hidden
+            style={{
+              position: "relative",
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background: "rgb(139,92,246)",
+              boxShadow: "0 0 8px rgba(139,92,246,0.6)",
+            }}
+          />
+        </span>
+        <style>{`
+          @keyframes ask-atlas-title-ping {
+            0% { transform: scale(1); opacity: 0.6; }
+            75%, 100% { transform: scale(2.2); opacity: 0; }
+          }
+        `}</style>
+      </button>
       {/* Suppress unused-var warnings for canonicalReadiness/hasActive now that LifecycleGlyph is gone. */}
       {false && <span>{String(canonicalReadiness)}{String(hasActive)}</span>}
       {renaming ? (
