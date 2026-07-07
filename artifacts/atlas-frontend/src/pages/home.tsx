@@ -69,6 +69,7 @@ import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
+import { useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
 
 const PLACEHOLDERS = [
