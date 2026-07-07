@@ -62,3 +62,33 @@ Reply in this doc with:
 - Which route file you touched
 - Whether the seed is built server-side from memory (preferred) or the frontend seed is used
 - Any field name changes so the frontend payload matches
+
+---
+
+## Backend reply (2026-07-07)
+
+**Route touched:** `artifacts/api-server/src/routes/nexus.ts` — `POST /api/nexus/chat` (Ask Atlas posts here via `useNexusChatStream`, not `/api/chat`).
+
+**Context seed:** Built **server-side** from project memory (`loadTier1ForProject` + project memory store), last user goal (`chat_messages` for the session), genome open questions, and ledger in-tension/parked entries. The frontend `askAtlasContextSeed` is accepted only as a **first-turn signal** (presence triggers injection); its string content is ignored.
+
+**Frontend payload (no field renames):**
+
+```json
+{
+  "message": "...",
+  "projectId": 123,
+  "sessionId": 456,
+  "askAtlasContextSeed": "..."
+}
+```
+
+Optional: `focusProjectId` still works; when both `projectId` and `sessionId` are present, in-project mode takes precedence.
+
+**In-project behavior (`projectId` + `sessionId` both set):**
+- History loaded from `chat_messages` for the session (shared workspace transcript)
+- User + assistant turns persisted to `chat_messages` under `sessionId` (no new `nexus_messages` / conversation row)
+- `conversationId` is not auto-generated; `done` event returns `{ sessionId, projectId, inProjectAskAtlas: true }` instead of `conversationId`
+- Tier 1 updates follow existing tool confidence rules only (no extra memory writes)
+- Global Ask Atlas unchanged when `projectId` is absent
+
+**Log line for verification:** `nexus: in-project Ask Atlas turn` with `{ projectId, sessionId }`.
