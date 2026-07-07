@@ -235,14 +235,14 @@ function PillVisual({
     status === "shaping"
       ? "Shaping\u2026"
       : status === "ready"
-        ? (overrideLabel ?? "Enter Workspace \u2192")
+        ? (overrideLabel ?? "Open Workspace \u2192")
         : status === "packaging"
           ? "Packaging\u2026"
           : status === "opening" || status === "transitioning"
             ? "Opening Workspace\u2026"
             : status === "error"
               ? "Handoff failed \u2014 Retry"
-              : "Enter Workspace \u2192";
+              : "Open Workspace \u2192";
 
   const GENERIC_TITLES = new Set(["workspace", "New Project", "New Idea", "My Project", "Untitled", ""]);
   const showTitle = status === "ready" && !overrideLabel && title && !GENERIC_TITLES.has(title.trim());

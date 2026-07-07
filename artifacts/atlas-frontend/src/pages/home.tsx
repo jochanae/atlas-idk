@@ -2402,6 +2402,10 @@ export default function Home() {
       }
       const projectId = Number(project.id);
       if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
+      // Thread adoption: workspace inherits the conversation that led to this project
+      // (preferring Ask Atlas thread, falling back to global nexus). This is what makes
+      // "One thread. Two views." real — no fork at the promote moment.
+      try { localStorage.setItem(`nexus_conv_${projectId}`, askAtlasConversationId ?? activeConversationId ?? ""); } catch {}
       const effectiveConversationId = activeConversationId;
       void triggerNexusHandoff({
         conversationId: effectiveConversationId,
@@ -2430,6 +2434,7 @@ export default function Home() {
     }
   }, [
     activeConversationId,
+    askAtlasConversationId,
     callAskAtlasMode,
     nexusChat.messages,
     queryClient,
@@ -3318,6 +3323,9 @@ export default function Home() {
       }
       const projectId = Number(project.id);
       if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
+      // Thread adoption: workspace inherits the Ask Atlas thread so the conversation
+      // continues without a seam (same conversationId, same history).
+      try { localStorage.setItem(`nexus_conv_${projectId}`, askAtlasConversationId ?? activeConversationId ?? ""); } catch {}
       try {
         sessionStorage.setItem(OPENING_CONVERSATION_STORAGE_KEY, JSON.stringify(conversationMessages));
         sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
@@ -3384,6 +3392,8 @@ export default function Home() {
       setIsSending(false);
     }
   }, [
+    activeConversationId,
+    askAtlasConversationId,
     backendReady,
     isFree,
     isSending,
@@ -6221,6 +6231,32 @@ export default function Home() {
               );
             }}
           />
+          {/* State 1: conversation is active but no project shaped yet — quiet
+              "No project yet" indicator that gives the thread a home. Only
+              visible when the CommitPill itself is hidden (shapingStatus idle). */}
+          {shapingStatus === "idle" && nexusChat.messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void performCreateProjectFromConversation()}
+              style={{
+                display: "block",
+                margin: "0 auto",
+                padding: "6px 18px",
+                borderRadius: 999,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "var(--atlas-muted)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              No project yet &middot; Start Project &rarr;
+            </button>
+          )}
         </div>
       </div>
 

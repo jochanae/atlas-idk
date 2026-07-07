@@ -9140,7 +9140,7 @@ export default function Workspace() {
                 ),
                 onSelect: () => {
                   setShowMoreSheet(false);
-                  openAskAtlasFromWorkspace(setLocation);
+                  openAskAtlasFromWorkspace(setLocation, (() => { try { return localStorage.getItem(`nexus_conv_${id}`); } catch { return null; } })());
                 },
               },
               {
