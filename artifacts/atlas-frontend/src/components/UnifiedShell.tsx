@@ -33,7 +33,7 @@ import { ConversationsLauncher } from "@/components/ConversationsLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { getAuthHeaders } from "@/lib/api";
-import { askAtlasSession } from "@/lib/askAtlasSession";
+import { openAskAtlasFromWorkspace } from "@/lib/askAtlasSession";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   computeScoreFromNodeState,
@@ -571,12 +571,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   }, []);
 
   const openAskAtlas = useCallback(() => {
-    askAtlasSession.clearClosed();
-    askAtlasSession.setSurfaceOpen(true);
-    setLocation("/home");
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
-    }, 30);
+    openAskAtlasFromWorkspace(setLocation);
   }, [setLocation]);
 
   const beginRename = useCallback(() => {
