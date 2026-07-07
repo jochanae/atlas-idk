@@ -9139,6 +9139,24 @@ export default function Workspace() {
             }} />
             {([
               {
+                id: "conversation" as const,
+                label: "Conversation",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                ),
+                onSelect: () => {
+                  setShowMoreSheet(false);
+                  askAtlasSession.clearClosed();
+                  askAtlasSession.setSurfaceOpen(true);
+                  setLocation("/home");
+                  window.setTimeout(() => {
+                    try { window.dispatchEvent(new CustomEvent("axiom:ask-atlas")); } catch {}
+                  }, 30);
+                },
+              },
+              {
                 id: "files" as const,
                 label: "Files",
                 icon: (
