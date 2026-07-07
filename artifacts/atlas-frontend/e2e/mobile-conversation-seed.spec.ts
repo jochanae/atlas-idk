@@ -27,6 +27,10 @@ test.describe("mobile workspace → Ask Atlas context handoff", () => {
         });
       }
 
+      if (url.pathname === "/api/nexus/resume") {
+        return route.fulfill({ json: { whatMoved: [], whatEmerged: "", waitingOnYou: "", suggestedNextMove: "" } });
+      }
+
       if (url.pathname === "/api/projects") {
         return route.fulfill({ json: [{ id: PROJECT_ID, name: PROJECT_NAME, status: "committed", updatedAt: "2026-07-07T12:00:00.000Z" }] });
       }
