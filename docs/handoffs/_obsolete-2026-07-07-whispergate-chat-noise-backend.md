@@ -1,4 +1,6 @@
-# Backend Handoff — WhisperGate on `/api/chat` (workspace noise fix)
+# [OBSOLETE 2026-07-07] Backend Handoff — WhisperGate on `/api/chat`
+
+> **DO NOT USE.** Written under the false assumption that the backend lived in a separate Cloud Run repo. The backend is `artifacts/api-server/` in THIS repo. The workspace chat path is `/api/nexus/chat` (nexus.ts), not `/api/chat`. The real run-card fix was landed directly in `nexus.ts` (early-return when `mode === "conversation"`). Kept for history only.
 
 **Date:** 2026-07-07
 **Repo:** `Axiom-Atlas` (Cloud Run) — NOT the Lovable frontend repo
