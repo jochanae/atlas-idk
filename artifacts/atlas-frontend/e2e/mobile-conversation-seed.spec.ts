@@ -56,6 +56,14 @@ test.describe("mobile workspace → Ask Atlas context handoff", () => {
         return route.fulfill({ json: [{ id: "run-1", title: "Updated mobile navigation", runStatus: "applied", createdAt: "2026-07-07T12:02:00.000Z" }] });
       }
 
+      if (url.pathname === `/api/projects/${PROJECT_ID}/intelligence`) {
+        return route.fulfill({ json: { readiness: { overall: 57, overallLabel: "Shaping" } } });
+      }
+
+      if (url.pathname === `/api/projects/${PROJECT_ID}/readiness`) {
+        return route.fulfill({ json: { overall: 57, overallLabel: "Shaping", dimensions: [] } });
+      }
+
       if (url.pathname.includes(`/api/projects/${PROJECT_ID}/`)) {
         return route.fulfill({ json: url.pathname.endsWith("/greeting") ? { message: "Here. What are you seeing?" } : [] });
       }
