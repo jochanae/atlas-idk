@@ -2764,7 +2764,14 @@ router.get("/image-gen-test", async (req, res): Promise<void> => {
 });
 
 router.post("/chat", async (req, res): Promise<void> => {
+  // WhisperGate intent for this turn. Default BUILD preserves existing behavior
+  // when the classifier hasn't run yet (e.g. slash commands that short-circuit).
+  // Reassigned once classifyIntent() completes below.
+  let whisperIntent: WhisperIntent = "BUILD";
   const writeStep = (res: Response, s: { verb: string; target?: string; phase: string }) => {
+    // Suppress step events on pure CHAT turns — they render as "run cards" in
+    // the UI and are the #1 source of "hello triggered a build" noise.
+    if (whisperIntent === "CHAT") return;
     try { res.write(`data: ${JSON.stringify({ type: "step", ...s })}\n\n`); } catch {}
   };
 
