@@ -1303,6 +1303,12 @@ async function persistNexusExecutionRun(args: {
     );
     const mode = fileReadActions.length > 0 ? "operational" : "conversation";
 
+    // Don't persist a run row for pure conversational turns — they produce
+    // no files, no steps, no build ops. Persisting them creates run cards
+    // in the workspace timeline that look like build activity when they're
+    // just chat. Only persist when Atlas actually did operational work.
+    if (mode === "conversation") return;
+
     const summary = fileReadActions.length > 0
       ? `Read ${fileReadActions.length} file${fileReadActions.length === 1 ? "" : "s"} \u00b7 ${args.atlasResponse.slice(0, 80).replace(/\n/g, " ").trim()}\u2026`
       : args.atlasResponse.slice(0, 120).replace(/\n/g, " ").trim();
