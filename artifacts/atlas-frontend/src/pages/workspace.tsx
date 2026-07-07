@@ -56,6 +56,7 @@ import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel
 import { SearchModal } from "../components/workspace/SearchModal";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
 import { MapTab } from "@/components/workspace/MapTab";
+import { ConversationViewSwitcher } from "@/components/workspace/ConversationViewSwitcher";
 import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
 import { StreamingText, ChunkedBubbles } from "@/components/workspace/StreamingText";
 import { LinePatchReviewCard, ReviewPlanCard, ReviewTabPanel, PushDiffCard } from "@/components/workspace/ReviewCards";
@@ -8056,6 +8057,19 @@ export default function Workspace() {
           document.body
         );
       })()}
+
+      {/* ── Conversation ↔ Workspace view switch (same conversation, two views) ── */}
+      <div
+        style={{
+          position: "fixed",
+          top: "calc(var(--atlas-header-height, 48px) + 8px)",
+          right: 12,
+          zIndex: 40,
+          pointerEvents: "auto",
+        }}
+      >
+        <ConversationViewSwitcher hidden={isMobile} />
+      </div>
 
       {/* ── Axiom handoff banner ── */}
       {showAxiomBanner && (
