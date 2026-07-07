@@ -1088,6 +1088,11 @@ function WorkspaceContextChip() {
   const ctx = useActiveProjectContext();
   const [, setLoc] = useLocation();
   const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    const restore = () => setDismissed(false);
+    window.addEventListener("axiom:restore-workspace-context-chip", restore);
+    return () => window.removeEventListener("axiom:restore-workspace-context-chip", restore);
+  }, []);
   if (!ctx || dismissed) return null;
   return (
     <div
