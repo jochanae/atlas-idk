@@ -52,7 +52,7 @@ import {
   clearActiveProjectContext,
   isUnresolvedDecisionEntry,
 } from "@/lib/activeProjectContext";
-import { askAtlasSession } from "@/lib/askAtlasSession";
+import { openAskAtlasFromWorkspace } from "@/lib/askAtlasSession";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
@@ -9149,12 +9149,7 @@ export default function Workspace() {
                 ),
                 onSelect: () => {
                   setShowMoreSheet(false);
-                  askAtlasSession.clearClosed();
-                  askAtlasSession.setSurfaceOpen(true);
-                  setLocation("/home");
-                  window.setTimeout(() => {
-                    try { window.dispatchEvent(new CustomEvent("axiom:ask-atlas")); } catch {}
-                  }, 30);
+                  openAskAtlasFromWorkspace(setLocation);
                 },
               },
               {
