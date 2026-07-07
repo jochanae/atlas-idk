@@ -4778,7 +4778,7 @@ export default function Workspace() {
 
   // Phase 2B: execution_runs data layer — provides durable run receipts to the
   // trailing WorkspaceRunCard instead of relying on message scanning (deriveRun).
-  const { execLatestRun, invalidate: invalidateProjectRuns } = useProjectRuns(id);
+  const { execLatestRun } = useProjectRuns(id);
 
 
   const thinkFreelyThreadLoadedRef = useRef(false);
@@ -5558,26 +5558,16 @@ export default function Workspace() {
     return () => clearTimeout(t);
   }, [chatPending]);
 
-  // Invalidate the runs cache when a chat turn completes so the trailing
-  // WorkspaceRunCard immediately reflects the newly recorded execution_run.
-  // 600ms delay gives the fire-and-forget recorder time to commit.
+  // Emit run-completed on the bus when a classic chat turn finishes.
+  // Subscribers (WorkspaceRunCard, ViewChangesPanel) invalidate their own queries.
   const chatPendingRef = useRef(chatPending);
   useEffect(() => {
     const prev = chatPendingRef.current;
     chatPendingRef.current = chatPending;
     if (prev && !chatPending) {
-      // Emit on the bus first so all subscribers (ViewChangesPanel, etc.) can
-      // react immediately, then invalidate the runs query without artificial lag.
       workspaceEventBus.emit("run-completed", { projectId: id });
-      invalidateProjectRuns();
     }
-  }, [chatPending, id, invalidateProjectRuns]);
-
-  // When Atlas finishes a turn (done-event), schedule a short-delay entry refresh
-  // so commits/parks recorded by the server are visible without a manual reload.
-  useWorkspaceEvent("done-event", () => {
-    setTimeout(() => workspaceEventBus.emit("entry-changed", { projectId: id }), 1200);
-  }, [id]);
+  }, [chatPending, id]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);

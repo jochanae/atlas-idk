@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { StatusGlyph } from "../StatusGlyph";
 import { CapsuleTag } from "../CapsuleTag";
 import { dispatchVerifyRun, isVerificationEntry, isVerificationFailed, parseVerificationMeta } from "@/lib/verification";
-import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
+import { useWorkspaceEvent, workspaceEventBus } from "@/lib/workspaceEventBus";
 
 
 interface VaultSave {
@@ -297,7 +297,7 @@ export function LedgerPanel({
       { projectId, data: { title: newTitle.trim(), status: "committed", severity: "committed", mode: "decide" } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(projectId, {}) });
+          workspaceEventBus.emit("entry-changed", { projectId });
           setNewTitle(""); setShowAdd(false);
         },
       }
