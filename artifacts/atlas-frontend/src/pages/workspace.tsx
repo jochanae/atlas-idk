@@ -270,6 +270,7 @@ export interface ChatMessage {
   planMode?: boolean;
   alertPayload?: AlertPayload | null;
   alertResolved?: boolean;
+  catchPayload?: import("../lib/DecisionCatchTypes").CatchPayload | null;
   clarify?: ClarifyPayload | null;
   fileEdit?: FileEdit;
   fileEdits?: FileEdit[];
