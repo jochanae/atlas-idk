@@ -2422,6 +2422,15 @@ function AssistantBubbleImpl({
                   onDismiss={() => onAlertDismiss?.()}
                 />
               )}
+
+              {!primaryCardShown && !message.streaming && message.catchPayload && (
+                <DecisionCatchCard
+                  payload={message.catchPayload}
+                  projectId={projectId}
+                  sessionId={sessionId}
+                  sourceMessageId={message.id}
+                />
+              )}
             </>
           );
         })()}
