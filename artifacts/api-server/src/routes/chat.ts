@@ -5095,6 +5095,34 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     rawContent = collectedParts.join("\n\n");
   }
 
+  // ── WhisperGate CHAT guard — strip operational markers on pure chat turns ──
+  // Defense in depth: even if the model ignored the CHAT system-prompt hint
+  // and emitted a FILE_EDIT / REPO_LINK / BUILD_RUN / GITHUB_PUSH / IMAGE_GEN
+  // block anyway, we scrub them here so no run card, no GitHub write, no
+  // artifact side effect fires on a conversational turn. The model's prose is
+  // preserved; only the machine-actionable tokens are removed.
+  if (whisperIntent === "CHAT") {
+    const strippedMarkers: string[] = [];
+    const scrub = (re: RegExp, name: string) => {
+      rawContent = rawContent.replace(re, () => { strippedMarkers.push(name); return ""; });
+    };
+    scrub(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "FILE_EDIT");
+    scrub(/^REPO_LINK:\s*\{[^\n]*\}\s*$/gm, "REPO_LINK");
+    scrub(/^GITHUB_PUSH:\s*\{[^\n]*\}\s*$/gm, "GITHUB_PUSH");
+    scrub(/^GITHUB_READ:\s*\{[^\n]*\}\s*$/gm, "GITHUB_READ");
+    scrub(/^BUILD_RUN:\s*[^\n]+$/gm, "BUILD_RUN");
+    scrub(/^IMAGE_GEN:\s*\{[^\n]+\}\s*$/gm, "IMAGE_GEN");
+    scrub(/^BROWSER_VISIT:\s*\{[^\n]+\}\s*$/gm, "BROWSER_VISIT");
+    scrub(/^SHELL_RUN:\s*\{[^\n]+\}\s*$/gm, "SHELL_RUN");
+    scrub(/^DATA_FETCH:\s*\{[^\n]+\}\s*$/gm, "DATA_FETCH");
+    if (strippedMarkers.length > 0) {
+      logger.info({ strippedMarkers, projectId }, "whisperGate: CHAT turn — stripped operational markers");
+    }
+    rawContent = rawContent.trim();
+  }
+
+
+
   // Extract and strip IMAGE_GEN tokens — Atlas signals which images to generate and in what mode
   const IMAGE_GEN_RE = /^IMAGE_GEN:\s*(\{[^\n]+\})\s*$/gm;
   type ImageGenToken = { prompt: string; mode: "render" | "schematic"; size?: "square" | "landscape" | "portrait" };
