@@ -9,6 +9,9 @@ catalogs:
     '@replit/vite-plugin-cartographer':
       specifier: ^0.5.21
       version: 0.5.21
+    '@replit/vite-plugin-dev-banner':
+      specifier: ^0.1.1
+      version: 0.1.2
     '@replit/vite-plugin-runtime-error-modal':
       specifier: ^0.0.6
       version: 0.0.6
@@ -63,6 +66,9 @@ catalogs:
     vite:
       specifier: ^7.3.2
       version: 7.3.3
+    wouter:
+      specifier: ^3.3.5
+      version: 3.10.0
     zod:
       specifier: ^3.25.76
       version: 3.25.76
@@ -313,8 +319,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2
       '@playwright/test':
-        specifier: ^1.61.1
-        version: 1.61.1
+        specifier: ^1.56.0
+        version: 1.56.0
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -1118,8 +1124,8 @@ packages:
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
-  '@playwright/test@1.61.1':
-    resolution: {integrity: sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig==}
+  '@playwright/test@1.56.0':
+    resolution: {integrity: sha512-Tzh95Twig7hUwwNe381/K3PggZBZblKUe2wv25oIpzWLr6Z0m4KgV1ZVIjnR6GM9ANEqjZD7XsZEa6JL/7YEgg==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3747,13 +3753,13 @@ packages:
     resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
     hasBin: true
 
-  playwright-core@1.61.1:
-    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
+  playwright-core@1.56.0:
+    resolution: {integrity: sha512-1SXl7pMfemAMSDn5rkPeZljxOCYAmQnYLBTExuh6E8USHXGSX3dx6lYZN/xPpTz1vimXmPA9CDnILvmJaB8aSQ==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.61.1:
-    resolution: {integrity: sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ==}
+  playwright@1.56.0:
+    resolution: {integrity: sha512-X5Q1b8lOdWIE4KAoHpW3SE8HvUB+ZZsUoN64ZhjnN8dOb1UpujxBtENGiZFE+9F/yhzJwYa+ca3u43FeLbboHA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -5161,9 +5167,9 @@ snapshots:
 
   '@pinojs/redact@0.4.0': {}
 
-  '@playwright/test@1.61.1':
+  '@playwright/test@1.56.0':
     dependencies:
-      playwright: 1.61.1
+      playwright: 1.56.0
 
   '@protobufjs/aspromise@1.1.2': {}
 
@@ -7960,11 +7966,11 @@ snapshots:
       sonic-boom: 4.2.1
       thread-stream: 3.1.0
 
-  playwright-core@1.61.1: {}
+  playwright-core@1.56.0: {}
 
-  playwright@1.61.1:
+  playwright@1.56.0:
     dependencies:
-      playwright-core: 1.61.1
+      playwright-core: 1.56.0
     optionalDependencies:
       fsevents: 2.3.2
 
