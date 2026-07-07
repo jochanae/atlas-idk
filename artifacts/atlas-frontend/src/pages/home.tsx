@@ -69,6 +69,7 @@ import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
+import { useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
 
 const PLACEHOLDERS = [
@@ -2005,11 +2006,20 @@ export default function Home() {
       decisions: homeProjectState.decisions,
     } : null,
   });
+  const activeProjectCtx = useActiveProjectContext();
+  const askAtlasInProject = activeProjectCtx && activeProjectCtx.sessionId
+    ? {
+        projectId: activeProjectCtx.projectId,
+        sessionId: activeProjectCtx.sessionId,
+        seed: buildWorkspaceContextSeed(activeProjectCtx),
+      }
+    : null;
   const askAtlasChat = useNexusChatStream({
     focusProjectId: null,
     model: "claude",
     conversationId: askAtlasConversationId,
     projectContext: null,
+    askAtlasInProject,
     onConversationId: (id) => {
       setAskAtlasConversationId(id);
       rememberAskAtlasConversationId(id);

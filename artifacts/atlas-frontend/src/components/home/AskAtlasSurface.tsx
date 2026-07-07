@@ -1081,9 +1081,8 @@ export function AskAtlasSurface({
  *
  * The chip is the *user-facing* half of the "same conversation, two views"
  * seam. The invisible half (sending projectId+sessionId+seed on chat POST)
- * is blocked on the backend spec — see
- * docs/handoffs/2026-07-07-ask-atlas-in-project-mode.md. Until then the chip
- * still gives an honest signal that Atlas knows where you came from.
+ * is wired via home.tsx → useNexusChatStream({ askAtlasInProject }). Backend
+ * contract: docs/handoffs/2026-07-07-ask-atlas-in-project-mode.md.
  */
 function WorkspaceContextChip() {
   const ctx = useActiveProjectContext();

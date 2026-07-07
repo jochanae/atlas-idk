@@ -171,6 +171,17 @@ export interface UseNexusChatStreamOptions {
     memorySummary?: string | null;
     decisions?: unknown[];
   } | null;
+  /**
+   * In-project Ask Atlas mode. When present, chat POST includes
+   * `projectId` + `sessionId` + `askAtlasContextSeed` (first turn only) so the
+   * backend treats this turn as part of the workspace's shared session.
+   * See docs/handoffs/2026-07-07-ask-atlas-in-project-mode.md.
+   */
+  askAtlasInProject?: {
+    projectId: number;
+    sessionId: number;
+    seed?: string | null;
+  } | null;
 }
 
 export interface UseNexusChatStreamReturn {
@@ -199,7 +210,8 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext, askAtlasInProject } = options;
+  const askAtlasSeedSentRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const messagesRef = useRef<NexusMessage[]>([]);
@@ -384,6 +396,20 @@ export function useNexusChatStream(
                 imageBase64: firstImg!.base64,
                 imageMimeType: firstImg!.mediaType,
               }
+            : {}),
+          ...(askAtlasInProject
+            ? (() => {
+                const key = `${askAtlasInProject.projectId}:${askAtlasInProject.sessionId}`;
+                const isFirst = askAtlasSeedSentRef.current !== key;
+                if (isFirst) askAtlasSeedSentRef.current = key;
+                return {
+                  projectId: askAtlasInProject.projectId,
+                  sessionId: askAtlasInProject.sessionId,
+                  ...(isFirst && askAtlasInProject.seed
+                    ? { askAtlasContextSeed: askAtlasInProject.seed }
+                    : {}),
+                };
+              })()
             : {}),
         },
 
