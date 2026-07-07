@@ -51,6 +51,7 @@ import {
   setActiveProjectContext,
   clearActiveProjectContext,
 } from "@/lib/activeProjectContext";
+import { askAtlasSession } from "@/lib/askAtlasSession";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
