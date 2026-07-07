@@ -574,6 +574,9 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
     openAskAtlasFromWorkspace(setLocation);
   }, [setLocation]);
 
+  const [showBridge, setShowBridge] = useState(false);
+  const toggleBridge = useCallback(() => setShowBridge((v) => !v), []);
+
   const beginRename = useCallback(() => {
     setDraft(project?.name ?? "");
     setError(null);
@@ -617,9 +620,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
       <ShellCompletionChip projectId={projectId} />
       <button
         type="button"
-        onClick={openAskAtlas}
-        title="Open Ask Atlas"
-        aria-label="Open Ask Atlas conversation"
+        onClick={toggleBridge}
+        title="Show conversation bridge"
+        aria-label="Show conversation bridge"
+        aria-expanded={showBridge}
         style={{
           position: "relative",
           display: "inline-flex",
@@ -795,8 +799,69 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
         </>
 
       )}
-
+      {showBridge && (
+        <div
+          style={{
+            position: "fixed",
+            top: 56,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 60,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "6px 12px",
+            borderRadius: 999,
+            background: "color-mix(in oklab, var(--atlas-gold, #C9A84C) 12%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--atlas-gold, #C9A84C) 35%, transparent)",
+            backdropFilter: "blur(8px)",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--atlas-gold, #C9A84C)",
+          }}
+        >
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgb(139,92,246)" }} />
+          <span>In: {name}</span>
+          <button
+            type="button"
+            onClick={() => { setShowBridge(false); openAskAtlas(); }}
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "var(--atlas-gold, #C9A84C)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "0 2px",
+              textDecoration: "underline",
+            }}
+            aria-label="Open Ask Atlas conversation"
+          >
+            Conversation →
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowBridge(false)}
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "color-mix(in oklab, var(--atlas-gold, #C9A84C) 60%, transparent)",
+              cursor: "pointer",
+              fontSize: 12,
+              padding: "0 2px",
+              lineHeight: 1,
+            }}
+            aria-label="Dismiss bridge"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
+
   );
 }
 
