@@ -6594,7 +6594,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   // ── Execution run recorder — await before SSE closes so steps are committed ──
   // autoVerify turns (LOCAL_APPLY_SUCCESS loop) skip silently.
   let recordedRunId: string | null = null;
-  if (body.displayAs !== "autoVerify" && projectId) {
+  if (body.displayAs !== "autoVerify" && projectId && whisperIntent !== "CHAT" && whisperIntent !== "DECIDE") {
     try {
       const thoughtText = splitBuildTurn
         ? (intentPersistContent?.trim() || displayContent?.trim() || null)
