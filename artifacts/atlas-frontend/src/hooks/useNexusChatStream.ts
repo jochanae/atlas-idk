@@ -397,6 +397,20 @@ export function useNexusChatStream(
                 imageMimeType: firstImg!.mediaType,
               }
             : {}),
+          ...(askAtlasInProject
+            ? (() => {
+                const key = `${askAtlasInProject.projectId}:${askAtlasInProject.sessionId}`;
+                const isFirst = askAtlasSeedSentRef.current !== key;
+                if (isFirst) askAtlasSeedSentRef.current = key;
+                return {
+                  projectId: askAtlasInProject.projectId,
+                  sessionId: askAtlasInProject.sessionId,
+                  ...(isFirst && askAtlasInProject.seed
+                    ? { askAtlasContextSeed: askAtlasInProject.seed }
+                    : {}),
+                };
+              })()
+            : {}),
         },
 
         callbacks: {
