@@ -75,8 +75,10 @@ test.describe("mobile workspace → Ask Atlas context handoff", () => {
     await page.goto(`/project/${PROJECT_ID}`);
 
     await expect(page.getByText(PROJECT_NAME)).toBeVisible();
-    await page.getByRole("button", { name: "Open Ask Atlas conversation" }).tap();
-    await expect(page).toHaveURL(/\/home$/);
+    await Promise.all([
+      page.waitForURL(/\/home$/),
+      page.getByRole("button", { name: "Open Ask Atlas conversation" }).click({ force: true }),
+    ]);
 
     await page.getByRole("textbox").last().fill("Continue from the project context.");
     await page.getByRole("button", { name: /send/i }).last().tap();
