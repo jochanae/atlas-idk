@@ -1219,6 +1219,94 @@ function conversationMessages(whereClause: SQL | undefined, hasMessageType = tru
   return nonBriefingMessages(whereClause, hasMessageType);
 }
 
+/** Compact workspace-orientation block for the first in-project Ask Atlas turn. */
+async function buildInProjectAskAtlasSeed(
+  projectId: number,
+  sessionId: number,
+  userId: number,
+): Promise<string> {
+  const [[project], tier1, lastUserRows, ledgerEntries, genome] = await Promise.all([
+    db
+      .select({ name: projectsTable.name, memory: projectsTable.memory })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+      .limit(1),
+    loadTier1ForProject(projectId),
+    db
+      .select({ content: chatMessagesTable.content })
+      .from(chatMessagesTable)
+      .where(and(eq(chatMessagesTable.sessionId, sessionId), eq(chatMessagesTable.role, "user")))
+      .orderBy(desc(chatMessagesTable.createdAt))
+      .limit(1),
+    db
+      .select({
+        id: entriesTable.id,
+        title: entriesTable.title,
+        status: entriesTable.status,
+        deviation: entriesTable.deviation,
+        catchAgainstId: entriesTable.catchAgainstId,
+        supersedesId: entriesTable.supersedesId,
+      })
+      .from(entriesTable)
+      .where(eq(entriesTable.projectId, projectId)),
+    getProjectDNA(projectId),
+  ]);
+
+  const lines: string[] = [`Continuing in ${project?.name ?? "this project"} workspace.`];
+
+  const briefFromTier1 = [tier1?.building, tier1?.problem, tier1?.audience]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .join(" — ");
+  const brief = briefFromTier1
+    || (() => {
+      const store = parseMemoryStore(project?.memory ?? null);
+      const memText = buildMemoryText(store);
+      return memText ? memText.slice(0, 400) : "";
+    })();
+  if (brief) lines.push(`Brief: ${brief.slice(0, 400)}`);
+
+  const lastGoal = lastUserRows[0]?.content?.trim();
+  if (lastGoal) lines.push(`Last goal: ${lastGoal.slice(0, 200)}`);
+
+  const openFromGenome = (genome?.openQuestions ?? [])
+    .filter((q): q is string => typeof q === "string" && q.trim().length > 0)
+    .slice(0, 4);
+  if (openFromGenome.length > 0) {
+    lines.push(`Open decisions: ${openFromGenome.join(" · ")}`);
+  } else {
+    const ledgerGroups = groupLedgerEntries(ledgerEntries);
+    const unresolved = [...ledgerGroups.inTension, ...ledgerGroups.parked].slice(0, 4);
+    if (unresolved.length > 0) {
+      lines.push(`Open decisions: ${unresolved.map((e) => e.title).join(" · ")}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+async function loadSessionThreadMessages(sessionId: number): Promise<NexusMessageRow[]> {
+  const rows = await db
+    .select({
+      id: chatMessagesTable.id,
+      role: chatMessagesTable.role,
+      content: chatMessagesTable.content,
+      createdAt: chatMessagesTable.createdAt,
+    })
+    .from(chatMessagesTable)
+    .where(eq(chatMessagesTable.sessionId, sessionId))
+    .orderBy(asc(chatMessagesTable.createdAt));
+  return rows.map((row) => ({
+    id: row.id,
+    userId: 0,
+    role: row.role,
+    content: row.content,
+    conversationId: null,
+    createdAt: row.createdAt,
+    metadata: null,
+    messageType: null,
+  }));
+}
+
 async function loadNexusMessages(whereClause: SQL | undefined, hasMessageType: boolean): Promise<NexusMessageRow[]> {
   const baseSelect = {
     id: nexusMessagesTable.id,
@@ -1640,6 +1728,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     history?: Array<{ role: "user" | "assistant"; content: string }>;
     userProfile?: string;
     focusProjectId?: number | null;
+    projectId?: number | null;
     mode?: string;
     model?: string;
     imageBase64?: string;
@@ -1648,6 +1737,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     conversationId?: string;
     sessionId?: number;
+    askAtlasContextSeed?: string;
     userType?: HomeUserType;
   };
 
@@ -1683,9 +1773,17 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // conversations list. If the frontend doesn't send one (new thread), we
   // generate a UUID here and return it in the `done` event so the client can
   // attach it to every subsequent message in the same conversation.
-  const effectiveConversationId: string = conversationId ?? randomUUID();
-  const userType = parseHomeUserType(body.userType);
+  // In-project Ask Atlas shares the workspace session thread instead — no new
+  // nexus conversation row is created.
   const sessionId = Number.isInteger(body.sessionId) && Number(body.sessionId) > 0 ? Number(body.sessionId) : null;
+  const requestedProjectId = Number.isInteger(body.projectId) && Number(body.projectId) > 0
+    ? Number(body.projectId)
+    : null;
+  const isInProjectAskAtlas = !!(requestedProjectId && sessionId);
+  const effectiveConversationId: string | null = isInProjectAskAtlas
+    ? (conversationId ?? null)
+    : (conversationId ?? randomUUID());
+  const userType = parseHomeUserType(body.userType);
   // Use a sensible fallback when the user sends an image with no text
   const message = body.message?.trim() || (hasImage ? "[image]" : "");
 
@@ -1706,9 +1804,17 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Session not found" });
     return;
   }
+  if (isInProjectAskAtlas && sessionContext[0]?.projectId !== requestedProjectId) {
+    res.status(400).json({ error: "sessionId does not belong to projectId" });
+    return;
+  }
   let ideaMode = sessionContext[0]?.ideaMode === true;
-  const focusProjectId = requestedFocusProjectId ?? sessionContext[0]?.projectId ?? null;
+  const focusProjectId = requestedFocusProjectId ?? requestedProjectId ?? sessionContext[0]?.projectId ?? null;
   const hasMessageType = await hasNexusMessageTypeColumn();
+
+  if (isInProjectAskAtlas) {
+    logger.info({ projectId: requestedProjectId, sessionId }, "nexus: in-project Ask Atlas turn");
+  }
 
   // Load projects + Living Thread in parallel.
   // When conversationId is absent the caller is starting a brand-new thread —
@@ -1722,6 +1828,9 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       .from(projectsTable)
       .where(eq(projectsTable.userId, userId)),
     (() => {
+      if (isInProjectAskAtlas && sessionId) {
+        return loadSessionThreadMessages(sessionId);
+      }
       if (conversationId === "__legacy__") {
         return loadNexusMessages(
           conversationMessages(and(eq(nexusMessagesTable.userId, userId), isNull(nexusMessagesTable.conversationId)), hasMessageType),
@@ -1919,7 +2028,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // conditions or schema migration gaps where the row hasn't been committed yet).
   const historySource = dbMessages.length > 0
     ? dbMessages.slice(-40)
-    : (conversationId ? requestHistory.slice(-40) : []);
+    : (isInProjectAskAtlas ? [] : (conversationId ? requestHistory.slice(-40) : []));
   const conversationHistory = historySource.map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content,
@@ -2473,8 +2582,17 @@ WHAT YOU SHOULD NOT DO:
     }
   }
 
+  if (isInProjectAskAtlas && requestedProjectId && sessionId && typeof body.askAtlasContextSeed === "string") {
+    try {
+      const workspaceSeed = await buildInProjectAskAtlasSeed(requestedProjectId, sessionId, userId);
+      systemPrompt += `\n\n--- WORKSPACE CONTEXT ---\n${workspaceSeed}\nYou are continuing an existing workspace conversation in Ask Atlas view. Treat prior workspace turns as already known context.\n--- END WORKSPACE CONTEXT ---`;
+    } catch (seedErr) {
+      logger.warn({ err: seedErr, projectId: requestedProjectId, sessionId }, "nexus: failed to build in-project Ask Atlas seed");
+    }
+  }
+
   let tier1ProjectId: number | null = focusProjectId;
-  if (!tier1ProjectId) {
+  if (!tier1ProjectId && effectiveConversationId) {
     const [boundConversationProject] = await db
       .select({ id: projectsTable.id })
       .from(projectsTable)
@@ -2488,12 +2606,20 @@ WHAT YOU SHOULD NOT DO:
   if (tier1ProjectId) {
     const tier1Row = await loadTier1ForProject(tier1ProjectId);
     systemPrompt += buildTier1StatusBlock(tier1Row);
-  } else {
+  } else if (effectiveConversationId) {
     const conversationBuffer = await getNexusTier1Buffer(effectiveConversationId, userId);
     systemPrompt += buildTier1BlockForNexusConversation(conversationBuffer);
   }
 
-  // Persist the user message to the Living Thread
+  // Persist the user turn — workspace session thread for in-project Ask Atlas,
+  // otherwise the Nexus Living Thread.
+  if (isInProjectAskAtlas && sessionId) {
+    await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message });
+    await db
+      .update(sessionsTable)
+      .set({ messageCount: sql`${sessionsTable.messageCount} + 1` })
+      .where(eq(sessionsTable.id, sessionId));
+  } else {
   try {
     await db.insert(nexusMessagesTable).values({
       userId,
@@ -2520,6 +2646,7 @@ WHAT YOU SHOULD NOT DO:
     } else {
       throw dbErr;
     }
+  }
   }
 
   // Set SSE headers
@@ -2818,8 +2945,63 @@ WHAT YOU SHOULD NOT DO:
           recentMessages: conversationHistory,
         });
 
-    // Persist the assistant response to the Living Thread
+    let catchPayload: Awaited<ReturnType<typeof detectDecisionCatch>> = null;
+    if (focusProjectId) {
+      try {
+        const whisper = await classifyIntent({
+          message,
+          history: conversationHistory,
+          hasProjectContext: true,
+        });
+        catchPayload = await detectDecisionCatch({
+          projectId: focusProjectId,
+          userId,
+          userText: message,
+          assistantText: visibleContent,
+          intent: whisper.intent,
+          confidence: whisper.confidence,
+          sessionId,
+        });
+      } catch (err) {
+        logger.warn({ err: String(err) }, "decisionCatch: nexus detection failed");
+      }
+    }
+
+    // Persist the assistant response — workspace session thread for in-project Ask Atlas,
+    // otherwise the Nexus Living Thread (with optional mirror into chat_messages).
     let nexusMsgId: number | null = null;
+    let sourceChatMessageId: number | null = null;
+    if (isInProjectAskAtlas && sessionId) {
+      try {
+        const [chatMsg] = await db
+          .insert(chatMessagesTable)
+          .values({
+            sessionId,
+            role: "assistant",
+            content: visibleContent,
+            catchPayload: catchPayload ?? undefined,
+            executionTimeMs: runMetadata.executionTimeMs,
+            inputTokens: runMetadata.inputTokens,
+            outputTokens: runMetadata.outputTokens,
+            costUsd: runMetadata.costUsd != null ? runMetadata.costUsd.toFixed(5) : null,
+            runStatus: runMetadata.runStatus,
+            runSummary: runMetadata.runSummary,
+            runActions: runMetadata.runActions,
+            runArtifacts: runMetadata.runArtifacts,
+          })
+          .returning({ id: chatMessagesTable.id });
+        sourceChatMessageId = chatMsg?.id ?? null;
+        await db
+          .update(sessionsTable)
+          .set({
+            messageCount: sql`${sessionsTable.messageCount} + 1`,
+            ...runMetadata,
+          })
+          .where(eq(sessionsTable.id, sessionId));
+      } catch (dbErr) {
+        logger.warn({ err: dbErr }, "nexus: failed to persist in-project Ask Atlas assistant turn");
+      }
+    } else {
     try {
       const [nexusMsg] = await db.insert(nexusMessagesTable).values({
         userId,
@@ -2849,6 +3031,7 @@ WHAT YOU SHOULD NOT DO:
         throw dbErr;
       }
     }
+    }
     await updateSessionRunMetadata(sessionId, runMetadata).catch((err) => {
       logger.warn({ err }, "updateSessionRunMetadata failed — continuing");
     });
@@ -2870,9 +3053,8 @@ WHAT YOU SHOULD NOT DO:
     // Background genome extraction — non-blocking, rate-limited
     void maybeExtractGenome(focusProjectId ?? null, nexusMsgId);
 
-    // Thinking receipt extraction — Ask Atlas turns only (no project focus)
-    // Fires after every unprojectified turn; rate-limited by (conversationId, turnIndex).
-    if (!focusProjectId && effectiveConversationId) {
+    // Thinking receipt extraction — global Ask Atlas turns only (no project focus)
+    if (!isInProjectAskAtlas && !focusProjectId && effectiveConversationId) {
       void maybeExtractThinkingReceipts({
         userId,
         conversationId: effectiveConversationId,
@@ -2883,41 +3065,18 @@ WHAT YOU SHOULD NOT DO:
       });
     }
 
-    // Global narrative synthesis — builds the living cross-thread memory paragraph.
-    // Fires fire-and-forget after every Ask Atlas turn (both projectified and not),
-    // with a 4-min cooldown so it doesn't thrash on rapid sends.
-    void synthesizeGlobalNarrative({
-      userId,
-      userMessage: body.message ?? "",
-      atlasResponse: visibleContent,
-    });
-
-    let catchPayload: Awaited<ReturnType<typeof detectDecisionCatch>> = null;
-    if (focusProjectId) {
-      try {
-        const whisper = await classifyIntent({
-          message,
-          history: conversationHistory,
-          hasProjectContext: true,
-        });
-        catchPayload = await detectDecisionCatch({
-          projectId: focusProjectId,
-          userId,
-          userText: message,
-          assistantText: visibleContent,
-          intent: whisper.intent,
-          confidence: whisper.confidence,
-          sessionId,
-        });
-      } catch (err) {
-        logger.warn({ err: String(err) }, "decisionCatch: nexus detection failed");
-      }
+    // Global narrative synthesis — skip in-project workspace turns
+    if (!isInProjectAskAtlas) {
+      void synthesizeGlobalNarrative({
+        userId,
+        userMessage: body.message ?? "",
+        atlasResponse: visibleContent,
+      });
     }
 
-    // Mirror assistant turn into workspace chat_messages when a session is linked,
-    // so ledger entries can attribute to a chat_messages row.
-    let sourceChatMessageId: number | null = null;
-    if (sessionId) {
+    // Mirror assistant turn into workspace chat_messages when a session is linked
+    // on a global Nexus turn (in-project turns persist directly above).
+    if (!isInProjectAskAtlas && sessionId) {
       try {
         const [chatMsg] = await db
           .insert(chatMessagesTable)
@@ -2958,7 +3117,7 @@ WHAT YOU SHOULD NOT DO:
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.
     // Send done immediately — HUD clears now regardless of image generation speed.
-    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, catchPayload: catchPayload ?? undefined, ...(thinkingStable ? { thinkingStable: true } : {}), ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
+    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, ...(isInProjectAskAtlas ? { sessionId, projectId: requestedProjectId, inProjectAskAtlas: true } : { conversationId: effectiveConversationId }), convState, catchPayload: catchPayload ?? undefined, ...(thinkingStable ? { thinkingStable: true } : {}), ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
 
     // Persist conv_state to project so workspace always opens with the correct posture.
     // Non-blocking: runs after SSE done is flushed so it never delays the stream.
