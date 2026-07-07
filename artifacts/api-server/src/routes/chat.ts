@@ -5734,18 +5734,12 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
 
   let catchPayload: Awaited<ReturnType<typeof detectDecisionCatch>> = null;
   if (projectId && userId && !isFlowMode && !isScenarioMode) {
-    const catchIntent =
-      whisperIntent === "CHAT"
-        ? "think"
-        : whisperIntent === "DECIDE"
-          ? "decide"
-          : "build";
     catchPayload = await detectDecisionCatch({
       projectId,
       userId,
       userText: message,
       assistantText: persistContent,
-      intent: catchIntent,
+      intent: whisperIntent,
       confidence: whisperConfidence,
       sessionId,
     });

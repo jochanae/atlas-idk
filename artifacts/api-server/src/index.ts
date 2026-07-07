@@ -166,9 +166,13 @@ async function ensureColumns(): Promise<void> {
   try {
     await db.execute(sql`
       ALTER TABLE entries
-        ADD COLUMN IF NOT EXISTS am_field text
+        ADD COLUMN IF NOT EXISTS am_field text,
+        ADD COLUMN IF NOT EXISTS catch_against_id integer,
+        ADD COLUMN IF NOT EXISTS deviation_reason text,
+        ADD COLUMN IF NOT EXISTS card_schema_version integer DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS source_message_id integer
     `);
-    logger.info("ensureColumns: entries.am_field column verified");
+    logger.info("ensureColumns: entries.am_field + decision-catch columns verified");
   } catch (err) {
     logger.warn({ err }, "ensureColumns: entries.am_field failed — server will start anyway");
   }
@@ -436,9 +440,10 @@ async function ensureColumns(): Promise<void> {
       ALTER TABLE chat_messages
         ADD COLUMN IF NOT EXISTS file_edits_json   text,
         ADD COLUMN IF NOT EXISTS file_deletes_json text,
-        ADD COLUMN IF NOT EXISTS line_patches_json text
+        ADD COLUMN IF NOT EXISTS line_patches_json text,
+        ADD COLUMN IF NOT EXISTS catch_payload     jsonb
     `);
-    logger.info("ensureColumns: chat_messages run-card columns verified");
+    logger.info("ensureColumns: chat_messages run-card + catch_payload columns verified");
   } catch (err) {
     logger.warn({ err }, "ensureColumns: chat_messages run-card columns failed — server will start anyway");
   }

@@ -306,13 +306,14 @@ router.post("/projects/:projectId/entries", async (req, res): Promise<void> => {
   if (!(await projectBelongsToUser(params.data.projectId, userId))) {
     res.status(404).json({ error: "Project not found" }); return;
   }
-  const { costOfLesson, am_field, ...rest } = parsed.data;
+  const { costOfLesson, am_field, deviationReason, ...rest } = parsed.data;
   const [entry] = await db.insert(entriesTable).values({
     projectId: params.data.projectId,
     ...rest,
     title: parsed.data.title.trim(),
     ...(costOfLesson != null ? { costOfLesson: String(costOfLesson) } : {}),
     ...(am_field ? { amField: am_field } : {}),
+    ...(deviationReason ? { deviationReason } : {}),
   } as typeof entriesTable.$inferInsert).returning();
   await touchProjectActivity(params.data.projectId);
   res.status(201).json(serializeEntry(entry));

@@ -3,6 +3,7 @@ import { db, entriesTable } from "@workspace/db";
 import { embedText } from "./embeddings";
 import { logger } from "./logger";
 import { isSummaryObservation, wouldEmitCommitCard } from "./decisionSignals";
+import type { WhisperIntent } from "./whisperGate";
 
 export type CatchCheckKind = "alignment" | "conflict" | "pattern";
 
@@ -192,7 +193,7 @@ export async function detectDecisionCatch(input: {
   userId: number;
   userText: string;
   assistantText: string;
-  intent: "think" | "build" | "decide";
+  intent: WhisperIntent;
   confidence: number;
   sessionId?: number | null;
 }): Promise<CatchPayload | null> {
@@ -217,7 +218,7 @@ export async function detectDecisionCatch(input: {
     );
   };
 
-  if (input.intent !== "build" && input.intent !== "decide") {
+  if (input.intent !== "BUILD" && input.intent !== "DECIDE") {
     suppressReason = "intent_not_build_or_decide";
     logAttempt();
     return null;

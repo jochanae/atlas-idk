@@ -2900,18 +2900,12 @@ WHAT YOU SHOULD NOT DO:
           history: conversationHistory,
           hasProjectContext: true,
         });
-        const catchIntent =
-          whisper.intent === "CHAT"
-            ? "think"
-            : whisper.intent === "DECIDE"
-              ? "decide"
-              : "build";
         catchPayload = await detectDecisionCatch({
           projectId: focusProjectId,
           userId,
           userText: message,
           assistantText: visibleContent,
-          intent: catchIntent,
+          intent: whisper.intent,
           confidence: whisper.confidence,
           sessionId,
         });

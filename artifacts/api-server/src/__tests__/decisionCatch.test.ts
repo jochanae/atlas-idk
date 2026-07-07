@@ -118,7 +118,7 @@ describe("detectDecisionCatch", () => {
       userId: 1,
       userText: "let's move to Neon",
       assistantText: "Switching databases now.",
-      intent: "think",
+      intent: "CHAT",
       confidence: 0.9,
     });
     expect(result).toBeNull();
@@ -132,7 +132,7 @@ describe("detectDecisionCatch", () => {
       userId: 1,
       userText: "let's move to Neon",
       assistantText: "Switching to Neon.",
-      intent: "build",
+      intent: "BUILD",
       confidence: 0.8,
     });
     expect(result).toBeNull();
@@ -159,7 +159,7 @@ describe("detectDecisionCatch", () => {
       userId: 1,
       userText: "let's move to Neon",
       assistantText: "We'll switch to Neon instead of Supabase for auth.",
-      intent: "decide",
+      intent: "DECIDE",
       confidence: 0.85,
       sessionId: 5,
     });
@@ -191,7 +191,7 @@ describe("detectDecisionCatch", () => {
       userId: 1,
       userText: "let's polish the mobile view",
       assistantText: "We can refine the mobile layout and tighten spacing.",
-      intent: "build",
+      intent: "BUILD",
       confidence: 0.8,
     });
     expect(result).toBeNull();
@@ -218,7 +218,7 @@ describe("detectDecisionCatch", () => {
       userId: 1,
       userText: "let's move to Neon",
       assistantText: "We'll switch to Neon instead.",
-      intent: "build",
+      intent: "BUILD",
       confidence: 0.8,
       sessionId: 5,
     });
@@ -249,7 +249,7 @@ describe("detectDecisionCatch", () => {
       userId: 1,
       userText: "let's move to Neon",
       assistantText: "We'll switch to Neon instead of Supabase.",
-      intent: "build",
+      intent: "BUILD",
       confidence: 0.8,
       sessionId: 5,
     });
