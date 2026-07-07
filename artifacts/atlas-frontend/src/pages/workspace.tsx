@@ -50,6 +50,7 @@ import { workspaceEventBus, useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import {
   setActiveProjectContext,
   clearActiveProjectContext,
+  isUnresolvedDecisionEntry,
 } from "@/lib/activeProjectContext";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { FilesPanel } from "../components/workspace/FilesPanel";
@@ -5738,7 +5739,7 @@ export default function Workspace() {
     }
     // Unresolved decisions: anything not committed / locked in the entries feed.
     const unresolvedDecisions = (entries ?? [])
-      .filter((e: any) => e?.type === "Decision" && e?.status && e.status !== "committed" && !e?.lockedAt)
+      .filter((e: any) => isUnresolvedDecisionEntry(e))
       .slice(0, 6)
       .map((e: any) => ({ id: e.id as number, title: String(e.title ?? "").slice(0, 120) }));
     setActiveProjectContext({
