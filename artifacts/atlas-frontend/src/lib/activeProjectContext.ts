@@ -119,6 +119,22 @@ export function buildWorkspaceContextSeed(ctx: ActiveProjectContext): string {
   return lines.join("\n");
 }
 
+export function isUnresolvedDecisionEntry(entry: {
+  status?: unknown;
+  lockedAt?: unknown;
+  type?: unknown;
+  mode?: unknown;
+  verb?: unknown;
+}): boolean {
+  const status = String(entry.status ?? "").toLowerCase();
+  if (!status || status === "committed" || status === "archived" || entry.lockedAt) return false;
+
+  const type = String(entry.type ?? "").toLowerCase();
+  const mode = String(entry.mode ?? "").toLowerCase();
+  const verb = String(entry.verb ?? "").toLowerCase();
+  return type === "decision" || mode === "decide" || mode === "decision" || verb.includes("decide") || verb.includes("decision");
+}
+
 // React hook — thin wrapper around the subscribe API.
 import { useEffect, useState } from "react";
 
