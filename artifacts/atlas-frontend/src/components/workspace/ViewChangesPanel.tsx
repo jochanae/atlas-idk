@@ -157,6 +157,8 @@ interface FileRow {
   messageId: number | string;
   projectId: number;
   content?: string | null;
+  beforeContent?: string | null;
+  verb?: string;
 }
 
 // ── Compact receipt pill (replaces the old expandable RunCard on this surface) ─
@@ -308,29 +310,212 @@ function collectFileRows(messages: TimelineMessage[]): FileRow[] {
   return rows.reverse();
 }
 
-function FileContentBlock({ content }: { content: string }) {
-  const ref = useRef<HTMLPreElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.scrollTop = 0;
-  }, [content]);
+// ── Inline diff engine ────────────────────────────────────────────────────────
+// Pure LCS-based line diff; caps at 150 lines per side to stay fast.
+const MAX_DIFF_LINES = 150;
+const DIFF_CONTEXT = 3;
+
+type DiffLine = { type: "add" | "remove" | "equal" | "hunk"; line: string; count?: number };
+
+function computeLineDiff(before: string, after: string): DiffLine[] {
+  const aLines = before.split("\n").slice(0, MAX_DIFF_LINES);
+  const bLines = after.split("\n").slice(0, MAX_DIFF_LINES);
+  const la = aLines.length, lb = bLines.length;
+
+  const dp: number[][] = Array.from({ length: la + 1 }, () => new Array(lb + 1).fill(0));
+  for (let i = 1; i <= la; i++) {
+    for (let j = 1; j <= lb; j++) {
+      dp[i][j] = aLines[i - 1] === bLines[j - 1]
+        ? dp[i - 1][j - 1] + 1
+        : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+
+  const raw: Array<{ type: "add" | "remove" | "equal"; line: string }> = [];
+  let i = la, j = lb;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && aLines[i - 1] === bLines[j - 1]) {
+      raw.unshift({ type: "equal", line: aLines[i - 1] }); i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      raw.unshift({ type: "add", line: bLines[j - 1] }); j--;
+    } else {
+      raw.unshift({ type: "remove", line: aLines[i - 1] }); i--;
+    }
+  }
+
+  // Collapse equal lines outside ±DIFF_CONTEXT of any change
+  const nearChange = new Set<number>();
+  for (let k = 0; k < raw.length; k++) {
+    if (raw[k].type !== "equal") {
+      for (let c = Math.max(0, k - DIFF_CONTEXT); c <= Math.min(raw.length - 1, k + DIFF_CONTEXT); c++) {
+        nearChange.add(c);
+      }
+    }
+  }
+
+  const result: DiffLine[] = [];
+  let equalRun = 0;
+  for (let k = 0; k < raw.length; k++) {
+    if (raw[k].type === "equal" && !nearChange.has(k)) {
+      equalRun++;
+    } else {
+      if (equalRun > 0) { result.push({ type: "hunk", line: "", count: equalRun }); equalRun = 0; }
+      result.push(raw[k] as DiffLine);
+    }
+  }
+  if (equalRun > 0) result.push({ type: "hunk", line: "", count: equalRun });
+  return result;
+}
+
+function InlineDiffBlock({ before, after }: { before: string | null; after: string | null }) {
+  const isCreated  = !before && !!after;
+  const isDeleted  = !!before && !after;
+  const hasDiff    = !!before && !!after;
+
+  if (isCreated) {
+    return (
+      <pre style={{
+        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
+        background: "rgba(40,90,55,0.30)",
+        border: "1px solid rgba(80,160,100,0.18)",
+        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+        color: "rgba(160,220,170,0.9)", lineHeight: 1.6,
+        overflowX: "auto", overflowY: "auto", maxHeight: 320,
+        whiteSpace: "pre", wordBreak: "normal",
+      }}>{after}</pre>
+    );
+  }
+
+  if (isDeleted) {
+    return (
+      <pre style={{
+        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
+        background: "rgba(90,30,30,0.30)",
+        border: "1px solid rgba(180,70,70,0.18)",
+        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+        color: "rgba(220,140,140,0.9)", lineHeight: 1.6,
+        overflowX: "auto", overflowY: "auto", maxHeight: 320,
+        whiteSpace: "pre", wordBreak: "normal",
+        textDecoration: "line-through",
+      }}>{before}</pre>
+    );
+  }
+
+  if (!hasDiff) {
+    return (
+      <pre style={{
+        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
+        background: "rgba(0,0,0,0.35)",
+        border: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
+        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+        color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
+        overflowX: "auto", overflowY: "auto", maxHeight: 320,
+        whiteSpace: "pre", wordBreak: "normal",
+      }}>{after ?? before ?? ""}</pre>
+    );
+  }
+
+  const diff = computeLineDiff(before, after);
+  const hasChanges = diff.some((d) => d.type === "add" || d.type === "remove");
+
+  if (!hasChanges) {
+    return (
+      <pre style={{
+        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
+        background: "rgba(0,0,0,0.35)",
+        border: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
+        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+        color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
+        overflowX: "auto", overflowY: "auto", maxHeight: 320,
+        whiteSpace: "pre", wordBreak: "normal",
+      }}>{after}</pre>
+    );
+  }
+
   return (
-    <pre ref={ref} style={{
-      margin: "6px 0 0", padding: "10px 12px",
-      borderRadius: 4,
-      background: "rgba(0,0,0,0.35)",
-      border: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
-      fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-      color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
-      overflowX: "auto", overflowY: "auto",
-      maxHeight: 320, whiteSpace: "pre", wordBreak: "normal",
-    }}>{content}</pre>
+    <div style={{
+      margin: "4px 0 0", borderRadius: 4, overflow: "hidden",
+      border: "1px solid rgba(var(--atlas-gold-rgb), 0.12)",
+      background: "rgba(0,0,0,0.28)",
+      maxHeight: 320, overflowY: "auto",
+    }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: 20 }} />
+          <col />
+        </colgroup>
+        <tbody>
+          {diff.map((d, idx) => {
+            if (d.type === "hunk") {
+              return (
+                <tr key={idx}>
+                  <td colSpan={2} style={{
+                    padding: "1px 8px",
+                    background: "rgba(100,120,160,0.1)",
+                    color: "rgba(160,180,210,0.55)",
+                    fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+                    userSelect: "none",
+                  }}>⋯ {d.count} unchanged lines</td>
+                </tr>
+              );
+            }
+            const bg =
+              d.type === "add"    ? "rgba(40,90,55,0.32)" :
+              d.type === "remove" ? "rgba(90,30,30,0.32)" :
+              "transparent";
+            const prefix =
+              d.type === "add"    ? "+" :
+              d.type === "remove" ? "−" :
+              " ";
+            const prefixColor =
+              d.type === "add"    ? "rgba(100,200,120,0.85)" :
+              d.type === "remove" ? "rgba(220,100,100,0.85)" :
+              "rgba(180,180,160,0.3)";
+            const lineColor =
+              d.type === "add"    ? "rgba(160,225,175,0.9)" :
+              d.type === "remove" ? "rgba(225,145,145,0.9)" :
+              "rgba(210,210,190,0.7)";
+            return (
+              <tr key={idx} style={{ background: bg }}>
+                <td style={{
+                  padding: "0 4px",
+                  fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+                  color: prefixColor, textAlign: "center",
+                  userSelect: "none", lineHeight: 1.6,
+                  borderRight: "1px solid rgba(255,255,255,0.05)",
+                  verticalAlign: "top",
+                }}>{prefix}</td>
+                <td style={{
+                  padding: "0 8px",
+                  fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+                  color: lineColor, lineHeight: 1.6,
+                  whiteSpace: "pre", overflowX: "hidden",
+                }}>{d.line}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
+// Derive the human-facing change label + accent colour from FileRow fields.
+function getChangeLabel(row: FileRow): { label: string; color: string } {
+  const verb = row.verb ?? "";
+  if (verb === "FILE_DELETE")                             return { label: "Deleted",  color: "rgba(220,100,100,0.85)" };
+  if (verb === "LINE_PATCH")                             return { label: "Patched",  color: "rgba(var(--atlas-gold-rgb), 0.7)" };
+  const hasAfter  = !!row.content;
+  const hasBefore = row.beforeContent !== undefined && row.beforeContent !== null;
+  if (hasAfter && !hasBefore)                            return { label: "Created",  color: "rgba(100,200,130,0.85)" };
+  if (hasAfter  && hasBefore)                            return { label: "Modified", color: "rgba(var(--atlas-gold-rgb), 0.85)" };
+  return { label: row.summary, color: "rgba(var(--atlas-muted), 0.55)" };
+}
+
 function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }) {
-  // Auto-expand the first file when there are ≤3 files and content exists.
+  // Auto-expand the first file when there are ≤3 files and viewable content exists.
   const firstKey = rows.length > 0 ? `${rows[0].messageId}-${rows[0].path}-0` : null;
-  const autoExpand = rows.length <= 3 && !!rows[0]?.content;
+  const autoExpand = rows.length <= 3 && (!!rows[0]?.content || !!rows[0]?.beforeContent);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => autoExpand && firstKey ? new Set([firstKey]) : new Set()
   );
@@ -347,9 +532,10 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
       {rows.map((r, i) => {
         const key = `${r.messageId}-${r.path}-${i}`;
         const isExpanded = expandedPaths.has(key);
-        const hasContent = !!r.content;
+        const hasViewable = !!r.content || !!r.beforeContent;
+        const { label, color } = getChangeLabel(r);
         const toggle = () => {
-          if (!hasContent) return;
+          if (!hasViewable) return;
           setExpandedPaths((prev) => {
             const next = new Set(prev);
             if (next.has(key)) next.delete(key); else next.add(key);
@@ -366,7 +552,7 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
               padding: "8px 10px",
-              cursor: hasContent ? "pointer" : "default",
+              cursor: hasViewable ? "pointer" : "default",
             }}
               onClick={toggle}
             >
@@ -378,14 +564,13 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>{r.path}</span>
               <span style={{
-                fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55,
-                fontFamily: "var(--app-font-sans)", flexShrink: 0,
-                fontStyle: "italic",
-              }}>{r.summary}</span>
-              {hasContent && (
+                fontSize: 10, color, fontFamily: "var(--app-font-sans)",
+                flexShrink: 0, fontWeight: 500, letterSpacing: "0.03em",
+              }}>{label}</span>
+              {hasViewable && (
                 <button
                   type="button"
-                  onClick={toggle}
+                  onClick={(e) => { e.stopPropagation(); toggle(); }}
                   style={{
                     fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.08em",
                     textTransform: "uppercase", flexShrink: 0,
@@ -394,12 +579,15 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
                     color: `rgba(var(--atlas-gold-rgb), ${isExpanded ? "1" : "0.7"})`,
                     borderRadius: 3, padding: "2px 7px", cursor: "pointer",
                   }}
-                >{isExpanded ? "▲ Hide" : "▼ View"}</button>
+                >{isExpanded ? "▲ Hide" : "▼ Diff"}</button>
               )}
             </div>
-            {isExpanded && r.content && (
+            {isExpanded && (
               <div style={{ padding: "0 10px 10px" }}>
-                <FileContentBlock content={r.content} />
+                <InlineDiffBlock
+                  before={r.beforeContent ?? null}
+                  after={r.content ?? null}
+                />
               </div>
             )}
           </div>
@@ -891,6 +1079,8 @@ export function ViewChangesPanel({
             messageId: run.id,
             projectId,
             content: step.content ?? null,
+            beforeContent: step.beforeContent ?? null,
+            verb: step.verb,
           });
         }
       }

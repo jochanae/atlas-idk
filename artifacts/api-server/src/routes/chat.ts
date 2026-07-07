@@ -2412,6 +2412,7 @@ type ExecutionRunStep = {
   status: string;
   detail: string | null;
   content: string | null;
+  beforeContent?: string | null;
 };
 
 /** Persist execution_runs + ordered execution_run_steps before the SSE response closes. */
@@ -2430,6 +2431,7 @@ async function persistExecutionRun(args: {
   intermediateSteps: Array<{ verb: string; target: string | null; detail: string | null; content: string | null }>;
   imageGenResult?: { images: Array<{ prompt?: string; model?: string }> };
   githubPushResult?: { branch?: string; error?: string; files?: unknown[] } | null;
+  beforeContentMap?: Map<string, string | null>;
 }): Promise<string | null> {
   const hasTrigger =
     args.responseFileEdits.length > 0 ||
@@ -2505,19 +2507,37 @@ async function persistExecutionRun(args: {
   }
 
   for (const edit of args.responseFileEdits) {
+    const bc = args.beforeContentMap?.get(edit.path);
     steps.push({
       verb: "FILE_EDIT",
       target: edit.path,
       status: "ok",
       detail: null,
       content: (edit.content ?? "").slice(0, 50000) || null,
+      beforeContent: bc !== undefined ? (bc?.slice(0, 50000) ?? null) : null,
     });
   }
   for (const del of args.fileDeletes) {
-    steps.push({ verb: "FILE_DELETE", target: del.path, status: "ok", detail: null, content: null });
+    const bc = args.beforeContentMap?.get(del.path);
+    steps.push({
+      verb: "FILE_DELETE",
+      target: del.path,
+      status: "ok",
+      detail: null,
+      content: null,
+      beforeContent: bc !== undefined ? (bc?.slice(0, 50000) ?? null) : null,
+    });
   }
   for (const patch of args.responseLinePatches) {
-    steps.push({ verb: "LINE_PATCH", target: patch.path, status: "ok", detail: null, content: null });
+    const bc = args.beforeContentMap?.get(patch.path);
+    steps.push({
+      verb: "LINE_PATCH",
+      target: patch.path,
+      status: "ok",
+      detail: null,
+      content: null,
+      beforeContent: bc !== undefined ? (bc?.slice(0, 50000) ?? null) : null,
+    });
   }
   if (args.imageGenResult?.images?.length) {
     for (const img of args.imageGenResult.images.slice(0, 2)) {
@@ -2545,8 +2565,8 @@ async function persistExecutionRun(args: {
 
   for (const [orderIdx, step] of steps.entries()) {
     await db.execute(sql`
-      INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
-      VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${orderIdx})
+      INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, order_index)
+      VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${step.beforeContent ?? null}, ${orderIdx})
     `);
   }
 
@@ -5603,6 +5623,9 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   // Split BUILD turns defer auto-apply until after the intent message is persisted.
   let autoApplied = false;
   const autoAppliedPaths: string[] = [];
+  // Tracks file content BEFORE any write in this run — used for run-native diffs.
+  // Keyed by relative path; null = new file (no prior content).
+  const beforeContentMap = new Map<string, string | null>();
   if (!splitBuildTurn && responseFileEdits.length > 0 && projectId) {
     try {
       const wsDir = await ensureProjectWorkspaceDir(projectId);
@@ -5610,6 +5633,10 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
         const absPath = resolveWorkspacePath(wsDir, edit.path);
         await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+        if (!beforeContentMap.has(edit.path)) {
+          try { beforeContentMap.set(edit.path, await fsPromises.readFile(absPath, "utf-8")); }
+          catch { beforeContentMap.set(edit.path, null); }
+        }
         await fsPromises.writeFile(absPath, edit.content, "utf-8");
         autoAppliedPaths.push(edit.path);
       }
@@ -5817,6 +5844,10 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
               writeStep(res, { verb: "Writing", target: edit.path, phase: "build" });
               const absPath = resolveWorkspacePath(wsDir, edit.path);
               await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+              if (!beforeContentMap.has(edit.path)) {
+                try { beforeContentMap.set(edit.path, await fsPromises.readFile(absPath, "utf-8")); }
+                catch { beforeContentMap.set(edit.path, null); }
+              }
               await fsPromises.writeFile(absPath, edit.content, "utf-8");
               autoAppliedPaths.push(edit.path);
             }
@@ -6630,6 +6661,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         intermediateSteps: _chatRunIntermediateSteps,
         imageGenResult,
         githubPushResult,
+        beforeContentMap,
       });
     } catch (runErr) {
       logger.warn({ err: runErr, projectId }, "execution_run: persist failed — non-fatal");

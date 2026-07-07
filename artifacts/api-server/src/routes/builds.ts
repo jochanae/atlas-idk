@@ -231,7 +231,7 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
     const stepsResult = runIds.length === 0
       ? { rows: [] as Array<Record<string, unknown>> }
       : await db.execute(sql`
-      SELECT id, run_id, verb, target, status, detail, content, order_index, created_at
+      SELECT id, run_id, verb, target, status, detail, content, before_content, order_index, created_at
       FROM execution_run_steps
       WHERE run_id IN (${sql.join(runIds.map((id) => sql`${id}`), sql`, `)})
       ORDER BY run_id, order_index ASC, id ASC
@@ -263,6 +263,7 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
         status: s.status,
         detail: s.detail,
         content: s.content ?? null,
+        beforeContent: s.before_content ?? null,
         orderIndex: (s.order_index as number) ?? 0,
         createdAt: s.created_at,
       })),
@@ -294,7 +295,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
     const r = runResult.rows[0];
 
     const stepsResult = await db.execute(sql`
-      SELECT id, run_id, verb, target, status, detail, content, order_index, created_at
+      SELECT id, run_id, verb, target, status, detail, content, before_content, order_index, created_at
       FROM execution_run_steps
       WHERE run_id = ${id}
       ORDER BY order_index ASC, id ASC
@@ -318,6 +319,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
         status: s.status,
         detail: s.detail,
         content: s.content ?? null,
+        beforeContent: s.before_content ?? null,
         orderIndex: (s.order_index as number) ?? 0,
         createdAt: s.created_at,
       })),
