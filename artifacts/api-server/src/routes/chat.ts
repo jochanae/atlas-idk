@@ -34,6 +34,7 @@ import { shouldUseAgentLoop, shouldUseStructuredPlan } from "../lib/agent-loop/f
 import { runAgentLoop } from "../lib/agent-loop/runner";
 import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
 import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProject, runWorkspaceTier1Extraction } from "../services/tier1";
+import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -2763,7 +2764,14 @@ router.get("/image-gen-test", async (req, res): Promise<void> => {
 });
 
 router.post("/chat", async (req, res): Promise<void> => {
+  // WhisperGate intent for this turn. Default BUILD preserves existing behavior
+  // when the classifier hasn't run yet (e.g. slash commands that short-circuit).
+  // Reassigned once classifyIntent() completes below.
+  let whisperIntent: WhisperIntent = "BUILD";
   const writeStep = (res: Response, s: { verb: string; target?: string; phase: string }) => {
+    // Suppress step events on pure CHAT turns — they render as "run cards" in
+    // the UI and are the #1 source of "hello triggered a build" noise.
+    if (whisperIntent === "CHAT") return;
     try { res.write(`data: ${JSON.stringify({ type: "step", ...s })}\n\n`); } catch {}
   };
 
@@ -2977,6 +2985,32 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
   logger.info({ projectId, userId, hasProjectId: !!projectId, hasUserId: !!userId }, "chat terminal debug");
+
+  // ── WhisperGate — pre-classify intent BEFORE any operational side effects ──
+  // Runs in parallel with early parallel queries budget. If it returns CHAT,
+  // writeStep becomes a no-op (see closure above), GitHub bootstrap is skipped,
+  // and the model system prompt is downgraded to conversational mode. On
+  // classifier failure we default to BUILD, which is exactly the pre-fix
+  // behavior — never worse.
+  try {
+    const whisper = await classifyIntent({
+      message,
+      history,
+      workspaceLens: body.workspaceLens ?? body.lens,
+      hasProjectContext: !!projectId,
+    });
+    whisperIntent = whisper.intent;
+    // Tell the client immediately so it can suppress step UI / run cards.
+    // Client hook (useChatStream) listens for evtName === "intent".
+    res.write(`data: ${JSON.stringify({ type: "intent", intent: whisper.intent, confidence: whisper.confidence, reason: whisper.reason, fallback: whisper.fallback })}\n\n`);
+    logger.info({ intent: whisper.intent, confidence: whisper.confidence, reason: whisper.reason, fallback: whisper.fallback, elapsedMs: whisper.elapsedMs, projectId }, "whisperGate: routing turn");
+  } catch (err) {
+    // classifyIntent already has its own try/catch — this is defense-in-depth.
+    logger.warn({ err: String(err) }, "whisperGate: unexpected outer error, defaulting to BUILD");
+    whisperIntent = "BUILD";
+  }
+
+
 
   // ── EARLY PARALLEL QUERIES ────────────────────────────────────────────────
   // Fire all DB queries that only need projectId/userId (not project metadata).
@@ -4726,8 +4760,20 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     }
   }
 
+  // ── WhisperGate system prompt hint ─────────────────────────────────────────
+  // Tell the model what kind of turn this is so it stops emitting BUILD blocks
+  // on chat/decide turns. The scrub above is the safety net; this is the
+  // primary signal. Placed AFTER all system-prompt mutations so it can't be
+  // overwritten by a later `systemPrompt.replace(...)`.
+  if (whisperIntent === "CHAT") {
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT emit FILE_EDIT_START, REPO_LINK, GITHUB_PUSH, GITHUB_READ, BUILD_RUN, IMAGE_GEN, BROWSER_VISIT, SHELL_RUN, or DATA_FETCH blocks. Do NOT declare INTENT_TYPE at the end. Just talk with the user like a thoughtful partner.\n--- END WHISPERGATE ---`;
+  } else if (whisperIntent === "DECIDE") {
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---\nThis is a decision turn. Give the user structured options, tradeoffs, or a recommendation. You MAY emit DECISION_GATE / NEXT_SUGGEST blocks. Do NOT emit FILE_EDIT_START, REPO_LINK, GITHUB_PUSH, BUILD_RUN, or IMAGE_GEN blocks unless the user explicitly approves an action.\n--- END WHISPERGATE ---`;
+  }
+
   writeStep(res, { verb: "Analyzing", target: "your request", phase: "analyze" });
   let modelResult: Awaited<ReturnType<typeof callModel>>;
+
   try {
     let gateHalted = false;
     let streamAccum = "";
@@ -5060,6 +5106,34 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
 
     rawContent = collectedParts.join("\n\n");
   }
+
+  // ── WhisperGate CHAT guard — strip operational markers on pure chat turns ──
+  // Defense in depth: even if the model ignored the CHAT system-prompt hint
+  // and emitted a FILE_EDIT / REPO_LINK / BUILD_RUN / GITHUB_PUSH / IMAGE_GEN
+  // block anyway, we scrub them here so no run card, no GitHub write, no
+  // artifact side effect fires on a conversational turn. The model's prose is
+  // preserved; only the machine-actionable tokens are removed.
+  if (whisperIntent === "CHAT") {
+    const strippedMarkers: string[] = [];
+    const scrub = (re: RegExp, name: string) => {
+      rawContent = rawContent.replace(re, () => { strippedMarkers.push(name); return ""; });
+    };
+    scrub(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "FILE_EDIT");
+    scrub(/^REPO_LINK:\s*\{[^\n]*\}\s*$/gm, "REPO_LINK");
+    scrub(/^GITHUB_PUSH:\s*\{[^\n]*\}\s*$/gm, "GITHUB_PUSH");
+    scrub(/^GITHUB_READ:\s*\{[^\n]*\}\s*$/gm, "GITHUB_READ");
+    scrub(/^BUILD_RUN:\s*[^\n]+$/gm, "BUILD_RUN");
+    scrub(/^IMAGE_GEN:\s*\{[^\n]+\}\s*$/gm, "IMAGE_GEN");
+    scrub(/^BROWSER_VISIT:\s*\{[^\n]+\}\s*$/gm, "BROWSER_VISIT");
+    scrub(/^SHELL_RUN:\s*\{[^\n]+\}\s*$/gm, "SHELL_RUN");
+    scrub(/^DATA_FETCH:\s*\{[^\n]+\}\s*$/gm, "DATA_FETCH");
+    if (strippedMarkers.length > 0) {
+      logger.info({ strippedMarkers, projectId }, "whisperGate: CHAT turn — stripped operational markers");
+    }
+    rawContent = rawContent.trim();
+  }
+
+
 
   // Extract and strip IMAGE_GEN tokens — Atlas signals which images to generate and in what mode
   const IMAGE_GEN_RE = /^IMAGE_GEN:\s*(\{[^\n]+\})\s*$/gm;

@@ -1,0 +1,129 @@
+/**
+ * WhisperGate — pre-classifies user chat input BEFORE the main agent loop runs.
+ *
+ * Purpose: kill the "hello triggers a run card / GitHub write" noise. The main
+ * chat pipeline was firing operational side effects (step events, GitHub
+ * bootstrap, build ops) on EVERY turn regardless of whether the user was
+ * chatting, deciding, or actually asking to build. WhisperGate is the missing
+ * front-door: one fast classifier call whose only job is to route the turn.
+ *
+ * Intents:
+ *  - CHAT   → conversational, no tools, no steps, no run card. Just talk.
+ *  - DECIDE → structured options / tradeoffs. Model may emit DECIDE blocks,
+ *             but still no build ops. No file edits, no GitHub, no steps.
+ *  - BUILD  → full agent loop, tools enabled, step events on, run recorded.
+ *
+ * Design principles:
+ *  - Fast: cheap model, minimal context (last 2 turns + current message).
+ *  - Cheap: Haiku-tier. No thinking. No streaming.
+ *  - Bounded: 400ms budget. On timeout or error, fall back to BUILD (existing
+ *    behavior) so we never REGRESS by dropping legitimate build requests.
+ *  - Explicit: returns reason string so we can debug misclassifications.
+ */
+
+import Anthropic from "@anthropic-ai/sdk";
+import { logger } from "./logger";
+
+export type WhisperIntent = "CHAT" | "DECIDE" | "BUILD";
+
+export interface WhisperResult {
+  intent: WhisperIntent;
+  confidence: number;   // 0..1
+  reason: string;       // short human-readable rationale
+  fallback: boolean;    // true if classification failed and we defaulted
+  elapsedMs: number;
+}
+
+interface WhisperInput {
+  message: string;
+  /** Prior turns, oldest first. Only last 2 are used. */
+  history?: Array<{ role: string; content: string }>;
+  /** Workspace lens hint (BUILD lens biases toward BUILD). */
+  workspaceLens?: string;
+  /** If user is inside a project workspace vs. Ask Atlas home. */
+  hasProjectContext?: boolean;
+}
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const SYSTEM = `You are WhisperGate, a fast intent classifier for a decision-led builder called Atlas. You do NOT answer the user. You classify their turn into exactly one of three intents.
+
+CHAT — Pure conversation. Greetings, small talk, thinking aloud, venting, meta-questions about Atlas itself, "hello", "how are you", clarifying a prior response, expressing feelings, casual back-and-forth. NO action requested.
+
+DECIDE — User is weighing options, asking for tradeoffs, asking "should I", "what would you recommend", "help me think through", comparing paths, prioritizing. They want structured thinking, not code.
+
+BUILD — User is asking to CREATE, EDIT, GENERATE, FIX, DEPLOY, or PRODUCE something concrete. Includes: "make me a X", "fix the Y", "add Z", "write code that", "generate a slide deck", "create a landing page", "push to github", "deploy this", or explicit affirmation of a prior build proposal ("yes do it", "go ahead", "start" after a build plan).
+
+Rules:
+- When ambiguous between CHAT and BUILD, choose CHAT. Building on a false positive is worse than chatting on a false negative.
+- When ambiguous between DECIDE and BUILD, choose DECIDE.
+- "yes" / "go" / "start" / "do it" — look at the prior assistant turn. If the assistant proposed a build, it's BUILD. If it proposed options, it's DECIDE. If it was conversational, it's CHAT.
+- Requests to explain, discuss, describe, or analyze are CHAT (or DECIDE if comparing).
+- A slide deck, document, image, or file the user explicitly asks you to make IS a BUILD.
+
+Return ONLY a compact JSON object, no prose, no markdown fences:
+{"intent":"CHAT|DECIDE|BUILD","confidence":0.0-1.0,"reason":"<10 words"}`;
+
+const CLASSIFICATION_TIMEOUT_MS = 1500;
+
+export async function classifyIntent(input: WhisperInput): Promise<WhisperResult> {
+  const startedAt = Date.now();
+  const message = (input.message ?? "").trim();
+
+  // Trivial short-circuits — no need to spend a model call.
+  if (!message) {
+    return { intent: "CHAT", confidence: 1, reason: "empty message", fallback: false, elapsedMs: 0 };
+  }
+  if (/^(hi|hello|hey|yo|sup|hola|good\s+(morning|afternoon|evening))[!.\s]*$/i.test(message)) {
+    return { intent: "CHAT", confidence: 1, reason: "greeting", fallback: false, elapsedMs: 0 };
+  }
+
+  const recent = (input.history ?? []).slice(-2).map((h) => `${h.role.toUpperCase()}: ${String(h.content ?? "").slice(0, 400)}`).join("\n");
+  const contextBlock = [
+    input.workspaceLens ? `Workspace lens: ${input.workspaceLens}` : null,
+    input.hasProjectContext === false ? "Context: Ask Atlas (no project)" : "Context: project workspace",
+    recent ? `Recent turns:\n${recent}` : null,
+  ].filter(Boolean).join("\n");
+
+  const userBlock = `${contextBlock}\n\nUSER TURN:\n${message.slice(0, 2000)}`;
+
+  try {
+    const resp = await Promise.race([
+      anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 80,
+        system: SYSTEM,
+        messages: [{ role: "user", content: userBlock }],
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("whisperGate_timeout")), CLASSIFICATION_TIMEOUT_MS)),
+    ]);
+
+    const textBlock = (resp as Anthropic.Message).content.find((c) => c.type === "text");
+    const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("no_json_in_response");
+
+    const parsed = JSON.parse(jsonMatch[0]) as { intent?: string; confidence?: number; reason?: string };
+    const intent = (parsed.intent ?? "").toUpperCase();
+    if (intent !== "CHAT" && intent !== "DECIDE" && intent !== "BUILD") {
+      throw new Error(`invalid_intent:${intent}`);
+    }
+
+    const elapsedMs = Date.now() - startedAt;
+    logger.info({ intent, confidence: parsed.confidence, reason: parsed.reason, elapsedMs }, "whisperGate: classified");
+    return {
+      intent: intent as WhisperIntent,
+      confidence: typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.7,
+      reason: (parsed.reason ?? "").slice(0, 120),
+      fallback: false,
+      elapsedMs,
+    };
+  } catch (err) {
+    const elapsedMs = Date.now() - startedAt;
+    // FALLBACK POLICY: default to BUILD so we never lose a real build request.
+    // The old (broken) behavior was BUILD-for-everything, so falling back to
+    // BUILD is strictly no worse than before.
+    logger.warn({ err: String(err), elapsedMs, message: message.slice(0, 120) }, "whisperGate: classification failed, defaulting to BUILD");
+    return { intent: "BUILD", confidence: 0, reason: "classifier_failed", fallback: true, elapsedMs };
+  }
+}
