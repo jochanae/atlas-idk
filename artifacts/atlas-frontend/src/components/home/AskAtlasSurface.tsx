@@ -33,6 +33,7 @@ import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
 import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { useActiveProjectContext } from "@/lib/activeProjectContext";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
 import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
@@ -295,6 +296,7 @@ export function AskAtlasSurface({
       }}
     >
       {subheader}
+      <WorkspaceContextChip />
       {/* Isolated scroll container */}
       <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div
