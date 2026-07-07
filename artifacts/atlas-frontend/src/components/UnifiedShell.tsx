@@ -620,9 +620,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
       <ShellCompletionChip projectId={projectId} />
       <button
         type="button"
-        onClick={openAskAtlas}
-        title="Open Ask Atlas"
-        aria-label="Open Ask Atlas conversation"
+        onClick={toggleBridge}
+        title="Show conversation bridge"
+        aria-label="Show conversation bridge"
+        aria-expanded={showBridge}
         style={{
           position: "relative",
           display: "inline-flex",
