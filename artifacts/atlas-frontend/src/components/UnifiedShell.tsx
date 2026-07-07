@@ -574,6 +574,9 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
     openAskAtlasFromWorkspace(setLocation);
   }, [setLocation]);
 
+  const [showBridge, setShowBridge] = useState(false);
+  const toggleBridge = useCallback(() => setShowBridge((v) => !v), []);
+
   const beginRename = useCallback(() => {
     setDraft(project?.name ?? "");
     setError(null);
