@@ -4760,8 +4760,20 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     }
   }
 
+  // ── WhisperGate system prompt hint ─────────────────────────────────────────
+  // Tell the model what kind of turn this is so it stops emitting BUILD blocks
+  // on chat/decide turns. The scrub above is the safety net; this is the
+  // primary signal. Placed AFTER all system-prompt mutations so it can't be
+  // overwritten by a later `systemPrompt.replace(...)`.
+  if (whisperIntent === "CHAT") {
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT emit FILE_EDIT_START, REPO_LINK, GITHUB_PUSH, GITHUB_READ, BUILD_RUN, IMAGE_GEN, BROWSER_VISIT, SHELL_RUN, or DATA_FETCH blocks. Do NOT declare INTENT_TYPE at the end. Just talk with the user like a thoughtful partner.\n--- END WHISPERGATE ---`;
+  } else if (whisperIntent === "DECIDE") {
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---\nThis is a decision turn. Give the user structured options, tradeoffs, or a recommendation. You MAY emit DECISION_GATE / NEXT_SUGGEST blocks. Do NOT emit FILE_EDIT_START, REPO_LINK, GITHUB_PUSH, BUILD_RUN, or IMAGE_GEN blocks unless the user explicitly approves an action.\n--- END WHISPERGATE ---`;
+  }
+
   writeStep(res, { verb: "Analyzing", target: "your request", phase: "analyze" });
   let modelResult: Awaited<ReturnType<typeof callModel>>;
+
   try {
     let gateHalted = false;
     let streamAccum = "";
