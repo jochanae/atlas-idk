@@ -6231,32 +6231,6 @@ export default function Home() {
               );
             }}
           />
-          {/* State 1: conversation is active but no project shaped yet — quiet
-              "No project yet" indicator that gives the thread a home. Only
-              visible when the CommitPill itself is hidden (shapingStatus idle). */}
-          {shapingStatus === "idle" && nexusChat.messages.length > 0 && (
-            <button
-              type="button"
-              onClick={() => void performCreateProjectFromConversation()}
-              style={{
-                display: "block",
-                margin: "0 auto",
-                padding: "6px 18px",
-                borderRadius: 999,
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "var(--atlas-muted)",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 11,
-                letterSpacing: "0.07em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              No project yet &middot; Start Project &rarr;
-            </button>
-          )}
         </div>
       </div>
 
