@@ -176,6 +176,14 @@ type HomeHandoffMeta = {
   goalLabel: string;
   nodes?: HomeHandoffNode[];
   parkedTitles?: string[];
+  /**
+   * Set by the source conversation when the handoff explicitly wants
+   * a blueprint / build output ready on arrival. When absent or false,
+   * the auto-blueprint fire in workspace.tsx is suppressed so a plain
+   * "take me to workspace" handoff no longer generates noise.
+   * See plan step 6 (2026-07-07).
+   */
+  requestBuild?: boolean;
 };
 
 function hasHomeHandoffNodeData(meta: HomeHandoffMeta | null): boolean {
@@ -6443,10 +6451,14 @@ export default function Workspace() {
     } catch { primeHomeHandoff(fallbackPrompt); }
   }, [sessionId, messages.length, project, doSend]);
 
-  // Auto-generate blueprint silently on first workspace handoff from global insight
+  // Auto-generate blueprint on handoff — ONLY when the source conversation
+  // explicitly requested build/planning output (requestBuild flag on the
+  // handoff meta). Previously fired on every home-handoff, which produced
+  // noise for conversational handoffs. See plan step 6 (2026-07-07).
   const autoBlueprintFired = useRef(false);
   useEffect(() => {
     if (!isHomeHandoff || !id || !sessionId || autoBlueprintFired.current) return;
+    if (!homeHandoffMeta?.requestBuild) return;
     autoBlueprintFired.current = true;
     const timer = setTimeout(() => {
       fetch(`/api/projects/${id}/blueprint`, {
@@ -6457,7 +6469,7 @@ export default function Workspace() {
       }).catch(() => {});
     }, 5000);
     return () => clearTimeout(timer);
-  }, [isHomeHandoff, id, sessionId]);
+  }, [isHomeHandoff, id, sessionId, homeHandoffMeta?.requestBuild]);
 
   const sendFromIntentCapture = useCallback((text: string) => {
     const trimmed = text.trim();

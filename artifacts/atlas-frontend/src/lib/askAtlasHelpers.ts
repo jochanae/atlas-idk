@@ -26,21 +26,46 @@ export function buildAskAtlasHandoffSeed(
 /**
  * Shared handoff trigger — fire the Nexus buffer flush when a conversation
  * hands off to a project. Best-effort, never throws, never blocks navigation.
- * Consolidates the previously-duplicated fetch call sites in AskAtlasSurface
- * (2x) and home.tsx (1x).
+ *
+ * Deduped via an in-flight lock keyed on `${conversationId ?? "_"}:${projectId}`.
+ * Concurrent calls receive the same in-flight promise; repeats within the
+ * settled window are swallowed. Prevents the double-fire when both the
+ * project-open handler (AskAtlasSurface:247) and the CommitPill onArm
+ * (AskAtlasSurface:450) trigger for the same project in quick succession.
  */
-export function triggerNexusHandoff(opts: {
+type HandoffOpts = {
   conversationId?: string | null;
   projectId: number;
   messages: Array<{ role: string; content: string }>;
   authToken?: string | null;
   limit?: number;
-}): Promise<void> {
+};
+
+const inFlight = new Map<string, Promise<void>>();
+const recentlySettled = new Map<string, number>();
+const SETTLED_TTL_MS = 5000;
+
+function handoffKey(opts: HandoffOpts): string {
+  return `${opts.conversationId ?? "_"}:${opts.projectId}`;
+}
+
+export function triggerNexusHandoff(opts: HandoffOpts): Promise<void> {
+  const key = handoffKey(opts);
+
+  const existing = inFlight.get(key);
+  if (existing) return existing;
+
+  const settledAt = recentlySettled.get(key);
+  if (settledAt != null && Date.now() - settledAt < SETTLED_TTL_MS) {
+    return Promise.resolve();
+  }
+
   const { conversationId, projectId, messages, authToken, limit = 10 } = opts;
   const trimmed = messages
     .slice(-limit)
     .map((m) => ({ role: m.role, content: m.content }));
-  return fetch("/api/nexus/handoff", {
+
+  const promise = fetch("/api/nexus/handoff", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -59,5 +84,34 @@ export function triggerNexusHandoff(opts: {
         // eslint-disable-next-line no-console
         console.warn("[nexus-handoff] failed", err);
       }
+    })
+    .finally(() => {
+      inFlight.delete(key);
+      recentlySettled.set(key, Date.now());
+      // Best-effort GC so the map doesn't grow unbounded across a long session.
+      if (recentlySettled.size > 32) {
+        const cutoff = Date.now() - SETTLED_TTL_MS;
+        for (const [k, ts] of recentlySettled) {
+          if (ts < cutoff) recentlySettled.delete(k);
+        }
+      }
     });
+
+  inFlight.set(key, promise);
+  return promise;
+}
+
+/**
+ * Canonical redirect helper — both AskAtlasSurface and home.tsx currently
+ * build their own workspace URL after handoff. Route through this so the
+ * source param stays consistent (`source=home-handoff`) and we have a
+ * single seam to change later.
+ */
+export function redirectAfterHandoff(
+  projectId: number,
+  setLocation: (path: string) => void,
+  extraParams?: Record<string, string>,
+): void {
+  const params = new URLSearchParams({ source: "home-handoff", ...(extraParams ?? {}) });
+  setLocation(`/project/${projectId}?${params.toString()}`);
 }
