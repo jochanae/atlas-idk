@@ -5754,6 +5754,7 @@ export default function Workspace() {
     return () => {
       try {
         const next = window.location.pathname;
+        if (next === "/home") return;
         if (!next.startsWith(`/project/${id}`)) clearActiveProjectContext();
       } catch { clearActiveProjectContext(); }
     };
