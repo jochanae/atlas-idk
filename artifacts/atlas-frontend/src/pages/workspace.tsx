@@ -5383,6 +5383,45 @@ export default function Workspace() {
     try { return isHomeHandoff && sessionStorage.getItem(`atlas-home-handoff-banner-${id}`) !== "1"; } catch { return isHomeHandoff; }
   });
   const { data: resumeBrief } = useProjectResume(id);
+
+  // Populate the shared activeProjectContext so Ask Atlas (opened from within
+  // the workspace or via the ambient floater) sees the same project identity,
+  // memory brief, last user goal, and open decisions. Cleared on unmount.
+  // See plan step 1 (2026-07-07).
+  useEffect(() => {
+    if (!id || !project) return;
+    const lastUserGoal = [...messages].reverse().find((m) => m.role === "user")?.content ?? null;
+    const memoryBrief = (() => {
+      try {
+        if (!project.memory) return null;
+        const mem = JSON.parse(project.memory);
+        const brief = mem?.entries?.find(
+          (e: any) =>
+            e.tier === 1 &&
+            typeof e.text === "string" &&
+            e.text.startsWith("Project brief from home conversation:"),
+        );
+        if (brief) return (brief.text as string).replace("Project brief from home conversation: ", "");
+        return typeof resumeBrief?.summary === "string" ? resumeBrief.summary : null;
+      } catch { return null; }
+    })();
+    setActiveProjectContext({
+      projectId: id,
+      sessionId: sessionId ?? null,
+      projectName: project.name,
+      memoryBrief,
+      lastUserGoal,
+      recentEvents: [],
+      unresolvedDecisions: [],
+    });
+    return () => {
+      // Only clear if we're navigating away from this project entirely.
+      try {
+        const next = window.location.pathname;
+        if (!next.startsWith(`/project/${id}`)) clearActiveProjectContext();
+      } catch { clearActiveProjectContext(); }
+    };
+  }, [id, project, sessionId, messages, resumeBrief]);
   const [showHomeHandoffDrawer, setShowHomeHandoffDrawer] = useState(false);
   const importSourceLabel = importSource === "compani" ? "Compani Blueprints" : importSource === "axiom" ? "Axiom" : importSource ? importSource.charAt(0).toUpperCase() + importSource.slice(1) : null;
   const [showAxiomBanner, setShowAxiomBanner] = useState(() => {
