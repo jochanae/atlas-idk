@@ -768,6 +768,23 @@ export function useChatStream(
                     ? String(typeEmbedded.content ?? "")
                     : JSON.parse(evtData) as string;
                   setActivityStream({ active: true, content: text });
+                } else if (evtName === "intent") {
+                  // WhisperGate classified this turn. On CHAT, force-suppress
+                  // step display and clear any liveStep that arrived optimistically
+                  // (e.g. from a race between the initial "Analyzing" writeStep
+                  // and the intent event landing on the client).
+                  const payload = (typeEmbedded ?? JSON.parse(evtData)) as {
+                    intent?: "CHAT" | "DECIDE" | "BUILD";
+                    confidence?: number;
+                    reason?: string;
+                  };
+                  if (payload.intent === "CHAT" || payload.intent === "DECIDE" || payload.intent === "BUILD") {
+                    whisperIntentRef.current = payload.intent;
+                    if (payload.intent === "CHAT") {
+                      setLiveStep(null);
+                      setActivityStream({ active: false, content: "" });
+                    }
+                  }
                 } else if (evtName === "step") {
                   // type-embedded: {"type":"step","verb":"...","target":"..."}
                   const step = (typeEmbedded ?? JSON.parse(evtData)) as {
@@ -777,7 +794,12 @@ export function useChatStream(
                     status?: string;
                   };
                   if (step?.verb) {
-                    if (!suppressStepsRef.current) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
+                    // Hard-block step UI when WhisperGate classified this turn as CHAT.
+                    // Belt-and-suspenders: server also skips writeStep for CHAT, but
+                    // this guards against upstream (e.g. tool events streamed before
+                    // the intent event lands, though we emit intent first).
+                    const isChatTurn = whisperIntentRef.current === "CHAT";
+                    if (!suppressStepsRef.current && !isChatTurn) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
                     onStepEvent?.(step);
                     workspaceEventBus.emit("step-event", {
                       verb: step.verb,
