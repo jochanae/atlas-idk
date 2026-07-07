@@ -47,6 +47,10 @@ import { VerificationPanel } from "@/components/run/VerificationPanel";
 import { matchWhisperGateAction } from "@/lib/whisperGate";
 import { dispatchVerifyRun } from "@/lib/verification";
 import { workspaceEventBus, useWorkspaceEvent } from "@/lib/workspaceEventBus";
+import {
+  setActiveProjectContext,
+  clearActiveProjectContext,
+} from "@/lib/activeProjectContext";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
@@ -176,6 +180,14 @@ type HomeHandoffMeta = {
   goalLabel: string;
   nodes?: HomeHandoffNode[];
   parkedTitles?: string[];
+  /**
+   * Set by the source conversation when the handoff explicitly wants
+   * a blueprint / build output ready on arrival. When absent or false,
+   * the auto-blueprint fire in workspace.tsx is suppressed so a plain
+   * "take me to workspace" handoff no longer generates noise.
+   * See plan step 6 (2026-07-07).
+   */
+  requestBuild?: boolean;
 };
 
 function hasHomeHandoffNodeData(meta: HomeHandoffMeta | null): boolean {
@@ -5687,6 +5699,44 @@ export default function Workspace() {
   });
   const projectFromList = allProjects?.find((p) => p.id === id) ?? null;
   const project = projectState.project ?? fallbackProject ?? projectFromList;
+
+  // Populate the shared activeProjectContext so Ask Atlas (opened from within
+  // the workspace or via the ambient floater) sees the same project identity,
+  // memory brief, last user goal, and open decisions. Cleared on route-away.
+  // See plan step 1 (2026-07-07).
+  useEffect(() => {
+    if (!id || !project) return;
+    const lastUserGoal = [...messages].reverse().find((m) => m.role === "user")?.content ?? null;
+    const memoryBrief = (() => {
+      try {
+        if (!project.memory) return resumeBrief?.threadSummary ?? resumeBrief?.intent ?? null;
+        const mem = JSON.parse(project.memory);
+        const brief = mem?.entries?.find(
+          (e: any) =>
+            e.tier === 1 &&
+            typeof e.text === "string" &&
+            e.text.startsWith("Project brief from home conversation:"),
+        );
+        if (brief) return (brief.text as string).replace("Project brief from home conversation: ", "");
+        return resumeBrief?.threadSummary ?? resumeBrief?.intent ?? null;
+      } catch { return resumeBrief?.threadSummary ?? null; }
+    })();
+    setActiveProjectContext({
+      projectId: id,
+      sessionId: sessionId ?? null,
+      projectName: project.name,
+      memoryBrief,
+      lastUserGoal,
+      recentEvents: [],
+      unresolvedDecisions: [],
+    });
+    return () => {
+      try {
+        const next = window.location.pathname;
+        if (!next.startsWith(`/project/${id}`)) clearActiveProjectContext();
+      } catch { clearActiveProjectContext(); }
+    };
+  }, [id, project, sessionId, messages, resumeBrief]);
   const addLocalMessage = useCallback((role: "user" | "assistant", content: string) => {
     setMessages((prev) => [
       ...prev,
@@ -6443,10 +6493,14 @@ export default function Workspace() {
     } catch { primeHomeHandoff(fallbackPrompt); }
   }, [sessionId, messages.length, project, doSend]);
 
-  // Auto-generate blueprint silently on first workspace handoff from global insight
+  // Auto-generate blueprint on handoff — ONLY when the source conversation
+  // explicitly requested build/planning output (requestBuild flag on the
+  // handoff meta). Previously fired on every home-handoff, which produced
+  // noise for conversational handoffs. See plan step 6 (2026-07-07).
   const autoBlueprintFired = useRef(false);
   useEffect(() => {
     if (!isHomeHandoff || !id || !sessionId || autoBlueprintFired.current) return;
+    if (!homeHandoffMeta?.requestBuild) return;
     autoBlueprintFired.current = true;
     const timer = setTimeout(() => {
       fetch(`/api/projects/${id}/blueprint`, {
@@ -6457,7 +6511,7 @@ export default function Workspace() {
       }).catch(() => {});
     }, 5000);
     return () => clearTimeout(timer);
-  }, [isHomeHandoff, id, sessionId]);
+  }, [isHomeHandoff, id, sessionId, homeHandoffMeta?.requestBuild]);
 
   const sendFromIntentCapture = useCallback((text: string) => {
     const trimmed = text.trim();
