@@ -2986,6 +2986,32 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
   logger.info({ projectId, userId, hasProjectId: !!projectId, hasUserId: !!userId }, "chat terminal debug");
 
+  // ── WhisperGate — pre-classify intent BEFORE any operational side effects ──
+  // Runs in parallel with early parallel queries budget. If it returns CHAT,
+  // writeStep becomes a no-op (see closure above), GitHub bootstrap is skipped,
+  // and the model system prompt is downgraded to conversational mode. On
+  // classifier failure we default to BUILD, which is exactly the pre-fix
+  // behavior — never worse.
+  try {
+    const whisper = await classifyIntent({
+      message,
+      history,
+      workspaceLens: body.workspaceLens ?? body.lens,
+      hasProjectContext: !!projectId,
+    });
+    whisperIntent = whisper.intent;
+    // Tell the client immediately so it can suppress step UI / run cards.
+    // Client hook (useChatStream) listens for evtName === "intent".
+    res.write(`data: ${JSON.stringify({ type: "intent", intent: whisper.intent, confidence: whisper.confidence, reason: whisper.reason, fallback: whisper.fallback })}\n\n`);
+    logger.info({ intent: whisper.intent, confidence: whisper.confidence, reason: whisper.reason, fallback: whisper.fallback, elapsedMs: whisper.elapsedMs, projectId }, "whisperGate: routing turn");
+  } catch (err) {
+    // classifyIntent already has its own try/catch — this is defense-in-depth.
+    logger.warn({ err: String(err) }, "whisperGate: unexpected outer error, defaulting to BUILD");
+    whisperIntent = "BUILD";
+  }
+
+
+
   // ── EARLY PARALLEL QUERIES ────────────────────────────────────────────────
   // Fire all DB queries that only need projectId/userId (not project metadata).
   // These overlap with Batch 1 and the repo tree fetch, saving 300–500 ms/request.
