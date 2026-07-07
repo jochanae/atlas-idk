@@ -345,6 +345,9 @@ export function useChatStream(
       setChatPending(true);
       setActivityStream({ active: true, content: "" });
       setLiveStep(null);
+      // Reset WhisperGate intent for the new turn. Will be set by the server's
+      // early `intent` SSE event; null means "not yet classified — allow steps".
+      whisperIntentRef.current = null;
 
       const userProfileStr = profileToString(loadProfile());
       // R6: [SKETCH:*] client-side short-circuit removed. Image requests now route through
