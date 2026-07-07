@@ -1370,13 +1370,14 @@ async function loadRecentNexusMessagesForConversation(
 /** Persist a nexus workspace conversation turn to execution_runs + execution_run_steps.
  *  Nexus equivalent of persistExecutionRun() in chat.ts — runs fire-and-forget at the
  *  end of every focusProjectId turn so the Timeline in ViewChangesPanel shows
- *  conversation activity (reads, summary) not just build-runner steps. */
+ *  conversation activity (reads, summary, DNA updates, decisions) not just build-runner steps. */
 async function persistNexusExecutionRun(args: {
   projectId: number;
   sessionId: number | null | undefined;
   userMessage: string;
   atlasResponse: string;
   runActions: RunAction[];
+  nonCodeSteps?: Array<{ verb: string; target: string | null; detail: string | null; content: string | null }>;
   startedAt: Date;
 }): Promise<void> {
   try {
@@ -1391,13 +1392,13 @@ async function persistNexusExecutionRun(args: {
     const fileReadActions = args.runActions.filter(
       (a) => ["Reading", "Read", "Not found"].includes(a.verb) && isFilePath(a.target)
     );
+    const hasNonCode = (args.nonCodeSteps?.length ?? 0) > 0;
     const mode = fileReadActions.length > 0 ? "operational" : "conversation";
 
     // Don't persist a run row for pure conversational turns — they produce
-    // no files, no steps, no build ops. Persisting them creates run cards
-    // in the workspace timeline that look like build activity when they're
-    // just chat. Only persist when Atlas actually did operational work.
-    if (mode === "conversation") return;
+    // no files, no steps, no build ops — UNLESS there are non-code steps
+    // (DNA updates, decisions, plans) worth surfacing in the Timeline.
+    if (mode === "conversation" && !hasNonCode) return;
 
     const summary = fileReadActions.length > 0
       ? `Read ${fileReadActions.length} file${fileReadActions.length === 1 ? "" : "s"} \u00b7 ${args.atlasResponse.slice(0, 80).replace(/\n/g, " ").trim()}\u2026`
@@ -1460,6 +1461,11 @@ async function persistNexusExecutionRun(args: {
       });
     }
 
+    // NON-CODE steps — DNA field writes, decisions, plan signals accumulated during the turn.
+    for (const nc of (args.nonCodeSteps ?? [])) {
+      steps.push({ verb: nc.verb, target: nc.target, status: "ok", detail: nc.detail, content: nc.content });
+    }
+
     // SUMMARY — the full Atlas response, distinct from the brief THOUGHT excerpt above.
     if (fullResponse) {
       steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: fullResponse.slice(0, 8000) });
@@ -1467,12 +1473,12 @@ async function persistNexusExecutionRun(args: {
 
     for (const [orderIdx, step] of steps.entries()) {
       await db.execute(sql`
-        INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
-        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${orderIdx})
+        INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, order_index)
+        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${null}, ${orderIdx})
       `);
     }
 
-    logger.info({ runId, projectId: args.projectId, mode, stepCount: steps.length }, "nexus: persisted execution_run for workspace turn");
+    logger.info({ runId, projectId: args.projectId, mode, stepCount: steps.length, nonCodeCount: args.nonCodeSteps?.length ?? 0 }, "nexus: persisted execution_run for workspace turn");
   } catch (err) {
     logger.warn({ err }, "nexus: persistNexusExecutionRun failed — non-fatal");
   }
@@ -2657,6 +2663,10 @@ WHAT YOU SHOULD NOT DO:
 
   const turnStartedAt = new Date();
   const runActions: RunAction[] = [];
+  // Non-code steps (DNA updates, decisions, plans) accumulated during the turn
+  // and passed to persistNexusExecutionRun at the end.
+  type _NcStep = { verb: string; target: string | null; detail: string | null; content: string | null };
+  const _nexusNonCodeSteps: _NcStep[] = [];
   const writeStep = (action: RunAction) => {
     const step: RunAction = { ...action, status: action.status ?? "ok" };
     runActions.push(step);
@@ -3037,15 +3047,20 @@ WHAT YOU SHOULD NOT DO:
     });
 
     // Persist conversation turn to execution_runs + execution_run_steps so the Timeline
-    // in ViewChangesPanel shows this turn's activity (file reads, summary).
+    // in ViewChangesPanel shows this turn's activity (file reads, summary, non-code changes).
     // Fire-and-forget — never blocks the stream.
     if (focusProjectId) {
+      // Append non-code steps detected from turn signals
+      if (surface?.type === "DECISION") {
+        _nexusNonCodeSteps.push({ verb: "DECISION_RECORDED", target: null, detail: "captured to ledger", content: null });
+      }
       void persistNexusExecutionRun({
         projectId: focusProjectId,
         sessionId,
         userMessage: body.message ?? "",
         atlasResponse: visibleContent,
         runActions,
+        nonCodeSteps: _nexusNonCodeSteps,
         startedAt: turnStartedAt,
       });
     }
@@ -3407,15 +3422,23 @@ WHAT YOU SHOULD NOT DO:
     }
 
     if (tier1ProjectId) {
-      return upsertTier1Field(tier1ProjectId, userId, field as Tier1FieldKey, value);
+      const result = await upsertTier1Field(tier1ProjectId, userId, field as Tier1FieldKey, value);
+      if (result?.ok !== false) {
+        _nexusNonCodeSteps.push({ verb: "DNA_UPDATED", target: field, detail: value.slice(0, 200), content: null });
+      }
+      return result;
     }
-    return upsertNexusTier1BufferField(
+    const bufResult = await upsertNexusTier1BufferField(
       effectiveConversationId,
       userId,
       field as Tier1FieldKey,
       value,
       confidence,
     );
+    if (bufResult?.ok !== false) {
+      _nexusNonCodeSteps.push({ verb: "DNA_UPDATED", target: field, detail: value.slice(0, 200), content: null });
+    }
+    return bufResult;
   };
 
   const runTier1MarkSkippedTool = async () => {

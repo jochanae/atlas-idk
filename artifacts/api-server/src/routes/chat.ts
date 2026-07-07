@@ -6641,6 +6641,16 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   // ── Execution run recorder — await before SSE closes so steps are committed ──
   // autoVerify turns (LOCAL_APPLY_SUCCESS loop) skip silently.
   let recordedRunId: string | null = null;
+  // Surface a PLAN_RECORDED step when Atlas emitted a structured plan this turn.
+  if (structuredPlanArtifact) {
+    _chatRunIntermediateSteps.push({
+      verb: "PLAN_RECORDED",
+      target: structuredPlanArtifact.title ?? null,
+      detail: `${structuredPlanArtifact.steps?.length ?? 0} steps · confidence ${structuredPlanArtifact.confidence ?? "unknown"}`,
+      content: null,
+    });
+  }
+
   if (body.displayAs !== "autoVerify" && projectId && whisperIntent !== "CHAT" && whisperIntent !== "DECIDE") {
     try {
       const thoughtText = splitBuildTurn

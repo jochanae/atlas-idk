@@ -17,6 +17,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FolderGit2, X, FileCode2, Eye, Search, Folder,
   Lightbulb, Trash2, CheckCircle2, ChevronDown, Scale, AlertTriangle,
+  Dna, BookMarked, ListChecks,
 } from "lucide-react";
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
@@ -602,20 +603,24 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
 const TIMELINE_VERBS = new Set([
   "THOUGHT", "FILE_READ", "SEARCH", "INSPECT",
   "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "SUMMARY",
+  "DNA_UPDATED", "DECISION_RECORDED", "PLAN_RECORDED",
 ]);
 const EXPANDABLE_VERBS = new Set(["THOUGHT", "FILE_EDIT", "SUMMARY"]);
 const ALWAYS_OPEN_VERBS = new Set(["SUMMARY"]);
 
 function stepColor(verb: string): string {
   const MAP: Record<string, string> = {
-    THOUGHT:    "rgba(147,130,220,0.85)",
-    FILE_READ:  "rgba(100,170,220,0.85)",
-    SEARCH:     "rgba(100,200,180,0.85)",
-    INSPECT:    "rgba(180,160,100,0.85)",
-    FILE_EDIT:  "rgba(var(--atlas-gold-rgb), 0.95)",
-    LINE_PATCH: "rgba(var(--atlas-gold-rgb), 0.75)",
-    FILE_DELETE:"rgba(220,80,80,0.85)",
-    SUMMARY:    "rgba(100,200,120,0.85)",
+    THOUGHT:            "rgba(147,130,220,0.85)",
+    FILE_READ:          "rgba(100,170,220,0.85)",
+    SEARCH:             "rgba(100,200,180,0.85)",
+    INSPECT:            "rgba(180,160,100,0.85)",
+    FILE_EDIT:          "rgba(var(--atlas-gold-rgb), 0.95)",
+    LINE_PATCH:         "rgba(var(--atlas-gold-rgb), 0.75)",
+    FILE_DELETE:        "rgba(220,80,80,0.85)",
+    SUMMARY:            "rgba(100,200,120,0.85)",
+    DNA_UPDATED:        "rgba(120,190,255,0.85)",
+    DECISION_RECORDED:  "rgba(220,160,80,0.90)",
+    PLAN_RECORDED:      "rgba(170,130,230,0.85)",
   };
   return MAP[verb] ?? "rgba(180,180,180,0.75)";
 }
@@ -624,10 +629,14 @@ function stepLabel(verb: string, detail?: string | null): string {
   if (verb === "THOUGHT" && detail && /^\d+s$/.test(detail)) {
     return `Thought for ${detail}`;
   }
+  if (verb === "DNA_UPDATED" && detail) return `DNA · ${detail.slice(0, 60)}`;
+  if (verb === "PLAN_RECORDED" && detail) return `Plan · ${detail.slice(0, 60)}`;
   const MAP: Record<string, string> = {
     THOUGHT: "Thought", FILE_READ: "Read", SEARCH: "Search",
     INSPECT: "Inspect", FILE_EDIT: "Edited", LINE_PATCH: "Patched",
     FILE_DELETE: "Deleted", SUMMARY: "Summary",
+    DNA_UPDATED: "DNA updated", DECISION_RECORDED: "Decision recorded",
+    PLAN_RECORDED: "Plan recorded",
   };
   return MAP[verb] ?? verb;
 }
@@ -640,8 +649,11 @@ function StepIcon({ verb }: { verb: string }) {
   if (verb === "INSPECT")    return <Folder       {...p} />;
   if (verb === "FILE_EDIT")  return <FileCode2    {...p} />;
   if (verb === "LINE_PATCH") return <FileCode2    {...p} />;
-  if (verb === "FILE_DELETE")return <Trash2       {...p} />;
-  if (verb === "SUMMARY")    return <CheckCircle2 {...p} />;
+  if (verb === "FILE_DELETE")       return <Trash2       {...p} />;
+  if (verb === "SUMMARY")           return <CheckCircle2 {...p} />;
+  if (verb === "DNA_UPDATED")       return <Dna          {...p} />;
+  if (verb === "DECISION_RECORDED") return <BookMarked   {...p} />;
+  if (verb === "PLAN_RECORDED")     return <ListChecks   {...p} />;
   return null;
 }
 
