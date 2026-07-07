@@ -10,7 +10,7 @@
  * (home.tsx:2089 auto-opens the surface when askAtlasSession.isSurfaceOpen()).
  */
 import { useLocation } from "wouter";
-import { askAtlasSession } from "@/lib/askAtlasSession";
+import { openAskAtlasFromWorkspace } from "@/lib/askAtlasSession";
 import { useActiveProjectContext } from "@/lib/activeProjectContext";
 
 type Props = {
@@ -24,14 +24,7 @@ export function ConversationViewSwitcher({ hidden = false }: Props) {
   if (hidden || !ctx) return null;
 
   const goConversation = () => {
-    askAtlasSession.clearClosed();
-    askAtlasSession.setSurfaceOpen(true);
-    setLoc("/home");
-    // If /home is already the same origin, Ask Atlas surface auto-opens
-    // from storage. Otherwise the axiom:ask-atlas event fires it.
-    window.setTimeout(() => {
-      try { window.dispatchEvent(new CustomEvent("axiom:ask-atlas")); } catch {}
-    }, 30);
+    openAskAtlasFromWorkspace(setLoc);
   };
 
   return (
