@@ -171,6 +171,17 @@ export interface UseNexusChatStreamOptions {
     memorySummary?: string | null;
     decisions?: unknown[];
   } | null;
+  /**
+   * In-project Ask Atlas mode. When present, chat POST includes
+   * `projectId` + `sessionId` + `askAtlasContextSeed` (first turn only) so the
+   * backend treats this turn as part of the workspace's shared session.
+   * See docs/handoffs/2026-07-07-ask-atlas-in-project-mode.md.
+   */
+  askAtlasInProject?: {
+    projectId: number;
+    sessionId: number;
+    seed?: string | null;
+  } | null;
 }
 
 export interface UseNexusChatStreamReturn {
