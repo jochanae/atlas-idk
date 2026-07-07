@@ -47,6 +47,10 @@ import { VerificationPanel } from "@/components/run/VerificationPanel";
 import { matchWhisperGateAction } from "@/lib/whisperGate";
 import { dispatchVerifyRun } from "@/lib/verification";
 import { workspaceEventBus, useWorkspaceEvent } from "@/lib/workspaceEventBus";
+import {
+  setActiveProjectContext,
+  clearActiveProjectContext,
+} from "@/lib/activeProjectContext";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
