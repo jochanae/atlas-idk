@@ -210,7 +210,8 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext, askAtlasInProject } = options;
+  const askAtlasSeedSentRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const messagesRef = useRef<NexusMessage[]>([]);
