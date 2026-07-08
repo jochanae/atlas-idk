@@ -32,7 +32,7 @@ import { ConversationsLauncher } from "@/components/ConversationsLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { getAuthHeaders } from "@/lib/api";
-import { openAskAtlasFromWorkspace } from "@/lib/askAtlasSession";
+import { openAskAtlasFromWorkspace, askAtlasSession } from "@/lib/askAtlasSession";
 import { clearActiveProjectContext } from "@/lib/activeProjectContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -154,6 +154,15 @@ function ShellWordmark() {
     if (location === "/home") {
       window.dispatchEvent(new CustomEvent("axiom:home-reset"));
     } else {
+      // Leaving a workspace for home: also drop the persisted home/Ask
+      // Atlas conversation ids so a fresh Ask Atlas session doesn't
+      // silently resume the workspace we just left. The full
+      // `axiom:home-reset` reset only fires when home.tsx is already
+      // mounted (see the `location === "/home"` branch above), so we
+      // clear the sessionStorage/localStorage state directly here too.
+      try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+      try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+      askAtlasSession.clearConversationId();
       setLocation("/home");
     }
   };
@@ -2385,6 +2394,14 @@ function ShellFooter() {
           if (location === "/home" || location === "/") {
             window.dispatchEvent(new CustomEvent("axiom:home-reset"));
           } else {
+            // Same rationale as ShellWordmark.goHome(): dropping the
+            // persisted conversation ids here (not just activeProjectContext)
+            // prevents a fresh Ask Atlas session from silently resuming the
+            // workspace we're navigating away from.
+            clearActiveProjectContext();
+            try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+            try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+            askAtlasSession.clearConversationId();
             setLocation("/home");
           }
         },

@@ -4252,6 +4252,69 @@ export default function Workspace() {
   const id = conversationId
     ? cidResolvedId
     : (Number(projectId) || Number(window.location.pathname.split('/project/')[1]?.split('/')[0]) || 0);
+  // Moved above its first use (greeting-fetch effect) to avoid a TDZ crash:
+  // "Cannot access 'openingMessage' before initialization". Depends only on
+  // `id` (declared just above) and module-level storage-key constants.
+  const [openingMessage, setOpeningMessage] = useState<{ message: string; projectId: string | null; attachments?: Array<{ base64: string; mediaType: string; name?: string }> } | null>(() => {
+    try {
+      // Quick Action V2 handoff (resume=quickaction): consume the
+      // sessionStorage payload, hoist {intent, prompt} into the existing
+      // opening-message pipeline, strip the query param, and clear state.
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("resume") === "quickaction") {
+          const raw = sessionStorage.getItem(`atlas:quickaction:resume:${id}`);
+          sessionStorage.removeItem(`atlas:quickaction:resume:${id}`);
+          params.delete("resume");
+          const nextSearch = params.toString();
+          const nextUrl =
+            window.location.pathname +
+            (nextSearch ? `?${nextSearch}` : "") +
+            window.location.hash;
+          window.history.replaceState({}, "", nextUrl);
+          if (raw) {
+            const payload = JSON.parse(raw) as { intent?: string; prompt?: string };
+            const intent = (payload?.intent ?? "").toLowerCase();
+            const text = (payload?.prompt ?? "").trim();
+            if (text) {
+              const prefix =
+                intent === "build"
+                  ? "Build: "
+                  : intent === "think"
+                  ? "Think through: "
+                  : intent === "decide"
+                  ? "Decide: "
+                  : "";
+              const seeded = `${prefix}${text}`;
+              sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, seeded);
+              sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(id));
+              return { message: seeded, projectId: String(id) };
+            }
+          }
+        }
+      } catch {}
+
+      const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
+      const storedProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      if (storedOpeningMessage !== null) {
+        if (storedProjectId !== String(id)) {
+          sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+          sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+          sessionStorage.removeItem("atlas-opening-attachments");
+          return null;
+        }
+        let openingAttachments: Array<{ base64: string; mediaType: string; name?: string }> | undefined;
+        try {
+          const rawAtts = sessionStorage.getItem("atlas-opening-attachments");
+          if (rawAtts) openingAttachments = JSON.parse(rawAtts) as Array<{ base64: string; mediaType: string; name?: string }>;
+        } catch {}
+        return { message: storedOpeningMessage, projectId: storedProjectId, attachments: openingAttachments };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
   const searchParams = new URLSearchParams(window.location.search);
   // Synchronously pin both last-project keys during the render itself — before effects fire
   // and before the browser can background the tab. Closes the mobile-refresh race window
@@ -4821,27 +4884,6 @@ export default function Workspace() {
     setMessages(transferredMessages);
   }, [historyMsgCountRef, id, priorLoaded, setMessages]);
 
-  useEffect(() => {
-    if (messages.length > 0 || openingMessage !== null || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief) || forgeRanRef.current || sessionsLoading || !priorLoadedState) return;
-    setGreetingLoading(true);
-    fetch(`/api/projects/${id}/greeting`, {
-      credentials: "include",
-      headers: getAuthHeaders(),
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.buildIntent) {
-          // Build-handoff path: auto-send through /api/chat so BUILD_HANDOFF fires
-          // and Atlas starts writing FILE_EDIT blocks without user typing anything.
-          setOpeningMessage({ message: data.buildIntent, projectId: String(id) });
-        } else if (data?.message && !forgeRanRef.current) {
-          setAtlasGreeting(data.message);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setGreetingLoading(false));
-  }, [id, messages.length, openingMessage, sessionsLoading, priorLoadedState]);
-
   // Reset workspace-owned chat state when the project changes.
   // (messages / sessionId / priorLoaded / historyMsgCountRef portion lives in useChatStream)
   useEffect(() => {
@@ -5386,6 +5428,31 @@ export default function Workspace() {
     try { return isHomeHandoff && sessionStorage.getItem(`atlas-home-handoff-banner-${id}`) !== "1"; } catch { return isHomeHandoff; }
   });
   const { data: resumeBrief } = useProjectResume(id);
+
+  // Moved below `isHomeHandoff`/`resumeBrief` (declared just above) to avoid a
+  // TDZ crash — this effect used to sit earlier in the component and referenced
+  // both before they were initialized.
+  useEffect(() => {
+    if (messages.length > 0 || openingMessage !== null || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief) || forgeRanRef.current || sessionsLoading || !priorLoadedState) return;
+    setGreetingLoading(true);
+    fetch(`/api/projects/${id}/greeting`, {
+      credentials: "include",
+      headers: getAuthHeaders(),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.buildIntent) {
+          // Build-handoff path: auto-send through /api/chat so BUILD_HANDOFF fires
+          // and Atlas starts writing FILE_EDIT blocks without user typing anything.
+          setOpeningMessage({ message: data.buildIntent, projectId: String(id) });
+        } else if (data?.message && !forgeRanRef.current) {
+          setAtlasGreeting(data.message);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setGreetingLoading(false));
+  }, [id, messages.length, openingMessage, sessionsLoading, priorLoadedState]);
+
   const [showHomeHandoffDrawer, setShowHomeHandoffDrawer] = useState(false);
   const importSourceLabel = importSource === "compani" ? "Compani Blueprints" : importSource === "axiom" ? "Axiom" : importSource ? importSource.charAt(0).toUpperCase() + importSource.slice(1) : null;
   const [showAxiomBanner, setShowAxiomBanner] = useState(() => {
@@ -5619,66 +5686,6 @@ export default function Workspace() {
     };
   }, []);
   const initialSent = useRef(false);
-  const [openingMessage, setOpeningMessage] = useState<{ message: string; projectId: string | null; attachments?: Array<{ base64: string; mediaType: string; name?: string }> } | null>(() => {
-    try {
-      // Quick Action V2 handoff (resume=quickaction): consume the
-      // sessionStorage payload, hoist {intent, prompt} into the existing
-      // opening-message pipeline, strip the query param, and clear state.
-      try {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get("resume") === "quickaction") {
-          const raw = sessionStorage.getItem(`atlas:quickaction:resume:${id}`);
-          sessionStorage.removeItem(`atlas:quickaction:resume:${id}`);
-          params.delete("resume");
-          const nextSearch = params.toString();
-          const nextUrl =
-            window.location.pathname +
-            (nextSearch ? `?${nextSearch}` : "") +
-            window.location.hash;
-          window.history.replaceState({}, "", nextUrl);
-          if (raw) {
-            const payload = JSON.parse(raw) as { intent?: string; prompt?: string };
-            const intent = (payload?.intent ?? "").toLowerCase();
-            const text = (payload?.prompt ?? "").trim();
-            if (text) {
-              const prefix =
-                intent === "build"
-                  ? "Build: "
-                  : intent === "think"
-                  ? "Think through: "
-                  : intent === "decide"
-                  ? "Decide: "
-                  : "";
-              const seeded = `${prefix}${text}`;
-              sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, seeded);
-              sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(id));
-              return { message: seeded, projectId: String(id) };
-            }
-          }
-        }
-      } catch {}
-
-      const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
-      const storedProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
-      if (storedOpeningMessage !== null) {
-        if (storedProjectId !== String(id)) {
-          sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
-          sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
-          sessionStorage.removeItem("atlas-opening-attachments");
-          return null;
-        }
-        let openingAttachments: Array<{ base64: string; mediaType: string; name?: string }> | undefined;
-        try {
-          const rawAtts = sessionStorage.getItem("atlas-opening-attachments");
-          if (rawAtts) openingAttachments = JSON.parse(rawAtts) as Array<{ base64: string; mediaType: string; name?: string }>;
-        } catch {}
-        return { message: storedOpeningMessage, projectId: storedProjectId, attachments: openingAttachments };
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  });
   // abortControllerRef owned by useChatStream.
   const importPrimed = useRef(false);
   const touchStartX = useRef(0);
