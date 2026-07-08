@@ -317,14 +317,20 @@ export function AskAtlasSurface({
           padding: restingDocked ? "18px 20px 96px" : "18px 20px 24px",
           display: "flex",
           flexDirection: "column",
-          gap: 16,
-          alignItems: "stretch",
+          alignItems: "center",
           scrollbarWidth: "none",
           msOverflowStyle: "none",
-          // Desktop: keep the conversation column readable, centered.
-          // Mobile: fills naturally.
-          ["--atlas-ask-atlas-col-max" as string]: "760px",
         }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 760,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
       >
 
         <AskAtlasTier1Chip conversationId={conversationId} />
