@@ -5742,11 +5742,7 @@ export default function Workspace() {
       unresolvedDecisions,
     });
     return () => {
-      try {
-        const next = window.location.pathname;
-        if (next === "/home") return;
-        if (!next.startsWith(`/project/${id}`)) clearActiveProjectContext();
-      } catch { clearActiveProjectContext(); }
+      clearActiveProjectContext();
     };
   }, [id, project, projectState.activeSession?.id, sessionId, messages, resumeBrief, latestRun, entries]);
   const addLocalMessage = useCallback((role: "user" | "assistant", content: string) => {
@@ -7247,6 +7243,7 @@ export default function Workspace() {
   // a new project surfaces the 6-question intake before Atlas starts talking.
   useEffect(() => {
     if (!id || !Number.isFinite(id) || id <= 0) return;
+    if (openingMessage?.message?.trim() || isHomeHandoff) return;
     if (wasTier1Skipped(id)) return; // user explicitly opted out — never auto-open
     const key = tier1AutoPromptKey(id);
     try { if (sessionStorage.getItem(key)) return; } catch { /* ignore */ }
@@ -7259,7 +7256,7 @@ export default function Workspace() {
       })
       .catch(() => { /* silent — backend may be transiently down */ });
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, openingMessage?.message, isHomeHandoff]);
 
 
 

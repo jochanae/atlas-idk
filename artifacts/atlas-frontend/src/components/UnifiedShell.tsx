@@ -20,7 +20,6 @@ import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { HudToggleDot } from "@/components/HudToggleDot";
-import AtlasMemoryHUD from "@/components/workspace/AtlasMemoryHUD";
 import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { SpecifySheet } from "@/components/SpecifySheet";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -34,6 +33,7 @@ import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { getAuthHeaders } from "@/lib/api";
 import { openAskAtlasFromWorkspace } from "@/lib/askAtlasSession";
+import { clearActiveProjectContext } from "@/lib/activeProjectContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   computeScoreFromNodeState,
@@ -150,6 +150,7 @@ function ShellWordmark() {
   const isTinyMobile = useIsTinyScreen();
   const isMobile = useIsMobile();
   const goHome = () => {
+    clearActiveProjectContext();
     if (location === "/home") {
       window.dispatchEvent(new CustomEvent("axiom:home-reset"));
     } else {
@@ -2695,13 +2696,6 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
         {/* ShellFooter intentionally not rendered — UnifiedContextDock owns the bottom nav.
             Two fixed footers at bottom:0 caused tap collisions. */}
       </div>
-      {/* Atlas Knows — Ask Atlas only (home). Live awareness snapshot. */}
-      {location === "/home" && (
-        <AtlasMemoryHUD
-          position={{ top: 64, right: 16 }}
-          conversationId={activeConversationId}
-        />
-      )}
       <SpecifySheet />
       <CommandPalette />
       <BuildPanel />
