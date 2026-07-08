@@ -8,7 +8,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { askAtlasSession } from "@/lib/askAtlasSession";
 import {
   useListProjects,
   useListSessions,
@@ -83,21 +82,7 @@ export function ConversationsLauncher() {
           projects={projects}
           onOpen={(projectId) => {
             setOpen(false);
-            // Prefer Ask Atlas for nexus-thread-aware projects (post thread-continuity).
-            // Falls back to workspace for old sessions that have no nexus thread.
-            let nexusConvId: string | null = null;
-            try { nexusConvId = localStorage.getItem(`nexus_conv_${projectId}`); } catch {}
-            if (nexusConvId) {
-              askAtlasSession.clearClosed();
-              askAtlasSession.setConversationId(nexusConvId);
-              askAtlasSession.setSurfaceOpen(true);
-              setLocation("/home");
-              setTimeout(() => {
-                window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
-              }, 30);
-            } else {
-              setLocation(`/project/${projectId}`);
-            }
+            setLocation(`/project/${projectId}`);
           }}
         />
       )}

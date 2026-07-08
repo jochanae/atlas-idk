@@ -33,7 +33,7 @@ import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
 import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
-import { useActiveProjectContext } from "@/lib/activeProjectContext";
+import { useActiveProjectContext, clearActiveProjectContext } from "@/lib/activeProjectContext";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
 import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
@@ -1087,13 +1087,7 @@ export function AskAtlasSurface({
 function WorkspaceContextChip() {
   const ctx = useActiveProjectContext();
   const [, setLoc] = useLocation();
-  const [dismissed, setDismissed] = useState(false);
-  useEffect(() => {
-    const restore = () => setDismissed(false);
-    window.addEventListener("axiom:restore-workspace-context-chip", restore);
-    return () => window.removeEventListener("axiom:restore-workspace-context-chip", restore);
-  }, []);
-  if (!ctx || dismissed) return null;
+  if (!ctx) return null;
   return (
     <div
       style={{
@@ -1135,7 +1129,7 @@ function WorkspaceContextChip() {
       </button>
       <button
         type="button"
-        onClick={() => setDismissed(true)}
+        onClick={() => clearActiveProjectContext()}
         style={{
           background: "transparent",
           border: 0,

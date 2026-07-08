@@ -74,17 +74,9 @@ export const ASK_ATLAS_STORAGE_KEYS = {
   closed: CLOSED_KEY,
 } as const;
 
-export function openAskAtlasFromWorkspace(
-  navigate: (path: string) => void,
-  /** The workspace's conversationId — if provided, Ask Atlas reopens on the
-   *  same thread rather than its last independent one, giving true continuity. */
-  conversationId?: string | null,
-): void {
+export function openAskAtlasFromWorkspace(navigate: (path: string) => void): void {
   askAtlasSession.clearClosed();
   askAtlasSession.setSurfaceOpen(true);
-  if (conversationId) {
-    askAtlasSession.setConversationId(conversationId);
-  }
   navigate("/home");
   if (typeof window === "undefined") return;
   window.setTimeout(() => {
