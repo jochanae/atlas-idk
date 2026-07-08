@@ -2344,7 +2344,8 @@ function ShellFooter() {
             clearActiveProjectContext();
             try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
             try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
-            askAtlasSession.clearConversationId();
+            try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+            try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
             setLocation("/home");
           }
         },
