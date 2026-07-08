@@ -24,18 +24,6 @@ import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProject
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 
-// ── Decision entry (subset of Entry schema we need for the Decisions lens) ────
-interface DecisionEntry {
-  id: number;
-  title: string;
-  summary?: string | null;
-  mode?: string | null;
-  verb?: string | null;
-  severity: string;
-  status: string;
-  sourceMessageId?: number | null;
-  createdAt: string;
-}
 
 // ── Relative time (seconds → minutes → hours → days → date) ───────────────────
 function formatAgo(ms: number): string {
