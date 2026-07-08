@@ -2186,35 +2186,14 @@ export default function Home() {
 
   const handleLockTap = useCallback(() => {
     vibrate(50);
-    if (askAtlasSurfaceOpen) {
-      // Exit Ask Atlas → return to the ambient homepage, NOT a stranded
-      // "Untitled conversation" view. Clear the active thread and message
-      // stream so the hero/quick-actions come back.
-      void callAskAtlasMode(false);
-      setAskAtlasSurfaceOpen(false);
-      try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
-      try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
-      conversationThreadRequestRef.current = null;
-      thinkOutLoudInlineRef.current = false;
-      setActiveConversationId(null);
-      setAskAtlasConversationId(null);
-      askAtlasSession.clearConversationId();
-      nexusChat.setMessages([]);
-      askAtlasChat.clearMessages();
-      setEarnedTitle(null);
-      setDepth("ambient");
-    } else {
-      setShowOverviewSheet(false);
-      setShowHistory(false);
-      setShowFocusPicker(false);
-      setAskAtlasSurfaceOpen(true);
-      window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
-      toast("Ask Atlas · Strategic view", {
-        className: "atlas-toast-premium",
-        description: "Macro view across every project.",
-      });
-    }
-  }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, askAtlasChat.clearMessages, setDepth]);
+    // Ask Atlas removed (Turn E-lite). Lock-tap now just closes overlays
+    // and dismisses to ambient home; there is no strategic-view mode.
+    setShowOverviewSheet(false);
+    setShowHistory(false);
+    setShowFocusPicker(false);
+    setDepth("ambient");
+  }, [vibrate, setDepth]);
+
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
