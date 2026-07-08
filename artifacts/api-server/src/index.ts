@@ -402,6 +402,16 @@ async function ensureColumns(): Promise<void> {
 
   try {
     await db.execute(sql`
+      ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS initial_message text
+    `);
+    logger.info("ensureColumns: projects.initial_message verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: projects.initial_message failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
       ALTER TABLE users
         ADD COLUMN IF NOT EXISTS global_narrative     text,
         ADD COLUMN IF NOT EXISTS global_narrative_at  timestamptz

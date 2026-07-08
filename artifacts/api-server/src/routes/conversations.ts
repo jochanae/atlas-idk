@@ -36,6 +36,7 @@ router.post("/conversations", async (req, res) => {
 
   const conversationId = randomUUID();
   const projectName = name?.trim() || "New Conversation";
+  const trimmedInitial = initialMessage?.trim() || null;
 
   try {
     const [project] = await db
@@ -45,18 +46,24 @@ router.post("/conversations", async (req, res) => {
         name: projectName,
         status: "shaping",
         conversationId,
+        ...(trimmedInitial ? { initialMessage: trimmedInitial } : {}),
       })
       .returning({
         id: projectsTable.id,
         conversationId: projectsTable.conversationId,
         name: projectsTable.name,
+        initialMessage: projectsTable.initialMessage,
       });
 
-    if (initialMessage?.trim()) {
-      generateConversationTitle(project.id, initialMessage.trim()).catch(() => {});
+    if (trimmedInitial) {
+      generateConversationTitle(project.id, trimmedInitial).catch(() => {});
     }
 
-    return res.json({ id: project.id, conversationId: project.conversationId });
+    return res.json({
+      id: project.id,
+      conversationId: project.conversationId,
+      initialMessage: project.initialMessage ?? null,
+    });
   } catch (err) {
     logger.error({ err }, "conversations: failed to create conversation");
     return res.status(500).json({ error: "Failed to create conversation" });
