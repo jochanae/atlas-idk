@@ -586,6 +586,10 @@ export function useChatStream(
               });
               queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
             }
+            // Always refresh the individual project query after each completed
+            // turn — the nexus workspace route doesn't emit autoName but the
+            // server may still have renamed the project (genome extraction, etc.).
+            queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
             return;
           }
 
@@ -1188,6 +1192,9 @@ export function useChatStream(
             });
             queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           }
+          // Always refresh the individual project query after each completed
+          // turn — server may have renamed the project during processing.
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
                 }
               } catch {
                 // malformed event — skip

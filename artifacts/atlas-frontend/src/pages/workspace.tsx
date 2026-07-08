@@ -6421,11 +6421,16 @@ export default function Workspace() {
       setOpeningMessage(null);
       return;
     }
-    // Gate: wait until sessionId is set, sessions are done loading, AND prior
-    // DB messages have been fetched (priorLoadedState). This prevents the auto-send
-    // from firing before the session is fully hydrated, eliminating the race that
-    // caused "network error" on the very first workspace load.
-    if (!sessionId || sessionsLoading || !priorLoadedState) return;
+    // Gate: wait until sessions are done loading. For existing sessions, also
+    // wait for prior DB messages (priorLoadedState). For brand-new projects
+    // with no session yet, kick ensureSessionId() so the session gets created
+    // and return — this effect re-fires when sessionId becomes non-null.
+    if (sessionsLoading) return;
+    if (!sessionId) {
+      void ensureSessionId();
+      return;
+    }
+    if (!priorLoadedState) return;
     const trimmedOpeningMessage = openingMessage.message.trim();
     if (!trimmedOpeningMessage) {
       try {
@@ -6446,7 +6451,7 @@ export default function Workspace() {
       sessionStorage.removeItem("atlas-opening-attachments");
     } catch {}
     setOpeningMessage(null);
-  }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef]);
+  }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef, ensureSessionId]);
 
   useEffect(() => {
     // Same gate: don't fire until session AND prior messages are fully ready.
