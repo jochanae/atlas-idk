@@ -2977,7 +2977,11 @@ WHAT YOU SHOULD NOT DO:
 
     // Strip MEMORY_Tn tags from persisted output
     const { content: rawVisibleContent, memoryUpdated: parsedMemoryUpdated } = extractMemoryLines(rawContent);
-    let visibleContent = rawVisibleContent;
+    // Strip leaked control markers (INTENT_TYPE:) — belong in telemetry, not the conversation.
+    let visibleContent = rawVisibleContent
+      .replace(/^\s*INTENT_TYPE:\s*\S+\s*$/gim, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
     const memoryUpdated = parsedMemoryUpdated;
 
     // Guard: if all content was stripped down to signal tokens with nothing left,
