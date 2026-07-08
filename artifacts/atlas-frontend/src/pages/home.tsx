@@ -5662,16 +5662,8 @@ export default function Home() {
         onClose={() => setShowShellSheet(false)}
       />
 
-      <CrystallizeSheet
-        open={crystallizeSheetOpen}
-        onClose={() => setCrystallizeSheetOpen(false)}
-        projects={projects ?? []}
-        handoffSignal={nexusChat.handoffSignal}
-        hasConversation={(nexusChat.messages?.length ?? 0) > 0}
-        onNewWorkspace={() => { setCrystallizeSheetOpen(false); handleAskAtlasCreateProject(); }}
-        onExistingProject={handleCrystallizeToExisting}
-        onPortfolioNote={handleCrystallizePortfolioNote}
-      />
+      {/* CrystallizeSheet removed (Turn D). */}
+
 
       {writeOverlayProjectId != null && createPortal(
         <div
