@@ -16,8 +16,8 @@
  * Design principles:
  *  - Fast: cheap model, minimal context (last 2 turns + current message).
  *  - Cheap: Haiku-tier. No thinking. No streaming.
- *  - Bounded: 400ms budget. On timeout or error, fall back to BUILD (existing
- *    behavior) so we never REGRESS by dropping legitimate build requests.
+ *  - Bounded: timeout budget. On timeout or error, fall back to DECIDE —
+ *    uncertainty must never cause the system to act. Think, don't build.
  *  - Explicit: returns reason string so we can debug misclassifications.
  */
 
@@ -54,9 +54,21 @@ DECIDE — User is weighing options, asking for tradeoffs, asking "should I", "w
 
 BUILD — User is asking to CREATE, EDIT, GENERATE, FIX, DEPLOY, or PRODUCE something concrete. Includes: "make me a X", "fix the Y", "add Z", "write code that", "generate a slide deck", "create a landing page", "push to github", "deploy this", or explicit affirmation of a prior build proposal ("yes do it", "go ahead", "start" after a build plan).
 
+BUILD requires an explicit action verb from the user in THIS turn, OR an unambiguous affirmation of a prior BUILD proposal from the assistant. Action verbs: build, create, make, fix, wire, implement, deploy, edit, generate, apply, run, add, remove, delete, push, ship, refactor, rename, install.
+
+If the user is describing a problem, expressing a preference, wondering, considering, or asking "should we / could we / maybe we", that is DECIDE — not BUILD, even if it names a concrete change.
+
+Examples:
+- "Maybe we should delete Ask Atlas." → DECIDE
+- "Delete Ask Atlas." → BUILD
+- "Can you help me think through deleting Ask Atlas?" → DECIDE
+- "I'm frustrated with this." → CHAT
+- "What do you think about X?" → CHAT or DECIDE (never BUILD)
+
 Rules:
-- When ambiguous between CHAT and BUILD, choose CHAT. Building on a false positive is worse than chatting on a false negative.
 - When ambiguous between DECIDE and BUILD, choose DECIDE.
+- When ambiguous between CHAT and DECIDE, choose CHAT.
+- When ambiguous between CHAT and BUILD, choose CHAT. Building on a false positive is worse than chatting on a false negative.
 - "yes" / "go" / "start" / "do it" — look at the prior assistant turn. If the assistant proposed a build, it's BUILD. If it proposed options, it's DECIDE. If it was conversational, it's CHAT.
 - Requests to explain, discuss, describe, or analyze are CHAT (or DECIDE if comparing).
 - A slide deck, document, image, or file the user explicitly asks you to make IS a BUILD.
@@ -65,6 +77,19 @@ Return ONLY a compact JSON object, no prose, no markdown fences:
 {"intent":"CHAT|DECIDE|BUILD","confidence":0.0-1.0,"reason":"<10 words"}`;
 
 const CLASSIFICATION_TIMEOUT_MS = 1500;
+const WHISPER_MODEL = "claude-haiku-4-5";
+
+function logWhisperTurn(result: Omit<WhisperResult, "reason"> & { reason: string; confidence: number | undefined }) {
+  logger.info({
+    event: "whisperGate.turn",
+    intent: result.intent,
+    confidence: result.confidence,
+    reason: result.reason,
+    fallback: result.fallback,
+    elapsedMs: result.elapsedMs,
+    model: WHISPER_MODEL,
+  }, result.fallback ? "whisperGate: classification failed, defaulting to DECIDE" : "whisperGate: classified");
+}
 
 export async function classifyIntent(input: WhisperInput): Promise<WhisperResult> {
   const startedAt = Date.now();
@@ -72,10 +97,14 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
 
   // Trivial short-circuits — no need to spend a model call.
   if (!message) {
-    return { intent: "CHAT", confidence: 1, reason: "empty message", fallback: false, elapsedMs: 0 };
+    const result: WhisperResult = { intent: "CHAT", confidence: 1, reason: "empty message", fallback: false, elapsedMs: 0 };
+    logWhisperTurn(result);
+    return result;
   }
   if (/^(hi|hello|hey|yo|sup|hola|good\s+(morning|afternoon|evening))[!.\s]*$/i.test(message)) {
-    return { intent: "CHAT", confidence: 1, reason: "greeting", fallback: false, elapsedMs: 0 };
+    const result: WhisperResult = { intent: "CHAT", confidence: 1, reason: "greeting", fallback: false, elapsedMs: Date.now() - startedAt };
+    logWhisperTurn(result);
+    return result;
   }
 
   const recent = (input.history ?? []).slice(-2).map((h) => `${h.role.toUpperCase()}: ${String(h.content ?? "").slice(0, 400)}`).join("\n");
@@ -90,7 +119,7 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
   try {
     const resp = await Promise.race([
       anthropic.messages.create({
-        model: "claude-haiku-4-5",
+        model: WHISPER_MODEL,
         max_tokens: 80,
         system: SYSTEM,
         messages: [{ role: "user", content: userBlock }],
@@ -110,20 +139,30 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
     }
 
     const elapsedMs = Date.now() - startedAt;
-    logger.info({ intent, confidence: parsed.confidence, reason: parsed.reason, elapsedMs }, "whisperGate: classified");
+    const confidence = typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.7;
+    const reason = (parsed.reason ?? "").slice(0, 120);
+    logWhisperTurn({
+      intent: intent as WhisperIntent,
+      confidence,
+      reason,
+      fallback: false,
+      elapsedMs,
+    });
     return {
       intent: intent as WhisperIntent,
-      confidence: typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.7,
-      reason: (parsed.reason ?? "").slice(0, 120),
+      confidence,
+      reason,
       fallback: false,
       elapsedMs,
     };
   } catch (err) {
     const elapsedMs = Date.now() - startedAt;
-    // FALLBACK POLICY: default to BUILD so we never lose a real build request.
-    // The old (broken) behavior was BUILD-for-everything, so falling back to
-    // BUILD is strictly no worse than before.
-    logger.warn({ err: String(err), elapsedMs, message: message.slice(0, 120) }, "whisperGate: classification failed, defaulting to BUILD");
-    return { intent: "BUILD", confidence: 0, reason: "classifier_failed", fallback: true, elapsedMs };
+    // FALLBACK POLICY: default to DECIDE. Uncertainty must never cause the
+    // system to act — think, don't build. Acting on a false BUILD is worse
+    // than asking the user to clarify a real build request.
+    logger.warn({ err: String(err), elapsedMs, message: message.slice(0, 120) }, "whisperGate: classification failed");
+    const result: WhisperResult = { intent: "DECIDE", confidence: 0, reason: "classifier_failed", fallback: true, elapsedMs };
+    logWhisperTurn(result);
+    return result;
   }
 }
