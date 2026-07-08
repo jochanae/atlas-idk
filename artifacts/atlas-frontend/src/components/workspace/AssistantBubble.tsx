@@ -991,6 +991,19 @@ function ClarifyCard({
           <div style={{ fontSize: 15, lineHeight: 1.45, color: "var(--atlas-fg)", fontWeight: 600 }}>
             {step.question}
           </div>
+          {step.reason && step.reason.trim().length > 0 && (
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 12.5,
+                lineHeight: 1.5,
+                color: "var(--atlas-muted)",
+                fontStyle: "italic",
+              }}
+            >
+              {step.reason}
+            </div>
+          )}
         </div>
 
         {isMultiStep && (

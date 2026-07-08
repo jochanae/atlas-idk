@@ -3025,6 +3025,29 @@ WHAT YOU SHOULD NOT DO:
       visibleContent = visibleContent.replace(clarifyMatch[0], "\n").replace(/\n{3,}/g, "\n\n").trim();
     }
 
+    // Extract NEXT_SUGGESTIONS marker — one-tap continuation chips. Discipline
+    // matches clarification cards: emitted only when the model judges the next
+    // moves are discrete and useful. Format: NEXT_SUGGESTIONS:["chip","chip"]
+    let nextSuggestions: string[] | undefined;
+    const NEXT_SUGGESTIONS_RE = /^NEXT_SUGGESTIONS:\s*(\[.*?\])\s*$/im;
+    const suggestionsMatch = visibleContent.match(NEXT_SUGGESTIONS_RE);
+    if (suggestionsMatch) {
+      try {
+        const parsed = JSON.parse(suggestionsMatch[1]) as unknown;
+        if (Array.isArray(parsed)) {
+          const chips = (parsed as unknown[])
+            .filter((c): c is string => typeof c === "string" && c.trim().length > 0 && c.length <= 72)
+            .slice(0, 4);
+          if (chips.length >= 2) nextSuggestions = chips;
+        }
+      } catch (err) {
+        logger.warn({ err: String(err), preview: suggestionsMatch[1].slice(0, 200) }, "nexus: NEXT_SUGGESTIONS parse failed");
+      }
+      visibleContent = visibleContent.replace(NEXT_SUGGESTIONS_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+    }
+
+
+
 
     // Guard: if all content was stripped down to signal tokens with nothing left,
     // do NOT persist a blank message to the thread — it replays as an empty
@@ -3382,7 +3405,7 @@ WHAT YOU SHOULD NOT DO:
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.
     // Send done immediately — HUD clears now regardless of image generation speed.
-    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, ...(isInProjectAskAtlas ? { sessionId, projectId: requestedProjectId, inProjectAskAtlas: true } : { conversationId: effectiveConversationId }), convState, catchPayload: catchPayload ?? undefined, ...(clarify ? { clarify } : {}), ...(thinkingStable ? { thinkingStable: true } : {}), ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
+    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, ...(isInProjectAskAtlas ? { sessionId, projectId: requestedProjectId, inProjectAskAtlas: true } : { conversationId: effectiveConversationId }), convState, catchPayload: catchPayload ?? undefined, ...(clarify ? { clarify } : {}), ...(nextSuggestions ? { nextSuggestions } : {}), ...(thinkingStable ? { thinkingStable: true } : {}), ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
 
     // Persist conv_state to project so workspace always opens with the correct posture.
     // Non-blocking: runs after SSE done is flushed so it never delays the stream.
