@@ -3479,26 +3479,21 @@ export default function Home() {
     setIsHandoffReady(false);
     try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+    try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+    try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
     conversationThreadRequestRef.current = null;
     thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
-    setAskAtlasConversationId(null);
-    askAtlasSession.clearConversationId();
-    askAtlasSession.setSurfaceOpen(false);
     clearActiveProjectContext();
     nexusChat.clearMessages();
-    askAtlasChat.clearMessages();
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.clearMessages, askAtlasChat.clearMessages]);
+  }, [nexusChat.clearMessages]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
     const reset = () => {
-      void callAskAtlasMode(false);
-      setAskAtlasSurfaceOpen(false);
-      askAtlasSession.setSurfaceOpen(false);
       clearActiveProjectContext();
       handleNewConversation();
       setDepth("ambient");
@@ -3506,7 +3501,8 @@ export default function Home() {
     };
     window.addEventListener("axiom:home-reset", reset);
     return () => window.removeEventListener("axiom:home-reset", reset);
-  }, [callAskAtlasMode, handleNewConversation, setDepth]);
+  }, [handleNewConversation, setDepth]);
+
 
 
   // Hydrate earned title when the active conversation changes.
