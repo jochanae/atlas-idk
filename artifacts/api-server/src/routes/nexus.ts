@@ -637,10 +637,16 @@ const NEXUS_AGENT_TOOLS: Anthropic.Tool[] = [
   TIER1_MARK_SKIPPED_TOOL,
 ];
 
-// Workspace-mode tools: same base set + file reading capability.
+// Workspace-mode tools: Tier 1 tools + file reading capability.
 // Only used when focusProjectId is set (inside a project workspace).
+// Deliberately excludes CREATE_PROJECT_TOOL — you are already inside a
+// project, so "build/create" intent here means write files, not spin up
+// a second project. (Bug: this used to spread in NEXUS_AGENT_TOOLS,
+// which includes CREATE_PROJECT_TOOL, causing Atlas to try creating a
+// new project mid-workspace and fail with the free-plan project limit.)
 const NEXUS_WORKSPACE_TOOLS: Anthropic.Tool[] = [
-  ...NEXUS_AGENT_TOOLS,
+  TIER1_UPSERT_FIELD_TOOL,
+  TIER1_MARK_SKIPPED_TOOL,
   READ_FILE_TOOL,
 ];
 
@@ -3741,8 +3747,10 @@ WHAT YOU SHOULD NOT DO:
           return;
         }
 
-        // Intercept narrated <tool_call> — Claude wrote the call as text instead of using the API mechanism
-        if (options.tools) {
+        // Intercept narrated <tool_call> — Claude wrote the call as text instead of using the API mechanism.
+        // Skip entirely when focusProjectId is set: create_project is a home/Ask-Atlas
+        // action only — inside an existing workspace it must never fire, narrated or not.
+        if (options.tools && !focusProjectId) {
           const narrated = extractNarratedToolCall(fullText);
           if (narrated) {
             req.log.info({ name: narrated.name }, "nexus/chat: intercepted narrated tool_call — executing create_project");
