@@ -3047,6 +3047,10 @@ export default function Home() {
         if (closeOnNavigate) closeOverviewSheet();
         setLocation("/parking");
       }}
+      onCreateProject={() => {
+        if (closeOnNavigate) closeOverviewSheet();
+        setShowNewProjectModal(true);
+      }}
       parkedCount={0}
       committedCount={0}
       bustSignal={resumeBustSignal}
@@ -4342,7 +4346,7 @@ export default function Home() {
                     {askAtlasSurfaceVisible ? "Ask Atlas." : (
                       <>
                         {greetingRef.current?.head}
-                        {isTiny && projects && projects.length > 0 && (() => {
+                        {isTiny && (() => {
                           const receded = askAtlasSurfaceVisible || inputFocused;
                           return (
                             <button
@@ -4411,7 +4415,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {!isTiny && projects && projects.length > 0 && (() => {
+                  {!isTiny && (() => {
                     const receded = askAtlasSurfaceVisible || inputFocused;
                     return (
                       <button
