@@ -240,6 +240,9 @@ export function AskAtlasSurface({
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+    // Collapse the expanded sheet back to the resting composer after sending.
+    try { textareaRef.current?.blur(); } catch {}
+    setFocused(false);
     void onSubmit();
   };
 
