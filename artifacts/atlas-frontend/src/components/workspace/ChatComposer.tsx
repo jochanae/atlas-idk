@@ -314,22 +314,14 @@ export function ChatComposer(props: ChatComposerProps) {
 
   // When the project is empty, focus the composer so Atlas feels "already in the room".
   // Skip on mobile to avoid yanking the keyboard up uninvited.
-  // Skip while sessions are still hydrating and when arriving via home-handoff
-  // (a message is about to be injected — auto-focusing here expands the sheet
-  //  over the incoming reply and never releases).
   useEffect(() => {
     if (isMobile) return;
     if (messages.length !== 0) return;
-    if (sessionsLoading) return;
-    try {
-      const src = new URLSearchParams(window.location.search).get("source");
-      if (src === "home-handoff") return;
-    } catch { /* noop */ }
 
     const t = setTimeout(() => { textareaRef.current?.focus(); }, 120);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length, isMobile, sessionsLoading]);
+  }, [messages.length, isMobile]);
 
   useEffect(() => {
     const current = new Set(attachedFiles);

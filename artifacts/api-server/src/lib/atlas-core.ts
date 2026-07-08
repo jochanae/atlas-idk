@@ -10,12 +10,7 @@ export const ATLAS_TOOLS_GUIDANCE = `You have tools. Use them instead of guessin
 - To claim a task is done: call finish({ summary }). Do NOT say "done" in prose without calling finish.
 - Never fabricate file contents. Always read_file first.
 - Verification is not optional after any write tool.
-- When foundational project context is incomplete, use tier1_upsert_field to capture answers the user volunteers. Use tier1_mark_skipped if they ask you to stop.
-
---- OVERRIDE: IGNORE FILE_EDIT_START/FILE_EDIT_END TEXT FORMAT ---
-Any instruction above this line describing a "FILE_EDIT_START ... FILE_EDIT_END" text block format is for a DIFFERENT execution mode and does NOT apply here. In THIS mode, writing FILE_EDIT_START as plain text does nothing — there is no text parser watching for it. It will look like a real file write to you, but no file will be created or changed, and the user will see a blank result.
-The ONLY way to write or change a file in this mode is to call the edit_file tool. If you catch yourself about to type "FILE_EDIT_START", stop and call edit_file instead.
---- END OVERRIDE ---`;
+- When foundational project context is incomplete, use tier1_upsert_field to capture answers the user volunteers. Use tier1_mark_skipped if they ask you to stop.`;
 
 export const ATLAS_PLANNING_GUIDANCE = `Planning discipline:
 - Multi-file or cross-layer work REQUIRES propose_plan before any write tool.

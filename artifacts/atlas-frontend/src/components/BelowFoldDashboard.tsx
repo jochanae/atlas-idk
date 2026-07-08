@@ -20,7 +20,6 @@ type Props = {
   onOpenProject: (id: number) => void;
   onOpenLedger?: () => void;
   onOpenParking?: () => void;
-  onCreateProject?: () => void;
   committedCount?: number;
   parkedCount?: number;
   bustSignal?: number;
@@ -359,7 +358,7 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
   );
 }
 
-export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, onCreateProject, committedCount = 0, parkedCount, bustSignal }: Props) {
+export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount, bustSignal }: Props) {
   const mostRecentProjectId = projects.reduce<number | null>((latestId, project) => {
     if (latestId == null) return project.id;
     const latestProject = projects.find((p) => p.id === latestId);
@@ -394,27 +393,6 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
           <p style={{ margin: 0, fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.6, fontStyle: "italic", maxWidth: 300 }}>
             Activity, portfolio health, and momentum will populate as you start working on projects.
           </p>
-          {onCreateProject && (
-            <button
-              type="button"
-              onClick={onCreateProject}
-              style={{
-                marginTop: 14,
-                padding: "10px 18px",
-                borderRadius: 999,
-                border: "1px solid rgba(201,162,76,0.45)",
-                background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-                color: "var(--atlas-gold)",
-                fontSize: 12.5,
-                fontFamily: "var(--app-font-mono)",
-                letterSpacing: "0.06em",
-                cursor: "pointer",
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              + Create your first project
-            </button>
-          )}
         </div>
 
         <div className="atlas-discovery-card" style={{ opacity: 0.45 }}>

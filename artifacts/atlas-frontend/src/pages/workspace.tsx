@@ -4823,15 +4823,6 @@ export default function Workspace() {
 
   useEffect(() => {
     if (messages.length > 0 || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief) || forgeRanRef.current || sessionsLoading || !priorLoadedState) return;
-    // Skip the canned greeting entirely when a real opening message is queued
-    // (from Home, Ask Atlas, or a fresh in-workspace project creation) — Atlas
-    // should respond to what the user actually said, not a generic filler that
-    // races against (and can visually precede) the real reply.
-    try {
-      const pendingOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
-      const pendingOpeningProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
-      if (pendingOpeningMessage && pendingOpeningProjectId === String(id)) return;
-    } catch {}
     setGreetingLoading(true);
     fetch(`/api/projects/${id}/greeting`, {
       credentials: "include",
@@ -7251,22 +7242,20 @@ export default function Workspace() {
     return () => window.removeEventListener(TIER1_INTAKE_OPEN_EVENT, open as EventListener);
   }, []);
 
-  // Tier 1 intake is available on-demand (via TIER1_INTAKE_OPEN_EVENT / the menu),
-  // but it no longer auto-opens on a fresh project. Ask Atlas, the Home project
-  // creation route, and in-workspace project creation all feed the same
-  // conversational extraction pipeline (genome/shaping), so the agenda still
-  // gets captured — just through the conversation itself instead of a popup
-  // that used to interrupt/compete with Atlas's actual first response.
+  // Auto-prompt Tier 1 intake once per project per browser session when the
+  // project has no Tier 1 memory yet. This is Forge as the true entry point:
+  // a new project surfaces the 6-question intake before Atlas starts talking.
   useEffect(() => {
     if (!id || !Number.isFinite(id) || id <= 0) return;
-    if (wasTier1Skipped(id)) return;
+    if (wasTier1Skipped(id)) return; // user explicitly opted out — never auto-open
     const key = tier1AutoPromptKey(id);
     try { if (sessionStorage.getItem(key)) return; } catch { /* ignore */ }
     let cancelled = false;
     getTier1Memory(id)
-      .then(() => {
+      .then((m) => {
         if (cancelled) return;
         try { sessionStorage.setItem(key, "1"); } catch { /* ignore */ }
+        if (!m) setTier1SheetOpen(true);
       })
       .catch(() => { /* silent — backend may be transiently down */ });
     return () => { cancelled = true; };
@@ -7413,12 +7402,10 @@ export default function Workspace() {
           { displayAs: "autoVerify" },
         );
         window.dispatchEvent(new CustomEvent("axiom:patch-applied"));
-        // Auto-start/rebuild the live preview with the new files. This covers both
-        // the very first build (workspace was never running yet) and subsequent
-        // rebuilds (workspace already running) — previously this only fired when
-        // already running, so a brand-new project's first successful build never
-        // surfaced a preview at all.
-        setRebuildTrigger(t => t + 1);
+        // If the workspace was already running, trigger an auto-rebuild with the new files
+        if (wsWasRunningRef.current) {
+          setRebuildTrigger(t => t + 1);
+        }
       } else {
         // GitHub push — existing commit flow
         const repoName = linkedRepo.fullName;
