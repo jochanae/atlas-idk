@@ -15,9 +15,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  FolderGit2, X, FileCode2, Eye, Search, Folder,
-  Lightbulb, Trash2, CheckCircle2, ChevronDown, Scale, AlertTriangle,
-  Dna, BookMarked, ListChecks,
+  X, FileCode2, Eye, Search, Folder,
+  Lightbulb, Trash2, CheckCircle2, ChevronDown,
+  Dna, BookMarked, ListChecks, AlertOctagon, FileOutput, HelpCircle,
 } from "lucide-react";
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
