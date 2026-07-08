@@ -80,10 +80,7 @@ export function ConversationsLauncher() {
       ) : (
         <UnifiedHistory
           projects={projects}
-          onOpen={(projectId) => {
-            setOpen(false);
-            setLocation(`/project/${projectId}`);
-          }}
+          onOpen={(projectId) => { setOpen(false); setLocation(`/project/${projectId}`); }}
         />
       )}
     </LauncherOverlay>

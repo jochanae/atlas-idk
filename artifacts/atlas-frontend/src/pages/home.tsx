@@ -2402,10 +2402,6 @@ export default function Home() {
       }
       const projectId = Number(project.id);
       if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
-      // Thread adoption: workspace inherits the conversation that led to this project
-      // (preferring Ask Atlas thread, falling back to global nexus). This is what makes
-      // "One thread. Two views." real — no fork at the promote moment.
-      try { localStorage.setItem(`nexus_conv_${projectId}`, askAtlasConversationId ?? activeConversationId ?? ""); } catch {}
       const effectiveConversationId = activeConversationId;
       void triggerNexusHandoff({
         conversationId: effectiveConversationId,
@@ -2434,7 +2430,6 @@ export default function Home() {
     }
   }, [
     activeConversationId,
-    askAtlasConversationId,
     callAskAtlasMode,
     nexusChat.messages,
     queryClient,
@@ -3323,9 +3318,6 @@ export default function Home() {
       }
       const projectId = Number(project.id);
       if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
-      // Thread adoption: workspace inherits the Ask Atlas thread so the conversation
-      // continues without a seam (same conversationId, same history).
-      try { localStorage.setItem(`nexus_conv_${projectId}`, askAtlasConversationId ?? activeConversationId ?? ""); } catch {}
       try {
         sessionStorage.setItem(OPENING_CONVERSATION_STORAGE_KEY, JSON.stringify(conversationMessages));
         sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
@@ -3392,8 +3384,6 @@ export default function Home() {
       setIsSending(false);
     }
   }, [
-    activeConversationId,
-    askAtlasConversationId,
     backendReady,
     isFree,
     isSending,
