@@ -13,29 +13,17 @@
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 import {
-  FolderGit2, X, FileCode2, Eye, Search, Folder,
-  Lightbulb, Trash2, CheckCircle2, ChevronDown, Scale, AlertTriangle,
-  Dna, BookMarked, ListChecks,
+  X, FileCode2, Eye, Search, Folder,
+  Lightbulb, Trash2, CheckCircle2, ChevronDown,
+  Dna, BookMarked, ListChecks, AlertOctagon, FileOutput, HelpCircle,
 } from "lucide-react";
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 
-// ── Decision entry (subset of Entry schema we need for the Decisions lens) ────
-interface DecisionEntry {
-  id: number;
-  title: string;
-  summary?: string | null;
-  mode?: string | null;
-  verb?: string | null;
-  severity: string;
-  status: string;
-  sourceMessageId?: number | null;
-  createdAt: string;
-}
 
 // ── Relative time (seconds → minutes → hours → days → date) ───────────────────
 function formatAgo(ms: number): string {
@@ -64,91 +52,7 @@ function gitBadge(code: string): { label: string; color: string } | null {
   return { label: code.trim().slice(0, 1) || "~", color: "rgba(180,180,180,0.7)" };
 }
 
-// ── Workspace (local git status) ─────────────────────────────────────────────
-
-function WorkspaceBlock({ projectId }: { projectId: number }) {
-  const { data, isLoading } = useQuery<{ files: Record<string, string>; hasRemote?: boolean }>({
-    queryKey: ["vcp-gitstatus", projectId],
-    queryFn: () =>
-      fetch(`/api/fs/${projectId}/gitstatus`, { credentials: "include" }).then((r) => r.json()),
-    // Phase 3: stretched from 10 s → 30 s to match the rest of the run-data
-    // refresh budget; window-focus refetches removed since git status changes
-    // are captured when Atlas actually writes files, not on tab-switch.
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const files = data?.files ?? {};
-  const entries = Object.entries(files);
-  const modifiedCount = entries.length;
-  const status: { label: string; tone: string } = isLoading
-    ? { label: "Checking…", tone: "rgba(200,200,200,0.6)" }
-    : !data
-      ? { label: "Not tracked", tone: "rgba(200,200,200,0.55)" }
-      : modifiedCount === 0
-        ? { label: "Clean", tone: "rgba(100,200,120,0.9)" }
-        : { label: `${modifiedCount} file${modifiedCount !== 1 ? "s" : ""} modified`, tone: "rgba(var(--atlas-gold-rgb), 0.9)" };
-
-  return (
-    <div style={{ padding: "10px 14px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 6,
-        fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-        color: "var(--atlas-gold)", letterSpacing: "0.14em",
-        textTransform: "uppercase", opacity: 0.7, paddingBottom: 4,
-      }}>
-        <FolderGit2 size={11} strokeWidth={1.7} />
-        <span>Current State</span>
-        <span style={{
-          marginLeft: "auto",
-          fontSize: 9, padding: "1px 6px", borderRadius: 3,
-          background: "rgba(255,255,255,0.03)",
-          border: `1px solid ${status.tone.replace(/[\d.]+\)$/, "0.35)")}`,
-          color: status.tone, letterSpacing: "0.1em",
-        }}>{status.label}</span>
-      </div>
-      {!isLoading && entries.length === 0 && (
-        <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.55 }}>
-          {data
-            ? "Everything Atlas wrote has landed. Nothing waiting to apply."
-            : "No workspace tracking for this project yet."}
-        </div>
-      )}
-      {entries.length > 0 && (
-        <>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {entries.map(([filePath, code]) => {
-              const badge = gitBadge(code);
-              return (
-                <div key={filePath} style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  fontSize: 11.5, fontFamily: "var(--app-font-mono)",
-                  color: "var(--atlas-fg)", opacity: 0.8,
-                }}>
-                  {badge && (
-                    <span style={{
-                      color: badge.color, flexShrink: 0,
-                      width: 10, textAlign: "center", fontWeight: 700, fontSize: 11,
-                    }}>{badge.label}</span>
-                  )}
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {filePath}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{
-            fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.45,
-            fontFamily: "var(--app-font-sans)", lineHeight: 1.5, paddingTop: 2,
-          }}>
-            Commit & push from the Files tab → Workspace.
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+// (WorkspaceBlock removed — live git status does not belong in a historical run audit.)
 
 // ── Changes lens: per-file rows from DB-backed execution_run_steps ─────────────
 
@@ -604,9 +508,11 @@ const TIMELINE_VERBS = new Set([
   "THOUGHT", "FILE_READ", "SEARCH", "INSPECT",
   "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "SUMMARY",
   "DNA_UPDATED", "DECISION_RECORDED", "PLAN_RECORDED",
+  // Placeholder support — rendered only if backend emits real steps.
+  "ARTIFACT_CREATED", "ERROR", "QUESTION_ASKED",
 ]);
-const EXPANDABLE_VERBS = new Set(["THOUGHT", "FILE_EDIT", "SUMMARY"]);
-const ALWAYS_OPEN_VERBS = new Set(["SUMMARY"]);
+const EXPANDABLE_VERBS = new Set(["THOUGHT", "FILE_EDIT", "SUMMARY", "ERROR", "QUESTION_ASKED"]);
+const ALWAYS_OPEN_VERBS = new Set(["SUMMARY", "ERROR"]);
 
 function stepColor(verb: string): string {
   const MAP: Record<string, string> = {
@@ -617,10 +523,13 @@ function stepColor(verb: string): string {
     FILE_EDIT:          "rgba(var(--atlas-gold-rgb), 0.95)",
     LINE_PATCH:         "rgba(var(--atlas-gold-rgb), 0.75)",
     FILE_DELETE:        "rgba(220,80,80,0.85)",
-    SUMMARY:            "rgba(100,200,120,0.85)",
+    SUMMARY:            "rgba(100,200,120,0.95)",
     DNA_UPDATED:        "rgba(120,190,255,0.85)",
     DECISION_RECORDED:  "rgba(220,160,80,0.90)",
     PLAN_RECORDED:      "rgba(170,130,230,0.85)",
+    ARTIFACT_CREATED:   "rgba(180,200,120,0.90)",
+    ERROR:              "rgba(220,80,80,0.95)",
+    QUESTION_ASKED:     "rgba(200,180,140,0.85)",
   };
   return MAP[verb] ?? "rgba(180,180,180,0.75)";
 }
@@ -635,8 +544,9 @@ function stepLabel(verb: string, detail?: string | null): string {
     THOUGHT: "Thought", FILE_READ: "Read", SEARCH: "Search",
     INSPECT: "Inspect", FILE_EDIT: "Edited", LINE_PATCH: "Patched",
     FILE_DELETE: "Deleted", SUMMARY: "Summary",
-    DNA_UPDATED: "DNA updated", DECISION_RECORDED: "Decision recorded",
+    DNA_UPDATED: "DNA updated", DECISION_RECORDED: "Decision",
     PLAN_RECORDED: "Plan recorded",
+    ARTIFACT_CREATED: "Output", ERROR: "Error", QUESTION_ASKED: "Question",
   };
   return MAP[verb] ?? verb;
 }
@@ -654,6 +564,9 @@ function StepIcon({ verb }: { verb: string }) {
   if (verb === "DNA_UPDATED")       return <Dna          {...p} />;
   if (verb === "DECISION_RECORDED") return <BookMarked   {...p} />;
   if (verb === "PLAN_RECORDED")     return <ListChecks   {...p} />;
+  if (verb === "ARTIFACT_CREATED")  return <FileOutput   {...p} />;
+  if (verb === "ERROR")             return <AlertOctagon {...p} />;
+  if (verb === "QUESTION_ASKED")    return <HelpCircle   {...p} />;
   return null;
 }
 
@@ -663,15 +576,50 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
   const alwaysOpen = ALWAYS_OPEN_VERBS.has(step.verb);
   const [open, setOpen] = useState(alwaysOpen);
 
-  const isTextVerb = step.verb === "THOUGHT" || step.verb === "SUMMARY";
+  const isTextVerb = step.verb === "THOUGHT" || step.verb === "SUMMARY"
+    || step.verb === "ERROR" || step.verb === "QUESTION_ASKED"
+    || step.verb === "DECISION_RECORDED";
   const showTarget = !isTextVerb && step.verb !== "INSPECT" && !!step.target;
+  const isSummary = step.verb === "SUMMARY";
+  const isError = step.verb === "ERROR";
+  const isReceipt = isSummary || isError;
+
+  // SUMMARY / ERROR render as a full receipt card, not a hairline row.
+  if (isReceipt) {
+    return (
+      <div style={{
+        marginTop: 14,
+        padding: "12px 14px",
+        borderRadius: 6,
+        background: isError ? "rgba(220,80,80,0.06)" : "rgba(100,200,120,0.05)",
+        border: `1px solid ${isError ? "rgba(220,80,80,0.28)" : "rgba(100,200,120,0.25)"}`,
+      }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.14em", textTransform: "uppercase",
+          color, opacity: 0.95, marginBottom: 8,
+        }}>
+          <StepIcon verb={step.verb} />
+          <span>{isError ? "Error" : "Outcome"}</span>
+        </div>
+        {step.content && (
+          <div style={{
+            fontFamily: "var(--app-font-sans)", fontSize: 12.5,
+            color: "var(--atlas-fg)", opacity: 0.92, lineHeight: 1.6,
+            whiteSpace: "pre-wrap", wordBreak: "break-word",
+          }}>{step.content}</div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
       {/* Hairline trace + dot */}
       <div style={{
         display: "flex", flexDirection: "column", alignItems: "center",
-        flexShrink: 0, width: 18, paddingTop: 8,
+        flexShrink: 0, width: 18, paddingTop: 10,
       }}>
         <div style={{
           width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
@@ -679,19 +627,19 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
         }} />
         {!isLast && (
           <div style={{
-            width: 1, flex: 1, minHeight: 10,
-            background: "rgba(var(--atlas-gold-rgb), 0.1)", marginTop: 3,
+            width: 1, flex: 1, minHeight: 18,
+            background: "rgba(var(--atlas-gold-rgb), 0.1)", marginTop: 4,
           }} />
         )}
       </div>
 
-      {/* Step body */}
-      <div style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 0 : 4 }}>
+      {/* Step body — more breathing room */}
+      <div style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 0 : 10 }}>
         <div
           style={{
-            display: "flex", alignItems: "center", gap: 5,
+            display: "flex", alignItems: "center", gap: 6,
             cursor: canExpand && !alwaysOpen ? "pointer" : "default",
-            paddingTop: 4,
+            paddingTop: 6,
           }}
           onClick={() => canExpand && !alwaysOpen && setOpen((o) => !o)}
         >
@@ -723,7 +671,7 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
 
         {(open || alwaysOpen) && step.content && (
           <pre style={{
-            margin: "4px 0 2px", padding: "8px 10px", borderRadius: 4,
+            margin: "6px 0 2px", padding: "10px 12px", borderRadius: 4,
             background: "rgba(var(--atlas-fg-rgb), 0.05)",
             border: `1px solid ${color.replace(/[\d.]+\)$/, "0.12)")}`,
             fontFamily: isTextVerb ? "var(--app-font-sans)" : "var(--app-font-mono)",
@@ -740,33 +688,121 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
   );
 }
 
-function RunTimeline({ steps }: { steps: ApiRunStep[] }) {
-  const visible = steps.filter((s) => TIMELINE_VERBS.has(s.verb));
+// ── Run-level header: prompt · intent · status · timing · summary ─────────────
+function formatDuration(ms: number | null | undefined, started: string, ended: string | null): string | null {
+  const dur = ms ?? (ended ? new Date(ended).getTime() - new Date(started).getTime() : null);
+  if (dur == null || !Number.isFinite(dur) || dur < 0) return null;
+  if (dur < 1000) return `${dur}ms`;
+  const s = dur / 1000;
+  if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+  const m = Math.floor(s / 60);
+  const rem = Math.round(s - m * 60);
+  return `${m}m ${rem}s`;
+}
 
-  if (visible.length === 0) {
-    const hasLegacy = steps.some((s) =>
-      s.verb === "FILE_EDIT" || s.verb === "LINE_PATCH" || s.verb === "FILE_DELETE"
-    );
-    return (
-      <div style={{
-        padding: "18px 14px", fontSize: 11.5,
-        color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
-      }}>
-        {hasLegacy
-          ? "Execution trace not available — this run predates step capture. See Changes tab for what was written."
-          : "No execution steps recorded for this run."}
-      </div>
-    );
-  }
+function RunHeader({ run }: { run: ApiRun }) {
+  // `prompt` and `intent` may be added by backend later — read defensively.
+  const prompt = (run as unknown as { prompt?: string | null }).prompt ?? null;
+  const intent = (run as unknown as { intent?: string | null }).intent ?? null;
+  const status = run.status;
+  const duration = formatDuration(run.elapsedMs, run.startedAt, run.completedAt);
+  const started = new Date(run.startedAt);
+  const startedLabel = started.toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
+
+  const statusTone: Record<string, string> = {
+    completed: "rgba(100,200,120,0.9)",
+    running: "rgba(var(--atlas-gold-rgb), 0.9)",
+    failed: "rgba(220,80,80,0.9)",
+  };
+  const tone = statusTone[status] ?? "rgba(180,180,180,0.8)";
 
   return (
-    <div style={{ padding: "12px 10px 14px", display: "flex", flexDirection: "column" }}>
-      {visible.map((step, i) => (
-        <RunTimelineItem key={`${step.id}-${i}`} step={step} isLast={i === visible.length - 1} />
-      ))}
+    <div style={{
+      padding: "14px 16px 12px",
+      borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
+      display: "flex", flexDirection: "column", gap: 8,
+    }}>
+      {/* Meta row */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+        fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+        letterSpacing: "0.12em", textTransform: "uppercase",
+      }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "2px 7px", borderRadius: 3,
+          background: `${tone.replace(/[\d.]+\)$/, "0.12)")}`,
+          border: `1px solid ${tone.replace(/[\d.]+\)$/, "0.3)")}`,
+          color: tone,
+        }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: "50%",
+            background: tone, boxShadow: `0 0 4px ${tone}`,
+          }} />
+          {status}
+        </span>
+        {intent && (
+          <span style={{
+            padding: "2px 7px", borderRadius: 3,
+            background: "rgba(var(--atlas-gold-rgb), 0.08)",
+            border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)",
+            color: "var(--atlas-gold)", opacity: 0.9,
+          }}>{intent}</span>
+        )}
+        <span style={{ color: "var(--atlas-muted)", opacity: 0.55 }}>{startedLabel}</span>
+        {duration && (
+          <span style={{ color: "var(--atlas-muted)", opacity: 0.55 }}>· {duration}</span>
+        )}
+      </div>
+
+      {/* Prompt */}
+      {prompt && (
+        <div style={{
+          fontFamily: "var(--app-font-sans)", fontSize: 14,
+          color: "var(--atlas-fg)", opacity: 0.95, lineHeight: 1.5,
+          letterSpacing: "-0.005em",
+        }}>{prompt}</div>
+      )}
+
+      {/* Summary preview (SUMMARY step still renders in-timeline as receipt) */}
+      {!prompt && run.summary && (
+        <div style={{
+          fontFamily: "var(--app-font-sans)", fontSize: 13,
+          color: "var(--atlas-muted)", opacity: 0.8, lineHeight: 1.55,
+        }}>{run.summary}</div>
+      )}
     </div>
   );
 }
+
+function RunTimeline({ run }: { run: ApiRun }) {
+  const visible = run.steps.filter((s) => TIMELINE_VERBS.has(s.verb));
+
+  return (
+    <div>
+      <RunHeader run={run} />
+      {visible.length === 0 ? (
+        <div style={{
+          padding: "18px 16px", fontSize: 12,
+          color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.65,
+        }}>
+          {run.steps.some((s) => s.verb === "FILE_EDIT" || s.verb === "LINE_PATCH" || s.verb === "FILE_DELETE")
+            ? "Execution trace not available — this run predates step capture. See Changes for what was written."
+            : "No execution steps recorded for this run."}
+        </div>
+      ) : (
+        <div style={{ padding: "16px 14px 18px", display: "flex", flexDirection: "column" }}>
+          {visible.map((step, i) => (
+            <RunTimelineItem key={`${step.id}-${i}`} step={step} isLast={i === visible.length - 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ── Run receipt list: collapsible section (collapsed by default) ──────────────
 
@@ -848,160 +884,7 @@ function WorkspaceRunReceipts({
   );
 }
 
-// ── DecisionsLens: ledger entries scoped to a specific run's message id ──────
-
-function decisionTone(severity: string, status: string): { fg: string; bg: string; label: string } {
-  if (status === "overridden") return { fg: "rgba(180,180,180,0.75)", bg: "rgba(180,180,180,0.10)", label: "Overridden" };
-  if (severity === "blocker")  return { fg: "rgba(248,113,113,0.9)",  bg: "rgba(248,113,113,0.12)", label: "Blocker" };
-  if (status === "committed" || severity === "committed")
-    return { fg: "rgba(74,222,128,0.9)",  bg: "rgba(74,222,128,0.10)", label: "Committed" };
-  if (status === "in_tension") return { fg: "rgba(var(--atlas-gold-rgb), 0.9)", bg: "rgba(var(--atlas-gold-rgb), 0.12)", label: "In Tension" };
-  return { fg: "rgba(180,180,180,0.8)", bg: "rgba(180,180,180,0.08)", label: status || "decision" };
-}
-
-function DecisionRow({ entry }: { entry: DecisionEntry }) {
-  const tone = decisionTone(entry.severity, entry.status);
-  return (
-    <a
-      href={`/entry/${entry.id}`}
-      style={{
-        display: "flex", gap: 10, alignItems: "flex-start",
-        padding: "10px 12px",
-        borderRadius: 6,
-        border: "1px solid rgba(var(--atlas-gold-rgb), 0.08)",
-        background: "rgba(255,255,255,0.02)",
-        textDecoration: "none", color: "inherit",
-      }}
-    >
-      <span style={{
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: 20, height: 20, borderRadius: 999,
-        background: tone.bg, color: tone.fg, flexShrink: 0, marginTop: 1,
-      }}>
-        {entry.severity === "blocker" ? <AlertTriangle size={11} strokeWidth={1.8} /> : <Scale size={11} strokeWidth={1.8} />}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6, marginBottom: 3,
-        }}>
-          <span style={{
-            fontSize: 9, fontFamily: "var(--app-font-mono)",
-            letterSpacing: "0.12em", textTransform: "uppercase",
-            color: tone.fg, opacity: 0.9,
-          }}>{tone.label}</span>
-          {entry.mode && (
-            <span style={{
-              fontSize: 9, fontFamily: "var(--app-font-mono)",
-              color: "var(--atlas-muted)", opacity: 0.55,
-              letterSpacing: "0.08em",
-            }}>· {entry.mode}</span>
-          )}
-        </div>
-        <div style={{
-          fontSize: 12.5, color: "var(--atlas-fg)", fontWeight: 500,
-          lineHeight: 1.35, letterSpacing: "-0.005em",
-          overflow: "hidden", textOverflow: "ellipsis",
-          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-        }}>{entry.title}</div>
-        {entry.summary && (
-          <div style={{
-            fontSize: 11, color: "var(--atlas-muted)", opacity: 0.7,
-            marginTop: 3, lineHeight: 1.5,
-            overflow: "hidden", textOverflow: "ellipsis",
-            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-          }}>{entry.summary}</div>
-        )}
-      </div>
-    </a>
-  );
-}
-
-function DecisionsLens({
-  projectId,
-  messageId,
-}: {
-  projectId: number;
-  messageId: number | null;
-}) {
-  const queryClient = useQueryClient();
-  const { data, isLoading, error } = useQuery<{ entries: DecisionEntry[] } | DecisionEntry[]>({
-    queryKey: ["run-decisions", projectId, messageId],
-    queryFn: async () => {
-      const res = await fetch(`/api/projects/${projectId}/entries`, { credentials: "include" });
-      if (!res.ok) throw new Error(`entries fetch failed: ${res.status}`);
-      return res.json();
-    },
-    enabled: !!projectId && messageId !== null,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
-  });
-
-  // Immediately refresh when any entry changes for this project —
-  // eliminates the 30s staleTime lag after commit/park.
-  useWorkspaceEvent("entry-changed", ({ projectId: changedPid }) => {
-    if (changedPid === projectId) {
-      void queryClient.invalidateQueries({ queryKey: ["run-decisions", projectId] });
-    }
-  }, [projectId, queryClient]);
-
-  const scoped = useMemo<DecisionEntry[]>(() => {
-    if (messageId === null) return [];
-    const raw: DecisionEntry[] = Array.isArray(data)
-      ? data
-      : Array.isArray((data as { entries?: DecisionEntry[] } | undefined)?.entries)
-        ? (data as { entries: DecisionEntry[] }).entries
-        : [];
-    return raw
-      .filter((e) => e.sourceMessageId === messageId)
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }, [data, messageId]);
-
-  if (messageId === null) {
-    return (
-      <div style={{
-        padding: "18px 14px", fontSize: 11.5,
-        color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
-      }}>
-        No decisions were recorded during this run.
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div style={{
-        padding: "18px 14px", fontSize: 11.5,
-        color: "var(--atlas-muted)", opacity: 0.5,
-      }}>Loading decisions…</div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        padding: "18px 14px", fontSize: 11.5,
-        color: "rgba(248,113,113,0.85)", opacity: 0.8, lineHeight: 1.55,
-      }}>Couldn't load decisions.</div>
-    );
-  }
-
-  if (scoped.length === 0) {
-    return (
-      <div style={{
-        padding: "18px 14px", fontSize: 11.5,
-        color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
-      }}>
-        No decisions were committed during this run.
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ padding: "12px 12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-      {scoped.map((entry) => <DecisionRow key={entry.id} entry={entry} />)}
-    </div>
-  );
-}
+// (DecisionsLens removed — DECISION_RECORDED steps render chronologically in the Timeline.)
 
 // ── Root component ────────────────────────────────────────────────────────────
 
@@ -1024,7 +907,7 @@ export function ViewChangesPanel({
   runId,
   projectName,
 }: Props) {
-  const [lens, setLens] = useState<"timeline" | "changes" | "decisions">("timeline");
+  const [lens, setLens] = useState<"timeline" | "changes">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
   const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId);
 
@@ -1164,52 +1047,65 @@ export function ViewChangesPanel({
         onSelectRun={setRunFilter}
       />
 
-      {/* ── Toggle ── */}
+      {/* ── Centered segmented toggle: Timeline · Changes ── */}
       <div style={{
-        display: "flex", padding: "10px 14px 8px", gap: 4,
+        display: "flex", justifyContent: "center",
+        padding: "14px 14px 12px",
         borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.08)",
       }}>
-        {(["timeline", "changes", "decisions"] as const).map((k) => {
-          const active = lens === k;
-          return (
-            <button
-              key={k} type="button" onClick={() => setLens(k)}
-              style={{
-                fontFamily: "var(--app-font-mono)", fontSize: 10,
-                letterSpacing: "0.12em", textTransform: "uppercase",
-                padding: "5px 11px", borderRadius: 4,
-                background: active ? "rgba(var(--atlas-gold-rgb), 0.14)" : "transparent",
-                border: `1px solid ${active ? "rgba(var(--atlas-gold-rgb), 0.35)" : "rgba(var(--atlas-gold-rgb), 0.12)"}`,
-                color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                cursor: "pointer",
-              }}
-            >{k}</button>
-          );
-        })}
+        <div style={{
+          display: "inline-flex",
+          padding: 3,
+          borderRadius: 999,
+          background: "rgba(0,0,0,0.32)",
+          border: "1px solid rgba(var(--atlas-gold-rgb), 0.18)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+          gap: 2,
+        }}>
+          {(["timeline", "changes"] as const).map((k) => {
+            const active = lens === k;
+            return (
+              <button
+                key={k} type="button" onClick={() => setLens(k)}
+                style={{
+                  minWidth: 108,
+                  fontFamily: "var(--app-font-sans)", fontSize: 12,
+                  fontWeight: active ? 600 : 500,
+                  letterSpacing: "0.02em",
+                  padding: "7px 18px", borderRadius: 999,
+                  background: active
+                    ? "linear-gradient(180deg, rgba(var(--atlas-gold-rgb), 0.22), rgba(var(--atlas-gold-rgb), 0.14))"
+                    : "transparent",
+                  border: active
+                    ? "1px solid rgba(var(--atlas-gold-rgb), 0.4)"
+                    : "1px solid transparent",
+                  color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  cursor: "pointer",
+                  transition: "background 180ms ease, color 180ms ease, border-color 180ms ease",
+                  textTransform: "capitalize",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >{k}</button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Body ── */}
       {lens === "timeline" ? (
         timelineRun ? (
-          <RunTimeline steps={timelineRun.steps} />
+          <RunTimeline run={timelineRun} />
         ) : (
           <div style={{
-            padding: "18px 14px", fontSize: 11.5,
-            color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
+            padding: "18px 14px", fontSize: 12,
+            color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.65,
           }}>
             {runId ? "Run not found — it may still be loading." : "No runs yet for this project."}
           </div>
         )
-      ) : lens === "decisions" ? (
-        <DecisionsLens projectId={projectId} messageId={timelineRun?.messageId ?? null} />
       ) : (
         <ChangesLens rows={changeRows} projectId={projectId} />
       )}
-
-      {/* ── Workspace block ── */}
-      <div style={{ borderTop: "1px solid rgba(var(--atlas-gold-rgb), 0.08)", marginTop: "auto" }}>
-        <WorkspaceBlock projectId={projectId} />
-      </div>
     </div>
   );
 }
