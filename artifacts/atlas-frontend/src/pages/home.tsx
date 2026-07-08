@@ -5166,13 +5166,13 @@ export default function Home() {
                 style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
-              {/* History clock — icon only, no card. */}
+              {/* Projects shortcut — icon only, no card. Replaced conversation-history clock. */}
               <button
                 type="button"
-                aria-label="Where were we"
-                title="Conversation history"
+                aria-label="Open projects"
+                title="Projects"
                 onPointerDown={(e) => e.preventDefault()}
-                onClick={() => void handleOpenHistory()}
+                onClick={() => setLocation("/projects")}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   width: isTiny ? 30 : 36, height: isTiny ? 30 : 36, borderRadius: 10,
@@ -5192,10 +5192,7 @@ export default function Home() {
                   e.currentTarget.style.borderColor = "var(--atlas-gold-border, rgba(201,162,76,0.55))";
                 }}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" />
-                  <polyline points="12 7 12 12 15 14" />
-                </svg>
+                <FolderClosed size={15} strokeWidth={1.7} />
               </button>
 
               <ComposerActions
@@ -5225,77 +5222,7 @@ export default function Home() {
               />
 
 
-              {/* Ask Atlas toggle — inline mode switch on the home composer.
-                  OFF = Workspace (default); ON = composer routes to inline Ask
-                  Atlas on Send. Inspired by the workspace Plan Mode button. */}
-              <button
-                type="button"
-                title="Open Ask Atlas"
-                aria-label="Open Ask Atlas"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (askAtlasSurfaceOpen) {
-                    // Full ambient reset — mirrors handleLockTap's close path so
-                    // toggling off always lands back on the empty homepage, not a
-                    // stranded thread with the surface just hidden.
-                    void callAskAtlasMode(false);
-                    setAskAtlasSurfaceOpen(false);
-                    try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
-                    try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
-                    conversationThreadRequestRef.current = null;
-                    thinkOutLoudInlineRef.current = false;
-                    setActiveConversationId(null);
-                    setAskAtlasConversationId(null);
-                    askAtlasSession.clearConversationId();
-                    nexusChat.setMessages([]);
-                    askAtlasChat.clearMessages();
-                    setEarnedTitle(null);
-                    setDepth("ambient");
-                    return;
-                  }
-                  nexusChat.clearMessages();
-                  setAskAtlasSurfaceOpen(true);
-                  const seed = input.trim();
-                  if (seed) setInput(seed);
-                  window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-                style={{
-                  height: isTiny ? 28 : 34,
-                  display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
-                  padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
-                  background: askAtlasSurfaceOpen
-                    ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
-                    : "transparent",
-                  border: askAtlasSurfaceOpen
-                    ? "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)"
-                    : "1px solid var(--atlas-border, rgba(120,113,108,0.18))",
-                  boxShadow: "none",
-                  color: askAtlasSurfaceOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  cursor: "pointer",
-                  fontFamily: "var(--app-font-mono)",
-                  fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
-                  whiteSpace: "nowrap",
-                  minWidth: 0,
-                  flexShrink: 0,
-                  WebkitTapHighlightColor: "transparent",
-                  transition: "all 180ms ease",
-                }}
-              >
-                <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-                {!isTiny && <span>Ask Atlas</span>}
-                {askAtlasSurfaceOpen && (
-                  <span style={{
-                    width: 5, height: 5, borderRadius: "50%",
-                    background: "var(--atlas-gold)",
-                    flexShrink: 0,
-                    boxShadow: "0 0 4px rgba(201,162,76,0.6)",
-                  }} />
-                )}
-              </button>
+              {/* Ask Atlas toggle removed — home composer routes to workspace on Send. */}
 
 
               </div>
