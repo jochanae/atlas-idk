@@ -52,7 +52,6 @@ import {
   clearActiveProjectContext,
   isUnresolvedDecisionEntry,
 } from "@/lib/activeProjectContext";
-import { openAskAtlasFromWorkspace } from "@/lib/askAtlasSession";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
@@ -4546,8 +4545,28 @@ export default function Workspace() {
     try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
   });
   const useNexusWorkspaceChat = true;
+  // Conversation Mode / Build Mode toggle — same thread, same session; just a
+  // posture switch (no tools/build actions vs. full build capability).
+  // Persisted per-project so returning to a project keeps its last posture.
+  const [conversationMode, setConversationMode] = useState<boolean>(() => {
+    if (!id) return false;
+    try { return sessionStorage.getItem(`atlas-conversation-mode-${id}`) === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    if (!id) return;
+    try { setConversationMode(sessionStorage.getItem(`atlas-conversation-mode-${id}`) === "1"); } catch { /* ignore */ }
+  }, [id]);
+  const toggleConversationMode = useCallback(() => {
+    setConversationMode((prev) => {
+      const next = !prev;
+      if (id) {
+        try { sessionStorage.setItem(`atlas-conversation-mode-${id}`, next ? "1" : "0"); } catch { /* ignore */ }
+      }
+      return next;
+    });
+  }, [id]);
   // Option 2 bridge: Nexus is the transport, ChatStream stays the shell.
-  const nexusBridge = useNexusWorkspaceBridge(id);
+  const nexusBridge = useNexusWorkspaceBridge(id, { conversationMode });
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
@@ -6834,6 +6853,7 @@ export default function Workspace() {
       mode: opts?.mode,
       planMode: opts?.mode === "plan",
       buildMode: opts?.mode === "build",
+      conversationMode,
     };
 
     // ── URL intelligence — inject screenshot + scraped context ──────────────
@@ -8079,7 +8099,7 @@ export default function Workspace() {
           pointerEvents: "auto",
         }}
       >
-        <ConversationViewSwitcher hidden={isMobile} />
+        <ConversationViewSwitcher hidden={isMobile} conversationMode={conversationMode} onToggle={toggleConversationMode} />
       </div>
 
       {/* ── Axiom handoff banner ── */}
@@ -8542,6 +8562,7 @@ export default function Workspace() {
               },
               messages,
               chatPending,
+              conversationMode,
               // In Thinking Mode (pure conversation, no file edits), suppress all
               // engineering telemetry so the workspace feels as calm as Ask Atlas.
               // activityStream drives the step-by-step FILE_READ/TREE visualization;
@@ -8637,7 +8658,7 @@ export default function Workspace() {
               onExecuteHomePlan: executeHomePlan,
               onPushSuccess: handleReviewPushSuccess,
               commitCarryover,
-              onBuildAnyway: (msg: string) => doSend(msg, sessionId ?? 0, messagesRef.current, undefined, undefined, { buildMode: true, skipReadiness: true }),
+              onBuildAnyway: (msg: string) => doSend(msg, sessionId ?? 0, messagesRef.current, undefined, undefined, { buildMode: true, skipReadiness: true, conversationMode }),
               // Decision extractions are Layer 3 telemetry — they belong in the
               // Ledger, not the conversation. Filter them out of the inline feed.
               activityEvents: workspaceActivityItems.filter(item => item.type !== "decision"),
@@ -9132,7 +9153,7 @@ export default function Workspace() {
             {([
               {
                 id: "conversation" as const,
-                label: "Conversation",
+                label: conversationMode ? "Build Mode" : "Conversation Mode",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -9140,7 +9161,7 @@ export default function Workspace() {
                 ),
                 onSelect: () => {
                   setShowMoreSheet(false);
-                  openAskAtlasFromWorkspace(setLocation);
+                  toggleConversationMode();
                 },
               },
               {

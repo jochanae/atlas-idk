@@ -1,36 +1,40 @@
 /**
- * ConversationViewSwitcher — small segmented control that reinforces the
- * "same conversation, two views" model. Mounted on the workspace as a
- * fixed pill; tapping "Conversation" opens the Ask Atlas surface with
- * the current project's context (via activeProjectContext, populated by
- * workspace.tsx on mount).
- *
- * See plan step 5 (2026-07-07). Not a route change — Ask Atlas lives on
- * /home, so we navigate there and let its own open-flag logic take over
- * (home.tsx:2089 auto-opens the surface when askAtlasSession.isSurfaceOpen()).
+ * ConversationViewSwitcher — segmented control that toggles the workspace
+ * between Conversation Mode (pure talk, no tools/build actions) and Build
+ * Mode (full build capability). Same thread, same session — this is a
+ * posture switch, not a surface handoff. Ask Atlas has been removed; this
+ * control now owns the "Conversation" vs "Build" distinction in-place.
  */
-import { useLocation } from "wouter";
-import { openAskAtlasFromWorkspace } from "@/lib/askAtlasSession";
-import { useActiveProjectContext } from "@/lib/activeProjectContext";
+import type { CSSProperties } from "react";
 
 type Props = {
   /** When true, hides the pill (e.g. on small mobile widths where header space is tight). */
   hidden?: boolean;
+  conversationMode: boolean;
+  onToggle: () => void;
 };
 
-export function ConversationViewSwitcher({ hidden = false }: Props) {
-  const ctx = useActiveProjectContext();
-  const [, setLoc] = useLocation();
-  if (hidden || !ctx) return null;
+export function ConversationViewSwitcher({ hidden = false, conversationMode, onToggle }: Props) {
+  if (hidden) return null;
 
-  const goConversation = () => {
-    openAskAtlasFromWorkspace(setLoc);
-  };
+  const pillStyle = (active: boolean): CSSProperties => ({
+    padding: "5px 11px",
+    borderRadius: 999,
+    border: 0,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: "inherit",
+    letterSpacing: "inherit",
+    textTransform: "inherit",
+    background: active ? "var(--atlas-gold, #C9A84C)" : "transparent",
+    color: active ? "var(--atlas-bg, #000)" : "var(--atlas-muted, rgba(255,255,255,0.55))",
+    fontWeight: active ? 700 : 400,
+  });
 
   return (
     <div
       role="tablist"
-      aria-label="View"
+      aria-label="Mode"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -48,35 +52,21 @@ export function ConversationViewSwitcher({ hidden = false }: Props) {
       <button
         type="button"
         role="tab"
-        onClick={goConversation}
-        style={{
-          padding: "5px 11px",
-          borderRadius: 999,
-          background: "transparent",
-          border: 0,
-          color: "var(--atlas-muted, rgba(255,255,255,0.55))",
-          cursor: "pointer",
-          fontFamily: "inherit",
-          fontSize: "inherit",
-          letterSpacing: "inherit",
-          textTransform: "inherit",
-        }}
+        aria-selected={conversationMode}
+        onClick={() => { if (!conversationMode) onToggle(); }}
+        style={pillStyle(conversationMode)}
       >
         Conversation
       </button>
-      <span
+      <button
+        type="button"
         role="tab"
-        aria-selected="true"
-        style={{
-          padding: "5px 11px",
-          borderRadius: 999,
-          background: "var(--atlas-gold, #C9A84C)",
-          color: "var(--atlas-bg, #000)",
-          fontWeight: 700,
-        }}
+        aria-selected={!conversationMode}
+        onClick={() => { if (conversationMode) onToggle(); }}
+        style={pillStyle(!conversationMode)}
       >
-        Workspace
-      </span>
+        Build
+      </button>
     </div>
   );
 }

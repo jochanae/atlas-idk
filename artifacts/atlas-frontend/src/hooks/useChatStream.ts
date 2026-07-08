@@ -121,7 +121,7 @@ export interface UseChatStreamReturn {
     currentMessages: ChatMessage[],
     ctx?: string | null,
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
-    options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean },
+    options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean; conversationMode?: boolean },
   ) => void;
   handleRegenerate: (assistantMsgIndex: number) => void;
 }
@@ -312,7 +312,7 @@ export function useChatStream(
       currentMessages: ChatMessage[],
       ctx?: string | null,
       attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
-      options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean },
+      options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean; conversationMode?: boolean },
     ) => {
       const imgAttachments = (attachments ?? []).filter((a) => a.mediaType?.startsWith("image/"));
       const firstImg = imgAttachments[0];
@@ -395,6 +395,7 @@ export function useChatStream(
         planMode: options?.planMode,
         buildMode: options?.buildMode,
         ...(options?.skipReadiness ? { skipReadiness: true } : {}),
+        ...(options?.conversationMode ? { conversationMode: true } : {}),
         ...(effectiveModel ? { model: effectiveModel } : {}),
         orchestrate: !effectiveModel,
         workspaceLens: lensCtx.wsLens,

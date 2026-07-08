@@ -88,7 +88,10 @@ export interface NexusWorkspaceBridge {
   abort: () => void;
 }
 
-export function useNexusWorkspaceBridge(projectId: number | null | undefined): NexusWorkspaceBridge {
+export function useNexusWorkspaceBridge(
+  projectId: number | null | undefined,
+  opts?: { conversationMode?: boolean },
+): NexusWorkspaceBridge {
   const pid = typeof projectId === "number" ? projectId : 0;
   const [conversationId, setConversationId] = useState<string>(() =>
     pid ? deriveConversationId(pid) : ""
@@ -98,6 +101,7 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
     focusProjectId: pid || null,
     mode: "workspace",
     conversationId: conversationId || null,
+    conversationMode: opts?.conversationMode,
     onConversationId: (cid) => {
       setConversationId(cid);
       if (pid) {

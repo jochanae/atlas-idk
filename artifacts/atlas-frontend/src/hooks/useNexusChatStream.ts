@@ -182,6 +182,8 @@ export interface UseNexusChatStreamOptions {
     sessionId: number;
     seed?: string | null;
   } | null;
+  /** Conversation Mode: same thread, pure-talk posture (no tools/build actions). */
+  conversationMode?: boolean;
 }
 
 export interface UseNexusChatStreamReturn {
@@ -210,7 +212,7 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext, askAtlasInProject } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext, askAtlasInProject, conversationMode } = options;
   const askAtlasSeedSentRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
@@ -317,6 +319,7 @@ export function useNexusChatStream(
     const resolvedModel = overrideOptions?.model ?? model;
     const resolvedMode = overrideOptions?.mode ?? mode;
     const resolvedFocusProjectId = overrideOptions?.focusProjectId ?? focusProjectId;
+    const resolvedConversationMode = overrideOptions?.conversationMode ?? conversationMode;
     const history = messagesRef.current.map((m) => ({ role: m.role, content: m.content }));
     const userProfile = profileToString(loadProfile());
 
@@ -390,6 +393,7 @@ export function useNexusChatStream(
           mode: resolvedMode,
           conversationId: activeConversationIdRef.current ?? undefined,
           focusProjectId: resolvedFocusProjectId ?? undefined,
+          ...(resolvedConversationMode ? { conversationMode: true } : {}),
           ...(imgAttachments.length > 0
             ? {
                 attachments: imgAttachments,
@@ -703,7 +707,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [focusProjectId, isPending, model, mode, onData, onProjectReady, stream, abortStream, resetStreamState]);
+  }, [focusProjectId, isPending, model, mode, conversationMode, onData, onProjectReady, stream, abortStream, resetStreamState]);
 
   return {
     messages,

@@ -334,6 +334,11 @@ export interface ChatStreamProps {
   /** Phase 2B: latest execution_run from the API. Passed to the trailing
    *  WorkspaceRunCard instead of using deriveRun(messages). */
   execLatestRun?: import("@/hooks/useProjectRuns").ApiRun | null;
+
+  /** Conversation Mode: clean chat only — no run cards, tool blocks, or
+   *  execution journals. Same thread/session as Build Mode, just a quieter
+   *  render of it (mirrors the old Ask Atlas posture). */
+  conversationMode?: boolean;
 }
 
 
@@ -365,6 +370,7 @@ export function ChatStream(props: ChatStreamProps) {
     onSuggestionPark,
     liveStep,
     execLatestRun,
+    conversationMode,
   } = props;
 
   // Suppress the streaming prose bubble when live build steps are actively
@@ -765,7 +771,7 @@ export function ChatStream(props: ChatStreamProps) {
           return null;
         }
 
-        if (msg.role === "assistant" && msg.githubPush) {
+        if (msg.role === "assistant" && msg.githubPush && !conversationMode) {
           return (
             <Fragment key={i}>
               <div data-atlas-msg-idx={i} data-msg-idx={i}>
@@ -841,12 +847,12 @@ export function ChatStream(props: ChatStreamProps) {
                 onBuildAnyway={onBuildAnyway}
                 buildGroupInfo={buildGroupMap.get(i)}
               />
-              {Boolean(msg.terminalCmd || msg.terminalResult) && (
+              {!conversationMode && Boolean(msg.terminalCmd || msg.terminalResult) && (
                 <div style={{ maxWidth: "80%", marginTop: -18, marginBottom: 24 }}>
                   <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={projectId} />
                 </div>
               )}
-              {msg.writeFileProposal && !msg.streaming && (
+              {!conversationMode && msg.writeFileProposal && !msg.streaming && (
                 <div style={{ maxWidth: "80%", marginTop: -8, marginBottom: 4, paddingLeft: 4 }}>
                   <WriteFileCard
                     filePath={msg.writeFileProposal.path}
@@ -858,8 +864,9 @@ export function ChatStream(props: ChatStreamProps) {
               )}
               {/* Execution Journal — shows underneath Atlas's prose during active multi-step streams.
                   Model A: WorkspaceRunCard.ActiveCard owns the live step feed, so we skip
-                  LiveGenerationCard here and only render the non-generation activity views. */}
-              {activityStream.active && i === messages.length - 1 && !liveGeneration.shouldShow && (
+                  LiveGenerationCard here and only render the non-generation activity views.
+                  Suppressed entirely in Conversation Mode — no tool/build chrome. */}
+              {!conversationMode && activityStream.active && i === messages.length - 1 && !liveGeneration.shouldShow && (
                 isExecutionStream(activityStream.content) ? (
                   <ExecutionJournal content={activityStream.content} isStreaming={true} />
                 ) : (
@@ -868,7 +875,7 @@ export function ChatStream(props: ChatStreamProps) {
               )}
             </div>
           )}
-          {i === runCardAfterIdx && (
+          {!conversationMode && i === runCardAfterIdx && (
             <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
               <WorkspaceRunCard
                 projectId={projectId}
@@ -935,7 +942,7 @@ export function ChatStream(props: ChatStreamProps) {
         <ChatPendingIndicator />
       )}
 
-      {activityStream.active && (messages.length === 0 || messages[messages.length - 1].role === "user") && !liveGeneration.shouldShow ? (
+      {!conversationMode && activityStream.active && (messages.length === 0 || messages[messages.length - 1].role === "user") && !liveGeneration.shouldShow ? (
         isExecutionStream(activityStream.content) ? (
           <ExecutionJournal content={activityStream.content} isStreaming={true} />
         ) : (
@@ -947,8 +954,9 @@ export function ChatStream(props: ChatStreamProps) {
       {/* Trailing run card. Owns the LIVE surface (chatPending/streaming) and
           is the fallback receipt slot. When runCardAfterIdx >= 0 the card renders
           inline with its turn (see loop above) and this trailing instance is
-          suppressed so the receipt doesn't double-render. */}
-      {runCardAfterIdx === -1 && (
+          suppressed so the receipt doesn't double-render. Fully suppressed in
+          Conversation Mode. */}
+      {!conversationMode && runCardAfterIdx === -1 && (
         <WorkspaceRunCard
           projectId={projectId}
           messages={messages}

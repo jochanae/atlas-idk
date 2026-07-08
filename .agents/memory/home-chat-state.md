@@ -1,48 +1,23 @@
 ---
-name: Home Chat State Architecture
-description: Canonical ownership map for chat state on home.tsx after the Ask Atlas single-surface consolidation (2026-07-02).
+name: Single-Surface Workspace Architecture
+description: Home has no chat UI; Workspace is the only conversation surface, with a Conversation Mode / Build Mode toggle on the same thread.
 ---
 
-# Home Chat State — Canonical Ownership
+# Single-Surface Workspace Architecture (post Ask-Atlas removal, 2026-07-08)
 
-> **Governing rule:** two chat instances live on home.tsx (`nexusChat` for workspace/global-insight, `askAtlasChat` for Ask Atlas). Each has exactly ONE renderer. Ask Atlas is rendered only by `AskAtlasSurface`. There is no inline Ask Atlas path on the home shell.
+> **Governing rule:** Ask Atlas (hero chat, Global Insight takeover, Focused Composer) has been deleted entirely. Home is a pure project dashboard/launcher with no chat UI. All conversation happens in Workspace, on one thread, with a `conversationMode` boolean toggle instead of a separate surface.
 
----
+## Conversation Mode vs Build Mode
 
-## 1. Ambient / Workspace messages — `nexusChat`
+- One state, one thread, one storage key per project (`atlas-conversation-mode-${id}` in sessionStorage) — no handoff, no second chat instance, no separate conversationId.
+- `conversationMode: true` threads through `sendOpts` → `useNexusChatStream` request body → `nexus.ts` `/nexus/chat`, which forces `tools:false`, `forceCreate:false`, and injects a "CONVERSATION MODE ACTIVE" system-prompt block for that turn only.
+- ChatStream.tsx suppresses run cards / tool activity / terminal blocks while conversationMode is active — same rendering pipeline, just fewer surfaces drawn.
+- Toggle UI lives in `ConversationViewSwitcher.tsx` (desktop pill) and the workspace mobile more-sheet (label flips Conversation Mode ↔ Build Mode).
 
-**Owner:** `useNexusChatStream` instance (~line 1950)
-**Config:** `focusProjectId: homeFocus`, `conversationId: activeConversationId`, `onData`, `onProjectReady`
-**Scroll container:** `chatScrollRef`
-**Rendered at:** the "Chat thread" block on the home hero
-**Active when:** normal home mode / Global Insight mode
-**Cleared when Ask Atlas opens:** via `useEffect` on `askAtlasSurfaceOpen`
+## What NOT to re-introduce
 
-## 2. Ask Atlas messages — `askAtlasChat`
+- A second `useNexusChatStream`/`useChatStream` instance for "ambient" or "ask" conversation — there is exactly one chat instance per workspace now.
+- Any home-page chat renderer, hero composer, or Global Insight takeover.
+- `askAtlasSession`'s old surface-open/closed flags — only `clearConversationId` (legacy-storage cleanup) survives; do not resurrect `isSurfaceOpen`/`setSurfaceOpen`/`isClosed`/`markClosed`/`openAskAtlasFromWorkspace`.
 
-**Owner:** `useNexusChatStream` (~line 1963), `focusProjectId: null`, `conversationId: null`, `model: "claude"` — stateless.
-**Sole renderer:** `AskAtlasSurface` (`@/components/home/AskAtlasSurface`). No inline block on the home shell.
-**Visibility gate:** `askAtlasSurfaceOpen` (single boolean). Do NOT re-add `askAtlasConversationActive` to the surface's `open` prop or as an alternate render path.
-**Entry points (all funnel through `setAskAtlasSurfaceOpen(true)`):**
-- Home composer "Ask Atlas" pill
-- `axiom:ask-atlas` custom event (radial menu)
-- Resume conversation / sessions history / projects drawer (resume path also calls `askAtlasChat.setMessages(...)`)
-**Exit:** the surface's exit chip calls `setAskAtlasSurfaceOpen(false)` + `askAtlasChat.abort()` + `askAtlasChat.clearMessages()`.
-
-## 3. Send routing in `handleSubmit`
-
-- If `askAtlasSurfaceOpen` → send via `askAtlasChat.send(...)`. Always. Regardless of how the surface was opened.
-- Otherwise → the normal workspace/nexus create-or-inline path.
-
-This eliminates the pre-2026-07-02 split where entry point silently determined which chat stream received the message.
-
-## 4. Removed (do NOT re-introduce)
-
-- `sendTo` state + `sendToRef` + `SendTarget` type (composer had a workspace ↔ ask-atlas toggle)
-- Inline Ask Atlas mode banner ("Portfolio Thinking · Not Building" banner on home composer)
-- `askAtlasHelperVisible` one-time helper tip
-- `askAtlasScrollRef` (was never attached to the DOM; dead code)
-- `askAtlasHandoffSeed` / `buildAskAtlasHandoffSeed` usage in home.tsx (helper file still exists but is no longer imported)
-- `open={askAtlasSurfaceOpen || askAtlasConversationActive}` fallback on `AskAtlasSurface`
-
-Bringing any of these back reopens the split-personality bug where two Ask Atlas conversations could overlap on the same screen.
+Bringing any of these back re-fragments conversation state across two surfaces, which is the exact problem this migration removed.

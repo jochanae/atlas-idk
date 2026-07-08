@@ -1751,6 +1751,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     sessionId?: number;
     askAtlasContextSeed?: string;
     userType?: HomeUserType;
+    conversationMode?: boolean;
   };
 
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
@@ -3813,7 +3814,20 @@ WHAT YOU SHOULD NOT DO:
   const messageLC = message.toLowerCase();
   const isExplicitCreate = EXPLICIT_CREATE_SIGNALS.some(s => messageLC.includes(s));
 
-  streamClaude(anthropicMessages, { tools: true, startedAt: modelStartedAt, forceCreate: isExplicitCreate });
+  // Conversation Mode: same thread/session as Build Mode, but a pure-talk
+  // posture — no tool calls, no file edits, no project/build actions. The
+  // toggle lives client-side in the Workspace; this is the server-side
+  // enforcement so the model literally cannot act, not just "prefers not to".
+  const conversationModeActive = body.conversationMode === true;
+  if (conversationModeActive) {
+    systemPrompt += `\n\n--- CONVERSATION MODE ACTIVE ---\nThe user has switched this thread to Conversation Mode. Do not call any tools, propose file edits, or take build actions — none are available this turn. Respond as a thinking partner only: discuss, brainstorm, question, and reason in prose. If the user asks you to build or change something, say you're in Conversation Mode and ask them to switch to Build Mode to proceed.\n--- END CONVERSATION MODE ---`;
+  }
+
+  streamClaude(anthropicMessages, {
+    tools: !conversationModeActive,
+    startedAt: modelStartedAt,
+    forceCreate: conversationModeActive ? false : isExplicitCreate,
+  });
 
   return;
 
