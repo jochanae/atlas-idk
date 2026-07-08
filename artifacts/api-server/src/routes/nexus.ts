@@ -2984,6 +2984,48 @@ WHAT YOU SHOULD NOT DO:
       .trim();
     const memoryUpdated = parsedMemoryUpdated;
 
+    // Extract CLARIFY_START ... CLARIFY_END block — Atlas emits structured
+    // clarification cards for discrete, high-leverage forks (see
+    // atlasIdentity.ts "Clarification cards"). The block is stripped from
+    // visible prose and shipped as `clarify` on the `done` event; the
+    // frontend renders it via ClarifyCard on the assistant bubble.
+    type ClarifyPayload = {
+      steps: Array<{ question: string; options: string[]; allowFreeText?: boolean; reason?: string }>;
+    };
+    const isClarifyPayload = (value: unknown): value is ClarifyPayload => {
+      if (!value || typeof value !== "object") return false;
+      const steps = (value as { steps?: unknown }).steps;
+      return Array.isArray(steps) && steps.length > 0 && steps.every((step) => {
+        if (!step || typeof step !== "object") return false;
+        const c = step as { question?: unknown; options?: unknown; allowFreeText?: unknown; reason?: unknown };
+        return typeof c.question === "string"
+          && Array.isArray(c.options)
+          && c.options.length >= 2 && c.options.length <= 4
+          && c.options.every((o) => typeof o === "string")
+          && (c.allowFreeText === undefined || typeof c.allowFreeText === "boolean")
+          && (c.reason === undefined || typeof c.reason === "string");
+      });
+    };
+    let clarify: ClarifyPayload | undefined;
+    const CLARIFY_RE = /(?:^|\n)CLARIFY_START\s*([\s\S]*?)\s*CLARIFY_END(?:\n|$)/;
+    const clarifyMatch = visibleContent.match(CLARIFY_RE);
+    if (clarifyMatch) {
+      try {
+        const parsed = JSON.parse(clarifyMatch[1].trim()) as unknown;
+        if (isClarifyPayload(parsed)) {
+          clarify = parsed;
+        } else {
+          logger.warn({ preview: clarifyMatch[1].slice(0, 200) }, "nexus: CLARIFY block failed shape validation");
+        }
+      } catch (err) {
+        logger.warn({ err: String(err), preview: clarifyMatch[1].slice(0, 200) }, "nexus: CLARIFY block JSON parse failed");
+      }
+      // Always strip the block from visible prose, even if parse/validation failed,
+      // so raw JSON never leaks into the conversation.
+      visibleContent = visibleContent.replace(clarifyMatch[0], "\n").replace(/\n{3,}/g, "\n\n").trim();
+    }
+
+
     // Guard: if all content was stripped down to signal tokens with nothing left,
     // do NOT persist a blank message to the thread — it replays as an empty
     // assistant turn that confuses the model on the next request.
