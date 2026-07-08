@@ -1840,11 +1840,10 @@ export default function Home() {
       return null;
     }
   });
-  const [askAtlasConversationId, setAskAtlasConversationId] = useState<string | null>(() => askAtlasSession.getConversationId());
-  const [askAtlasCrystallized, setAskAtlasCrystallized] = useState(false);
-  const rememberAskAtlasConversationId = (conversationId: string) => {
-    askAtlasSession.setConversationId(conversationId);
-  };
+  // Ask Atlas state removed (Turn E-lite). Inert consts so remaining
+  // dead-branch style ternaries still compile.
+  const askAtlasConversationId: string | null = null;
+
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
