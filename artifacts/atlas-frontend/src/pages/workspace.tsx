@@ -5462,12 +5462,14 @@ export default function Workspace() {
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
-  // Open immediately on new-project creation (?intake=1 URL param) — no
-  // async fetch needed. The auto-prompt effect below still handles the case
-  // where the user navigates directly to an existing project with no Tier1.
-  const [tier1SheetOpen, setTier1SheetOpen] = useState(() => {
-    try { return new URLSearchParams(window.location.search).get("intake") === "1"; } catch { return false; }
-  });
+  // Intake sheet is invisible by default. Never auto-opens on project
+  // creation or first-visit — the user experienced this as friction
+  // ("essay before you can start"). It only opens via the
+  // TIER1_INTAKE_OPEN_EVENT (e.g. a manual "Project DNA" button) or
+  // when Atlas conversationally surfaces a gap. The old ?intake=1 URL
+  // param is intentionally ignored.
+  const [tier1SheetOpen, setTier1SheetOpen] = useState(false);
+
   const tier1ProjectId = Number.isFinite(id) && id > 0 ? id : null;
   const { memory: tier1Memory } = useTier1Memory(tier1ProjectId);
   const { detectedUrl: urlDetected, data: urlData, loading: urlLoading, error: urlError, dismiss: dismissUrl } = useUrlIntelligence(input);
@@ -7244,25 +7246,13 @@ export default function Workspace() {
     return () => window.removeEventListener(TIER1_INTAKE_OPEN_EVENT, open as EventListener);
   }, []);
 
-  // Auto-prompt Tier 1 intake once per project per browser session when the
-  // project has no Tier 1 memory yet. This is Forge as the true entry point:
-  // a new project surfaces the 6-question intake before Atlas starts talking.
-  useEffect(() => {
-    if (!id || !Number.isFinite(id) || id <= 0) return;
-    if (openingMessage?.message?.trim() || isHomeHandoff) return;
-    if (wasTier1Skipped(id)) return; // user explicitly opted out — never auto-open
-    const key = tier1AutoPromptKey(id);
-    try { if (sessionStorage.getItem(key)) return; } catch { /* ignore */ }
-    let cancelled = false;
-    getTier1Memory(id)
-      .then((m) => {
-        if (cancelled) return;
-        try { sessionStorage.setItem(key, "1"); } catch { /* ignore */ }
-        if (!m) setTier1SheetOpen(true);
-      })
-      .catch(() => { /* silent — backend may be transiently down */ });
-    return () => { cancelled = true; };
-  }, [id, openingMessage?.message, isHomeHandoff]);
+  // Auto-prompt intake DISABLED (locked with user 2026-07-08).
+  // Atlas should never slap a 6-question form on the user at project
+  // entry. Tier 1 memory should be extracted from conversation
+  // (backend handoff) and only surfaced as an explicit question when
+  // Atlas cannot infer an answer. The sheet remains available via the
+  // TIER1_INTAKE_OPEN_EVENT for "Project DNA" review.
+
 
 
 
