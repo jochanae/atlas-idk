@@ -315,7 +315,8 @@ Reachable only via the home-page build-intent handoff, not from an in-workspace 
 
 Ranked by how much they reinforce the decision-led-builder positioning:
 
-1. **Decision Catch Engine (P0)** — the *only* capability that no competitor offers. This is Atlas's moat.
+1. **Bridge nexus → chat (or unify tokens) (P0)** — until this exists, "Atlas is a builder" is only true from the home handoff, not from a workspace turn. This is the leverage move: it converts five existing `chat`-only capabilities into workspace-live capabilities in a single fix.
+2. **Decision Catch Engine tuning (P0)** — infrastructure is done; the *only* capability that no competitor offers, and it's already Works. Trigger tuning turns it from "wired" into a moat.
 2. **Backend handoff spec as first-class artifact (P0)** — Atlas already produces these; formalizing them turns a chat artifact into a shippable deliverable and reinforces the think→decide→build order.
 3. **Reasoning artifacts: decision tree + tradeoff matrix + deviation log (P0)** — the visible proof that Atlas decides before it builds. Without these, positioning is invisible.
 4. **XLSX with live formulas (P0)** — crosses a market chasm; PMs, ops, finance users have no good AI option here.
