@@ -5742,7 +5742,12 @@ export default function Workspace() {
       unresolvedDecisions,
     });
     return () => {
-      clearActiveProjectContext();
+      try {
+        const next = window.location.pathname;
+        if (!next.startsWith(`/project/${id}`) && !next.startsWith("/workspace/")) {
+          clearActiveProjectContext();
+        }
+      } catch { clearActiveProjectContext(); }
     };
   }, [id, project, projectState.activeSession?.id, sessionId, messages, resumeBrief, latestRun, entries]);
   const addLocalMessage = useCallback((role: "user" | "assistant", content: string) => {
