@@ -126,7 +126,6 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
   const recent = (input.history ?? []).slice(-2).map((h) => `${h.role.toUpperCase()}: ${String(h.content ?? "").slice(0, 400)}`).join("\n");
   const contextBlock = [
     input.workspaceLens ? `Workspace lens: ${input.workspaceLens}` : null,
-    input.hasProjectContext === false ? "Context: Ask Atlas (no project)" : "Context: project workspace",
     recent ? `Recent turns:\n${recent}` : null,
   ].filter(Boolean).join("\n");
 
