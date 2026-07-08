@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { db, entriesTable } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { db, entriesTable, projectTier1MemoryTable, getTier1MissingFields, TIER1_FIELD_KEYS, type Tier1FieldKey, type Tier1Answers } from "@workspace/db";
+import { sql, eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -311,4 +311,211 @@ Living memory (2–3 sentences, no preamble):`,
       globalNarrativeInFlight.delete(opts.userId);
     }
   })();
+}
+
+// ── Tier 1 conversational slot extraction ─────────────────────────────────
+// Fire-and-forget pass piggybacking on the thinking-receipts infrastructure.
+// After each workspace or project-focused nexus turn, runs a Haiku call against
+// the rolling conversation window to infer Tier 1 slot values with high
+// confidence (≥ 0.75). Never overwrites non-empty slots.
+
+const tier1SlotInFlight = new Set<string>(); // key: `t1:${projectId}:${turnIndex}`
+
+/** Priority-ordered Tier 1 field metadata. Shared with the gaps endpoint. */
+export const TIER1_META = [
+  { key: "building"      as Tier1FieldKey, question: "What are you building?",                   hint: "One sentence. The thing itself, not the pitch." },
+  { key: "audience"      as Tier1FieldKey, question: "Who is it for?",                            hint: "Be specific. A named archetype beats a demographic." },
+  { key: "problem"       as Tier1FieldKey, question: "What problem does it solve?",               hint: "What breaks today without it?" },
+  { key: "successSignal" as Tier1FieldKey, question: "How will you know it's working?",           hint: "One observable signal — not a KPI dashboard." },
+  { key: "outOfScope"    as Tier1FieldKey, question: "What's explicitly out of scope?",           hint: "The lines you won't cross — say them now." },
+  { key: "constraints"   as Tier1FieldKey, question: "What constraints are you working within?",  hint: "Time, money, tech, self — whatever binds you." },
+];
+
+function parseTier1Json(raw: string, missingKeys: readonly string[]): Partial<Tier1Answers> {
+  try {
+    const cleaned = raw.replace(/```(?:json)?\s*/g, "").replace(/```/g, "").trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    const parsed: unknown = JSON.parse(match ? match[0] : cleaned);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const result: Partial<Tier1Answers> = {};
+    for (const key of missingKeys) {
+      const val = (parsed as Record<string, unknown>)[key];
+      if (typeof val === "string" && val.trim().length >= 2) {
+        result[key as Tier1FieldKey] = val.trim();
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Fire-and-forget Tier 1 slot extraction from a project conversation turn.
+ * Piggybacked alongside thinking-receipt extraction — call after each
+ * workspace turn or project-focused nexus turn where projectId is known.
+ */
+export async function maybeExtractTier1Slots(opts: {
+  projectId: number;
+  userId: number;
+  turnIndex: number;
+  /** Rolling conversation window (oldest first). Should include the current turn at the end. */
+  recentTurns: Array<{ role: string; content: string }>;
+}): Promise<void> {
+  const key = `t1:${opts.projectId}:${opts.turnIndex}`;
+  if (tier1SlotInFlight.has(key)) return;
+  tier1SlotInFlight.add(key);
+
+  void (async () => {
+    try {
+      const [existing] = await db
+        .select()
+        .from(projectTier1MemoryTable)
+        .where(eq(projectTier1MemoryTable.projectId, opts.projectId))
+        .limit(1);
+
+      const currentAnswers: Record<string, string> = {
+        building:      existing?.building ?? "",
+        audience:      existing?.audience ?? "",
+        problem:       existing?.problem ?? "",
+        outOfScope:    existing?.outOfScope ?? "",
+        successSignal: existing?.successSignal ?? "",
+        constraints:   existing?.constraints ?? "",
+      };
+
+      const missingKeys = TIER1_FIELD_KEYS.filter(k => !currentAnswers[k]?.trim());
+      if (missingKeys.length === 0) return; // all slots already filled
+
+      // Rolling window: last 8 turns, content truncated to stay within ~4k tokens
+      const turns = opts.recentTurns.slice(-8);
+      const transcript = turns
+        .map(t => `${t.role === "user" ? "USER" : "ATLAS"}: ${String(t.content).slice(0, 500)}`)
+        .join("\n\n");
+
+      if (transcript.trim().length < 30) return;
+
+      const knownBlock = Object.entries(currentAnswers)
+        .filter(([, v]) => v.trim())
+        .map(([k, v]) => `  ${k}: ${String(v).slice(0, 200)}`)
+        .join("\n") || "  (none yet)";
+
+      const missingBlock = missingKeys
+        .map(k => `  ${k}: ${TIER1_META.find(m => m.key === k)?.question ?? k}`)
+        .join("\n");
+
+      const response = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 400,
+        messages: [{
+          role: "user",
+          content: `You are extracting structured project memory from a conversation transcript.
+
+ALREADY KNOWN (do not change unless the user directly contradicted it):
+${knownBlock}
+
+MISSING SLOTS — fill only if user clearly stated the answer in this transcript:
+${missingBlock}
+
+CONVERSATION:
+${transcript}
+
+Rules:
+- Only fill a slot when the user clearly and directly stated the answer.
+- Confidence gate: if you are less than 75% confident, return null for that slot.
+- Do NOT invent, extrapolate, or paraphrase beyond what was literally said.
+- Return ONLY a JSON object. No markdown. No explanation.
+
+Return exactly: { ${missingKeys.map(k => `"${k}": null`).join(", ")} }`,
+        }],
+      });
+
+      const raw = response.content[0]?.type === "text" ? response.content[0].text : "";
+      const extracted = parseTier1Json(raw, missingKeys);
+      if (Object.keys(extracted).length === 0) return;
+
+      // Only write slots that are still empty and received a non-empty extracted value
+      const toWrite: Partial<Tier1Answers> = {};
+      for (const [k, v] of Object.entries(extracted)) {
+        if (!v?.trim()) continue;
+        if (currentAnswers[k]?.trim()) continue; // already filled — never overwrite
+        toWrite[k as Tier1FieldKey] = v.trim();
+      }
+      if (Object.keys(toWrite).length === 0) return;
+
+      if (existing) {
+        const cols: Partial<typeof projectTier1MemoryTable.$inferInsert> = {};
+        if (toWrite.building      !== undefined) cols.building      = toWrite.building;
+        if (toWrite.audience      !== undefined) cols.audience      = toWrite.audience;
+        if (toWrite.problem       !== undefined) cols.problem       = toWrite.problem;
+        if (toWrite.outOfScope    !== undefined) cols.outOfScope    = toWrite.outOfScope;
+        if (toWrite.successSignal !== undefined) cols.successSignal = toWrite.successSignal;
+        if (toWrite.constraints   !== undefined) cols.constraints   = toWrite.constraints;
+        await db
+          .update(projectTier1MemoryTable)
+          .set(cols)
+          .where(eq(projectTier1MemoryTable.projectId, opts.projectId));
+      } else {
+        await db
+          .insert(projectTier1MemoryTable)
+          .values({ projectId: opts.projectId, ...toWrite })
+          .onConflictDoNothing();
+      }
+
+      logger.info(
+        { projectId: opts.projectId, slots: Object.keys(toWrite) },
+        "tier1 slots extracted from conversation",
+      );
+    } catch (err) {
+      logger.warn({ err, projectId: opts.projectId }, "tier1 slot extraction failed — non-fatal");
+    } finally {
+      tier1SlotInFlight.delete(key);
+    }
+  })();
+}
+
+/**
+ * Generates a single grounded sentence Atlas can use when surfacing a Tier 1
+ * gap — references actual transcript detail so the question feels contextual,
+ * not generic. Used by GET /api/projects/:id/tier1-gaps.
+ * Returns null when the transcript contains no anchor for the requested slot.
+ */
+export async function generateTier1AtlasContext(opts: {
+  nextGapKey: Tier1FieldKey;
+  nextGapQuestion: string;
+  recentTurns: Array<{ role: string; content: string }>;
+}): Promise<string | null> {
+  if (opts.recentTurns.length === 0) return null;
+
+  const transcript = opts.recentTurns
+    .slice(-6)
+    .map(t => `${t.role === "user" ? "USER" : "ATLAS"}: ${String(t.content).slice(0, 400)}`)
+    .join("\n\n");
+
+  if (transcript.trim().length < 30) return null;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 120,
+      messages: [{
+        role: "user",
+        content: `Based on this conversation, write ONE sentence Atlas could use when asking: "${opts.nextGapQuestion}"
+
+The sentence MUST reference a specific concrete detail already mentioned in the transcript (a product name, feature, user type, goal, constraint, etc.). Frame it as Atlas showing it was paying attention — e.g. "You've described building X for Y — who specifically would use it first?"
+
+If the transcript contains no useful anchor detail for this specific question, reply with exactly: null
+
+CONVERSATION:
+${transcript}
+
+One sentence (or null):`,
+      }],
+    });
+
+    const text = (response.content[0]?.type === "text" ? response.content[0].text : "").trim();
+    if (!text || text.toLowerCase() === "null" || text.length < 10 || text.length > 400) return null;
+    return text;
+  } catch {
+    return null;
+  }
 }

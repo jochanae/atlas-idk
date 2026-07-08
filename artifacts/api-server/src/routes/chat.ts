@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable, projectZipImportsTable, nexusConversationsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
-import { maybeExtractThinkingReceipts, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { loadTier2Block, loadTier3Block, synthesizeTier2Patterns, synthesizeTier3Signals, synthesizeGlobalNarrative } from "../lib/tierMemory";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
 import { checkBuildReadiness } from "../lib/buildReadiness";
@@ -6727,6 +6727,22 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       atlasResponse: fullText,
       projectId,
       messageId: (intentMsgId ?? savedMsgId) ?? null,
+    });
+  }
+
+  // ── Tier 1 conversational slot extraction ─────────────────────────────────
+  // Fire-and-forget alongside thinking receipts. Skips foundation/flow/mechanical
+  // turns (same guards), and short responses where nothing substantive was said.
+  if (!isFoundationMode && !isFlowMode && typeof projectId === "number" && projectId > 0 && typeof userId === "number" && fullText.length > 60) {
+    void maybeExtractTier1Slots({
+      projectId,
+      userId,
+      turnIndex: sessionMessageCount,
+      recentTurns: [
+        ...(history ?? []).slice(-7).map(m => ({ role: m.role as string, content: m.content })),
+        { role: "user", content: message },
+        { role: "assistant", content: fullText },
+      ],
     });
   }
 

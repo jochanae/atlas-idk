@@ -22,7 +22,7 @@ import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE, ATLAS_WORKSPACE_IDENTITY } f
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
-import { maybeExtractThinkingReceipts, synthesizeGlobalNarrative, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, synthesizeGlobalNarrative, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import {
   buildTier1BlockForNexusConversation,
   buildTier1StatusBlock,
@@ -3083,6 +3083,22 @@ WHAT YOU SHOULD NOT DO:
         userMessage: body.message ?? "",
         atlasResponse: visibleContent,
         stable: thinkingStable,
+      });
+    }
+
+    // Tier 1 slot extraction — project-focused nexus turns (fire-and-forget)
+    if (focusProjectId && userId && (body.message ?? "").length > 0) {
+      void maybeExtractTier1Slots({
+        projectId: focusProjectId,
+        userId,
+        turnIndex: Math.floor(dbMessages.length / 2),
+        recentTurns: [
+          ...dbMessages.slice(-7).map((m: { role: unknown; content: unknown }) => ({
+            role: String(m.role),
+            content: String(m.content),
+          })),
+          { role: "assistant", content: visibleContent },
+        ],
       });
     }
 

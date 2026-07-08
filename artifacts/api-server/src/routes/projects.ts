@@ -4,7 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import { bustResumeCache } from "./nexus";
 import { computeProjectReadiness } from "./readiness";
-import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, nexusMessagesTable, applicationModelsTable } from "@workspace/db";
+import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, nexusMessagesTable, applicationModelsTable, projectTier1MemoryTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
+import { generateTier1AtlasContext, TIER1_META } from "../lib/thinkingReceiptExtract";
 import { getProjectDNA, getOrCreateProjectDNA } from "../lib/projectDNA";
 import { encryptToken, decryptToken } from "../lib/tokenCrypto";
 import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } from "../lib/projectCreation";
@@ -1689,6 +1690,99 @@ router.delete("/projects/:id/memory/:index", async (req, res): Promise<void> => 
   store.entries.splice(entryIndex, 1);
   await db.update(projectsTable).set({ memory: JSON.stringify(store) }).where(eq(projectsTable.id, id));
   res.json({ ok: true, remaining: store.entries.length });
+});
+
+// GET /api/projects/:projectId/tier1-gaps
+// Returns the missing Tier 1 slots, the single most valuable gap to surface
+// next, and a grounded one-sentence atlasContext for the gap question.
+// 404 when the project has no chat activity yet (gaps would be meaningless).
+// nextGap is null when all slots are filled OR skippedAt is set.
+router.get("/projects/:projectId/tier1-gaps", async (req, res): Promise<void> => {
+  const projectId = parseInt(req.params.projectId, 10);
+  if (isNaN(projectId) || projectId <= 0) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [project] = await db
+    .select({ id: projectsTable.id })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+  if (!project) { res.status(404).json({ error: "Project not found" }); return; }
+
+  // 404 when no chat activity — gap surfacing needs something to ground on
+  const [{ total }] = await db
+    .select({ total: sql<number>`COALESCE(SUM(message_count), 0)::int` })
+    .from(sessionsTable)
+    .where(eq(sessionsTable.projectId, projectId));
+  if (!total || total === 0) {
+    res.status(404).json({ error: "No chat activity yet" });
+    return;
+  }
+
+  const [tier1] = await db
+    .select()
+    .from(projectTier1MemoryTable)
+    .where(eq(projectTier1MemoryTable.projectId, projectId))
+    .limit(1);
+
+  const skipped = !!tier1?.tier1SkippedAt;
+
+  const currentAnswers: Record<string, string> = {
+    building:      tier1?.building ?? "",
+    audience:      tier1?.audience ?? "",
+    problem:       tier1?.problem ?? "",
+    outOfScope:    tier1?.outOfScope ?? "",
+    successSignal: tier1?.successSignal ?? "",
+    constraints:   tier1?.constraints ?? "",
+  };
+
+  const missing = TIER1_FIELD_KEYS.filter(k => !currentAnswers[k]?.trim());
+  const completeness = parseFloat(((6 - missing.length) / 6).toFixed(2));
+
+  if (missing.length === 0 || skipped) {
+    res.json({ missing, nextGap: null, completeness });
+    return;
+  }
+
+  // Fixed priority: building → audience → problem → successSignal → outOfScope → constraints
+  const priorityOrder: Tier1FieldKey[] = ["building", "audience", "problem", "successSignal", "outOfScope", "constraints"];
+  const nextGapKey = priorityOrder.find(k => missing.includes(k as Tier1FieldKey)) ?? (missing[0] as Tier1FieldKey);
+  const meta = TIER1_META.find(m => m.key === nextGapKey)!;
+
+  // Fetch recent conversation turns for atlasContext (best-effort)
+  const recentRows = await db.execute(sql`
+    SELECT cm.role, cm.content
+    FROM chat_messages cm
+    JOIN sessions s ON s.id = cm.session_id
+    WHERE s.project_id = ${projectId}
+      AND cm.role IN ('user', 'assistant')
+      AND cm.content IS NOT NULL
+      AND LENGTH(cm.content) > 10
+    ORDER BY cm.created_at DESC
+    LIMIT 12
+  `).then(r => (r.rows ?? r) as Array<{ role: string; content: string }>)
+    .catch(() => [] as Array<{ role: string; content: string }>);
+
+  const recentTurns = recentRows.reverse();
+
+  const atlasContext = recentTurns.length > 0
+    ? await generateTier1AtlasContext({ nextGapKey, nextGapQuestion: meta.question, recentTurns }).catch(() => null)
+    : null;
+
+  res.json({
+    missing,
+    nextGap: {
+      key: nextGapKey,
+      question: meta.question,
+      hint: meta.hint,
+      atlasContext,
+    },
+    completeness,
+  });
 });
 
 export default router;
