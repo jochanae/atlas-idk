@@ -5368,7 +5368,7 @@ export default function Home() {
                   }}
                 >
                   {isSending || askAtlasBusy ? (
-                    <LoadingSpinner size="sm" color="ember" />
+                    <LoadingSpinner size="sm" color="atlas" />
                   ) : (
                     <svg viewBox="0 0 20 20" width={18} height={18}
                       fill="none"
