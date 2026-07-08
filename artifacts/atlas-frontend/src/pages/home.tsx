@@ -3547,16 +3547,13 @@ export default function Home() {
           })
         : [];
 
-      // Route resumed threads into askAtlasChat so AskAtlasSurface renders
-      // them — not into nexusChat which feeds the ambient homepage renderer.
-      askAtlasChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
-      nexusChat.clearMessages();
+      // Route resumed threads into nexusChat (Ask Atlas surface removed
+      // in Turn D; there's only one renderer now).
+      nexusChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
 
       // Pre-mark the thread-request ref with the new id BEFORE calling
-      // setActiveConversationId so the load useEffect's guard at line ~2678
-      // sees the id already handled and skips — preventing nexusChat from
-      // being re-populated with the same messages and activating the ambient
-      // home surface behind AskAtlasSurface.
+      // setActiveConversationId so the load useEffect's guard sees the id
+      // already handled and skips — preventing a duplicate re-populate.
       conversationThreadRequestRef.current = { conversationId: id, requestId: Date.now() };
 
       setActiveConversationId(id);
@@ -3564,9 +3561,6 @@ export default function Home() {
       try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
       try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
 
-      // Open the real AskAtlasSurface with the correct surface flag so the
-      // pinned header, scroll, composer, and message styling all match.
-      setAskAtlasSurfaceOpen(true);
       setDepth("active");
       try {
         await fetch(`/api/sessions/${encodeURIComponent(id)}/reflection-mode`, {
@@ -3579,7 +3573,8 @@ export default function Home() {
 
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId, askAtlasChat.setMessages, nexusChat.clearMessages, setDepth]);
+  }, [setActiveConversationId, nexusChat.setMessages, setDepth]);
+
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
