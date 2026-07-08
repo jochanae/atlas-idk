@@ -318,8 +318,12 @@ export function AskAtlasSurface({
           display: "flex",
           flexDirection: "column",
           gap: 16,
+          alignItems: "stretch",
           scrollbarWidth: "none",
           msOverflowStyle: "none",
+          // Desktop: keep the conversation column readable, centered.
+          // Mobile: fills naturally.
+          ["--atlas-ask-atlas-col-max" as string]: "760px",
         }}
       >
 
