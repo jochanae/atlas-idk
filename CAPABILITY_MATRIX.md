@@ -258,25 +258,32 @@ Not on the matrix until "advisory only, not legal advice" framing and liability 
 
 ## Audit Summary
 
-### 1. What is actually supported today (Works or Shipped-quality)
+### 1. What is actually supported today in the workspace's active surface (nexus)
 
 - Conversational thinking partner (Level 0)
 - Intent classification (WhisperGate)
-- Output validation (Output Guard)
 - Clarification cards
 - Suggestion pills (just re-added)
-- Memory surfacing (MemoryChips)
 - Ledger commit flow
+- Decision Catch Engine (infrastructure complete — trigger tuning open)
 - Markdown generation
 - Sketch (design synthesis)
 - Wireframes (static library)
-- Code generation (atlas-codegen)
 - Live preview sandbox
-- Extract-to-Forge
-- GitHub push
 - File tree drawer
-- Code diff viewer
+- Code diff **renderer** (data path missing from nexus)
 - CSV export
+
+### 1b. Wired in `chat.ts` but unreachable from a live workspace turn
+
+Reachable only via the home-page build-intent handoff, not from an in-workspace conversation:
+
+- Code generation (`FILE_EDIT_START/END`)
+- Extract-to-Forge
+- GitHub push (`GITHUB_PUSH`)
+- Diff data (`linePatches`)
+- Memory chips emission (`MEMORY_CHIPS`)
+- Agentic tool loop
 
 ### 2. What is only aspirational (Not started / Exists but not Works)
 
@@ -290,17 +297,19 @@ Not on the matrix until "advisory only, not legal advice" framing and liability 
 - Backend handoff spec (drafted by AI in chat, not formalized as artifact)
 - Structured brief / PRD (exists but no domain review)
 - Long-form report (exists but drifts past ~2k words)
-- Decision Catch Engine (exists, not tuned)
+- Output Guard on the nexus route (unverified — may only run on `/api/chat`)
 
 ### 3. What needs validation next (highest-signal audits)
 
-1. **10-conversation audit of clarification-card + suggestion-pill discipline.** Confirm they fire only when earned.
-2. **Decision Catch end-to-end**: intent → trigger → card → Proceed Anyway → Ledger deviation entry.
-3. **Backend handoff spec schema** — formalize as first-class artifact so we stop losing them in chat scrollback.
-4. **PPTX visual QA pipeline** (headless render → screenshot diff) — must exist *before* PPTX generate ships, or we ship the industry-standard failure.
-5. **XLSX-with-formulas spike** — validate the market chasm and prove Atlas can cross it.
-6. **PRD domain review** — 5 generated PRDs reviewed by a working PM.
-7. **INTENT_TYPE token leak audit** — confirm no marker text escapes to user prose on any path.
+1. **Confirm Output Guard status on nexus.** If absent, port from `chat.ts`. This is the single biggest silent-quality risk.
+2. **Bridge Build-Mode from nexus → chat**, OR port `FILE_EDIT` / `GITHUB_PUSH` / `MEMORY_CHIPS` / `linePatches` emitters into nexus. Until this ships, "Atlas is a builder" is false from any live workspace turn.
+3. **10-conversation audit** of clarification-card + suggestion-pill discipline. Confirm they fire only when earned.
+4. **Decision Catch trigger tuning** — labeled corpus, precision/recall on real decision moments; verify Proceed Anyway writes a deviation entry.
+5. **Backend handoff spec schema** — formalize as first-class artifact so we stop losing them in chat scrollback.
+6. **PPTX visual QA pipeline** (headless render → screenshot diff) — must exist *before* PPTX generate ships.
+7. **XLSX-with-formulas spike** — validate the market chasm and prove Atlas can cross it.
+8. **PRD domain review** — 5 generated PRDs reviewed by a working PM.
+9. **INTENT_TYPE token leak audit** — confirm no marker text escapes to user prose on any path.
 
 ### 4. Highest-leverage capabilities for Atlas's product promise
 
