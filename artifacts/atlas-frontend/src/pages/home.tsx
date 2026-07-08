@@ -4342,7 +4342,7 @@ export default function Home() {
                     {askAtlasSurfaceVisible ? "Ask Atlas." : (
                       <>
                         {greetingRef.current?.head}
-                        {isTiny && projects && projects.length > 0 && (() => {
+                        {isTiny && (() => {
                           const receded = askAtlasSurfaceVisible || inputFocused;
                           return (
                             <button
