@@ -4411,7 +4411,7 @@ export default function Home() {
                       );
                     })()}
                   </p>
-                  {!isTiny && projects && projects.length > 0 && (() => {
+                  {!isTiny && (() => {
                     const receded = askAtlasSurfaceVisible || inputFocused;
                     return (
                       <button
