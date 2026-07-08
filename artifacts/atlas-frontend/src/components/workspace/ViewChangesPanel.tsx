@@ -1296,52 +1296,65 @@ export function ViewChangesPanel({
         onSelectRun={setRunFilter}
       />
 
-      {/* ── Toggle ── */}
+      {/* ── Centered segmented toggle: Timeline · Changes ── */}
       <div style={{
-        display: "flex", padding: "10px 14px 8px", gap: 4,
+        display: "flex", justifyContent: "center",
+        padding: "14px 14px 12px",
         borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.08)",
       }}>
-        {(["timeline", "changes", "decisions"] as const).map((k) => {
-          const active = lens === k;
-          return (
-            <button
-              key={k} type="button" onClick={() => setLens(k)}
-              style={{
-                fontFamily: "var(--app-font-mono)", fontSize: 10,
-                letterSpacing: "0.12em", textTransform: "uppercase",
-                padding: "5px 11px", borderRadius: 4,
-                background: active ? "rgba(var(--atlas-gold-rgb), 0.14)" : "transparent",
-                border: `1px solid ${active ? "rgba(var(--atlas-gold-rgb), 0.35)" : "rgba(var(--atlas-gold-rgb), 0.12)"}`,
-                color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                cursor: "pointer",
-              }}
-            >{k}</button>
-          );
-        })}
+        <div style={{
+          display: "inline-flex",
+          padding: 3,
+          borderRadius: 999,
+          background: "rgba(0,0,0,0.32)",
+          border: "1px solid rgba(var(--atlas-gold-rgb), 0.18)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+          gap: 2,
+        }}>
+          {(["timeline", "changes"] as const).map((k) => {
+            const active = lens === k;
+            return (
+              <button
+                key={k} type="button" onClick={() => setLens(k)}
+                style={{
+                  minWidth: 108,
+                  fontFamily: "var(--app-font-sans)", fontSize: 12,
+                  fontWeight: active ? 600 : 500,
+                  letterSpacing: "0.02em",
+                  padding: "7px 18px", borderRadius: 999,
+                  background: active
+                    ? "linear-gradient(180deg, rgba(var(--atlas-gold-rgb), 0.22), rgba(var(--atlas-gold-rgb), 0.14))"
+                    : "transparent",
+                  border: active
+                    ? "1px solid rgba(var(--atlas-gold-rgb), 0.4)"
+                    : "1px solid transparent",
+                  color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  cursor: "pointer",
+                  transition: "background 180ms ease, color 180ms ease, border-color 180ms ease",
+                  textTransform: "capitalize",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >{k}</button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Body ── */}
       {lens === "timeline" ? (
         timelineRun ? (
-          <RunTimeline steps={timelineRun.steps} />
+          <RunTimeline run={timelineRun} />
         ) : (
           <div style={{
-            padding: "18px 14px", fontSize: 11.5,
-            color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.65,
+            padding: "18px 14px", fontSize: 12,
+            color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.65,
           }}>
             {runId ? "Run not found — it may still be loading." : "No runs yet for this project."}
           </div>
         )
-      ) : lens === "decisions" ? (
-        <DecisionsLens projectId={projectId} messageId={timelineRun?.messageId ?? null} />
       ) : (
         <ChangesLens rows={changeRows} projectId={projectId} />
       )}
-
-      {/* ── Workspace block ── */}
-      <div style={{ borderTop: "1px solid rgba(var(--atlas-gold-rgb), 0.08)", marginTop: "auto" }}>
-        <WorkspaceBlock projectId={projectId} />
-      </div>
     </div>
   );
 }
