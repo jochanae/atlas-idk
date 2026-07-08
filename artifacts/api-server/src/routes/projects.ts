@@ -836,13 +836,17 @@ router.get("/projects/:id/greeting", async (req, res): Promise<void> => {
       .limit(1),
   ]);
 
-  // If the active session has a buildIntent and no messages yet, hand straight back to the
-  // workspace — it will auto-send this as a user message through /api/chat so the
-  // BUILD_HANDOFF fires and Atlas starts writing FILE_EDIT blocks immediately.
-  const activeBuildIntent = activeSessionRows[0]?.buildIntent ?? null;
-  const activeMessageCount = activeSessionRows[0]?.messageCount ?? 1;
-  if (activeBuildIntent && activeMessageCount === 0) {
-    res.json({ buildIntent: activeBuildIntent });
+  // Opening prompt present (buildIntent on the active session): skip the static assistant
+  // opener. When no messages yet, hand buildIntent back so the workspace auto-sends it
+  // through /api/chat and BUILD_HANDOFF fires immediately.
+  const activeBuildIntent = activeSessionRows[0]?.buildIntent?.trim() || null;
+  const activeMessageCount = activeSessionRows[0]?.messageCount ?? 0;
+  if (activeBuildIntent) {
+    if (activeMessageCount === 0) {
+      res.json({ buildIntent: activeBuildIntent });
+    } else {
+      res.json({});
+    }
     return;
   }
 
@@ -871,7 +875,7 @@ router.get("/projects/:id/greeting", async (req, res): Promise<void> => {
   } else if (hasShaping) {
     message = `${project.name}.\n\n${shapingLines.join("\n")}\n\nWhat are we building today?`;
   } else if (!repoName && ageMs < 2 * 60 * 60 * 1000 && sessionCount <= 1) {
-    message = `I've created ${project.name}.\n\nWe don't need to define everything right now — that's what this space is for.\n\nTell me where your head is today. Are we exploring an idea, solving a problem, designing something new, or refining something that already exists?`;
+    message = `${project.name} is ready. What are we building?`;
   } else {
     message = `${project.name} — what are we working on?`;
   }
