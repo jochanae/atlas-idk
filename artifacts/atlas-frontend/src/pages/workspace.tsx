@@ -227,6 +227,8 @@ export type ClarifyPayload = {
     question: string;
     options: string[];
     allowFreeText?: boolean;
+    /** One sentence explaining why this fork matters. Required by the prompt; rendered under the question. */
+    reason?: string;
   }>;
 };
 
