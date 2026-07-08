@@ -169,13 +169,13 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
             whiteSpace: "nowrap",
             minWidth: 0,
             maxWidth: "100%",
-            color: "var(--atlas-fg)",
+            color: "var(--atlas-gold)",
             fontFamily: "var(--app-font-sans)",
             fontSize: "var(--ts-body)",
             fontWeight: 500,
             lineHeight: "var(--lh-snug)",
             letterSpacing: "var(--ls-tight)",
-            opacity: 0.9,
+            opacity: 0.92,
           }}
         >
           Ask Atlas
