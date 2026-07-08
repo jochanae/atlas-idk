@@ -66,19 +66,6 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-// askAtlasHelpers + askAtlasSession deleted in Turn C. Inline no-op shims.
-const hasBuildIntent = (_text: string): boolean => false;
-const triggerNexusHandoff = async (_opts: any): Promise<void> => {};
-const askAtlasSession = {
-  getConversationId: (): string | null => null,
-  setConversationId: (_id: string) => {},
-  clearConversationId: () => {},
-  isSurfaceOpen: (): boolean => false,
-  setSurfaceOpen: (_open: boolean) => {},
-  isClosed: (): boolean => false,
-  markClosed: () => {},
-  clearClosed: () => {},
-};
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
 
