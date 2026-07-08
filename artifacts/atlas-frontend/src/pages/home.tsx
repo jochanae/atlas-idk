@@ -1945,29 +1945,23 @@ export default function Home() {
     } : null,
   });
   const activeProjectCtx = useActiveProjectContext();
-  const askAtlasInProject = activeProjectCtx && activeProjectCtx.sessionId
-    ? {
-        projectId: activeProjectCtx.projectId,
-        sessionId: activeProjectCtx.sessionId,
-        seed: buildWorkspaceContextSeed(activeProjectCtx),
-      }
-    : null;
-  const askAtlasChat = useNexusChatStream({
-    focusProjectId: null,
-    model: "claude",
-    conversationId: askAtlasConversationId,
-    projectContext: null,
-    askAtlasInProject,
-    onConversationId: (id) => {
-      setAskAtlasConversationId(id);
-      rememberAskAtlasConversationId(id);
-    },
-    onThinkingStable: () => setAskAtlasCrystallized(true),
-  });
-  const askAtlasConversationActive = askAtlasChat.messages.length > 0;
-  const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
-  // (Clear-nexus-on-ask-atlas-open effect declared below, after
-  //  askAtlasSurfaceOpen state is created.)
+  // askAtlasChat stream + askAtlasInProject wiring removed (Turn E-lite).
+  // The surface is gone; nothing routes to a second stream anymore.
+  // Inert stub preserves the shape referenced by dead-branch style ternaries.
+  const askAtlasChat = {
+    messages: [] as any[],
+    isStreaming: false,
+    isPending: false,
+    liveStep: null as any,
+    handoffSignal: null as any,
+    send: async (_opts?: any): Promise<void> => {},
+    setMessages: (_msgs: any) => {},
+    clearMessages: () => {},
+    abort: () => {},
+  };
+  const askAtlasConversationActive = false;
+  const askAtlasBusy = false;
+
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
   // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
