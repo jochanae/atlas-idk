@@ -40,17 +40,30 @@ An "Exists" row is a liability, not an asset. A "Works" row is a demo, not a pro
 
 ---
 
+## Route split (2026-07-08 audit)
+
+Atlas is not one surface. Capabilities are wired across two backend routes with different token vocabularies:
+
+- **`/api/nexus/chat`** — the workspace's active route. Thinking partner, WhisperGate, CLARIFY, NEXT_SUGGESTIONS, Decision Catch (`catchPayload` on `done`). **No** `FILE_EDIT`, **no** `GITHUB_PUSH`, **no** `linePatches`, **no** `MEMORY_CHIPS` emission, **no** agentic tool loop.
+- **`/api/chat`** — the legacy builder route. `FILE_EDIT_START/END` (86 refs), `GITHUB_PUSH` (21), `linePatches` (34), `memoryChips` emission (6), agentic loop, diff patching.
+
+The workspace only reaches `/api/chat` via the home-page **build-intent handoff** (`workspace.tsx:5466`). There is no Build-Mode bridge inside a live workspace turn: once you are in a workspace conversation, Atlas cannot write files, push to GitHub, or emit memory chips, regardless of intent.
+
+Every "Works" rating below is annotated with which route it runs on. **`chat`-only** capabilities are effectively "Exists" from the workspace's active surface.
+
+---
+
 ## 1. Core Intelligence
 
 | Capability | State | Today | Validated | Verified how | Output | Ledger | Editable | Roundtrip | Known gaps | Next validation | Priority |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Conversational thinking partner (Level 0) | Works | Y | Partial | Manual session scoring | Chat stream | N | Iterative | N/A | Listening quality still ~6.5/10; premature clarification | 20-session blind scoring rubric | P0 |
 | Intent classification (WhisperGate) | Works | Y | Partial | Regression tests on labeled prompts | Internal routing | N | N/A | N/A | THINK/BUILD/DECIDE boundary still leaks INTENT_TYPE tokens in some paths | Labeled test set with target ≥95% | P0 |
-| Output validation (Output Guard) | Works | Y | Partial | Per-mode validators + single retry | Internal | N | N/A | N/A | Retry silently drops NEXT_SUGGESTIONS/CLARIFY markers if malformed | Golden-output test per mode | P0 |
-| Decision Catch Engine | Exists | Partial | N | Code path only | Inline card | Y | N/A | N/A | Trigger detection (intent+confidence+action+semantic overlap) not tuned; no deviation logging yet | End-to-end trigger → card → Proceed Anyway → Ledger deviation entry | P0 |
+| Output validation (Output Guard) | Unverified in nexus | Partial | N | Not visible in `nexus.ts`; may live only in `chat.ts` | Internal | N | N/A | N/A | Nexus route may be shipping without per-mode validation + retry | Grep `nexus.ts` for guard invocation; if absent, port from chat | P0 |
+| Decision Catch Engine | Works (nexus) | Y | Partial | `detectDecisionCatch` fires in nexus, `catchPayload` on `done`, DecisionCatchCard renders with Proceed Anyway → Ledger deviation path | Inline card | Y | N/A | N/A | Trigger threshold not tuned — fires too rarely or on wrong overlaps | Labeled corpus of decision moments; measure precision/recall | P0 |
 | Clarification cards (earned) | Works | Y | Partial | Manual prompt tests | Inline `CLARIFY` block → card | N | One-shot | N/A | Fires too often; reason line just wired | 10 conversation audit: card fired ≤2× per session | P0 |
 | Suggestion pills (earned) | Works | Y | N | Code review only | `nextSuggestions` on done event | N | One-shot | N/A | Just re-added; discipline unverified in prod | 10 conversation audit: pills only on discrete forks | P1 |
-| Memory surfacing (MemoryChips) | Works | Y | Partial | Manual verification of chip → ledger route | Inline above assistant message | N | N/A | N/A | Chips don't yet explain *why* a memory was surfaced | Add relevance reason to chip tooltip | P1 |
+| Memory surfacing (MemoryChips) | Exists (frontend only) | N (workspace) | N | Frontend renders `memoryChips`; nexus emits none | Inline above assistant message | N | N/A | N/A | `nexus.ts` has no `MEMORY_CHIPS` marker or injection — only `/api/chat` emits chips, and the workspace does not use that route for turns | Port MEMORY_CHIPS emitter from chat → nexus | P0 |
 | Ledger commit flow | Works | Y | Y | End-to-end user test | `/ledger` grouped view | Y | Iterative | N/A | Overridden state UI incomplete | Deviation → override → visual state change test | P0 |
 
 ---
@@ -125,12 +138,12 @@ An "Exists" row is a liability, not an asset. A "Works" row is a demo, not a pro
 
 | Capability | State | Today | Validated | Verified how | Output | Ledger | Editable | Roundtrip | Known gaps | Next validation | Priority |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Code generation (atlas-codegen) | Works | Y | Partial | LivePreview render | LiveGenerationCard → sandbox | Y | Iterative | N/A | No test generation; no lint gate | Generate + typecheck + preview render gate | P0 |
+| Code generation (atlas-codegen) | Works (`chat` route only) | Partial | Partial | LivePreview render | LiveGenerationCard → sandbox | Y | Iterative | N/A | `FILE_EDIT` blocks live only in `chat.ts`; unreachable from an active workspace turn (nexus). Home build-intent handoff is the only path in. | Bridge Build-Mode turns from nexus → chat, or port FILE_EDIT emitter into nexus | P0 |
 | Live preview sandbox | Works | Y | Y | Author demo | LivePreview iframe | Y | Iterative | N/A | Cold start latency | Warm sandbox pool | P1 |
-| Extract-to-Forge | Works | Y | Partial | Author demo | Forge run | Y | Iterative | N/A | No conflict detection with prior extraction | Duplicate-extract test | P2 |
-| GitHub push (Git Tree API) | Works | Y | Y | End-to-end push verified | Repo commit + Ledger release entry | Y | N/A | N/A | No branch/PR flow (main only) | Branch + PR flow | P1 |
+| Extract-to-Forge | Works (`chat` route only) | Partial | Partial | Author demo | Forge run | Y | Iterative | N/A | Same route gap as codegen — no path from workspace turn | Same bridge fix as codegen | P2 |
+| GitHub push (Git Tree API) | Works (`chat` route only) | Partial | Y | End-to-end push verified via `/api/chat` | Repo commit + Ledger release entry | Y | N/A | N/A | `GITHUB_PUSH` token only in `chat.ts`; workspace turn cannot trigger a push | Same bridge fix; then add branch/PR flow | P0 |
 | File tree drawer | Works | Y | Y | Author demo | Sidebar | N | Iterative | N/A | Drag-drop snippets unverified for large trees | Stress test | P3 |
-| Diff viewer (LCS, code) | Works | Y | Y | Author demo | Inline | N | N/A | N/A | See §11 for other diff types | — | P2 |
+| Diff viewer (LCS, code) | Works (renderer) / Exists (data path in nexus) | Partial | Y | Renderer demoed; `linePatches` only emitted by `chat.ts` | Inline | N | N/A | N/A | Nexus never produces linePatches, so the viewer has nothing to render from a workspace turn | Same route bridge | P1 |
 | Backend handoff spec | Exists | Partial | N | Manual authoring by AI | Chat inline | Y | One-shot | N/A | Not formalized as artifact type; no schema | Define schema (route/method/body/response/auth/consuming file) + render as card | P0 |
 
 ---
@@ -245,25 +258,32 @@ Not on the matrix until "advisory only, not legal advice" framing and liability 
 
 ## Audit Summary
 
-### 1. What is actually supported today (Works or Shipped-quality)
+### 1. What is actually supported today in the workspace's active surface (nexus)
 
 - Conversational thinking partner (Level 0)
 - Intent classification (WhisperGate)
-- Output validation (Output Guard)
 - Clarification cards
 - Suggestion pills (just re-added)
-- Memory surfacing (MemoryChips)
 - Ledger commit flow
+- Decision Catch Engine (infrastructure complete — trigger tuning open)
 - Markdown generation
 - Sketch (design synthesis)
 - Wireframes (static library)
-- Code generation (atlas-codegen)
 - Live preview sandbox
-- Extract-to-Forge
-- GitHub push
 - File tree drawer
-- Code diff viewer
+- Code diff **renderer** (data path missing from nexus)
 - CSV export
+
+### 1b. Wired in `chat.ts` but unreachable from a live workspace turn
+
+Reachable only via the home-page build-intent handoff, not from an in-workspace conversation:
+
+- Code generation (`FILE_EDIT_START/END`)
+- Extract-to-Forge
+- GitHub push (`GITHUB_PUSH`)
+- Diff data (`linePatches`)
+- Memory chips emission (`MEMORY_CHIPS`)
+- Agentic tool loop
 
 ### 2. What is only aspirational (Not started / Exists but not Works)
 
@@ -277,23 +297,26 @@ Not on the matrix until "advisory only, not legal advice" framing and liability 
 - Backend handoff spec (drafted by AI in chat, not formalized as artifact)
 - Structured brief / PRD (exists but no domain review)
 - Long-form report (exists but drifts past ~2k words)
-- Decision Catch Engine (exists, not tuned)
+- Output Guard on the nexus route (unverified — may only run on `/api/chat`)
 
 ### 3. What needs validation next (highest-signal audits)
 
-1. **10-conversation audit of clarification-card + suggestion-pill discipline.** Confirm they fire only when earned.
-2. **Decision Catch end-to-end**: intent → trigger → card → Proceed Anyway → Ledger deviation entry.
-3. **Backend handoff spec schema** — formalize as first-class artifact so we stop losing them in chat scrollback.
-4. **PPTX visual QA pipeline** (headless render → screenshot diff) — must exist *before* PPTX generate ships, or we ship the industry-standard failure.
-5. **XLSX-with-formulas spike** — validate the market chasm and prove Atlas can cross it.
-6. **PRD domain review** — 5 generated PRDs reviewed by a working PM.
-7. **INTENT_TYPE token leak audit** — confirm no marker text escapes to user prose on any path.
+1. **Confirm Output Guard status on nexus.** If absent, port from `chat.ts`. This is the single biggest silent-quality risk.
+2. **Bridge Build-Mode from nexus → chat**, OR port `FILE_EDIT` / `GITHUB_PUSH` / `MEMORY_CHIPS` / `linePatches` emitters into nexus. Until this ships, "Atlas is a builder" is false from any live workspace turn.
+3. **10-conversation audit** of clarification-card + suggestion-pill discipline. Confirm they fire only when earned.
+4. **Decision Catch trigger tuning** — labeled corpus, precision/recall on real decision moments; verify Proceed Anyway writes a deviation entry.
+5. **Backend handoff spec schema** — formalize as first-class artifact so we stop losing them in chat scrollback.
+6. **PPTX visual QA pipeline** (headless render → screenshot diff) — must exist *before* PPTX generate ships.
+7. **XLSX-with-formulas spike** — validate the market chasm and prove Atlas can cross it.
+8. **PRD domain review** — 5 generated PRDs reviewed by a working PM.
+9. **INTENT_TYPE token leak audit** — confirm no marker text escapes to user prose on any path.
 
 ### 4. Highest-leverage capabilities for Atlas's product promise
 
 Ranked by how much they reinforce the decision-led-builder positioning:
 
-1. **Decision Catch Engine (P0)** — the *only* capability that no competitor offers. This is Atlas's moat.
+1. **Bridge nexus → chat (or unify tokens) (P0)** — until this exists, "Atlas is a builder" is only true from the home handoff, not from a workspace turn. This is the leverage move: it converts five existing `chat`-only capabilities into workspace-live capabilities in a single fix.
+2. **Decision Catch Engine tuning (P0)** — infrastructure is done; the *only* capability that no competitor offers, and it's already Works. Trigger tuning turns it from "wired" into a moat.
 2. **Backend handoff spec as first-class artifact (P0)** — Atlas already produces these; formalizing them turns a chat artifact into a shippable deliverable and reinforces the think→decide→build order.
 3. **Reasoning artifacts: decision tree + tradeoff matrix + deviation log (P0)** — the visible proof that Atlas decides before it builds. Without these, positioning is invisible.
 4. **XLSX with live formulas (P0)** — crosses a market chasm; PMs, ops, finance users have no good AI option here.
