@@ -18,7 +18,7 @@ import { findSemanticTensionsForProject } from "./tensions";
 import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
-import { ATLAS_IDENTITY, ATLAS_COMMUNICATION_STYLE, ATLAS_WORKSPACE_IDENTITY } from "../lib/atlasIdentity";
+import { ATLAS_SYSTEM_PROMPT } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
