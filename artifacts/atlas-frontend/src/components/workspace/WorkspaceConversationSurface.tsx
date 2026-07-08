@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
+import { Tier1GapCard } from "@/components/workspace/Tier1GapCard";
 
 interface WorkspaceConversationSurfaceProps {
   projectId: number;
