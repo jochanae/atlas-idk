@@ -1840,11 +1840,10 @@ export default function Home() {
       return null;
     }
   });
-  const [askAtlasConversationId, setAskAtlasConversationId] = useState<string | null>(() => askAtlasSession.getConversationId());
-  const [askAtlasCrystallized, setAskAtlasCrystallized] = useState(false);
-  const rememberAskAtlasConversationId = (conversationId: string) => {
-    askAtlasSession.setConversationId(conversationId);
-  };
+  // Ask Atlas state removed (Turn E-lite). Inert consts so remaining
+  // dead-branch style ternaries still compile.
+  const askAtlasConversationId: string | null = null;
+
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
@@ -1900,21 +1899,9 @@ export default function Home() {
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showLibrarySheet, setShowLibrarySheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
-  // Ask Atlas is a standalone surface — see AskAtlasSurface.
-  // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
-  // the same purple-header surface. No inline routing, no split renderer.
-  // Radial menu "Ask Atlas" → open the AskAtlasSurface + focus its composer.
-  useEffect(() => {
-    const onAsk = (e: Event) => {
-      const detail = (e as CustomEvent<{ seed?: string }>).detail;
-      askAtlasSession.clearClosed();
-      setAskAtlasSurfaceOpen(true);
-      if (detail?.seed) setInput(detail.seed);
-      window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
-    };
-    window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
-    return () => window.removeEventListener("axiom:ask-atlas", onAsk as EventListener);
-  }, []);
+  // Ask Atlas surface removed (Turn D). axiom:ask-atlas event listener
+  // removed in Turn E-lite — nothing to open.
+
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
@@ -1958,29 +1945,23 @@ export default function Home() {
     } : null,
   });
   const activeProjectCtx = useActiveProjectContext();
-  const askAtlasInProject = activeProjectCtx && activeProjectCtx.sessionId
-    ? {
-        projectId: activeProjectCtx.projectId,
-        sessionId: activeProjectCtx.sessionId,
-        seed: buildWorkspaceContextSeed(activeProjectCtx),
-      }
-    : null;
-  const askAtlasChat = useNexusChatStream({
-    focusProjectId: null,
-    model: "claude",
-    conversationId: askAtlasConversationId,
-    projectContext: null,
-    askAtlasInProject,
-    onConversationId: (id) => {
-      setAskAtlasConversationId(id);
-      rememberAskAtlasConversationId(id);
-    },
-    onThinkingStable: () => setAskAtlasCrystallized(true),
-  });
-  const askAtlasConversationActive = askAtlasChat.messages.length > 0;
-  const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
-  // (Clear-nexus-on-ask-atlas-open effect declared below, after
-  //  askAtlasSurfaceOpen state is created.)
+  // askAtlasChat stream + askAtlasInProject wiring removed (Turn E-lite).
+  // The surface is gone; nothing routes to a second stream anymore.
+  // Inert stub preserves the shape referenced by dead-branch style ternaries.
+  const askAtlasChat = {
+    messages: [] as any[],
+    isStreaming: false,
+    isPending: false,
+    liveStep: null as any,
+    handoffSignal: null as any,
+    send: async (_opts?: any): Promise<void> => {},
+    setMessages: (_msgs: any) => {},
+    clearMessages: () => {},
+    abort: () => {},
+  };
+  const askAtlasConversationActive = false;
+  const askAtlasBusy = false;
+
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
   // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
@@ -2046,78 +2027,24 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
-  // ── Ask Atlas mode ────────────────────────────────────────────────────────────
-  const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    // Ask Atlas opens only by explicit user action. Stored conversation IDs are
-    // history, not an instruction to re-enter Ask Atlas or a project context.
-    return false;
-  });
-  // True while the thread restore fetch is in-flight. Initialized synchronously
-  // from storage so the surface is visible immediately on return (no blank flash).
-  const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
-    return false;
-  });
-  // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
-  // only appears once the user has actually sent the first message. Until then
-  // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
-  // button and routes sends to askAtlasChat.
-  // Also visible while restoring so the surface never flashes blank on return.
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring);
+  // ── Ask Atlas surface removed (Turn E-lite) ─────────────────────────────
+  // Surface, restore effect, session mirror, and thread-restore fetch are
+  // all gone. Inert consts keep dead-branch style ternaries compiling.
+  const askAtlasSurfaceOpen = false;
+  const setAskAtlasSurfaceOpen = (_v: boolean) => {};
+  const setAskAtlasConversationId = (_v: string | null) => {};
+  const isAskAtlasRestoring = false;
+  const askAtlasSurfaceVisible = false;
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
   useEffect(() => {
-    const active = askAtlasSurfaceVisible || nexusChat.messages.length > 0;
+    const active = nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
     return () => { document.body.removeAttribute("data-axiom-thread"); };
-  }, [askAtlasSurfaceVisible, nexusChat.messages.length]);
+  }, [nexusChat.messages.length]);
 
-  useEffect(() => {
-    document.body.setAttribute("data-axiom-ask-atlas", askAtlasSurfaceVisible ? "true" : "false");
-    return () => { document.body.removeAttribute("data-axiom-ask-atlas"); };
-  }, [askAtlasSurfaceVisible]);
 
-  // Clear any ambient nexus messages the instant Ask Atlas opens so the two
-  // renderers can never coexist on screen.
-  useEffect(() => {
-    if (askAtlasSurfaceOpen) nexusChat.clearMessages();
-  }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
-
-  // Keep stale surface-open storage from forcing Ask Atlas back open later.
-  useEffect(() => {
-    if (!askAtlasSurfaceOpen) askAtlasSession.setSurfaceOpen(false);
-  }, [askAtlasSurfaceOpen]);
-
-  // Restore Ask Atlas thread after hard refresh or navigation return — the surface
-  // may be open (from localStorage) but askAtlasChat is empty because the standard
-  // thread-load effect populates nexusChat, not askAtlasChat.
-  const askAtlasRestoreAttemptRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!askAtlasSurfaceOpen || !askAtlasConversationId) {
-      setIsAskAtlasRestoring(false);
-      return;
-    }
-    if (askAtlasRestoreAttemptRef.current === askAtlasConversationId) return;
-    if (askAtlasChat.messages.length > 0) {
-      askAtlasRestoreAttemptRef.current = askAtlasConversationId;
-      setIsAskAtlasRestoring(false);
-      return;
-    }
-    setIsAskAtlasRestoring(true);
-    fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(askAtlasConversationId)}`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : [])
-      .then((msgs: Array<{ role: string; content: string }>) => {
-        const normalized = normalizeLoadedHomeMessages(msgs);
-        if (normalized.length > 0) askAtlasChat.setMessages(normalized as any);
-        askAtlasRestoreAttemptRef.current = askAtlasConversationId;
-      })
-      .catch(() => {
-        askAtlasRestoreAttemptRef.current = askAtlasConversationId;
-      })
-      .finally(() => {
-        setIsAskAtlasRestoring(false);
-      });
-  }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasChat.messages.length, askAtlasChat.setMessages]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -2259,35 +2186,14 @@ export default function Home() {
 
   const handleLockTap = useCallback(() => {
     vibrate(50);
-    if (askAtlasSurfaceOpen) {
-      // Exit Ask Atlas → return to the ambient homepage, NOT a stranded
-      // "Untitled conversation" view. Clear the active thread and message
-      // stream so the hero/quick-actions come back.
-      void callAskAtlasMode(false);
-      setAskAtlasSurfaceOpen(false);
-      try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
-      try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
-      conversationThreadRequestRef.current = null;
-      thinkOutLoudInlineRef.current = false;
-      setActiveConversationId(null);
-      setAskAtlasConversationId(null);
-      askAtlasSession.clearConversationId();
-      nexusChat.setMessages([]);
-      askAtlasChat.clearMessages();
-      setEarnedTitle(null);
-      setDepth("ambient");
-    } else {
-      setShowOverviewSheet(false);
-      setShowHistory(false);
-      setShowFocusPicker(false);
-      setAskAtlasSurfaceOpen(true);
-      window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
-      toast("Ask Atlas · Strategic view", {
-        className: "atlas-toast-premium",
-        description: "Macro view across every project.",
-      });
-    }
-  }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, askAtlasChat.clearMessages, setDepth]);
+    // Ask Atlas removed (Turn E-lite). Lock-tap now just closes overlays
+    // and dismisses to ambient home; there is no strategic-view mode.
+    setShowOverviewSheet(false);
+    setShowHistory(false);
+    setShowFocusPicker(false);
+    setDepth("ambient");
+  }, [vibrate, setDepth]);
+
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
@@ -2998,38 +2904,10 @@ export default function Home() {
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
-    // Ask Atlas surface routing — the surface is the sole owner of askAtlasChat.
-    // When it's open, EVERY send goes through askAtlasChat regardless of how
-    // the surface was opened (composer pill, resume, radial, history). This
-    // eliminates the old split where entry point determined data source.
-    const hasAskAtlasContent = !!text || attachedFiles.some(f => f.type.startsWith("image/"));
-    if (askAtlasSurfaceOpen && hasAskAtlasContent) {
-      if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
-      submitInFlightRef.current = true;
-      setInput("");
-      const filesToConvert = attachedFiles.filter(f => f.type.startsWith("image/"));
-      setAttachedFiles([]);
-      textareaRef.current?.blur();
-      let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-      if (filesToConvert.length > 0) {
-        try {
-          askAtlasAttachments = await Promise.all(
-            filesToConvert.slice(0, 10).map(async (f) => {
-              const safe = await fileToBase64Safe(f);
-              return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
-            })
-          );
-        } catch {}
-      }
-      void askAtlasChat.send({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
-        submitInFlightRef.current = false;
-      });
-      return;
-    }
+    // Ask Atlas send-routing branch removed (Turn E-lite). All sends now
+    // flow through nexusChat via the shouldStayOnHome path below.
     const shouldStayOnHome = options?.forceStayOnHome ?? false;
-    if (shouldStayOnHome && !askAtlasSurfaceOpen && !thinkOutLoudInlineRef.current) {
-      setAskAtlasSurfaceOpen(true);
-    }
+
     // All blocking gates — nothing above this line mutates project/send state.
     // Each gate is a clean exit: no flags set, no API calls made.
     if (!shouldStayOnHome && !backendReady) {
@@ -3601,26 +3479,21 @@ export default function Home() {
     setIsHandoffReady(false);
     try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+    try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+    try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
     conversationThreadRequestRef.current = null;
     thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
-    setAskAtlasConversationId(null);
-    askAtlasSession.clearConversationId();
-    askAtlasSession.setSurfaceOpen(false);
     clearActiveProjectContext();
     nexusChat.clearMessages();
-    askAtlasChat.clearMessages();
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.clearMessages, askAtlasChat.clearMessages]);
+  }, [nexusChat.clearMessages]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
     const reset = () => {
-      void callAskAtlasMode(false);
-      setAskAtlasSurfaceOpen(false);
-      askAtlasSession.setSurfaceOpen(false);
       clearActiveProjectContext();
       handleNewConversation();
       setDepth("ambient");
@@ -3628,7 +3501,8 @@ export default function Home() {
     };
     window.addEventListener("axiom:home-reset", reset);
     return () => window.removeEventListener("axiom:home-reset", reset);
-  }, [callAskAtlasMode, handleNewConversation, setDepth]);
+  }, [handleNewConversation, setDepth]);
+
 
 
   // Hydrate earned title when the active conversation changes.
@@ -3673,16 +3547,13 @@ export default function Home() {
           })
         : [];
 
-      // Route resumed threads into askAtlasChat so AskAtlasSurface renders
-      // them — not into nexusChat which feeds the ambient homepage renderer.
-      askAtlasChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
-      nexusChat.clearMessages();
+      // Route resumed threads into nexusChat (Ask Atlas surface removed
+      // in Turn D; there's only one renderer now).
+      nexusChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
 
       // Pre-mark the thread-request ref with the new id BEFORE calling
-      // setActiveConversationId so the load useEffect's guard at line ~2678
-      // sees the id already handled and skips — preventing nexusChat from
-      // being re-populated with the same messages and activating the ambient
-      // home surface behind AskAtlasSurface.
+      // setActiveConversationId so the load useEffect's guard sees the id
+      // already handled and skips — preventing a duplicate re-populate.
       conversationThreadRequestRef.current = { conversationId: id, requestId: Date.now() };
 
       setActiveConversationId(id);
@@ -3690,9 +3561,6 @@ export default function Home() {
       try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
       try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
 
-      // Open the real AskAtlasSurface with the correct surface flag so the
-      // pinned header, scroll, composer, and message styling all match.
-      setAskAtlasSurfaceOpen(true);
       setDepth("active");
       try {
         await fetch(`/api/sessions/${encodeURIComponent(id)}/reflection-mode`, {
@@ -3705,7 +3573,8 @@ export default function Home() {
 
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId, askAtlasChat.setMessages, nexusChat.clearMessages, setDepth]);
+  }, [setActiveConversationId, nexusChat.setMessages, setDepth]);
+
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
