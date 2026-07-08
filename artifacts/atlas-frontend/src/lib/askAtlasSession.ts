@@ -73,13 +73,3 @@ export const ASK_ATLAS_STORAGE_KEYS = {
   surfaceOpen: OPEN_KEY,
   closed: CLOSED_KEY,
 } as const;
-
-export function openAskAtlasFromWorkspace(navigate: (path: string) => void): void {
-  askAtlasSession.clearClosed();
-  askAtlasSession.setSurfaceOpen(true);
-  navigate("/home");
-  if (typeof window === "undefined") return;
-  window.setTimeout(() => {
-    window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
-  }, 30);
-}

@@ -28,7 +28,6 @@ import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
 import { AskAtlasSurface } from "@/components/home/AskAtlasSurface";
-import { CrystallizeSheet } from "@/components/home/CrystallizeSheet";
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
 import { FocusModeAura } from "@/components/FocusModeAura";
 
@@ -69,7 +68,6 @@ import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
-import { useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
 
 const PLACEHOLDERS = [
@@ -99,10 +97,6 @@ const ASK_ATLAS_PORTFOLIO_SEED =
   "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
 
 function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
-  const ctx = useActiveProjectContext();
-  const restoreWorkspaceChip = () => {
-    window.dispatchEvent(new CustomEvent("axiom:restore-workspace-context-chip"));
-  };
   // Header title rotation stripped (Pass 1). Header is permanently
   // "Ask Atlas"; the project name lives in the CommitPill only.
   return (
@@ -114,28 +108,7 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
         }
       `}</style>
       <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
-        <button
-          type="button"
-          onClick={ctx ? restoreWorkspaceChip : undefined}
-          title={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
-          aria-label={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
-          disabled={!ctx}
-          style={{
-            position: "relative",
-            display: "inline-flex",
-            width: 18,
-            height: 18,
-            flexShrink: 0,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            border: 0,
-            background: "transparent",
-            cursor: ctx ? "pointer" : "default",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8, flexShrink: 0 }}>
+        <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8, flexShrink: 0 }}>
           <span
             aria-hidden
             style={{
@@ -159,8 +132,7 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
               boxShadow: "0 0 8px rgba(139,92,246,0.6)",
             }}
           />
-          </span>
-        </button>
+        </span>
         <span
           title="Ask Atlas"
           style={{
@@ -2032,20 +2004,11 @@ export default function Home() {
       decisions: homeProjectState.decisions,
     } : null,
   });
-  const activeProjectCtx = useActiveProjectContext();
-  const askAtlasInProject = activeProjectCtx && activeProjectCtx.sessionId
-    ? {
-        projectId: activeProjectCtx.projectId,
-        sessionId: activeProjectCtx.sessionId,
-        seed: buildWorkspaceContextSeed(activeProjectCtx),
-      }
-    : null;
   const askAtlasChat = useNexusChatStream({
     focusProjectId: null,
     model: "claude",
     conversationId: askAtlasConversationId,
     projectContext: null,
-    askAtlasInProject,
     onConversationId: (id) => {
       setAskAtlasConversationId(id);
       rememberAskAtlasConversationId(id);
@@ -2142,7 +2105,7 @@ export default function Home() {
   // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
   // button and routes sends to askAtlasChat.
   // Also visible while restoring so the surface never flashes blank on return.
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring || !!activeProjectCtx);
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -3071,26 +3034,12 @@ export default function Home() {
     // When it's open, EVERY send goes through askAtlasChat regardless of how
     // the surface was opened (composer pill, resume, radial, history). This
     // eliminates the old split where entry point determined data source.
-    const hasAskAtlasContent = !!text || attachedFiles.some(f => f.type.startsWith("image/"));
-    if (askAtlasSurfaceOpen && hasAskAtlasContent) {
+    if (askAtlasSurfaceOpen && text) {
       if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
-      const filesToConvert = attachedFiles.filter(f => f.type.startsWith("image/"));
       setAttachedFiles([]);
-      textareaRef.current?.blur();
-      let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-      if (filesToConvert.length > 0) {
-        try {
-          askAtlasAttachments = await Promise.all(
-            filesToConvert.slice(0, 10).map(async (f) => {
-              const safe = await fileToBase64Safe(f);
-              return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
-            })
-          );
-        } catch {}
-      }
-      void askAtlasChat.send({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
+      void askAtlasChat.send({ text }).finally(() => {
         submitInFlightRef.current = false;
       });
       return;
@@ -3921,58 +3870,6 @@ export default function Home() {
     }
   }, [handleHandoff, nexusChat.handoffSignal, performCreateProjectFromConversation]);
 
-  const [crystallizeSheetOpen, setCrystallizeSheetOpen] = useState(false);
-
-  // Auto-blueprint is opt-in: only request it when the source conversation
-  // actually produced a BUILD-intent turn. Otherwise the handoff stays a pure
-  // thinking capture and workspace opens quiet (no forced planning noise).
-  const conversationHasBuildIntent = useMemo(
-    () => (nexusChat.messages as HomeMessage[]).some((m) => m.intentType === "BUILD"),
-    [nexusChat.messages],
-  );
-
-  const handleCrystallizeToExisting = useCallback(async (projectId: number, _projectName: string) => {
-    const conversationMessages = nexusChat.messages.map((m) => ({
-      role: m.role as string,
-      content: typeof m.content === "string" ? m.content : "",
-    })).filter(m => m.content.trim());
-    const res = await fetch("/api/nexus/handoff", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        messages: conversationMessages,
-        projectId,
-        conversationId: askAtlasConversationId,
-        requestBuild: conversationHasBuildIntent,
-      }),
-    });
-    if (!res.ok) throw new Error("Handoff failed");
-    queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    setActiveProjectId(projectId);
-    setLocation(`/project/${projectId}`);
-  }, [nexusChat.messages, askAtlasConversationId, queryClient, setActiveProjectId, setLocation, conversationHasBuildIntent]);
-
-  const handleCrystallizePortfolioNote = useCallback(async () => {
-    const conversationMessages = nexusChat.messages.map((m) => ({
-      role: m.role as string,
-      content: typeof m.content === "string" ? m.content : "",
-    })).filter(m => m.content.trim());
-    const res = await fetch("/api/nexus/handoff", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        messages: conversationMessages,
-        conversationId: askAtlasConversationId,
-        ideaMode: true,
-        requestBuild: false,
-      }),
-    });
-    if (!res.ok) throw new Error("Handoff failed");
-    queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-  }, [nexusChat.messages, askAtlasConversationId, queryClient]);
-
   return (
     <div
       ref={ptrContainerRef}
@@ -4297,8 +4194,8 @@ export default function Home() {
               zIndex: 0,
             }} />
 
-            {/* Homepage greeting only. Ask Atlas surface must stay clear behind the conversation. */}
-            {!askAtlasSurfaceVisible && nexusChat.messages.length === 0 && !showOverviewSheet && !askAtlasConversationActive && (
+            {/* Greeting + inline Ask Atlas conversation — crossfade in the hero slot */}
+            {nexusChat.messages.length === 0 && !showOverviewSheet && !askAtlasConversationActive && (
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
@@ -4316,12 +4213,19 @@ export default function Home() {
                     style={{
                     fontSize: "var(--ts-display-xl)", fontWeight: 300,
                     letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                    color: "var(--atlas-fg)",
-                    ["--atlas-reveal-opacity" as string]: "0.85",
+                    color: askAtlasSurfaceVisible ? undefined : "var(--atlas-fg)",
+                    ["--atlas-reveal-opacity" as string]: askAtlasSurfaceVisible ? "1" : "0.85",
                     ["--atlas-reveal-delay" as string]: "0ms",
-                    opacity: 0.85,
+                    opacity: askAtlasSurfaceVisible ? 1 : 0.85,
+                    background: askAtlasSurfaceVisible
+                      ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
+                      : undefined,
+                    WebkitBackgroundClip: askAtlasSurfaceVisible ? "text" : undefined,
+                    WebkitTextFillColor: askAtlasSurfaceVisible ? "transparent" : undefined,
+                    backgroundClip: askAtlasSurfaceVisible ? "text" : undefined,
+                    filter: askAtlasSurfaceVisible ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                   }}>
-                    {askAtlasSurfaceVisible ? (greetingRef.current?.head ?? "") : (
+                    {askAtlasSurfaceVisible ? "Ask Atlas." : (
                       <>
                         {greetingRef.current?.head}
                         {isTiny && projects && projects.length > 0 && (() => {
@@ -5641,7 +5545,6 @@ export default function Home() {
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
         onCreateProject={handleAskAtlasCreateProject}
-        onCrystallize={() => setCrystallizeSheetOpen(true)}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => {
@@ -5825,17 +5728,6 @@ export default function Home() {
       <ShellLogSheet
         open={showShellSheet}
         onClose={() => setShowShellSheet(false)}
-      />
-
-      <CrystallizeSheet
-        open={crystallizeSheetOpen}
-        onClose={() => setCrystallizeSheetOpen(false)}
-        projects={projects ?? []}
-        handoffSignal={nexusChat.handoffSignal}
-        hasConversation={(nexusChat.messages?.length ?? 0) > 0}
-        onNewWorkspace={() => { setCrystallizeSheetOpen(false); handleAskAtlasCreateProject(); }}
-        onExistingProject={handleCrystallizeToExisting}
-        onPortfolioNote={handleCrystallizePortfolioNote}
       />
 
       {writeOverlayProjectId != null && createPortal(

@@ -46,19 +46,11 @@ import { LedgerPanel } from "../components/workspace/LedgerPanel";
 import { VerificationPanel } from "@/components/run/VerificationPanel";
 import { matchWhisperGateAction } from "@/lib/whisperGate";
 import { dispatchVerifyRun } from "@/lib/verification";
-import { workspaceEventBus, useWorkspaceEvent } from "@/lib/workspaceEventBus";
-import {
-  setActiveProjectContext,
-  clearActiveProjectContext,
-  isUnresolvedDecisionEntry,
-} from "@/lib/activeProjectContext";
-import { openAskAtlasFromWorkspace } from "@/lib/askAtlasSession";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { SearchModal } from "../components/workspace/SearchModal";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
 import { MapTab } from "@/components/workspace/MapTab";
-import { ConversationViewSwitcher } from "@/components/workspace/ConversationViewSwitcher";
 import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
 import { StreamingText, ChunkedBubbles } from "@/components/workspace/StreamingText";
 import { LinePatchReviewCard, ReviewPlanCard, ReviewTabPanel, PushDiffCard } from "@/components/workspace/ReviewCards";
@@ -183,14 +175,6 @@ type HomeHandoffMeta = {
   goalLabel: string;
   nodes?: HomeHandoffNode[];
   parkedTitles?: string[];
-  /**
-   * Set by the source conversation when the handoff explicitly wants
-   * a blueprint / build output ready on arrival. When absent or false,
-   * the auto-blueprint fire in workspace.tsx is suppressed so a plain
-   * "take me to workspace" handoff no longer generates noise.
-   * See plan step 6 (2026-07-07).
-   */
-  requestBuild?: boolean;
 };
 
 function hasHomeHandoffNodeData(meta: HomeHandoffMeta | null): boolean {
@@ -285,7 +269,6 @@ export interface ChatMessage {
   planMode?: boolean;
   alertPayload?: AlertPayload | null;
   alertResolved?: boolean;
-  catchPayload?: import("../lib/DecisionCatchTypes").CatchPayload | null;
   clarify?: ClarifyPayload | null;
   fileEdit?: FileEdit;
   fileEdits?: FileEdit[];
@@ -2057,7 +2040,7 @@ function RightPanel({
     },
     ...(wsLens === "build" || wsLens === "scenario" ? [{
       id: "terminal" as RightTab,
-      label: "Terminal",
+      label: "Console",
       icon: (
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
           <rect x="1" y="2" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
@@ -4363,7 +4346,6 @@ export default function Workspace() {
   const [leftTab, setLeftTab] = useState<WorkspaceLeftTab>(() => {
     try {
       const urlTab = new URLSearchParams(window.location.search).get("leftTab");
-
       if (
         urlTab === "chat" ||
         urlTab === "diff" ||
@@ -4387,7 +4369,6 @@ export default function Workspace() {
     } catch {}
     return "chat";
   });
-  useEffect(() => { workspaceEventBus.emit("tab-change", { tab: leftTab }); }, [leftTab]);
   const focusedRunId = (() => {
     try { return new URLSearchParams(window.location.search).get("runId"); } catch { return null; }
   })();
@@ -4395,7 +4376,6 @@ export default function Workspace() {
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "insights" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
-  useEffect(() => { workspaceEventBus.emit("mobile-tab-change", { tab: mobileTab }); }, [mobileTab]);
   const [rightOpen, setRightOpen] = useState(() =>
     new URLSearchParams(window.location.search).get("view") === "flow"
   );
@@ -4778,7 +4758,7 @@ export default function Workspace() {
 
   // Phase 2B: execution_runs data layer — provides durable run receipts to the
   // trailing WorkspaceRunCard instead of relying on message scanning (deriveRun).
-  const { execLatestRun } = useProjectRuns(id);
+  const { execLatestRun, invalidate: invalidateProjectRuns } = useProjectRuns(id);
 
 
   const thinkFreelyThreadLoadedRef = useRef(false);
@@ -5207,7 +5187,6 @@ export default function Workspace() {
     setWsLensRaw(newLens);
     setDetectedLens(null);
     try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, newLens); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
-    workspaceEventBus.emit("lens-change", { lens: newLens });
     if (newLens === "scenario") {
       scenarioStartIdxRef.current = currentMessages.length;
     } else {
@@ -5558,16 +5537,19 @@ export default function Workspace() {
     return () => clearTimeout(t);
   }, [chatPending]);
 
-  // Emit run-completed on the bus when a classic chat turn finishes.
-  // Subscribers (WorkspaceRunCard, ViewChangesPanel) invalidate their own queries.
+  // Invalidate the runs cache when a chat turn completes so the trailing
+  // WorkspaceRunCard immediately reflects the newly recorded execution_run.
+  // 600ms delay gives the fire-and-forget recorder time to commit.
   const chatPendingRef = useRef(chatPending);
   useEffect(() => {
     const prev = chatPendingRef.current;
     chatPendingRef.current = chatPending;
     if (prev && !chatPending) {
-      workspaceEventBus.emit("run-completed", { projectId: id });
+      const t = setTimeout(() => invalidateProjectRuns(), 1500);
+      return () => clearTimeout(t);
     }
-  }, [chatPending, id]);
+    return undefined;
+  }, [chatPending, invalidateProjectRuns]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
@@ -5692,63 +5674,6 @@ export default function Workspace() {
   });
   const projectFromList = allProjects?.find((p) => p.id === id) ?? null;
   const project = projectState.project ?? fallbackProject ?? projectFromList;
-
-  // Populate the shared activeProjectContext so Ask Atlas (opened from within
-  // the workspace or via the ambient floater) sees the same project identity,
-  // memory brief, last user goal, and open decisions. Cleared on route-away.
-  // See plan step 1 (2026-07-07).
-  useEffect(() => {
-    if (!id || !project) return;
-    const lastUserGoal = [...messages].reverse().find((m) => m.role === "user")?.content ?? null;
-    const memoryBrief = (() => {
-      try {
-        if (!project.memory) return resumeBrief?.threadSummary ?? resumeBrief?.intent ?? null;
-        const mem = JSON.parse(project.memory);
-        const brief = mem?.entries?.find(
-          (e: any) =>
-            e.tier === 1 &&
-            typeof e.text === "string" &&
-            e.text.startsWith("Project brief from home conversation:"),
-        );
-        if (brief) return (brief.text as string).replace("Project brief from home conversation: ", "");
-        return resumeBrief?.threadSummary ?? resumeBrief?.intent ?? null;
-      } catch { return resumeBrief?.threadSummary ?? null; }
-    })();
-    // Recent events: last committed run + last few assistant turns with file edits.
-    const recentEvents: string[] = [];
-    if (latestRun) {
-      const label = latestRun.summary ?? latestRun.title ?? latestRun.runStatus ?? "run completed";
-      recentEvents.push(`Run: ${String(label).slice(0, 80)}`);
-    }
-    for (let i = messages.length - 1; i >= 0 && recentEvents.length < 5; i--) {
-      const m = messages[i];
-      const edits = (m as any).fileEdits?.length ?? ((m as any).fileEdit ? 1 : 0);
-      if (m.role === "assistant" && edits > 0) {
-        recentEvents.push(`Edited ${edits} file${edits === 1 ? "" : "s"}`);
-      }
-    }
-    // Unresolved decisions: anything not committed / locked in the entries feed.
-    const unresolvedDecisions = (entries ?? [])
-      .filter((e: any) => isUnresolvedDecisionEntry(e))
-      .slice(0, 6)
-      .map((e: any) => ({ id: e.id as number, title: String(e.title ?? "").slice(0, 120) }));
-    setActiveProjectContext({
-      projectId: id,
-      sessionId: sessionId ?? projectState.activeSession?.id ?? null,
-      projectName: project.name,
-      memoryBrief,
-      lastUserGoal,
-      recentEvents,
-      unresolvedDecisions,
-    });
-    return () => {
-      try {
-        const next = window.location.pathname;
-        if (next === "/home") return;
-        if (!next.startsWith(`/project/${id}`)) clearActiveProjectContext();
-      } catch { clearActiveProjectContext(); }
-    };
-  }, [id, project, projectState.activeSession?.id, sessionId, messages, resumeBrief, latestRun, entries]);
   const addLocalMessage = useCallback((role: "user" | "assistant", content: string) => {
     setMessages((prev) => [
       ...prev,
@@ -5969,10 +5894,6 @@ export default function Workspace() {
     ? projectState.parked
     : entries.filter((entry) => entry.status === "parked");
 
-  // Increment to re-read localStorage when AxiomFlow emits updated nodes.
-  const [flowNodesBusTick, setFlowNodesBusTick] = useState(0);
-  useWorkspaceEvent("flow-nodes", () => { setFlowNodesBusTick((t) => t + 1); });
-
   const homeHandoffNodes = useMemo<HomeHandoffNode[]>(() => {
     if (homeHandoffMeta?.nodes?.length) return homeHandoffMeta.nodes;
     try {
@@ -5991,8 +5912,7 @@ export default function Workspace() {
     } catch {
       return [];
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [homeHandoffMeta, id, flowNodesBusTick]);
+  }, [homeHandoffMeta, id]);
 
   const homeHandoffParkedTitles = useMemo(() => {
     if (homeHandoffMeta?.parkedTitles?.length) return homeHandoffMeta.parkedTitles;
@@ -6505,14 +6425,10 @@ export default function Workspace() {
     } catch { primeHomeHandoff(fallbackPrompt); }
   }, [sessionId, messages.length, project, doSend]);
 
-  // Auto-generate blueprint on handoff — ONLY when the source conversation
-  // explicitly requested build/planning output (requestBuild flag on the
-  // handoff meta). Previously fired on every home-handoff, which produced
-  // noise for conversational handoffs. See plan step 6 (2026-07-07).
+  // Auto-generate blueprint silently on first workspace handoff from global insight
   const autoBlueprintFired = useRef(false);
   useEffect(() => {
     if (!isHomeHandoff || !id || !sessionId || autoBlueprintFired.current) return;
-    if (!homeHandoffMeta?.requestBuild) return;
     autoBlueprintFired.current = true;
     const timer = setTimeout(() => {
       fetch(`/api/projects/${id}/blueprint`, {
@@ -6523,7 +6439,7 @@ export default function Workspace() {
       }).catch(() => {});
     }, 5000);
     return () => clearTimeout(timer);
-  }, [isHomeHandoff, id, sessionId, homeHandoffMeta?.requestBuild]);
+  }, [isHomeHandoff, id, sessionId]);
 
   const sendFromIntentCapture = useCallback((text: string) => {
     const trimmed = text.trim();
@@ -8069,19 +7985,6 @@ export default function Workspace() {
         );
       })()}
 
-      {/* ── Conversation ↔ Workspace view switch (same conversation, two views) ── */}
-      <div
-        style={{
-          position: "fixed",
-          top: "calc(var(--atlas-header-height, 48px) + 8px)",
-          right: 12,
-          zIndex: 40,
-          pointerEvents: "auto",
-        }}
-      >
-        <ConversationViewSwitcher hidden={isMobile} />
-      </div>
-
       {/* ── Axiom handoff banner ── */}
       {showAxiomBanner && (
         <div
@@ -8621,13 +8524,6 @@ export default function Workspace() {
               onStreamActivityComplete: () => setActivityStream({ active: false, content: "" }),
               onCommitCardDone: () => {
                 queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
-                // Emit on the event bus — LedgerPanel, ViewChangesPanel Decisions, and
-                // parked-count badge all subscribe and will refresh immediately.
-                workspaceEventBus.emit("entry-changed", { projectId: id });
-                // Also invalidate the Decisions sub-tab (ViewChangesPanel uses this key)
-                // and project memory so MemoryTab refreshes immediately.
-                queryClient.invalidateQueries({ queryKey: ["run-decisions", id] });
-                queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
                 void refreshParkedEntries();
               },
               planStates: chatPlanStates,
@@ -8658,7 +8554,6 @@ export default function Workspace() {
               ...(useNexusWorkspaceChat ? {
                 messages: nexusBridge.messages,
                 chatPending: nexusBridge.chatPending,
-                liveStep: nexusBridge.liveStep,
                 onSend: (msg: string) => nexusBridge.send(msg),
               } : {}),
             } : null}
@@ -8790,7 +8685,6 @@ export default function Workspace() {
               // Option 2 overrides — route composer sends through Nexus.
               ...(useNexusWorkspaceChat ? {
                 chatPending: nexusBridge.chatPending,
-                liveStep: nexusBridge.liveStep,
                 messages: nexusBridge.messages,
                 doSend: ((text: string) => {
                   nexusBridge.send(text);
@@ -9130,19 +9024,6 @@ export default function Workspace() {
               margin: "0 auto 10px",
             }} />
             {([
-              {
-                id: "conversation" as const,
-                label: "Conversation",
-                icon: (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
-                ),
-                onSelect: () => {
-                  setShowMoreSheet(false);
-                  openAskAtlasFromWorkspace(setLocation);
-                },
-              },
               {
                 id: "files" as const,
                 label: "Files",
@@ -9493,43 +9374,10 @@ export default function Workspace() {
            >
             {isMobile && (
               <div style={{
-                position: "sticky",
-                top: 0,
-                zIndex: 2,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "10px 12px 2px",
-                background: "var(--atlas-surface)",
-              }}>
-                <div style={{
-                  width: 40, height: 4, borderRadius: 999,
-                  background: "var(--atlas-border)",
-                  opacity: 0.7,
-                }} />
-                <button
-                  type="button"
-                  onClick={() => setShowProjectMenu(false)}
-                  aria-label="Close project menu"
-                  title="Close"
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: 4,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 999,
-                    border: "1px solid rgba(var(--atlas-muted-rgb),0.18)",
-                    background: "color-mix(in oklab, var(--atlas-fg) 5%, transparent)",
-                    color: "var(--atlas-fg)",
-                    cursor: "pointer",
-                    fontSize: 20,
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
+                width: 40, height: 4, borderRadius: 999,
+                background: "var(--atlas-border)",
+                margin: "10px auto 6px", opacity: 0.7,
+              }} />
             )}
             <AccountSummarySections
               projectName={project?.name ?? null}
@@ -9613,19 +9461,24 @@ export default function Workspace() {
                   <button
                     onClick={() => { setShowProjectMenu(false); setShowDrawer(true); }}
                     style={{
-                      display: "inline-flex", alignItems: "center", gap: 8,
-                      margin: "6px",
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      width: "calc(100% - 12px)", margin: "6px",
                       background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
                       border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                      padding: "7px 14px", borderRadius: 999, cursor: "pointer",
+                      padding: "10px 12px", borderRadius: 8, cursor: "pointer",
                     }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-gold)" }}>
-                      <path d="M3 6h10M3 6l3-3M3 6l3 3M13 10H3M13 10l-3-3M13 10l-3 3" />
-                    </svg>
-                    <span style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>
-                      Switch project
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-gold)" }}>
+                        <path d="M3 6h10M3 6l3-3M3 6l3 3M13 10H3M13 10l-3-3M13 10l-3 3" />
+                      </svg>
+                      <span style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>
+                        Switch project
+                      </span>
                     </span>
+                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ color: "var(--atlas-gold)", opacity: 0.5, flexShrink: 0 }}>
+                      <path d="M4.5 2l3 4-3 4" />
+                    </svg>
                   </button>
                   {switchToExpanded && (
                     <div style={{ padding: "0 6px 6px", display: "flex", flexDirection: "column", gap: 2 }}>
@@ -10077,7 +9930,6 @@ export default function Workspace() {
                     setWsLensRaw(pendingLensSwitch);
                     setDetectedLens(null);
                     try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
-                    workspaceEventBus.emit("lens-change", { lens: pendingLensSwitch });
                     const cfg = LENS_CONFIG[pendingLensSwitch];
                     if (cfg.model) setWsModel(cfg.model);
                     scenarioStartIdxRef.current = -1;
@@ -10101,7 +9953,6 @@ export default function Workspace() {
                     setWsLensRaw(pendingLensSwitch);
                     setDetectedLens(null);
                     try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
-                    workspaceEventBus.emit("lens-change", { lens: pendingLensSwitch });
                     const cfg = LENS_CONFIG[pendingLensSwitch];
                     if (cfg.model) setWsModel(cfg.model);
                     setPendingLensSwitch(null);

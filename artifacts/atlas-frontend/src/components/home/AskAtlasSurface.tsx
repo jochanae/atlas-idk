@@ -33,7 +33,6 @@ import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
 import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
-import { useActiveProjectContext } from "@/lib/activeProjectContext";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
 import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
@@ -83,9 +82,6 @@ interface Props {
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
   onCreateProject?: (nameOverride?: string) => void;
-  /** When provided, clicking the crystallize button opens the destination picker
-   *  sheet instead of immediately creating a new project. */
-  onCrystallize?: () => void;
   onAddAsset?: () => void;
   onMore?: () => void;
   onFiles?: (files: File[]) => void;
@@ -123,7 +119,6 @@ export function AskAtlasSurface({
   toggleVoice,
   onOpenHistory,
   onCreateProject,
-  onCrystallize,
   onAddAsset,
   onMore,
   onFiles,
@@ -296,7 +291,6 @@ export function AskAtlasSurface({
       }}
     >
       {subheader}
-      <WorkspaceContextChip />
       {/* Isolated scroll container */}
       <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div
@@ -979,9 +973,9 @@ export function AskAtlasSurface({
               {/* Add-to-project — only when there's a conversation to capture */}
               {messages.length > 0 && (
                 <AskAtlasUtilityButton
-                  ariaLabel="Crystallize conversation"
-                  title={handoffSignal?.projectName ? `Crystallize: ${handoffSignal.projectName}` : "Crystallize conversation…"}
-                  onClick={() => onCrystallize ? onCrystallize() : onCreateProject?.()}
+                  ariaLabel="Create project from this conversation"
+                  title={handoffSignal?.projectName ? `Start workspace: ${handoffSignal.projectName}` : "Create project from this conversation"}
+                  onClick={() => onCreateProject?.()}
                   tinted
                   glowing={!!handoffSignal?.projectName}
                 >
@@ -1073,86 +1067,6 @@ export function AskAtlasSurface({
     </div>
   );
 }
-
-/**
- * WorkspaceContextChip — visible signal that Ask Atlas is opened in-project.
- * Reads activeProjectContext (populated by Workspace on mount). When present,
- * shows "In: <project name>" with a "Back to workspace" tap.
- *
- * The chip is the *user-facing* half of the "same conversation, two views"
- * seam. The invisible half (sending projectId+sessionId+seed on chat POST)
- * is wired via home.tsx → useNexusChatStream({ askAtlasInProject }). Backend
- * contract: docs/handoffs/2026-07-07-ask-atlas-in-project-mode.md.
- */
-function WorkspaceContextChip() {
-  const ctx = useActiveProjectContext();
-  const [, setLoc] = useLocation();
-  const [dismissed, setDismissed] = useState(false);
-  useEffect(() => {
-    const restore = () => setDismissed(false);
-    window.addEventListener("axiom:restore-workspace-context-chip", restore);
-    return () => window.removeEventListener("axiom:restore-workspace-context-chip", restore);
-  }, []);
-  if (!ctx || dismissed) return null;
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "6px 12px",
-        margin: "8px 16px 0",
-        borderRadius: 999,
-        background: "color-mix(in oklab, var(--atlas-gold, #C9A84C) 12%, transparent)",
-        border: "1px solid color-mix(in oklab, var(--atlas-gold, #C9A84C) 35%, transparent)",
-        fontFamily: "var(--app-font-mono)",
-        fontSize: 10,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        color: "var(--atlas-gold, #C9A84C)",
-        alignSelf: "flex-start",
-      }}
-    >
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--atlas-gold, #C9A84C)" }} />
-      <span>In: {ctx.projectName}</span>
-      <button
-        type="button"
-        onClick={() => setLoc(`/project/${ctx.projectId}`)}
-        style={{
-          background: "transparent",
-          border: 0,
-          color: "var(--atlas-gold, #C9A84C)",
-          cursor: "pointer",
-          fontFamily: "inherit",
-          fontSize: 10,
-          letterSpacing: "0.08em",
-          padding: "0 2px",
-          textDecoration: "underline",
-        }}
-        aria-label="Back to workspace"
-      >
-        Workspace →
-      </button>
-      <button
-        type="button"
-        onClick={() => setDismissed(true)}
-        style={{
-          background: "transparent",
-          border: 0,
-          color: "color-mix(in oklab, var(--atlas-gold, #C9A84C) 60%, transparent)",
-          cursor: "pointer",
-          fontSize: 12,
-          padding: "0 2px",
-          lineHeight: 1,
-        }}
-        aria-label="Dismiss context chip"
-      >
-        ×
-      </button>
-    </div>
-  );
-}
-
 
 
 export default AskAtlasSurface;
