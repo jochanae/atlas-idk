@@ -3025,6 +3025,29 @@ WHAT YOU SHOULD NOT DO:
       visibleContent = visibleContent.replace(clarifyMatch[0], "\n").replace(/\n{3,}/g, "\n\n").trim();
     }
 
+    // Extract NEXT_SUGGESTIONS marker — one-tap continuation chips. Discipline
+    // matches clarification cards: emitted only when the model judges the next
+    // moves are discrete and useful. Format: NEXT_SUGGESTIONS:["chip","chip"]
+    let nextSuggestions: string[] | undefined;
+    const NEXT_SUGGESTIONS_RE = /^NEXT_SUGGESTIONS:\s*(\[.*?\])\s*$/im;
+    const suggestionsMatch = visibleContent.match(NEXT_SUGGESTIONS_RE);
+    if (suggestionsMatch) {
+      try {
+        const parsed = JSON.parse(suggestionsMatch[1]) as unknown;
+        if (Array.isArray(parsed)) {
+          const chips = (parsed as unknown[])
+            .filter((c): c is string => typeof c === "string" && c.trim().length > 0 && c.length <= 72)
+            .slice(0, 4);
+          if (chips.length >= 2) nextSuggestions = chips;
+        }
+      } catch (err) {
+        logger.warn({ err: String(err), preview: suggestionsMatch[1].slice(0, 200) }, "nexus: NEXT_SUGGESTIONS parse failed");
+      }
+      visibleContent = visibleContent.replace(NEXT_SUGGESTIONS_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+    }
+
+
+
 
     // Guard: if all content was stripped down to signal tokens with nothing left,
     // do NOT persist a blank message to the thread — it replays as an empty
