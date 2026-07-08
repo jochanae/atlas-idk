@@ -2923,6 +2923,17 @@ export default function Home() {
       });
   }, [isFree, projects, queryClient, setLocation]);
 
+  // "New Project" is destructive to whatever Ask Atlas is mid-thought on — confirm
+  // before wiping it out if there's a live conversation with messages.
+  const [pendingNewProjectConfirm, setPendingNewProjectConfirm] = useState(false);
+  const requestNewProject = useCallback(() => {
+    if (askAtlasConversationActive) {
+      setPendingNewProjectConfirm(true);
+      return;
+    }
+    handleNewProject("New Project");
+  }, [askAtlasConversationActive, handleNewProject]);
+
   useEffect(() => {
     try { sessionStorage.removeItem("atlas-from-landing"); } catch {}
   }, []);
@@ -5143,7 +5154,22 @@ export default function Home() {
                   e.preventDefault();
                   e.stopPropagation();
                   if (askAtlasSurfaceOpen) {
+                    // Full ambient reset — mirrors handleLockTap's close path so
+                    // toggling off always lands back on the empty homepage, not a
+                    // stranded thread with the surface just hidden.
+                    void callAskAtlasMode(false);
                     setAskAtlasSurfaceOpen(false);
+                    try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+                    try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+                    conversationThreadRequestRef.current = null;
+                    thinkOutLoudInlineRef.current = false;
+                    setActiveConversationId(null);
+                    setAskAtlasConversationId(null);
+                    askAtlasSession.clearConversationId();
+                    nexusChat.setMessages([]);
+                    askAtlasChat.clearMessages();
+                    setEarnedTitle(null);
+                    setDepth("ambient");
                     return;
                   }
                   nexusChat.clearMessages();
@@ -5685,6 +5711,47 @@ export default function Home() {
         error={createError}
       />
 
+      {pendingNewProjectConfirm && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setPendingNewProjectConfirm(false)}
+        >
+          <div
+            style={{
+              width: "min(340px, 100%)",
+              borderRadius: 16,
+              background: "var(--atlas-bg)",
+              border: "1px solid rgba(var(--atlas-gold-rgb),0.25)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+              padding: "22px 20px 18px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p style={{ margin: 0, fontFamily: "var(--app-font-mono)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
+              Start a new project?
+            </p>
+            <p style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)" }}>
+              You're mid-conversation with Ask Atlas. Starting a new project won't delete it, but you'll leave this thread behind.
+            </p>
+            <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+              <button
+                type="button"
+                onClick={() => setPendingNewProjectConfirm(false)}
+                style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "var(--atlas-fg)", fontSize: 13, cursor: "pointer" }}
+              >
+                Stay here
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPendingNewProjectConfirm(false); handleNewProject("New Project"); }}
+                style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "none", background: "var(--atlas-gold)", color: "#0D0B09", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+              >
+                Start new
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showProjectsSheet && (
         <ProjectsGridSheet
@@ -5692,7 +5759,7 @@ export default function Home() {
           onOpenProject={(id) => { setShowProjectsSheet(false); navigateToProject(id); }}
           onNewProject={() => {
             setShowProjectsSheet(false);
-            handleNewProject("New Project");
+            requestNewProject();
           }}
           onClose={() => setShowProjectsSheet(false)}
         />
@@ -5709,7 +5776,7 @@ export default function Home() {
         onClose={() => setShowDrawer(false)}
         projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name, description: p.description, latestSnapshotScore: p.latestSnapshotScore ?? null, status: (p as { status?: "shaping" | "committed" | "archived" }).status }))}
         onOpenProject={navigateToProject}
-        onNewProject={() => { setShowDrawer(false); handleNewProject("New Project"); }}
+        onNewProject={() => { setShowDrawer(false); requestNewProject(); }}
         onOpenLedger={(id) => setLocation(`/ledger/${id}`)}
         onOpenParking={() => setLocation("/parking")}
         onOpenSpecify={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-specify")); }}
