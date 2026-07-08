@@ -2031,6 +2031,8 @@ export default function Home() {
   // Surface, restore effect, session mirror, and thread-restore fetch are
   // all gone. Inert consts keep dead-branch style ternaries compiling.
   const askAtlasSurfaceOpen = false;
+  const setAskAtlasSurfaceOpen = (_v: boolean) => {};
+  const setAskAtlasConversationId = (_v: string | null) => {};
   const isAskAtlasRestoring = false;
   const askAtlasSurfaceVisible = false;
   const [showShredChoice, setShowShredChoice] = useState(false);
