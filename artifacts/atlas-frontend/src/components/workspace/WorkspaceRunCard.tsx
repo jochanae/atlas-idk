@@ -111,10 +111,14 @@ function adaptExecutionRun(
     s => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH",
   );
 
-  // Pure conversational turns — only PROMPT/THOUGHT/SUMMARY with no real tool
-  // invocations (FILE_READ, FILE_EDIT, COMMAND, etc.). Never show a receipt card.
-  const CONVERSATIONAL_ONLY = new Set(["PROMPT", "THOUGHT", "SUMMARY", "DECISION"]);
-  const hasRealExecution = run.steps.some(s => !CONVERSATIONAL_ONLY.has(s.verb));
+  // Only real build/write/run actions earn a receipt card. Read-only context
+  // gathering (FILE_READ/TREE/FETCH) is part of normal conversation and must
+  // never render a run card when the user just says something like "hello".
+  const RECEIPT_EXECUTION_VERBS = new Set([
+    "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "COMMAND", "SHELL",
+    "BUILD", "INSTALL", "TEST", "GITHUB_PUSH", "IMAGE_GEN", "RUN",
+  ]);
+  const hasRealExecution = run.steps.some(s => RECEIPT_EXECUTION_VERBS.has((s.verb ?? "").toUpperCase()));
   if (!hasRealExecution && !hasGithubPush && !hasImageGen && !hasFileWork) return null;
 
   // Extract executive summary from the SUMMARY step (nexus workspace turns write this).
@@ -625,16 +629,11 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
 
 
 
-  // Only show the active card when at least one TOOL-USE step has arrived.
-  // Pure conversational turns (PROMPT/THOUGHT/SUMMARY/DECISION/ANALYZE) must
-  // never show a card — those are Atlas thinking, not Atlas executing.
-  // Tool-use = anything that touches the filesystem, shell, network, or build.
-  const PURE_CONVERSATION = new Set([
-    "PROMPT", "THOUGHT", "SUMMARY", "DECISION",
-    "ANALYZE", "ANALYZE_REQUEST", "ASSESS",
-  ]);
+  // Only show the active card for actual execution. Read-only file/tree/fetch
+  // events can happen during ordinary conversation and should stay invisible
+  // except for the lightweight inline thinking pulse.
   const hasBuildStep = useMemo(
-    () => liveSteps.some(s => !PURE_CONVERSATION.has((s.verb ?? "").toUpperCase())),
+    () => liveSteps.some(s => EXECUTION_VERBS.has((s.verb ?? "").toUpperCase())),
     [liveSteps],
   );
 
