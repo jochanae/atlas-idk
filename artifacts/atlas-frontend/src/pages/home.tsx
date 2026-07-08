@@ -5583,14 +5583,14 @@ export default function Home() {
         onCrystallize={() => setCrystallizeSheetOpen(true)}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
-        onFiles={(files) => {
+        onFiles={(files: File[]) => {
           const combined = [...attachedFiles, ...files].slice(0, 10);
           if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
           setAttachedFiles(combined);
         }}
-        onSketch={(prompt) => { void askAtlasChat.send({ text: prompt }); }}
+        onSketch={(prompt: string) => { void askAtlasChat.send({ text: prompt }); }}
         attachedFiles={attachedFiles}
-        onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+        onRemoveFile={(idx: number) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
         focusChip={
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -5635,7 +5635,7 @@ export default function Home() {
           </div>
         }
         handoffSignal={askAtlasChat.handoffSignal}
-        onMenuAction={(action) => {
+        onMenuAction={(action: string) => {
           if (action === "history") { setShowTimeTravel(true); return; }
           if (action === "settings") { setLocation("/account"); return; }
           if (action === "code") { setLocation("/code"); return; }
