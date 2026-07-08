@@ -41,7 +41,7 @@ interface WhisperInput {
   history?: Array<{ role: string; content: string }>;
   /** Workspace lens hint (BUILD lens biases toward BUILD). */
   workspaceLens?: string;
-  /** If user is inside a project workspace vs. Ask Atlas home. */
+  /** @deprecated retained for backwards compatibility; WhisperGate no longer branches on surface. */
   hasProjectContext?: boolean;
 }
 
@@ -60,9 +60,9 @@ BUILD requires an explicit action verb from the user in THIS turn, OR an unambig
 If the user is describing a problem, expressing a preference, wondering, considering, or asking "should we / could we / maybe we", that is DECIDE — not BUILD, even if it names a concrete change.
 
 Examples:
-- "Maybe we should delete Ask Atlas." → DECIDE
-- "Delete Ask Atlas." → BUILD
-- "Can you help me think through deleting Ask Atlas?" → DECIDE
+- "Maybe we should delete this feature." → DECIDE
+- "Delete this feature." → BUILD
+- "Can you help me think through deleting this feature?" → DECIDE
 - "I'm frustrated with this." → CHAT
 - "What do you think about X?" → CHAT or DECIDE (never BUILD)
 
@@ -126,7 +126,6 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
   const recent = (input.history ?? []).slice(-2).map((h) => `${h.role.toUpperCase()}: ${String(h.content ?? "").slice(0, 400)}`).join("\n");
   const contextBlock = [
     input.workspaceLens ? `Workspace lens: ${input.workspaceLens}` : null,
-    input.hasProjectContext === false ? "Context: Ask Atlas (no project)" : "Context: project workspace",
     recent ? `Recent turns:\n${recent}` : null,
   ].filter(Boolean).join("\n");
 
