@@ -10,7 +10,7 @@ import { autoCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { vectorSearch, buildRagBlock } from "../lib/embeddings";
-import { classifyIntent } from "../lib/whisperGate";
+import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
 import { detectDecisionCatch } from "../lib/decisionCatch";
 import { getGithubTokenForUser, bootstrapGitHubRepo } from "../lib/githubBootstrap";
 import { extractPageUrls, screenshotUrlsToBlocks, buildUrlNote } from "../lib/urlScreenshot";
@@ -1752,6 +1752,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     askAtlasContextSeed?: string;
     userType?: HomeUserType;
     conversationMode?: boolean;
+    justTalk?: boolean;
   };
 
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
@@ -2668,6 +2669,67 @@ WHAT YOU SHOULD NOT DO:
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
+  // ── WhisperGate / Just-Talk — classify BEFORE any operational side effects ──
+  // Uncertainty and explicit Just Talk must never cause the system to act.
+  const justTalk = body.justTalk === true;
+  const conversationModeActive = body.conversationMode === true;
+  let intent: WhisperIntent = "DECIDE";
+  let whisperFallback = false;
+  let whisperConfidence = 0;
+
+  if (justTalk) {
+    intent = "CHAT";
+    whisperFallback = false;
+    whisperConfidence = 1;
+    logger.info({ event: "nexus.justTalk", projectId: focusProjectId, userId }, "just-talk override active");
+    logger.info({
+      event: "whisperGate.turn",
+      intent: "CHAT",
+      confidence: 1,
+      reason: "just_talk_override",
+      fallback: false,
+      elapsedMs: 0,
+      model: "claude-haiku-4-5",
+    }, "whisperGate: classified");
+  } else {
+    try {
+      const whisper = await classifyIntent({
+        message,
+        history: conversationHistory,
+        hasProjectContext: !!focusProjectId,
+      });
+      intent = whisper.intent;
+      whisperFallback = whisper.fallback;
+      whisperConfidence = whisper.confidence;
+    } catch (err) {
+      // classifyIntent already falls back to DECIDE — this is defense-in-depth.
+      logger.warn({ err: String(err) }, "whisperGate: unexpected outer error, defaulting to DECIDE");
+      intent = "DECIDE";
+      whisperFallback = true;
+      whisperConfidence = 0;
+    }
+  }
+
+  // Emit meta early so the frontend can suppress run cards / Tier1 / timeline
+  // on non-BUILD turns before the first text delta arrives.
+  if (!res.writableEnded && !res.destroyed) {
+    res.write(`event: meta\ndata: ${JSON.stringify({ intent, justTalk: !!justTalk, fallback: whisperFallback })}\n\n`);
+  }
+
+  if (justTalk) {
+    systemPrompt += `\n\n--- JUST TALK MODE ACTIVE ---\nJUST TALK MODE ACTIVE — the user has explicitly disabled build actions. Do not build, edit, run, create, deploy, or modify anything. Do not call tools. Do not propose file writes. Respond conversationally only. If the user asks for a build action, acknowledge and ask them to turn Just Talk off first.\n--- END JUST TALK MODE ---`;
+  } else if (conversationModeActive) {
+    systemPrompt += `\n\n--- CONVERSATION MODE ACTIVE ---\nThe user has switched this thread to Conversation Mode. Do not call any tools, propose file edits, or take build actions — none are available this turn. Respond as a thinking partner only: discuss, brainstorm, question, and reason in prose. If the user asks you to build or change something, say you're in Conversation Mode and ask them to switch to Build Mode to proceed.\n--- END CONVERSATION MODE ---`;
+  } else if (intent === "CHAT") {
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT call tools. Do NOT propose file writes. Just talk with the user like a thoughtful partner.\n--- END WHISPERGATE ---`;
+  } else if (intent === "DECIDE") {
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---\nThis is a decision turn. Give the user structured options, tradeoffs, or a recommendation. You MAY emit DECIDE / decision blocks. Do NOT call tools, edit files, push to GitHub, or start a build unless the user explicitly approves an action in a later turn.\n--- END WHISPERGATE ---`;
+  }
+
+  // Only BUILD (and not Just Talk / Conversation Mode) may persist runs, call
+  // tools, bootstrap GitHub, or trigger Tier1 write side-effects.
+  const allowBuildSideEffects = intent === "BUILD" && !justTalk && !conversationModeActive;
+
   const turnStartedAt = new Date();
   const runActions: RunAction[] = [];
   // Non-code steps (DNA updates, decisions, plans) accumulated during the turn
@@ -2675,6 +2737,8 @@ WHAT YOU SHOULD NOT DO:
   type _NcStep = { verb: string; target: string | null; detail: string | null; content: string | null };
   const _nexusNonCodeSteps: _NcStep[] = [];
   const writeStep = (action: RunAction) => {
+    // Suppress step events on non-BUILD turns — they render as run cards.
+    if (!allowBuildSideEffects) return;
     const step: RunAction = { ...action, status: action.status ?? "ok" };
     runActions.push(step);
     if (!res.writableEnded && !res.destroyed) {
@@ -2965,18 +3029,13 @@ WHAT YOU SHOULD NOT DO:
     let catchPayload: Awaited<ReturnType<typeof detectDecisionCatch>> = null;
     if (focusProjectId) {
       try {
-        const whisper = await classifyIntent({
-          message,
-          history: conversationHistory,
-          hasProjectContext: true,
-        });
         catchPayload = await detectDecisionCatch({
           projectId: focusProjectId,
           userId,
           userText: message,
           assistantText: visibleContent,
-          intent: whisper.intent,
-          confidence: whisper.confidence,
+          intent,
+          confidence: whisperConfidence,
           sessionId,
         });
       } catch (err) {
@@ -3055,8 +3114,10 @@ WHAT YOU SHOULD NOT DO:
 
     // Persist conversation turn to execution_runs + execution_run_steps so the Timeline
     // in ViewChangesPanel shows this turn's activity (file reads, summary, non-code changes).
+    // BUILD-only — CHAT/DECIDE/Just Talk must never write an execution_run row.
     // Fire-and-forget — never blocks the stream.
-    if (focusProjectId) {
+    const shouldPersistRun = allowBuildSideEffects && !!focusProjectId;
+    if (shouldPersistRun && focusProjectId) {
       // Append non-code steps detected from turn signals
       if (surface?.type === "DECISION") {
         _nexusNonCodeSteps.push({ verb: "DECISION_RECORDED", target: null, detail: "captured to ledger", content: null });
@@ -3087,8 +3148,9 @@ WHAT YOU SHOULD NOT DO:
       });
     }
 
-    // Tier 1 slot extraction — project-focused nexus turns (fire-and-forget)
-    if (focusProjectId && userId && (body.message ?? "").length > 0) {
+    // Tier 1 slot extraction — BUILD turns only (fire-and-forget).
+    // CHAT/DECIDE/Just Talk must never trigger Tier1 field writes.
+    if (allowBuildSideEffects && focusProjectId && userId && (body.message ?? "").length > 0) {
       void maybeExtractTier1Slots({
         projectId: focusProjectId,
         userId,
@@ -3179,7 +3241,7 @@ WHAT YOU SHOULD NOT DO:
     // runImageGen has a 20 s internal timeout so it can never hang the stream.
     if (imageGenTokens.length > 0 && !res.writableEnded && !res.destroyed) {
       // Tell the HUD exactly what's happening instead of going silent.
-      res.write(`event: step\ndata: ${JSON.stringify({ verb: "Sketching", target: "concept sketch" })}\n\n`);
+      writeStep({ verb: "Sketching", target: "concept sketch" });
       const nexusImageGenResult = await runImageGen();
       if (nexusImageGenResult && !res.writableEnded && !res.destroyed) {
         res.write(`event: image\ndata: ${JSON.stringify(nexusImageGenResult)}\n\n`);
@@ -3566,29 +3628,31 @@ WHAT YOU SHOULD NOT DO:
         await flushNexusTier1BufferToProject(effectiveConversationId, project.id, userId);
       }
 
-      // Attempt GitHub repo creation — graceful degradation if no token or API error
+      // Attempt GitHub repo creation — BUILD turns only; graceful degradation if no token or API error
       let githubRepo: string | null = null;
       let githubHtmlUrl: string | null = null;
-      try {
-        const ghToken = await getGithubTokenForUser(userId);
-        if (ghToken) {
-          writeStep({ verb: "Creating", target: "GitHub repo", detail: parsedInput.name });
-          const bootstrapResult = await bootstrapGitHubRepo({
-            token: ghToken,
-            projectId: project.id,
-            projectName: parsedInput.name,
-          });
-          if (bootstrapResult.ok) {
-            githubRepo = bootstrapResult.linkedRepo;
-            githubHtmlUrl = bootstrapResult.htmlUrl;
-            writeStep({ verb: "Created", target: "GitHub repo", detail: bootstrapResult.linkedRepo });
-          } else {
-            logger.warn({ err: bootstrapResult.error, projectId: project.id }, "GitHub repo bootstrap failed — continuing without repo");
-            writeStep({ verb: "Skipped", target: "GitHub repo", detail: bootstrapResult.error, status: "warn" });
+      if (allowBuildSideEffects) {
+        try {
+          const ghToken = await getGithubTokenForUser(userId);
+          if (ghToken) {
+            writeStep({ verb: "Creating", target: "GitHub repo", detail: parsedInput.name });
+            const bootstrapResult = await bootstrapGitHubRepo({
+              token: ghToken,
+              projectId: project.id,
+              projectName: parsedInput.name,
+            });
+            if (bootstrapResult.ok) {
+              githubRepo = bootstrapResult.linkedRepo;
+              githubHtmlUrl = bootstrapResult.htmlUrl;
+              writeStep({ verb: "Created", target: "GitHub repo", detail: bootstrapResult.linkedRepo });
+            } else {
+              logger.warn({ err: bootstrapResult.error, projectId: project.id }, "GitHub repo bootstrap failed — continuing without repo");
+              writeStep({ verb: "Skipped", target: "GitHub repo", detail: bootstrapResult.error, status: "warn" });
+            }
           }
+        } catch (ghErr) {
+          logger.warn({ err: String(ghErr), projectId: project.id }, "GitHub bootstrap threw unexpectedly — continuing without repo");
         }
-      } catch (ghErr) {
-        logger.warn({ err: String(ghErr), projectId: project.id }, "GitHub bootstrap threw unexpectedly — continuing without repo");
       }
 
       const repoNote = githubRepo
@@ -3814,19 +3878,12 @@ WHAT YOU SHOULD NOT DO:
   const messageLC = message.toLowerCase();
   const isExplicitCreate = EXPLICIT_CREATE_SIGNALS.some(s => messageLC.includes(s));
 
-  // Conversation Mode: same thread/session as Build Mode, but a pure-talk
-  // posture — no tool calls, no file edits, no project/build actions. The
-  // toggle lives client-side in the Workspace; this is the server-side
-  // enforcement so the model literally cannot act, not just "prefers not to".
-  const conversationModeActive = body.conversationMode === true;
-  if (conversationModeActive) {
-    systemPrompt += `\n\n--- CONVERSATION MODE ACTIVE ---\nThe user has switched this thread to Conversation Mode. Do not call any tools, propose file edits, or take build actions — none are available this turn. Respond as a thinking partner only: discuss, brainstorm, question, and reason in prose. If the user asks you to build or change something, say you're in Conversation Mode and ask them to switch to Build Mode to proceed.\n--- END CONVERSATION MODE ---`;
-  }
-
+  // Tools and forceCreate are BUILD-only. CHAT, DECIDE, Just Talk, and
+  // Conversation Mode must never enter the tool loop.
   streamClaude(anthropicMessages, {
-    tools: !conversationModeActive,
+    tools: allowBuildSideEffects,
     startedAt: modelStartedAt,
-    forceCreate: conversationModeActive ? false : isExplicitCreate,
+    forceCreate: allowBuildSideEffects ? isExplicitCreate : false,
   });
 
   return;
