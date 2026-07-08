@@ -359,7 +359,7 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
   );
 }
 
-export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount, bustSignal }: Props) {
+export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, onCreateProject, committedCount = 0, parkedCount, bustSignal }: Props) {
   const mostRecentProjectId = projects.reduce<number | null>((latestId, project) => {
     if (latestId == null) return project.id;
     const latestProject = projects.find((p) => p.id === latestId);
