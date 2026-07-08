@@ -660,6 +660,9 @@ function StepIcon({ verb }: { verb: string }) {
   if (verb === "DNA_UPDATED")       return <Dna          {...p} />;
   if (verb === "DECISION_RECORDED") return <BookMarked   {...p} />;
   if (verb === "PLAN_RECORDED")     return <ListChecks   {...p} />;
+  if (verb === "ARTIFACT_CREATED")  return <FileOutput   {...p} />;
+  if (verb === "ERROR")             return <AlertOctagon {...p} />;
+  if (verb === "QUESTION_ASKED")    return <HelpCircle   {...p} />;
   return null;
 }
 
