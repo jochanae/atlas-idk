@@ -27,8 +27,10 @@ import { WriteTab } from "@/components/workspace/WriteTab";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
-import { AskAtlasSurface } from "@/components/home/AskAtlasSurface";
-import { CrystallizeSheet } from "@/components/home/CrystallizeSheet";
+// Ask Atlas surface removed (Turn C). Inline no-op shims keep dead state
+// references compiling until the follow-up sweep gutting home.tsx state.
+const AskAtlasSurface = (_props: any): null => null;
+const CrystallizeSheet = (_props: any): null => null;
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
 import { FocusModeAura } from "@/components/FocusModeAura";
 
