@@ -84,18 +84,19 @@ export interface NexusWorkspaceBridge {
   messages: ChatMessage[];
   chatPending: boolean;
   liveStep: NexusLiveStep | null;
-  send: (text: string) => void;
+  send: (text: string, attachments?: Array<{ base64: string; mediaType: string; name?: string }>) => void;
   abort: () => void;
 }
 
 export function useNexusWorkspaceBridge(
   projectId: number | null | undefined,
-  opts?: { conversationMode?: boolean },
+  opts?: { conversationMode?: boolean; initialConversationId?: string | null },
 ): NexusWorkspaceBridge {
   const pid = typeof projectId === "number" ? projectId : 0;
   const [conversationId, setConversationId] = useState<string>(() =>
-    pid ? deriveConversationId(pid) : ""
+    opts?.initialConversationId || (pid ? deriveConversationId(pid) : "")
   );
+  const historyLoadedRef = useRef(false);
 
   const { messages, isStreaming, isPending, liveStep, setMessages, send, abort, clearMessages } = useNexusChatStream({
     focusProjectId: pid || null,
@@ -116,18 +117,29 @@ export function useNexusWorkspaceBridge(
   useEffect(() => {
     if (!pid) return;
     if (prevPidRef.current !== pid) {
-      setConversationId(deriveConversationId(pid));
+      setConversationId(opts?.initialConversationId || deriveConversationId(pid));
       clearMessages();
       prevPidRef.current = pid;
       historyLoadedRef.current = false; // allow re-load for new project
     }
-  }, [pid, clearMessages]);
+  }, [pid, opts?.initialConversationId, clearMessages]);
+
+  // `/workspace/:conversationId` is the canonical direct home-composer handoff.
+  // Keep the workspace bridge pinned to that route conversation instead of a
+  // generated `nexus_conv_<projectId>` thread, or the opening turn can land in
+  // a different conversation than the one the workspace later reloads.
+  useEffect(() => {
+    if (!pid || !opts?.initialConversationId) return;
+    if (conversationId === opts.initialConversationId) return;
+    setConversationId(opts.initialConversationId);
+    historyLoadedRef.current = false;
+    try { localStorage.setItem(`nexus_conv_${pid}`, opts.initialConversationId); } catch { /* ignore */ }
+  }, [pid, opts?.initialConversationId, conversationId]);
 
   // Load prior conversation history on mount (and on project switch).
   // This restores messages that would otherwise be lost when the user navigates
   // away and returns. Briefing messages (the "Here's what I know" opener) are
   // filtered out — they're not real conversation turns.
-  const historyLoadedRef = useRef(false);
   useEffect(() => {
     if (!pid || !conversationId || historyLoadedRef.current) return;
     historyLoadedRef.current = true;
@@ -215,10 +227,10 @@ export function useNexusWorkspaceBridge(
   const chatPending = isPending || isStreaming;
 
   const sendText = useCallback(
-    (text: string) => {
+    (text: string, attachments?: Array<{ base64: string; mediaType: string; name?: string }>) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      void send({ text: trimmed });
+      void send({ text: trimmed, attachments });
     },
     [send]
   );

@@ -4298,6 +4298,9 @@ export default function Workspace() {
       const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
       const storedProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
       if (storedOpeningMessage !== null) {
+        if (!id || !Number.isFinite(id) || id <= 0) {
+          return null;
+        }
         if (storedProjectId !== String(id)) {
           sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
           sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
@@ -4316,6 +4319,31 @@ export default function Workspace() {
       return null;
     }
   });
+
+  // `/workspace/:conversationId` renders once with `id=0` while the UUID is
+  // being resolved. The initializer above must not consume/delete the opening
+  // message during that render; load it here once the numeric project ID exists.
+  useEffect(() => {
+    if (openingMessage !== null) return;
+    if (!id || !Number.isFinite(id) || id <= 0) return;
+    try {
+      const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
+      const storedProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      if (storedOpeningMessage === null) return;
+      if (storedProjectId !== String(id)) {
+        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+        sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+        sessionStorage.removeItem("atlas-opening-attachments");
+        return;
+      }
+      let openingAttachments: Array<{ base64: string; mediaType: string; name?: string }> | undefined;
+      try {
+        const rawAtts = sessionStorage.getItem("atlas-opening-attachments");
+        if (rawAtts) openingAttachments = JSON.parse(rawAtts) as Array<{ base64: string; mediaType: string; name?: string }>;
+      } catch {}
+      setOpeningMessage({ message: storedOpeningMessage, projectId: storedProjectId, attachments: openingAttachments });
+    } catch {}
+  }, [id, openingMessage]);
   const searchParams = new URLSearchParams(window.location.search);
   // Synchronously pin both last-project keys during the render itself — before effects fire
   // and before the browser can background the tab. Closes the mobile-refresh race window
@@ -4568,7 +4596,7 @@ export default function Workspace() {
     });
   }, [id]);
   // Option 2 bridge: Nexus is the transport, ChatStream stays the shell.
-  const nexusBridge = useNexusWorkspaceBridge(id, { conversationMode });
+  const nexusBridge = useNexusWorkspaceBridge(id, { conversationMode, initialConversationId: conversationId ?? null });
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
@@ -6444,14 +6472,18 @@ export default function Workspace() {
     setInput("");
     // Pass messagesRef.current so transferred thread messages are included as history context.
     // Pass attachments so images from the homepage (Ask Atlas) carry into the first workspace message.
-    doSend(trimmedOpeningMessage, sessionId, messagesRef.current, undefined, openingMessage.attachments ?? undefined);
+    if (useNexusWorkspaceChat) {
+      nexusBridge.send(trimmedOpeningMessage, openingMessage.attachments ?? undefined);
+    } else {
+      doSend(trimmedOpeningMessage, sessionId, messagesRef.current, undefined, openingMessage.attachments ?? undefined);
+    }
     try {
       sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
       sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
       sessionStorage.removeItem("atlas-opening-attachments");
     } catch {}
     setOpeningMessage(null);
-  }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef, ensureSessionId]);
+  }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef, ensureSessionId, useNexusWorkspaceChat, nexusBridge.send]);
 
   useEffect(() => {
     // Same gate: don't fire until session AND prior messages are fully ready.
