@@ -13,7 +13,7 @@
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 import {
   X, FileCode2, Eye, Search, Folder,
   Lightbulb, Trash2, CheckCircle2, ChevronDown,
