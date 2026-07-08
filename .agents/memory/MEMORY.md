@@ -46,4 +46,4 @@
 - [Workspace Chat Latency Profile](workspace-chat-perf.md) — three sequential DB batches fixed (Batch 2+3 now fire as early promises); remaining bottlenecks: resolveGithubToken, repo tree fetch (3s timeout), file selector Haiku call (2s timeout)
 - [Nexus Workspace Spine](nexus-workspace-spine.md) — Phase 0+1 shipped; flag USE_NEXUS_WORKSPACE_CHAT activates WorkspaceConversationSurface; Phase 2 = migrate 12 useChatStream side effects to workspaceEventBus
 - [Nexus vs Chat routes](nexus-vs-chat-routes.md) — workspace uses /api/nexus/chat (not /api/chat); run card fixes must target nexus.ts
-- [Thread Continuity Architecture](thread-continuity-architecture.md) — promote writes askAtlasConvId to nexus_conv_${projectId}; openAskAtlasFromWorkspace carries it back; one thread, two views
+- [Non-destructive rollback workaround](non-destructive-rollback.md) — hard-blocked history-rewriting commands force per-file blob extraction to restore old commit content; verify binaries with checksums

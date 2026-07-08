@@ -113,6 +113,10 @@ export interface NexusMessage {
   visualCaption?: string | null;
   visualLoading?: boolean;
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
+  /** Suggestion chips — passed through from backend `nextSuggestions`. */
+  nextSuggestions?: string[] | null;
+  /** True when the backend queued background decision extraction after this turn. */
+  extractionQueued?: boolean;
 }
 
 export interface NexusHandoffSignal {
@@ -167,6 +171,17 @@ export interface UseNexusChatStreamOptions {
     memorySummary?: string | null;
     decisions?: unknown[];
   } | null;
+  /**
+   * In-project Ask Atlas mode. When present, chat POST includes
+   * `projectId` + `sessionId` + `askAtlasContextSeed` (first turn only) so the
+   * backend treats this turn as part of the workspace's shared session.
+   * See docs/handoffs/2026-07-07-ask-atlas-in-project-mode.md.
+   */
+  askAtlasInProject?: {
+    projectId: number;
+    sessionId: number;
+    seed?: string | null;
+  } | null;
 }
 
 export interface UseNexusChatStreamReturn {
@@ -195,7 +210,8 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext, askAtlasInProject } = options;
+  const askAtlasSeedSentRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const messagesRef = useRef<NexusMessage[]>([]);
@@ -380,6 +396,20 @@ export function useNexusChatStream(
                 imageBase64: firstImg!.base64,
                 imageMimeType: firstImg!.mediaType,
               }
+            : {}),
+          ...(askAtlasInProject
+            ? (() => {
+                const key = `${askAtlasInProject.projectId}:${askAtlasInProject.sessionId}`;
+                const isFirst = askAtlasSeedSentRef.current !== key;
+                if (isFirst) askAtlasSeedSentRef.current = key;
+                return {
+                  projectId: askAtlasInProject.projectId,
+                  sessionId: askAtlasInProject.sessionId,
+                  ...(isFirst && askAtlasInProject.seed
+                    ? { askAtlasContextSeed: askAtlasInProject.seed }
+                    : {}),
+                };
+              })()
             : {}),
         },
 
@@ -644,6 +674,9 @@ export function useNexusChatStream(
                     runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as string,
                     runSummary: (meta.runSummary ?? meta.run_summary ?? null) as string | null,
                     modelUsed: (meta.modelUsed ?? meta.model_used ?? null) as string | null,
+                    // Pass-through fields that the bridge was previously dropping:
+                    nextSuggestions: (meta.nextSuggestions as string[] | undefined) ?? null,
+                    extractionQueued: !!(meta.extractionQueued),
                   }
                 : m
             ));
