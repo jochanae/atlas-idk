@@ -27,8 +27,10 @@ import { WriteTab } from "@/components/workspace/WriteTab";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
-import { AskAtlasSurface } from "@/components/home/AskAtlasSurface";
-import { CrystallizeSheet } from "@/components/home/CrystallizeSheet";
+// Ask Atlas surface removed (Turn C). Inline no-op shims keep dead state
+// references compiling until the follow-up sweep gutting home.tsx state.
+const AskAtlasSurface = (_props: any): null => null;
+const CrystallizeSheet = (_props: any): null => null;
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
 import { FocusModeAura } from "@/components/FocusModeAura";
 
@@ -67,8 +69,19 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
-import { askAtlasSession } from "@/lib/askAtlasSession";
+// askAtlasHelpers + askAtlasSession deleted in Turn C. Inline no-op shims.
+const hasBuildIntent = (_text: string): boolean => false;
+const triggerNexusHandoff = async (_opts: any): Promise<void> => {};
+const askAtlasSession = {
+  getConversationId: (): string | null => null,
+  setConversationId: (_id: string) => {},
+  clearConversationId: () => {},
+  isSurfaceOpen: (): boolean => false,
+  setSurfaceOpen: (_open: boolean) => {},
+  isClosed: (): boolean => false,
+  markClosed: () => {},
+  clearClosed: () => {},
+};
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
 

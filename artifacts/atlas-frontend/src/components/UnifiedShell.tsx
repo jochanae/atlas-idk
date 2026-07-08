@@ -32,7 +32,7 @@ import { ConversationsLauncher } from "@/components/ConversationsLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { getAuthHeaders } from "@/lib/api";
-import { askAtlasSession } from "@/lib/askAtlasSession";
+
 import { clearActiveProjectContext } from "@/lib/activeProjectContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -162,7 +162,8 @@ function ShellWordmark() {
       // clear the sessionStorage/localStorage state directly here too.
       try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
       try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
-      askAtlasSession.clearConversationId();
+      try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+      try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
       setLocation("/home");
     }
   };
@@ -2343,7 +2344,8 @@ function ShellFooter() {
             clearActiveProjectContext();
             try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
             try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
-            askAtlasSession.clearConversationId();
+            try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
+            try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
             setLocation("/home");
           }
         },
