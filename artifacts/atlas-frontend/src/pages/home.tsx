@@ -1899,21 +1899,9 @@ export default function Home() {
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showLibrarySheet, setShowLibrarySheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
-  // Ask Atlas is a standalone surface — see AskAtlasSurface.
-  // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
-  // the same purple-header surface. No inline routing, no split renderer.
-  // Radial menu "Ask Atlas" → open the AskAtlasSurface + focus its composer.
-  useEffect(() => {
-    const onAsk = (e: Event) => {
-      const detail = (e as CustomEvent<{ seed?: string }>).detail;
-      askAtlasSession.clearClosed();
-      setAskAtlasSurfaceOpen(true);
-      if (detail?.seed) setInput(detail.seed);
-      window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
-    };
-    window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
-    return () => window.removeEventListener("axiom:ask-atlas", onAsk as EventListener);
-  }, []);
+  // Ask Atlas surface removed (Turn D). axiom:ask-atlas event listener
+  // removed in Turn E-lite — nothing to open.
+
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
