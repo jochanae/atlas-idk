@@ -3047,6 +3047,10 @@ export default function Home() {
         if (closeOnNavigate) closeOverviewSheet();
         setLocation("/parking");
       }}
+      onCreateProject={() => {
+        if (closeOnNavigate) closeOverviewSheet();
+        setShowNewProjectModal(true);
+      }}
       parkedCount={0}
       committedCount={0}
       bustSignal={resumeBustSignal}
