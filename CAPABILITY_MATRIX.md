@@ -40,6 +40,19 @@ An "Exists" row is a liability, not an asset. A "Works" row is a demo, not a pro
 
 ---
 
+## Route split (2026-07-08 audit)
+
+Atlas is not one surface. Capabilities are wired across two backend routes with different token vocabularies:
+
+- **`/api/nexus/chat`** — the workspace's active route. Thinking partner, WhisperGate, CLARIFY, NEXT_SUGGESTIONS, Decision Catch (`catchPayload` on `done`). **No** `FILE_EDIT`, **no** `GITHUB_PUSH`, **no** `linePatches`, **no** `MEMORY_CHIPS` emission, **no** agentic tool loop.
+- **`/api/chat`** — the legacy builder route. `FILE_EDIT_START/END` (86 refs), `GITHUB_PUSH` (21), `linePatches` (34), `memoryChips` emission (6), agentic loop, diff patching.
+
+The workspace only reaches `/api/chat` via the home-page **build-intent handoff** (`workspace.tsx:5466`). There is no Build-Mode bridge inside a live workspace turn: once you are in a workspace conversation, Atlas cannot write files, push to GitHub, or emit memory chips, regardless of intent.
+
+Every "Works" rating below is annotated with which route it runs on. **`chat`-only** capabilities are effectively "Exists" from the workspace's active surface.
+
+---
+
 ## 1. Core Intelligence
 
 | Capability | State | Today | Validated | Verified how | Output | Ledger | Editable | Roundtrip | Known gaps | Next validation | Priority |
