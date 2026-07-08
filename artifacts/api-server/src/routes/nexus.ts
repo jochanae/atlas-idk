@@ -18,7 +18,7 @@ import { findSemanticTensionsForProject } from "./tensions";
 import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
-import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY } from "../lib/atlasIdentity";
+import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
@@ -37,6 +37,31 @@ import {
 } from "../services/tier1";
 
 import { loadTier3Block, loadTier4Block, synthesizeTier3Signals, synthesizeTier4Portfolio } from "../lib/tierMemory";
+import {
+  NEXUS_BUILD_PROTOCOLS,
+  NEXUS_MEMORY_CHIPS_PROTOCOL,
+  scrubOperationalMarkersForChat,
+  detectMemoryChips,
+  matchEntryChips,
+  mergeMemoryChips,
+  extractAllFileEdits,
+  extractAllLinePatches,
+  extractAllFileDeletes,
+  extractAllFileMoves,
+  extractGithubPushToken,
+  canProceedWithFileChanges,
+  isWriteClaimWithoutEmission,
+  summarizeFileEdits,
+  parseRepoFullName,
+  ghApiHeaders,
+  GH_API_BASE,
+  type FileEdit,
+  type LinePatch,
+  type GithubPushToken,
+  type GithubPushResult,
+  type MemoryChipRich,
+} from "../lib/builderProtocols";
+import { resolveGithubTokenForRequest } from "../lib/terminalSandbox";
 
 const router: IRouter = Router();
 
@@ -2791,9 +2816,19 @@ WHAT YOU SHOULD NOT DO:
   } else if (conversationModeActive) {
     systemPrompt += `\n\n--- CONVERSATION MODE ACTIVE ---\nThe user has switched this thread to Conversation Mode. Do not call any tools, propose file edits, or take build actions — none are available this turn. Respond as a thinking partner only: discuss, brainstorm, question, and reason in prose. If the user asks you to build or change something, say you're in Conversation Mode and ask them to switch to Build Mode to proceed.\n--- END CONVERSATION MODE ---`;
   } else if (intent === "CHAT") {
-    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT call tools. Do NOT propose file writes. Do NOT give a project status briefing or unsolicited progress recap. Just talk with the user like a thoughtful partner — a short greeting gets a short greeting back.\n--- END WHISPERGATE ---`;
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT call tools. Do NOT propose file writes. Do NOT emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or REPO_LINK. Do NOT give a project status briefing or unsolicited progress recap. Just talk with the user like a thoughtful partner — a short greeting gets a short greeting back.\n--- END WHISPERGATE ---`;
   } else if (intent === "DECIDE") {
-    systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---\nThis is a decision turn. Give the user structured options, tradeoffs, or a recommendation. You MAY emit DECIDE / decision blocks. Do NOT call tools, edit files, push to GitHub, or start a build unless the user explicitly approves an action in a later turn.\n--- END WHISPERGATE ---`;
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---\nThis is a decision turn. Give the user structured options, tradeoffs, or a recommendation. You MAY emit DECIDE / decision blocks. Do NOT call tools, emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or start a build unless the user explicitly approves an action in a later turn.\n--- END WHISPERGATE ---`;
+  } else if (allowBuildSideEffects) {
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: BUILD ---\nThis is a BUILD turn. The user wants you to create, edit, fix, or ship code. Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over narration.\n--- END WHISPERGATE ---`;
+    systemPrompt += `\n\n${NEXUS_BUILD_PROTOCOLS}`;
+    systemPrompt += `\n\n${ATLAS_DESIGN_INTELLIGENCE}`;
+  }
+
+  // MEMORY_CHIPS protocol — all intents (P0 gap independent of BUILD).
+  // BUILD segment already includes MEMORY_CHIPS; skip duplicate on BUILD.
+  if (!allowBuildSideEffects) {
+    systemPrompt += `\n\n${NEXUS_MEMORY_CHIPS_PROTOCOL}`;
   }
 
   const turnStartedAt = new Date();
@@ -2858,8 +2893,23 @@ WHAT YOU SHOULD NOT DO:
     }
   };
 
-  const finishStream = async (rawContent: string) => {
+  const finishStream = async (rawContentIn: string) => {
     streamDone = true;
+    let rawContent = rawContentIn;
+
+    // ── Output Guard (WhisperGate CHAT scrub) ────────────────────────────────
+    // Ported from chat.ts. Must run BEFORE any FILE_EDIT / GITHUB_PUSH parsing
+    // so operational markers never fire on conversational turns.
+    if (intent === "CHAT" || justTalk || conversationModeActive) {
+      const scrubbed = scrubOperationalMarkersForChat(rawContent);
+      if (scrubbed.strippedMarkers.length > 0) {
+        logger.info(
+          { strippedMarkers: scrubbed.strippedMarkers, focusProjectId, intent },
+          "nexus outputGuard: stripped operational markers on non-BUILD turn",
+        );
+      }
+      rawContent = scrubbed.content;
+    }
 
     // Extract and strip IMAGE_GEN tokens
     const IMAGE_GEN_RE = /^IMAGE_GEN:\s*(\{[^\n]+\})\s*$/gm;
@@ -3046,8 +3096,377 @@ WHAT YOU SHOULD NOT DO:
       visibleContent = visibleContent.replace(NEXT_SUGGESTIONS_RE, "").replace(/\n{3,}/g, "\n\n").trim();
     }
 
+    // ── Builder emitters (FILE_EDIT / LINE_PATCH / GITHUB_PUSH / MEMORY_CHIPS) ──
+    // Ported from chat.ts for workspace BUILD parity. Gating:
+    //   FILE_EDIT / LINE_PATCH / GITHUB_PUSH → only when allowBuildSideEffects
+    //   MEMORY_CHIPS → all intents
+    let responseFileEdits: FileEdit[] = [];
+    let responseLinePatches: LinePatch[] = [];
+    let githubPushResult: GithubPushResult | null = null;
+    let githubPushDone: { commitSha: string; ledgerEntryId: string } | null = null;
+    let autoApplied = false;
+    const autoAppliedPaths: string[] = [];
+    let allChips: MemoryChipRich[] = [];
 
+    // Extract GITHUB_PUSH token (strip from content regardless; execute only on BUILD)
+    const { content: afterGithubPush, token: githubPushToken } = extractGithubPushToken(visibleContent);
+    visibleContent = afterGithubPush;
 
+    // MEMORY_CHIPS — detect on full content BEFORE FILE_EDIT/LINE_PATCH stripping,
+    // because those extractors keep only the prose before the first block and would
+    // drop a trailing MEMORY_CHIPS marker (models emit chips at the end).
+    const { content: afterChipsEarly, memoryChips: aiMemoryChips } = detectMemoryChips(visibleContent);
+    visibleContent = afterChipsEarly;
+
+    // Parse LINE_PATCH → FILE_EDIT → FILE_DELETE → FILE_MOVE
+    const { visibleContent: afterPatches, linePatches: parsedLinePatches } = extractAllLinePatches(visibleContent);
+    const { visibleContent: afterEdits, fileEdits: parsedFileEdits } = extractAllFileEdits(afterPatches);
+    const { visibleContent: afterDeletes } = extractAllFileDeletes(afterEdits);
+    const { visibleContent: afterMoves } = extractAllFileMoves(afterDeletes);
+    visibleContent = afterMoves;
+
+    const focusEntriesForChips = focusProjectId
+      ? committedEntries.filter((e) => e.projectId === focusProjectId)
+      : [];
+    const entryChipStrings = matchEntryChips(
+      visibleContent,
+      focusEntriesForChips.map((e) => ({ id: e.id, title: e.title, status: "committed" })),
+    );
+    allChips = mergeMemoryChips(aiMemoryChips, entryChipStrings);
+
+    // BUILD-gated file changes + Output Guard critical-path check
+    if (allowBuildSideEffects) {
+      const hasProposedFileChanges = parsedFileEdits.length > 0 || parsedLinePatches.length > 0;
+      let repoFiles: Set<string> | null = null;
+      if (focusProjectId && hasProposedFileChanges) {
+        try {
+          const wsDir = await ensureProjectWorkspaceDir(focusProjectId);
+          const collect = async (dir: string, base: string, out: Set<string>) => {
+            let entries: import("node:fs").Dirent[];
+            try {
+              entries = await fsPromises.readdir(dir, { withFileTypes: true });
+            } catch {
+              return;
+            }
+            for (const entry of entries) {
+              if (entry.name === "node_modules" || entry.name === ".git" || entry.name.startsWith(".")) continue;
+              const rel = base ? `${base}/${entry.name}` : entry.name;
+              if (entry.isDirectory()) await collect(`${dir}/${entry.name}`, rel, out);
+              else out.add(rel);
+            }
+          };
+          repoFiles = new Set<string>();
+          await collect(wsDir, "", repoFiles);
+        } catch {
+          repoFiles = null;
+        }
+      }
+
+      const fileChangesAllowed =
+        !hasProposedFileChanges ||
+        canProceedWithFileChanges({
+          fileEdits: parsedFileEdits,
+          linePatches: parsedLinePatches,
+          repoFiles,
+        });
+
+      if (hasProposedFileChanges && !fileChangesAllowed) {
+        visibleContent = `${visibleContent}\n\nThese changes touch files that require confirmation before applying. Reply to confirm and I'll proceed.`.trim();
+      }
+
+      if (isWriteClaimWithoutEmission(visibleContent, hasProposedFileChanges)) {
+        visibleContent +=
+          "\n\n⚠️ [NO_FILES_WRITTEN] This response described code changes but emitted no FILE_EDIT blocks. The workspace was NOT modified. Please send your FILE_EDIT blocks now.";
+      }
+
+      responseFileEdits = fileChangesAllowed ? parsedFileEdits : [];
+      responseLinePatches = fileChangesAllowed ? parsedLinePatches : [];
+
+      // Auto-apply FILE_EDIT blocks to the local workspace
+      if (responseFileEdits.length > 0 && focusProjectId) {
+        try {
+          const wsDir = await ensureProjectWorkspaceDir(focusProjectId);
+          for (const edit of responseFileEdits) {
+            writeStep({ verb: "Writing", target: edit.path, detail: "FILE_EDIT" });
+            const absPath = resolveWorkspacePath(wsDir, edit.path);
+            await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+            await fsPromises.writeFile(absPath, edit.content, "utf-8");
+            autoAppliedPaths.push(edit.path);
+          }
+          autoApplied = true;
+          logger.info(
+            { projectId: focusProjectId, count: autoAppliedPaths.length },
+            "nexus: auto-applied FILE_EDIT blocks to local workspace",
+          );
+        } catch (err) {
+          logger.warn({ err, projectId: focusProjectId }, "nexus: FILE_EDIT auto-apply failed");
+        }
+      }
+
+      for (const patch of responseLinePatches) {
+        writeStep({ verb: "Patching", target: patch.path, detail: "LINE_PATCH" });
+      }
+
+      // Execute GITHUB_PUSH when token present + project focused
+      if (githubPushToken && focusProjectId) {
+        const gpt = githubPushToken as GithubPushToken;
+        writeStep({ verb: "Pushing to", target: gpt.branch, detail: gpt.message });
+        const focusProject = projects.find((p) => p.id === focusProjectId) ?? null;
+        let effectiveEdits: Array<{ path: string; content: string }> = responseFileEdits.map((fe) => ({
+          path: fe.path,
+          content: fe.content,
+        }));
+        if (effectiveEdits.length === 0) {
+          const wsDir = projectWorkspaceDir(focusProjectId);
+          const IGNORE = new Set(["node_modules", ".git", "dist", ".next", ".cache", ".turbo", "build", "out", "coverage"]);
+          const collectFiles = async (dir: string, base: string): Promise<void> => {
+            let entries: import("node:fs").Dirent[];
+            try {
+              entries = await fsPromises.readdir(dir, { withFileTypes: true });
+            } catch {
+              return;
+            }
+            for (const entry of entries) {
+              if (IGNORE.has(entry.name) || entry.name.startsWith(".")) continue;
+              const fullPath = nodePath.join(dir, entry.name);
+              const relPath = nodePath.join(base, entry.name);
+              if (entry.isDirectory()) {
+                await collectFiles(fullPath, relPath);
+              } else if (entry.isFile()) {
+                try {
+                  const content = await fsPromises.readFile(fullPath, "utf-8");
+                  effectiveEdits.push({ path: relPath, content });
+                } catch {
+                  /* skip binary */
+                }
+              }
+            }
+          };
+          await collectFiles(wsDir, "");
+        }
+
+        if (effectiveEdits.length === 0) {
+          githubPushResult = {
+            branch: gpt.branch,
+            message: gpt.message,
+            files: [],
+            error: "No files found in workspace to push.",
+          };
+        } else {
+          try {
+            const repoFull = parseRepoFullName(focusProject?.linkedRepo ?? null) ?? parseRepo(focusProject?.linkedRepo ?? null);
+            const ghToken = await resolveGithubTokenForRequest(userId, focusProject?.githubToken ?? null);
+            if (repoFull && ghToken) {
+              const baseBranch = gpt.base ?? "main";
+              const pushBranch = gpt.branch;
+              let baseSha: string | null = null;
+              let resolvedBase = baseBranch;
+              for (const b of [baseBranch, baseBranch === "main" ? "master" : "main"]) {
+                const refResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/ref/heads/${b}`, {
+                  headers: ghApiHeaders(ghToken),
+                  signal: AbortSignal.timeout(8_000),
+                });
+                if (refResp.ok) {
+                  const d = (await refResp.json()) as { object: { sha: string } };
+                  baseSha = d.object.sha;
+                  resolvedBase = b;
+                  break;
+                }
+              }
+
+              const committedFiles: GithubPushResult["files"] = [];
+
+              if (!baseSha) {
+                for (const edit of effectiveEdits) {
+                  const putBody: Record<string, unknown> = {
+                    message: gpt.message,
+                    content: Buffer.from(edit.content, "utf-8").toString("base64"),
+                    branch: pushBranch,
+                  };
+                  const putResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}`, {
+                    method: "PUT",
+                    headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+                    body: JSON.stringify(putBody),
+                    signal: AbortSignal.timeout(15_000),
+                  });
+                  if (!putResp.ok) {
+                    committedFiles.push({ path: edit.path, error: await putResp.text() });
+                  } else {
+                    const d = (await putResp.json()) as { commit?: { sha?: string; html_url?: string } };
+                    committedFiles.push({
+                      path: edit.path,
+                      commitSha: d.commit?.sha,
+                      commitUrl: d.commit?.html_url,
+                    });
+                  }
+                }
+              } else {
+                const createResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/git/refs`, {
+                  method: "POST",
+                  headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+                  body: JSON.stringify({ ref: `refs/heads/${pushBranch}`, sha: baseSha }),
+                  signal: AbortSignal.timeout(8_000),
+                });
+                if (!createResp.ok) {
+                  const errText = await createResp.text();
+                  if (!errText.includes("already exists")) throw new Error(`Branch creation failed: ${errText}`);
+                }
+
+                for (const edit of effectiveEdits) {
+                  let currentSha: string | undefined;
+                  const existingResp = await fetch(
+                    `${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}?ref=${pushBranch}`,
+                    { headers: ghApiHeaders(ghToken), signal: AbortSignal.timeout(8_000) },
+                  );
+                  if (existingResp.ok) {
+                    const d = (await existingResp.json()) as { sha?: string };
+                    currentSha = d.sha;
+                  }
+
+                  const putBody: Record<string, unknown> = {
+                    message: gpt.message,
+                    content: Buffer.from(edit.content, "utf-8").toString("base64"),
+                    branch: pushBranch,
+                  };
+                  if (currentSha) putBody.sha = currentSha;
+
+                  const putResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/contents/${edit.path}`, {
+                    method: "PUT",
+                    headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+                    body: JSON.stringify(putBody),
+                    signal: AbortSignal.timeout(15_000),
+                  });
+                  if (!putResp.ok) {
+                    committedFiles.push({ path: edit.path, error: await putResp.text() });
+                  } else {
+                    const d = (await putResp.json()) as { commit?: { sha?: string; html_url?: string } };
+                    committedFiles.push({
+                      path: edit.path,
+                      commitSha: d.commit?.sha,
+                      commitUrl: d.commit?.html_url,
+                    });
+                  }
+                }
+              }
+
+              const effectivePushBranch = !baseSha
+                ? pushBranch !== baseBranch
+                  ? pushBranch
+                  : resolvedBase
+                : pushBranch;
+              githubPushResult = {
+                branch: effectivePushBranch,
+                message: gpt.message,
+                files: committedFiles,
+              };
+
+              if (gpt.openPr) {
+                const prTitle = gpt.prTitle ?? gpt.message;
+                const prBody =
+                  gpt.prBody ??
+                  `Automated commit by Atlas\n\nFiles changed:\n${effectiveEdits.map((e) => `- \`${e.path}\``).join("\n")}`;
+                const prResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/pulls`, {
+                  method: "POST",
+                  headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
+                  body: JSON.stringify({ title: prTitle, body: prBody, head: pushBranch, base: baseBranch }),
+                  signal: AbortSignal.timeout(10_000),
+                });
+                if (prResp.ok) {
+                  const pr = (await prResp.json()) as { html_url?: string; number?: number };
+                  githubPushResult.prUrl = pr.html_url;
+                  githubPushResult.prNumber = pr.number;
+                }
+              }
+
+              // Ledger release entry for successful push
+              const commitSha =
+                committedFiles.find((f) => f.commitSha)?.commitSha ?? null;
+              if (commitSha && !committedFiles.some((f) => f.error)) {
+                try {
+                  const [ledgerRow] = await db
+                    .insert(entriesTable)
+                    .values({
+                      projectId: focusProjectId,
+                      sessionId,
+                      title: `Pushed to ${effectivePushBranch}`,
+                      summary: gpt.message,
+                      details: `Commit ${commitSha.slice(0, 7)} — ${committedFiles.length} file(s)`,
+                      status: "committed",
+                      severity: "committed",
+                      mode: "build",
+                      amField: "buildState",
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                    })
+                    .returning({ id: entriesTable.id });
+                  if (ledgerRow) {
+                    githubPushDone = {
+                      commitSha,
+                      ledgerEntryId: String(ledgerRow.id),
+                    };
+                  }
+                } catch (ledgerErr) {
+                  logger.warn({ err: ledgerErr }, "nexus: GITHUB_PUSH ledger entry failed — non-fatal");
+                  if (commitSha) {
+                    githubPushDone = { commitSha, ledgerEntryId: "" };
+                  }
+                }
+              }
+            } else {
+              githubPushResult = {
+                branch: gpt.branch,
+                message: gpt.message,
+                files: [],
+                error: "No linked repo or GitHub token found for this project.",
+              };
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            githubPushResult = {
+              branch: gpt.branch,
+              message: gpt.message,
+              files: [],
+              error: msg,
+            };
+            logger.warn({ err }, "nexus: GITHUB_PUSH execution failed");
+          }
+        }
+
+        if (githubPushResult) {
+          const gpr = githubPushResult;
+          if (gpr.error) {
+            visibleContent =
+              visibleContent.trimEnd() +
+              `\n\n❌ **GitHub push failed** to \`${gpr.branch}\`: ${gpr.error}`;
+            writeStep({ verb: "Push failed", target: gpr.branch, detail: gpr.error, status: "fail" });
+          } else {
+            const fileLines = gpr.files
+              .map((f) => (f.error ? `- ❌ \`${f.path}\` — ${f.error}` : `- ✅ \`${f.path}\``))
+              .join("\n");
+            const prLine = gpr.prUrl ? `\n🔗 **PR opened:** [#${gpr.prNumber}](${gpr.prUrl})` : "";
+            visibleContent =
+              visibleContent.trimEnd() +
+              `\n\n✅ **Pushed ${gpr.files.length} file${gpr.files.length !== 1 ? "s" : ""} to** \`${gpr.branch}\`${prLine}\n${fileLines}`;
+            writeStep({
+              verb: "Pushed",
+              target: gpr.branch,
+              detail: `${gpr.files.length} file(s)`,
+            });
+          }
+        }
+      }
+    } else if (githubPushToken || parsedFileEdits.length > 0 || parsedLinePatches.length > 0) {
+      // Non-BUILD: tokens already scrubbed on CHAT; on DECIDE strip silently if any leaked.
+      logger.info(
+        {
+          intent,
+          hadPush: !!githubPushToken,
+          fileEditCount: parsedFileEdits.length,
+          linePatchCount: parsedLinePatches.length,
+        },
+        "nexus outputGuard: ignored builder tokens on non-BUILD turn",
+      );
+    }
 
     // Guard: if all content was stripped down to signal tokens with nothing left,
     // do NOT persist a blank message to the thread — it replays as an empty
@@ -3212,6 +3631,12 @@ WHAT YOU SHOULD NOT DO:
             runSummary: runMetadata.runSummary,
             runActions: runMetadata.runActions,
             runArtifacts: runMetadata.runArtifacts,
+            ...(responseFileEdits.length > 0
+              ? { fileEditsJson: JSON.stringify(responseFileEdits) }
+              : {}),
+            ...(responseLinePatches.length > 0
+              ? { linePatchesJson: JSON.stringify(responseLinePatches) }
+              : {}),
           })
           .returning({ id: chatMessagesTable.id });
         sourceChatMessageId = chatMsg?.id ?? null;
@@ -3380,6 +3805,12 @@ WHAT YOU SHOULD NOT DO:
             runSummary: runMetadata.runSummary,
             runActions: runMetadata.runActions,
             runArtifacts: runMetadata.runArtifacts,
+            ...(responseFileEdits.length > 0
+              ? { fileEditsJson: JSON.stringify(responseFileEdits) }
+              : {}),
+            ...(responseLinePatches.length > 0
+              ? { linePatchesJson: JSON.stringify(responseLinePatches) }
+              : {}),
           })
           .returning({ id: chatMessagesTable.id });
         sourceChatMessageId = chatMsg?.id ?? null;
@@ -3405,7 +3836,47 @@ WHAT YOU SHOULD NOT DO:
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.
     // Send done immediately — HUD clears now regardless of image generation speed.
-    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, ...(isInProjectAskAtlas ? { sessionId, projectId: requestedProjectId, inProjectAskAtlas: true } : { conversationId: effectiveConversationId }), convState, catchPayload: catchPayload ?? undefined, ...(clarify ? { clarify } : {}), ...(nextSuggestions ? { nextSuggestions } : {}), ...(thinkingStable ? { thinkingStable: true } : {}), ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
+    // Builder fields (memoryChips, linePatches, fileEdits, githubPush, githubPushResult)
+    // match chat.ts done-event field names exactly for frontend parity.
+    const fileEditSummaries =
+      responseFileEdits.length > 0 ? summarizeFileEdits(responseFileEdits) : undefined;
+    res.write(`event: done\ndata: ${JSON.stringify({
+      content: visibleContent,
+      modelUsed,
+      surface,
+      memoryUpdated,
+      detectedMode,
+      focusSuggestion,
+      ...(isInProjectAskAtlas
+        ? { sessionId, projectId: requestedProjectId, inProjectAskAtlas: true }
+        : { conversationId: effectiveConversationId }),
+      convState,
+      catchPayload: catchPayload ?? undefined,
+      ...(clarify ? { clarify } : {}),
+      ...(nextSuggestions ? { nextSuggestions } : {}),
+      ...(thinkingStable ? { thinkingStable: true } : {}),
+      ...(pendingNavProjectId !== null
+        ? {
+            navigateTo: {
+              route: `/project/${pendingNavProjectId}`,
+              projectId: pendingNavProjectId,
+              projectName: pendingNavProjectName,
+            },
+          }
+        : {}),
+      ...(projectReadyToken ? { projectReady: projectReadyToken } : {}),
+      // Builder emitters — same field names as /api/chat
+      ...(allChips.length > 0 ? { memoryChips: allChips } : {}),
+      ...(responseFileEdits.length > 0
+        ? { fileEdits: responseFileEdits, fileEdit: responseFileEdits[0] }
+        : {}),
+      ...(fileEditSummaries ? { fileEditSummaries } : {}),
+      ...(responseLinePatches.length > 0 ? { linePatches: responseLinePatches } : {}),
+      ...(githubPushResult ? { githubPushResult } : {}),
+      ...(githubPushDone ? { githubPush: githubPushDone } : {}),
+      ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}),
+      ...runMetadata,
+    })}\n\n`);
 
     // Persist conv_state to project so workspace always opens with the correct posture.
     // Non-blocking: runs after SSE done is flushed so it never delays the stream.
