@@ -2925,38 +2925,10 @@ export default function Home() {
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
-    // Ask Atlas surface routing — the surface is the sole owner of askAtlasChat.
-    // When it's open, EVERY send goes through askAtlasChat regardless of how
-    // the surface was opened (composer pill, resume, radial, history). This
-    // eliminates the old split where entry point determined data source.
-    const hasAskAtlasContent = !!text || attachedFiles.some(f => f.type.startsWith("image/"));
-    if (askAtlasSurfaceOpen && hasAskAtlasContent) {
-      if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
-      submitInFlightRef.current = true;
-      setInput("");
-      const filesToConvert = attachedFiles.filter(f => f.type.startsWith("image/"));
-      setAttachedFiles([]);
-      textareaRef.current?.blur();
-      let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-      if (filesToConvert.length > 0) {
-        try {
-          askAtlasAttachments = await Promise.all(
-            filesToConvert.slice(0, 10).map(async (f) => {
-              const safe = await fileToBase64Safe(f);
-              return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
-            })
-          );
-        } catch {}
-      }
-      void askAtlasChat.send({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
-        submitInFlightRef.current = false;
-      });
-      return;
-    }
+    // Ask Atlas send-routing branch removed (Turn E-lite). All sends now
+    // flow through nexusChat via the shouldStayOnHome path below.
     const shouldStayOnHome = options?.forceStayOnHome ?? false;
-    if (shouldStayOnHome && !askAtlasSurfaceOpen && !thinkOutLoudInlineRef.current) {
-      setAskAtlasSurfaceOpen(true);
-    }
+
     // All blocking gates — nothing above this line mutates project/send state.
     // Each gate is a clean exit: no flags set, no API calls made.
     if (!shouldStayOnHome && !backendReady) {
