@@ -20,6 +20,7 @@ type Props = {
   onOpenProject: (id: number) => void;
   onOpenLedger?: () => void;
   onOpenParking?: () => void;
+  onCreateProject?: () => void;
   committedCount?: number;
   parkedCount?: number;
   bustSignal?: number;
