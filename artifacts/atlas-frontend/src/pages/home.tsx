@@ -3019,7 +3019,10 @@ export default function Home() {
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ initialMessage: messageText }),
+        body: JSON.stringify({
+          initialMessage: messageText,
+          name: deriveProjectNameFromConversation([{ role: "user", content: messageText }]),
+        }),
       });
       const project = (await createRes.json().catch(() => null)) as {
         id?: number | string;
