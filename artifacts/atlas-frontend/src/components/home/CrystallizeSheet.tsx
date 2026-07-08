@@ -3,6 +3,7 @@
  * Null-render stub; home.tsx still references the export until the deeper
  * home cleanup pass.
  */
-export function CrystallizeSheet(_props: Record<string, unknown>): null {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function CrystallizeSheet(_props: any): null {
   return null;
 }
