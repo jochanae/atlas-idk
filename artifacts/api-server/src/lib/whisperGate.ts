@@ -60,9 +60,9 @@ BUILD requires an explicit action verb from the user in THIS turn, OR an unambig
 If the user is describing a problem, expressing a preference, wondering, considering, or asking "should we / could we / maybe we", that is DECIDE — not BUILD, even if it names a concrete change.
 
 Examples:
-- "Maybe we should delete Ask Atlas." → DECIDE
-- "Delete Ask Atlas." → BUILD
-- "Can you help me think through deleting Ask Atlas?" → DECIDE
+- "Maybe we should delete this feature." → DECIDE
+- "Delete this feature." → BUILD
+- "Can you help me think through deleting this feature?" → DECIDE
 - "I'm frustrated with this." → CHAT
 - "What do you think about X?" → CHAT or DECIDE (never BUILD)
 
