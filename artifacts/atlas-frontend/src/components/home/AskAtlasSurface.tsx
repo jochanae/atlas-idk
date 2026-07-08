@@ -633,6 +633,7 @@ export function AskAtlasSurface({
 
         </div>
       </div>
+      {showScrollBtn && (
         <button
           onPointerDown={(e) => {
             if (e.pointerType !== "mouse") {
