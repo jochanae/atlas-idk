@@ -63,7 +63,7 @@ Every "Works" rating below is annotated with which route it runs on. **`chat`-on
 | Decision Catch Engine | Works (nexus) | Y | Partial | `detectDecisionCatch` fires in nexus, `catchPayload` on `done`, DecisionCatchCard renders with Proceed Anyway → Ledger deviation path | Inline card | Y | N/A | N/A | Trigger threshold not tuned — fires too rarely or on wrong overlaps | Labeled corpus of decision moments; measure precision/recall | P0 |
 | Clarification cards (earned) | Works | Y | Partial | Manual prompt tests | Inline `CLARIFY` block → card | N | One-shot | N/A | Fires too often; reason line just wired | 10 conversation audit: card fired ≤2× per session | P0 |
 | Suggestion pills (earned) | Works | Y | N | Code review only | `nextSuggestions` on done event | N | One-shot | N/A | Just re-added; discipline unverified in prod | 10 conversation audit: pills only on discrete forks | P1 |
-| Memory surfacing (MemoryChips) | Works | Y | Partial | Manual verification of chip → ledger route | Inline above assistant message | N | N/A | N/A | Chips don't yet explain *why* a memory was surfaced | Add relevance reason to chip tooltip | P1 |
+| Memory surfacing (MemoryChips) | Exists (frontend only) | N (workspace) | N | Frontend renders `memoryChips`; nexus emits none | Inline above assistant message | N | N/A | N/A | `nexus.ts` has no `MEMORY_CHIPS` marker or injection — only `/api/chat` emits chips, and the workspace does not use that route for turns | Port MEMORY_CHIPS emitter from chat → nexus | P0 |
 | Ledger commit flow | Works | Y | Y | End-to-end user test | `/ledger` grouped view | Y | Iterative | N/A | Overridden state UI incomplete | Deviation → override → visual state change test | P0 |
 
 ---
