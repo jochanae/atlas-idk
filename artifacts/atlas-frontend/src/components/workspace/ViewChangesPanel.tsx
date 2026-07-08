@@ -1071,12 +1071,12 @@ export function ViewChangesPanel({
       {/* ── Centered segmented toggle: Timeline · Changes ── */}
       <div style={{
         display: "flex", justifyContent: "center",
-        padding: "14px 14px 12px",
+        padding: "6px 14px 8px",
         borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.08)",
       }}>
         <div style={{
           display: "inline-flex",
-          padding: 3,
+          padding: 2,
           borderRadius: 999,
           background: "rgba(0,0,0,0.32)",
           border: "1px solid rgba(var(--atlas-gold-rgb), 0.18)",
@@ -1089,11 +1089,11 @@ export function ViewChangesPanel({
               <button
                 key={k} type="button" onClick={() => setLens(k)}
                 style={{
-                  minWidth: 108,
-                  fontFamily: "var(--app-font-sans)", fontSize: 12,
+                  minWidth: 90,
+                  fontFamily: "var(--app-font-sans)", fontSize: 11,
                   fontWeight: active ? 600 : 500,
                   letterSpacing: "0.02em",
-                  padding: "7px 18px", borderRadius: 999,
+                  padding: "5px 14px", borderRadius: 999,
                   background: active
                     ? "linear-gradient(180deg, rgba(var(--atlas-gold-rgb), 0.22), rgba(var(--atlas-gold-rgb), 0.14))"
                     : "transparent",
