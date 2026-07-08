@@ -32,6 +32,7 @@ export interface WhisperResult {
   reason: string;       // short human-readable rationale
   fallback: boolean;    // true if classification failed and we defaulted
   elapsedMs: number;
+  model?: string;
 }
 
 interface WhisperInput {
@@ -79,7 +80,13 @@ Return ONLY a compact JSON object, no prose, no markdown fences:
 const CLASSIFICATION_TIMEOUT_MS = 1500;
 const WHISPER_MODEL = "claude-haiku-4-5";
 
-function logWhisperTurn(result: Omit<WhisperResult, "reason"> & { reason: string; confidence: number | undefined }) {
+/** Boring allowlist for pure greetings / small-talk — skip the LLM classifier.
+ *  Tokens may be combined with punctuation/whitespace ("Hey, how are you"). */
+const CHAT_TOKEN = String.raw`(?:hey|hi|hello|yo|sup|good\s+(?:morning|afternoon|evening|night)|how\s+(?:are|r)\s+(?:you|u|ya)|what's\s+up|whats\s+up|wassup|thanks|thank\s+you|ty|ok(?:ay)?|cool|nice|great|awesome|lol|haha|👋|🙏)`;
+const CHAT_BYPASS = new RegExp(String.raw`^\s*${CHAT_TOKEN}(?:[\s!?.,]+${CHAT_TOKEN})*[\s!?.,]*$`, "i");
+
+function logWhisperTurn(result: Omit<WhisperResult, "reason"> & { reason: string; confidence: number | undefined; model?: string }) {
+  const model = result.model ?? WHISPER_MODEL;
   logger.info({
     event: "whisperGate.turn",
     intent: result.intent,
@@ -87,7 +94,7 @@ function logWhisperTurn(result: Omit<WhisperResult, "reason"> & { reason: string
     reason: result.reason,
     fallback: result.fallback,
     elapsedMs: result.elapsedMs,
-    model: WHISPER_MODEL,
+    model,
   }, result.fallback ? "whisperGate: classification failed, defaulting to DECIDE" : "whisperGate: classified");
 }
 
@@ -97,12 +104,21 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
 
   // Trivial short-circuits — no need to spend a model call.
   if (!message) {
-    const result: WhisperResult = { intent: "CHAT", confidence: 1, reason: "empty message", fallback: false, elapsedMs: 0 };
+    const result: WhisperResult = { intent: "CHAT", confidence: 1, reason: "empty message", fallback: false, elapsedMs: 0, model: "regex" };
     logWhisperTurn(result);
     return result;
   }
-  if (/^(hi|hello|hey|yo|sup|hola|good\s+(morning|afternoon|evening))[!.\s]*$/i.test(message)) {
-    const result: WhisperResult = { intent: "CHAT", confidence: 1, reason: "greeting", fallback: false, elapsedMs: Date.now() - startedAt };
+
+  // Pre-classifier CHAT bypass — greetings / small talk never hit the LLM.
+  if (message.length < 40 && CHAT_BYPASS.test(message)) {
+    const result: WhisperResult = {
+      intent: "CHAT",
+      confidence: 1,
+      reason: "greeting_bypass",
+      fallback: false,
+      elapsedMs: 0,
+      model: "regex",
+    };
     logWhisperTurn(result);
     return result;
   }
@@ -147,6 +163,7 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
       reason,
       fallback: false,
       elapsedMs,
+      model: WHISPER_MODEL,
     });
     return {
       intent: intent as WhisperIntent,
@@ -154,6 +171,7 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
       reason,
       fallback: false,
       elapsedMs,
+      model: WHISPER_MODEL,
     };
   } catch (err) {
     const elapsedMs = Date.now() - startedAt;
@@ -161,7 +179,7 @@ export async function classifyIntent(input: WhisperInput): Promise<WhisperResult
     // system to act — think, don't build. Acting on a false BUILD is worse
     // than asking the user to clarify a real build request.
     logger.warn({ err: String(err), elapsedMs, message: message.slice(0, 120) }, "whisperGate: classification failed");
-    const result: WhisperResult = { intent: "DECIDE", confidence: 0, reason: "classifier_failed", fallback: true, elapsedMs };
+    const result: WhisperResult = { intent: "DECIDE", confidence: 0, reason: "classifier_failed", fallback: true, elapsedMs, model: WHISPER_MODEL };
     logWhisperTurn(result);
     return result;
   }
