@@ -1032,6 +1032,30 @@ function detectSurfaceSignal(args: {
   return surface;
 }
 
+/** Keyword check — only inject project-status briefing when the user asked for it. */
+const PROJECT_ASK_RE = /\b(status|progress|where\s+are\s+we|what'?s\s+next|what\s+next|how\s+(is|are)\s+(it|this|we|things|the\s+project)|overview|update\s+on|catch\s+me\s+up|where\s+we\s+(stand|at)|health|momentum|recap|sitrep)\b/i;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function userAskedAboutProject(message: string, projectName?: string | null): boolean {
+  const text = (message ?? "").trim();
+  if (!text) return false;
+  if (PROJECT_ASK_RE.test(text)) return true;
+  if (projectName && new RegExp(`\\b${escapeRegExp(projectName)}\\b`, "i").test(text)) return true;
+  return false;
+}
+
+/** Capture cards fire on Commit — not on DECIDE classification alone. */
+function isExplicitCommitTurn(userMessage: string, convState?: string | null): boolean {
+  if (convState === "COMMIT") return true;
+  const text = (userMessage ?? "").trim();
+  if (!text) return false;
+  if (/^\s*commit\s*:/i.test(text)) return true;
+  return /\b(commit\s+(this|that|it|to)|i(?:'m| am) committing|let'?s commit|log\s+this\s+decision)\b/i.test(text);
+}
+
 function parseRepo(raw: string | null): string | null {
   if (!raw) return null;
   try {
@@ -2048,6 +2072,58 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     content: m.content,
   }));
 
+  // ── WhisperGate / Just-Talk — classify BEFORE prompt assembly & side effects ──
+  // Must run before project-state briefing injection so greetings stay silent.
+  const justTalk = body.justTalk === true;
+  const conversationModeActive = body.conversationMode === true;
+  let intent: WhisperIntent = "DECIDE";
+  let whisperFallback = false;
+  let whisperConfidence = 0;
+
+  if (justTalk) {
+    intent = "CHAT";
+    whisperFallback = false;
+    whisperConfidence = 1;
+    logger.info({ event: "nexus.justTalk", projectId: focusProjectId, userId }, "just-talk override active");
+    logger.info({
+      event: "whisperGate.turn",
+      intent: "CHAT",
+      confidence: 1,
+      reason: "just_talk_override",
+      fallback: false,
+      elapsedMs: 0,
+      model: "override",
+    }, "whisperGate: classified");
+  } else {
+    try {
+      const whisper = await classifyIntent({
+        message,
+        history: conversationHistory,
+        hasProjectContext: !!focusProjectId,
+      });
+      intent = whisper.intent;
+      whisperFallback = whisper.fallback;
+      whisperConfidence = whisper.confidence;
+    } catch (err) {
+      // classifyIntent already falls back to DECIDE — this is defense-in-depth.
+      logger.warn({ err: String(err) }, "whisperGate: unexpected outer error, defaulting to DECIDE");
+      intent = "DECIDE";
+      whisperFallback = true;
+      whisperConfidence = 0;
+    }
+  }
+
+  const focusProjectName = focusProjectId
+    ? (projects.find((p) => p.id === focusProjectId)?.name ?? null)
+    : null;
+  const shouldBrief = intent !== "CHAT" && userAskedAboutProject(message, focusProjectName);
+  // Only BUILD (and not Just Talk / Conversation Mode) may persist runs, call
+  // tools, bootstrap GitHub, or trigger Tier1 write side-effects.
+  const allowBuildSideEffects = intent === "BUILD" && !justTalk && !conversationModeActive;
+  // CHAT turns emit nothing except the reply + meta. DECIDE may surface memory
+  // read-only, but capture cards fire only on Commit.
+  const isChatTurn = intent === "CHAT" || justTalk;
+
   const userProjects = await db
     .select({ id: projectsTable.id, name: projectsTable.name })
     .from(projectsTable)
@@ -2166,7 +2242,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   if (userProfile) {
     systemPrompt += `\n\n--- WHO YOU'RE WORKING WITH ---\n${userProfile}`;
   }
-  if (userType) {
+  if (userType && !isChatTurn) {
     systemPrompt += `\n\n--- HOME ONBOARDING CONTEXT ---\n${userTypeOpeningGuidance(userType)} Use that as a bias for the next natural question, while still following the conversational expansion protocol.\n--- END HOME ONBOARDING CONTEXT ---`;
   }
   if (userProjects.length > 0) {
@@ -2174,6 +2250,9 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   }
   // Always inject the full project roster so Atlas knows every room, even empty ones
   systemPrompt += `\n\n--- YOUR PROJECT PORTFOLIO (${projects.length} project${projects.length !== 1 ? "s" : ""}) ---\n${projectRoster}`;
+
+  // Heavy portfolio / status context — skip on CHAT so greetings stay greetings.
+  if (!isChatTurn) {
   if (portfolioHealth) {
     const healthLines = [
       `Sessions this week: ${portfolioHealth.sessionsThisWeek}`,
@@ -2253,10 +2332,16 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       systemPrompt += `\n\n--- MEMORY SEARCH (receipts matching the user's question) ---\n${hitsText}\nThe user is asking about something from a past conversation. Answer using these receipts specifically — cite the headline directly (e.g. "We have a [Category] on this: [headline]"). If none match, say you don't have a specific receipt on that topic.\n--- END MEMORY SEARCH ---`;
     }
   }
+  } // end !isChatTurn portfolio/status context
 
   if (focusProjectId) {
     const focusProject = projects.find(p => p.id === focusProjectId);
     if (focusProject) {
+      // CHAT turns: name the project only — never inject status/overview briefing.
+      // Greetings must get a greeting back, not an Obsidian Ledger status recap.
+      if (isChatTurn) {
+        systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nThe user is in "${focusProject.name}" but this turn is pure conversation (greeting / small talk). Reply briefly and conversationally. Do NOT give a project status overview, progress recap, readiness score, or unsolicited briefing. Do NOT open with "${focusProject.name} —" or "On ${focusProject.name}:". Just talk.\n--- END FOCUSED PROJECT ---`;
+      } else {
       // FILE TREE INJECTION — source-of-truth priority:
       //   1. Local workspace disk (same source as read_file) — always preferred.
       //   2. GitHub tree — fallback only when local workspace is empty.
@@ -2325,7 +2410,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
 
       // Fetch recent commits for the focused project so Atlas can interpret them
       let focusRecentCommits = "";
-      if (focusProject.linkedRepo) {
+      if (focusProject.linkedRepo && shouldBrief) {
         try {
           const repoFull = parseRepo(focusProject.linkedRepo ?? null);
           const ghToken = resolvedGhToken;
@@ -2447,11 +2532,17 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         ? `\n\nSHAPING LAYER:\n${shapingLines.join("\n")}`
         : "";
 
-      systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nThe user has zoomed in on "${focusProject.name}" for this conversation. Prioritize this project's context. Open your FIRST response by explicitly naming the project — begin with "${focusProject.name} —" or "On ${focusProject.name}:" so the user knows the focus is active. After that, answer normally without repeating the label on every message.`;
+      systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nThe user has zoomed in on "${focusProject.name}" for this conversation. Prioritize this project's context.`;
+      if (shouldBrief) {
+        systemPrompt += ` Open your FIRST response by explicitly naming the project — begin with "${focusProject.name} —" or "On ${focusProject.name}:" so the user knows the focus is active. After that, answer normally without repeating the label on every message.`;
+      } else {
+        systemPrompt += ` Answer the user's question directly. Do NOT open with a project status overview or unsolicited briefing unless they asked for status/progress.`;
+      }
       systemPrompt += shapingBlock;
       systemPrompt += `\n\nATLAS STATE: ${atlasStateLabel}\n${ATLAS_STATE_GUIDANCE[atlasStateLabel] ?? ""}\nLet this state shape the texture of every response — not just what you say, but how you engage.`;
 
-      // Response structure for overview/status responses
+      // Response structure for overview/status — only when the user asked about the project.
+      if (shouldBrief) {
       systemPrompt += `\n\nWHEN GIVING AN OVERVIEW OR STATUS OF THIS PROJECT, use this structure (markdown headings, concise):
 **Identity** — what it is + who it's for. If you know the wedge or differentiator, lead with that — not just the file count.
 **Technical State** — architecture, stack, key tensions (e.g. two routers coexisting).
@@ -2462,6 +2553,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
 CLOSING QUESTION RULE: Never end with "What are you trying to figure out or build right now?" — that's too broad inside a project workspace. Instead, after your overview, offer a lens:
 "Which lens? Positioning / Market readiness / UX / Infrastructure / Prioritization / Portfolio patterns"
 Or ask ONE narrow question that assumes they already know what they're building and pushes one level deeper.`;
+      }
 
       if (focusEntries) systemPrompt += `\nCommitted decisions:\n${focusEntries}`;
       if (focusMemory) systemPrompt += `\nProject memory:\n${focusMemory}`;
@@ -2502,6 +2594,7 @@ The user has ${ledgerGroups.parked.length} parked item${ledgerGroups.parked.leng
           systemPrompt += amBlock;
         }
       }
+      if (shouldBrief) {
       systemPrompt += `\n\nCROSS-PROJECT TENSIONS:
 ${tensionLines}
 If Atlas detects the conversation is heading toward one of these tensions, surface it proactively with: "⚠️ Cross-project tension: [description]"
@@ -2514,7 +2607,9 @@ FLOW MAP STATE:
 FLOW MAP: ${flowNodes.length} nodes total — ${answeredFlowNodes.length} answered, ${unansweredFlowNodes.length} unanswered
 Unanswered: ${unansweredFlowNodes.length > 0 ? unansweredFlowNodes.map((node) => node.label).join("; ") : "none"}
 Atlas should offer to help fill unanswered nodes if the conversation provides relevant information.`;
+      }
       systemPrompt += `\n--- END FOCUSED PROJECT ---`;
+      }
     }
   }
 
@@ -2617,10 +2712,10 @@ WHAT YOU SHOULD NOT DO:
       .limit(1);
     tier1ProjectId = boundConversationProject?.id ?? null;
   }
-  if (tier1ProjectId) {
+  if (tier1ProjectId && !isChatTurn) {
     const tier1Row = await loadTier1ForProject(tier1ProjectId);
     systemPrompt += buildTier1StatusBlock(tier1Row);
-  } else if (effectiveConversationId) {
+  } else if (effectiveConversationId && !isChatTurn) {
     const conversationBuffer = await getNexusTier1Buffer(effectiveConversationId, userId);
     systemPrompt += buildTier1BlockForNexusConversation(conversationBuffer);
   }
@@ -2669,49 +2764,9 @@ WHAT YOU SHOULD NOT DO:
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
-  // ── WhisperGate / Just-Talk — classify BEFORE any operational side effects ──
-  // Uncertainty and explicit Just Talk must never cause the system to act.
-  const justTalk = body.justTalk === true;
-  const conversationModeActive = body.conversationMode === true;
-  let intent: WhisperIntent = "DECIDE";
-  let whisperFallback = false;
-  let whisperConfidence = 0;
-
-  if (justTalk) {
-    intent = "CHAT";
-    whisperFallback = false;
-    whisperConfidence = 1;
-    logger.info({ event: "nexus.justTalk", projectId: focusProjectId, userId }, "just-talk override active");
-    logger.info({
-      event: "whisperGate.turn",
-      intent: "CHAT",
-      confidence: 1,
-      reason: "just_talk_override",
-      fallback: false,
-      elapsedMs: 0,
-      model: "claude-haiku-4-5",
-    }, "whisperGate: classified");
-  } else {
-    try {
-      const whisper = await classifyIntent({
-        message,
-        history: conversationHistory,
-        hasProjectContext: !!focusProjectId,
-      });
-      intent = whisper.intent;
-      whisperFallback = whisper.fallback;
-      whisperConfidence = whisper.confidence;
-    } catch (err) {
-      // classifyIntent already falls back to DECIDE — this is defense-in-depth.
-      logger.warn({ err: String(err) }, "whisperGate: unexpected outer error, defaulting to DECIDE");
-      intent = "DECIDE";
-      whisperFallback = true;
-      whisperConfidence = 0;
-    }
-  }
-
   // Emit meta early so the frontend can suppress run cards / Tier1 / timeline
   // on non-BUILD turns before the first text delta arrives.
+  // Classification already ran before prompt assembly (see above).
   if (!res.writableEnded && !res.destroyed) {
     res.write(`event: meta\ndata: ${JSON.stringify({ intent, justTalk: !!justTalk, fallback: whisperFallback })}\n\n`);
   }
@@ -2721,14 +2776,10 @@ WHAT YOU SHOULD NOT DO:
   } else if (conversationModeActive) {
     systemPrompt += `\n\n--- CONVERSATION MODE ACTIVE ---\nThe user has switched this thread to Conversation Mode. Do not call any tools, propose file edits, or take build actions — none are available this turn. Respond as a thinking partner only: discuss, brainstorm, question, and reason in prose. If the user asks you to build or change something, say you're in Conversation Mode and ask them to switch to Build Mode to proceed.\n--- END CONVERSATION MODE ---`;
   } else if (intent === "CHAT") {
-    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT call tools. Do NOT propose file writes. Just talk with the user like a thoughtful partner.\n--- END WHISPERGATE ---`;
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT call tools. Do NOT propose file writes. Do NOT give a project status briefing or unsolicited progress recap. Just talk with the user like a thoughtful partner — a short greeting gets a short greeting back.\n--- END WHISPERGATE ---`;
   } else if (intent === "DECIDE") {
     systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---\nThis is a decision turn. Give the user structured options, tradeoffs, or a recommendation. You MAY emit DECIDE / decision blocks. Do NOT call tools, edit files, push to GitHub, or start a build unless the user explicitly approves an action in a later turn.\n--- END WHISPERGATE ---`;
   }
-
-  // Only BUILD (and not Just Talk / Conversation Mode) may persist runs, call
-  // tools, bootstrap GitHub, or trigger Tier1 write side-effects.
-  const allowBuildSideEffects = intent === "BUILD" && !justTalk && !conversationModeActive;
 
   const turnStartedAt = new Date();
   const runActions: RunAction[] = [];
@@ -3018,16 +3069,23 @@ WHAT YOU SHOULD NOT DO:
     // R2: detectHomeHandoff() removed — PROJECT_READY token is the sole project-creation signal.
     // The frontend synthesises a CommitPill from projectReadyToken when no handoffSignal is present,
     // so the UX is preserved while eliminating the competing-signal FM-3 failure mode.
-    const surface = ideaMode
+    // Capture cards fire on Commit (or BUILD), never on CHAT / DECIDE-classification alone.
+    const allowCaptureCards = !isChatTurn && (
+      allowBuildSideEffects || isExplicitCommitTurn(message, convState)
+    );
+    let surface = ideaMode || isChatTurn
       ? null
       : detectSurfaceSignal({
           content: visibleContent,
           userMessage: message,
           recentMessages: conversationHistory,
         });
+    if (surface?.type === "DECISION" && !allowCaptureCards) {
+      surface = null;
+    }
 
     let catchPayload: Awaited<ReturnType<typeof detectDecisionCatch>> = null;
-    if (focusProjectId) {
+    if (focusProjectId && !isChatTurn) {
       try {
         catchPayload = await detectDecisionCatch({
           projectId: focusProjectId,
@@ -3133,11 +3191,14 @@ WHAT YOU SHOULD NOT DO:
       });
     }
 
-    // Background genome extraction — non-blocking, rate-limited
-    void maybeExtractGenome(focusProjectId ?? null, nexusMsgId);
+    // Background genome extraction — non-blocking, rate-limited. Skip on CHAT.
+    if (!isChatTurn) {
+      void maybeExtractGenome(focusProjectId ?? null, nexusMsgId);
+    }
 
-    // Thinking receipt extraction — global Ask Atlas turns only (no project focus)
-    if (!isInProjectAskAtlas && !focusProjectId && effectiveConversationId) {
+    // Thinking receipt extraction — global Ask Atlas turns only (no project focus).
+    // CHAT greetings must not write memory.
+    if (!isChatTurn && !isInProjectAskAtlas && !focusProjectId && effectiveConversationId) {
       void maybeExtractThinkingReceipts({
         userId,
         conversationId: effectiveConversationId,
@@ -3165,8 +3226,8 @@ WHAT YOU SHOULD NOT DO:
       });
     }
 
-    // Global narrative synthesis — skip in-project workspace turns
-    if (!isInProjectAskAtlas) {
+    // Global narrative synthesis — skip CHAT and in-project workspace turns
+    if (!isChatTurn && !isInProjectAskAtlas) {
       void synthesizeGlobalNarrative({
         userId,
         userMessage: body.message ?? "",
@@ -3201,8 +3262,9 @@ WHAT YOU SHOULD NOT DO:
       }
     }
 
-    // Auto-capture DECISION signal to Ledger — fire-and-forget, never blocks stream
-    if (surface?.type === "DECISION" && focusProjectId) {
+    // Auto-capture DECISION signal to Ledger — only on Commit / BUILD, never on
+    // CHAT or DECIDE-classification alone. Fire-and-forget, never blocks stream.
+    if (allowCaptureCards && surface?.type === "DECISION" && focusProjectId) {
       void autoCaptureLedgerDecision({
         projectId: focusProjectId,
         userId,
