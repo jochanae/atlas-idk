@@ -4316,19 +4316,12 @@ export default function Home() {
                     style={{
                     fontSize: "var(--ts-display-xl)", fontWeight: 300,
                     letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                    color: askAtlasSurfaceVisible ? undefined : "var(--atlas-fg)",
-                    ["--atlas-reveal-opacity" as string]: askAtlasSurfaceVisible ? "1" : "0.85",
+                    color: "var(--atlas-fg)",
+                    ["--atlas-reveal-opacity" as string]: "0.85",
                     ["--atlas-reveal-delay" as string]: "0ms",
-                    opacity: askAtlasSurfaceVisible ? 1 : 0.85,
-                    background: askAtlasSurfaceVisible
-                      ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
-                      : undefined,
-                    WebkitBackgroundClip: askAtlasSurfaceVisible ? "text" : undefined,
-                    WebkitTextFillColor: askAtlasSurfaceVisible ? "transparent" : undefined,
-                    backgroundClip: askAtlasSurfaceVisible ? "text" : undefined,
-                    filter: askAtlasSurfaceVisible ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
+                    opacity: 0.85,
                   }}>
-                    {askAtlasSurfaceVisible ? "Ask Atlas." : (
+                    {askAtlasSurfaceVisible ? (greetingRef.current?.head ?? "") : (
                       <>
                         {greetingRef.current?.head}
                         {isTiny && projects && projects.length > 0 && (() => {
