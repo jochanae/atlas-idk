@@ -27,12 +27,9 @@ import { WriteTab } from "@/components/workspace/WriteTab";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
-// Ask Atlas surface removed (Turn C). Inline no-op shims keep dead state
-// references compiling until the follow-up sweep gutting home.tsx state.
-const AskAtlasSurface = (_props: any): null => null;
-const CrystallizeSheet = (_props: any): null => null;
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
 import { FocusModeAura } from "@/components/FocusModeAura";
+
 
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
@@ -69,20 +66,19 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-// askAtlasHelpers + askAtlasSession deleted in Turn C. Inline no-op shims.
-const hasBuildIntent = (_text: string): boolean => false;
-const triggerNexusHandoff = async (_opts: any): Promise<void> => {};
+import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
+
+// Ask Atlas dead-state shims (Turn D). Surface + streams are gone; these
+// keep the remaining internal state referenceable until the next sweep
+// deletes the state itself. All behavior is no-op.
 const askAtlasSession = {
   getConversationId: (): string | null => null,
   setConversationId: (_id: string) => {},
   clearConversationId: () => {},
-  isSurfaceOpen: (): boolean => false,
   setSurfaceOpen: (_open: boolean) => {},
-  isClosed: (): boolean => false,
-  markClosed: () => {},
   clearClosed: () => {},
 };
-import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
+const triggerNexusHandoff = async (_opts: any): Promise<void> => {};
 
 
 const PLACEHOLDERS = [
@@ -111,92 +107,8 @@ const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to thi
 const ASK_ATLAS_PORTFOLIO_SEED =
   "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
 
-function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
-  const ctx = useActiveProjectContext();
-  const restoreWorkspaceChip = () => {
-    window.dispatchEvent(new CustomEvent("axiom:restore-workspace-context-chip"));
-  };
-  // Header title rotation stripped (Pass 1). Header is permanently
-  // "Ask Atlas"; the project name lives in the CommitPill only.
-  return (
-    <>
-      <style>{`
-        @keyframes ask-atlas-title-ping {
-          0% { transform: scale(1); opacity: 0.6; }
-          75%, 100% { transform: scale(2.2); opacity: 0; }
-        }
-      `}</style>
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
-        <button
-          type="button"
-          onClick={ctx ? restoreWorkspaceChip : undefined}
-          title={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
-          aria-label={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
-          disabled={!ctx}
-          style={{
-            position: "relative",
-            display: "inline-flex",
-            width: 18,
-            height: 18,
-            flexShrink: 0,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            border: 0,
-            background: "transparent",
-            cursor: ctx ? "pointer" : "default",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8, flexShrink: 0 }}>
-          <span
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: 999,
-              background: "rgb(167,139,250)",
-              opacity: 0.45,
-              animation: "ask-atlas-title-ping 1.6s cubic-bezier(0,0,0.2,1) infinite",
-            }}
-          />
-          <span
-            aria-hidden
-            style={{
-              position: "relative",
-              display: "inline-block",
-              width: 8,
-              height: 8,
-              borderRadius: 999,
-              background: "rgb(139,92,246)",
-              boxShadow: "0 0 8px rgba(139,92,246,0.6)",
-            }}
-          />
-          </span>
-        </button>
-        <span
-          title="Ask Atlas"
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            minWidth: 0,
-            maxWidth: "100%",
-            color: "var(--atlas-gold)",
-            fontFamily: "var(--app-font-sans)",
-            fontSize: "var(--ts-body)",
-            fontWeight: 500,
-            lineHeight: "var(--lh-snug)",
-            letterSpacing: "var(--ls-tight)",
-            opacity: 0.92,
-          }}
-        >
-          Ask Atlas
-        </span>
-      </div>
-    </>
-  );
-}
+// AskAtlasTitleCarousel removed (Turn D).
+
 
 
 type HomeHandoffSignal = {
@@ -4011,64 +3923,8 @@ export default function Home() {
       }}
     >
       {/* FocusModeAura removed — aura now lives on the composer border (see composerAura.ts) */}
-      {/* Ask Atlas runs inline through the ambient home shell:
-          header title only, no overlay, no duplicate header, no separate composer. */}
+      {/* Ask Atlas title-slot portal removed (Turn D). */}
 
-      {askAtlasTitleSlot && askAtlasSurfaceVisible && createPortal(
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <AskAtlasTitleCarousel earnedTitle={earnedTitle} />
-          {askAtlasChat.messages.length > 0 && (
-            <button
-              type="button"
-              title="Download thread"
-              aria-label="Download Ask Atlas thread"
-              onClick={(e) => {
-                e.stopPropagation();
-                const lines = askAtlasChat.messages
-                  .filter((m: any) => m.content && m.content.trim().length > 0)
-                  .map((m: any) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.content}\n`)
-                  .join("\n");
-                const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-                const blob = new Blob(
-                  [`ASK ATLAS\n${stamp}\n\n${lines}`],
-                  { type: "text/plain;charset=utf-8" },
-                );
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `ask-atlas-${stamp}.txt`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 0);
-              }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 22,
-                height: 22,
-                padding: 0,
-                borderRadius: 999,
-                background: "transparent",
-                border: "none",
-                color: "var(--atlas-gold)",
-                opacity: 0.75,
-                cursor: "pointer",
-                flexShrink: 0,
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 2.5v8.5" />
-                <path d="M4.5 7.5L8 11l3.5-3.5" />
-                <path d="M3 13.5h10" />
-              </svg>
-            </button>
-          )}
-        </div>,
-        askAtlasTitleSlot
-      )}
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
           onClick={async () => {
@@ -5570,95 +5426,8 @@ export default function Home() {
         )}
       </div>
 
-      <AskAtlasSurface
-        open={askAtlasSurfaceVisible}
-        isRestoring={isAskAtlasRestoring && askAtlasChat.messages.length === 0}
-        messages={askAtlasChat.messages as any}
-        projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
-        conversationId={askAtlasConversationId}
-        input={input}
-        setInput={setInput}
-        hasAttachments={attachedFiles.length > 0}
-        onSubmit={() => {
-          const result = handleSubmit(undefined, { forceStayOnHome: true });
-          setInput("");
-          return result;
-        }}
-        isSending={askAtlasBusy}
-        isStreaming={askAtlasChat.isStreaming}
-        crystallized={askAtlasCrystallized}
-        pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
-        liveStep={askAtlasChat.liveStep}
-        isListening={isListening}
-        toggleVoice={toggleVoice}
-        onOpenHistory={handleOpenHistory}
-        onCreateProject={handleAskAtlasCreateProject}
-        onCrystallize={() => setCrystallizeSheetOpen(true)}
-        onAddAsset={() => fileInputRef.current?.click()}
-        onMore={() => setShowDrawer(true)}
-        onFiles={(files: File[]) => {
-          const combined = [...attachedFiles, ...files].slice(0, 10);
-          if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
-          setAttachedFiles(combined);
-        }}
-        onSketch={(prompt: string) => { void askAtlasChat.send({ text: prompt }); }}
-        attachedFiles={attachedFiles}
-        onRemoveFile={(idx: number) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-        subheader={null}
-        focusChip={
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <button
-              type="button"
-              title="Exit Ask Atlas"
-              aria-label="Exit Ask Atlas"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                askAtlasSession.markClosed();
-                askAtlasSession.setSurfaceOpen(false);
-                setAskAtlasSurfaceOpen(false);
-                askAtlasChat.abort();
-                askAtlasChat.clearMessages();
-              }}
-              onClick={(e) => { e.stopPropagation(); }}
-              style={{
-                height: isTiny ? 28 : 34,
-                display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
-                padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
-                background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
-                color: "var(--atlas-gold)",
-                cursor: "pointer",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
-                whiteSpace: "nowrap", minWidth: 0, flexShrink: 0,
-                WebkitTapHighlightColor: "transparent",
-                transition: "all 180ms ease",
-              }}
-            >
-              <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-              {!isTiny && <span>Ask Atlas</span>}
-              <span style={{
-                width: 5, height: 5, borderRadius: "50%",
-                background: "var(--atlas-gold)",
-                flexShrink: 0,
-                boxShadow: "0 0 4px color-mix(in oklab, var(--atlas-gold) 60%, transparent)",
-              }} />
-            </button>
-          </div>
-        }
-        handoffSignal={askAtlasChat.handoffSignal}
-        onMenuAction={(action: string) => {
-          if (action === "history") { setShowTimeTravel(true); return; }
-          if (action === "settings") { setLocation("/account"); return; }
-          if (action === "code") { setLocation("/code"); return; }
-          if (action === "connectors") { setLocation("/connectors"); return; }
-          if (action === "files" || action === "share" ||
-              action === "publish" ||
-              action === "more:forge") { setLocation("/projects"); return; }
-          toast("Open a project to use that");
-        }}
-      />
+      {/* AskAtlasSurface removed (Turn D). */}
+
 
       {askAtlasConversationActive && showFocusPicker && (
         <>
@@ -5821,16 +5590,8 @@ export default function Home() {
         onClose={() => setShowShellSheet(false)}
       />
 
-      <CrystallizeSheet
-        open={crystallizeSheetOpen}
-        onClose={() => setCrystallizeSheetOpen(false)}
-        projects={projects ?? []}
-        handoffSignal={nexusChat.handoffSignal}
-        hasConversation={(nexusChat.messages?.length ?? 0) > 0}
-        onNewWorkspace={() => { setCrystallizeSheetOpen(false); handleAskAtlasCreateProject(); }}
-        onExistingProject={handleCrystallizeToExisting}
-        onPortfolioNote={handleCrystallizePortfolioNote}
-      />
+      {/* CrystallizeSheet removed (Turn D). */}
+
 
       {writeOverlayProjectId != null && createPortal(
         <div
