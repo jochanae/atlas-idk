@@ -32,7 +32,7 @@ import { ConversationsLauncher } from "@/components/ConversationsLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { getAuthHeaders } from "@/lib/api";
-import { askAtlasSession } from "@/lib/askAtlasSession";
+
 import { clearActiveProjectContext } from "@/lib/activeProjectContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
