@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, userResumeSnapshotsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
-import { autoCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
+import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { vectorSearch, buildRagBlock } from "../lib/embeddings";
@@ -2818,7 +2818,25 @@ WHAT YOU SHOULD NOT DO:
   } else if (intent === "CHAT") {
     systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT call tools. Do NOT propose file writes. Do NOT emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or REPO_LINK. Do NOT give a project status briefing or unsolicited progress recap. Just talk with the user like a thoughtful partner — a short greeting gets a short greeting back.\n--- END WHISPERGATE ---`;
   } else if (intent === "DECIDE") {
-    systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---\nThis is a decision turn. Give the user structured options, tradeoffs, or a recommendation. You MAY emit DECIDE / decision blocks. Do NOT call tools, emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or start a build unless the user explicitly approves an action in a later turn.\n--- END WHISPERGATE ---`;
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---
+This is a decision turn. Give the user structured options, tradeoffs, or a recommendation.
+You MAY emit DECIDE / decision blocks. Do NOT call tools, emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or start a build unless the user explicitly approves an action in a later turn.
+
+CLARIFICATION CARDS — use when the request is under-specified:
+If the user's request has a clear action intent but the TARGET is ambiguous (vague pronoun, no named component, conflicting scope), emit a CLARIFY card. CRITICAL: you must NEVER ask clarification questions in prose — if you need to clarify, emit the structured block below and ONLY that block. A prose question ("What would you like the header to say?") is not a CLARIFY card and will confuse the user.
+
+Emit exactly this block (strip from prose, the backend extracts it):
+CLARIFY_START
+{"steps":[{"question":"<one focused question>","options":["<option A>","<option B>","<option C>"],"allowFreeText":true,"reason":"<why you need this>"}]}
+CLARIFY_END
+
+Rules:
+- 2–4 options per step. Max 1 step per response in most cases.
+- Only emit when you genuinely cannot give useful options without clarification.
+- Never emit a CLARIFY card if the conversation already contains the answer.
+- If the request is clear enough to give one strong recommendation, give it — don't clarify.
+- If clarification IS needed: emit the CLARIFY_START block, then stop. No prose before or after.
+--- END WHISPERGATE ---`;
   } else if (allowBuildSideEffects) {
     systemPrompt += `\n\n--- WHISPERGATE INTENT: BUILD ---\nThis is a BUILD turn. The user wants you to create, edit, fix, or ship code. Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over narration.\n--- END WHISPERGATE ---`;
     systemPrompt += `\n\n${NEXUS_BUILD_PROTOCOLS}`;
@@ -3582,6 +3600,8 @@ WHAT YOU SHOULD NOT DO:
     const allowCaptureCards = !isChatTurn && (
       allowBuildSideEffects || isExplicitCommitTurn(message, convState)
     );
+    // DECIDE turns also get draft capture — user sees a confirm chip, nothing is auto-committed.
+    const allowDecideDraft = intent === "DECIDE" && !isChatTurn && focusProjectId != null;
     let surface = ideaMode || isChatTurn
       ? null
       : detectSurfaceSignal({
@@ -3589,7 +3609,7 @@ WHAT YOU SHOULD NOT DO:
           userMessage: message,
           recentMessages: conversationHistory,
         });
-    if (surface?.type === "DECISION" && !allowCaptureCards) {
+    if (surface?.type === "DECISION" && !allowCaptureCards && !allowDecideDraft) {
       surface = null;
     }
 
@@ -3819,10 +3839,23 @@ WHAT YOU SHOULD NOT DO:
       }
     }
 
-    // Auto-capture DECISION signal to Ledger — only on Commit / BUILD, never on
-    // CHAT or DECIDE-classification alone. Fire-and-forget, never blocks stream.
-    if (allowCaptureCards && surface?.type === "DECISION" && focusProjectId) {
-      void autoCaptureLedgerDecision({
+    // Draft-capture DECISION signal to Ledger — fires on BUILD+commit turns (allowCaptureCards)
+    // AND on DECIDE turns (allowDecideDraft). Creates a parked entry; user confirms via inline
+    // chip. Nothing is auto-committed without explicit user action.
+    //
+    // Two triggers:
+    //   A) surface?.type === "DECISION" — assistant response contains decision markers
+    //   B) allowDecideDraft + user message has explicit commitment language
+    //      (catches "I've decided to go with X" even when Atlas gives a brief ack)
+    const USER_COMMIT_RE = /\b(i('ve| have) decided|we('re| are) going with|going with|settling on|settled on|committing to|committed to|decided on|off the table|that's settled|it's decided|no more.*debate)\b/i;
+    const userHasCommitmentSignal = USER_COMMIT_RE.test(message);
+    const shouldCaptureDraft = focusProjectId &&
+      (allowCaptureCards || allowDecideDraft) &&
+      (surface?.type === "DECISION" || (allowDecideDraft && userHasCommitmentSignal));
+
+    let decisionDraft: { entryId: number; title: string } | null = null;
+    if (shouldCaptureDraft && focusProjectId) {
+      decisionDraft = await draftCaptureLedgerDecision({
         projectId: focusProjectId,
         userId,
         sessionId,
@@ -3853,6 +3886,7 @@ WHAT YOU SHOULD NOT DO:
       convState,
       catchPayload: catchPayload ?? undefined,
       ...(clarify ? { clarify } : {}),
+      ...(decisionDraft ? { decisionDraft } : {}),
       ...(nextSuggestions ? { nextSuggestions } : {}),
       ...(thinkingStable ? { thinkingStable: true } : {}),
       ...(pendingNavProjectId !== null

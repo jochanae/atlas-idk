@@ -288,6 +288,7 @@ export interface ChatMessage {
   alertResolved?: boolean;
   catchPayload?: import("../lib/DecisionCatchTypes").CatchPayload | null;
   clarify?: ClarifyPayload | null;
+  decisionDraft?: { entryId: number; title: string } | null;
   fileEdit?: FileEdit;
   fileEdits?: FileEdit[];
   linePatches?: LinePatch[];

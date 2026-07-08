@@ -51,6 +51,7 @@ export function DecisionCatchCard({ payload, projectId, sessionId, sourceMessage
           status: "committed",
           severity: "neutral",
           verb: "override",
+          deviation: true,
           mode: "decide",
           deviationReason: reason.trim() || undefined,
           catchAgainstId: payload.primaryConflictEntryId,

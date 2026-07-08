@@ -77,6 +77,11 @@ Examples:
 - "Fix the redirect loop in src/auth/callback.ts." → BUILD (qualified target)
 - "Ugh, just make it work." → DECIDE (frustrated phrasing + vague pronoun — must clarify before acting)
 - "Make the login form submit handler call /api/auth/login instead of /api/auth/signin." → BUILD
+- "I've decided to go with Postgres. SQLite is off the table." → DECIDE (user is announcing/committing to a decision — treat as DECIDE so Atlas can log and confirm)
+- "We're going with React. No more framework debates." → DECIDE (commitment statement — confirm and offer to capture)
+- "I'm settling on a monorepo approach." → DECIDE (commitment announcement)
+- "Decided: we use Stripe, not PayPal." → DECIDE (explicit commitment requiring Atlas acknowledgment)
+- "That's settled — dark mode is the default." → DECIDE (finalization statement)
 
 Rules:
 - When ambiguous between DECIDE and BUILD, choose DECIDE.

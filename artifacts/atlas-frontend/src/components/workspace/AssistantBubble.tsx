@@ -1195,6 +1195,136 @@ function ClarifyCard({
   );
 }
 
+// ── DecisionDraftConfirmChip ──────────────────────────────────────────────────
+// Shown when the server auto-detected a DECISION signal and created a parked
+// Ledger entry. User clicks Confirm to commit it; nothing is auto-committed.
+function DecisionDraftConfirmChip({
+  draft,
+  projectId,
+}: {
+  draft: { entryId: number; title: string };
+  projectId: number;
+}) {
+  const [state, setState] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed) return null;
+
+  const confirm = async () => {
+    if (state === "saving" || state === "done") return;
+    setState("saving");
+    try {
+      const res = await fetch(`/api/entries/${draft.entryId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "committed" }),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      setState("done");
+      setTimeout(() => setDismissed(true), 2000);
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: "9px 13px",
+        borderRadius: 8,
+        background: "color-mix(in oklab, var(--atlas-gold, #C9A84C) 6%, transparent)",
+        border: "1px solid color-mix(in oklab, var(--atlas-gold, #C9A84C) 22%, transparent)",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--atlas-gold, #C9A84C)",
+            marginBottom: 3,
+          }}
+        >
+          Decision detected
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--atlas-fg)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={draft.title}
+        >
+          {draft.title}
+        </div>
+      </div>
+      {state === "done" ? (
+        <span
+          style={{
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10,
+            color: "var(--atlas-gold, #C9A84C)",
+            letterSpacing: "0.08em",
+          }}
+        >
+          ✓ Committed
+        </span>
+      ) : (
+        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => setDismissed(true)}
+            disabled={state === "saving"}
+            style={{
+              padding: "5px 9px",
+              borderRadius: 6,
+              background: "transparent",
+              border: "1px solid var(--atlas-border, rgba(255,255,255,0.08))",
+              color: "var(--atlas-muted)",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 9,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+            }}
+          >
+            Dismiss
+          </button>
+          <button
+            type="button"
+            onClick={() => { void confirm(); }}
+            disabled={state === "saving"}
+            style={{
+              padding: "5px 11px",
+              borderRadius: 6,
+              background: "var(--atlas-gold, #C9A84C)",
+              border: "1px solid var(--atlas-gold, #C9A84C)",
+              color: "#000",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: state === "saving" ? "not-allowed" : "pointer",
+              opacity: state === "saving" ? 0.6 : 1,
+            }}
+          >
+            {state === "saving" ? "Saving…" : state === "error" ? "Retry" : "Confirm →"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ReadinessGateCard ─────────────────────────────────────────────────────────
 // Advisory-only card — Atlas always proceeds. Collapsed by default when there
 // are gaps; the user can expand to see the full check list.
@@ -2442,6 +2572,13 @@ function AssistantBubbleImpl({
                   projectId={projectId}
                   sessionId={sessionId}
                   sourceMessageId={message.id}
+                />
+              )}
+
+              {!message.streaming && message.decisionDraft && projectId && (
+                <DecisionDraftConfirmChip
+                  draft={message.decisionDraft}
+                  projectId={projectId}
                 />
               )}
             </>
