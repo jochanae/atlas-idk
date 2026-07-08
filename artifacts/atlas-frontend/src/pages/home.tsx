@@ -169,13 +169,13 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
             whiteSpace: "nowrap",
             minWidth: 0,
             maxWidth: "100%",
-            color: "var(--atlas-gold)",
+            color: "var(--atlas-fg)",
             fontFamily: "var(--app-font-sans)",
             fontSize: "var(--ts-body)",
             fontWeight: 500,
             lineHeight: "var(--lh-snug)",
             letterSpacing: "var(--ls-tight)",
-            opacity: 0.92,
+            opacity: 0.9,
           }}
         >
           Ask Atlas
@@ -4297,8 +4297,8 @@ export default function Home() {
               zIndex: 0,
             }} />
 
-            {/* Greeting + inline Ask Atlas conversation — crossfade in the hero slot */}
-            {nexusChat.messages.length === 0 && !showOverviewSheet && !askAtlasConversationActive && (
+            {/* Homepage greeting only. Ask Atlas surface must stay clear behind the conversation. */}
+            {!askAtlasSurfaceVisible && nexusChat.messages.length === 0 && !showOverviewSheet && !askAtlasConversationActive && (
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
