@@ -46,12 +46,11 @@ export function AtlasThinkingBlock({ thinkingState }: Props) {
   const { status, currentStep, history, developerLens } = thinkingState;
   const isProcessing = status === "processing";
 
-  const collapsedLabels = useMemo(() => {
-    // Only show the model name — never replay step labels as frozen static text.
-    // Step history shown in the drawer via "tap to inspect", not inline.
-    const model = developerLens?.routing?.activeModel;
-    return model ? `✓ ${model}` : "";
-  }, [developerLens]);
+  // Never surface the orchestration layer (model id) inline. Users don't need
+  // to see "gemini-3-flash-preview" leaking into the conversation. The model
+  // is still available in the developer drawer for debugging.
+  const collapsedLabels = "";
+  void developerLens;
 
   // During processing, show the current step label only if it's meaningful.
   // Routine scan/analyze phases collapse to a generic quiet label.
