@@ -46,4 +46,5 @@
 - [Workspace Chat Latency Profile](workspace-chat-perf.md) — three sequential DB batches fixed (Batch 2+3 now fire as early promises); remaining bottlenecks: resolveGithubToken, repo tree fetch (3s timeout), file selector Haiku call (2s timeout)
 - [Nexus Workspace Spine](nexus-workspace-spine.md) — Phase 0+1 shipped; flag USE_NEXUS_WORKSPACE_CHAT activates WorkspaceConversationSurface; Phase 2 = migrate 12 useChatStream side effects to workspaceEventBus
 - [Nexus vs Chat routes](nexus-vs-chat-routes.md) — workspace uses /api/nexus/chat (not /api/chat); run card fixes must target nexus.ts
+- [E2E dev-test-login tier override](e2e-test-login-tiers.md) — use ?tier=pro on dev-test-login to bypass the free-plan 1-project limit in multi-project e2e tests
 - [Non-destructive rollback workaround](non-destructive-rollback.md) — git reset/checkout/commit are hard-blocked for this agent; restore old-commit tree state via `git show <rev>:<path>` blob extraction per file instead

@@ -399,12 +399,18 @@ router.get("/auth/dev-test-login", async (req, res): Promise<void> => {
   const rawPassword = "E2eTestPass999!";
   const passwordHash = await hashPassword(rawPassword);
 
+  // Optional test-only override so e2e runs can validate flows gated behind
+  // a paid plan (e.g. multi-project creation) without hitting the free-plan
+  // project limit. Still fully blocked in production by the guard above.
+  const requestedTier = typeof req.query.tier === "string" ? req.query.tier : null;
+  const subscriptionTier = requestedTier === "pro" ? "pro" : "free";
+
   const [user] = await db.insert(usersTable).values({
     email,
     passwordHash,
     name: "E2E Test User",
     role: "user",
-    subscriptionTier: "free",
+    subscriptionTier,
   }).returning();
 
   if (!user) { res.status(500).json({ error: "Failed to create test user" }); return; }
