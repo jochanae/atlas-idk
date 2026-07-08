@@ -183,19 +183,8 @@ function RootRouteGate() {
       nav("/landing", { replace: true });
       return;
     }
-    // Phase 2 — lifecycle-aware landing:
-    // Returning users with an active project go directly to their workspace.
-    // Ask Atlas handles its own re-entry via askAtlasSurfaceOpen auto-resume.
-    try {
-      const lastProjectId =
-        localStorage.getItem("atlas-last-project-id") ||
-        localStorage.getItem("atlas-last-project");
-      const lastId = Number(lastProjectId);
-      if (lastId > 0) {
-        nav(`/project/${lastId}`, { replace: true });
-        return;
-      }
-    } catch {}
+    // Visiting Atlas should land on the ambient home surface. Project focus is
+    // explicit through project selection, not restored from stale localStorage.
     nav("/home", { replace: true });
   }, [isLoading, nav, user]);
 

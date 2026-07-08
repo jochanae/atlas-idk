@@ -4822,7 +4822,7 @@ export default function Workspace() {
   }, [historyMsgCountRef, id, priorLoaded, setMessages]);
 
   useEffect(() => {
-    if (messages.length > 0 || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief) || forgeRanRef.current || sessionsLoading || !priorLoadedState) return;
+    if (messages.length > 0 || openingMessage !== null || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief) || forgeRanRef.current || sessionsLoading || !priorLoadedState) return;
     setGreetingLoading(true);
     fetch(`/api/projects/${id}/greeting`, {
       credentials: "include",
@@ -4840,7 +4840,7 @@ export default function Workspace() {
       })
       .catch(() => {})
       .finally(() => setGreetingLoading(false));
-  }, [id, messages.length, sessionsLoading, priorLoadedState]);
+  }, [id, messages.length, openingMessage, sessionsLoading, priorLoadedState]);
 
   // Reset workspace-owned chat state when the project changes.
   // (messages / sessionId / priorLoaded / historyMsgCountRef portion lives in useChatStream)
@@ -5744,8 +5744,9 @@ export default function Workspace() {
     return () => {
       try {
         const next = window.location.pathname;
-        if (next === "/home") return;
-        if (!next.startsWith(`/project/${id}`)) clearActiveProjectContext();
+        if (!next.startsWith(`/project/${id}`) && !next.startsWith("/workspace/")) {
+          clearActiveProjectContext();
+        }
       } catch { clearActiveProjectContext(); }
     };
   }, [id, project, projectState.activeSession?.id, sessionId, messages, resumeBrief, latestRun, entries]);
@@ -6381,6 +6382,7 @@ export default function Workspace() {
 
   useEffect(() => {
     if (openingMessage === null || initialSent.current) return;
+    if (!id || !Number.isFinite(id) || id <= 0) return;
     if (openingMessage.projectId !== String(id)) {
       try {
         sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
@@ -7247,6 +7249,7 @@ export default function Workspace() {
   // a new project surfaces the 6-question intake before Atlas starts talking.
   useEffect(() => {
     if (!id || !Number.isFinite(id) || id <= 0) return;
+    if (openingMessage?.message?.trim() || isHomeHandoff) return;
     if (wasTier1Skipped(id)) return; // user explicitly opted out — never auto-open
     const key = tier1AutoPromptKey(id);
     try { if (sessionStorage.getItem(key)) return; } catch { /* ignore */ }
@@ -7259,7 +7262,7 @@ export default function Workspace() {
       })
       .catch(() => { /* silent — backend may be transiently down */ });
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, openingMessage?.message, isHomeHandoff]);
 
 
 

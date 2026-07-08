@@ -69,7 +69,7 @@ import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
-import { useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
+import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
 
 const PLACEHOLDERS = [
@@ -2123,26 +2123,21 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    if (askAtlasSession.isSurfaceOpen()) return true;
-    // Auto-resume: if the user had an Ask Atlas conversation and did NOT manually
-    // close the surface this browser session, re-open it so they land where they left off.
-    if (askAtlasSession.isClosed()) return false;
-    return !!askAtlasSession.getConversationId();
+    // Ask Atlas opens only by explicit user action. Stored conversation IDs are
+    // history, not an instruction to re-enter Ask Atlas or a project context.
+    return false;
   });
   // True while the thread restore fetch is in-flight. Initialized synchronously
   // from storage so the surface is visible immediately on return (no blank flash).
   const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
-    if (askAtlasSession.isClosed()) return false;
-    const surfaceOpen = askAtlasSession.isSurfaceOpen();
-    const convId = askAtlasSession.getConversationId();
-    return (surfaceOpen || !!convId) && !!convId;
+    return false;
   });
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
   // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
   // button and routes sends to askAtlasChat.
   // Also visible while restoring so the surface never flashes blank on return.
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring || !!activeProjectCtx);
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -2163,9 +2158,9 @@ export default function Home() {
     if (askAtlasSurfaceOpen) nexusChat.clearMessages();
   }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
 
-  // Persist Ask Atlas surface state so it survives hard refresh.
+  // Keep stale surface-open storage from forcing Ask Atlas back open later.
   useEffect(() => {
-    askAtlasSession.setSurfaceOpen(askAtlasSurfaceOpen);
+    if (!askAtlasSurfaceOpen) askAtlasSession.setSurfaceOpen(false);
   }, [askAtlasSurfaceOpen]);
 
   // Restore Ask Atlas thread after hard refresh or navigation return — the surface
@@ -3686,6 +3681,8 @@ export default function Home() {
     setActiveConversationId(null);
     setAskAtlasConversationId(null);
     askAtlasSession.clearConversationId();
+    askAtlasSession.setSurfaceOpen(false);
+    clearActiveProjectContext();
     nexusChat.clearMessages();
     askAtlasChat.clearMessages();
     setReviewingPlanIds(new Set());
@@ -3698,6 +3695,8 @@ export default function Home() {
     const reset = () => {
       void callAskAtlasMode(false);
       setAskAtlasSurfaceOpen(false);
+      askAtlasSession.setSurfaceOpen(false);
+      clearActiveProjectContext();
       handleNewConversation();
       setDepth("ambient");
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
@@ -5064,26 +5063,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Ask Atlas mode banner — shown when button is active, before first message */}
-            {askAtlasSurfaceOpen && (
-              <div style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                gap: 6, marginBottom: 10,
-                fontFamily: "var(--app-font-mono)", fontSize: 10,
-                letterSpacing: "0.14em", textTransform: "uppercase",
-                color: "var(--atlas-gold)", opacity: 0.6,
-                animation: "fadeIn 200ms ease forwards",
-              }}>
-                <span style={{
-                  width: 5, height: 5, borderRadius: "50%",
-                  background: "var(--atlas-gold)",
-                  boxShadow: "0 0 5px rgba(201,162,76,0.5)",
-                  flexShrink: 0,
-                }} />
-                PORTFOLIO THINKING · NOT BUILDING
-              </div>
-            )}
-
 
             <div
               className="atlas-ambient-reveal-top"
@@ -5389,7 +5368,7 @@ export default function Home() {
                   }}
                 >
                   {isSending || askAtlasBusy ? (
-                    <LoadingSpinner size="sm" color="ember" />
+                    <LoadingSpinner size="sm" color="atlas" />
                   ) : (
                     <svg viewBox="0 0 20 20" width={18} height={18}
                       fill="none"
@@ -5696,6 +5675,7 @@ export default function Home() {
                 e.preventDefault();
                 e.stopPropagation();
                 askAtlasSession.markClosed();
+                askAtlasSession.setSurfaceOpen(false);
                 setAskAtlasSurfaceOpen(false);
                 askAtlasChat.abort();
                 askAtlasChat.clearMessages();
