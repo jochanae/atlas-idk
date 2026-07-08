@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal, MessageSquare } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
 
@@ -33,14 +33,9 @@ type Props = {
   userLabel?: string | null;
 };
 
-type ConversationItem = { id: string; title: string; createdAt?: string; messageCount?: number };
-
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, onSelectConversation, userLabel }: Props) {
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, userLabel }: Props) {
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
-  const [conversationsExpanded, setConversationsExpanded] = useState(true);
-  const [conversationsShowAll, setConversationsShowAll] = useState(false);
-  const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [filter, setFilter] = useState<ProjectFilter>("recent");
