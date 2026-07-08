@@ -54,6 +54,16 @@ function parseWriteFile(content: string): Array<{ path: string; fileContent: str
   return results;
 }
 
+function hasExecutionSignal(message: NexusMessage | undefined): boolean {
+  if (!message || message.role !== "assistant") return false;
+  const content = message.content ?? "";
+  return (
+    /WRITE_FILE:\s*\{/i.test(content) ||
+    /```[\s\S]*?```\s*WRITE_FILE:/i.test(content) ||
+    /GITHUB_PUSH|FILE_EDIT|LINE_PATCH|FILE_DELETE|SHELL_RUN|BROWSER_VISIT|IMAGE_GEN/i.test(content)
+  );
+}
+
 function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
   // Strip WRITE_FILE signal tokens from displayed content — the same cleanup
   // WorkspaceConversationSurface did before rendering.
@@ -202,7 +212,7 @@ export function useNexusWorkspaceBridge(projectId: number | null | undefined): N
     const wasPending = prevPendingRef.current;
     const nowPending = isPending || isStreaming;
     prevPendingRef.current = nowPending;
-    if (wasPending && !nowPending && pid) {
+    if (wasPending && !nowPending && pid && hasExecutionSignal(messages[messages.length - 1])) {
       workspaceEventBus.emit("run-completed", { projectId: pid });
     }
   }, [isPending, isStreaming, pid]);
