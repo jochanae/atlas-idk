@@ -1407,8 +1407,15 @@ async function persistNexusExecutionRun(args: {
   userMessage: string;
   atlasResponse: string;
   runActions: RunAction[];
-  nonCodeSteps?: Array<{ verb: string; target: string | null; detail: string | null; content: string | null }>;
+  nonCodeSteps?: Array<{
+    verb: string;
+    target: string | null;
+    detail: string | null;
+    content: string | null;
+    artifactUrl?: string | null;
+  }>;
   startedAt: Date;
+  intent?: string | null;
 }): Promise<void> {
   try {
     const completedAt = new Date();
@@ -1427,27 +1434,36 @@ async function persistNexusExecutionRun(args: {
 
     // Don't persist a run row for pure conversational turns — they produce
     // no files, no steps, no build ops — UNLESS there are non-code steps
-    // (DNA updates, decisions, plans) worth surfacing in the Timeline.
+    // (DNA updates, decisions, plans, questions) worth surfacing in the Timeline.
     if (mode === "conversation" && !hasNonCode) return;
 
     const summary = fileReadActions.length > 0
       ? `Read ${fileReadActions.length} file${fileReadActions.length === 1 ? "" : "s"} \u00b7 ${args.atlasResponse.slice(0, 80).replace(/\n/g, " ").trim()}\u2026`
       : args.atlasResponse.slice(0, 120).replace(/\n/g, " ").trim();
 
+    const promptText = args.userMessage.trim();
+    const intentValue = args.intent?.trim() || null;
+
     await db.execute(sql`
       INSERT INTO execution_runs
-        (id, project_id, thread_id, message_id, mode, status, summary, started_at, completed_at, elapsed_ms)
+        (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
       VALUES
         (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${null},
-         ${mode}, ${"succeeded"}, ${summary},
+         ${mode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
          ${args.startedAt}, ${completedAt}, ${elapsedMs})
     `);
 
-    type Step = { verb: string; target: string | null; status: string; detail: string | null; content: string | null };
+    type Step = {
+      verb: string;
+      target: string | null;
+      status: string;
+      detail: string | null;
+      content: string | null;
+      artifactUrl?: string | null;
+    };
     const steps: Step[] = [];
 
     // PROMPT — the user's instruction that kicked off this turn
-    const promptText = args.userMessage.trim();
     if (promptText) {
       steps.push({ verb: "PROMPT", target: null, status: "ok", detail: null, content: promptText.slice(0, 8000) });
     }
@@ -1491,9 +1507,16 @@ async function persistNexusExecutionRun(args: {
       });
     }
 
-    // NON-CODE steps — DNA field writes, decisions, plan signals accumulated during the turn.
+    // NON-CODE steps — DNA field writes, decisions, plan signals, questions accumulated during the turn.
     for (const nc of (args.nonCodeSteps ?? [])) {
-      steps.push({ verb: nc.verb, target: nc.target, status: "ok", detail: nc.detail, content: nc.content });
+      steps.push({
+        verb: nc.verb,
+        target: nc.target,
+        status: "ok",
+        detail: nc.detail,
+        content: nc.content,
+        artifactUrl: nc.artifactUrl ?? null,
+      });
     }
 
     // SUMMARY — the full Atlas response, distinct from the brief THOUGHT excerpt above.
@@ -1503,12 +1526,12 @@ async function persistNexusExecutionRun(args: {
 
     for (const [orderIdx, step] of steps.entries()) {
       await db.execute(sql`
-        INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, order_index)
-        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${null}, ${orderIdx})
+        INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, order_index)
+        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${null}, ${step.artifactUrl ?? null}, ${orderIdx})
       `);
     }
 
-    logger.info({ runId, projectId: args.projectId, mode, stepCount: steps.length, nonCodeCount: args.nonCodeSteps?.length ?? 0 }, "nexus: persisted execution_run for workspace turn");
+    logger.info({ runId, projectId: args.projectId, mode, intent: intentValue, stepCount: steps.length, nonCodeCount: args.nonCodeSteps?.length ?? 0 }, "nexus: persisted execution_run for workspace turn");
   } catch (err) {
     logger.warn({ err }, "nexus: persistNexusExecutionRun failed — non-fatal");
   }
@@ -2785,7 +2808,13 @@ WHAT YOU SHOULD NOT DO:
   const runActions: RunAction[] = [];
   // Non-code steps (DNA updates, decisions, plans) accumulated during the turn
   // and passed to persistNexusExecutionRun at the end.
-  type _NcStep = { verb: string; target: string | null; detail: string | null; content: string | null };
+  type _NcStep = {
+    verb: string;
+    target: string | null;
+    detail: string | null;
+    content: string | null;
+    artifactUrl?: string | null;
+  };
   const _nexusNonCodeSteps: _NcStep[] = [];
   const writeStep = (action: RunAction) => {
     // Suppress step events on non-BUILD turns — they render as run cards.
@@ -3172,14 +3201,49 @@ WHAT YOU SHOULD NOT DO:
 
     // Persist conversation turn to execution_runs + execution_run_steps so the Timeline
     // in ViewChangesPanel shows this turn's activity (file reads, summary, non-code changes).
-    // BUILD-only — CHAT/DECIDE/Just Talk must never write an execution_run row.
-    // Fire-and-forget — never blocks the stream.
-    const shouldPersistRun = allowBuildSideEffects && !!focusProjectId;
-    if (shouldPersistRun && focusProjectId) {
-      // Append non-code steps detected from turn signals
-      if (surface?.type === "DECISION") {
-        _nexusNonCodeSteps.push({ verb: "DECISION_RECORDED", target: null, detail: "captured to ledger", content: null });
+    // CHAT / Just Talk never write an execution_run row.
+    // BUILD always may persist. DECIDE persists when there is timeline-worthy activity
+    // (questions, DNA updates, decisions) so QUESTION_ASKED / DECISION_RECORDED appear.
+    const extractTrailingQuestion = (text: string): string | null => {
+      const trimmed = text.trim();
+      if (!trimmed) return null;
+      const paragraphs = trimmed.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+      for (let i = paragraphs.length - 1; i >= 0; i--) {
+        const p = paragraphs[i];
+        if (p.endsWith("?") && p.length >= 12 && p.length <= 600 && !p.includes("```")) {
+          const sentences = p.split(/(?<=\?)\s+/).filter((s) => s.trim().endsWith("?"));
+          return (sentences[sentences.length - 1] ?? p).trim().slice(0, 800);
+        }
       }
+      const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        if (line.endsWith("?") && line.length >= 12 && line.length <= 400) return line;
+      }
+      return null;
+    };
+
+    if (intent === "DECIDE" && !isChatTurn) {
+      const q = extractTrailingQuestion(visibleContent);
+      if (q) {
+        _nexusNonCodeSteps.push({
+          verb: "QUESTION_ASKED",
+          target: null,
+          detail: null,
+          content: q,
+        });
+      }
+    }
+
+    if (surface?.type === "DECISION" && !isChatTurn) {
+      _nexusNonCodeSteps.push({ verb: "DECISION_RECORDED", target: null, detail: "captured to ledger", content: null });
+    }
+
+    const shouldPersistRun =
+      !!focusProjectId &&
+      !isChatTurn &&
+      (allowBuildSideEffects || (intent === "DECIDE" && _nexusNonCodeSteps.length > 0));
+    if (shouldPersistRun && focusProjectId) {
       void persistNexusExecutionRun({
         projectId: focusProjectId,
         sessionId,
@@ -3188,6 +3252,7 @@ WHAT YOU SHOULD NOT DO:
         runActions,
         nonCodeSteps: _nexusNonCodeSteps,
         startedAt: turnStartedAt,
+        intent,
       });
     }
 

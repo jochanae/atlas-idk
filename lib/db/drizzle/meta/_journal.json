@@ -29,6 +29,13 @@
       "when": 1751846400000,
       "tag": "0004_tier1_skipped_at",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1752019200000,
+      "tag": "0006_execution_runs_audit_verbs",
+      "breakpoints": true
     }
   ]
 }

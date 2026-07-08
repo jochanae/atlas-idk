@@ -9,6 +9,7 @@ export interface ApiRunStep {
   detail: string | null;
   content: string | null;
   beforeContent: string | null;
+  artifactUrl?: string | null;
   orderIndex: number;
   createdAt: string;
 }
@@ -21,6 +22,8 @@ export interface ApiRun {
   mode: string;
   status: string;
   summary: string | null;
+  prompt?: string | null;
+  intent?: string | null;
   startedAt: string;
   completedAt: string | null;
   elapsedMs: number | null;
