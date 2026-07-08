@@ -578,6 +578,15 @@ async function ensureColumns(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE execution_run_steps ADD COLUMN IF NOT EXISTS before_content TEXT
     `);
+    await db.execute(sql`
+      ALTER TABLE execution_runs ADD COLUMN IF NOT EXISTS intent TEXT
+    `);
+    await db.execute(sql`
+      ALTER TABLE execution_runs ADD COLUMN IF NOT EXISTS prompt TEXT
+    `);
+    await db.execute(sql`
+      ALTER TABLE execution_run_steps ADD COLUMN IF NOT EXISTS artifact_url TEXT
+    `);
     logger.info("ensureColumns: execution_runs + execution_run_steps tables verified");
   } catch (err) {
     logger.warn({ err }, "ensureColumns: execution_runs tables failed — server will start anyway");

@@ -661,7 +661,29 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
               flex: 1, minWidth: 0,
             }}>{step.target}</span>
           )}
-          {canExpand && !alwaysOpen && (
+          {step.verb === "ARTIFACT_CREATED" && step.artifactUrl && (
+            <a
+              href={step.artifactUrl.startsWith("workspace://")
+                ? undefined
+                : step.artifactUrl}
+              onClick={(e) => {
+                if (step.artifactUrl?.startsWith("workspace://")) {
+                  e.preventDefault();
+                  const path = step.artifactUrl.replace(/^workspace:\/\//, "");
+                  window.dispatchEvent(new CustomEvent("axiom:open-file", { detail: { path } }));
+                }
+              }}
+              style={{
+                fontSize: 10, fontFamily: "var(--app-font-mono)",
+                color: "rgba(var(--atlas-gold-rgb), 0.85)",
+                textDecoration: "none", flexShrink: 0, marginLeft: "auto",
+                letterSpacing: "0.04em",
+              }}
+            >
+              Open Output →
+            </a>
+          )}
+          {canExpand && !alwaysOpen && !(step.verb === "ARTIFACT_CREATED" && step.artifactUrl) && (
             <span style={{
               fontSize: 9, color: "rgba(var(--atlas-gold-rgb), 0.45)",
               fontFamily: "var(--app-font-mono)", flexShrink: 0, marginLeft: "auto",
@@ -701,9 +723,8 @@ function formatDuration(ms: number | null | undefined, started: string, ended: s
 }
 
 function RunHeader({ run }: { run: ApiRun }) {
-  // `prompt` and `intent` may be added by backend later — read defensively.
-  const prompt = (run as unknown as { prompt?: string | null }).prompt ?? null;
-  const intent = (run as unknown as { intent?: string | null }).intent ?? null;
+  const prompt = run.prompt ?? null;
+  const intent = run.intent ?? null;
   const status = run.status;
   const duration = formatDuration(run.elapsedMs, run.startedAt, run.completedAt);
   const started = new Date(run.startedAt);

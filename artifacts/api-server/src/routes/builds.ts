@@ -142,15 +142,25 @@ router.post("/builds", async (req, res): Promise<void> => {
         const runStatus = status === "success" ? "succeeded" : "failed";
         await db.execute(sql`
           INSERT INTO execution_runs
-            (id, project_id, thread_id, message_id, mode, status, summary, started_at, completed_at, elapsed_ms)
+            (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
           VALUES
             (${runId}, ${projectId}, null, null, 'operational', ${runStatus},
-             ${command + " run"}, ${new Date(startedAt)}, now(), ${duration})
+             ${command + " run"}, ${command}, ${"BUILD"}, ${new Date(startedAt)}, now(), ${duration})
         `);
         await db.execute(sql`
           INSERT INTO execution_run_steps (run_id, verb, target, status, detail)
           VALUES (${runId}, 'BUILD_RUN', ${command}, ${runStatus === "succeeded" ? "ok" : "fail"}, ${errorSummary})
         `);
+        if (runStatus === "failed") {
+          const errDetail =
+            status === "timeout" ? "timeout"
+            : /rate|429/i.test(errorSummary ?? "") ? "rate_limit"
+            : "provider_error";
+          await db.execute(sql`
+            INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
+            VALUES (${runId}, 'ERROR', ${command}, 'fail', ${errDetail}, ${(errorSummary || "Build failed").slice(0, 2048)}, ${1})
+          `);
+        }
         logger.info({ runId, projectId, command, status: runStatus }, "execution_run: BUILD_RUN recorded");
       } catch (err) {
         logger.warn({ err }, "builds: execution_run persist failed — non-fatal");
@@ -214,7 +224,7 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
     const runsResult = await db.execute(sql`
       SELECT
         id, project_id, thread_id, message_id, mode, status, summary,
-        receipts, started_at, completed_at, elapsed_ms
+        prompt, intent, receipts, started_at, completed_at, elapsed_ms
       FROM execution_runs
       WHERE project_id = ${projectId}
       ORDER BY started_at DESC
@@ -231,7 +241,7 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
     const stepsResult = runIds.length === 0
       ? { rows: [] as Array<Record<string, unknown>> }
       : await db.execute(sql`
-      SELECT id, run_id, verb, target, status, detail, content, before_content, order_index, created_at
+      SELECT id, run_id, verb, target, status, detail, content, before_content, artifact_url, order_index, created_at
       FROM execution_run_steps
       WHERE run_id IN (${sql.join(runIds.map((id) => sql`${id}`), sql`, `)})
       ORDER BY run_id, order_index ASC, id ASC
@@ -253,6 +263,8 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
       mode: r.mode,
       status: r.status,
       summary: r.summary,
+      prompt: (r.prompt as string | null) ?? null,
+      intent: (r.intent as string | null) ?? null,
       startedAt: r.started_at,
       completedAt: r.completed_at,
       elapsedMs: r.elapsed_ms,
@@ -264,6 +276,7 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
         detail: s.detail,
         content: s.content ?? null,
         beforeContent: s.before_content ?? null,
+        artifactUrl: (s.artifact_url as string | null) ?? null,
         orderIndex: (s.order_index as number) ?? 0,
         createdAt: s.created_at,
       })),
@@ -284,7 +297,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
   try {
     const runResult = await db.execute(sql`
       SELECT id, project_id, thread_id, message_id, mode, status, summary,
-             started_at, completed_at, elapsed_ms
+             prompt, intent, started_at, completed_at, elapsed_ms
       FROM execution_runs
       WHERE id = ${id}
       LIMIT 1
@@ -295,7 +308,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
     const r = runResult.rows[0];
 
     const stepsResult = await db.execute(sql`
-      SELECT id, run_id, verb, target, status, detail, content, before_content, order_index, created_at
+      SELECT id, run_id, verb, target, status, detail, content, before_content, artifact_url, order_index, created_at
       FROM execution_run_steps
       WHERE run_id = ${id}
       ORDER BY order_index ASC, id ASC
@@ -309,6 +322,8 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
       mode: r.mode,
       status: r.status,
       summary: r.summary,
+      prompt: (r.prompt as string | null) ?? null,
+      intent: (r.intent as string | null) ?? null,
       startedAt: r.started_at,
       completedAt: r.completed_at,
       elapsedMs: r.elapsed_ms,
@@ -320,6 +335,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
         detail: s.detail,
         content: s.content ?? null,
         beforeContent: s.before_content ?? null,
+        artifactUrl: (s.artifact_url as string | null) ?? null,
         orderIndex: (s.order_index as number) ?? 0,
         createdAt: s.created_at,
       })),

@@ -2330,15 +2330,19 @@ async function startExecutionRunRecord(args: {
   sessionId: number | null | undefined;
   messageId: number;
   mode: string;
+  prompt?: string | null;
+  intent?: string | null;
 }): Promise<ExecutionRunRecorder> {
   const runId = crypto.randomUUID();
   const startedAt = new Date();
+  const promptText = args.prompt?.trim() || null;
+  const intentValue = args.intent?.trim() || null;
   await db.execute(sql`
     INSERT INTO execution_runs
-      (id, project_id, thread_id, message_id, mode, status, summary, started_at)
+      (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at)
     VALUES
       (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${args.messageId},
-       ${args.mode}, 'running', '', ${startedAt})
+       ${args.mode}, 'running', '', ${promptText}, ${intentValue}, ${startedAt})
   `);
 
   return {
@@ -2413,7 +2417,114 @@ type ExecutionRunStep = {
   detail: string | null;
   content: string | null;
   beforeContent?: string | null;
+  artifactUrl?: string | null;
 };
+
+/** Doc / exportable artifact paths — Timeline ARTIFACT_CREATED, not Changes FILE_EDIT. */
+const ARTIFACT_DOC_PATH_RE =
+  /(?:^|\/)(?:handoffs?\/|docs\/|outputs?\/)|(?:^|\/)(?:readme|changelog|contributing|license)(?:\.[a-z0-9]+)?$|\.(?:md|mdx|pdf|pptx|docx|txt|rst)$/i;
+
+function isDocumentArtifactPath(path: string): boolean {
+  return ARTIFACT_DOC_PATH_RE.test(normalizeRepoPath(path));
+}
+
+function artifactDetailForPath(path: string, language?: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "md" || ext === "mdx") return "markdown";
+  if (ext === "pdf") return "pdf";
+  if (ext === "pptx") return "pptx";
+  if (ext === "docx") return "docx";
+  if (ext === "txt" || ext === "rst") return "text";
+  if (language === "markdown") return "markdown";
+  return language?.trim() || ext || "file";
+}
+
+function artifactReceiptForContent(content: string | null | undefined): string | null {
+  if (!content) return null;
+  const lines = content.split("\n").length;
+  if (lines <= 1) {
+    const words = content.trim().split(/\s+/).filter(Boolean).length;
+    return words > 0 ? `${words} word${words === 1 ? "" : "s"}` : null;
+  }
+  // Rough page estimate for long docs (~40 lines/page).
+  if (lines >= 80) {
+    const pages = Math.max(1, Math.round(lines / 40));
+    return `${pages} page${pages === 1 ? "" : "s"}`;
+  }
+  return `${lines} lines`;
+}
+
+type ParsedStandaloneArtifact = {
+  type: string;
+  title: string;
+  content: string;
+};
+
+function extractStandaloneArtifacts(content: string): {
+  cleaned: string;
+  artifacts: ParsedStandaloneArtifact[];
+} {
+  const artifacts: ParsedStandaloneArtifact[] = [];
+  const cleaned = content.replace(/^ARTIFACT:\s*(\{.*\})\s*$/gm, (full, json: string) => {
+    try {
+      const parsed = JSON.parse(json) as Record<string, unknown>;
+      const type = typeof parsed.type === "string" ? parsed.type.trim() : "";
+      const title = typeof parsed.title === "string" ? parsed.title.trim() : "";
+      const body = typeof parsed.content === "string" ? parsed.content : "";
+      if (type && title && typeof parsed.content === "string") {
+        artifacts.push({ type, title, content: body });
+        return "\n";
+      }
+    } catch { /* leave malformed ARTIFACT lines visible */ }
+    return full;
+  }).replace(/\n{3,}/g, "\n\n").trim();
+  return { cleaned, artifacts };
+}
+
+function classifyRunErrorDetail(message: string): string {
+  const lower = message.toLowerCase();
+  if (/\btimeout|timed out|etimedout\b/.test(lower)) return "timeout";
+  if (/\brate[_\s-]?limit|429|too many requests\b/.test(lower)) return "rate_limit";
+  if (/\bvalidation|invalid|malformed\b/.test(lower)) return "validation";
+  if (/\boverloaded|529|provider|anthropic|openai|api error\b/.test(lower)) return "provider_error";
+  if (/\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/.test(message)) {
+    return "validation";
+  }
+  return "provider_error";
+}
+
+function truncateErrorContent(message: string, err?: unknown): string {
+  const parts = [message.trim()];
+  if (err instanceof Error && err.stack) {
+    parts.push(...err.stack.split("\n").slice(0, 4));
+  } else if (err != null) {
+    parts.push(String(err).slice(0, 500));
+  }
+  return parts.join("\n").slice(0, 2048);
+}
+
+function extractTrailingClarifyingQuestion(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  // Prefer the last non-empty paragraph that ends with a question mark.
+  const paragraphs = trimmed.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  for (let i = paragraphs.length - 1; i >= 0; i--) {
+    const p = paragraphs[i];
+    if (p.endsWith("?") && p.length >= 12 && p.length <= 600 && !p.includes("```")) {
+      // Skip rhetorical multi-question dumps — take last sentence if many.
+      const sentences = p.split(/(?<=\?)\s+/).filter((s) => s.trim().endsWith("?"));
+      const last = (sentences[sentences.length - 1] ?? p).trim();
+      return last.slice(0, 800);
+    }
+  }
+  // Fallback: last line ending in ?
+  const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (line.endsWith("?") && line.length >= 12 && line.length <= 400) return line;
+  }
+  return null;
+}
 
 /** Persist execution_runs + ordered execution_run_steps before the SSE response closes. */
 async function persistExecutionRun(args: {
@@ -2425,20 +2536,36 @@ async function persistExecutionRun(args: {
   startedAt: Date;
   persistContent: string;
   isFlowMode: boolean;
+  intent?: string | null;
   responseFileEdits: FileEdit[];
   fileDeletes: Array<{ path: string }>;
   responseLinePatches: Array<{ path: string }>;
-  intermediateSteps: Array<{ verb: string; target: string | null; detail: string | null; content: string | null }>;
+  intermediateSteps: Array<{
+    verb: string;
+    target: string | null;
+    detail: string | null;
+    content: string | null;
+    artifactUrl?: string | null;
+  }>;
   imageGenResult?: { images: Array<{ prompt?: string; model?: string }> };
   githubPushResult?: { branch?: string; error?: string; files?: unknown[] } | null;
   beforeContentMap?: Map<string, string | null>;
+  questionsAsked?: string[];
+  standaloneArtifacts?: ParsedStandaloneArtifact[];
+  forcePersist?: boolean;
 }): Promise<string | null> {
   const hasTrigger =
     args.responseFileEdits.length > 0 ||
     args.fileDeletes.length > 0 ||
     args.responseLinePatches.length > 0 ||
     (args.imageGenResult?.images?.length ?? 0) > 0 ||
-    !!args.githubPushResult;
+    !!args.githubPushResult ||
+    (args.questionsAsked?.length ?? 0) > 0 ||
+    (args.standaloneArtifacts?.length ?? 0) > 0 ||
+    args.intermediateSteps.some((s) =>
+      s.verb === "ARTIFACT_CREATED" || s.verb === "ERROR" || s.verb === "QUESTION_ASKED" || s.verb === "PLAN_RECORDED"
+    ) ||
+    !!args.forcePersist;
   if (!hasTrigger) return null;
 
   const RUN_ERROR_RE = /\b(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\b/;
@@ -2447,10 +2574,9 @@ async function persistExecutionRun(args: {
     : (args.responseFileEdits.length > 0 || args.fileDeletes.length > 0 || args.responseLinePatches.length > 0 || !!args.githubPushResult)
       ? "operational"
       : "conversation";
-  const runStatus: string =
-    RUN_ERROR_RE.test(args.persistContent) || !!args.githubPushResult?.error
-      ? "failed"
-      : "succeeded";
+  const runFailed =
+    RUN_ERROR_RE.test(args.persistContent) || !!args.githubPushResult?.error;
+  const runStatus: string = runFailed ? "failed" : "succeeded";
 
   const completedAt = new Date();
   const elapsedMs = Math.max(0, completedAt.getTime() - args.startedAt.getTime());
@@ -2461,19 +2587,20 @@ async function persistExecutionRun(args: {
     args.responseLinePatches,
   );
   const runId = crypto.randomUUID();
+  const promptText = args.userPrompt.trim();
+  const intentValue = args.intent?.trim() || null;
 
   await db.execute(sql`
     INSERT INTO execution_runs
-      (id, project_id, thread_id, message_id, mode, status, summary, started_at, completed_at, elapsed_ms)
+      (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
     VALUES
       (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${args.messageId ?? null},
-       ${runMode}, ${runStatus}, ${summary},
+       ${runMode}, ${runStatus}, ${summary}, ${promptText || null}, ${intentValue},
        ${args.startedAt}, ${completedAt}, ${elapsedMs})
   `);
 
   const steps: ExecutionRunStep[] = [];
 
-  const promptText = args.userPrompt.trim();
   if (promptText) {
     steps.push({
       verb: "PROMPT",
@@ -2503,11 +2630,60 @@ async function persistExecutionRun(args: {
       status: "ok",
       detail: intermediateStep.detail,
       content: intermediateStep.content,
+      artifactUrl: intermediateStep.artifactUrl ?? null,
+    });
+  }
+
+  for (const q of args.questionsAsked ?? []) {
+    const question = q.trim();
+    if (!question) continue;
+    steps.push({
+      verb: "QUESTION_ASKED",
+      target: null,
+      status: "ok",
+      detail: null,
+      content: question.slice(0, 2000),
+    });
+  }
+
+  for (const artifact of args.standaloneArtifacts ?? []) {
+    const slug = artifact.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 60) || "artifact";
+    const ext =
+      artifact.type === "md" || artifact.type === "markdown" ? "md"
+      : artifact.type === "pdf" ? "pdf"
+      : artifact.type === "pptx" ? "pptx"
+      : artifact.type === "docx" ? "docx"
+      : artifact.type === "html" ? "html"
+      : artifact.type || "txt";
+    const target = `handoffs/${slug}.${ext}`;
+    steps.push({
+      verb: "ARTIFACT_CREATED",
+      target,
+      status: "ok",
+      detail: artifactDetailForPath(target, artifact.type),
+      content: artifactReceiptForContent(artifact.content),
+      artifactUrl: null,
     });
   }
 
   for (const edit of args.responseFileEdits) {
     const bc = args.beforeContentMap?.get(edit.path);
+    if (isDocumentArtifactPath(edit.path)) {
+      steps.push({
+        verb: "ARTIFACT_CREATED",
+        target: edit.path,
+        status: "ok",
+        detail: artifactDetailForPath(edit.path, edit.language),
+        content: artifactReceiptForContent(edit.content),
+        artifactUrl: `workspace://${normalizeRepoPath(edit.path)}`,
+        beforeContent: bc !== undefined ? (bc?.slice(0, 50000) ?? null) : null,
+      });
+      continue;
+    }
     steps.push({
       verb: "FILE_EDIT",
       target: edit.path,
@@ -2558,19 +2734,46 @@ async function persistExecutionRun(args: {
       detail: args.githubPushResult.error ?? `${args.githubPushResult.files?.length ?? 0} files`,
       content: null,
     });
+    if (args.githubPushResult.error) {
+      steps.push({
+        verb: "ERROR",
+        target: args.githubPushResult.branch ?? "github_push",
+        status: "fail",
+        detail: classifyRunErrorDetail(args.githubPushResult.error),
+        content: truncateErrorContent(args.githubPushResult.error),
+      });
+    }
   }
+
+  if (runFailed) {
+    const errMatch = args.persistContent.match(
+      /\[(INTEGRITY_FAILURE|NO_FILES_WRITTEN|WRITE_CLAIM_WITHOUT_EMISSION|BUILD_FAILED)\][^\n]*/,
+    );
+    const errLine = errMatch?.[0]
+      ?? (args.githubPushResult?.error ? null : "Run failed");
+    if (errLine) {
+      steps.push({
+        verb: "ERROR",
+        target: null,
+        status: "fail",
+        detail: classifyRunErrorDetail(errLine),
+        content: truncateErrorContent(errLine),
+      });
+    }
+  }
+
   if (summary.trim()) {
     steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: summary });
   }
 
   for (const [orderIdx, step] of steps.entries()) {
     await db.execute(sql`
-      INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, order_index)
-      VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${step.beforeContent ?? null}, ${orderIdx})
+      INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, order_index)
+      VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${step.beforeContent ?? null}, ${step.artifactUrl ?? null}, ${orderIdx})
     `);
   }
 
-  logger.info({ runId, projectId: args.projectId, mode: runMode, status: runStatus, stepCount: steps.length }, "execution_run: recorded");
+  logger.info({ runId, projectId: args.projectId, mode: runMode, status: runStatus, intent: intentValue, stepCount: steps.length }, "execution_run: recorded");
   return runId;
 }
 
@@ -4899,6 +5102,36 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     const errorMsg = isOverload
       ? "Atlas is under heavy load right now. Wait a moment and try again."
       : "Something went wrong on our end. Please try again.";
+    // Persist a failed execution_run with an ERROR step so Timeline can show the receipt.
+    if (projectId && whisperIntent !== "CHAT") {
+      try {
+        const failRunId = crypto.randomUUID();
+        const failCompleted = new Date();
+        const failElapsed = Math.max(0, failCompleted.getTime() - now.getTime());
+        const errDetail = classifyRunErrorDetail(String(modelErr));
+        const errContent = truncateErrorContent(errorMsg, modelErr);
+        await db.execute(sql`
+          INSERT INTO execution_runs
+            (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
+          VALUES
+            (${failRunId}, ${projectId}, ${sessionId ?? null}, ${null},
+             ${"conversation"}, ${"failed"}, ${errorMsg.slice(0, 200)},
+             ${message.slice(0, 8000)}, ${whisperIntent},
+             ${now}, ${failCompleted}, ${failElapsed})
+        `);
+        await db.execute(sql`
+          INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, order_index)
+          VALUES (${failRunId}, ${"PROMPT"}, ${null}, ${"ok"}, ${null}, ${message.slice(0, 8000)}, ${null}, ${null}, ${0})
+        `);
+        await db.execute(sql`
+          INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, order_index)
+          VALUES (${failRunId}, ${"ERROR"}, ${"callModel"}, ${"fail"}, ${errDetail}, ${errContent}, ${null}, ${null}, ${1})
+        `);
+        logger.info({ runId: failRunId, projectId, intent: whisperIntent }, "execution_run: model failure recorded");
+      } catch (persistErr) {
+        logger.warn({ err: persistErr }, "execution_run: failed to persist model-error run — non-fatal");
+      }
+    }
     res.write(`data: ${JSON.stringify({ type: "error", content: errorMsg })}\n\n`);
     res.end();
     return;
@@ -4938,7 +5171,13 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   // ── Intermediate step buffer — collects execution steps in order ───────────
   // Pushed as each phase completes; saved to execution_run_steps at run-record time
   // so Timeline can render a durable, ordered trace (THOUGHT → READ → SEARCH → EDIT).
-  type _IntStep = { verb: string; target: string | null; detail: string | null; content: string | null };
+  type _IntStep = {
+    verb: string;
+    target: string | null;
+    detail: string | null;
+    content: string | null;
+    artifactUrl?: string | null;
+  };
   const _chatRunIntermediateSteps: _IntStep[] = [];
 
   // FILE_READ intercept — loop up to FILE_READ_MAX rounds so Atlas can request multiple
@@ -6640,6 +6879,8 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
 
   // ── Execution run recorder — await before SSE closes so steps are committed ──
   // autoVerify turns (LOCAL_APPLY_SUCCESS loop) skip silently.
+  // CHAT turns never persist. DECIDE + BUILD persist when there is timeline-worthy
+  // activity (file edits, questions, artifacts, plans, errors).
   let recordedRunId: string | null = null;
   // Surface a PLAN_RECORDED step when Atlas emitted a structured plan this turn.
   if (structuredPlanArtifact) {
@@ -6651,7 +6892,26 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     });
   }
 
-  if (body.displayAs !== "autoVerify" && projectId && whisperIntent !== "CHAT" && whisperIntent !== "DECIDE") {
+  const questionsAsked: string[] = [];
+  if (decisionGate?.question) questionsAsked.push(decisionGate.question);
+  if (clarify?.steps?.length) {
+    for (const step of clarify.steps) {
+      if (step.question?.trim()) questionsAsked.push(step.question.trim());
+    }
+  }
+  // DECIDE turns without a structured gate/clarify still surface trailing questions.
+  if (whisperIntent === "DECIDE" && questionsAsked.length === 0) {
+    const trailing = extractTrailingClarifyingQuestion(displayContent ?? persistContent ?? "");
+    if (trailing) questionsAsked.push(trailing);
+  }
+
+  const { cleaned: contentWithoutArtifacts, artifacts: standaloneArtifacts } =
+    extractStandaloneArtifacts(persistContent);
+  if (standaloneArtifacts.length > 0) {
+    persistContent = contentWithoutArtifacts;
+  }
+
+  if (body.displayAs !== "autoVerify" && projectId && whisperIntent !== "CHAT") {
     try {
       const thoughtText = splitBuildTurn
         ? (intentPersistContent?.trim() || displayContent?.trim() || null)
@@ -6665,6 +6925,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         startedAt: now,
         persistContent,
         isFlowMode,
+        intent: whisperIntent,
         responseFileEdits,
         fileDeletes,
         responseLinePatches,
@@ -6672,6 +6933,13 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         imageGenResult,
         githubPushResult,
         beforeContentMap,
+        questionsAsked,
+        standaloneArtifacts,
+        forcePersist: whisperIntent === "DECIDE" && (
+          questionsAsked.length > 0 ||
+          !!structuredPlanArtifact ||
+          standaloneArtifacts.length > 0
+        ),
       });
     } catch (runErr) {
       logger.warn({ err: runErr, projectId }, "execution_run: persist failed — non-fatal");
