@@ -74,9 +74,10 @@ Axiom is an application-modeling system that uses conversation as its interface.
 
 ## Key surfaces
 
-- **Ask Atlas** — inline chat in the home page hero. Ephemeral: starts with no conversationId, creates a new thread on first message. Calls `/api/nexus/chat` locally.
-- **Global Insight** — full-screen layout takeover on the home page. Uses the active session thread. Same `/api/nexus/chat` endpoint, same AI. Different surface, same core.
-- **Workspace** — per-project AI conversation. Full history, persistent threads.
+- **Home** — project dashboard and launcher only. No chat UI. Shows project list, ambient state, portfolio intelligence (NEXT MOVE, Resume, Recent Activity). Entry point to Workspace.
+- **Workspace** — the single conversation surface. All Atlas interaction happens here. Persistent threads, full history. Has a **Conversation Mode / Build Mode toggle** on the same thread — Conversation Mode = clean dialogue, no run cards, no tool noise; Build Mode = full agentic execution. No handoff between them, no separate chat instance.
+
+> ⚠️ Ask Atlas (home hero chat) and Global Insight (home full-screen takeover) have been retired. They were confusing and kept breaking. Everything is now in the Workspace.
 
 ## ⚠️ Surface boundary table — read before touching home/ or workspace/
 
@@ -84,11 +85,12 @@ Agents frequently write run card / chat / UI code into the wrong component. This
 
 | Component | What it IS | What it is NOT |
 |---|---|---|
-| `components/home/ActiveRuns.tsx` | **Atlas Composer** — shortcut run launcher in Projects drawer → Tools sheet. Shows Composer-started runs. The `RunCard` inside it is the compact Composer card. | NOT the workspace chat. NOT the homepage chat. Never apply workspace designs here. |
+| `components/home/ActiveRuns.tsx` | **Atlas Composer** — shortcut run launcher in Projects drawer → Tools sheet. Shows Composer-started runs. The `RunCard` inside it is the compact Composer card. | NOT the workspace chat. NOT a homepage chat. Never apply workspace designs here. |
 | `components/AtlasComposerSheet.tsx` | Shell that opens the Composer drawer. Wraps `ActiveRuns`. | Do not touch. |
-| `components/workspace/ChatStream.tsx` | **Workspace chat stream** — renders per-message history in the workspace. Workspace run cards belong here as a separate `WorkspaceRunCard` component. | NOT the Composer. NOT the homepage chat. |
-| `pages/home.tsx` + `components/home/` (excl. `ActiveRuns.tsx`) | **Homepage** — Ask Atlas hero, Global Insight surface. | Not the workspace. Not the Composer. |
+| `components/workspace/ChatStream.tsx` | **Workspace chat stream** — the only Atlas conversation surface. Renders per-message history. Conversation Mode suppresses run cards/tool activity. | NOT the Composer. There is no separate homepage chat. |
+| `pages/home.tsx` + `components/home/` (excl. `ActiveRuns.tsx`) | **Homepage** — project dashboard and launcher. Ambient state, portfolio intelligence, project list. No chat UI. | Not the workspace. Not a chat surface. Do NOT add any chat, composer hero, or Ask Atlas UI here. |
+| `components/workspace/ConversationViewSwitcher.tsx` | **Mode toggle** — Conversation / Build segmented pill in the workspace header. Switches `conversationMode` state in workspace.tsx. | Do not repurpose for navigation. |
 | `components/workspace/ViewChangesPanel.tsx` | **Changes surface** — Timeline/Changes lenses, runId pill, GitHub block. Fully implemented. | Do not modify unless the task explicitly says "ViewChangesPanel". |
 | `features/runs/` | Shared run data hooks and types only (`useRun`, `useRuns`, `adaptRun`). | No surface-specific UI components here. |
 
-**Rule:** If a task says "run card" without naming the surface, stop and ask. The Composer card (`ActiveRuns.RunCard`) and the workspace chat card (`WorkspaceRunCard` — not yet built) are different components with different designs. Never apply one surface's design to another.
+**Rule:** If a task says "run card" without naming the surface, stop and ask. The Composer card (`ActiveRuns.RunCard`) and the workspace chat card are different components with different designs. Never apply one surface's design to another.
