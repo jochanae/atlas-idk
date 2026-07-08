@@ -604,9 +604,11 @@ const TIMELINE_VERBS = new Set([
   "THOUGHT", "FILE_READ", "SEARCH", "INSPECT",
   "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "SUMMARY",
   "DNA_UPDATED", "DECISION_RECORDED", "PLAN_RECORDED",
+  // Placeholder support — rendered only if backend emits real steps.
+  "ARTIFACT_CREATED", "ERROR", "QUESTION_ASKED",
 ]);
-const EXPANDABLE_VERBS = new Set(["THOUGHT", "FILE_EDIT", "SUMMARY"]);
-const ALWAYS_OPEN_VERBS = new Set(["SUMMARY"]);
+const EXPANDABLE_VERBS = new Set(["THOUGHT", "FILE_EDIT", "SUMMARY", "ERROR", "QUESTION_ASKED"]);
+const ALWAYS_OPEN_VERBS = new Set(["SUMMARY", "ERROR"]);
 
 function stepColor(verb: string): string {
   const MAP: Record<string, string> = {
@@ -617,10 +619,13 @@ function stepColor(verb: string): string {
     FILE_EDIT:          "rgba(var(--atlas-gold-rgb), 0.95)",
     LINE_PATCH:         "rgba(var(--atlas-gold-rgb), 0.75)",
     FILE_DELETE:        "rgba(220,80,80,0.85)",
-    SUMMARY:            "rgba(100,200,120,0.85)",
+    SUMMARY:            "rgba(100,200,120,0.95)",
     DNA_UPDATED:        "rgba(120,190,255,0.85)",
     DECISION_RECORDED:  "rgba(220,160,80,0.90)",
     PLAN_RECORDED:      "rgba(170,130,230,0.85)",
+    ARTIFACT_CREATED:   "rgba(180,200,120,0.90)",
+    ERROR:              "rgba(220,80,80,0.95)",
+    QUESTION_ASKED:     "rgba(200,180,140,0.85)",
   };
   return MAP[verb] ?? "rgba(180,180,180,0.75)";
 }
@@ -635,8 +640,9 @@ function stepLabel(verb: string, detail?: string | null): string {
     THOUGHT: "Thought", FILE_READ: "Read", SEARCH: "Search",
     INSPECT: "Inspect", FILE_EDIT: "Edited", LINE_PATCH: "Patched",
     FILE_DELETE: "Deleted", SUMMARY: "Summary",
-    DNA_UPDATED: "DNA updated", DECISION_RECORDED: "Decision recorded",
+    DNA_UPDATED: "DNA updated", DECISION_RECORDED: "Decision",
     PLAN_RECORDED: "Plan recorded",
+    ARTIFACT_CREATED: "Output", ERROR: "Error", QUESTION_ASKED: "Question",
   };
   return MAP[verb] ?? verb;
 }
