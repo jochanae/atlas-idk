@@ -96,6 +96,7 @@ export function useNexusWorkspaceBridge(
   const [conversationId, setConversationId] = useState<string>(() =>
     opts?.initialConversationId || (pid ? deriveConversationId(pid) : "")
   );
+  const historyLoadedRef = useRef(false);
 
   const { messages, isStreaming, isPending, liveStep, setMessages, send, abort, clearMessages } = useNexusChatStream({
     focusProjectId: pid || null,
@@ -139,7 +140,6 @@ export function useNexusWorkspaceBridge(
   // This restores messages that would otherwise be lost when the user navigates
   // away and returns. Briefing messages (the "Here's what I know" opener) are
   // filtered out — they're not real conversation turns.
-  const historyLoadedRef = useRef(false);
   useEffect(() => {
     if (!pid || !conversationId || historyLoadedRef.current) return;
     historyLoadedRef.current = true;
