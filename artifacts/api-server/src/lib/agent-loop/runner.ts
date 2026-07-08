@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import fsPromises from "node:fs/promises";
+import nodePath from "node:path";
 import type { Response } from "express";
 import { streamText, isStepCount, hasToolCall, gateway } from "ai";
 import { google } from "@ai-sdk/google";
@@ -8,7 +10,8 @@ import { agentRunsTable, chatMessagesTable, db, planArtifactsTable, sessionsTabl
 import { eq, sql } from "drizzle-orm";
 import { composeAtlasPrompt } from "../atlas-core";
 import { buildAgentTools, createSideEffects, createPlanState, type AgentToolContext, type AgentToolSideEffects, type AgentPlanState } from "../agent-tools";
-import { ensureProjectWorkspaceDir } from "../projectWorkspace";
+import { ensureProjectWorkspaceDir, resolveWorkspacePath } from "../projectWorkspace";
+import { extractAllFileEdits } from "../fileEditExtraction";
 import { logger } from "../logger";
 
 const STEP_LIMIT = 50;
@@ -242,6 +245,47 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
 
   if (sideEffects.finishSummary && !fullText.trim()) {
     fullText = sideEffects.finishSummary;
+  }
+
+  // ── Legacy FILE_EDIT_START fallback ─────────────────────────────────────
+  // The base system prompt still teaches the legacy FILE_EDIT_START/FILE_EDIT_END
+  // text format (used by the non-agent-loop chat path). Despite the "use tools,
+  // not text" override appended by composeAtlasPrompt, a model can still fall
+  // back to emitting that text format instead of calling edit_file — producing
+  // a response that LOOKS like a successful file write (full code, no error)
+  // but calls zero tools, so sideEffects.fileEdits stays empty and nothing is
+  // ever written to disk. This is a silent failure: no exception, no warning,
+  // a "completed" run status, and a blank preview for the user.
+  //
+  // Recover from it here: if the model produced zero tool-based file edits but
+  // the raw text still contains the legacy markers, parse and apply them
+  // directly, and say so out loud — this must never fail silently again.
+  if (sideEffects.fileEdits.length === 0 && fullText.includes("FILE_EDIT_START")) {
+    const { visibleContent, fileEdits: recoveredEdits } = extractAllFileEdits(fullText);
+    if (recoveredEdits.length > 0) {
+      logger.error(
+        { projectId, sessionId, count: recoveredEdits.length, paths: recoveredEdits.map((e) => e.path) },
+        "agent loop: model emitted legacy FILE_EDIT_START text instead of calling edit_file — recovering via fallback write",
+      );
+      const appliedPaths: string[] = [];
+      try {
+        for (const edit of recoveredEdits) {
+          const absPath = resolveWorkspacePath(workspaceDir, edit.path);
+          await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+          await fsPromises.writeFile(absPath, edit.content, "utf-8");
+          appliedPaths.push(edit.path);
+        }
+        sideEffects.fileEdits.push(...recoveredEdits);
+        fullText = `${visibleContent}\n\n_Recovered ${appliedPaths.length} file edit(s) the model emitted in an unsupported text format and applied them directly: ${appliedPaths.join(", ")}._`;
+      } catch (recoverErr) {
+        logger.error(
+          { err: recoverErr, projectId, sessionId, paths: recoveredEdits.map((e) => e.path) },
+          "agent loop: fallback recovery of legacy FILE_EDIT_START blocks failed — files were NOT written",
+        );
+        fullText = `${visibleContent}\n\n_The model attempted to write ${recoveredEdits.length} file(s) but the write failed (${recoverErr instanceof Error ? recoverErr.message : "unknown error"}). Nothing was applied — please retry._`;
+        stopReason = "error";
+      }
+    }
   }
 
   try {
