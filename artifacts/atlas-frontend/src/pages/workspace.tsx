@@ -142,7 +142,7 @@ import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeInt
 import { Tier1IntakeSheet } from "@/components/Tier1IntakeSheet";
 import { Tier1ProgressCard } from "@/components/Tier1ProgressCard";
 import { useTier1Memory } from "@/hooks/useTier1Memory";
-import { getTier1Memory, TIER1_INTAKE_OPEN_EVENT, tier1AutoPromptKey, markTier1Skipped, wasTier1Skipped, notifyTier1Updated } from "@/lib/tier1Memory";
+import { TIER1_INTAKE_OPEN_EVENT, markTier1Skipped, notifyTier1Updated } from "@/lib/tier1Memory";
 import { UrlPreviewCard } from "@/components/workspace/UrlPreviewCard";
 import { useUrlIntelligence } from "@/hooks/useUrlIntelligence";
 import { buildParkedEntryPayload } from "@/lib/parking";
