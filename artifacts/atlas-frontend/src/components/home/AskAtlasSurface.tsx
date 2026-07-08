@@ -317,11 +317,20 @@ export function AskAtlasSurface({
           padding: restingDocked ? "18px 20px 96px" : "18px 20px 24px",
           display: "flex",
           flexDirection: "column",
-          gap: 16,
+          alignItems: "center",
           scrollbarWidth: "none",
           msOverflowStyle: "none",
         }}
       >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 760,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
 
         <AskAtlasTier1Chip conversationId={conversationId} />
 
@@ -609,14 +618,19 @@ export function AskAtlasSurface({
           );
         })}
 
-        {/* Thinking receipts — appear after streaming settles */}
-        <ThinkingReceiptsStrip
-          conversationId={conversationId}
-          isStreaming={isStreaming}
-          turnCount={messages.filter(m => m.role === "assistant" && !m.streaming).length}
-          crystallized={crystallized}
-        />
+        {/* Thinking receipts removed from the inline conversation flow —
+            they belong in a dismissible floating HUD, not interrupting
+            the thread. Restore behind a HUD component when ready. */}
+        {false && (
+          <ThinkingReceiptsStrip
+            conversationId={conversationId}
+            isStreaming={isStreaming}
+            turnCount={messages.filter(m => m.role === "assistant" && !m.streaming).length}
+            crystallized={crystallized}
+          />
+        )}
 
+        </div>
       </div>
       {showScrollBtn && (
         <button
