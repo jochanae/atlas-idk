@@ -138,12 +138,12 @@ Every "Works" rating below is annotated with which route it runs on. **`chat`-on
 
 | Capability | State | Today | Validated | Verified how | Output | Ledger | Editable | Roundtrip | Known gaps | Next validation | Priority |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Code generation (atlas-codegen) | Works | Y | Partial | LivePreview render | LiveGenerationCard → sandbox | Y | Iterative | N/A | No test generation; no lint gate | Generate + typecheck + preview render gate | P0 |
+| Code generation (atlas-codegen) | Works (`chat` route only) | Partial | Partial | LivePreview render | LiveGenerationCard → sandbox | Y | Iterative | N/A | `FILE_EDIT` blocks live only in `chat.ts`; unreachable from an active workspace turn (nexus). Home build-intent handoff is the only path in. | Bridge Build-Mode turns from nexus → chat, or port FILE_EDIT emitter into nexus | P0 |
 | Live preview sandbox | Works | Y | Y | Author demo | LivePreview iframe | Y | Iterative | N/A | Cold start latency | Warm sandbox pool | P1 |
-| Extract-to-Forge | Works | Y | Partial | Author demo | Forge run | Y | Iterative | N/A | No conflict detection with prior extraction | Duplicate-extract test | P2 |
-| GitHub push (Git Tree API) | Works | Y | Y | End-to-end push verified | Repo commit + Ledger release entry | Y | N/A | N/A | No branch/PR flow (main only) | Branch + PR flow | P1 |
+| Extract-to-Forge | Works (`chat` route only) | Partial | Partial | Author demo | Forge run | Y | Iterative | N/A | Same route gap as codegen — no path from workspace turn | Same bridge fix as codegen | P2 |
+| GitHub push (Git Tree API) | Works (`chat` route only) | Partial | Y | End-to-end push verified via `/api/chat` | Repo commit + Ledger release entry | Y | N/A | N/A | `GITHUB_PUSH` token only in `chat.ts`; workspace turn cannot trigger a push | Same bridge fix; then add branch/PR flow | P0 |
 | File tree drawer | Works | Y | Y | Author demo | Sidebar | N | Iterative | N/A | Drag-drop snippets unverified for large trees | Stress test | P3 |
-| Diff viewer (LCS, code) | Works | Y | Y | Author demo | Inline | N | N/A | N/A | See §11 for other diff types | — | P2 |
+| Diff viewer (LCS, code) | Works (renderer) / Exists (data path in nexus) | Partial | Y | Renderer demoed; `linePatches` only emitted by `chat.ts` | Inline | N | N/A | N/A | Nexus never produces linePatches, so the viewer has nothing to render from a workspace turn | Same route bridge | P1 |
 | Backend handoff spec | Exists | Partial | N | Manual authoring by AI | Chat inline | Y | One-shot | N/A | Not formalized as artifact type; no schema | Define schema (route/method/body/response/auth/consuming file) + render as card | P0 |
 
 ---
