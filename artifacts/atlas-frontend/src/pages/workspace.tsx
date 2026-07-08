@@ -9663,6 +9663,21 @@ export default function Workspace() {
             })()}
             <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 2l3 3-8 8H3v-3l8-8z" /></svg>} label="Rename project" onClick={() => { setShowProjectMenu(false); window.dispatchEvent(new CustomEvent("axiom:rename-project")); }} />
             <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="2" /><path d="M13.7 9.4a1 1 0 010-2.8l.5-.2a1 1 0 00.6-1.5l-.7-1.2a1 1 0 00-1.5-.3l-.4.3a1 1 0 01-1.4-.6l-.1-.5a1 1 0 00-1-.8H8.3a1 1 0 00-1 .8l-.1.5a1 1 0 01-1.4.6l-.4-.3a1 1 0 00-1.5.3l-.7 1.2a1 1 0 00.6 1.5l.5.2a1 1 0 010 2.8l-.5.2a1 1 0 00-.6 1.5l.7 1.2a1 1 0 001.5.3l.4-.3a1 1 0 011.4.6l.1.5a1 1 0 001 .8h1.4a1 1 0 001-.8l.1-.5a1 1 0 011.4-.6l.4.3a1 1 0 001.5-.3l.7-1.2a1 1 0 00-.6-1.5l-.5-.2z" /></svg>} label="Project settings" onClick={() => { setShowProjectMenu(false); setShowProjectSettings(true); }} />
+            {/* Project DNA — manual review of Tier 1 slots Atlas has extracted
+                from conversation. Never proactive; users open it here when they
+                want to correct or top-up what Atlas has understood. */}
+            <MenuBtn
+              icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2c1.5 2 1.5 4 0 6-1.5 2-1.5 4 0 6M12 2c-1.5 2-1.5 4 0 6 1.5 2 1.5 4 0 6M5 5h6M5 11h6" /></svg>}
+              label="Project DNA"
+              badge={(() => {
+                const missing = tier1Memory?.missing?.length ?? 6;
+                return `${6 - missing}/6`;
+              })()}
+              onClick={() => {
+                setShowProjectMenu(false);
+                window.dispatchEvent(new CustomEvent(TIER1_INTAKE_OPEN_EVENT));
+              }}
+            />
             <MenuBtn
               icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="9" height="9" rx="1.5" /><path d="M11 4V3a1 1 0 00-1-1H4a1 1 0 00-1 1v6a1 1 0 001 1h1" /></svg>}
               label={cloningProject ? "Cloning…" : "Clone project"}

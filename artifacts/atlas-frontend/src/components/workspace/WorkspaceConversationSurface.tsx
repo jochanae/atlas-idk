@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
+import { Tier1GapCard } from "@/components/workspace/Tier1GapCard";
 
 interface WorkspaceConversationSurfaceProps {
   projectId: number;
@@ -339,6 +340,16 @@ export function WorkspaceConversationSurface({
             <TypingDots />
           </div>
         )}
+
+        {/* Tier 1 gap surfacing — one inline card when Atlas can't reasonably
+            infer a slot from conversation. Tap → opens Project DNA sheet
+            focused on the missing field. See docs/handoffs/2026-07-08-tier1-
+            conversational-extraction-backend.md. */}
+        <Tier1GapCard
+          projectId={projectId}
+          isStreaming={isStreaming}
+          turnCount={messages.filter(m => m.role === "assistant").length}
+        />
       </div>
 
       <div
