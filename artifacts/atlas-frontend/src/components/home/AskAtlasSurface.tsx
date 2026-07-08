@@ -619,16 +619,20 @@ export function AskAtlasSurface({
           );
         })}
 
-        {/* Thinking receipts — appear after streaming settles */}
-        <ThinkingReceiptsStrip
-          conversationId={conversationId}
-          isStreaming={isStreaming}
-          turnCount={messages.filter(m => m.role === "assistant" && !m.streaming).length}
-          crystallized={crystallized}
-        />
+        {/* Thinking receipts removed from the inline conversation flow —
+            they belong in a dismissible floating HUD, not interrupting
+            the thread. Restore behind a HUD component when ready. */}
+        {false && (
+          <ThinkingReceiptsStrip
+            conversationId={conversationId}
+            isStreaming={isStreaming}
+            turnCount={messages.filter(m => m.role === "assistant" && !m.streaming).length}
+            crystallized={crystallized}
+          />
+        )}
 
+        </div>
       </div>
-      {showScrollBtn && (
         <button
           onPointerDown={(e) => {
             if (e.pointerType !== "mouse") {
