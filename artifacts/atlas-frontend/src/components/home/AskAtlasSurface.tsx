@@ -331,7 +331,6 @@ export function AskAtlasSurface({
             gap: 16,
           }}
         >
-      >
 
         <AskAtlasTier1Chip conversationId={conversationId} />
 
