@@ -618,17 +618,17 @@ export function AskAtlasSurface({
           );
         })}
 
-        {/* Thinking receipts removed from the inline conversation flow —
-            they belong in a dismissible floating HUD, not interrupting
-            the thread. Restore behind a HUD component when ready. */}
-        {false && (
-          <ThinkingReceiptsStrip
-            conversationId={conversationId}
-            isStreaming={isStreaming}
-            turnCount={messages.filter(m => m.role === "assistant" && !m.streaming).length}
-            crystallized={crystallized}
-          />
-        )}
+        {/* Thinking observations render inline as a Thinking Cluster:
+            observations from one Atlas turn group into one container,
+            first item visible, rest behind "+N more". Observational tone,
+            not a system alert. See ThinkingReceiptsStrip for rules. */}
+        <ThinkingReceiptsStrip
+          conversationId={conversationId}
+          isStreaming={isStreaming}
+          turnCount={messages.filter(m => m.role === "assistant" && !m.streaming).length}
+          crystallized={crystallized}
+        />
+
 
         </div>
       </div>
