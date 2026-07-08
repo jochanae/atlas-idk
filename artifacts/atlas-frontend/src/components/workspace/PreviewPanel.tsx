@@ -549,16 +549,19 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
     })();
   }, [wsDsStatus, projectId]);
 
-  // Auto-rebuild when parent signals new files have been written (rebuildTrigger increments)
+  // Auto-start/rebuild when parent signals new files have been written
+  // (rebuildTrigger increments). This fires unconditionally — including on a
+  // brand-new project's very first successful build, where wsDsStatus is still
+  // "idle" and wsDsPort is still null. Previously this was gated on the
+  // workspace already being "running"/"error"/port-set, so the first-ever
+  // build never auto-started the preview at all (build completes, nothing
+  // renders).
   const prevRebuildTrigger = useRef(rebuildTrigger ?? 0);
   useEffect(() => {
     const cur = rebuildTrigger ?? 0;
     if (cur > prevRebuildTrigger.current) {
       prevRebuildTrigger.current = cur;
-      // Only auto-rebuild if the workspace has been built at least once
-      if (wsDsStatus === "running" || wsDsStatus === "error" || wsDsPort !== null) {
-        void handleWsDsStart();
-      }
+      void handleWsDsStart();
     }
   // handleWsDsStart intentionally omitted — it's stable and including it would loop
   // eslint-disable-next-line react-hooks/exhaustive-deps

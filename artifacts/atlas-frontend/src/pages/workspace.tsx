@@ -7413,10 +7413,12 @@ export default function Workspace() {
           { displayAs: "autoVerify" },
         );
         window.dispatchEvent(new CustomEvent("axiom:patch-applied"));
-        // If the workspace was already running, trigger an auto-rebuild with the new files
-        if (wsWasRunningRef.current) {
-          setRebuildTrigger(t => t + 1);
-        }
+        // Auto-start/rebuild the live preview with the new files. This covers both
+        // the very first build (workspace was never running yet) and subsequent
+        // rebuilds (workspace already running) — previously this only fired when
+        // already running, so a brand-new project's first successful build never
+        // surfaced a preview at all.
+        setRebuildTrigger(t => t + 1);
       } else {
         // GitHub push — existing commit flow
         const repoName = linkedRepo.fullName;
