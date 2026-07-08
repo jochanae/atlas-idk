@@ -267,6 +267,7 @@ export interface ChatMessage {
   awaitingPlan?: boolean;
   planFromHome?: boolean;
   planMode?: boolean;
+  catchPayload?: import("../lib/DecisionCatchTypes").CatchPayload | null;
   alertPayload?: AlertPayload | null;
   alertResolved?: boolean;
   clarify?: ClarifyPayload | null;
