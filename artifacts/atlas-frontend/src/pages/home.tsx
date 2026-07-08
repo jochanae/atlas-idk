@@ -68,6 +68,18 @@ import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
+// Ask Atlas dead-state shims (Turn D). Surface + streams are gone; these
+// keep the remaining internal state referenceable until the next sweep
+// deletes the state itself. All behavior is no-op.
+const askAtlasSession = {
+  getConversationId: (): string | null => null,
+  setConversationId: (_id: string) => {},
+  clearConversationId: () => {},
+  setSurfaceOpen: (_open: boolean) => {},
+  clearClosed: () => {},
+};
+const triggerNexusHandoff = async (_opts: any): Promise<void> => {};
+
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
