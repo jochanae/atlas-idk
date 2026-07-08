@@ -394,6 +394,33 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
           <p style={{ margin: 0, fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.6, fontStyle: "italic", maxWidth: 300 }}>
             Activity, portfolio health, and momentum will populate as you start working on projects.
           </p>
+          {onCreateProject && (
+            <button
+              type="button"
+              onClick={onCreateProject}
+              style={{
+                marginTop: 10,
+                padding: "9px 18px",
+                borderRadius: 8,
+                background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+                color: "var(--atlas-gold)",
+                fontSize: 12,
+                fontFamily: "var(--app-font-mono)",
+                letterSpacing: "0.04em",
+                cursor: "pointer",
+                transition: "background 160ms ease, border-color 160ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 20%, transparent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 12%, transparent)";
+              }}
+            >
+              + Create your first project
+            </button>
+          )}
         </div>
 
         <div className="atlas-discovery-card" style={{ opacity: 0.45 }}>
