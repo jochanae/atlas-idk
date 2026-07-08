@@ -41,7 +41,7 @@ interface WhisperInput {
   history?: Array<{ role: string; content: string }>;
   /** Workspace lens hint (BUILD lens biases toward BUILD). */
   workspaceLens?: string;
-  /** If user is inside a project workspace vs. Ask Atlas home. */
+  /** @deprecated retained for backwards compatibility; WhisperGate no longer branches on surface. */
   hasProjectContext?: boolean;
 }
 
