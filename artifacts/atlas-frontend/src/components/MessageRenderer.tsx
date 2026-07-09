@@ -16,29 +16,65 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
+import { CitationChip } from "@/features/codebase";
 
 // ── Patterns ──────────────────────────────────────────────────────────────────
 const FILE_PILL_PATTERN = /(\b[\w-]+\.(?:tsx|ts|js|jsx|css|json|md|sql)\b)/gi;
 const FILE_PILL_EXACT_PATTERN = /^\b[\w-]+\.(?:tsx|ts|js|jsx|css|json|md|sql)\b$/i;
+// Codebase citation: path/with/slashes.ext OR file.ext:L12 (with optional -L24).
+// Requires extension (2-6 alpha/num after dot) so bare words aren't captured.
+const CITATION_PATTERN = /([\w./-]+\.[a-zA-Z][a-zA-Z0-9]{0,5})(?::L(\d+)(?:-L?(\d+))?)?/g;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function splitByFilePill(text: string, keyBase: string): ReactNode[] {
+  const parts = text.split(FILE_PILL_PATTERN);
+  return parts.map((part, index) =>
+    FILE_PILL_EXACT_PATTERN.test(part) ? (
+      <span
+        key={`${keyBase}-p${index}`}
+        className="rounded px-1.5 py-0.5 font-mono text-[12px] bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))]"
+      >
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
+function renderStringWithChips(text: string, keyBase: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  const re = new RegExp(CITATION_PATTERN.source, "g");
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const [full, path, ls, le] = m;
+    // Only treat as citation if path has a slash OR carries a :L line ref.
+    if (!path.includes("/") && !ls) continue;
+    if (m.index > last) {
+      out.push(...splitByFilePill(text.slice(last, m.index), `${keyBase}-s${last}`));
+    }
+    out.push(
+      <CitationChip
+        key={`${keyBase}-c${m.index}`}
+        path={path}
+        lineStart={ls ? Number(ls) : undefined}
+        lineEnd={le ? Number(le) : undefined}
+      />,
+    );
+    last = m.index + full.length;
+  }
+  if (last < text.length) {
+    out.push(...splitByFilePill(text.slice(last), `${keyBase}-s${last}`));
+  }
+  return out;
+}
+
 function renderMarkdownChildren(children: ReactNode): ReactNode {
-  return Children.map(children, (child) => {
+  return Children.map(children, (child, i) => {
     if (typeof child === "string") {
-      const parts = child.split(FILE_PILL_PATTERN);
-      return parts.map((part, index) =>
-        FILE_PILL_EXACT_PATTERN.test(part) ? (
-          <span
-            key={`${part}-${index}`}
-            className="rounded px-1.5 py-0.5 font-mono text-[12px] bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))]"
-          >
-            {part}
-          </span>
-        ) : (
-          part
-        ),
-      );
+      return renderStringWithChips(child, `mk${i}`);
     }
     if (isValidElement<{ children?: ReactNode }>(child)) {
       return cloneElement(child, {
