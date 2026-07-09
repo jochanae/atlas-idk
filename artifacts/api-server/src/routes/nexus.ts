@@ -58,6 +58,8 @@ import {
   extractAllFileMoves,
   extractGithubPushToken,
   canProceedWithFileChanges,
+  userConfirmedPendingChanges,
+  convertWriteFileMarkersToFileEdits,
   isWriteClaimWithoutEmission,
   summarizeFileEdits,
   parseRepoFullName,
@@ -2728,7 +2730,7 @@ TONE: Direct, builder-oriented. You are a pair programmer and strategic partner 
 
 BEHAVIOR:
 - Answer what was asked. Don't restate the project name in every response.
-- When they ask to build or write code, do it. Use WRITE_FILE to propose file writes.
+- When they ask to build or write code, do it. Use the FILE_EDIT protocol (see BUILD PROTOCOLS) to propose file writes — never a bare WRITE_FILE marker.
 - When they ask about the project, synthesize — don't enumerate. They have the ledger open next to you.
 - When you notice something worth flagging (a tension, a gap, an inconsistency), name it concisely as a side note — not as a lecture.
 - Keep responses tight. The workspace is a working session, not a document.
@@ -2736,7 +2738,7 @@ BEHAVIOR:
 WHAT YOU HAVE ACCESS TO:
 - Project files (file tree injected above if available)
 - Project memory, ledger decisions, DNA, Application Model — all injected above
-- WRITE_FILE: propose file writes for the local workspace
+- FILE_EDIT: propose file writes for the local workspace (see BUILD PROTOCOLS for the exact block format)
 - BROWSER_VISIT: visit URLs for live checks, competitor research
 - IMAGE_GEN: generate mockups or diagrams on request
 
@@ -2751,9 +2753,12 @@ WHAT YOU SHOULD NOT DO:
 
   systemPrompt += `\n\n--- IMAGES ---\nYou CAN see images. When the user attaches a screenshot, photo, or mockup, you receive it and can analyze it, describe it, and reason about it. Do this naturally. If the user says "look at this" but no image is in the message, respond like a person: "I don't see an attachment — can you drop it in?" Never say "I can't see images" or "only text and code."\n\nGenerating images: An image generation service (Gemini) is connected. You do NOT generate images yourself — emit IMAGE_GEN at the END of your response and the backend handles it.\n\nWhen the user asks to sketch, draw, render, visualize, or "show me what X looks like" — emit IMAGE_GEN. CRITICAL RULES:\n1. Do NOT write a description or explanation of what you are generating. The image speaks for itself.\n2. At most one very short sentence before the token (e.g. "Here's your sketch." or "On it.") — nothing more.\n3. Never narrate, describe, or explain what the image will show. No "I'll create a...", no bullet lists of design decisions, no paragraph about the concept.\n4. Put the IMAGE_GEN token at the END of your response, after any other tokens.\n\nIMAGE_GEN:{"prompt":"[detailed description of what to generate]","mode":"render","size":"square"}\n\n- mode "render" → UI mockups, product visuals, logos, creative concepts, app screens\n- mode "schematic" → architecture diagrams, technical flows, wireframes\n- size "landscape" for wide, "portrait" for mobile, "square" for general\n- Proactive use: when the conversation is about how something should look or feel, emit IMAGE_GEN without being asked\n--- END IMAGES ---`;
 
-  if (focusProjectId) {
-    systemPrompt += `\n\n--- WORKSPACE FILE WRITING ---\nYou can propose writing files directly into the user's local workspace.\n\nTo propose a file write:\n1. Output the COMPLETE file content in a fenced code block (include the language tag).\n2. On the very next line after the closing fence, emit exactly:\n   WRITE_FILE:{"path":"relative/path/to/file.ext"}\n\nRules:\n- Only propose WRITE_FILE when the user explicitly asks you to create or update a file.\n- The path must be relative (no leading slash) — e.g. "src/utils.ts" or "README.md".\n- Only ONE WRITE_FILE per response, placed at the very end.\n- Do NOT emit WRITE_FILE without a preceding code block containing the complete file content.\n- Do NOT emit WRITE_FILE mid-response — always at the end.\n- If the user asks for multiple files, write the most important one with WRITE_FILE and offer to write the rest in follow-up messages.\n--- END WORKSPACE FILE WRITING ---`;
-  }
+  // NOTE: file writes go through the single FILE_EDIT_START/FILE_EDIT_CONTENT/FILE_EDIT_END
+  // protocol injected by NEXUS_BUILD_PROTOCOLS on BUILD turns. There used to be a second,
+  // competing "WRITE_FILE:{...}" marker instructed here — nothing on the backend ever
+  // parsed it, so the model would sometimes use it instead of FILE_EDIT and the file would
+  // silently never be written while the response text confidently claimed it was. Removed
+  // rather than reconciled: one protocol, actually parsed, is the fix.
 
   // Load Visual Vault images (project-scoped if focused, otherwise skip for global)
   vault = focusProjectId
@@ -3265,9 +3270,17 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     const { content: afterChipsEarly, memoryChips: aiMemoryChips } = detectMemoryChips(visibleContent);
     visibleContent = afterChipsEarly;
 
+    // Defensive fallback: convert any stray WRITE_FILE:{...} marker (a non-standard,
+    // never-parsed protocol) into a real FILE_EDIT before the structured parsers run,
+    // so it can never silently vanish while the response text claims it was written.
+    const { visibleContent: afterWriteFileMarkers, fileEdits: writeFileMarkerEdits } =
+      convertWriteFileMarkersToFileEdits(visibleContent);
+    visibleContent = afterWriteFileMarkers;
+
     // Parse LINE_PATCH → FILE_EDIT → FILE_DELETE → FILE_MOVE
     const { visibleContent: afterPatches, linePatches: parsedLinePatches } = extractAllLinePatches(visibleContent);
-    const { visibleContent: afterEdits, fileEdits: parsedFileEdits } = extractAllFileEdits(afterPatches);
+    const { visibleContent: afterEdits, fileEdits: parsedFileEditsRaw } = extractAllFileEdits(afterPatches);
+    const parsedFileEdits = [...parsedFileEditsRaw, ...writeFileMarkerEdits];
     const { visibleContent: afterDeletes } = extractAllFileDeletes(afterEdits);
     const { visibleContent: afterMoves } = extractAllFileMoves(afterDeletes);
     visibleContent = afterMoves;
@@ -3309,13 +3322,17 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         }
       }
 
+      // If the previous turn asked for explicit approval and the user just replied with an
+      // explicit "yes", let this turn's edits through even if they touch the same critical
+      // path — otherwise the gate re-blocks forever and "yes" never has any effect.
       const fileChangesAllowed =
         !hasProposedFileChanges ||
         canProceedWithFileChanges({
           fileEdits: parsedFileEdits,
           linePatches: parsedLinePatches,
           repoFiles,
-        });
+        }) ||
+        userConfirmedPendingChanges(message, conversationHistory);
 
       if (hasProposedFileChanges && !fileChangesAllowed) {
         visibleContent = `${visibleContent}\n\nThese changes touch files that require confirmation before applying. Reply to confirm and I'll proceed.`.trim();
@@ -4660,7 +4677,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
 
   const streamClaude = async (
     messagesForClaude: Anthropic.MessageParam[],
-    options: { tools: boolean; startedAt: number; forceCreate?: boolean },
+    options: { tools: boolean; startedAt: number; forceCreate?: boolean; retryCount?: number },
   ): Promise<void> => {
     if (options.forceCreate) {
       try {
@@ -4722,6 +4739,23 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     stream.on("finalMessage", async (finalMessage) => {
       try {
         appendClaudeUsage(finalMessage, options.startedAt);
+
+        // Robustness: the model occasionally returns a stop with no text and no tool
+        // use at all (observed recurring in long conversations — see must-fix #3 in
+        // the v1 readiness report). Retry once, silently, with the exact same request
+        // before surfacing "Model returned no content" to the user — most instances
+        // are a transient blip on the same turn, not a real content failure.
+        const hadToolUse = options.tools && extractToolUses(finalMessage).length > 0;
+        if (!hadToolUse && !fullText.trim() && (options.retryCount ?? 0) < 1) {
+          req.log.warn(
+            { focusProjectId, conversationId: effectiveConversationId, retryCount: (options.retryCount ?? 0) + 1 },
+            "nexus: model returned empty response — retrying once before surfacing error",
+          );
+          writeStep({ verb: "Retrying", target: "response", detail: "Empty model response, retrying" });
+          streamClaude(messagesForClaude, { ...options, retryCount: (options.retryCount ?? 0) + 1 });
+          return;
+        }
+
         const toolUses = options.tools ? extractToolUses(finalMessage) : [];
         if (toolUses.length > 0) {
           const toolResults = await buildToolResultBlocks(toolUses);

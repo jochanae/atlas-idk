@@ -1700,6 +1700,38 @@ function extractAllFileMoves(content: string): { visibleContent: string; fileMov
   return { visibleContent, fileMoves };
 }
 
+// Defensive fallback for the WRITE_FILE:{"path":...} marker — see builderProtocols.ts
+// convertWriteFileMarkersToFileEdits for the full rationale. Kept as a local copy here
+// since chat.ts maintains its own duplicated file-edit parsing pipeline.
+const WRITE_FILE_MARKER_RE = /```([\w-]*)\n([\s\S]*?)```\s*\nWRITE_FILE:(\{[^\n]+\})/g;
+
+function convertWriteFileMarkersToFileEdits(content: string): {
+  visibleContent: string;
+  fileEdits: FileEdit[];
+} {
+  const fileEdits: FileEdit[] = [];
+  const visibleContent = content
+    .replace(WRITE_FILE_MARKER_RE, (_match, language: string, code: string, json: string) => {
+      try {
+        const parsed = JSON.parse(json) as { path?: string };
+        const path = (parsed.path ?? "").trim();
+        if (path && !BLOCKED_PATH_RE.test(path) && !BLOCKED_DIR_RE.test(path)) {
+          fileEdits.push({
+            path,
+            language: language || "typescript",
+            content: code.endsWith("\n") ? code.slice(0, -1) : code,
+          });
+        }
+      } catch {
+        // Malformed WRITE_FILE JSON — drop the marker but leave no orphaned claim.
+      }
+      return "";
+    })
+    .trim();
+
+  return { visibleContent, fileEdits };
+}
+
 function extractAllLinePatches(content: string): { visibleContent: string; linePatches: LinePatch[] } {
   const startMarker = "LINE_PATCH_START";
   const findMarker = "LINE_PATCH_FIND";
@@ -1816,6 +1848,42 @@ function canProceedWithFileChanges(args: {
   repoFiles: Set<string> | null;
 }): boolean {
   return !hasExistingCriticalFileChange(args);
+}
+
+// Phrases used to tell the user a critical-path change needs explicit approval.
+const APPROVAL_REQUEST_RE =
+  /(these changes touch files that require confirmation before applying|i need explicit approval before making these changes)/i;
+
+// Did the most recent assistant turn ask the user to confirm a blocked change?
+function previousTurnRequestedApproval(history: Array<{ role: string; content: string }>): boolean {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (msg.role !== "assistant") continue;
+    return APPROVAL_REQUEST_RE.test(msg.content ?? "");
+  }
+  return false;
+}
+
+// Short, explicit "yes, apply it" replies — the only signal that should unblock a gated
+// change. Anchored to start/end and rejects trailing hedge/negation words (e.g. "yes
+// but...") so a conditional reply can never be misread as consent.
+const AFFIRMATIVE_CONFIRMATION_RE =
+  /^\s*(?:yes|yep|yeah|yup|sure|confirmed?|approved?|go ahead|do it|apply it|proceed|sounds good|please do|ok(?:ay)?)\s*[,.!]?\s*(?:go ahead|do it|apply it|proceed|make (?:the )?(?:change|edit)s?|ship it|go for it)?\s*[.!]?\s*$/i;
+
+// Is this user message an explicit affirmative reply (not just any message containing "yes")?
+function isAffirmativeConfirmationReply(message: string): boolean {
+  return AFFIRMATIVE_CONFIRMATION_RE.test((message ?? "").trim());
+}
+
+// Once-off bypass for the critical-path gate: only true when the previous turn explicitly
+// asked for approval AND this message is an explicit "yes". This closes the confirmation
+// loop bug — without it, canProceedWithFileChanges() has no way to know consent was given,
+// so it re-blocks the same edit forever even after the user says yes.
+function userConfirmedPendingChanges(
+  message: string,
+  history: Array<{ role: string; content: string }>,
+): boolean {
+  return isAffirmativeConfirmationReply(message) && previousTurnRequestedApproval(history);
 }
 
 const PLAN_PHRASE_RE = /\b(here'?s the plan|here'?s what i(?:'ll| will) do|plan:|steps:|i(?:'ll| will):)\b/i;
@@ -2882,22 +2950,58 @@ async function callModel(
 
   if (onToken) {
     // Streaming path — emit text deltas to the caller as they arrive from Anthropic
-    const stream = anthropic.messages.stream({
+    // Robustness: the model occasionally returns a stop with no text at all (observed
+    // recurring in long conversations — must-fix #3 in the v1 readiness report). Retry
+    // once, silently, with the exact same request before giving up — most instances are
+    // a transient blip on the same turn, not a real content failure.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const stream = anthropic.messages.stream({
+        model,
+        max_tokens: 16000,
+        system: systemPrompt,
+        messages: claudeMessages,
+      });
+      let fullText = "";
+      stream.on("text", (textDelta: string) => {
+        fullText += textDelta;
+        try { onToken(textDelta); } catch { /* client disconnected — swallow */ }
+      });
+      const finalMsg = await stream.finalMessage();
+      const inputTokens = finalMsg.usage.input_tokens ?? null;
+      const outputTokens = finalMsg.usage.output_tokens ?? null;
+      if (!fullText.trim() && attempt === 0) {
+        logger.warn({ model }, "callModel: empty streamed response — retrying once");
+        continue;
+      }
+      return {
+        content: fullText,
+        model,
+        usage: {
+          executionTimeMs: Math.round(performance.now() - startedAt),
+          inputTokens,
+          outputTokens,
+          costUsd: calculateModelCostUsd(model, inputTokens, outputTokens),
+        },
+      };
+    }
+  }
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await anthropic.messages.create({
       model,
-      max_tokens: 16000,
+      max_tokens: 8192,
       system: systemPrompt,
       messages: claudeMessages,
     });
-    let fullText = "";
-    stream.on("text", (textDelta: string) => {
-      fullText += textDelta;
-      try { onToken(textDelta); } catch { /* client disconnected — swallow */ }
-    });
-    const finalMsg = await stream.finalMessage();
-    const inputTokens = finalMsg.usage.input_tokens ?? null;
-    const outputTokens = finalMsg.usage.output_tokens ?? null;
+    const inputTokens = response.usage.input_tokens ?? null;
+    const outputTokens = response.usage.output_tokens ?? null;
+    const content = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!content.trim() && attempt === 0) {
+      logger.warn({ model }, "callModel: empty non-streamed response — retrying once");
+      continue;
+    }
     return {
-      content: fullText,
+      content,
       model,
       usage: {
         executionTimeMs: Math.round(performance.now() - startedAt),
@@ -2907,25 +3011,8 @@ async function callModel(
       },
     };
   }
-
-  const response = await anthropic.messages.create({
-    model,
-    max_tokens: 8192,
-    system: systemPrompt,
-    messages: claudeMessages,
-  });
-  const inputTokens = response.usage.input_tokens ?? null;
-  const outputTokens = response.usage.output_tokens ?? null;
-  return {
-    content: response.content[0]?.type === "text" ? response.content[0].text : "",
-    model,
-    usage: {
-      executionTimeMs: Math.round(performance.now() - startedAt),
-      inputTokens,
-      outputTokens,
-      costUsd: calculateModelCostUsd(model, inputTokens, outputTokens),
-    },
-  };
+  // Unreachable: the loop above always returns on attempt 1 regardless of content.
+  throw new Error("callModel: exhausted retries without returning");
 }
 
 // ── Route ─────────────────────────────────────────────────────────────────────
@@ -5601,9 +5688,16 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     } catch { /* leave malformed clarification blocks visible */ }
   }
 
+  // Defensive fallback: convert any stray WRITE_FILE:{...} marker (a non-standard,
+  // never-parsed protocol) into a real FILE_EDIT before the structured parsers run,
+  // so it can never silently vanish while the response text claims it was written.
+  const { visibleContent: afterWriteFileMarkers, fileEdits: writeFileMarkerEdits } =
+    convertWriteFileMarkersToFileEdits(rawContent);
+
   // Parse: LINE_PATCHes → FILE_EDITs → FILE_DELETEs → FILE_MOVEs → MEMORY_Tn → NODE_RESOLVED → INTENT_TYPE → MEMORY_CHIPS
-  const { visibleContent: afterPatches, linePatches } = extractAllLinePatches(rawContent);
-  const { visibleContent: afterEdits, fileEdits } = extractAllFileEdits(afterPatches);
+  const { visibleContent: afterPatches, linePatches } = extractAllLinePatches(afterWriteFileMarkers);
+  const { visibleContent: afterEdits, fileEdits: fileEditsRaw } = extractAllFileEdits(afterPatches);
+  const fileEdits = [...fileEditsRaw, ...writeFileMarkerEdits];
   const { visibleContent: afterDeletes, fileDeletes } = extractAllFileDeletes(afterEdits);
   const { visibleContent, fileMoves } = extractAllFileMoves(afterDeletes);
   const parsedConfidenceAssessment = extractConfidenceAssessment(visibleContent);
@@ -5617,11 +5711,17 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   // R3: isBuildHandoff bypass removed — all turns go through canProceedWithFileChanges.
   // Build handoffs with new files (no existing repoFiles) still pass since there's
   // no confidence conflict on files the LLM is creating from scratch.
-  const fileChangesAllowed = !hasProposedFileChanges || canProceedWithFileChanges({
-    fileEdits,
-    linePatches,
-    repoFiles,
-  });
+  // If the previous turn asked for explicit approval and the user just replied with an
+  // explicit "yes", let this turn's edits through even if they touch the same critical
+  // path — otherwise the gate re-blocks forever and "yes" never has any effect.
+  const fileChangesAllowed =
+    !hasProposedFileChanges ||
+    canProceedWithFileChanges({
+      fileEdits,
+      linePatches,
+      repoFiles,
+    }) ||
+    userConfirmedPendingChanges(message, history);
 
   // Builder review — quick Haiku pass on proposed file edits to catch common issues
   let reviewNotes: string[] = [];
@@ -7162,6 +7262,44 @@ router.post("/scenario-keep", async (req, res): Promise<void> => {
   );
   await db.update(sessionsTable).set({ messageCount: sql`${sessionsTable.messageCount} + ${validMsgs.length}` }).where(eq(sessionsTable.id, sessionId));
   res.json({ saved: validMsgs.length });
+});
+
+// ── Session reset — clear a stuck conversation mid-thread without deleting the project ──
+// Must-fix #4 (v1 readiness report): previously the only way to recover from a stuck
+// conversation was starting a brand-new project, since the server's persisted history
+// (chat_messages, keyed by sessionId) is authoritative and ignores client-supplied
+// history. This clears that persisted history for one session so the thread can start
+// clean while the project, its files, and its Application Model/ledger state are untouched.
+router.post("/session-reset", async (req, res): Promise<void> => {
+  const { sessionId } = req.body as { sessionId?: number };
+  if (!sessionId) {
+    res.status(400).json({ error: "Missing required field: sessionId" });
+    return;
+  }
+  const authUserId = (req as any).authUser?.id as number | undefined;
+  const [sessionRow] = await db
+    .select({ projectId: sessionsTable.projectId })
+    .from(sessionsTable)
+    .where(eq(sessionsTable.id, sessionId));
+  if (!sessionRow) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+  const [projRow] = await db
+    .select({ userId: projectsTable.userId })
+    .from(projectsTable)
+    .where(eq(projectsTable.id, sessionRow.projectId));
+  if (!projRow || projRow.userId !== authUserId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const deleted = await db
+    .delete(chatMessagesTable)
+    .where(eq(chatMessagesTable.sessionId, sessionId))
+    .returning({ id: chatMessagesTable.id });
+  await db.update(sessionsTable).set({ messageCount: 0 }).where(eq(sessionsTable.id, sessionId));
+  logger.info({ sessionId, projectId: sessionRow.projectId, cleared: deleted.length }, "chat: session thread reset");
+  res.json({ reset: true, cleared: deleted.length });
 });
 
 // ── Quick Prompt generation ───────────────────────────────────────────────────

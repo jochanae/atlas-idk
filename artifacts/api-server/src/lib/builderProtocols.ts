@@ -180,6 +180,45 @@ export function extractAllFileEdits(content: string): { visibleContent: string; 
   return { visibleContent, fileEdits };
 }
 
+/**
+ * Defensive fallback for the WRITE_FILE:{"path":...} marker.
+ *
+ * WRITE_FILE is not a structured protocol the backend ever parsed into a real file
+ * write — only FILE_EDIT_START/FILE_EDIT_CONTENT/FILE_EDIT_END blocks are. If the
+ * model ever emits WRITE_FILE (old habit, stale training data, or a future prompt
+ * regression) immediately after a fenced code block, convert that pair into a real
+ * FileEdit here instead of silently dropping it while the response text claims the
+ * file was written — that silent-drop-plus-false-claim is the bug this closes.
+ */
+const WRITE_FILE_MARKER_RE = /```([\w-]*)\n([\s\S]*?)```\s*\nWRITE_FILE:(\{[^\n]+\})/g;
+
+export function convertWriteFileMarkersToFileEdits(content: string): {
+  visibleContent: string;
+  fileEdits: FileEdit[];
+} {
+  const fileEdits: FileEdit[] = [];
+  const visibleContent = content
+    .replace(WRITE_FILE_MARKER_RE, (_match, language: string, code: string, json: string) => {
+      try {
+        const parsed = JSON.parse(json) as { path?: string };
+        const path = (parsed.path ?? "").trim();
+        if (path && !BLOCKED_PATH_RE.test(path) && !BLOCKED_DIR_RE.test(path)) {
+          fileEdits.push({
+            path,
+            language: language || "typescript",
+            content: code.endsWith("\n") ? code.slice(0, -1) : code,
+          });
+        }
+      } catch {
+        // Malformed WRITE_FILE JSON — drop the marker but leave no orphaned claim.
+      }
+      return "";
+    })
+    .trim();
+
+  return { visibleContent, fileEdits };
+}
+
 export function extractAllLinePatches(content: string): { visibleContent: string; linePatches: LinePatch[] } {
   const startMarker = "LINE_PATCH_START";
   const findMarker = "LINE_PATCH_FIND";
@@ -374,6 +413,50 @@ export function canProceedWithFileChanges(args: {
   repoFiles: Set<string> | null;
 }): boolean {
   return !hasExistingCriticalFileChange(args);
+}
+
+/** Phrases used to tell the user a critical-path change needs explicit approval. */
+const APPROVAL_REQUEST_RE =
+  /(these changes touch files that require confirmation before applying|i need explicit approval before making these changes)/i;
+
+/** Did the most recent assistant turn ask the user to confirm a blocked change? */
+export function previousTurnRequestedApproval(
+  history: Array<{ role: string; content: string }>,
+): boolean {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (msg.role !== "assistant") continue;
+    return APPROVAL_REQUEST_RE.test(msg.content ?? "");
+  }
+  return false;
+}
+
+/**
+ * Short, explicit "yes, apply it" replies — the only signal that should unblock a gated
+ * change. Anchored to the start/end of the message and rejects any trailing hedge/negation
+ * words (e.g. "yes but...", "yes only if...") so a conditional reply can never be
+ * misread as consent.
+ */
+const AFFIRMATIVE_CONFIRMATION_RE =
+  /^\s*(?:yes|yep|yeah|yup|sure|confirmed?|approved?|go ahead|do it|apply it|proceed|sounds good|please do|ok(?:ay)?)\s*[,.!]?\s*(?:go ahead|do it|apply it|proceed|make (?:the )?(?:change|edit)s?|ship it|go for it)?\s*[.!]?\s*$/i;
+
+/** Is this user message an explicit affirmative reply (not just any message containing "yes")? */
+export function isAffirmativeConfirmationReply(message: string): boolean {
+  return AFFIRMATIVE_CONFIRMATION_RE.test((message ?? "").trim());
+}
+
+/**
+ * Once-off bypass for the critical-path gate: only true when the previous turn
+ * explicitly asked for approval AND this message is an explicit "yes" — never a
+ * general trust-the-model bypass. This is what closes the confirmation loop bug:
+ * without it, canProceedWithFileChanges() has no way to know consent was given,
+ * so it re-blocks the same edit forever even after the user says yes.
+ */
+export function userConfirmedPendingChanges(
+  message: string,
+  history: Array<{ role: string; content: string }>,
+): boolean {
+  return isAffirmativeConfirmationReply(message) && previousTurnRequestedApproval(history);
 }
 
 /** Write-claim phrases: model narrated a file write without emitting blocks. */

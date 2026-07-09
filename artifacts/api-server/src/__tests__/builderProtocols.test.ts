@@ -10,6 +10,10 @@ import {
   mergeMemoryChips,
   matchEntryChips,
   summarizeFileEdits,
+  userConfirmedPendingChanges,
+  isAffirmativeConfirmationReply,
+  previousTurnRequestedApproval,
+  convertWriteFileMarkersToFileEdits,
 } from "../lib/builderProtocols";
 
 describe("extractAllFileEdits", () => {
@@ -136,6 +140,102 @@ describe("canProceedWithFileChanges", () => {
       repoFiles: new Set(["src/App.tsx"]),
     });
     expect(allowed).toBe(true);
+  });
+});
+
+describe("confirmation loop bug fix", () => {
+  const approvalMsg =
+    "These changes touch files that require confirmation before applying. Reply to confirm and I'll proceed.";
+
+  it("detects a prior assistant approval request", () => {
+    const history = [
+      { role: "user", content: "update package.json" },
+      { role: "assistant", content: approvalMsg },
+    ];
+    expect(previousTurnRequestedApproval(history)).toBe(true);
+  });
+
+  it("does not flag unrelated assistant replies as approval requests", () => {
+    const history = [
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "Sure, here's the plan." },
+    ];
+    expect(previousTurnRequestedApproval(history)).toBe(false);
+  });
+
+  it("recognizes short explicit affirmative replies", () => {
+    for (const msg of ["yes", "Yes, apply it", "go ahead", "do it", "confirmed", "ok proceed"]) {
+      expect(isAffirmativeConfirmationReply(msg)).toBe(true);
+    }
+  });
+
+  it("does not treat unrelated messages containing 'yes' as confirmation", () => {
+    expect(isAffirmativeConfirmationReply("yes but only if it doesn't break tests")).toBe(false);
+    expect(isAffirmativeConfirmationReply("can you also fix the yesterday bug")).toBe(false);
+  });
+
+  it("bypasses the gate once user confirms after an approval request (breaks the loop)", () => {
+    const history = [
+      { role: "user", content: "update package.json" },
+      { role: "assistant", content: approvalMsg },
+    ];
+    expect(userConfirmedPendingChanges("yes, apply it", history)).toBe(true);
+  });
+
+  it("does not bypass the gate on a fresh message with no prior approval request", () => {
+    const history = [{ role: "user", content: "hi" }, { role: "assistant", content: "Hey!" }];
+    expect(userConfirmedPendingChanges("yes, apply it", history)).toBe(false);
+  });
+
+  it("does not bypass the gate when reply is not affirmative even after approval request", () => {
+    const history = [
+      { role: "user", content: "update package.json" },
+      { role: "assistant", content: approvalMsg },
+    ];
+    expect(userConfirmedPendingChanges("actually, don't", history)).toBe(false);
+  });
+});
+
+describe("WRITE_FILE marker bug fix", () => {
+  it("converts a stray WRITE_FILE marker + preceding code fence into a real FileEdit", () => {
+    const raw = `Here you go.
+\`\`\`typescript
+export function Hello() {
+  return "hi";
+}
+\`\`\`
+WRITE_FILE:{"path":"src/Hello.ts"}`;
+
+    const { visibleContent, fileEdits } = convertWriteFileMarkersToFileEdits(raw);
+    expect(fileEdits).toHaveLength(1);
+    expect(fileEdits[0].path).toBe("src/Hello.ts");
+    expect(fileEdits[0].language).toBe("typescript");
+    expect(fileEdits[0].content).toContain("export function Hello");
+    expect(visibleContent).not.toContain("WRITE_FILE");
+    expect(visibleContent).not.toContain("```");
+  });
+
+  it("blocks WRITE_FILE markers targeting forbidden paths", () => {
+    const raw = `\`\`\`text
+SECRET=1
+\`\`\`
+WRITE_FILE:{"path":".env"}`;
+    const { fileEdits } = convertWriteFileMarkersToFileEdits(raw);
+    expect(fileEdits).toHaveLength(0);
+  });
+
+  it("leaves content untouched when there is no WRITE_FILE marker", () => {
+    const raw = "Just a normal reply with a ```js\nconsole.log(1)\n``` code block, no marker.";
+    const { visibleContent, fileEdits } = convertWriteFileMarkersToFileEdits(raw);
+    expect(fileEdits).toHaveLength(0);
+    expect(visibleContent).toBe(raw);
+  });
+
+  it("drops malformed WRITE_FILE JSON without throwing", () => {
+    const raw = `\`\`\`ts\nconst x = 1;\n\`\`\`\nWRITE_FILE:{not valid json}`;
+    expect(() => convertWriteFileMarkersToFileEdits(raw)).not.toThrow();
+    const { fileEdits } = convertWriteFileMarkersToFileEdits(raw);
+    expect(fileEdits).toHaveLength(0);
   });
 });
 
