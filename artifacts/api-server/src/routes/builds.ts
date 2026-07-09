@@ -18,6 +18,28 @@ const COMMANDS: Record<BuildCommand, string[]> = {
 const MAX_DURATION_MS = 120_000;
 const ANSI_RE = /\x1B\[[0-9;]*m/g;
 
+// ── Run kind classification ───────────────────────────────────────────────
+// A run is "execution" if it has at least one step that changed code / ran a
+// command; otherwise, if it has any milestone-shaped step, it's "milestone"
+// (pure conversational progress — decisions, designs, plans, inline artifacts).
+// Falls back to "execution" for legacy runs with no recognizable steps at all,
+// so nothing that used to render disappears.
+const EXECUTION_VERBS = new Set([
+  "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "FILE_MOVE", "FILE_CREATE",
+  "BUILD_RUN", "ERROR", "READ", "READING", "NOT_FOUND",
+]);
+const MILESTONE_VERBS = new Set([
+  "MILESTONE_REQUIREMENTS", "MILESTONE_DECISION", "MILESTONE_DESIGN",
+  "MILESTONE_PLAN", "ARTIFACT_GENERATED", "THOUGHT", "SUMMARY",
+]);
+
+function computeRunKind(steps: Array<{ verb?: unknown }>): "execution" | "milestone" {
+  const verbs = steps.map((s) => String(s.verb ?? "").toUpperCase());
+  if (verbs.some((v) => EXECUTION_VERBS.has(v))) return "execution";
+  if (verbs.some((v) => MILESTONE_VERBS.has(v))) return "milestone";
+  return "execution";
+}
+
 function findWorkspaceRoot(startDir: string): string {
   let current = startDir;
   while (true) {
@@ -255,32 +277,36 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
       stepsByRunId.get(rid)!.push(step);
     }
 
-    const runs = runsResult.rows.map((r) => ({
-      id: r.id,
-      projectId: r.project_id,
-      threadId: r.thread_id,
-      messageId: r.message_id,
-      mode: r.mode,
-      status: r.status,
-      summary: r.summary,
-      prompt: (r.prompt as string | null) ?? null,
-      intent: (r.intent as string | null) ?? null,
-      startedAt: r.started_at,
-      completedAt: r.completed_at,
-      elapsedMs: r.elapsed_ms,
-      steps: (stepsByRunId.get(r.id as string) ?? []).map((s) => ({
-        id: s.id,
-        verb: s.verb,
-        target: s.target,
-        status: s.status,
-        detail: s.detail,
-        content: s.content ?? null,
-        beforeContent: s.before_content ?? null,
-        artifactUrl: (s.artifact_url as string | null) ?? null,
-        orderIndex: (s.order_index as number) ?? 0,
-        createdAt: s.created_at,
-      })),
-    }));
+    const runs = runsResult.rows.map((r) => {
+      const rawSteps = stepsByRunId.get(r.id as string) ?? [];
+      return {
+        id: r.id,
+        projectId: r.project_id,
+        threadId: r.thread_id,
+        messageId: r.message_id,
+        mode: r.mode,
+        status: r.status,
+        summary: r.summary,
+        prompt: (r.prompt as string | null) ?? null,
+        intent: (r.intent as string | null) ?? null,
+        kind: computeRunKind(rawSteps),
+        startedAt: r.started_at,
+        completedAt: r.completed_at,
+        elapsedMs: r.elapsed_ms,
+        steps: rawSteps.map((s) => ({
+          id: s.id,
+          verb: s.verb,
+          target: s.target,
+          status: s.status,
+          detail: s.detail,
+          content: s.content ?? null,
+          beforeContent: s.before_content ?? null,
+          artifactUrl: (s.artifact_url as string | null) ?? null,
+          orderIndex: (s.order_index as number) ?? 0,
+          createdAt: s.created_at,
+        })),
+      };
+    });
 
     res.json({ runs });
   } catch (err) {
@@ -324,6 +350,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
       summary: r.summary,
       prompt: (r.prompt as string | null) ?? null,
       intent: (r.intent as string | null) ?? null,
+      kind: computeRunKind(stepsResult.rows),
       startedAt: r.started_at,
       completedAt: r.completed_at,
       elapsedMs: r.elapsed_ms,

@@ -30,6 +30,7 @@ import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCr
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, synthesizeGlobalNarrative, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { maybeEmitMilestones } from "../lib/milestoneClassifier";
 import {
   buildTier1BlockForNexusConversation,
   buildTier1StatusBlock,
@@ -3922,6 +3923,20 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     // Background genome extraction — non-blocking, rate-limited. Skip on CHAT.
     if (!isChatTurn) {
       void maybeExtractGenome(focusProjectId ?? null, nexusMsgId);
+    }
+
+    // Conversational Timeline milestones (MILESTONE_REQUIREMENTS/DECISION/DESIGN/PLAN,
+    // ARTIFACT_GENERATED) — fire-and-forget post-turn classifier. BUILD and DECIDE turns
+    // only; CHAT/Just Talk never gets classified (small talk must not hit the Timeline).
+    if (!isChatTurn && focusProjectId && (intent === "BUILD" || intent === "DECIDE")) {
+      void maybeEmitMilestones({
+        projectId: focusProjectId,
+        threadId: sessionId ?? null,
+        messageId: nexusMsgId ?? sourceChatMessageId ?? null,
+        userText: body.message ?? "",
+        assistantText: visibleContent,
+        intent,
+      });
     }
 
     // Thinking receipt extraction — global Ask Atlas turns only (no project focus).
