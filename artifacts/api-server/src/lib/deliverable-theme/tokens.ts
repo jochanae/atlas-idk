@@ -47,8 +47,28 @@ export const ATLAS_DEFAULT_THEME: DeliverableTheme = {
   },
 };
 
-export function resolveDeliverableTheme(): DeliverableTheme {
-  // Phase 3B.1: Atlas default only. Project-theme inference and explicit
-  // user-style overrides land in 3B.2 — do not add branching logic here yet.
-  return ATLAS_DEFAULT_THEME;
+export interface ThemeResolutionInput {
+  creativePrinciples?: string[];
+  experienceIntent?: {
+    emotionalRegister?: string[];
+    visualLanguage?: string[];
+    designPrinciples?: string[];
+    interactionPosture?: string[];
+  };
+  styleOverride?: string;
+  projectName?: string;
+}
+
+/**
+ * Resolves the theme a deliverable should render with, in order:
+ * explicit user style override > inferred project theme (from DNA) > Atlas
+ * default. Both the override and the DNA-derived signals go through the same
+ * inference call (`inferProjectTheme`) — the override text is just weighted
+ * higher inside that prompt — so there is one code path, not two.
+ */
+export async function resolveDeliverableTheme(input?: ThemeResolutionInput): Promise<DeliverableTheme> {
+  if (!input) return ATLAS_DEFAULT_THEME;
+  const { inferProjectTheme } = await import("./inferTheme");
+  const inferred = await inferProjectTheme(input);
+  return inferred ?? ATLAS_DEFAULT_THEME;
 }

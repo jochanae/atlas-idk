@@ -6,6 +6,7 @@
 import PptxGenJS from "pptxgenjs";
 import { registerArtifactRenderer, type ArtifactRenderOutput } from "../artifactEngine";
 import { resolveDeliverableTheme, type DeliverableTheme } from "../deliverable-theme/tokens";
+import { loadProjectThemeSignals } from "../deliverable-theme/projectSignals";
 import { directPresentation } from "../presentation-director/director";
 import type { SlidePlan } from "../presentation-director/schema";
 import { PPTX_LAYOUTS } from "./pptxLayouts";
@@ -16,6 +17,10 @@ export interface PptxGenerationInput {
   context: string;
   title?: string;
   docType?: string;
+  /** Owning project — used to infer a project theme (Phase 3B.2). Falls back to the Atlas default theme when absent. */
+  projectId?: number;
+  /** Explicit user instruction on visual style, e.g. "make it look playful and colorful". Wins over the inferred project theme. */
+  styleOverride?: string;
 }
 
 function defineDeckMaster(pptx: PptxGenJS, theme: DeliverableTheme, brandLabel: string): void {
@@ -48,8 +53,7 @@ function defineDeckMaster(pptx: PptxGenJS, theme: DeliverableTheme, brandLabel: 
   });
 }
 
-function buildPptxBuffer(plan: SlidePlan, brandLabel: string): Promise<Buffer> {
-  const theme = resolveDeliverableTheme();
+async function buildPptxBuffer(plan: SlidePlan, brandLabel: string, theme: DeliverableTheme): Promise<Buffer> {
   const pptx = new PptxGenJS();
   defineDeckMaster(pptx, theme, brandLabel);
 
@@ -67,10 +71,18 @@ registerArtifactRenderer({
   category: "presentation",
   async render(input: PptxGenerationInput): Promise<ArtifactRenderOutput> {
     const docType = input.docType ?? "deck";
-    const plan = await directPresentation(input.context, docType);
+    const [plan, themeSignals] = await Promise.all([
+      directPresentation(input.context, docType),
+      input.projectId
+        ? loadProjectThemeSignals(input.projectId, input.styleOverride)
+        : input.styleOverride
+          ? Promise.resolve({ styleOverride: input.styleOverride })
+          : Promise.resolve(undefined),
+    ]);
     if (input.title) plan.title = input.title;
+    const theme = await resolveDeliverableTheme(themeSignals);
 
-    const buffer = await buildPptxBuffer(plan, "Atlas");
+    const buffer = await buildPptxBuffer(plan, "Atlas", theme);
 
     return {
       buffer,
@@ -81,10 +93,11 @@ registerArtifactRenderer({
         title: plan.title,
         subtitle: plan.subtitle,
         purpose: plan.purpose,
+        theme: theme.name,
         slideHeadings: plan.slides.map((s) => ("heading" in s ? s.heading : s.layout)),
         slideCount: plan.slides.length,
       },
-      summary: `Generated deck "${plan.title}" (${plan.slides.length} slides, ${plan.purpose}).`,
+      summary: `Generated deck "${plan.title}" (${plan.slides.length} slides, ${plan.purpose}, theme: ${theme.name}).`,
     };
   },
 });

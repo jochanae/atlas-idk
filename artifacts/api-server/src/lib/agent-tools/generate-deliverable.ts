@@ -39,8 +39,12 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
         .string()
         .optional()
         .describe("Optional short instruction narrowing what the deliverable should focus on, if the user asked for something specific."),
+      style: z
+        .string()
+        .optional()
+        .describe("Optional explicit visual style instruction, e.g. 'make it look playful and colorful' or 'match our fintech branding'. Only pass this if the user asked for a specific look — otherwise the project's own theme is inferred automatically."),
     }),
-    execute: async ({ type, title, docType, focus }) => {
+    execute: async ({ type, title, docType, focus, style }) => {
       const started = performance.now();
       ctx.emitToolCall("generate_deliverable", { type, title, docType });
       try {
@@ -73,7 +77,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           sessionId: null,
           type,
           sourceMessageId: ctx.messageId ?? null,
-          input: { context, title, docType },
+          input: { context, title, docType, projectId: ctx.projectId, styleOverride: style },
         });
 
         const downloadUrl = `/api/projects/${artifact.projectId}/artifacts/${artifact.id}/download`;

@@ -56,9 +56,10 @@
 - [Nexus vs Chat routes](nexus-vs-chat-routes.md) — workspace uses /api/nexus/chat (not /api/chat); run card fixes must target nexus.ts
 - [E2E dev-test-login tier override](e2e-test-login-tiers.md) — use ?tier=pro on dev-test-login to bypass the free-plan 1-project limit in multi-project e2e tests
 - [Non-destructive rollback workaround](non-destructive-rollback.md) — git reset/checkout/commit are hard-blocked for this agent; restore old-commit tree state via `git show <rev>:<path>` blob extraction per file instead
+- [Project Theme Inference (3B.2)](project-theme-inference.md) — resolveDeliverableTheme() is async, priority: user override > inferred project theme > Atlas default; PPTX only so far
 - [Thinking/Doing/Receipt chat lifecycle](thinking-doing-receipt-lifecycle.md) — prose-suppression and run-card-visibility must share one verb classifier, or a turn can show both at once
 - [IMAGE_GEN vs CHAT output-guard scrub](image-gen-chat-scrub.md) — sketch/image requests could silently die with no image because output-guard scrub was tied to fallible intent classification, not explicit user opt-out
-- [Deliverable Design System (Phase 3B)](deliverable-design-system.md) — shared brand-token layer for PPTX/DOCX/PDF/HTML renderers; 3B.1 (PPTX+Atlas theme) done, 3B.2-4 (project theme/style override/layout catalog/other formats) not started
+- [Deliverable Design System (Phase 3B)](deliverable-design-system.md) — shared brand-token layer for PPTX/DOCX/PDF/HTML renderers; 3B.1-3B.3 done (PPTX only), 3B.3-icons deferred, 3B.4 (other formats) not started
 - [Nexus shared agent-tools bridge](nexus-shared-agent-tools-bridge.md) — nexus.ts (raw Anthropic SDK) derives tool schemas from buildAgentTools() via anthropic-adapter.ts; never hand-roll a duplicate Anthropic.Tool for a capability already in the shared registry
 - [Nexus/chat v1 reliability fixes](nexus-chat-v1-reliability-fixes.md) — confirmation loop, WRITE_FILE marker, empty-response retry, session-reset; all 4 must-fix-before-v1 bugs resolved
 - [Artifact Engine Architecture](artifact-engine-architecture.md) — one shared engine for every file-backed deliverable; renderers are plug-ins (generate only); engine owns storage/persistence/Ledger/download/preview

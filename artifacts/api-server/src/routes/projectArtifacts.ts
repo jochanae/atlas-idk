@@ -671,7 +671,7 @@ router.post("/projects/:id/deliverables/:type/generate", async (req, res): Promi
       sessionId: sessionId ?? null,
       type,
       sourceMessageId: sourceMessageId ?? null,
-      input: { context: resolvedContext, title, docType, ...rendererOptions },
+      input: { context: resolvedContext, title, docType, projectId, ...rendererOptions },
     });
 
     res.status(201).json(artifact);
