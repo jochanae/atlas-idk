@@ -2314,6 +2314,9 @@ function RightPanel({
             {workspaceSubTab === "workspace" && (
               <WorkspaceFilesPanel projectId={projectId} onOpenTerminal={onOpenTerminal} />
             )}
+            {workspaceSubTab === "codebase" && (
+              <CodebasePanel projectId={projectId} />
+            )}
             {workspaceSubTab === "github" && (
               <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
                 {/* Repository | Activity | Settings pill bar */}
