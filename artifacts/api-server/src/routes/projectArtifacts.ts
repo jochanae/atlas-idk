@@ -21,6 +21,8 @@ import "../lib/renderers/docxRenderer";
 import "../lib/renderers/pdfRenderer";
 import "../lib/renderers/pptxRenderer";
 import "../lib/renderers/xlsxRenderer";
+import "../lib/renderers/mermaidRenderer";
+import "../lib/renderers/chartRenderer";
 
 export { logProjectArtifact } from "../lib/artifactLog";
 
@@ -634,13 +636,14 @@ router.post("/projects/:id/deliverables/:type/generate", async (req, res): Promi
     if (!(await assertOwner(projectId, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
 
     const type = req.params.type;
-    const { context, conversationId, sessionId, sourceMessageId, title, docType } = req.body as {
+    const { context, conversationId, sessionId, sourceMessageId, title, docType, ...rendererOptions } = req.body as {
       context?: string;
       conversationId?: string;
       sessionId?: number | null;
       sourceMessageId?: number | null;
       title?: string;
       docType?: string;
+      [key: string]: unknown;
     };
 
     const resolvedContext = context && context.trim().length > 0
@@ -652,12 +655,15 @@ router.post("/projects/:id/deliverables/:type/generate", async (req, res): Promi
       return;
     }
 
+    // Renderer-specific options (e.g. "diagramType" for mermaid, "chartType" for
+    // charts) are passed through as-is — the generic route doesn't need to know
+    // about them, each renderer's input type defines what it looks for.
     const artifact = await generateArtifact({
       projectId,
       sessionId: sessionId ?? null,
       type,
       sourceMessageId: sourceMessageId ?? null,
-      input: { context: resolvedContext, title, docType },
+      input: { context: resolvedContext, title, docType, ...rendererOptions },
     });
 
     res.status(201).json(artifact);
