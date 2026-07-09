@@ -75,3 +75,52 @@ export const MessageCitations: React.FC<{ text: string }> = ({ text }) => {
   if (last < text.length) parts.push(text.slice(last));
   return <>{parts}</>;
 };
+
+/**
+ * Recursively walk ReactMarkdown children and replace citation patterns
+ * inside string leaves. Use inside `components` overrides:
+ *
+ *   p: ({ children }) => <p>{renderChildrenWithCitations(children)}</p>
+ *
+ * Non-string nodes (including <code>, <a>, <strong>) pass through untouched;
+ * their children are recursed. Chips render inline and never duplicate text
+ * (matched span is replaced, not appended).
+ */
+export function renderChildrenWithCitations(children: ReactNode): ReactNode {
+  return Children.map(children, (child, idx) => {
+    if (typeof child === "string") {
+      const parts: ReactNode[] = [];
+      const re = new RegExp(CITATION_RE);
+      let last = 0;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(child)) !== null) {
+        const [full, path, ls, le] = m;
+        if (!path.includes("/") && !ls) continue;
+        if (m.index > last) parts.push(child.slice(last, m.index));
+        parts.push(
+          <CitationChip
+            key={`c-${idx}-${m.index}`}
+            path={path}
+            lineStart={ls ? Number(ls) : undefined}
+            lineEnd={le ? Number(le) : undefined}
+          />,
+        );
+        last = m.index + full.length;
+      }
+      if (parts.length === 0) return child;
+      if (last < child.length) parts.push(child.slice(last));
+      return <>{parts}</>;
+    }
+    // Don't descend into code blocks / inline code — file:line inside code
+    // should stay verbatim so users can copy it.
+    if (isValidElement<{ children?: ReactNode }>(child)) {
+      const type = (child.type as { displayName?: string; name?: string })?.name
+        ?? (typeof child.type === "string" ? child.type : "");
+      if (type === "code" || type === "pre") return child;
+      return cloneElement(child, {
+        children: renderChildrenWithCitations(child.props.children),
+      });
+    }
+    return child;
+  });
+}
