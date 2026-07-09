@@ -17,6 +17,7 @@ export interface ProjectSource {
 }
 
 export interface TreeNode {
+  name: string;
   path: string;
   type: "file" | "dir";
   sizeBytes?: number;
@@ -57,10 +58,11 @@ export function useProjectSource(projectId: number | null | undefined) {
     setLoading(true);
     setError(null);
     try {
-      const data = await jget<{ source: ProjectSource | null }>(
-        `/api/sources/primary?projectId=${projectId}`,
+      const data = await jget<{ sources: ProjectSource[] }>(
+        `/api/sources/${projectId}`,
       );
-      setSource(data.source);
+      const primary = data.sources.find((s) => s.isPrimary) ?? data.sources[0] ?? null;
+      setSource(primary);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -84,14 +86,14 @@ export function useProjectSource(projectId: number | null | undefined) {
 }
 
 export function useSourceTree(sourceId: string | null | undefined) {
-  const [tree, setTree] = useState<TreeNode | null>(null);
+  const [tree, setTree] = useState<TreeNode[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (!sourceId) { setTree(null); return; }
     let alive = true;
     setLoading(true);
-    jget<{ tree: TreeNode }>(`/api/sources/tree?sourceId=${sourceId}`)
+    jget<{ tree: TreeNode[] }>(`/api/sources/${sourceId}/tree`)
       .then((d) => { if (alive) setTree(d.tree); })
       .catch((e) => { if (alive) setError(String(e)); })
       .finally(() => { if (alive) setLoading(false); });
@@ -109,10 +111,10 @@ export function useSourceFile(sourceId: string | null | undefined, path: string 
     let alive = true;
     setLoading(true);
     setError(null);
-    jget<{ file: FilePayload }>(
-      `/api/sources/file?sourceId=${sourceId}&path=${encodeURIComponent(path)}`,
+    jget<FilePayload>(
+      `/api/sources/${sourceId}/file?path=${encodeURIComponent(path)}`,
     )
-      .then((d) => { if (alive) setFile(d.file); })
+      .then((d) => { if (alive) setFile(d); })
       .catch((e) => { if (alive) setError(String(e)); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
@@ -122,10 +124,10 @@ export function useSourceFile(sourceId: string | null | undefined, path: string 
 
 export async function searchSource(sourceId: string, query: string): Promise<SearchHit[]> {
   if (!query.trim()) return [];
-  const d = await jget<{ hits: SearchHit[] }>(
-    `/api/sources/search?sourceId=${sourceId}&q=${encodeURIComponent(query)}`,
+  const d = await jget<{ hits: Array<{ path: string; line: number; preview: string }> }>(
+    `/api/sources/${sourceId}/search?q=${encodeURIComponent(query)}`,
   );
-  return d.hits ?? [];
+  return (d.hits ?? []).map((h) => ({ path: h.path, line: h.line, text: h.preview }));
 }
 
 // --- Deep-link event contract -------------------------------------------------
