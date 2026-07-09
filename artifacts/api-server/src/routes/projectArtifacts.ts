@@ -24,6 +24,7 @@ import "../lib/renderers/xlsxRenderer";
 import "../lib/renderers/mermaidRenderer";
 import "../lib/renderers/chartRenderer";
 import "../lib/renderers/bundleRenderer";
+import "../lib/renderers/draftRenderer";
 
 export { logProjectArtifact } from "../lib/artifactLog";
 
