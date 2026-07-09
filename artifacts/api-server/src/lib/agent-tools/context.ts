@@ -13,6 +13,28 @@ export interface AgentLinePatch {
   replace: string;
 }
 
+/** Structured metadata for a file-backed deliverable created this turn (pptx/docx/xlsx). */
+export interface GeneratedArtifactMeta {
+  ok: true;
+  artifactId: number;
+  projectId: number;
+  type: string;
+  title: string;
+  extension: string;
+  downloadUrl: string;
+  preview: Record<string, unknown>;
+  summary?: string;
+}
+
+/** Non-code timeline step accumulated by tools for execution_run_steps persistence. */
+export interface AgentTimelineStep {
+  verb: string;
+  target: string | null;
+  detail: string | null;
+  content: string | null;
+  artifactUrl?: string | null;
+}
+
 export interface AgentToolSideEffects {
   fileEdits: AgentFileEdit[];
   linePatches: AgentLinePatch[];
@@ -21,6 +43,10 @@ export interface AgentToolSideEffects {
   /** Set once runClosedLoopVerification has been run for this turn (Phase 3 completion gate). */
   verificationPassed: boolean | null;
   verificationReportText: string | null;
+  /** File-backed deliverables created this turn (for stream done + inline cards). */
+  generatedArtifacts: GeneratedArtifactMeta[];
+  /** Timeline steps (e.g. ARTIFACT_CREATED) to persist on the execution run. */
+  timelineSteps: AgentTimelineStep[];
 }
 
 export interface AgentPlanState {
@@ -54,6 +80,8 @@ export function createSideEffects(): AgentToolSideEffects {
     buildRunEmitted: false,
     verificationPassed: null,
     verificationReportText: null,
+    generatedArtifacts: [],
+    timelineSteps: [],
   };
 }
 

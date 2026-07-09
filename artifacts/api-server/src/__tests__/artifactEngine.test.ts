@@ -129,6 +129,7 @@ describe("Artifact Engine — generateArtifact contract", () => {
     expect(result.extension).toBe("txt");
     expect(result.sizeBytes).toBe(testRenderOutput.buffer.byteLength);
     expect(result.preview).toEqual(testRenderOutput.preview);
+    expect(result.summary).toBe("A test artifact.");
     expect(result.objectPath).toBe("/objects/uploads/abc123");
     expect(result.ledgerEntryId).toBe(900);
   });

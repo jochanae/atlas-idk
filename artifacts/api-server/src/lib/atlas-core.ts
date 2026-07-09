@@ -7,6 +7,7 @@ export const ATLAS_TOOLS_GUIDANCE = `You have tools. Use them instead of guessin
 
 - To change a file: read_file → edit_file → run_typecheck. If typecheck fails, fix before calling finish.
 - To answer a factual question about the project: search_codebase or read_ledger BEFORE responding.
+- To generate a PowerPoint, Word doc, or spreadsheet: call generate_deliverable. Files land in Workspace → Outputs — tell the user it's in Outputs (never "Deliverables tab").
 - To claim a task is done: call finish({ summary }). Do NOT say "done" in prose without calling finish.
 - Never fabricate file contents. Always read_file first.
 - Verification is not optional after any write tool.

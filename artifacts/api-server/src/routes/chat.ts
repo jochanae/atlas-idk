@@ -5033,7 +5033,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     // call a tool she's never been told about, and would keep telling users
     // she can't produce files even though the renderer + Artifact Engine have
     // worked the whole time.
-    systemPrompt += `\n\nYou CAN generate real downloadable files — presentations (PowerPoint/.pptx), documents (.docx), and spreadsheets (.xlsx) — using the generate_deliverable tool. When the user asks for a deck, presentation, slides, document, write-up, or spreadsheet, call generate_deliverable instead of saying you can't create files. It builds the file from this conversation and saves it to the project's Deliverables tab.`;
+    systemPrompt += `\n\nYou CAN generate real downloadable files — presentations (PowerPoint/.pptx), documents (.docx), and spreadsheets (.xlsx) — using the generate_deliverable tool. When the user asks for a deck, presentation, slides, document, write-up, or spreadsheet, call generate_deliverable instead of saying you can't create files. It builds the file from this conversation and saves it to Workspace → Outputs. After generating, tell the user it's in Outputs (never say "Deliverables tab").`;
 
     // Phase 3A step 1: cross-project search. Give Atlas explicit permission +
     // instruction to search the user's OTHER projects instead of guessing from
@@ -5070,6 +5070,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
       const { fullText, messageId, inputTokens, sideEffects, planState } = loopResult;
       const responseFileEdits = sideEffects.fileEdits;
       const responseLinePatches = sideEffects.linePatches;
+      const generatedArtifacts = sideEffects.generatedArtifacts;
+      const timelineSteps = sideEffects.timelineSteps;
 
       const planArtifact = structuredPlanEnabled && planState.latestPlanPayload
         ? {
@@ -5077,6 +5079,32 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
             legacy: toLegacyPlanArtifact(planState.latestPlanPayload),
           }
         : undefined;
+
+      // Persist ARTIFACT_CREATED (and any other tool timeline steps) so Workspace
+      // → Changes → Timeline can open Outputs via artifact://<id>.
+      let agentLoopRunId: string | null = null;
+      if (timelineSteps.length > 0 || generatedArtifacts.length > 0) {
+        try {
+          agentLoopRunId = await persistExecutionRun({
+            projectId,
+            sessionId,
+            messageId: messageId ?? null,
+            userPrompt: message,
+            thoughtText: null,
+            startedAt: now,
+            persistContent: fullText,
+            isFlowMode: false,
+            intent: whisperIntent,
+            responseFileEdits,
+            fileDeletes: [],
+            responseLinePatches,
+            intermediateSteps: timelineSteps,
+            forcePersist: true,
+          });
+        } catch (runErr) {
+          logger.warn({ err: runErr, projectId }, "agent loop: execution_run persist failed — non-fatal");
+        }
+      }
 
       res.write(`data: ${JSON.stringify({
         type: "done",
@@ -5092,6 +5120,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         fileEdits: responseFileEdits.length > 0 ? responseFileEdits : undefined,
         fileEdit: responseFileEdits.length > 0 ? responseFileEdits[0] : undefined,
         linePatches: responseLinePatches.length > 0 ? responseLinePatches : undefined,
+        ...(generatedArtifacts.length > 0 ? { generatedArtifacts } : {}),
+        ...(agentLoopRunId ? { runId: agentLoopRunId } : {}),
         ...(planArtifact ? { planArtifact: planArtifact.legacy, structuredPlan: planArtifact.structured } : {}),
         ...(planState.activePlanId ? { planId: planState.activePlanId } : {}),
         developerLens: {

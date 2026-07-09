@@ -41,7 +41,7 @@ export interface ArtifactRenderOutput {
 export interface ArtifactRenderer<TInput = Record<string, unknown>> {
   /** Artifact type key, stored in project_artifacts.type (e.g. "docx"). */
   type: string;
-  /** Grouping used by the Deliverables tab (Documents/Presentations/etc). */
+  /** Grouping used by Workspace → Outputs (Documents/Presentations/etc). */
   category: ArtifactCategory;
   /** Generates the file content for this artifact type. */
   render(input: TInput): Promise<ArtifactRenderOutput>;
@@ -72,6 +72,8 @@ export interface GeneratedArtifact {
   extension: string;
   sizeBytes: number;
   preview: Record<string, unknown>;
+  /** Short human summary from the renderer (slide count, section count, etc.). */
+  summary: string | null;
   objectPath: string;
   ledgerEntryId: number | null;
   createdAt: string;
@@ -179,6 +181,7 @@ export async function generateArtifact<TInput>({
     extension: rendered.extension,
     sizeBytes: rendered.buffer.byteLength,
     preview: rendered.preview,
+    summary: rendered.summary ?? null,
     objectPath,
     ledgerEntryId,
     createdAt: row.createdAt.toISOString(),
