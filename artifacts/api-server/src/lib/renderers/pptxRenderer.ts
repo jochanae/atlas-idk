@@ -1,11 +1,14 @@
 // PPTX renderer — plug-in #3 for the Artifact Engine.
-// Generates a structured slide deck (title slide + content slides) from
-// conversation context via Claude, then renders it with pptxgenjs.
+// Phase 3B.3: content/structure decisions now come from the Presentation
+// Director (renderer-agnostic SlidePlan); this file only executes that plan —
+// picking the layout-drawing function for each slide and painting it with the
+// current theme tokens via pptxLayouts.ts.
 import PptxGenJS from "pptxgenjs";
-import { z } from "zod";
 import { registerArtifactRenderer, type ArtifactRenderOutput } from "../artifactEngine";
-import { generateValidatedContentPlan } from "./contentPlan";
 import { resolveDeliverableTheme, type DeliverableTheme } from "../deliverable-theme/tokens";
+import { directPresentation } from "../presentation-director/director";
+import type { SlidePlan } from "../presentation-director/schema";
+import { PPTX_LAYOUTS } from "./pptxLayouts";
 
 const MASTER_NAME = "ATLAS_DECK_MASTER";
 
@@ -14,44 +17,6 @@ export interface PptxGenerationInput {
   title?: string;
   docType?: string;
 }
-
-const PptxContentPlanSchema = z.object({
-  title: z.string().min(1),
-  subtitle: z.string().optional(),
-  slides: z
-    .array(
-      z.object({
-        heading: z.string().min(1),
-        bullets: z.array(z.string()).default([]),
-        notes: z.string().optional(),
-      }),
-    )
-    .min(1),
-});
-type PptxContentPlan = z.infer<typeof PptxContentPlanSchema>;
-
-const PPTX_CONTENT_PROMPT = `You are a presentation writer producing a {DOC_TYPE} slide deck from the conversation context below.
-
-Conversation context:
-{CONTEXT}
-
-Output ONLY valid JSON (no markdown, no explanation) with this shape:
-{
-  "title": "<deck title>",
-  "subtitle": "<optional one-line subtitle>",
-  "slides": [
-    {
-      "heading": "<slide heading>",
-      "bullets": ["<bullet point, keep short>"],
-      "notes": "<optional speaker notes>"
-    }
-  ]
-}
-
-Rules:
-- Produce 4-10 content slides that reflect what was actually discussed — do not invent content.
-- Each slide should have 2-5 short bullets, not paragraphs.
-- Keep headings and bullets concise — this is a deck, not a document.`;
 
 function defineDeckMaster(pptx: PptxGenJS, theme: DeliverableTheme, brandLabel: string): void {
   pptx.defineSlideMaster({
@@ -83,60 +48,15 @@ function defineDeckMaster(pptx: PptxGenJS, theme: DeliverableTheme, brandLabel: 
   });
 }
 
-function buildPptxBuffer(plan: PptxContentPlan, brandLabel: string): Promise<Buffer> {
+function buildPptxBuffer(plan: SlidePlan, brandLabel: string): Promise<Buffer> {
   const theme = resolveDeliverableTheme();
   const pptx = new PptxGenJS();
   defineDeckMaster(pptx, theme, brandLabel);
 
-  const titleSlide = pptx.addSlide({ masterName: MASTER_NAME });
-  titleSlide.addText(plan.title, {
-    x: 0.6, y: 2.05, w: "88%", h: 1.1,
-    fontFace: theme.fonts.heading, fontSize: 36, bold: true, align: "left",
-    color: theme.colors.heading,
-  });
-  // Accent divider under the deck title, echoing the app's own gold rule.
-  titleSlide.addShape("rect", {
-    x: 0.62, y: 3.15, w: 1.4, h: 0.03,
-    fill: { color: theme.colors.accent },
-  });
-  if (plan.subtitle) {
-    titleSlide.addText(plan.subtitle, {
-      x: 0.6, y: 3.35, w: "80%", h: 0.7,
-      fontFace: theme.fonts.body, fontSize: 16, italic: true, align: "left",
-      color: theme.colors.accent,
-    });
-  }
-
-  for (const slide of plan.slides) {
-    const s = pptx.addSlide({ masterName: MASTER_NAME });
-    s.addText(slide.heading, {
-      x: 0.5, y: 0.42, w: "90%", h: 0.7,
-      fontFace: theme.fonts.heading, fontSize: 26, bold: true,
-      color: theme.colors.heading,
-    });
-    s.addShape("rect", {
-      x: 0.52, y: 1.12, w: 0.9, h: 0.025,
-      fill: { color: theme.colors.accent },
-    });
-    if (slide.bullets.length > 0) {
-      s.addText(
-        slide.bullets.map((b) => ({
-          text: b,
-          options: {
-            bullet: { code: "25AA", color: theme.colors.accent },
-            breakLine: true,
-            paraSpaceAfter: 12,
-          },
-        })),
-        {
-          x: 0.5, y: 1.5, w: "90%", h: 3.6, valign: "top",
-          fontFace: theme.fonts.body, fontSize: 16, color: theme.colors.body,
-        },
-      );
-    }
-    if (slide.notes) {
-      s.addNotes(slide.notes);
-    }
+  for (const slideContent of plan.slides) {
+    const slide = pptx.addSlide({ masterName: MASTER_NAME });
+    const draw = PPTX_LAYOUTS[slideContent.layout];
+    draw(slide, theme, slideContent);
   }
 
   return pptx.write({ outputType: "nodebuffer" }) as Promise<Buffer>;
@@ -147,8 +67,7 @@ registerArtifactRenderer({
   category: "presentation",
   async render(input: PptxGenerationInput): Promise<ArtifactRenderOutput> {
     const docType = input.docType ?? "deck";
-    const prompt = PPTX_CONTENT_PROMPT.replace("{DOC_TYPE}", docType).replace("{CONTEXT}", input.context);
-    const plan = await generateValidatedContentPlan<PptxContentPlan>(prompt, PptxContentPlanSchema, "PPTX renderer");
+    const plan = await directPresentation(input.context, docType);
     if (input.title) plan.title = input.title;
 
     const buffer = await buildPptxBuffer(plan, "Atlas");
@@ -161,10 +80,11 @@ registerArtifactRenderer({
       preview: {
         title: plan.title,
         subtitle: plan.subtitle,
-        slideHeadings: plan.slides.map((s) => s.heading),
-        slideCount: plan.slides.length + 1,
+        purpose: plan.purpose,
+        slideHeadings: plan.slides.map((s) => ("heading" in s ? s.heading : s.layout)),
+        slideCount: plan.slides.length,
       },
-      summary: `Generated deck "${plan.title}" (${plan.slides.length + 1} slides).`,
+      summary: `Generated deck "${plan.title}" (${plan.slides.length} slides, ${plan.purpose}).`,
     };
   },
 });
