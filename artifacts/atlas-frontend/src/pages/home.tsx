@@ -5922,6 +5922,9 @@ export default function Home() {
           { label: "Parking", onClick: () => setLocation("/parking"), icon: (
             <ParkingBadgeIcon size={20} />
           )},
+          { label: "Knowledge", onClick: () => setLocation("/knowledge"), icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4a2 2 0 00-2 2v13"/><path d="M12 4a2 2 0 012 2v13"/><path d="M4 7c2-1 5-1 8 0v13c-3-1-6-1-8 0V7z"/><path d="M20 7c-2-1-5-1-8 0v13c3-1 6-1 8 0V7z"/></svg>
+          )},
           { label: "Profile", onClick: () => setShowProfile(true), icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           )},

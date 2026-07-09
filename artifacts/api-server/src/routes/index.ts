@@ -70,6 +70,7 @@ import accountRouter from "./account";
 import memoryRouter from "./memory";
 import sourcesRouter from "./sources";
 import architectureDiffRouter from "./architecture-diff";
+import knowledgeRouter from "./knowledge";
 
 const router: IRouter = Router();
 
@@ -124,6 +125,7 @@ router.use(requireAuth, deployRouter);
 router.use(requireAuth, zipRouter);
 router.use(requireAuth, sourcesRouter);
 router.use(requireAuth, architectureDiffRouter);
+router.use(requireAuth, knowledgeRouter);
 
 // Stats
 router.use(requireAuth, statsRouter);
