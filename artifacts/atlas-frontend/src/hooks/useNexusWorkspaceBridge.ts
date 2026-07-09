@@ -17,17 +17,20 @@ import { useNexusChatStream, type NexusMessage, type NexusLiveStep } from "./use
 import type { ChatMessage } from "@/pages/workspace";
 import { workspaceEventBus } from "@/lib/workspaceEventBus";
 
-function deriveConversationId(projectId: number): string {
+// Returns the stored conversationId from localStorage, or null if none exists.
+// Does NOT generate a new UUID — that happens either after server recovery
+// confirms no prior conversation exists, or immediately for URL-routed workspaces.
+function deriveConversationId(projectId: number): string | null {
   const key = `nexus_conv_${projectId}`;
   try {
-    const stored = localStorage.getItem(key);
-    if (stored) return stored;
-    const id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-    return id;
+    return localStorage.getItem(key);
   } catch {
-    return crypto.randomUUID();
+    return null;
   }
+}
+
+function storeConversationId(projectId: number, conversationId: string): void {
+  try { localStorage.setItem(`nexus_conv_${projectId}`, conversationId); } catch { /* ignore */ }
 }
 
 function parseWriteFile(content: string): Array<{ path: string; fileContent: string }> {
@@ -96,9 +99,12 @@ export function useNexusWorkspaceBridge(
 ): NexusWorkspaceBridge {
   const pid = typeof projectId === "number" ? projectId : 0;
   const [conversationId, setConversationId] = useState<string>(() =>
-    opts?.initialConversationId || (pid ? deriveConversationId(pid) : "")
+    opts?.initialConversationId || (pid ? deriveConversationId(pid) : null) || ""
   );
   const historyLoadedRef = useRef(false);
+  // Tracks whether a server recovery attempt has been made for this mount.
+  // Prevents double-firing if the effect re-runs during recovery.
+  const recoveryAttemptedRef = useRef(false);
 
   const { messages, isStreaming, isPending, liveStep, setMessages, send, abort, clearMessages } = useNexusChatStream({
     focusProjectId: pid || null,
@@ -108,7 +114,7 @@ export function useNexusWorkspaceBridge(
     onConversationId: (cid) => {
       setConversationId(cid);
       if (pid) {
-        try { localStorage.setItem(`nexus_conv_${pid}`, cid); } catch { /* ignore */ }
+        storeConversationId(pid, cid);
       }
     },
   });
@@ -119,10 +125,11 @@ export function useNexusWorkspaceBridge(
   useEffect(() => {
     if (!pid) return;
     if (prevPidRef.current !== pid) {
-      setConversationId(opts?.initialConversationId || deriveConversationId(pid));
+      setConversationId(opts?.initialConversationId || deriveConversationId(pid) || "");
       clearMessages();
       prevPidRef.current = pid;
       historyLoadedRef.current = false; // allow re-load for new project
+      recoveryAttemptedRef.current = false; // allow re-recovery for new project
     }
   }, [pid, opts?.initialConversationId, clearMessages]);
 
@@ -135,8 +142,42 @@ export function useNexusWorkspaceBridge(
     if (conversationId === opts.initialConversationId) return;
     setConversationId(opts.initialConversationId);
     historyLoadedRef.current = false;
-    try { localStorage.setItem(`nexus_conv_${pid}`, opts.initialConversationId); } catch { /* ignore */ }
+    storeConversationId(pid, opts.initialConversationId);
   }, [pid, opts?.initialConversationId, conversationId]);
+
+  // Conversation recovery: if localStorage had no stored conversationId for this
+  // project (conversationId initialised to ""), ask the server for the most recent
+  // known thread before committing to a brand-new UUID. This prevents a cleared
+  // localStorage / incognito / new device from silently creating a ghost thread
+  // with no history while the real conversation sits untouched in the DB.
+  useEffect(() => {
+    if (!pid || opts?.initialConversationId) return; // URL-routed — no recovery needed
+    if (conversationId !== "") return;               // localStorage had something — already good
+    if (recoveryAttemptedRef.current) return;
+    recoveryAttemptedRef.current = true;
+
+    fetch(`/api/projects/${pid}/latest-conversation`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: { conversationId: string | null }) => {
+        if (data.conversationId) {
+          // Server has a real conversation — recover it.
+          storeConversationId(pid, data.conversationId);
+          setConversationId(data.conversationId);
+        } else {
+          // No prior conversation on server — this is a genuinely new project thread.
+          const fresh = crypto.randomUUID();
+          storeConversationId(pid, fresh);
+          setConversationId(fresh);
+        }
+      })
+      .catch(() => {
+        // Network/auth failure — fall back to a fresh UUID so the workspace isn't stuck.
+        const fresh = crypto.randomUUID();
+        storeConversationId(pid, fresh);
+        setConversationId(fresh);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pid]); // intentionally omit conversationId — checked via closure at effect time
 
   // Load prior conversation history on mount (and on project switch).
   // This restores messages that would otherwise be lost when the user navigates

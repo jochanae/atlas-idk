@@ -1785,4 +1785,37 @@ router.get("/projects/:projectId/tier1-gaps", async (req, res): Promise<void> =>
   });
 });
 
+// Returns the most recent conversationId used in this project's nexus thread.
+// Used by the frontend to recover a lost conversation pointer (e.g. after
+// localStorage is cleared, incognito, or a new device) instead of silently
+// creating a ghost thread with no history.
+router.get("/projects/:projectId/latest-conversation", async (req, res): Promise<void> => {
+  const projectId = parseInt(req.params.projectId, 10);
+  if (isNaN(projectId) || projectId <= 0) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [project] = await db
+    .select({ id: projectsTable.id })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+  if (!project) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const [row] = await db
+    .select({ conversationId: nexusMessagesTable.conversationId })
+    .from(nexusMessagesTable)
+    .where(and(
+      eq(nexusMessagesTable.projectId, projectId),
+      eq(nexusMessagesTable.userId, userId),
+    ))
+    .orderBy(desc(nexusMessagesTable.createdAt))
+    .limit(1);
+
+  res.json({ conversationId: row?.conversationId ?? null });
+});
+
 export default router;
