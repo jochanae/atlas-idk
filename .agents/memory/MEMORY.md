@@ -1,4 +1,5 @@
 - [Closed-Loop Verification](closed-loop-verification.md) — manifest/build/typecheck/truncation/env/seed checks gate the agent loop's `finish` tool; POST /api/fs/:projectId/verify for on-demand checks
+- [Nexus chat write-reliability failure modes](nexus-chat-write-reliability.md) — 3 distinct silent/stuck file-write failures in /api/nexus/chat found via Scheduling benchmark: empty-response, dropped WRITE_FILE marker, non-applying confirm loop
 - [Delivery Engine Architecture](delivery-engine-architecture.md) — Artifact Engine (creates) vs Delivery Engine (distributes) are separate systems; pluggable adapter contract; provider failures never invalidate the artifact
 - [Global Narrative Memory](global-narrative-memory.md) — living 2-3 sentence cross-thread narrative on users table; synthesized after each Ask Atlas turn; injected into both nexus.ts + chat.ts system prompts
 - [Single-Surface Workspace Architecture](home-chat-state.md) — Ask Atlas deleted entirely; Workspace is the only conversation surface; Conversation Mode/Build Mode toggle on one thread, no handoff

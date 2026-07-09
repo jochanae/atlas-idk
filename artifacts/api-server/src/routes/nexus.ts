@@ -4769,12 +4769,25 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
   const messageLC = message.toLowerCase();
   const isExplicitCreate = EXPLICIT_CREATE_SIGNALS.some(s => messageLC.includes(s));
 
+  // create_project is a home/Ask-Atlas action only. Once a conversation is already
+  // scoped to a project (focusProjectId set), Atlas must NEVER spin up another one —
+  // build-flavored phrasing like "build the X now" / "create the Y" inside an active
+  // workspace turn must not be mistaken for a request to create a NEW project.
+  // Guard forceCreate on focusProjectId being unset, not just on message phrasing.
+  const shouldForceCreate = allowBuildSideEffects && isExplicitCreate && !focusProjectId;
+  if (allowBuildSideEffects && isExplicitCreate && focusProjectId) {
+    req.log.warn(
+      { focusProjectId, messagePreview: message.slice(0, 120) },
+      "nexus/chat: suppressed forceCreate — explicit-create phrasing matched inside an already-active project conversation",
+    );
+  }
+
   // Tools and forceCreate are BUILD-only. CHAT, DECIDE, Just Talk, and
   // Conversation Mode must never enter the tool loop.
   streamClaude(anthropicMessages, {
     tools: allowBuildSideEffects,
     startedAt: modelStartedAt,
-    forceCreate: allowBuildSideEffects ? isExplicitCreate : false,
+    forceCreate: shouldForceCreate,
   });
 
   return;
