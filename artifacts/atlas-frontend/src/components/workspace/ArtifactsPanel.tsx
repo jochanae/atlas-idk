@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Wand2 } from "lucide-react";
+import { ChevronDown, Download, FileOutput, Wand2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/api";
 
 const DRAFT_TYPES: Array<{ type: string; label: string }> = [
@@ -16,9 +16,13 @@ type ArtifactRecord = {
   sessionId?: number | null;
   type: string;
   title: string;
-  content: string;
+  content?: string;
   createdAt?: string;
   created_at?: string;
+  version?: number;
+  metadata?: Record<string, unknown> | null;
+  payload?: Record<string, unknown> | null;
+  source?: "project" | "legacy";
 };
 
 type DraftResult = {
@@ -92,6 +96,34 @@ function renderArtifactMarkdown(md: string): string {
   return out.join("\n");
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function textValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function typeLabel(type: string, metadata: Record<string, unknown>): string {
+  const extension = textValue(metadata.extension)?.toLowerCase();
+  const normalized = (extension || type || "output").toLowerCase();
+  if (normalized === "pptx") return "PowerPoint";
+  if (normalized === "docx") return "Word Doc";
+  if (normalized === "xlsx") return "Spreadsheet";
+  if (normalized === "pdf") return "PDF";
+  if (normalized.startsWith("draft_")) return "Draft";
+  return normalized.replace(/_/g, " ");
+}
+
+function isFileBackedArtifact(a: ArtifactRecord): boolean {
+  const metadata = asRecord(a.metadata);
+  return Boolean(metadata.objectPath || metadata.extension || metadata.mimeType || metadata.category === "presentation" || metadata.category === "document" || metadata.category === "spreadsheet");
+}
+
+function artifactDate(a: ArtifactRecord): string {
+  return a.createdAt ?? a.created_at ?? "";
+}
+
 export function ArtifactsPanel({ projectId }: { projectId: number }) {
   const [items, setItems] = useState<ArtifactRecord[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,14 +139,36 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const r = await fetch(`/api/artifacts?projectId=${projectId}`, {
-        credentials: "include",
-        headers: getAuthHeaders(),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      const arr: ArtifactRecord[] = Array.isArray(data) ? data : (data.artifacts ?? []);
-      setItems(arr);
+      const [projectRes, legacyRes] = await Promise.allSettled([
+        fetch(`/api/projects/${projectId}/artifacts`, {
+          credentials: "include",
+          headers: getAuthHeaders(),
+        }),
+        fetch(`/api/artifacts?projectId=${projectId}`, {
+          credentials: "include",
+          headers: getAuthHeaders(),
+        }),
+      ]);
+
+      const projectData = projectRes.status === "fulfilled" && projectRes.value.ok
+        ? await projectRes.value.json().catch(() => ({}))
+        : {};
+      const legacyData = legacyRes.status === "fulfilled" && legacyRes.value.ok
+        ? await legacyRes.value.json().catch(() => ({}))
+        : {};
+      const projectItems: ArtifactRecord[] = ((projectData.artifacts ?? []) as ArtifactRecord[])
+        .map((a) => ({ ...a, source: "project" as const }));
+      const legacyRaw = Array.isArray(legacyData) ? legacyData : (legacyData.artifacts ?? []);
+      const legacyItems: ArtifactRecord[] = (legacyRaw as ArtifactRecord[])
+        .map((a) => ({ ...a, source: "legacy" as const }));
+
+      if (projectRes.status === "fulfilled" && legacyRes.status === "fulfilled" && !projectRes.value.ok && !legacyRes.value.ok) {
+        throw new Error(`HTTP ${projectRes.value.status}`);
+      }
+
+      const merged = [...projectItems, ...legacyItems]
+        .sort((a, b) => new Date(artifactDate(b)).getTime() - new Date(artifactDate(a)).getTime());
+      setItems(merged);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
       setItems([]);
@@ -122,6 +176,24 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   }, [projectId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem(`atlas-open-output-${projectId}`);
+      if (pending) {
+        sessionStorage.removeItem(`atlas-open-output-${projectId}`);
+        setExpanded(pending);
+      }
+    } catch {}
+
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ artifactId?: number | string; projectId?: number }>).detail ?? {};
+      if (detail.projectId && detail.projectId !== projectId) return;
+      if (detail.artifactId != null) setExpanded(String(detail.artifactId));
+    };
+    window.addEventListener("axiom:focus-output", handler);
+    return () => window.removeEventListener("axiom:focus-output", handler);
+  }, [projectId]);
 
   useEffect(() => {
     if (!draftMenuOpen) return;
@@ -160,13 +232,14 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
       setDeliveryTarget({});
       setDelivery({ status: "idle" });
       toast(`${label} generated.`);
+      void load();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to generate draft.";
       toast(message.includes("No conversation context") ? "Start a conversation first — nothing to draft from yet." : message);
     } finally {
       setGeneratingDraft(null);
     }
-  }, [projectId]);
+  }, [load, projectId]);
 
   const handleCopyDraft = useCallback(async () => {
     if (!draftResult) return;
@@ -226,23 +299,25 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   }, [draftResult, deliveryTarget, projectId]);
 
   const handleDelete = useCallback(async (id: string | number) => {
+    const item = (items ?? []).find((a) => String(a.id) === String(id));
+    if (item?.source !== "project") return;
     try {
-      const r = await fetch(`/api/artifacts/${id}`, {
+      const r = await fetch(`/api/projects/${projectId}/artifacts/${id}`, {
         method: "DELETE",
         credentials: "include",
         headers: getAuthHeaders(),
       });
       if (!r.ok) throw new Error();
       setItems((prev) => (prev ?? []).filter((a) => a.id !== id));
-      toast("Artifact deleted.");
+      toast("Output deleted.");
     } catch {
-      toast("Failed to delete artifact.");
+      toast("Failed to delete output.");
     }
-  }, []);
+  }, [items, projectId]);
 
   const handleExport = useCallback((a: ArtifactRecord) => {
     const safe = a.title.replace(/[^a-z0-9\-_. ]+/gi, "_").slice(0, 80) || "artifact";
-    const blob = new Blob([a.content], { type: "text/markdown" });
+    const blob = new Blob([a.content ?? ""], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url; link.download = `${safe}.md`;
@@ -254,7 +329,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
     const win = window.open("", "_blank");
     if (!win) { toast("Pop-up blocked — allow pop-ups to export PDF."); return; }
     const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    const bodyHtml = renderArtifactMarkdown(a.content);
+    const bodyHtml = renderArtifactMarkdown(a.content ?? "");
     const titleEsc = escapeHtml(a.title);
     const html = `<!doctype html>
 <html lang="en">
@@ -310,7 +385,15 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 14px" }} className="scrollbar-none">
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12, position: "relative" }} ref={draftMenuRef}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, position: "relative" }} ref={draftMenuRef}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <FileOutput size={13} /> Outputs
+          </div>
+          <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.6, marginTop: 3 }}>
+            Generated files, decks, documents, and saved drafts.
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => setDraftMenuOpen((v) => !v)}
@@ -426,10 +509,10 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
         </div>
       )}
       {loading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>Loading artifacts…</div>
+        <div style={{ display: "flex", justifyContent: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>Loading outputs…</div>
       ) : error ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>
-          <div>Couldn’t load artifacts.</div>
+          <div>Couldn’t load outputs.</div>
           <button type="button" onClick={() => void load()} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "transparent", border: "1px solid rgba(201,162,76,0.3)", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>Retry</button>
         </div>
       ) : !items || items.length === 0 ? (
@@ -438,24 +521,42 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>
           </svg>
           <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-muted)", opacity: 0.5, textAlign: "center", lineHeight: 1.65 }}>
-            No artifacts saved yet.<br />
-            <span style={{ fontSize: "var(--ts-sm)" }}>Atlas-emitted artifacts appear here.</span>
+            No outputs saved yet.<br />
+            <span style={{ fontSize: "var(--ts-sm)" }}>Generated files and saved drafts appear here.</span>
           </div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((a) => {
-            const isOpen = expanded === a.id;
+            const isOpen = String(expanded) === String(a.id);
             const created = a.createdAt ?? a.created_at ?? "";
             const dateLabel = created ? new Date(created).toLocaleString() : "";
             const typeStr = (a.type ?? "").toLowerCase();
-            const looksHtml = typeStr.includes("html") || /<\s*(html|body|div|section|main|!doctype)/i.test(a.content ?? "");
+            const metadata = asRecord(a.metadata);
+            const payload = asRecord(a.payload);
+            const preview = asRecord(payload.preview);
+            const content = a.content ?? textValue(payload.markdown) ?? textValue(preview.body) ?? "";
+            const fileBacked = isFileBackedArtifact(a);
+            const extension = textValue(metadata.extension)?.toLowerCase() ?? (fileBacked ? typeStr : "md");
+            const label = typeLabel(a.type, metadata);
+            const category = textValue(metadata.category);
+            const slideHeadings = Array.isArray(preview.slideHeadings)
+              ? preview.slideHeadings.filter((h): h is string => typeof h === "string" && h.trim().length > 0)
+              : [];
+            const slideCount = typeof preview.slideCount === "number" ? preview.slideCount : null;
+            const previewTitle = textValue(preview.title) ?? a.title;
+            const previewSubtitle = textValue(preview.subtitle);
+            const looksHtml = !fileBacked && (typeStr.includes("html") || /<\s*(html|body|div|section|main|!doctype)/i.test(content));
             const sendToDraft = (e: React.MouseEvent) => {
               e.stopPropagation();
               window.dispatchEvent(new CustomEvent("axiom:open-preview", {
-                detail: { source: "sandbox", content: a.content },
+                detail: { source: "sandbox", content },
               }));
               toast("Sent to Draft preview.");
+            };
+            const downloadFile = (e?: React.MouseEvent) => {
+              e?.stopPropagation();
+              window.open(`/api/projects/${projectId}/artifacts/${a.id}/download`, "_blank");
             };
             return (
               <div key={a.id} style={{ border: "1px solid var(--atlas-border)", borderRadius: 10, background: "var(--atlas-card)", overflow: "hidden" }}>
@@ -465,9 +566,24 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                   style={{ width: "100%", textAlign: "left", padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)" }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
-                    {dateLabel && <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", marginTop: 2 }}>{dateLabel}</div>}
+                    <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{previewTitle}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+                      {dateLabel && <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)" }}>{dateLabel}</span>}
+                      {slideCount != null && <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.8 }}>· {slideCount} slides</span>}
+                      {category && <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.8 }}>· {category}</span>}
+                    </div>
                   </div>
+                  {fileBacked && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={downloadFile}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); downloadFile(e as unknown as React.MouseEvent); } }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.14)", border: "1px solid rgba(201,162,76,0.4)", color: "var(--atlas-gold)", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}
+                    >
+                      <Download size={11} /> Download
+                    </span>
+                  )}
                   {looksHtml && (
                     <span
                       role="button"
@@ -479,23 +595,54 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                       Preview
                     </span>
                   )}
-                  <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "2px 6px", borderRadius: 6 }}>{a.type}</span>
+                  <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "2px 6px", borderRadius: 6 }}>{label}</span>
                   <ChevronDown size={14} style={{ opacity: 0.6, transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 160ms" }} />
                 </button>
                 {isOpen && (
                   <div style={{ borderTop: "1px solid var(--atlas-border)", padding: "12px 14px" }}>
-                    <div
-                      style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
-                      className="atlas-artifact-md"
-                      dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(a.content) }}
-                    />
+                    {fileBacked ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(201,162,76,0.18)", background: "rgba(201,162,76,0.05)" }}>
+                          <div style={{ fontSize: "var(--ts-sm)", fontWeight: 650, marginBottom: 4 }}>{previewTitle}</div>
+                          {previewSubtitle && <div style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.5 }}>{previewSubtitle}</div>}
+                          <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                            {label}{extension ? ` · .${extension}` : ""}{slideCount != null ? ` · ${slideCount} slides` : ""}
+                          </div>
+                        </div>
+                        {slideHeadings.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Slide outline</div>
+                            {slideHeadings.map((heading, idx) => (
+                              <div key={`${a.id}-slide-${idx}`} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: "var(--ts-sm)", lineHeight: 1.45 }}>
+                                <span style={{ fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", opacity: 0.75, fontSize: "var(--ts-xs)", minWidth: 18 }}>{idx + 2}</span>
+                                <span style={{ color: "var(--atlas-fg)", opacity: 0.88 }}>{heading}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
+                        className="atlas-artifact-md"
+                        dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
+                      />
+                    )}
                     <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                       {looksHtml && (
                         <button type="button" onClick={sendToDraft} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Send to Draft</button>
                       )}
-                      <button type="button" onClick={() => handleExport(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export MD</button>
-                      <button type="button" onClick={() => handleExportPDF(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export PDF</button>
-                      <button type="button" onClick={() => void handleDelete(a.id)} style={{ fontSize: "var(--ts-xs)", color: "rgb(229,115,115)", background: "transparent", border: "1px solid rgba(229,115,115,0.3)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Delete</button>
+                      {fileBacked ? (
+                        <button type="button" onClick={downloadFile} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Download .{extension || a.type}</button>
+                      ) : (
+                        <>
+                          <button type="button" onClick={() => handleExport(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export MD</button>
+                          <button type="button" onClick={() => handleExportPDF(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export PDF</button>
+                        </>
+                      )}
+                      {a.source === "project" && (
+                        <button type="button" onClick={() => void handleDelete(a.id)} style={{ fontSize: "var(--ts-xs)", color: "rgb(229,115,115)", background: "transparent", border: "1px solid rgba(229,115,115,0.3)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Delete</button>
+                      )}
                     </div>
                   </div>
                 )}

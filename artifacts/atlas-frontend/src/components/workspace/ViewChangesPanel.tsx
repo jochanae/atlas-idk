@@ -684,16 +684,22 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
               flex: 1, minWidth: 0,
             }}>{step.target}</span>
           )}
-          {step.verb === "ARTIFACT_CREATED" && step.artifactUrl && (
+          {(step.verb === "ARTIFACT_CREATED" || step.verb === "ARTIFACT_GENERATED") && step.artifactUrl && (
             <a
               href={step.artifactUrl.startsWith("workspace://")
                 ? undefined
+                : step.artifactUrl.startsWith("artifact://")
+                  ? undefined
                 : step.artifactUrl}
               onClick={(e) => {
                 if (step.artifactUrl?.startsWith("workspace://")) {
                   e.preventDefault();
                   const path = step.artifactUrl.replace(/^workspace:\/\//, "");
                   window.dispatchEvent(new CustomEvent("axiom:open-file", { detail: { path } }));
+                } else if (step.artifactUrl?.startsWith("artifact://")) {
+                  e.preventDefault();
+                  const artifactId = step.artifactUrl.replace(/^artifact:\/\//, "");
+                  window.dispatchEvent(new CustomEvent("axiom:open-output", { detail: { artifactId } }));
                 }
               }}
               style={{
@@ -706,7 +712,7 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
               Open Output →
             </a>
           )}
-          {canExpand && !alwaysOpen && !(step.verb === "ARTIFACT_CREATED" && step.artifactUrl) && (
+          {canExpand && !alwaysOpen && !((step.verb === "ARTIFACT_CREATED" || step.verb === "ARTIFACT_GENERATED") && step.artifactUrl) && (
             <span style={{
               fontSize: 9, color: "rgba(var(--atlas-gold-rgb), 0.45)",
               fontFamily: "var(--app-font-mono)", flexShrink: 0, marginLeft: "auto",
@@ -893,7 +899,7 @@ function WorkspaceRunReceipts({
           fontSize: 9.5, fontFamily: "var(--app-font-mono)",
           letterSpacing: "0.14em", textTransform: "uppercase",
           color: "var(--atlas-gold)", opacity: 0.7,
-        }}>Runs</span>
+        }}>Activity</span>
         <span style={{
           fontSize: 9, background: "rgba(var(--atlas-gold-rgb), 0.12)",
           color: "rgba(var(--atlas-gold-rgb), 0.8)", border: "1px solid rgba(var(--atlas-gold-rgb), 0.2)",
@@ -1063,7 +1069,7 @@ export function ViewChangesPanel({
             fontSize: 9.5, fontFamily: "var(--app-font-mono)",
             letterSpacing: "0.14em", textTransform: "uppercase",
             color: "var(--atlas-gold)", opacity: 0.75,
-          }}>Viewing run</span>
+          }}>Viewing activity</span>
           <span style={{
             fontFamily: "var(--app-font-mono)", fontSize: 11,
             color: "var(--atlas-fg)", opacity: 0.85,
@@ -1144,7 +1150,7 @@ export function ViewChangesPanel({
             padding: "18px 14px", fontSize: 12,
             color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.65,
           }}>
-            {runId ? "Run not found — it may still be loading." : "No runs yet for this project."}
+            {runId ? "Activity not found — it may still be loading." : "No timeline activity yet for this project."}
           </div>
         )
       ) : (

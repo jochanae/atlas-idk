@@ -6699,6 +6699,27 @@ export default function Workspace() {
     return () => window.removeEventListener("axiom:open-changes", handler);
   }, [isMobile]);
 
+  // "axiom:open-output" — dispatched from Timeline artifact rows.
+  // Routes to the Outputs panel and asks ArtifactsPanel to expand the target item.
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ artifactId?: number | string }>).detail ?? {};
+      if (detail.artifactId != null) {
+        try { sessionStorage.setItem(`atlas-open-output-${id}`, String(detail.artifactId)); } catch {}
+      }
+      setLeftTab("artifacts");
+      if (isMobile) {
+        setMobileTab("artifacts");
+        setRightOpen(true);
+      }
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("axiom:focus-output", { detail: { projectId: id, artifactId: detail.artifactId } }));
+      }, 80);
+    };
+    window.addEventListener("axiom:open-output", handler);
+    return () => window.removeEventListener("axiom:open-output", handler);
+  }, [id, isMobile]);
+
   // "axiom:open-preview" — dispatched from WorkspaceRunCard "Preview" button.
   // Opens the Preview panel and forwards the requested source mode.
   useEffect(() => {
@@ -6781,7 +6802,7 @@ export default function Workspace() {
             }),
           });
           if (!res.ok) throw new Error();
-          if (res.status === 201) toast(`${title} saved to Artifacts.`);
+          if (res.status === 201) toast(`${title} saved to Outputs.`);
         } catch {
           toast("Failed to save artifact.");
         }
