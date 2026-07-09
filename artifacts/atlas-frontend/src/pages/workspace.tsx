@@ -1918,6 +1918,27 @@ function RightPanel({
     return () => window.removeEventListener("axiom:open-env-panel", handler);
   }, []);
 
+  // "codebase:open" — dispatched from CitationChip anywhere in the app.
+  // Opens Files → Codebase; CodebasePanel's own listener focuses the file/line.
+  // If we're not already on the panel, we re-dispatch after mount so the
+  // detail isn't lost.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const alreadyOpen = tab === "files" && workspaceSubTab === "codebase";
+      setTab("files");
+      setWorkspaceSubTab("codebase");
+      if (!alreadyOpen && detail) {
+        // Give CodebasePanel a tick to mount and register its listener.
+        window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("codebase:open", { detail }));
+        }, 60);
+      }
+    };
+    window.addEventListener("codebase:open", handler);
+    return () => window.removeEventListener("codebase:open", handler);
+  }, [tab, workspaceSubTab]);
+
   const openConnections = useCallback(() => {
     setTab("connections");
     onOpenConnections?.();
