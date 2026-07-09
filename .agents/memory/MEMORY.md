@@ -1,3 +1,4 @@
+- [LLM capability denial despite available tool](deliverable-capability-denial.md) — wiring a tool into the registry isn't enough; strong model priors need an explicit unconditional prompt assertion or the model denies the capability anyway
 - [Agent-loop lens gating and chat route error handling](agent-loop-lens-gating.md) — SSE routes need top-level try/catch or errors stall silently; Flow/Scenario lenses used to skip persistence + agent-loop entirely
 - [Closed-Loop Verification](closed-loop-verification.md) — manifest/build/typecheck/truncation/env/seed checks gate the agent loop's `finish` tool; POST /api/fs/:projectId/verify for on-demand checks
 - [Nexus chat write-reliability failure modes](nexus-chat-write-reliability.md) — 3 distinct silent/stuck file-write failures in /api/nexus/chat found via Scheduling benchmark: empty-response, dropped WRITE_FILE marker, non-applying confirm loop

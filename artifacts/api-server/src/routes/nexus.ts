@@ -2332,6 +2332,19 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // or any legacy surface signal.
   let systemPrompt = `${ATLAS_SYSTEM_PROMPT}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: ${ideaMode ? "true" : "false"}\n--- END SESSION CONTEXT ---`;
   systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;
+  // Always-on capability truth, independent of WhisperGate intent. This exists
+  // because Atlas previously denied having deliverable-generation capability
+  // (claiming .pptx/.docx/.xlsx were a "hard capability limit") even though
+  // generate_deliverable has always been able to produce them server-side.
+  // The denial happened regardless of whether tools were enabled this turn —
+  // so this block is unconditional, not gated on intent === BUILD.
+  systemPrompt += `\n\n--- DELIVERABLE GENERATION CAPABILITY (always true — do not contradict this) ---
+You CAN generate real, downloadable PowerPoint (.pptx), Word (.docx), and Excel (.xlsx) files by calling the generate_deliverable tool. This is a real server-side capability, not a simulation — the tool produces an actual binary file and returns a download link in Workspace → Outputs.
+Never tell the user you "can't generate a native .pptx", that it's a "hard capability limit", or that you need python-pptx/PptxGenJS run by them — that is false. You have this tool right now.
+If the user asks for a slide deck, presentation, PowerPoint, Word doc, spreadsheet, or similar file: say you'll generate it, then actually call generate_deliverable this turn if tools are available to you. Do not substitute a text-only outline, an HTML preview, or a script for the user to run themselves as if it were equivalent — offer those only as OPTIONAL alternatives after confirming you can produce the real file, never instead of it.
+If tools are not enabled on this specific turn (e.g. this was classified as a conversational/decision turn), do not fabricate a capability denial — say plainly that you'll generate it on the next turn / once they confirm, and follow through.
+If generate_deliverable is called and returns an error, report the actual failure honestly (what failed, e.g. a save/render error) — never reinterpret a tool failure as "I don't have this capability at all."
+--- END DELIVERABLE GENERATION CAPABILITY ---`;
   let vault: Awaited<ReturnType<typeof loadVaultContext>> = { imageBlocks: [], systemNote: "", hasImages: false };
   let urlBlocks: Awaited<ReturnType<typeof screenshotUrlsToBlocks>> = [];
 
