@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { ChevronDown, Wand2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/api";
@@ -27,6 +27,21 @@ type DraftResult = {
   label: string;
   title: string;
   body: string;
+};
+
+// Maps a draft artifact type to the Delivery Engine provider that can send it,
+// plus the target field(s) the user needs to fill in. draft_changelog has no
+// delivery provider yet — it stays copy/download only.
+const DELIVERY_BY_DRAFT_TYPE: Record<string, { provider: string; actionLabel: string }> = {
+  draft_email: { provider: "email", actionLabel: "Send Email" },
+  draft_slack: { provider: "slack", actionLabel: "Post to Slack" },
+  draft_pr: { provider: "github_pr", actionLabel: "Open Pull Request" },
+};
+
+type DeliveryState = {
+  status: "idle" | "sending" | "sent" | "failed";
+  error?: string;
+  externalRef?: Record<string, unknown> | null;
 };
 
 function renderArtifactMarkdown(md: string): string {
@@ -85,6 +100,8 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
   const [generatingDraft, setGeneratingDraft] = useState<string | null>(null);
   const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
+  const [deliveryTarget, setDeliveryTarget] = useState<Record<string, string>>({});
+  const [delivery, setDelivery] = useState<DeliveryState>({ status: "idle" });
   const draftMenuRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
@@ -140,6 +157,8 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
         title: preview.title ?? artifact.title ?? label,
         body: preview.body ?? "",
       });
+      setDeliveryTarget({});
+      setDelivery({ status: "idle" });
       toast(`${label} generated.`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to generate draft.";
@@ -163,6 +182,48 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
     if (!draftResult) return;
     window.open(`/api/projects/${projectId}/artifacts/${draftResult.id}/download`, "_blank");
   }, [draftResult, projectId]);
+
+  const handleDeliverDraft = useCallback(async () => {
+    if (!draftResult) return;
+    const config = DELIVERY_BY_DRAFT_TYPE[draftResult.type];
+    if (!config) return;
+
+    let target: Record<string, string> = {};
+    if (config.provider === "email") {
+      target = { to: (deliveryTarget.to ?? "").trim() };
+    } else if (config.provider === "slack") {
+      target = { channel: (deliveryTarget.channel ?? "").trim() };
+    } else if (config.provider === "github_pr") {
+      target = {
+        repo: (deliveryTarget.repo ?? "").trim(),
+        head: (deliveryTarget.head ?? "").trim(),
+        base: (deliveryTarget.base ?? "main").trim(),
+      };
+    }
+
+    setDelivery({ status: "sending" });
+    try {
+      const r = await fetch(`/api/projects/${projectId}/artifacts/${draftResult.id}/deliver`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ provider: config.provider, target }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data?.status === "failed") {
+        const message = data?.error || `HTTP ${r.status}`;
+        setDelivery({ status: "failed", error: message });
+        toast(message);
+        return;
+      }
+      setDelivery({ status: "sent", externalRef: data?.externalRef ?? null });
+      toast(`${config.actionLabel} succeeded.`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Delivery failed.";
+      setDelivery({ status: "failed", error: message });
+      toast(message);
+    }
+  }, [draftResult, deliveryTarget, projectId]);
 
   const handleDelete = useCallback(async (id: string | number) => {
     try {
@@ -302,6 +363,62 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             <button type="button" onClick={() => setDraftResult(null)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", background: "transparent", border: "none", cursor: "pointer", flexShrink: 0 }}>Dismiss</button>
           </div>
           <pre style={{ marginTop: 10, marginBottom: 10, maxHeight: 260, overflowY: "auto", fontSize: "var(--ts-sm)", lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--atlas-fg)", fontFamily: "inherit", background: "transparent" }}>{draftResult.body}</pre>
+          {(() => {
+            const deliveryConfig = DELIVERY_BY_DRAFT_TYPE[draftResult.type];
+            if (!deliveryConfig) return null;
+            const inputStyle: CSSProperties = {
+              fontSize: "var(--ts-xs)", padding: "5px 8px", borderRadius: 6,
+              border: "1px solid var(--atlas-border)", background: "var(--atlas-bg)", color: "var(--atlas-fg)",
+              flex: 1, minWidth: 0,
+            };
+            return (
+              <div style={{ marginBottom: 10, paddingTop: 10, borderTop: "1px solid var(--atlas-border)" }}>
+                {deliveryConfig.provider === "email" && (
+                  <input
+                    type="email"
+                    placeholder="recipient@email.com"
+                    value={deliveryTarget.to ?? ""}
+                    onChange={(e) => setDeliveryTarget((t) => ({ ...t, to: e.target.value }))}
+                    style={{ ...inputStyle, width: "100%", marginBottom: 8 }}
+                  />
+                )}
+                {deliveryConfig.provider === "slack" && (
+                  <input
+                    type="text"
+                    placeholder="Slack channel (optional — uses default)"
+                    value={deliveryTarget.channel ?? ""}
+                    onChange={(e) => setDeliveryTarget((t) => ({ ...t, channel: e.target.value }))}
+                    style={{ ...inputStyle, width: "100%", marginBottom: 8 }}
+                  />
+                )}
+                {deliveryConfig.provider === "github_pr" && (
+                  <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                    <input type="text" placeholder="owner/repo" value={deliveryTarget.repo ?? ""} onChange={(e) => setDeliveryTarget((t) => ({ ...t, repo: e.target.value }))} style={inputStyle} />
+                    <input type="text" placeholder="head branch" value={deliveryTarget.head ?? ""} onChange={(e) => setDeliveryTarget((t) => ({ ...t, head: e.target.value }))} style={inputStyle} />
+                    <input type="text" placeholder="base (main)" value={deliveryTarget.base ?? ""} onChange={(e) => setDeliveryTarget((t) => ({ ...t, base: e.target.value }))} style={inputStyle} />
+                  </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeliverDraft()}
+                    disabled={delivery.status === "sending" || delivery.status === "sent"}
+                    style={{
+                      fontSize: "var(--ts-xs)", color: delivery.status === "sent" ? "var(--atlas-muted)" : "var(--atlas-gold)",
+                      background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8,
+                      padding: "5px 10px", cursor: delivery.status === "sending" || delivery.status === "sent" ? "default" : "pointer",
+                      opacity: delivery.status === "sending" ? 0.6 : 1,
+                    }}
+                  >
+                    {delivery.status === "sending" ? "Sending…" : delivery.status === "sent" ? "Sent ✓" : deliveryConfig.actionLabel}
+                  </button>
+                  {delivery.status === "failed" && (
+                    <span style={{ fontSize: "var(--ts-xs)", color: "#e07a7a" }}>{delivery.error}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => void handleCopyDraft()} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Copy</button>
             <button type="button" onClick={handleDownloadDraft} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Download .md</button>

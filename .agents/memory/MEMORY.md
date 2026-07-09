@@ -1,3 +1,4 @@
+- [Delivery Engine Architecture](delivery-engine-architecture.md) — Artifact Engine (creates) vs Delivery Engine (distributes) are separate systems; pluggable adapter contract; provider failures never invalidate the artifact
 - [Global Narrative Memory](global-narrative-memory.md) — living 2-3 sentence cross-thread narrative on users table; synthesized after each Ask Atlas turn; injected into both nexus.ts + chat.ts system prompts
 - [Single-Surface Workspace Architecture](home-chat-state.md) — Ask Atlas deleted entirely; Workspace is the only conversation surface; Conversation Mode/Build Mode toggle on one thread, no handoff
 - [Checkpoint System](checkpoint-system.md) — project_checkpoints table + GET/POST API + auto-triggers (forge-sync=build, DNA PATCH=understanding) + 3-tab HistoryBookmarksSheet UI

@@ -57,7 +57,7 @@ function resolveStoredGithubToken(storedToken: string | null | undefined): strin
   return plain && plain !== "__server__" ? plain : null;
 }
 
-async function getAccountGithubToken(userId: number | undefined): Promise<string | null> {
+export async function getAccountGithubToken(userId: number | undefined): Promise<string | null> {
   if (!userId) return null;
 
   const [connection] = await db

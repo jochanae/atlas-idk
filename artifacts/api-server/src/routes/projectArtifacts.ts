@@ -15,6 +15,8 @@ import {
   type DecisionArtifactType,
 } from "../lib/decisionArtifacts";
 import { generateArtifact, getFileBackedArtifact } from "../lib/artifactEngine";
+import { deliverArtifact, getDeliveryAdapter, listDeliveryProviders } from "../lib/deliveryEngine";
+import { getAccountGithubToken } from "./github";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 // Side-effect imports: each renderer registers itself with the Artifact Engine on load.
 import "../lib/renderers/docxRenderer";
@@ -25,6 +27,10 @@ import "../lib/renderers/mermaidRenderer";
 import "../lib/renderers/chartRenderer";
 import "../lib/renderers/bundleRenderer";
 import "../lib/renderers/draftRenderer";
+// Side-effect imports: each delivery adapter registers itself with the Delivery Engine on load.
+import "../lib/adapters/emailAdapter";
+import "../lib/adapters/slackAdapter";
+import "../lib/adapters/githubPrAdapter";
 
 export { logProjectArtifact } from "../lib/artifactLog";
 
@@ -673,6 +679,76 @@ router.post("/projects/:id/deliverables/:type/generate", async (req, res): Promi
     req.log.error({ err, type: req.params.type }, "POST /projects/:id/deliverables/:type/generate failed");
     const message = err instanceof Error ? err.message : "Internal server error";
     const status = message.startsWith("Artifact engine: no renderer registered") ? 404 : 500;
+    res.status(status).json({ error: message });
+  }
+});
+
+// GET /api/projects/:id/deliverables/providers
+// Lists which Delivery Engine adapters are registered and ready (config present).
+router.get("/projects/:id/deliverables/providers", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    if (!projectId || isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+    if (!(await assertOwner(projectId, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const providers = listDeliveryProviders().map((provider) => {
+      const adapter = getDeliveryAdapter(provider);
+      return { provider, label: adapter?.label ?? provider };
+    });
+    res.json({ providers });
+  } catch (err) {
+    req.log.error({ err }, "GET /projects/:id/deliverables/providers failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/projects/:id/artifacts/:artifactId/deliver
+// Sends/posts/opens an already-generated artifact via the Delivery Engine.
+// Distinct from generation: a failure here never invalidates the artifact
+// itself, it only records a failed delivery attempt.
+router.post("/projects/:id/artifacts/:artifactId/deliver", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    const artifactId = Number(req.params.artifactId);
+    if (!projectId || isNaN(projectId) || !artifactId || isNaN(artifactId)) {
+      res.status(400).json({ error: "Invalid ids" }); return;
+    }
+    if (!(await assertOwner(projectId, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const { provider, target } = req.body as { provider?: string; target?: Record<string, unknown> };
+    if (!provider || typeof provider !== "string") {
+      res.status(400).json({ error: "Missing required field: provider" }); return;
+    }
+    if (!getDeliveryAdapter(provider)) {
+      res.status(404).json({ error: `No delivery adapter registered for provider "${provider}"` }); return;
+    }
+
+    const auth: Record<string, unknown> = {};
+    if (provider === "github_pr") {
+      const githubToken = await getAccountGithubToken(userId);
+      if (!githubToken) {
+        res.status(400).json({ error: "Connect a GitHub account before opening a pull request" }); return;
+      }
+      auth.githubToken = githubToken;
+    }
+
+    const result = await deliverArtifact({
+      projectId,
+      artifactId,
+      provider,
+      target: target ?? {},
+      auth,
+    });
+
+    res.status(result.status === "sent" ? 200 : 502).json(result);
+  } catch (err) {
+    req.log.error({ err, artifactId: req.params.artifactId }, "POST /projects/:id/artifacts/:artifactId/deliver failed");
+    const message = err instanceof Error ? err.message : "Internal server error";
+    const status = message.includes("is required") || message.includes("no adapter registered") ? 400 : 500;
     res.status(status).json({ error: message });
   }
 });

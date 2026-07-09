@@ -213,6 +213,29 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: project_artifacts table failed — server will start anyway");
   }
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS deliveries (
+        id serial PRIMARY KEY,
+        project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        artifact_id integer NOT NULL REFERENCES project_artifacts(id) ON DELETE CASCADE,
+        provider text NOT NULL,
+        target jsonb NOT NULL DEFAULT '{}'::jsonb,
+        status text NOT NULL DEFAULT 'pending',
+        external_ref jsonb,
+        error text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        sent_at timestamptz
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS deliveries_artifact_id_idx
+        ON deliveries (artifact_id, created_at DESC)
+    `);
+    logger.info("ensureColumns: deliveries table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: deliveries table failed — server will start anyway");
+  }
 
   try {
     await db.execute(sql`
