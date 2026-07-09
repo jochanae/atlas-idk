@@ -34,7 +34,7 @@ import { useReadingDensity } from "@/hooks/useComposerVisibility";
 import { dispatchVerifyRun } from "@/lib/verification";
 import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import { useQueryClient } from "@tanstack/react-query";
-import { EXECUTION_VERBS, doingLabel, thinkingLabel } from "@/lib/runStepLabels";
+import { EXECUTION_VERBS, doingLabel, thinkingLabel, isDoingVerb } from "@/lib/runStepLabels";
 
 interface LiveStepItem {
   verb: string;
@@ -640,22 +640,28 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   );
   const isActive = !receiptMessage && ((chatPending ?? false) || isStreaming);
 
+  // Has assistant prose actually started rendering? Once it has, a pure
+  // "Thinking" turn must show ONLY the streaming text — no shimmer, no card
+  // — per the Thinking/Doing/Receipt lifecycle (Thinking = plain prose).
+  const hasStreamedText = useMemo(
+    () => messages.some(m => m.role === "assistant" && m.streaming && (m.content ?? "").trim().length > 0),
+    [messages],
+  );
+
   // While the run card owns the screen (active OR settled receipt), collapse the
   // composer to compact so it doesn't cover the card content on mobile.
   useReadingDensity("analysis", { active: isActive || !!receiptMessage });
 
 
 
-  // Only show the active card when at least one TOOL-USE step has arrived.
-  // Pure conversational turns (PROMPT/THOUGHT/SUMMARY/DECISION/ANALYZE) must
-  // never show a card — those are Atlas thinking, not Atlas executing.
-  // Tool-use = anything that touches the filesystem, shell, network, or build.
-  const PURE_CONVERSATION = new Set([
-    "PROMPT", "THOUGHT", "SUMMARY", "DECISION",
-    "ANALYZE", "ANALYZE_REQUEST", "ASSESS",
-  ]);
+  // Only show the active card ("Doing") when at least one mutating/tool-use
+  // step has arrived. Read-only/conversational steps (PROMPT/THOUGHT/SUMMARY/
+  // DECISION/FILE_READ/TREE/FETCH/etc.) are "Thinking" — never a card. This
+  // MUST use the same classifier as ChatStream's prose-suppression check
+  // (isDoingVerb) so a turn is never simultaneously "showing prose" and
+  // "showing a live card" for the same step.
   const hasBuildStep = useMemo(
-    () => liveSteps.some(s => !PURE_CONVERSATION.has((s.verb ?? "").toUpperCase())),
+    () => liveSteps.some(s => isDoingVerb(s.verb)),
     [liveSteps],
   );
 
@@ -808,12 +814,14 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       // Real tool-use turn (file reads/writes, builds, etc.) → full run card.
       return <ActiveCard steps={liveSteps} taskGoal={taskGoal} />;
     }
-    // Conversational / thinking-only turn (Task #158: "Thinking" = plain
-    // prose, no card at all). ChatStream now streams assistant prose
-    // unsuppressed during these steps, so the run card renders nothing —
-    // no shimmer, no title row. If prose hasn't arrived yet (liveSteps
-    // exist but no text streamed), show a brief inline shimmer as a bridge.
-    if (!liveSteps.length) return null;
+    // Conversational / thinking-only turn: "Thinking" = plain prose, no card.
+    // ChatStream streams assistant prose unsuppressed during these steps, so
+    // once that prose has actually started rendering, this component must
+    // show nothing — no shimmer, no title row — otherwise the same turn
+    // would show both prose AND a card simultaneously. Before the first
+    // token arrives (liveSteps present, no text yet), show a brief inline
+    // shimmer as a bridge so the turn doesn't look inert.
+    if (!liveSteps.length || hasStreamedText) return null;
     return <InlineThinkingPulse steps={liveSteps} />;
   }
 
