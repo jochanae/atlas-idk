@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { generateArtifact, listArtifactRendererTypes } from "../artifactEngine";
-import type { AgentToolContext } from "./context";
+import type { AgentToolContext, GeneratedArtifactMeta } from "./context";
 // Side-effect imports: each renderer registers itself with the Artifact Engine on load.
 // The agent loop can run without ever hitting the projectArtifacts routes, so this
 // tool must trigger renderer registration itself instead of relying on route-file
@@ -25,7 +25,7 @@ import "../renderers/chartRenderer";
 export function generateDeliverableTool(ctx: AgentToolContext) {
   return tool({
     description:
-      "Generate a downloadable file-backed deliverable (e.g. a PowerPoint deck, Word doc, or spreadsheet) from the current conversation and save it to the project's Deliverables. Use this whenever the user asks for a presentation/deck, document, or spreadsheet to be created — never say you can't produce files.",
+      "Generate a downloadable file-backed deliverable (e.g. a PowerPoint deck, Word doc, or spreadsheet) from the current conversation and save it to the project's Outputs. Use this whenever the user asks for a presentation/deck, document, or spreadsheet to be created — never say you can't produce files. After success, tell the user it's in Outputs.",
     inputSchema: z.object({
       type: z
         .enum(["pptx", "docx", "xlsx"])
@@ -51,6 +51,12 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           return { ok: false, error: `No renderer registered for type "${type}". Available: ${available.join(", ")}` };
         }
 
+        if (!ctx.projectId || ctx.projectId <= 0) {
+          const ms = Math.round(performance.now() - started);
+          ctx.emitToolResult("generate_deliverable", false, ms);
+          return { ok: false, error: "No active project — open a project workspace before generating Outputs." };
+        }
+
         const context = ctx.messages
           .map((m) => `${m.role === "user" ? "User" : "Atlas"}: ${String(m.content).slice(0, 2000)}`)
           .join("\n\n")
@@ -70,16 +76,47 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           input: { context, title, docType },
         });
 
+        const downloadUrl = `/api/projects/${artifact.projectId}/artifacts/${artifact.id}/download`;
+        const meta: GeneratedArtifactMeta = {
+          ok: true,
+          artifactId: artifact.id,
+          projectId: artifact.projectId,
+          type: artifact.type,
+          title: artifact.title,
+          extension: artifact.extension,
+          downloadUrl,
+          preview: artifact.preview ?? {},
+          ...(artifact.summary ? { summary: artifact.summary } : {}),
+        };
+
+        ctx.sideEffects.generatedArtifacts.push(meta);
+        ctx.sideEffects.timelineSteps.push({
+          verb: "ARTIFACT_CREATED",
+          target: artifact.title,
+          detail: `${artifact.type.toUpperCase()} · ${artifact.extension}`,
+          content: artifact.summary ?? null,
+          artifactUrl: `artifact://${artifact.id}`,
+        });
+
+        // Live timeline / SSE signal for the client (Workspace → Changes → Timeline).
+        // phase is required by AgentToolContext's writeStep signature (chat agent loop).
+        ctx.writeStep({
+          verb: "ARTIFACT_CREATED",
+          target: artifact.title,
+          phase: "output",
+        });
+        ctx.emitNamedEvent("artifact_created", {
+          ...meta,
+          artifactUrl: `artifact://${artifact.id}`,
+          detail: `${artifact.type.toUpperCase()} · ${artifact.extension}`,
+        });
+
         const ms = Math.round(performance.now() - started);
         ctx.emitToolResult("generate_deliverable", true, ms);
         return {
-          ok: true,
-          artifactId: artifact.id,
-          type: artifact.type,
-          title: artifact.title,
+          ...meta,
           version: artifact.version,
-          extension: artifact.extension,
-          summary: `Generated ${artifact.type.toUpperCase()} "${artifact.title}" — available in this project's Deliverables tab.`,
+          summary: `Generated ${artifact.type.toUpperCase()} "${artifact.title}" — it's in Outputs.`,
         };
       } catch (err) {
         const ms = Math.round(performance.now() - started);

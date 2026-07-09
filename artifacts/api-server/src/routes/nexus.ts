@@ -2732,8 +2732,13 @@ WHAT YOU HAVE ACCESS TO:
 - Project files (file tree injected above if available)
 - Project memory, ledger decisions, DNA, Application Model — all injected above
 - FILE_EDIT: propose file writes for the local workspace (see BUILD PROTOCOLS for the exact block format)
+- generate_deliverable: create real downloadable PowerPoint (.pptx), Word (.docx), or spreadsheet (.xlsx) files from this conversation — they appear in Workspace → Outputs
 - BROWSER_VISIT: visit URLs for live checks, competitor research
 - IMAGE_GEN: generate mockups or diagrams on request
+
+WHEN GENERATING FILES:
+- If the user asks for a deck, presentation, slides, document, write-up, or spreadsheet, call generate_deliverable — never say you can't create files.
+- After success, tell them it's in Outputs (never say "Deliverables tab"). Keep the prose short; the UI shows an inline card + Outputs entry.
 
 WHAT YOU SHOULD NOT DO:
 - Do not give portfolio-wide analysis unless explicitly asked
@@ -2930,6 +2935,10 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     artifactUrl?: string | null;
   };
   const _nexusNonCodeSteps: _NcStep[] = [];
+  // Shared across every shared-registry tool call this turn so
+  // generate_deliverable can accumulate Outputs metadata for the done event
+  // and ARTIFACT_CREATED timeline steps for execution_run persistence.
+  const sharedSideEffects = createSideEffects();
   const writeStep = (action: RunAction) => {
     // Suppress step events on non-BUILD turns — they render as run cards.
     if (!allowBuildSideEffects) return;
@@ -3913,10 +3922,23 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
       _nexusNonCodeSteps.push({ verb: "DECISION_RECORDED", target: null, detail: "captured to ledger", content: null });
     }
 
+    // Merge any ARTIFACT_CREATED steps accumulated on sharedSideEffects that
+    // weren't already pushed via writeStep (defensive — generate_deliverable
+    // writes both timelineSteps and calls writeStep).
+    for (const step of sharedSideEffects.timelineSteps) {
+      const already = _nexusNonCodeSteps.some(
+        (s) => s.verb === step.verb && s.target === step.target && s.artifactUrl === step.artifactUrl,
+      );
+      if (!already) _nexusNonCodeSteps.push(step);
+    }
+
     const shouldPersistRun =
       !!focusProjectId &&
       !isChatTurn &&
-      (allowBuildSideEffects || (intent === "DECIDE" && _nexusNonCodeSteps.length > 0));
+      (allowBuildSideEffects
+        || (intent === "DECIDE" && _nexusNonCodeSteps.length > 0)
+        || sharedSideEffects.generatedArtifacts.length > 0
+        || _nexusNonCodeSteps.some((s) => s.verb === "ARTIFACT_CREATED"));
     if (shouldPersistRun && focusProjectId) {
       void persistNexusExecutionRun({
         projectId: focusProjectId,
@@ -4070,6 +4092,9 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
       ...(clarify ? { clarify } : {}),
       ...(tradeoff ? { tradeoff } : {}),
       ...(decisionArtifactResults.length > 0 ? { decisionArtifacts: decisionArtifactResults } : {}),
+      ...(sharedSideEffects.generatedArtifacts.length > 0
+        ? { generatedArtifacts: sharedSideEffects.generatedArtifacts }
+        : {}),
       ...(decisionDraft ? { decisionDraft } : {}),
       ...(nextSuggestions ? { nextSuggestions } : {}),
       ...(thinkingStable ? { thinkingStable: true } : {}),
@@ -4655,7 +4680,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         userId,
         workspaceDir: focusProjectId ? await ensureProjectWorkspaceDir(focusProjectId) : "",
         res,
-        sideEffects: createSideEffects(),
+        sideEffects: sharedSideEffects,
         planState: createPlanState(),
         structuredPlanEnabled: false,
         messages: tier1ContextMessages,
@@ -4665,7 +4690,44 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         emitNamedEvent: (event, data) => {
           if (!res.writableEnded && !res.destroyed) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
         },
-        writeStep: (s) => writeStep(s as RunAction),
+        writeStep: (s) => {
+          // Promote ARTIFACT_CREATED into non-code timeline steps (not run-card
+          // "Running/Completed" noise). Emit even on DECIDE — Outputs must be
+          // openable from Timeline regardless of WhisperGate intent.
+          if (s.verb === "ARTIFACT_CREATED") {
+            const meta = sharedSideEffects.generatedArtifacts[sharedSideEffects.generatedArtifacts.length - 1];
+            const detail = meta
+              ? `${meta.type.toUpperCase()} · ${meta.extension}`
+              : (s as { detail?: string }).detail ?? null;
+            const already = _nexusNonCodeSteps.some(
+              (step) =>
+                step.verb === "ARTIFACT_CREATED" &&
+                step.artifactUrl === (meta ? `artifact://${meta.artifactId}` : null) &&
+                step.target === (s.target ?? meta?.title ?? null),
+            );
+            if (!already) {
+              _nexusNonCodeSteps.push({
+                verb: "ARTIFACT_CREATED",
+                target: s.target ?? meta?.title ?? null,
+                detail,
+                content: meta?.summary ?? null,
+                artifactUrl: meta ? `artifact://${meta.artifactId}` : null,
+              });
+            }
+            const liveStep = {
+              verb: "ARTIFACT_CREATED",
+              target: s.target ?? meta?.title,
+              detail: detail ?? undefined,
+              status: "ok" as const,
+            };
+            runActions.push(liveStep);
+            if (!res.writableEnded && !res.destroyed) {
+              res.write(`event: step\ndata: ${JSON.stringify(liveStep)}\n\n`);
+            }
+            return;
+          }
+          writeStep(s as RunAction);
+        },
       }))();
     }
     return sharedAgentCtxPromise;

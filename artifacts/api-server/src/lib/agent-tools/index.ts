@@ -27,7 +27,15 @@ import { projectKnowledgeTool } from "./project-knowledge";
 import { componentRegistryTool } from "./component-registry";
 
 export { createSideEffects, createPlanState } from "./context";
-export type { AgentToolContext, AgentFileEdit, AgentLinePatch, AgentToolSideEffects, AgentPlanState } from "./context";
+export type {
+  AgentToolContext,
+  AgentFileEdit,
+  AgentLinePatch,
+  AgentToolSideEffects,
+  AgentPlanState,
+  GeneratedArtifactMeta,
+  AgentTimelineStep,
+} from "./context";
 
 export function buildAgentTools(ctx: AgentToolContext, options?: { includePlanTools?: boolean }) {
   const base = {
