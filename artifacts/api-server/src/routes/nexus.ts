@@ -1974,7 +1974,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // conversations).
   const [projects, dbMessages] = await Promise.all([
     db
-      .select({ id: projectsTable.id, name: projectsTable.name, memory: projectsTable.memory, linkedRepo: projectsTable.linkedRepo, nodeState: projectsTable.nodeState })
+      .select({ id: projectsTable.id, name: projectsTable.name, memory: projectsTable.memory, linkedRepo: projectsTable.linkedRepo, nodeState: projectsTable.nodeState, githubToken: projectsTable.githubToken })
       .from(projectsTable)
       .where(eq(projectsTable.userId, userId)),
     (() => {
@@ -4436,6 +4436,9 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
       }
       return result;
     }
+    if (!effectiveConversationId) {
+      return { ok: false as const, error: "no_conversation" };
+    }
     const bufResult = await upsertNexusTier1BufferField(
       effectiveConversationId,
       userId,
@@ -4458,6 +4461,9 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
 
     if (tier1ProjectId) {
       return markTier1Skipped(tier1ProjectId, userId);
+    }
+    if (!effectiveConversationId) {
+      return { ok: false as const, error: "no_conversation" };
     }
     return markNexusTier1Skipped(effectiveConversationId, userId);
   };

@@ -4282,7 +4282,7 @@ HARD RULE: Never answer from the context of a different project unless the user 
     }
 
     // Cross-surface retrieval — when user asks about past reasoning, surface matching receipts
-    if (MEMORY_QUERY_RE.test(message) && !isSelfContainedBuild) {
+    if (MEMORY_QUERY_RE.test(message) && !isSelfContainedBuild && userId) {
       const memoryHits = await searchThinkingReceipts({ userId, query: message, projectId });
       if (memoryHits.length > 0) {
         const hitsText = memoryHits.map(r => `[${r.category}] ${r.headline}: ${r.body}`).join("\n");
@@ -7115,6 +7115,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     !isFlowMode &&
     sessionId &&
     projectId &&
+    userId &&
     fullText.length > 120 &&
     !fullText.includes("[LOCAL_APPLY_SUCCESS]") &&
     !fullText.includes("[BUILD_VERIFY")
