@@ -101,6 +101,12 @@ async function buildAll() {
       "puppeteer-core",
       "electron",
       "stripe-replit-sync",
+      // pdfkit (and its fontkit dependency) resolve font/data files via paths
+      // relative to their own package directory at runtime; bundling breaks
+      // those relative lookups, so keep them external and resolved from
+      // node_modules normally.
+      "pdfkit",
+      "fontkit",
     ],
     sourcemap: "linked",
     plugins: [

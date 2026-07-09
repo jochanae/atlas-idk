@@ -18,6 +18,9 @@ import { generateArtifact, getFileBackedArtifact } from "../lib/artifactEngine";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 // Side-effect imports: each renderer registers itself with the Artifact Engine on load.
 import "../lib/renderers/docxRenderer";
+import "../lib/renderers/pdfRenderer";
+import "../lib/renderers/pptxRenderer";
+import "../lib/renderers/xlsxRenderer";
 
 export { logProjectArtifact } from "../lib/artifactLog";
 
