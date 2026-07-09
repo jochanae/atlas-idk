@@ -2272,10 +2272,11 @@ function RightPanel({
           }}
           className="scrollbar-none"
           >
-            {(["workspace", "github", "database"] as const).map((st) => {
+            {(["workspace", "codebase", "github", "database"] as const).map((st) => {
               const active = workspaceSubTab === st;
               const labels: Record<typeof st, string> = {
                 workspace: "Workspace",
+                codebase: "Codebase",
                 github: "GitHub",
                 database: "Database",
               };
