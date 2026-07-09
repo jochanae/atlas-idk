@@ -150,14 +150,17 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
         }),
       ]);
 
-      const projectItems: ArtifactRecord[] = projectRes.status === "fulfilled" && projectRes.value.ok
-        ? (((await projectRes.value.json()).artifacts ?? []) as ArtifactRecord[]).map((a) => ({ ...a, source: "project" as const }))
-        : [];
-      const legacyItems: ArtifactRecord[] = legacyRes.status === "fulfilled" && legacyRes.value.ok
-        ? ((Array.isArray(await legacyRes.value.clone().json().catch(() => []))
-            ? await legacyRes.value.clone().json().catch(() => [])
-            : ((await legacyRes.value.json().catch(() => ({}))).artifacts ?? [])) as ArtifactRecord[]).map((a) => ({ ...a, source: "legacy" as const }))
-        : [];
+      const projectData = projectRes.status === "fulfilled" && projectRes.value.ok
+        ? await projectRes.value.json().catch(() => ({}))
+        : {};
+      const legacyData = legacyRes.status === "fulfilled" && legacyRes.value.ok
+        ? await legacyRes.value.json().catch(() => ({}))
+        : {};
+      const projectItems: ArtifactRecord[] = ((projectData.artifacts ?? []) as ArtifactRecord[])
+        .map((a) => ({ ...a, source: "project" as const }));
+      const legacyRaw = Array.isArray(legacyData) ? legacyData : (legacyData.artifacts ?? []);
+      const legacyItems: ArtifactRecord[] = (legacyRaw as ArtifactRecord[])
+        .map((a) => ({ ...a, source: "legacy" as const }));
 
       if (projectRes.status === "fulfilled" && legacyRes.status === "fulfilled" && !projectRes.value.ok && !legacyRes.value.ok) {
         throw new Error(`HTTP ${projectRes.value.status}`);

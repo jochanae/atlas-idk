@@ -23,7 +23,7 @@ type UnifiedSubheaderProps = {
 const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }> = [
   { id: "changes", label: "CHANGES", ariaLabel: "View changes" },
   { id: "blueprints", label: "BLUEPRINTS", ariaLabel: "Open blueprints" },
-  { id: "artifacts", label: "OUTPUTS", ariaLabel: "Open outputs" },
+  { id: "artifacts", label: "OUTPUTS", ariaLabel: "Open generated outputs" },
   { id: "console", label: "CONSOLE", ariaLabel: "Open console" },
 ];
 
