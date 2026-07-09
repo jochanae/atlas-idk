@@ -2297,7 +2297,7 @@ function RightPanel({
               const active = workspaceSubTab === st;
               const labels: Record<typeof st, string> = {
                 workspace: "Workspace",
-                codebase: "Codebase",
+                codebase: "Intelligence",
                 github: "GitHub",
                 database: "Database",
               };
