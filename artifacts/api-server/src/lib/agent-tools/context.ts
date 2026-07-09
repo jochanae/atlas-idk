@@ -18,6 +18,9 @@ export interface AgentToolSideEffects {
   linePatches: AgentLinePatch[];
   finishSummary: string | null;
   buildRunEmitted: boolean;
+  /** Set once runClosedLoopVerification has been run for this turn (Phase 3 completion gate). */
+  verificationPassed: boolean | null;
+  verificationReportText: string | null;
 }
 
 export interface AgentPlanState {
@@ -49,6 +52,8 @@ export function createSideEffects(): AgentToolSideEffects {
     linePatches: [],
     finishSummary: null,
     buildRunEmitted: false,
+    verificationPassed: null,
+    verificationReportText: null,
   };
 }
 

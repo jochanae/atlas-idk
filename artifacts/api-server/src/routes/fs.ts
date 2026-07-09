@@ -17,6 +17,7 @@ import {
   buildCloneUrl,
   redactToken,
 } from "../lib/terminalSandbox";
+import { runClosedLoopVerification } from "../lib/closedLoopVerification";
 
 const router: IRouter = Router();
 
@@ -646,6 +647,30 @@ router.get("/fs/:projectId/audit", async (req: Request, res: Response): Promise<
   } catch (err) {
     req.log?.error({ err }, "fs audit error");
     res.status(500).json({ error: "Audit failed" });
+  }
+});
+
+// POST /api/fs/:projectId/verify — Closed-Loop Verification (Phase 3).
+// Runs manifest / build+typecheck / truncation / env checklist / seed-data
+// checks against the project's real workspace and returns a single
+// pass/fail report. Nothing may be reported "done" to the user until this
+// passes or its failures are surfaced.
+router.post("/fs/:projectId/verify", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+    const projectId = parseProjectId(req.params.projectId);
+    if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
+    if (!await assertProjectOwner(projectId, userId)) { res.status(404).json({ error: "Project not found" }); return; }
+
+    const workspaceDir = projectWorkspaceDir(projectId);
+    try { await fsPromises.access(workspaceDir, fsNode.constants.F_OK); }
+    catch { res.status(404).json({ error: "Workspace not found" }); return; }
+
+    const report = await runClosedLoopVerification(workspaceDir);
+    res.json(report);
+  } catch (err) {
+    req.log?.error({ err }, "fs verify error");
+    res.status(500).json({ error: "Verification failed to run" });
   }
 });
 

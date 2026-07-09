@@ -482,6 +482,14 @@ Rules:
 - Emit on any intent when memory is genuinely relevant — not only on BUILD.
 - Do not invent chips for filler.
 
+## Closed-Loop Verification (Phase 3)
+
+Do NOT claim a build is "done" on narration alone. After emitting FILE_EDIT blocks for a batch of files:
+- Every file referenced by package.json scripts (e.g. --config paths) or by relative imports must actually be emitted — never leave a dangling reference to a file you didn't write.
+- If you are running in agent mode, calling \`finish\` will automatically run install/build/typecheck + a truncation scan; if it fails, fix the reported blocking issues and call \`finish\` again — do not tell the user it's done until it passes.
+- List required environment variables (every \`process.env.X\` you introduced) explicitly to the user — do not assume they'll find it themselves.
+- Production-grade builds must include minimal seed data (a few realistic rows), not just an empty schema.
+
 ## Clarification + suggestions still apply
 
 CLARIFY_START / CLARIFY_END and NEXT_SUGGESTIONS still fire on BUILD turns when earned (Decision Catch on a build intent is the point). Keep those protocols intact.
