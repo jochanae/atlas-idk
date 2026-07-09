@@ -19,6 +19,7 @@
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
+    "@workspace/source-index": "workspace:*",
     "ai": "^7.0.14",
     "cookie-parser": "^1.4.7",
     "cors": "^2",

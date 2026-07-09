@@ -2,6 +2,11 @@ import { Router, type IRouter } from "express";
 import { readdir, readFile, stat } from "fs/promises";
 import * as nodePath from "path";
 import { atlasSelfMapTable, db } from "@workspace/db";
+import {
+  extractExportNames,
+  extractImportSpecifiers,
+  resolveImport,
+} from "@workspace/source-index";
 
 type IndexedFile = {
   path: string;
@@ -19,7 +24,6 @@ type SelfMap = {
 
 const router: IRouter = Router();
 const TEXT_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".json", ".css"]);
-const IMPORT_EXTENSIONS = ["", ".ts", ".tsx", ".js", ".jsx", ".json", ".css", "/index.ts", "/index.tsx", "/index.js", "/index.jsx"];
 
 function workspaceRoot() {
   return process.env.WORKSPACE_ROOT ?? process.cwd();
@@ -40,58 +44,6 @@ async function collectFiles(dir: string): Promise<string[]> {
   return files.flat();
 }
 
-function extractExports(content: string): string[] {
-  const names = new Set<string>();
-  const patterns = [
-    /export\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g,
-    /export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g,
-    /export\s+(?:class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g,
-    /export\s+default\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)?/g,
-  ];
-
-  for (const pattern of patterns) {
-    for (const match of content.matchAll(pattern)) {
-      names.add(match[1] ?? "default");
-    }
-  }
-
-  for (const match of content.matchAll(/export\s*\{([^}]+)\}/g)) {
-    const exported = match[1] ?? "";
-    for (const part of exported.split(",")) {
-      const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
-      if (name) names.add(name);
-    }
-  }
-
-  return [...names].sort();
-}
-
-function extractImportSpecifiers(content: string): string[] {
-  const specs = new Set<string>();
-  for (const match of content.matchAll(/(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?["']([^"']+)["']/g)) {
-    if (match[1]) specs.add(match[1]);
-  }
-  return [...specs];
-}
-
-function resolveImport(fromFile: string, specifier: string, root: string, knownFiles: Set<string>): string | null {
-  let targetBase: string | null = null;
-  if (specifier.startsWith(".")) {
-    targetBase = nodePath.resolve(nodePath.dirname(fromFile), specifier);
-  } else if (specifier.startsWith("@/")) {
-    targetBase = nodePath.resolve(root, "artifacts/atlas/src", specifier.slice(2));
-  }
-
-  if (!targetBase) return null;
-
-  for (const suffix of IMPORT_EXTENSIONS) {
-    const candidate = toRelativePath(root, `${targetBase}${suffix}`);
-    if (knownFiles.has(candidate)) return candidate;
-  }
-
-  return null;
-}
-
 export async function buildSelfMap(): Promise<{ file_count: number; created_at: Date }> {
   const root = workspaceRoot();
   const sourceRoots = [
@@ -101,6 +53,7 @@ export async function buildSelfMap(): Promise<{ file_count: number; created_at: 
   const absoluteFiles = (await Promise.all(sourceRoots.map((sourceRoot) => collectFiles(sourceRoot)))).flat().sort();
   const knownFiles = new Set(absoluteFiles.map((filePath) => toRelativePath(root, filePath)));
   const files: IndexedFile[] = [];
+  const aliases = { "@/": "artifacts/atlas/src/" };
 
   for (const filePath of absoluteFiles) {
     const fileStat = await stat(filePath);
@@ -109,13 +62,15 @@ export async function buildSelfMap(): Promise<{ file_count: number; created_at: 
       : "";
     const relativePath = toRelativePath(root, filePath);
     const internalImports = extractImportSpecifiers(content)
-      .map((specifier) => resolveImport(filePath, specifier, root, knownFiles))
+      .map(({ specifier }) =>
+        resolveImport(relativePath, specifier, { root, knownFiles, aliases }),
+      )
       .filter((target): target is string => target !== null);
 
     files.push({
       path: relativePath,
       size: fileStat.size,
-      exports: extractExports(content),
+      exports: extractExportNames(content),
       internalImports,
     });
   }

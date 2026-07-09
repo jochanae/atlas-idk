@@ -779,6 +779,95 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: user_tier4_portfolio failed — server will start anyway");
   }
+
+  // F2 Source Intelligence — per-project code index
+  try {
+    await db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_sources (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        source_type text NOT NULL,
+        source_ref jsonb NOT NULL DEFAULT '{}'::jsonb,
+        is_primary boolean NOT NULL DEFAULT false,
+        last_ingested_at timestamptz,
+        last_ingest_status text NOT NULL DEFAULT 'pending',
+        last_ingest_error text,
+        file_count integer NOT NULL DEFAULT 0,
+        total_bytes bigint NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS one_primary_per_project
+        ON project_sources (project_id) WHERE is_primary = true
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS project_sources_project_id_idx ON project_sources (project_id)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_source_files (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        source_id uuid NOT NULL REFERENCES project_sources(id) ON DELETE CASCADE,
+        path text NOT NULL,
+        size_bytes integer NOT NULL DEFAULT 0,
+        sha256 text NOT NULL,
+        language text,
+        content text,
+        storage_key text,
+        exports jsonb NOT NULL DEFAULT '[]'::jsonb,
+        imports jsonb NOT NULL DEFAULT '[]'::jsonb,
+        indexed_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS project_source_files_source_path_uq
+        ON project_source_files (source_id, path)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS project_source_files_source_language_idx
+        ON project_source_files (source_id, language)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS project_source_files_exports_gin
+        ON project_source_files USING gin (exports)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS project_source_files_imports_gin
+        ON project_source_files USING gin (imports)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_source_embeddings (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        file_id uuid NOT NULL REFERENCES project_source_files(id) ON DELETE CASCADE,
+        chunk_index integer NOT NULL,
+        line_start integer NOT NULL,
+        line_end integer NOT NULL,
+        content text NOT NULL,
+        embedding vector(1536)
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS project_source_embeddings_file_chunk_uq
+        ON project_source_embeddings (file_id, chunk_index)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_source_snapshots (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        source_id uuid NOT NULL REFERENCES project_sources(id) ON DELETE CASCADE,
+        taken_at timestamptz NOT NULL DEFAULT now(),
+        file_manifest jsonb NOT NULL DEFAULT '{}'::jsonb
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS project_source_snapshots_source_id_idx
+        ON project_source_snapshots (source_id)
+    `);
+    logger.info("ensureColumns: project_sources tables verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: project_sources tables failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

@@ -36,3 +36,4 @@ export * from "./agent_runs";
 export * from "./execution_runs";
 export * from "./plan_artifacts";
 export * from "./project_tier1_memory";
+export * from "./project_sources";
