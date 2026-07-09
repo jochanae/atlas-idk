@@ -2734,3 +2734,146 @@ export function useGetProjectReadiness<
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+// ── Source Intelligence (F2) hooks ────────────────────────────────────────
+import type {
+  SourceListResponse, SourceTreeResponse, SourceFileResponse, SourceSearchResponse,
+  SourceSymbolsResponse, SourceImportsResponse, SourceRoutesResponse, SourceQaResponse,
+  SourceDiffResponse, IngestSourceBody, IngestSourceResponse,
+} from './api.schemas';
+
+async function _sourceFetch<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${url} → ${res.status}`);
+  return res.json() as Promise<T>;
+}
+const qs = (params: Record<string, string | number | undefined>) => {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : '';
+};
+
+// List sources for a project
+export const getListProjectSourcesUrl = (projectId: number) => `/api/sources/${projectId}`;
+export const listProjectSources = (projectId: number, options?: RequestInit) =>
+  _sourceFetch<SourceListResponse>(getListProjectSourcesUrl(projectId), { ...options, method: 'GET' });
+export const getListProjectSourcesQueryKey = (projectId: number) => [`/api/sources/${projectId}`] as const;
+export function useListProjectSources<TData = SourceListResponse, TError = unknown>(
+  projectId: number,
+  options?: { query?: UseQueryOptions<SourceListResponse, TError, TData> }
+) {
+  const queryKey = options?.query?.queryKey ?? getListProjectSourcesQueryKey(projectId);
+  const queryFn: QueryFunction<SourceListResponse> = ({ signal }) => listProjectSources(projectId, { signal });
+  return useQuery({ queryKey, queryFn, enabled: !!projectId, ...options?.query } as UseQueryOptions<SourceListResponse, TError, TData> & { queryKey: QueryKey }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+}
+
+// Tree
+export const getSourceTree = (sourceId: string, depth?: number, options?: RequestInit) =>
+  _sourceFetch<SourceTreeResponse>(`/api/sources/${sourceId}/tree${qs({ depth })}`, { ...options, method: 'GET' });
+export function useSourceTree<TData = SourceTreeResponse, TError = unknown>(
+  sourceId: string | undefined, depth?: number,
+  options?: { query?: UseQueryOptions<SourceTreeResponse, TError, TData> }
+) {
+  const queryKey = [`/api/sources/${sourceId}/tree`, depth] as const;
+  const queryFn: QueryFunction<SourceTreeResponse> = ({ signal }) => getSourceTree(sourceId!, depth, { signal });
+  return useQuery({ queryKey, queryFn, enabled: !!sourceId, ...options?.query } as UseQueryOptions<SourceTreeResponse, TError, TData> & { queryKey: QueryKey }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+}
+
+// File contents (optionally ranged)
+export const getSourceFile = (sourceId: string, path: string, lineStart?: number, lineEnd?: number, options?: RequestInit) =>
+  _sourceFetch<SourceFileResponse>(`/api/sources/${sourceId}/file${qs({ path, lineStart, lineEnd })}`, { ...options, method: 'GET' });
+export function useSourceFile<TData = SourceFileResponse, TError = unknown>(
+  sourceId: string | undefined, path: string | undefined, lineStart?: number, lineEnd?: number,
+  options?: { query?: UseQueryOptions<SourceFileResponse, TError, TData> }
+) {
+  const queryKey = [`/api/sources/${sourceId}/file`, path, lineStart, lineEnd] as const;
+  const queryFn: QueryFunction<SourceFileResponse> = ({ signal }) => getSourceFile(sourceId!, path!, lineStart, lineEnd, { signal });
+  return useQuery({ queryKey, queryFn, enabled: !!(sourceId && path), ...options?.query } as UseQueryOptions<SourceFileResponse, TError, TData> & { queryKey: QueryKey }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+}
+
+// Search
+export const searchSource = (sourceId: string, q: string, type: 'literal' | 'regex' = 'literal', glob?: string, options?: RequestInit) =>
+  _sourceFetch<SourceSearchResponse>(`/api/sources/${sourceId}/search${qs({ q, type, glob })}`, { ...options, method: 'GET' });
+export function useSearchSource<TData = SourceSearchResponse, TError = unknown>(
+  sourceId: string | undefined, q: string, type: 'literal' | 'regex' = 'literal', glob?: string,
+  options?: { query?: UseQueryOptions<SourceSearchResponse, TError, TData> }
+) {
+  const queryKey = [`/api/sources/${sourceId}/search`, q, type, glob] as const;
+  const queryFn: QueryFunction<SourceSearchResponse> = ({ signal }) => searchSource(sourceId!, q, type, glob, { signal });
+  return useQuery({ queryKey, queryFn, enabled: !!(sourceId && q && q.length >= 2), ...options?.query } as UseQueryOptions<SourceSearchResponse, TError, TData> & { queryKey: QueryKey }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+}
+
+// Symbols
+export const getSourceSymbols = (sourceId: string, name: string, options?: RequestInit) =>
+  _sourceFetch<SourceSymbolsResponse>(`/api/sources/${sourceId}/symbols${qs({ name })}`, { ...options, method: 'GET' });
+export function useSourceSymbols<TData = SourceSymbolsResponse, TError = unknown>(
+  sourceId: string | undefined, name: string,
+  options?: { query?: UseQueryOptions<SourceSymbolsResponse, TError, TData> }
+) {
+  const queryKey = [`/api/sources/${sourceId}/symbols`, name] as const;
+  const queryFn: QueryFunction<SourceSymbolsResponse> = ({ signal }) => getSourceSymbols(sourceId!, name, { signal });
+  return useQuery({ queryKey, queryFn, enabled: !!(sourceId && name), ...options?.query } as UseQueryOptions<SourceSymbolsResponse, TError, TData> & { queryKey: QueryKey }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+}
+
+// Imports (in|out)
+export const getSourceImports = (sourceId: string, path: string, direction: 'in' | 'out' = 'in', options?: RequestInit) =>
+  _sourceFetch<SourceImportsResponse>(`/api/sources/${sourceId}/imports${qs({ path, direction })}`, { ...options, method: 'GET' });
+export function useSourceImports<TData = SourceImportsResponse, TError = unknown>(
+  sourceId: string | undefined, path: string | undefined, direction: 'in' | 'out' = 'in',
+  options?: { query?: UseQueryOptions<SourceImportsResponse, TError, TData> }
+) {
+  const queryKey = [`/api/sources/${sourceId}/imports`, path, direction] as const;
+  const queryFn: QueryFunction<SourceImportsResponse> = ({ signal }) => getSourceImports(sourceId!, path!, direction, { signal });
+  return useQuery({ queryKey, queryFn, enabled: !!(sourceId && path), ...options?.query } as UseQueryOptions<SourceImportsResponse, TError, TData> & { queryKey: QueryKey }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+}
+
+// Routes
+export const getSourceRoutes = (sourceId: string, options?: RequestInit) =>
+  _sourceFetch<SourceRoutesResponse>(`/api/sources/${sourceId}/routes`, { ...options, method: 'GET' });
+export function useSourceRoutes<TData = SourceRoutesResponse, TError = unknown>(
+  sourceId: string | undefined,
+  options?: { query?: UseQueryOptions<SourceRoutesResponse, TError, TData> }
+) {
+  const queryKey = [`/api/sources/${sourceId}/routes`] as const;
+  const queryFn: QueryFunction<SourceRoutesResponse> = ({ signal }) => getSourceRoutes(sourceId!, { signal });
+  return useQuery({ queryKey, queryFn, enabled: !!sourceId, ...options?.query } as UseQueryOptions<SourceRoutesResponse, TError, TData> & { queryKey: QueryKey }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+}
+
+// Diff
+export const getSourceDiff = (sourceId: string, since: string, options?: RequestInit) =>
+  _sourceFetch<SourceDiffResponse>(`/api/sources/${sourceId}/diff${qs({ since })}`, { ...options, method: 'GET' });
+export function useSourceDiff<TData = SourceDiffResponse, TError = unknown>(
+  sourceId: string | undefined, since: string | undefined,
+  options?: { query?: UseQueryOptions<SourceDiffResponse, TError, TData> }
+) {
+  const queryKey = [`/api/sources/${sourceId}/diff`, since] as const;
+  const queryFn: QueryFunction<SourceDiffResponse> = ({ signal }) => getSourceDiff(sourceId!, since!, { signal });
+  return useQuery({ queryKey, queryFn, enabled: !!(sourceId && since), ...options?.query } as UseQueryOptions<SourceDiffResponse, TError, TData> & { queryKey: QueryKey }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+}
+
+// Q&A (mutation)
+export const askSourceQa = (sourceId: string, question: string, k = 8) =>
+  _sourceFetch<SourceQaResponse>(`/api/sources/${sourceId}/qa`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question, k }),
+  });
+export function useAskSourceQa<TError = unknown>() {
+  return useMutation<SourceQaResponse, TError, { sourceId: string; question: string; k?: number }>({
+    mutationFn: ({ sourceId, question, k }) => askSourceQa(sourceId, question, k),
+  });
+}
+
+// Ingest (mutation)
+export const ingestProjectSource = (projectId: number, body: IngestSourceBody) =>
+  _sourceFetch<IngestSourceResponse>(`/api/sources/${projectId}/ingest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+export function useIngestProjectSource<TError = unknown>() {
+  return useMutation<IngestSourceResponse, TError, { projectId: number; body: IngestSourceBody }>({
+    mutationFn: ({ projectId, body }) => ingestProjectSource(projectId, body),
+  });
+}

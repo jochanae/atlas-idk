@@ -21,6 +21,7 @@
         "@workspace/api-zod": "workspace:*",
         "@workspace/db": "workspace:*",
         "@workspace/integrations-openai-ai-server": "workspace:*",
+        "@workspace/source-index": "workspace:*",
         "ai": "^7.0.14",
         "cookie-parser": "^1.4.7",
         "cors": "^2",
@@ -260,6 +261,15 @@
       },
       "devDependencies": {
         "@types/node": "catalog:",
+      },
+    },
+    "lib/source-index": {
+      "name": "@workspace/source-index",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "^5.9.2",
+        "vitest": "^4.1.5",
       },
     },
     "scripts": {
@@ -918,6 +928,8 @@
     "@workspace/mockup-sandbox": ["@workspace/mockup-sandbox@workspace:artifacts/mockup-sandbox"],
 
     "@workspace/scripts": ["@workspace/scripts@workspace:scripts"],
+
+    "@workspace/source-index": ["@workspace/source-index@workspace:lib/source-index"],
 
     "abort-controller": ["abort-controller@3.0.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/abort-controller/-/abort-controller-3.0.0.tgz", { "dependencies": { "event-target-shim": "5.0.1" } }, "sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg=="],
 
