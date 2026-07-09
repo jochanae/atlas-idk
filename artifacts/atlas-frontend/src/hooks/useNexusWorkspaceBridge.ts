@@ -77,6 +77,8 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     inputTokens: nm.inputTokens ?? undefined,
     outputTokens: nm.outputTokens ?? undefined,
     costUsd: nm.costUsd ?? undefined,
+    ...(nm.clarify ? { clarify: nm.clarify as ChatMessage["clarify"] } : {}),
+    ...(nm.tradeoffMatrix ? { tradeoffMatrix: nm.tradeoffMatrix as ChatMessage["tradeoffMatrix"] } : {}),
   };
 }
 

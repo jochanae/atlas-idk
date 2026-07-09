@@ -84,6 +84,17 @@ export type StructuredDecisionGate = {
   options: Array<{ label: string; value: string }>;
 };
 
+export type TradeoffMatrix = {
+  question: string;
+  options: Array<{
+    label: string;
+    pros: string[];
+    cons: string[];
+    atlas_leans?: boolean;
+  }>;
+  context?: string;
+};
+
 export type PlanExecution = {
   currentStepOrder?: number;
   completedStepOrders?: number[];

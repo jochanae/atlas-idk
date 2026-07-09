@@ -418,24 +418,32 @@ export function LedgerPanel({
                 </div>
 
                 <div style={{ marginBottom: 22 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, padding: "0 2px" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: "var(--atlas-muted)", opacity: 0.5 }} />
-                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: "var(--atlas-muted)", opacity: 0.65 }}>
-                      Overridden
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6, padding: "0 2px" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: "color-mix(in oklab, var(--atlas-ember) 70%, var(--atlas-gold))", boxShadow: "0 0 5px color-mix(in oklab, var(--atlas-ember) 35%, transparent)" }} />
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: "color-mix(in oklab, var(--atlas-ember) 80%, var(--atlas-gold))" }}>
+                      Deviation Log
                     </span>
                     {overridden.length > 0 && (
-                      <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.06em", color: "var(--atlas-muted)", opacity: 0.5, marginLeft: "auto" }}>
+                      <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.06em", color: "var(--atlas-muted)", marginLeft: "auto" }}>
                         {overridden.length}
                       </span>
                     )}
                   </div>
                   {overridden.length > 0 ? (
-                    <div style={{ opacity: 0.65 }}>
-                      {overridden.map((e) => <LedgerEntry key={e.id} entry={e} projectId={projectId} />)}
-                    </div>
+                    <>
+                      <p style={{ margin: "0 0 8px 13px", fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.5 }}>
+                        Decisions where the build diverged from the original commitment.
+                      </p>
+                      <div style={{
+                        borderLeft: "2px solid color-mix(in oklab, var(--atlas-ember) 35%, transparent)",
+                        paddingLeft: 8, marginLeft: 4,
+                      }}>
+                        {overridden.map((e) => <LedgerEntry key={e.id} entry={e} projectId={projectId} />)}
+                      </div>
+                    </>
                   ) : (
                     <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, padding: "6px 2px", lineHeight: 1.55 }}>
-                      Nothing overridden.
+                      No course corrections recorded.
                     </div>
                   )}
                 </div>

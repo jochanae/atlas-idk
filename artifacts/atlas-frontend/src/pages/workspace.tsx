@@ -232,6 +232,17 @@ export type ClarifyPayload = {
   }>;
 };
 
+export type TradeoffMatrix = {
+  question: string;
+  options: Array<{
+    label: string;
+    pros: string[];
+    cons: string[];
+    atlas_leans?: boolean;
+  }>;
+  context?: string;
+};
+
 export interface BrowserResult {
   type: "screenshot" | "scrape" | "health" | "monitor";
   url: string;
@@ -288,6 +299,7 @@ export interface ChatMessage {
   alertResolved?: boolean;
   catchPayload?: import("../lib/DecisionCatchTypes").CatchPayload | null;
   clarify?: ClarifyPayload | null;
+  tradeoffMatrix?: TradeoffMatrix | null;
   decisionDraft?: { entryId: number; title: string } | null;
   fileEdit?: FileEdit;
   fileEdits?: FileEdit[];

@@ -2836,6 +2836,13 @@ Rules:
 - Never emit a CLARIFY card if the conversation already contains the answer.
 - If the request is clear enough to give one strong recommendation, give it — don't clarify.
 - If clarification IS needed: emit the CLARIFY_START block, then stop. No prose before or after.
+
+TRADEOFF MATRIX — use when the user faces a structural binary or multi-way architectural choice (2–4 options):
+Emit when the user must choose between fundamentally different technical, product, or strategic paths and there are real tradeoffs to compare. Emit AFTER your prose recommendation. Format:
+TRADEOFF_START
+{"question":"<the decision>","options":[{"label":"<name>","pros":["<strength>"],"cons":["<cost>"],"atlas_leans":<true|false>}],"context":"<optional one-sentence framing>"}
+TRADEOFF_END
+Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atlas_leans:true (your recommendation), or omit it if genuinely balanced. The block is extracted and rendered as a visual card — do NOT duplicate its content in prose. Skip for simple questions with a clear answer.
 --- END WHISPERGATE ---`;
   } else if (allowBuildSideEffects) {
     systemPrompt += `\n\n--- WHISPERGATE INTENT: BUILD ---\nThis is a BUILD turn. The user wants you to create, edit, fix, or ship code. Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over narration.\n--- END WHISPERGATE ---`;
@@ -3091,6 +3098,44 @@ Rules:
       // Always strip the block from visible prose, even if parse/validation failed,
       // so raw JSON never leaks into the conversation.
       visibleContent = visibleContent.replace(clarifyMatch[0], "\n").replace(/\n{3,}/g, "\n\n").trim();
+    }
+
+    // Extract TRADEOFF_START ... TRADEOFF_END block — Atlas emits structured tradeoff
+    // matrices on DECIDE turns for binary/multi-way architectural or strategic choices.
+    // Stripped from prose and shipped as `tradeoff` on the `done` event; the frontend
+    // renders it via TradeoffMatrixCard on the assistant bubble.
+    type TradeoffOption = { label: string; pros: string[]; cons: string[]; atlas_leans?: boolean };
+    type TradeoffPayload = { question: string; options: TradeoffOption[]; context?: string };
+    const isTradeoffPayload = (value: unknown): value is TradeoffPayload => {
+      if (!value || typeof value !== "object") return false;
+      const v = value as { question?: unknown; options?: unknown };
+      return typeof v.question === "string"
+        && Array.isArray(v.options)
+        && v.options.length >= 2 && v.options.length <= 4
+        && (v.options as unknown[]).every((opt) => {
+          if (!opt || typeof opt !== "object") return false;
+          const o = opt as { label?: unknown; pros?: unknown; cons?: unknown };
+          return typeof o.label === "string"
+            && Array.isArray(o.pros) && (o.pros as unknown[]).every((p) => typeof p === "string")
+            && Array.isArray(o.cons) && (o.cons as unknown[]).every((c) => typeof c === "string");
+        });
+    };
+    let tradeoff: TradeoffPayload | undefined;
+    const TRADEOFF_RE = /(?:^|\n)TRADEOFF_START\s*([\s\S]*?)\s*TRADEOFF_END(?:\n|$)/;
+    const tradeoffMatch = visibleContent.match(TRADEOFF_RE);
+    if (tradeoffMatch) {
+      try {
+        const parsed = JSON.parse(tradeoffMatch[1].trim()) as unknown;
+        if (isTradeoffPayload(parsed)) {
+          tradeoff = parsed;
+        } else {
+          logger.warn({ preview: tradeoffMatch[1].slice(0, 200) }, "nexus: TRADEOFF block failed shape validation");
+        }
+      } catch (err) {
+        logger.warn({ err: String(err), preview: tradeoffMatch[1].slice(0, 200) }, "nexus: TRADEOFF block JSON parse failed");
+      }
+      // Strip block from prose even on parse failure.
+      visibleContent = visibleContent.replace(tradeoffMatch[0], "\n").replace(/\n{3,}/g, "\n\n").trim();
     }
 
     // Extract NEXT_SUGGESTIONS marker — one-tap continuation chips. Discipline
@@ -3886,6 +3931,7 @@ Rules:
       convState,
       catchPayload: catchPayload ?? undefined,
       ...(clarify ? { clarify } : {}),
+      ...(tradeoff ? { tradeoff } : {}),
       ...(decisionDraft ? { decisionDraft } : {}),
       ...(nextSuggestions ? { nextSuggestions } : {}),
       ...(thinkingStable ? { thinkingStable: true } : {}),
@@ -4628,7 +4674,7 @@ router.post("/nexus/handoff", async (req, res): Promise<void> => {
 
     const briefResponse = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1024,
+      max_tokens: 1536,
       system: `You are extracting a project brief from a conversation between a founder and Atlas.
 
 Extract and return ONLY a JSON object with this exact shape — no markdown, no explanation:
@@ -4636,10 +4682,17 @@ Extract and return ONLY a JSON object with this exact shape — no markdown, no 
   "projectName": "short name for the project (max 4 words)",
   "description": "one sentence describing what this project does",
   "blueprint": "2-3 sentences covering what was decided: what to build, key components identified, approach agreed on",
-  "firstStep": "the single most important first thing to do in the workspace"
+  "firstStep": "the single most important first thing to do in the workspace",
+  "backendSpec": {
+    "endpoints": [{"method": "GET|POST|PUT|DELETE|PATCH", "path": "/api/...", "purpose": "one sentence"}],
+    "models": [{"name": "ModelName", "keyFields": ["field1", "field2"]}],
+    "stack": "recommended backend stack in one phrase (e.g. Node.js + PostgreSQL)",
+    "scope": "one sentence describing the Phase 1 scope boundary"
+  }
 }
 
-If no clear project name was discussed, use "New Project".`,
+If no clear project name was discussed, use "New Project".
+For backendSpec: infer it from the conversation — what data needs to persist, what actions need an API, what the data model looks like. If the conversation has no technical signal at all, set backendSpec to null.`,
       messages: [
         {
           role: "user",
@@ -4649,7 +4702,7 @@ If no clear project name was discussed, use "New Project".`,
     });
 
     const rawText = briefResponse.content[0]?.type === "text" ? briefResponse.content[0].text : "{}";
-    let brief: { projectName: string; description: string; blueprint: string; firstStep: string };
+    let brief: { projectName: string; description: string; blueprint: string; firstStep: string; backendSpec?: { endpoints: Array<{ method: string; path: string; purpose: string }>; models: Array<{ name: string; keyFields: string[] }>; stack: string; scope: string } | null };
     try {
       brief = JSON.parse(rawText.replace(/```json|```/g, "").trim());
     } catch {
@@ -4706,6 +4759,13 @@ If no clear project name was discussed, use "New Project".`,
       ...(brief.firstStep ? [{
         tier: 4 as const,
         text: `First step: ${brief.firstStep}`,
+        createdAt: handoffTimestamp,
+        retrievalCount: 0,
+        lastRetrievedAt: null,
+      }] : []),
+      ...(brief.backendSpec ? [{
+        tier: 2 as const,
+        text: `Backend spec (inferred at handoff): stack=${brief.backendSpec.stack}. Scope: ${brief.backendSpec.scope}. Endpoints: ${brief.backendSpec.endpoints.map(e => `${e.method} ${e.path}`).join(", ")}. Models: ${brief.backendSpec.models.map(m => m.name).join(", ")}.`,
         createdAt: handoffTimestamp,
         retrievalCount: 0,
         lastRetrievedAt: null,

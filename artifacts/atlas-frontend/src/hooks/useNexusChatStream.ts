@@ -117,6 +117,10 @@ export interface NexusMessage {
   nextSuggestions?: string[] | null;
   /** True when the backend queued background decision extraction after this turn. */
   extractionQueued?: boolean;
+  /** Structured clarification card emitted by Atlas on DECIDE turns when target is ambiguous. */
+  clarify?: { steps: Array<{ question: string; options: string[]; allowFreeText?: boolean; reason?: string }> } | null;
+  /** Structured tradeoff matrix emitted by Atlas on DECIDE turns for binary/multi-way choices. */
+  tradeoffMatrix?: { question: string; options: Array<{ label: string; pros: string[]; cons: string[]; atlas_leans?: boolean }>; context?: string } | null;
 }
 
 export interface NexusHandoffSignal {
@@ -681,6 +685,8 @@ export function useNexusChatStream(
                     // Pass-through fields that the bridge was previously dropping:
                     nextSuggestions: (meta.nextSuggestions as string[] | undefined) ?? null,
                     extractionQueued: !!(meta.extractionQueued),
+                    clarify: ((meta as any).clarify ?? null) as NexusMessage["clarify"],
+                    tradeoffMatrix: ((meta as any).tradeoff ?? null) as NexusMessage["tradeoffMatrix"],
                   }
                 : m
             ));

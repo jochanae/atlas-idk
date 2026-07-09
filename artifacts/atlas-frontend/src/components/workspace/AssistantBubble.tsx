@@ -44,6 +44,7 @@ import type {
   PushRecord,
   ClarifyPayload,
   AlertPayload,
+  TradeoffMatrix,
 } from "@/pages/workspace";
 
 function formatModelUsedLabel(modelUsed?: string | null): string | null {
@@ -841,6 +842,79 @@ function MigrationCard({ sql }: { sql: string }) {
       >
         {sql}
       </pre>
+    </div>
+  );
+}
+
+function TradeoffMatrixCard({ matrix }: { matrix: TradeoffMatrix }) {
+  const lean = matrix.options.find((o) => o.atlas_leans === true);
+  return (
+    <div style={{
+      marginTop: 12,
+      borderRadius: 10,
+      border: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, var(--atlas-border))",
+      background: "color-mix(in oklab, var(--atlas-surface) 85%, var(--atlas-bg))",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        padding: "10px 14px 8px",
+        borderBottom: "1px solid color-mix(in oklab, var(--atlas-border) 60%, transparent)",
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.75 }}>Tradeoff</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--atlas-fg)", lineHeight: 1.35 }}>{matrix.question}</span>
+      </div>
+      {matrix.context && (
+        <div style={{ padding: "6px 14px 0", fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
+          {matrix.context}
+        </div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(matrix.options.length, 2)}, 1fr)`, gap: 1, margin: "10px 10px 10px", background: "var(--atlas-border)" }}>
+        {matrix.options.map((opt) => (
+          <div key={opt.label} style={{
+            background: opt.atlas_leans
+              ? "color-mix(in oklab, var(--atlas-gold) 6%, var(--atlas-surface))"
+              : "var(--atlas-surface)",
+            padding: "10px 12px",
+            position: "relative",
+          }}>
+            {opt.atlas_leans && (
+              <span style={{
+                position: "absolute", top: 6, right: 8,
+                fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+                textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.8,
+              }}>Atlas pick</span>
+            )}
+            <div style={{ fontSize: 12, fontWeight: 600, color: opt.atlas_leans ? "var(--atlas-gold)" : "var(--atlas-fg)", marginBottom: 7 }}>
+              {opt.label}
+            </div>
+            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 3 }}>
+              {opt.pros.map((p) => (
+                <li key={p} style={{ display: "flex", gap: 5, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 9, color: "var(--atlas-phosphor)", flexShrink: 0, marginTop: 1 }}>+</span>
+                  <span style={{ fontSize: 11, color: "var(--atlas-fg)", lineHeight: 1.45, opacity: 0.85 }}>{p}</span>
+                </li>
+              ))}
+              {opt.cons.map((c) => (
+                <li key={c} style={{ display: "flex", gap: 5, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 9, color: "var(--atlas-ember)", flexShrink: 0, marginTop: 1 }}>−</span>
+                  <span style={{ fontSize: 11, color: "var(--atlas-fg)", lineHeight: 1.45, opacity: 0.7 }}>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      {lean && (
+        <div style={{
+          padding: "7px 14px 9px",
+          borderTop: "1px solid color-mix(in oklab, var(--atlas-border) 60%, transparent)",
+          fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.5,
+        }}>
+          <span style={{ color: "var(--atlas-gold)", fontWeight: 600 }}>Atlas leans toward {lean.label}.</span>
+          {" "}You have full context — override as needed.
+        </div>
+      )}
     </div>
   );
 }
@@ -2359,6 +2433,10 @@ function AssistantBubbleImpl({
 
         {!message.streaming && message.clarify && (
           <ClarifyCard clarify={message.clarify} onSend={onSend} />
+        )}
+
+        {!message.streaming && message.tradeoffMatrix && (
+          <TradeoffMatrixCard matrix={message.tradeoffMatrix} />
         )}
 
         {hasImageClarify && (
