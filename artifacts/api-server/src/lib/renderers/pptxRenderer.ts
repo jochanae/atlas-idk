@@ -5,6 +5,9 @@ import PptxGenJS from "pptxgenjs";
 import { z } from "zod";
 import { registerArtifactRenderer, type ArtifactRenderOutput } from "../artifactEngine";
 import { generateValidatedContentPlan } from "./contentPlan";
+import { resolveDeliverableTheme, type DeliverableTheme } from "../deliverable-theme/tokens";
+
+const MASTER_NAME = "ATLAS_DECK_MASTER";
 
 export interface PptxGenerationInput {
   context: string;
@@ -50,31 +53,85 @@ Rules:
 - Each slide should have 2-5 short bullets, not paragraphs.
 - Keep headings and bullets concise — this is a deck, not a document.`;
 
-function buildPptxBuffer(plan: PptxContentPlan): Promise<Buffer> {
-  const pptx = new PptxGenJS();
+function defineDeckMaster(pptx: PptxGenJS, theme: DeliverableTheme, brandLabel: string): void {
+  pptx.defineSlideMaster({
+    title: MASTER_NAME,
+    background: { color: theme.colors.background },
+    objects: [
+      // Thin accent rule separating content from the footer band.
+      {
+        rect: {
+          x: 0.5, y: 5.28, w: 9.0, h: 0.012,
+          fill: { color: theme.colors.accentDim },
+        },
+      },
+      {
+        text: {
+          text: brandLabel,
+          options: {
+            x: 0.5, y: 5.35, w: 6.0, h: 0.3,
+            fontFace: theme.fonts.body, fontSize: 9,
+            color: theme.colors.footer, align: "left",
+          },
+        },
+      },
+    ],
+    slideNumber: {
+      x: 9.0, y: 5.35, w: 0.5, h: 0.3,
+      fontFace: theme.fonts.body, fontSize: 9, color: theme.colors.footer, align: "right",
+    },
+  });
+}
 
-  const titleSlide = pptx.addSlide();
+function buildPptxBuffer(plan: PptxContentPlan, brandLabel: string): Promise<Buffer> {
+  const theme = resolveDeliverableTheme();
+  const pptx = new PptxGenJS();
+  defineDeckMaster(pptx, theme, brandLabel);
+
+  const titleSlide = pptx.addSlide({ masterName: MASTER_NAME });
   titleSlide.addText(plan.title, {
-    x: 0.5, y: 2.0, w: "90%", h: 1.2,
-    fontSize: 32, bold: true, align: "left",
+    x: 0.6, y: 2.05, w: "88%", h: 1.1,
+    fontFace: theme.fonts.heading, fontSize: 36, bold: true, align: "left",
+    color: theme.colors.heading,
+  });
+  // Accent divider under the deck title, echoing the app's own gold rule.
+  titleSlide.addShape("rect", {
+    x: 0.62, y: 3.15, w: 1.4, h: 0.03,
+    fill: { color: theme.colors.accent },
   });
   if (plan.subtitle) {
     titleSlide.addText(plan.subtitle, {
-      x: 0.5, y: 3.1, w: "90%", h: 0.8,
-      fontSize: 16, color: "666666", align: "left",
+      x: 0.6, y: 3.35, w: "80%", h: 0.7,
+      fontFace: theme.fonts.body, fontSize: 16, italic: true, align: "left",
+      color: theme.colors.accent,
     });
   }
 
   for (const slide of plan.slides) {
-    const s = pptx.addSlide();
+    const s = pptx.addSlide({ masterName: MASTER_NAME });
     s.addText(slide.heading, {
-      x: 0.5, y: 0.4, w: "90%", h: 0.8,
-      fontSize: 24, bold: true,
+      x: 0.5, y: 0.42, w: "90%", h: 0.7,
+      fontFace: theme.fonts.heading, fontSize: 26, bold: true,
+      color: theme.colors.heading,
+    });
+    s.addShape("rect", {
+      x: 0.52, y: 1.12, w: 0.9, h: 0.025,
+      fill: { color: theme.colors.accent },
     });
     if (slide.bullets.length > 0) {
       s.addText(
-        slide.bullets.map((b) => ({ text: b, options: { bullet: true, breakLine: true } })),
-        { x: 0.5, y: 1.4, w: "90%", h: 4.5, fontSize: 16, valign: "top" },
+        slide.bullets.map((b) => ({
+          text: b,
+          options: {
+            bullet: { code: "25AA", color: theme.colors.accent },
+            breakLine: true,
+            paraSpaceAfter: 12,
+          },
+        })),
+        {
+          x: 0.5, y: 1.5, w: "90%", h: 3.6, valign: "top",
+          fontFace: theme.fonts.body, fontSize: 16, color: theme.colors.body,
+        },
       );
     }
     if (slide.notes) {
@@ -94,7 +151,7 @@ registerArtifactRenderer({
     const plan = await generateValidatedContentPlan<PptxContentPlan>(prompt, PptxContentPlanSchema, "PPTX renderer");
     if (input.title) plan.title = input.title;
 
-    const buffer = await buildPptxBuffer(plan);
+    const buffer = await buildPptxBuffer(plan, "Atlas");
 
     return {
       buffer,
