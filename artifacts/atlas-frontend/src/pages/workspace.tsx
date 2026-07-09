@@ -1893,7 +1893,7 @@ function RightPanel({
     return "ledger";
   });
   const [ledgerSubTab, setLedgerSubTab] = useState<"entries" | "memory">("entries");
-  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "github" | "database">("workspace");
+  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "codebase" | "github" | "database">("workspace");
   const [githubSubTab, setGithubSubTab] = useState<"repository" | "activity" | "settings">("activity");
 
   useEffect(() => {
