@@ -28,6 +28,13 @@ import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
+import { createSideEffects, createPlanState, type AgentToolContext } from "../lib/agent-tools";
+import {
+  toAnthropicTools,
+  executeSharedAgentTool,
+  SHARED_HOME_TOOL_NAMES,
+  SHARED_WORKSPACE_TOOL_NAMES,
+} from "../lib/agent-tools/anthropic-adapter";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, synthesizeGlobalNarrative, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { maybeEmitMilestones } from "../lib/milestoneClassifier";
@@ -618,71 +625,57 @@ const CREATE_PROJECT_TOOL: Anthropic.Tool = {
   },
 };
 
-const TIER1_UPSERT_FIELD_TOOL: Anthropic.Tool = {
-  name: "tier1_upsert_field",
-  description:
-    "Save one Tier 1 project memory field. Use when the user has clearly answered one of the six foundational questions in conversation. Never guess — only call with the user's actual words (lightly cleaned).",
-  input_schema: {
-    type: "object",
-    properties: {
-      field: {
-        type: "string",
-        enum: [...TIER1_FIELD_KEYS],
-        description: "Which foundational field this answer satisfies",
-      },
-      value: { type: "string", description: "The user's answer, lightly cleaned" },
-      confidence: {
-        type: "string",
-        enum: ["explicit", "inferred"],
-        description: "explicit = user stated it directly; inferred = you paraphrased from context",
-      },
-    },
-    required: ["field", "value", "confidence"],
-  },
-};
+// Schema source of truth: every capability below (tier1 fields, file reading,
+// deliverable generation, cross-project search/diff/knowledge/registry) is
+// defined exactly once in lib/agent-tools and derived here — nexus.ts must
+// never hand-roll a second Anthropic.Tool definition for a capability that
+// already exists in the shared registry. `SCHEMA_CTX` is a placeholder only
+// used to construct tool objects for schema introspection; `.execute` on
+// tools built from it is never called (see executeSharedAgentTool, which
+// builds a real per-request context).
+const SCHEMA_CTX = {
+  projectId: 0,
+  userId: 0,
+  workspaceDir: "",
+  res: undefined as unknown as import("express").Response,
+  sideEffects: createSideEffects(),
+  planState: createPlanState(),
+  structuredPlanEnabled: false,
+  messages: [],
+  stepId: () => "schema",
+  emitToolCall: () => {},
+  emitToolResult: () => {},
+  emitNamedEvent: () => {},
+  writeStep: () => {},
+} satisfies AgentToolContext;
 
-const TIER1_MARK_SKIPPED_TOOL: Anthropic.Tool = {
-  name: "tier1_mark_skipped",
-  description:
-    "Call ONLY when the user has clearly told you to stop asking Tier 1 questions (e.g. 'skip', 'stop asking that', 'I don't want to answer'). Prevents Atlas from asking again.",
-  input_schema: {
-    type: "object",
-    properties: {},
-  },
-};
-
-const READ_FILE_TOOL: Anthropic.Tool = {
-  name: "read_file",
-  description: "Read the contents of a file in this project's workspace. Use this whenever you need to see code, config, or data that lives in the project — do NOT ask the user to paste files that are part of this workspace. If you can see a path in the file tree, you can read it here.",
-  input_schema: {
-    type: "object",
-    properties: {
-      path: {
-        type: "string",
-        description: "File path relative to the project root. Examples: 'src/pages/AssetsPage.jsx', 'src/components/AssetCard.jsx', 'package.json'",
-      },
-    },
-    required: ["path"],
-  },
-};
+const [TIER1_UPSERT_FIELD_TOOL, TIER1_MARK_SKIPPED_TOOL, READ_FILE_TOOL] = toAnthropicTools(SCHEMA_CTX, [
+  "tier1_upsert_field",
+  "tier1_mark_skipped",
+  "read_file",
+]);
 
 const NEXUS_AGENT_TOOLS: Anthropic.Tool[] = [
   CREATE_PROJECT_TOOL,
   TIER1_UPSERT_FIELD_TOOL,
   TIER1_MARK_SKIPPED_TOOL,
+  ...toAnthropicTools(SCHEMA_CTX, SHARED_HOME_TOOL_NAMES),
 ];
 
-// Workspace-mode tools: Tier 1 tools + file reading capability.
-// Only used when focusProjectId is set (inside a project workspace).
-// Deliberately excludes CREATE_PROJECT_TOOL — you are already inside a
-// project, so "build/create" intent here means write files, not spin up
-// a second project. (Bug: this used to spread in NEXUS_AGENT_TOOLS,
-// which includes CREATE_PROJECT_TOOL, causing Atlas to try creating a
-// new project mid-workspace and fail with the free-plan project limit.)
+// Workspace-mode tools: Tier 1 tools + file reading + every shared
+// project-aware capability (deliverables, cross-project search/diff/
+// knowledge/registry). Only used when focusProjectId is set (inside a
+// project workspace). Deliberately excludes CREATE_PROJECT_TOOL — you are
+// already inside a project, so "build/create" intent here means write
+// files, not spin up a second project. (Bug: this used to spread in
+// NEXUS_AGENT_TOOLS, which includes CREATE_PROJECT_TOOL, causing Atlas to
+// try creating a new project mid-workspace and fail with the free-plan
+// project limit.)
 const NEXUS_WORKSPACE_TOOLS: Anthropic.Tool[] = [
   TIER1_UPSERT_FIELD_TOOL,
   TIER1_MARK_SKIPPED_TOOL,
   READ_FILE_TOOL,
+  ...toAnthropicTools(SCHEMA_CTX, SHARED_WORKSPACE_TOOL_NAMES.filter((n) => n !== "read_file")),
 ];
 
 const CONVERSATIONAL_EXPANSION_PROTOCOL = `--- ATLAS SHAPING FRAMEWORK ---
@@ -4649,6 +4642,37 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     }
   };
 
+  // Real per-request context for the shared agent-tools registry. Built lazily
+  // (workspaceDir requires an async fs call) and reused across every shared
+  // tool invocation in this turn. `projectId` falls back to 0 for home-scope
+  // tools (search_all_projects, architecture_diff, project_knowledge,
+  // component_registry) which are keyed by userId, not the active project.
+  let sharedAgentCtxPromise: Promise<AgentToolContext> | null = null;
+  const getSharedAgentCtx = (): Promise<AgentToolContext> => {
+    if (!sharedAgentCtxPromise) {
+      sharedAgentCtxPromise = (async () => ({
+        projectId: focusProjectId ?? 0,
+        userId,
+        workspaceDir: focusProjectId ? await ensureProjectWorkspaceDir(focusProjectId) : "",
+        res,
+        sideEffects: createSideEffects(),
+        planState: createPlanState(),
+        structuredPlanEnabled: false,
+        messages: tier1ContextMessages,
+        stepId: () => `nexus-${Date.now()}`,
+        emitToolCall: (name, args) => writeStep({ verb: "Running", target: name, detail: JSON.stringify(args).slice(0, 200) }),
+        emitToolResult: (name, ok) => writeStep({ verb: ok ? "Completed" : "Failed", target: name, status: ok ? "ok" : "fail" }),
+        emitNamedEvent: (event, data) => {
+          if (!res.writableEnded && !res.destroyed) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        },
+        writeStep: (s) => writeStep(s as RunAction),
+      }))();
+    }
+    return sharedAgentCtxPromise;
+  };
+
+  const SHARED_TOOL_NAME_SET = new Set([...SHARED_HOME_TOOL_NAMES, ...SHARED_WORKSPACE_TOOL_NAMES]);
+
   const runNexusTool = async (toolUse: Anthropic.ToolUseBlock): Promise<Record<string, unknown>> => {
     switch (toolUse.name) {
       case "create_project":
@@ -4659,8 +4683,14 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         return runTier1MarkSkippedTool();
       case "read_file":
         return runReadFileTool(toolUse);
-      default:
+      default: {
+        if (SHARED_TOOL_NAME_SET.has(toolUse.name)) {
+          const ctx = await getSharedAgentCtx();
+          const input = isRecord(toolUse.input) ? toolUse.input : {};
+          return executeSharedAgentTool(ctx, toolUse.name, input);
+        }
         return { ok: false, error: "unknown_tool" };
+      }
     }
   };
 

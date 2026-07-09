@@ -22,6 +22,9 @@ import { tier1MarkSkippedTool } from "./tier1-mark-skipped";
 import { listUserProjectsTool, listReferenceProjectDirTool, readReferenceProjectFileTool } from "./reference-project";
 import { generateDeliverableTool } from "./generate-deliverable";
 import { searchAllProjectsTool } from "./search-all-projects";
+import { architectureDiffTool } from "./architecture-diff";
+import { projectKnowledgeTool } from "./project-knowledge";
+import { componentRegistryTool } from "./component-registry";
 
 export { createSideEffects, createPlanState } from "./context";
 export type { AgentToolContext, AgentFileEdit, AgentLinePatch, AgentToolSideEffects, AgentPlanState } from "./context";
@@ -50,6 +53,9 @@ export function buildAgentTools(ctx: AgentToolContext, options?: { includePlanTo
     read_reference_project_file: readReferenceProjectFileTool(ctx),
     generate_deliverable: generateDeliverableTool(ctx),
     search_all_projects: searchAllProjectsTool(ctx),
+    architecture_diff: architectureDiffTool(ctx),
+    project_knowledge: projectKnowledgeTool(ctx),
+    component_registry: componentRegistryTool(ctx),
   };
 
   if (!options?.includePlanTools) {
