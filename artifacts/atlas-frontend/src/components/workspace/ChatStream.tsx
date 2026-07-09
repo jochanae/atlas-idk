@@ -19,6 +19,7 @@ import type { PlanExecution } from "@/lib/plan";
 import type { Plan } from "@/lib/plan";
 import type { PlanState } from "@/components/workspace/chatShared";
 import type { ResumeBrief } from "@/hooks/useProjectResume";
+import { isDoingVerb } from "@/lib/runStepLabels";
 import { WorkspaceRunCard } from "@/components/workspace/WorkspaceRunCard";
 
 // Minimal structural types — avoid importing private types from workspace.tsx
@@ -386,7 +387,11 @@ export function ChatStream(props: ChatStreamProps) {
       (last.content ?? "").startsWith("[LOCAL_APPLY_SUCCESS]")
     );
   }, [messages]);
-  const suppressStreamingText = !!liveStep || (chatPending && inBuildChain);
+  // Task #158: only suppress prose for "Doing" steps (mutating tool-use — the
+  // WorkspaceRunCard owns that surface). Pure "Thinking" steps (FILE_READ,
+  // TREE, FETCH, etc.) must NOT suppress — Atlas's prose should stream
+  // normally while thinking, per the Thinking/Doing/Receipt lifecycle.
+  const suppressStreamingText = isDoingVerb(liveStep?.verb) || (chatPending && inBuildChain);
 
   // Inline run-card anchor. The run card should sit with the turn that produced
   // it, not float below all messages. Rules:

@@ -34,6 +34,7 @@ import { useReadingDensity } from "@/hooks/useComposerVisibility";
 import { dispatchVerifyRun } from "@/lib/verification";
 import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import { useQueryClient } from "@tanstack/react-query";
+import { EXECUTION_VERBS, doingLabel, thinkingLabel } from "@/lib/runStepLabels";
 
 interface LiveStepItem {
   verb: string;
@@ -54,7 +55,7 @@ interface Props {
   executionRun?: ApiRun | null;
 }
 
-type DerivedStatus = "running" | "applied" | "failed" | "pushed" | "sketched";
+type DerivedStatus = "running" | "applied" | "failed" | "pushed" | "sketched" | "delivered";
 type PreviewSource = "sandbox" | "generated" | "local" | "url" | null;
 
 interface DerivedRun {
@@ -72,6 +73,7 @@ interface DerivedRun {
   error?: string;
   githubPush?: GithubPushPayload;
   sketchImageUrl?: string;
+  deliverable?: { name: string; downloadUrl: string };
 }
 
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
@@ -110,12 +112,15 @@ function adaptExecutionRun(
   const hasFileWork = run.steps.some(
     s => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH",
   );
+  // Task #158: a deliverable (DOCX/PPTX/PDF/etc.) generated via generate-deliverable.ts.
+  // Its receipt uses the same unified card — never a separate "can't generate" path.
+  const deliverableStep = run.steps.find(s => s.verb === "ARTIFACT_CREATED");
 
   // Pure conversational turns — only PROMPT/THOUGHT/SUMMARY with no real tool
   // invocations (FILE_READ, FILE_EDIT, COMMAND, etc.). Never show a receipt card.
   const CONVERSATIONAL_ONLY = new Set(["PROMPT", "THOUGHT", "SUMMARY", "DECISION"]);
   const hasRealExecution = run.steps.some(s => !CONVERSATIONAL_ONLY.has(s.verb));
-  if (!hasRealExecution && !hasGithubPush && !hasImageGen && !hasFileWork) return null;
+  if (!hasRealExecution && !hasGithubPush && !hasImageGen && !hasFileWork && !deliverableStep) return null;
 
   // Extract executive summary from the SUMMARY step (nexus workspace turns write this).
   const summaryStep = run.steps.find(s => s.verb === "SUMMARY");
@@ -123,6 +128,7 @@ function adaptExecutionRun(
 
   let status: DerivedStatus;
   if (run.status === "failed") status = "failed";
+  else if (deliverableStep) status = "delivered";
   else if (hasGithubPush) status = "pushed";
   else if (hasImageGen && !hasFileWork) status = "sketched";
   else status = "applied";
@@ -140,7 +146,10 @@ function adaptExecutionRun(
   const produced = files.filter(p => PRODUCED_EXT.test(p));
 
   let title: string;
-  if (files.length > 0) {
+  if (deliverableStep) {
+    const name = deliverableStep.target ? deliverableStep.target.split("/").pop() ?? deliverableStep.target : "your file";
+    title = `${name} is ready`;
+  } else if (files.length > 0) {
     const count = files.length;
     const names = files.slice(0, 2).map(p => p.split("/").pop() ?? p);
     const label = names.join(", ") + (count > 2 ? ` +${count - 2} more` : "");
@@ -188,10 +197,31 @@ function adaptExecutionRun(
     }
   }
 
+  let deliverable: { name: string; downloadUrl: string } | undefined;
+  if (deliverableStep) {
+    const name = deliverableStep.target
+      ? deliverableStep.target.split("/").pop() ?? deliverableStep.target
+      : "file";
+    // Backend writes artifactUrl as "artifact://<id>" — resolve to the real download route.
+    const rawUrl = deliverableStep.artifactUrl ?? "";
+    const artifactId = rawUrl.startsWith("artifact://") ? rawUrl.slice("artifact://".length) : rawUrl;
+    if (artifactId) {
+      deliverable = {
+        name,
+        downloadUrl: `/api/projects/${run.projectId}/artifacts/${artifactId}/download`,
+      };
+    }
+  }
+
   const failStep = run.steps.find(s => s.status === "fail");
+  // Task #158: Atlas must never say "I can't generate X" — a deliverable that
+  // was generated but failed to persist/deliver downstream is still a failure
+  // receipt, but the copy must reflect delivery failure, not generation refusal.
   const error =
     run.status === "failed"
-      ? (failStep?.detail ?? failStep?.verb ?? "Build failed")
+      ? deliverableStep
+        ? "Generated, but delivery failed — try again."
+        : (failStep?.detail ?? failStep?.verb ?? "Build failed")
       : undefined;
 
   return {
@@ -209,6 +239,7 @@ function adaptExecutionRun(
     ...(error ? { error } : {}),
     ...(githubPush ? { githubPush } : {}),
     ...(sketchImageUrl ? { sketchImageUrl } : {}),
+    ...(deliverable ? { deliverable } : {}),
   };
 }
 
@@ -266,7 +297,7 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
 }
 
 const RECEIPT_TONE: Record<
-  "running" | "success" | "failed" | "pushed" | "sketched",
+  "running" | "success" | "failed" | "pushed" | "sketched" | "delivered",
   { border: string; ring: string; fg: string; iconBg: string; cardBg: string }
 > = {
   running: {
@@ -306,10 +337,18 @@ const RECEIPT_TONE: Record<
     iconBg: "var(--atlas-gold-dim)",
     cardBg: "hsl(var(--card))",
   },
+  delivered: {
+    border: "hsl(var(--border))",
+    ring: "transparent",
+    fg: "#4ade80",
+    iconBg: "rgba(74,222,128,0.12)",
+    cardBg: "hsl(var(--card))",
+  },
 };
 
 function ReceiptIcon({ status }: { status: DerivedStatus }) {
   if (status === "applied") return <CheckCircle2 size={12} strokeWidth={1.75} />;
+  if (status === "delivered") return <CheckCircle2 size={12} strokeWidth={1.75} />;
   if (status === "failed") return <XCircle size={12} strokeWidth={1.75} />;
   if (status === "pushed") return <Github size={12} strokeWidth={1.75} />;
   if (status === "sketched") return <ImageIcon size={12} strokeWidth={1.75} />;
@@ -358,13 +397,6 @@ function liveStepMeta(step?: LiveStepItem): { Icon: LucideIcon; headline: string
 }
 
 
-// Verbs that mean Atlas is actually writing, building, or executing something.
-// Anything not in this set is a read/think operation.
-const EXECUTION_VERBS = new Set([
-  "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "COMMAND", "SHELL",
-  "BUILD", "INSTALL", "TEST", "GITHUB_PUSH", "IMAGE_GEN", "RUN",
-]);
-
 /**
  * Lightweight inline status shown for conversational/thinking-only turns.
  * A single shimmer line — no card, no border, no title row.
@@ -372,18 +404,7 @@ const EXECUTION_VERBS = new Set([
  */
 function InlineThinkingPulse({ steps }: { steps: LiveStepItem[] }) {
   const current = steps[steps.length - 1];
-  const verb = (current?.verb ?? "").toUpperCase();
-
-  const label =
-    verb === "TREE" ? "Reviewing project structure…"
-    : verb === "FILE_READ" && current?.target
-      ? `Reading ${current.target.split("/").pop() ?? current.target}…`
-    : verb === "FILE_READ" ? "Reviewing project files…"
-    : verb === "FETCH" ? "Fetching context…"
-    : verb === "THOUGHT" || verb === "SUMMARY" || verb === "DECISION" || verb === "PROMPT"
-      ? "Thinking…"
-    : steps.length > 0 ? "Thinking…"
-    : "Thinking…";
+  const label = thinkingLabel(current?.verb, current?.target);
 
   return (
     <div
@@ -646,31 +667,14 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
 
     // Highest priority: execution steps — describe the active write/build action.
     const execStep = liveSteps.find(s => EXECUTION_VERBS.has((s.verb ?? "").toUpperCase()));
-    if (execStep) {
-      const v = (execStep.verb ?? "").toUpperCase();
-      const filename = execStep.target ? execStep.target.split("/").pop() ?? execStep.target : "";
-      if (v === "FILE_EDIT" || v === "LINE_PATCH") return filename ? `Editing ${filename}` : "Editing project files";
-      if (v === "FILE_DELETE") return filename ? `Removing ${filename}` : "Removing file";
-      if (v === "GITHUB_PUSH") return execStep.target ? `Pushing to ${execStep.target}` : "Pushing to GitHub";
-      if (v === "BUILD") return "Running build";
-      if (v === "INSTALL") return "Installing packages";
-      if (v === "TEST") return "Running tests";
-      if (v === "IMAGE_GEN") return "Generating image";
-      return filename ? `Running ${filename}` : "Running command";
-    }
+    if (execStep) return doingLabel(execStep.verb, execStep.target);
 
-    // Read-only steps — describe what Atlas is reviewing.
+    // Read-only steps — describe what Atlas is reviewing (plain language, no card).
     const readStep = liveSteps.find(s => {
       const v = (s.verb ?? "").toUpperCase();
       return v === "FILE_READ" || v === "TREE" || v === "FETCH";
     });
-    if (readStep) {
-      const v = (readStep.verb ?? "").toUpperCase();
-      if (v === "TREE") return "Reading project structure";
-      if (v === "FETCH") return readStep.target ? `Fetching ${readStep.target}` : "Fetching data";
-      const filename = readStep.target ? readStep.target.split("/").pop() ?? readStep.target : "";
-      return filename ? `Reading ${filename}` : "Reviewing project files";
-    }
+    if (readStep) return thinkingLabel(readStep.verb, readStep.target).replace(/…$/, "");
 
     return "Working…";
   }, [liveSteps]);
@@ -804,10 +808,12 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       // Real tool-use turn (file reads/writes, builds, etc.) → full run card.
       return <ActiveCard steps={liveSteps} taskGoal={taskGoal} />;
     }
-    // Conversational / thinking-only turn → lightweight inline shimmer only.
-    // No card, no title row, no step count — just "Thinking…" or
-    // "Reading [file]…" in a subtle animated gradient that disappears once
-    // Atlas's response text starts streaming.
+    // Conversational / thinking-only turn (Task #158: "Thinking" = plain
+    // prose, no card at all). ChatStream now streams assistant prose
+    // unsuppressed during these steps, so the run card renders nothing —
+    // no shimmer, no title row. If prose hasn't arrived yet (liveSteps
+    // exist but no text streamed), show a brief inline shimmer as a bridge.
+    if (!liveSteps.length) return null;
     return <InlineThinkingPulse steps={liveSteps} />;
   }
 
@@ -816,6 +822,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
 
   const toneKey =
     run.status === "applied" ? "success"
+    : run.status === "delivered" ? "delivered"
     : run.status === "failed" ? "failed"
     : run.status === "pushed" ? "pushed"
     : run.status === "sketched" ? "sketched"
@@ -825,6 +832,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   const kicker =
     run.status === "running" ? "Working"
     : run.status === "applied" ? "Run Complete"
+    : run.status === "delivered" ? "Ready to Download"
     : run.status === "pushed" ? "Pushed to GitHub"
     : run.status === "sketched" ? "Sketch Complete"
     : "Build Unsuccessful";
@@ -1051,41 +1059,87 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           justifyContent: "flex-end",
         }}
       >
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); handleDetails(); }}
-          style={{
-            fontSize: 11.5,
-            fontWeight: 500,
-            padding: "5px 10px",
-            borderRadius: 6,
-            border: "1px solid transparent",
-            background: "transparent",
-            color: "hsl(var(--card-foreground) / 0.75)",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-          }}
-        >
-          Changes
-        </button>
-        <button
-          type="button"
-          title={previewTitle}
-          onClick={(e) => { e.stopPropagation(); handlePreview(); }}
-          style={{
-            fontSize: 11.5,
-            fontWeight: 500,
-            padding: "5px 10px",
-            borderRadius: 6,
-            border: "1px solid transparent",
-            background: "transparent",
-            color: "hsl(var(--card-foreground) / 0.75)",
-            cursor: "pointer",
-            letterSpacing: "0.01em",
-          }}
-        >
-          Preview
-        </button>
+        {run.deliverable ? (
+          <>
+            <a
+              href={run.deliverable.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                fontSize: 11.5,
+                fontWeight: 500,
+                padding: "5px 10px",
+                borderRadius: 6,
+                border: "1px solid transparent",
+                background: "transparent",
+                color: "hsl(var(--card-foreground) / 0.75)",
+                cursor: "pointer",
+                letterSpacing: "0.01em",
+                textDecoration: "none",
+              }}
+            >
+              Preview
+            </a>
+            <a
+              href={run.deliverable.downloadUrl}
+              download={run.deliverable.name}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                fontSize: 11.5,
+                fontWeight: 600,
+                padding: "5px 10px",
+                borderRadius: 6,
+                border: "1px solid hsl(var(--border))",
+                background: "hsl(var(--card))",
+                color: "hsl(var(--card-foreground))",
+                cursor: "pointer",
+                letterSpacing: "0.01em",
+                textDecoration: "none",
+              }}
+            >
+              Download
+            </a>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleDetails(); }}
+              style={{
+                fontSize: 11.5,
+                fontWeight: 500,
+                padding: "5px 10px",
+                borderRadius: 6,
+                border: "1px solid transparent",
+                background: "transparent",
+                color: "hsl(var(--card-foreground) / 0.75)",
+                cursor: "pointer",
+                letterSpacing: "0.01em",
+              }}
+            >
+              Changes
+            </button>
+            <button
+              type="button"
+              title={previewTitle}
+              onClick={(e) => { e.stopPropagation(); handlePreview(); }}
+              style={{
+                fontSize: 11.5,
+                fontWeight: 500,
+                padding: "5px 10px",
+                borderRadius: 6,
+                border: "1px solid transparent",
+                background: "transparent",
+                color: "hsl(var(--card-foreground) / 0.75)",
+                cursor: "pointer",
+                letterSpacing: "0.01em",
+              }}
+            >
+              Preview
+            </button>
+          </>
+        )}
         {expanded && (run.status === "applied" || run.status === "pushed") && (
           <>
             <button

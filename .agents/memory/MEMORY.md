@@ -54,6 +54,7 @@
 - [Nexus vs Chat routes](nexus-vs-chat-routes.md) — workspace uses /api/nexus/chat (not /api/chat); run card fixes must target nexus.ts
 - [E2E dev-test-login tier override](e2e-test-login-tiers.md) — use ?tier=pro on dev-test-login to bypass the free-plan 1-project limit in multi-project e2e tests
 - [Non-destructive rollback workaround](non-destructive-rollback.md) — git reset/checkout/commit are hard-blocked for this agent; restore old-commit tree state via `git show <rev>:<path>` blob extraction per file instead
+- [Thinking/Doing/Receipt chat lifecycle](thinking-doing-receipt-lifecycle.md) — shared runStepLabels.ts governs prose-vs-card split in ChatStream+WorkspaceRunCard; ViewChangesPanel still has its own separate verb mapping
 - [Nexus shared agent-tools bridge](nexus-shared-agent-tools-bridge.md) — nexus.ts (raw Anthropic SDK) derives tool schemas from buildAgentTools() via anthropic-adapter.ts; never hand-roll a duplicate Anthropic.Tool for a capability already in the shared registry
 - [Nexus/chat v1 reliability fixes](nexus-chat-v1-reliability-fixes.md) — confirmation loop, WRITE_FILE marker, empty-response retry, session-reset; all 4 must-fix-before-v1 bugs resolved
 - [Artifact Engine Architecture](artifact-engine-architecture.md) — one shared engine for every file-backed deliverable; renderers are plug-ins (generate only); engine owns storage/persistence/Ledger/download/preview
