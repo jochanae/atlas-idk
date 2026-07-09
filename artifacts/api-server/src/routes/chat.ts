@@ -3126,6 +3126,14 @@ router.post("/chat", async (req, res): Promise<void> => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
+  // Task #2 fix (v1 readiness follow-up): the entire turn used to run
+  // unguarded after headers were flushed, so any uncaught error deep in this
+  // handler (e.g. a reference-project tool failure, a malformed lens branch)
+  // left the client's SSE connection open forever with no reply, no saved
+  // history, and no visible error — a silent stall. Wrapping the whole turn
+  // guarantees one of: a normal reply, or a recoverable error that is both
+  // shown to the user and saved to history.
+  try {
   const { sessionId = 0, message, history = [], entries = [] } = body;
   const projectId = body.projectId ?? 0;
   const fileContext = body.fileContext ?? "";
@@ -4491,8 +4499,14 @@ For a visual-only request ("show me what it looks like"): emit a single ARTIFACT
   if (recentErrorContext) {
     systemPrompt += `\n\n--- RECENT PRODUCTION ERRORS ---\n${recentErrorContext}\n--- END RECENT PRODUCTION ERRORS ---`;
   }
-  if (selfMapContext) {
-    systemPrompt += `\n\n--- CURRENT CODEBASE MAP ---\n${selfMapContext}\n--- END CURRENT CODEBASE MAP ---`;
+  // Task #3 fix: selfmap.ts indexes Atlas's OWN source (artifacts/atlas, artifacts/api-server)
+  // for internal self-awareness/debugging, not the user's project. It was previously
+  // injected under a generic "CURRENT CODEBASE MAP" label with no such caveat, which
+  // risked the model treating Atlas's own implementation as the user's project
+  // architecture. Keep it internal-only: label it explicitly and only surface it when
+  // the user is actually asking about Atlas itself (self-contained builds never need it).
+  if (selfMapContext && !isSelfContainedBuild) {
+    systemPrompt += `\n\n--- ATLAS INTERNAL SELF-MAP (Atlas's own application source, NOT the user's project — reference only if the user is asking about how Atlas itself works/is built) ---\n${selfMapContext}\n--- END ATLAS INTERNAL SELF-MAP ---`;
   }
   if (forgeContext) {
     systemPrompt += `\n\n--- FORGE STRATEGIC MAP (agreed foundation — treat these as committed nodes; flag any contradictions) ---\n${forgeContext}\n--- END FORGE STRATEGIC MAP ---`;
@@ -4917,7 +4931,12 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     message.startsWith("[FILE_COMMITTED]") ||
     message.startsWith("[BUILD_VERIFY]");
 
-  if (!isFlowMode && !isScenarioMode && !isTelemetryEvent) {
+  // Task #2 fix: previously Flow/Scenario-lens messages were never persisted at
+  // all, so a stalled or failed turn in those lenses left no trace of the user's
+  // question anywhere — not even a record that it was asked. Scenario mode always
+  // has a real sessionId (only Flow mode may run session-less); save whenever we
+  // have a sessionId to attach to, regardless of lens.
+  if (sessionId && !isTelemetryEvent) {
     try {
       await db.insert(chatMessagesTable).values({
         sessionId,
@@ -4996,13 +5015,26 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   }
 
   // ── Agent loop path (USE_AGENT_LOOP + allowlisted user) ─────────────────────
+  // Task #2 fix: Scenario lens is excluded from the flow-mode-style exclusion
+  // below only for its "no committed FILE_EDIT" prompt instruction (still
+  // enforced via the lens prompt text, not code) — it always has a real
+  // sessionId, so cross-project reference tools (only wired into the agent
+  // loop) should be reachable there too. Flow mode may run session-less and is
+  // still excluded since the loop requires a persisted session to attach to.
   if (
     shouldUseAgentLoop(userId) &&
     projectId > 0 &&
     !isFoundationMode &&
     !isFlowMode &&
-    !isScenarioMode
+    sessionId > 0
   ) {
+    // Task #1 fix: tell Atlas the deliverable-generation tool exists — it's
+    // only wired into this agent-loop path. Without this she has no reason to
+    // call a tool she's never been told about, and would keep telling users
+    // she can't produce files even though the renderer + Artifact Engine have
+    // worked the whole time.
+    systemPrompt += `\n\nYou CAN generate real downloadable files — presentations (PowerPoint/.pptx), documents (.docx), and spreadsheets (.xlsx) — using the generate_deliverable tool. When the user asks for a deck, presentation, slides, document, write-up, or spreadsheet, call generate_deliverable instead of saying you can't create files. It builds the file from this conversation and saves it to the project's Deliverables tab.`;
+
     const abortController = new AbortController();
     req.on("close", () => abortController.abort());
 
@@ -7225,6 +7257,31 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         logger.warn({ err, projectId }, "session summary generation failed — non-fatal");
       }
     })();
+  }
+  } catch (err) {
+    logger.error({ err, sessionId: body.sessionId, projectId: body.projectId }, "chat route: unhandled error — surfacing recoverable error instead of stalling");
+    if (body.sessionId) {
+      try {
+        await db.insert(chatMessagesTable).values({
+          sessionId: body.sessionId,
+          role: "assistant",
+          content: "Something went wrong processing that message. Please try again — if it keeps happening, try rephrasing or starting a new thread.",
+          runStatus: "error",
+        });
+      } catch (saveErr) {
+        logger.warn({ saveErr }, "chat route: failed to persist recoverable-error message");
+      }
+    }
+    if (!res.writableEnded && !res.destroyed) {
+      try {
+        res.write(`data: ${JSON.stringify({
+          type: "done",
+          content: "Something went wrong processing that message. Please try again — if it keeps happening, try rephrasing or starting a new thread.",
+          error: true,
+        })}\n\n`);
+      } catch { /* client gone */ }
+      try { res.end(); } catch { /* already ended */ }
+    }
   }
 });
 

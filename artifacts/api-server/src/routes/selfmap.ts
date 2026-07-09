@@ -92,7 +92,17 @@ export async function buildSelfMap(): Promise<{ file_count: number; created_at: 
   return { file_count: row.fileCount, created_at: row.createdAt };
 }
 
-router.post("/selfmap/refresh", async (_req, res): Promise<void> => {
+// Task #3 fix: this indexes Atlas's OWN source tree (the Axiom product itself),
+// not any user's project — it exists purely for Atlas's internal self-awareness
+// (see the ATLAS INTERNAL SELF-MAP prompt block in chat.ts). Gate it behind
+// ADMIN_SECRET like other internal-only endpoints so it isn't reachable by
+// regular authenticated users as if it were a project feature.
+router.post("/selfmap/refresh", async (req, res): Promise<void> => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret) { res.status(404).json({ error: "Not found" }); return; }
+  const provided = req.headers["x-admin-secret"];
+  if (!provided || provided !== adminSecret) { res.status(401).json({ error: "Unauthorized" }); return; }
+
   const result = await buildSelfMap();
   res.json({ file_count: result.file_count, created_at: result.created_at.toISOString() });
 });
