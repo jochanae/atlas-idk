@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, userResumeSnapshotsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
+import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
@@ -3939,14 +3939,15 @@ Rules:
       if (nexusImageGenResult && !res.writableEnded && !res.destroyed) {
         res.write(`event: image\ndata: ${JSON.stringify(nexusImageGenResult)}\n\n`);
       }
-      // Persist nexus AI images as project assets — fire-and-forget
+      // Persist nexus AI images as project assets — fire-and-forget.
+      // Also inserts into gallery_images so Visual Vault can display them.
       if (nexusImageGenResult && focusProjectId && sessionId) {
         void (async () => {
           try {
             for (const img of nexusImageGenResult.images) {
               const b64Match = img.imageUrl.match(/^data:([^;]+);base64,(.+)$/s);
               if (!b64Match) continue;
-              await db.insert(imageVersionsTable).values({
+              const [inserted] = await db.insert(imageVersionsTable).values({
                 sessionId,
                 projectId: focusProjectId,
                 prompt: img.prompt,
@@ -3954,7 +3955,17 @@ Rules:
                 imageMimeType: b64Match[1],
                 model: img.model,
                 mode: img.mode,
-              } as typeof imageVersionsTable.$inferInsert);
+              } as typeof imageVersionsTable.$inferInsert).returning({ id: imageVersionsTable.id });
+              // Bridge to Visual Vault: register a gallery_images record pointing to the
+              // serve endpoint so /api/gallery (and VisualVault) can find this image.
+              if (inserted?.id) {
+                await db.insert(galleryImagesTable).values({
+                  userId,
+                  projectId: focusProjectId,
+                  objectPath: `/api/images/${inserted.id}`,
+                  label: img.prompt ? img.prompt.slice(0, 200) : null,
+                });
+              }
             }
           } catch (err) {
             logger.warn({ err }, "nexus imageVersion persist failed — non-fatal");

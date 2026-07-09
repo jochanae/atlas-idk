@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, galleryImagesTable } from "@workspace/db";
+import { db, galleryImagesTable, imageVersionsTable } from "@workspace/db";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 
@@ -161,6 +161,37 @@ router.delete("/gallery/:id", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "gallery DELETE error");
     res.status(500).json({ error: "Failed to delete gallery image" });
+  }
+});
+
+// GET /api/images/:id — serve a chat-generated image stored in image_versions as a proper HTTP response.
+// This gives gallery_images a stable objectPath (/api/images/:id) for images that came from chat.
+router.get("/images/:id", async (req, res): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    const [row] = await db
+      .select({
+        imageB64: imageVersionsTable.imageB64,
+        imageMimeType: imageVersionsTable.imageMimeType,
+      })
+      .from(imageVersionsTable)
+      .where(eq(imageVersionsTable.id, id))
+      .limit(1);
+    if (!row) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const buf = Buffer.from(row.imageB64, "base64");
+    res.setHeader("Content-Type", row.imageMimeType);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.end(buf);
+  } catch (err) {
+    req.log.error({ err }, "images serve error");
+    res.status(500).json({ error: "Failed to serve image" });
   }
 });
 
