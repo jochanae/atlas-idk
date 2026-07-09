@@ -54,3 +54,5 @@
 - [Artifact Engine Architecture](artifact-engine-architecture.md) — one shared engine for every file-backed deliverable; renderers are plug-ins (generate only); engine owns storage/persistence/Ledger/download/preview
 - [Decision Intelligence artifact architecture](decision-intelligence-artifacts.md) — Tradeoff Matrix/Decision Tree/Deviation Log reuse generic project_artifacts table+routes; reload hydration needs 3-layer threading (nexus.ts → useNexusChatStream → useNexusWorkspaceBridge)
 - [Frontend/backend contract drift](frontend-backend-contract-drift.md) — verifying each side works in isolation isn't enough; always diff actual route/response shapes when a feature seems "built but not working"
+- [Cross-Project Reference Mode](cross-project-reference-mode.md) — read-only agent tools let Atlas inspect another owned project's real files by name; ownership-gated via userId, never writes cross-project
+- [atlasIdentity.ts is a template literal](atlasidentity-template-literal.md) — file body is one big backtick string; never use backticks inside inserted prompt text or it breaks the string

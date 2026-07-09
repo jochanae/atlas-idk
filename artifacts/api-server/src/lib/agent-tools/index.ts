@@ -19,6 +19,7 @@ import { revisePlanTool } from "./revise-plan";
 import { commitPlanTool } from "./commit-plan";
 import { tier1UpsertFieldTool } from "./tier1-upsert-field";
 import { tier1MarkSkippedTool } from "./tier1-mark-skipped";
+import { listUserProjectsTool, listReferenceProjectDirTool, readReferenceProjectFileTool } from "./reference-project";
 
 export { createSideEffects, createPlanState } from "./context";
 export type { AgentToolContext, AgentFileEdit, AgentLinePatch, AgentToolSideEffects, AgentPlanState } from "./context";
@@ -42,6 +43,9 @@ export function buildAgentTools(ctx: AgentToolContext, options?: { includePlanTo
     finish: finishTool(ctx),
     tier1_upsert_field: tier1UpsertFieldTool(ctx),
     tier1_mark_skipped: tier1MarkSkippedTool(ctx),
+    list_user_projects: listUserProjectsTool(ctx),
+    list_reference_project_dir: listReferenceProjectDirTool(ctx),
+    read_reference_project_file: readReferenceProjectFileTool(ctx),
   };
 
   if (!options?.includePlanTools) {
