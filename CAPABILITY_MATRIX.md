@@ -193,7 +193,7 @@ Small, high-frequency outputs. High leverage because they compound daily.
 | Capability | State | Today | Validated | Verified how | Output | Ledger | Editable | Roundtrip | Known gaps | Next validation | Priority |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Email draft | Not started | N | N | — | Chat inline / copy | N | Iterative | N/A | No voice/tone lock | Voice-locked draft test | P1 |
-| Slack / chat message | Not started | N | N | — | Chat inline / copy | N | Iterative | N/A | — | Length + tone test | P2 |
+| Slack / chat message | Deferred — Connectors/Integrations layer | N | N | — | Chat inline / copy | N | Iterative | N/A | Draft renderer (`draft_slack`) exists and works as a copy-ready text draft; actual Slack *posting* (OAuth + delivery) is intentionally deferred until the future Connectors/Integrations layer, where users connect their own workspace. Not a Phase 2 blocker — no readiness/completion signal requires it. | Revisit once Connectors/Integrations layer ships user-owned OAuth connections | P2 |
 | Changelog entry | Not started | N | N | — | Chat inline / copy | Y | Iterative | N/A | Should auto-draft from GitHub push Ledger entry | Wire release entry → changelog draft | P1 |
 | Investor update | Not started | N | N | — | Chat inline / copy | Y | Iterative | N/A | — | Voice-locked | P2 |
 | Tweet / short post | Not started | N | N | — | Chat inline / copy | N | Iterative | N/A | — | — | P3 |
