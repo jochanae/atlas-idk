@@ -4813,7 +4813,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
 
   const streamClaude = async (
     messagesForClaude: Anthropic.MessageParam[],
-    options: { tools: boolean; startedAt: number; forceCreate?: boolean; retryCount?: number },
+    options: { tools: boolean; startedAt: number; forceCreate?: boolean; retryCount?: number; toolHopCount?: number },
   ): Promise<void> => {
     if (options.forceCreate) {
       try {
@@ -4900,7 +4900,24 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
             { role: "assistant", content: finalMessage.content as Anthropic.MessageParam["content"] },
             { role: "user", content: toolResults },
           ];
-          streamClaude(continuationMessages, { tools: false, startedAt: performance.now() });
+          // Multi-hop tool loop: this used to hardcode tools:false on the
+          // continuation, so a turn that called tier1_upsert_field first
+          // (a very common pattern — Atlas logs the field before acting)
+          // had no way to follow up with generate_deliverable in the same
+          // turn. The model would want to call it, find no tools available,
+          // and return an empty response instead — surfaced to the user as
+          // "Atlas didn't generate a response." Keep tools on for follow-up
+          // hops (still gated by the original BUILD/DECIDE allowToolAccess
+          // check via options.tools), capped so a stuck loop can't run away.
+          const nextHop = (options.toolHopCount ?? 0) + 1;
+          const MAX_TOOL_HOPS = 6;
+          streamClaude(continuationMessages, {
+            ...options,
+            tools: options.tools && nextHop < MAX_TOOL_HOPS,
+            toolHopCount: nextHop,
+            startedAt: performance.now(),
+            retryCount: 0,
+          });
           return;
         }
 
