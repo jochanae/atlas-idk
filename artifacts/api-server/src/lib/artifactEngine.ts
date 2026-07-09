@@ -9,7 +9,7 @@
 // `generateArtifact`. This keeps every future format a plug-in instead of an
 // independent system with its own persistence/Ledger/download code.
 import { db, entriesTable, projectArtifactsTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 
@@ -124,27 +124,21 @@ export async function generateArtifact<TInput>({
   const rendered = await renderer.render(input);
   const objectPath = await uploadRenderedFile(rendered.buffer, rendered.mimeType);
 
-  const [row] = await db
-    .insert(projectArtifactsTable)
-    .values({
-      projectId,
-      type,
-      version: await nextVersion(projectId, type),
-      title: rendered.title,
-      metadata: {
-        source: "artifact-engine",
-        category: renderer.category,
-        mimeType: rendered.mimeType,
-        extension: rendered.extension,
-        objectPath,
-        sizeBytes: rendered.buffer.byteLength,
-        status: "generated",
-      },
-      payload: { preview: rendered.preview },
-    })
-    .returning();
-
-  if (!row) throw new Error("Artifact engine: failed to persist artifact");
+  const row = await insertArtifactWithNextVersion({
+    projectId,
+    type,
+    title: rendered.title,
+    metadata: {
+      source: "artifact-engine",
+      category: renderer.category,
+      mimeType: rendered.mimeType,
+      extension: rendered.extension,
+      objectPath,
+      sizeBytes: rendered.buffer.byteLength,
+      status: "generated",
+    },
+    payload: { preview: rendered.preview },
+  });
 
   let ledgerEntryId: number | null = null;
   try {
@@ -191,12 +185,52 @@ export async function generateArtifact<TInput>({
   };
 }
 
-async function nextVersion(projectId: number, type: string): Promise<number> {
-  const existing = await db
-    .select({ id: projectArtifactsTable.id })
-    .from(projectArtifactsTable)
-    .where(and(eq(projectArtifactsTable.projectId, projectId), eq(projectArtifactsTable.type, type)));
-  return existing.length + 1;
+/**
+ * Inserts a new artifact row using MAX(version)+1 computed and inserted inside
+ * the same transaction, retrying on unique-constraint races. This avoids the
+ * duplicate-version bug of computing version from a separate "count rows" read
+ * (wrong after deletions) or from a non-atomic read-then-insert (racy under
+ * concurrent generates).
+ */
+async function insertArtifactWithNextVersion(values: {
+  projectId: number;
+  type: string;
+  title: string;
+  metadata: Record<string, unknown>;
+  payload: Record<string, unknown>;
+}): Promise<typeof projectArtifactsTable.$inferSelect> {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await db.transaction(async (tx) => {
+        const [maxRow] = await tx
+          .select({ maxV: sql<number>`COALESCE(MAX(${projectArtifactsTable.version}), 0)` })
+          .from(projectArtifactsTable)
+          .where(
+            and(
+              eq(projectArtifactsTable.projectId, values.projectId),
+              eq(projectArtifactsTable.type, values.type),
+            ),
+          );
+        const nextVersion = Number(maxRow?.maxV ?? 0) + 1;
+
+        const [row] = await tx
+          .insert(projectArtifactsTable)
+          .values({ ...values, version: nextVersion })
+          .returning();
+        if (!row) throw new Error("Artifact engine: failed to persist artifact");
+        return row;
+      });
+    } catch (err: unknown) {
+      const isUniqueViolation = err instanceof Error && err.message.includes("project_artifacts_version_uniq");
+      if (isUniqueViolation && attempt < maxAttempts) {
+        logger.warn({ attempt, projectId: values.projectId, type: values.type }, "artifactEngine: version race — retrying");
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Artifact engine: failed to persist artifact after retries");
 }
 
 /**
