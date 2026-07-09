@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import { renderChildrenWithCitations } from "@/features/codebase";
 import { Project, getListProjectsQueryKey, createProject, useCreateProject, createEntry, useCreateEntry } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
