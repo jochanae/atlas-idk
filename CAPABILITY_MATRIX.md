@@ -146,6 +146,27 @@ The workspace only reaches `/api/chat` via the home-page **build-intent handoff*
 
 ---
 
+## 5b. Codebase Intelligence / Project Navigation
+
+Understanding the project **before** changing it. Source-agnostic: applies to connected GitHub repos, uploaded ZIPs, generated workspace files, local sandbox/build files, and future imported project sources. Distinct from §5 Development (which mutates code). Every capability here is **P0** — as projects grow, Atlas cannot rely on memory or visible files alone; it must inspect the actual project structure before answering or editing.
+
+| Capability | State | Today | Validated | Verified how | Output | Ledger | Editable | Roundtrip | Known gaps | Next validation | Priority |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Project-wide search / grep | Works (agent-tools only) | Partial | Partial | `search_codebase` ripgrep tool in `artifacts/api-server/src/lib/agent-tools/search-codebase.ts` | Tool result JSON | N | N/A | N/A | Only available to agent loop, not exposed as user-facing capability in nexus; no UI surface for "grep this repo" | E2E: workspace turn "find every call to `useNexusWorkspaceBridge`" returns file:line list | P0 |
+| Symbol search (defs / refs) | Not started | N | N | — | — | N | N/A | N/A | No AST-aware indexer; ripgrep only matches text, not symbol semantics | Decide: LSP-based (tree-sitter) vs ripgrep+heuristics | P0 |
+| File map generation | Works (backend, not user-facing) | Partial | Partial | `/api/selfmap/refresh` in `artifacts/api-server/src/routes/selfmap.ts` — indexes `artifacts/atlas/src` + `artifacts/api-server/src` into `atlas_self_map` (files, exports, internal imports, relationships) | `atlas_self_map` table | N | Regenerated | N/A | Roots hard-coded to Atlas repo; no path for user projects (ZIP/GitHub/sandbox); not surfaced in chat | Generalize root discovery per project source; expose as agent tool | P0 |
+| Dependency tracing | Exists (via self map) | Partial | N | Self-map stores `relationships: {from, to}` edges from import resolution | JSON graph | N | N/A | N/A | No traversal API ("what depends on X?"); no cycle detection; no cross-package resolution | Add `trace_dependencies(path)` tool over self-map | P0 |
+| Route / API discovery | Works (frontend routes only) | Partial | Y | `artifacts/atlas-frontend/src/lib/scanRoutes.ts` — regex-scans `<Route path="">` from App source | Cached in localStorage per project | N | Regenerated | N/A | Frontend only; no backend route discovery (Express routers, edge functions); no OpenAPI cross-check | Add backend route scanner + reconcile against `lib/api-spec/openapi.yaml` | P0 |
+| Component usage tracing | Not started | N | N | — | — | N | N/A | N/A | No "where is `<DecisionCatchCard>` rendered?" tool; agent falls back to grep | Ship on top of symbol search | P0 |
+| Duplicate system detection | Not started | N | N | — | — | N | N/A | N/A | Cannot detect e.g. two composer implementations, two auth stores, two ledger renderers | Heuristic: cluster by exports + import fan-in | P0 |
+| Impact analysis before edits | Not started | N | N | — | — | N | N/A | N/A | Agent edits files with no "these N callers will break" preview | Reverse-edge query on self-map + surface in propose_plan | P0 |
+| Safe edit plan | Exists (propose_plan) | Partial | Partial | `propose_plan` tool in agent-tools exists; but plan does not enumerate blast radius | Plan artifact | Y | Iterative | N/A | Plan is intent-shaped, not impact-shaped; no callers/tests/routes affected list | Wire impact analysis into plan payload | P0 |
+| Codebase Q&A with file citations | Works (agent + vector) | Partial | Partial | Agent has `read_file` / `search_codebase` / `list_dir`; `/api/search` blends ILIKE + vector search across entries/sessions/messages/thoughts | Tool result / search response | N | N/A | N/A | Vector index is on Atlas memory entities, NOT on project source code; citations only surface when agent explicitly quotes file:line | Index project source (per project) into embeddings; render citations as tappable chips | P0 |
+| Large-project summarization | Exists (ZIP imports) | Partial | N | `project_zip_imports` table stores `fullContext` + `fileTree` on import | Text blob | N | Regenerated on re-import | N/A | Single blob per project; no per-directory / per-module summary; not chunked for retrieval | Hierarchical summary (repo → package → dir → file) refreshed on change | P0 |
+| Changed-file awareness | Exists (git diff tool) | Partial | N | `git_diff` agent tool in agent-tools | Tool result | N | N/A | N/A | Only reflects workspace `.git`; no diff for ZIP imports or GitHub-connected repos between syncs | Per-source change tracker (last-imported snapshot vs current) | P0 |
+
+---
+
 ## 6. Reasoning Artifacts
 
 The visible form of Atlas's decision-support intelligence. Distinct from Timeline. These are the artifacts a strategic partner produces.
