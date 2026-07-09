@@ -54,6 +54,7 @@ import {
 } from "@/lib/activeProjectContext";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
+import { CodebasePanel } from "../features/codebase";
 import { SearchModal } from "../components/workspace/SearchModal";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
 import { MapTab } from "@/components/workspace/MapTab";
