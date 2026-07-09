@@ -9859,22 +9859,20 @@ export default function Workspace() {
               onClick={() => { setShowProjectMenu(false); setSessionsSheetOpen(true); }}
             />
 
-            {/* Export group (expandable) */}
+            {/* Export group (expandable) — always available; sub-actions handle empty state */}
             <button
               onClick={() => setExportExpanded((v) => !v)}
-              disabled={messages.length === 0}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 width: "calc(100% - 12px)", margin: "2px 6px",
                 background: "transparent", border: "1px solid transparent",
-                padding: "8px 10px", borderRadius: 6, cursor: messages.length === 0 ? "not-allowed" : "pointer",
+                padding: "8px 10px", borderRadius: 6, cursor: "pointer",
                 color: "var(--atlas-fg)", fontSize: 12.5, fontFamily: "var(--app-font-sans)",
-                opacity: messages.length === 0 ? 0.4 : 1,
               }}
             >
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v9M4 7l4 4 4-4M2 14h12" /></svg>
-                Export
+                Export conversation
               </span>
               <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ opacity: 0.6, transform: exportExpanded ? "rotate(90deg)" : "none", transition: "transform 160ms ease" }}>
                 <path d="M4.5 2l3 4-3 4" />
@@ -9882,12 +9880,23 @@ export default function Workspace() {
             </button>
             {exportExpanded && (
               <div style={{ padding: "0 6px 4px", display: "flex", flexDirection: "column", gap: 2 }}>
-                <button onClick={() => { downloadConversation("md"); setShowProjectMenu(false); }} disabled={messages.length === 0}
-                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: "pointer", fontFamily: "var(--app-font-sans)" }}>
+                {messages.length === 0 && (
+                  <div style={{ padding: "6px 10px 4px 28px", fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.75 }}>
+                    No messages loaded in this session yet.
+                  </div>
+                )}
+                <button
+                  onClick={() => { downloadConversation("md"); setShowProjectMenu(false); }}
+                  disabled={messages.length === 0}
+                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: messages.length === 0 ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: messages.length === 0 ? 0.4 : 1 }}
+                >
                   Download as Markdown
                 </button>
-                <button onClick={() => { downloadConversation("json"); setShowProjectMenu(false); }} disabled={messages.length === 0}
-                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: "pointer", fontFamily: "var(--app-font-sans)" }}>
+                <button
+                  onClick={() => { downloadConversation("json"); setShowProjectMenu(false); }}
+                  disabled={messages.length === 0}
+                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: messages.length === 0 ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: messages.length === 0 ? 0.4 : 1 }}
+                >
                   Download as JSON
                 </button>
               </div>
