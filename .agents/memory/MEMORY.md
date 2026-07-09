@@ -48,5 +48,6 @@
 - [Nexus vs Chat routes](nexus-vs-chat-routes.md) — workspace uses /api/nexus/chat (not /api/chat); run card fixes must target nexus.ts
 - [E2E dev-test-login tier override](e2e-test-login-tiers.md) — use ?tier=pro on dev-test-login to bypass the free-plan 1-project limit in multi-project e2e tests
 - [Non-destructive rollback workaround](non-destructive-rollback.md) — git reset/checkout/commit are hard-blocked for this agent; restore old-commit tree state via `git show <rev>:<path>` blob extraction per file instead
+- [Artifact Engine Architecture](artifact-engine-architecture.md) — one shared engine for every file-backed deliverable; renderers are plug-ins (generate only); engine owns storage/persistence/Ledger/download/preview
 - [Decision Intelligence artifact architecture](decision-intelligence-artifacts.md) — Tradeoff Matrix/Decision Tree/Deviation Log reuse generic project_artifacts table+routes; reload hydration needs 3-layer threading (nexus.ts → useNexusChatStream → useNexusWorkspaceBridge)
 - [Frontend/backend contract drift](frontend-backend-contract-drift.md) — verifying each side works in isolation isn't enough; always diff actual route/response shapes when a feature seems "built but not working"

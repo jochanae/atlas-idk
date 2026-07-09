@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { Readable } from "stream";
 import { db, pool, projectArtifactsTable, projectsTable, applicationModelsTable, nexusMessagesTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
@@ -13,8 +14,14 @@ import {
   buildContextFromMessages,
   type DecisionArtifactType,
 } from "../lib/decisionArtifacts";
+import { generateArtifact, getFileBackedArtifact } from "../lib/artifactEngine";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+// Side-effect imports: each renderer registers itself with the Artifact Engine on load.
+import "../lib/renderers/docxRenderer";
 
 export { logProjectArtifact } from "../lib/artifactLog";
+
+const objectStorageService = new ObjectStorageService();
 
 const router: IRouter = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -607,5 +614,135 @@ for (const type of DECISION_ARTIFACT_TYPES) {
     }
   });
 }
+
+// ── Artifact Engine: Deliverables (Phase 2A) ─────────────────────────────────
+// Generic generate/download/preview surface for every file-backed renderer
+// registered with the Artifact Engine (docx today; pptx/xlsx/pdf/mermaid/charts
+// plug in later without new routes).
+
+// POST /api/projects/:id/deliverables/:type/generate
+// Generates a file-backed artifact via the Artifact Engine's renderer for `:type`.
+router.post("/projects/:id/deliverables/:type/generate", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    if (!projectId || isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+    if (!(await assertOwner(projectId, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const type = req.params.type;
+    const { context, conversationId, sessionId, sourceMessageId, title, docType } = req.body as {
+      context?: string;
+      conversationId?: string;
+      sessionId?: number | null;
+      sourceMessageId?: number | null;
+      title?: string;
+      docType?: string;
+    };
+
+    const resolvedContext = context && context.trim().length > 0
+      ? context
+      : await fetchConversationContext(projectId, conversationId);
+
+    if (!resolvedContext || resolvedContext.trim().length === 0) {
+      res.status(400).json({ error: "No conversation context available to generate from" });
+      return;
+    }
+
+    const artifact = await generateArtifact({
+      projectId,
+      sessionId: sessionId ?? null,
+      type,
+      sourceMessageId: sourceMessageId ?? null,
+      input: { context: resolvedContext, title, docType },
+    });
+
+    res.status(201).json(artifact);
+  } catch (err) {
+    req.log.error({ err, type: req.params.type }, "POST /projects/:id/deliverables/:type/generate failed");
+    const message = err instanceof Error ? err.message : "Internal server error";
+    const status = message.startsWith("Artifact engine: no renderer registered") ? 404 : 500;
+    res.status(status).json({ error: message });
+  }
+});
+
+// GET /api/projects/:id/artifacts/:artifactId/preview
+// Lightweight preview payload for a file-backed artifact — no file download.
+router.get("/projects/:id/artifacts/:artifactId/preview", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    const artifactId = Number(req.params.artifactId);
+    if (!projectId || isNaN(projectId) || !artifactId || isNaN(artifactId)) {
+      res.status(400).json({ error: "Invalid ids" }); return;
+    }
+    if (!(await assertOwner(projectId, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const found = await getFileBackedArtifact(projectId, artifactId);
+    if (!found) { res.status(404).json({ error: "Artifact not found" }); return; }
+
+    const metadata = (found.row.metadata as Record<string, unknown>) ?? {};
+    const payload = (found.row.payload as Record<string, unknown>) ?? {};
+
+    res.json({
+      id: found.row.id,
+      projectId: found.row.projectId,
+      type: found.row.type,
+      version: found.row.version,
+      title: found.row.title,
+      category: metadata.category,
+      mimeType: found.mimeType,
+      extension: found.extension,
+      sizeBytes: metadata.sizeBytes,
+      preview: payload.preview ?? {},
+      createdAt: found.row.createdAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error({ err }, "GET /projects/:id/artifacts/:artifactId/preview failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/projects/:id/artifacts/:artifactId/download
+// Streams the persisted file for a file-backed artifact.
+router.get("/projects/:id/artifacts/:artifactId/download", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    const artifactId = Number(req.params.artifactId);
+    if (!projectId || isNaN(projectId) || !artifactId || isNaN(artifactId)) {
+      res.status(400).json({ error: "Invalid ids" }); return;
+    }
+    if (!(await assertOwner(projectId, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const found = await getFileBackedArtifact(projectId, artifactId);
+    if (!found) { res.status(404).json({ error: "Artifact not found" }); return; }
+
+    const objectFile = await objectStorageService.getObjectEntityFile(found.objectPath);
+    const response = await objectStorageService.downloadObject(objectFile);
+
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    res.setHeader("Content-Type", found.mimeType);
+    const safeTitle = found.row.title.replace(/[^a-z0-9-_ ]/gi, "").trim() || "deliverable";
+    res.setHeader("Content-Disposition", `attachment; filename="${safeTitle}.${found.extension}"`);
+
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
+      nodeStream.pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "File not found in storage" });
+      return;
+    }
+    req.log.error({ err }, "GET /projects/:id/artifacts/:artifactId/download failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 export default router;
