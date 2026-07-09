@@ -21,6 +21,7 @@ import { tier1UpsertFieldTool } from "./tier1-upsert-field";
 import { tier1MarkSkippedTool } from "./tier1-mark-skipped";
 import { listUserProjectsTool, listReferenceProjectDirTool, readReferenceProjectFileTool } from "./reference-project";
 import { generateDeliverableTool } from "./generate-deliverable";
+import { searchAllProjectsTool } from "./search-all-projects";
 
 export { createSideEffects, createPlanState } from "./context";
 export type { AgentToolContext, AgentFileEdit, AgentLinePatch, AgentToolSideEffects, AgentPlanState } from "./context";
@@ -48,6 +49,7 @@ export function buildAgentTools(ctx: AgentToolContext, options?: { includePlanTo
     list_reference_project_dir: listReferenceProjectDirTool(ctx),
     read_reference_project_file: readReferenceProjectFileTool(ctx),
     generate_deliverable: generateDeliverableTool(ctx),
+    search_all_projects: searchAllProjectsTool(ctx),
   };
 
   if (!options?.includePlanTools) {

@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
   db,
+  projectsTable,
   projectSourcesTable,
   projectSourceFilesTable,
   projectSourceSnapshotsTable,
@@ -507,6 +508,80 @@ router.get("/sources/:sourceId/search", async (req, res): Promise<void> => {
   }
 
   res.json({ query: q, type, hits, capped: hits.length >= MAX });
+});
+
+// ── GET /sources/by-project/:projectId/peek ──────────────────────────────────
+// Phase 3A step 2: read-only cross-project file peek for citation click-through.
+// Backs CitationChip when a `search_all_projects` hit points at a DIFFERENT
+// project than the one currently open. Deliberately narrow: single file,
+// primary source only, ownership-checked by userId (not source access, since
+// the requester never had a session against this source).
+
+router.get("/sources/by-project/:projectId/peek", async (req, res): Promise<void> => {
+  const userId = authUserId(req);
+  const projectIdParsed = projectIdParam.safeParse(req.params.projectId);
+  if (!projectIdParsed.success) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+  const projectId = projectIdParsed.data;
+
+  const path = typeof req.query.path === "string" ? req.query.path : "";
+  if (!path) {
+    res.status(400).json({ error: "path query required" });
+    return;
+  }
+
+  const [project] = await db
+    .select({ id: projectsTable.id, name: projectsTable.name, userId: projectsTable.userId })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const [source] = await db
+    .select({ id: projectSourcesTable.id })
+    .from(projectSourcesTable)
+    .where(and(eq(projectSourcesTable.projectId, projectId), eq(projectSourcesTable.isPrimary, true)))
+    .limit(1);
+  if (!source) {
+    res.status(404).json({ error: "No indexed source for this project" });
+    return;
+  }
+
+  const [file] = await db
+    .select({
+      path: projectSourceFilesTable.path,
+      content: projectSourceFilesTable.content,
+      storageKey: projectSourceFilesTable.storageKey,
+      language: projectSourceFilesTable.language,
+      sizeBytes: projectSourceFilesTable.sizeBytes,
+    })
+    .from(projectSourceFilesTable)
+    .where(and(eq(projectSourceFilesTable.sourceId, source.id), eq(projectSourceFilesTable.path, path)))
+    .limit(1);
+  if (!file) {
+    res.status(404).json({ error: "File not found" });
+    return;
+  }
+
+  const content = await getFileContent(file);
+  if (content == null) {
+    res.status(404).json({ error: "File content unavailable" });
+    return;
+  }
+
+  res.json({
+    projectId: project.id,
+    projectName: project.name,
+    path: file.path,
+    language: file.language,
+    sizeBytes: file.sizeBytes,
+    content,
+  });
 });
 
 // ── GET /sources/:sourceId/symbols ───────────────────────────────────────────

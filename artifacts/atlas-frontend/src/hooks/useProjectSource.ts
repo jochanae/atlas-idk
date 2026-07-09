@@ -130,6 +130,54 @@ export async function searchSource(sourceId: string, query: string): Promise<Sea
   return (d.hits ?? []).map((h) => ({ path: h.path, line: h.line, text: h.preview }));
 }
 
+// Cross-project citation click-through (Phase 3A step 2). Read-only peek at
+// another owned project's primary-source file — used when a citation from
+// `search_all_projects` points at a project other than the one currently open.
+export interface CrossProjectFile {
+  projectId: number;
+  projectName: string;
+  path: string;
+  language?: string | null;
+  sizeBytes: number;
+  content: string;
+}
+export async function peekOtherProjectFile(
+  projectId: number,
+  path: string,
+): Promise<CrossProjectFile> {
+  return jget<CrossProjectFile>(
+    `/api/sources/by-project/${projectId}/peek?path=${encodeURIComponent(path)}`,
+  );
+}
+
+// Name → id lookup for cross-project citations, which only carry the project
+// NAME in the chat text ("ProjectName › path:Lline"). Cached module-wide
+// (invalidated on page reload) since the project list changes rarely relative
+// to how often citations render.
+let projectNameCache: Map<string, number> | null = null;
+let projectNameCachePromise: Promise<Map<string, number>> | null = null;
+
+async function loadProjectNameCache(): Promise<Map<string, number>> {
+  const d = await jget<{ id: number; name: string }[] | { projects: { id: number; name: string }[] }>(
+    "/api/projects",
+  );
+  const list = Array.isArray(d) ? d : d.projects;
+  return new Map(list.map((p) => [p.name, p.id]));
+}
+
+export async function resolveProjectIdByName(name: string): Promise<number | undefined> {
+  if (!projectNameCache) {
+    if (!projectNameCachePromise) projectNameCachePromise = loadProjectNameCache();
+    try {
+      projectNameCache = await projectNameCachePromise;
+    } catch {
+      projectNameCachePromise = null;
+      return undefined;
+    }
+  }
+  return projectNameCache.get(name);
+}
+
 // --- Deep-link event contract -------------------------------------------------
 // Any surface (Nexus chat, Workspace chat, Ledger entry) can dispatch this
 // to focus the CodebasePanel to a file / line range:
@@ -142,6 +190,12 @@ export interface CodebaseOpenDetail {
   path: string;
   lineStart?: number;
   lineEnd?: number;
+  // Set when the citation points at a DIFFERENT project than the one
+  // currently open (from search_all_projects). CodebasePanel renders this
+  // as a read-only overlay via peekOtherProjectFile instead of switching
+  // its own sourceId.
+  crossProjectId?: number;
+  crossProjectName?: string;
 }
 export function openCodebase(detail: CodebaseOpenDetail) {
   window.dispatchEvent(new CustomEvent("codebase:open", { detail }));

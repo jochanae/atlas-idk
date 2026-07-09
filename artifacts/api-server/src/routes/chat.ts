@@ -5035,6 +5035,11 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     // worked the whole time.
     systemPrompt += `\n\nYou CAN generate real downloadable files — presentations (PowerPoint/.pptx), documents (.docx), and spreadsheets (.xlsx) — using the generate_deliverable tool. When the user asks for a deck, presentation, slides, document, write-up, or spreadsheet, call generate_deliverable instead of saying you can't create files. It builds the file from this conversation and saves it to the project's Deliverables tab.`;
 
+    // Phase 3A step 1: cross-project search. Give Atlas explicit permission +
+    // instruction to search the user's OTHER projects instead of guessing from
+    // memory when asked "have I built this before" / "how did I do X elsewhere".
+    systemPrompt += `\n\nYou CAN search across ALL of the user's projects at once using the search_all_projects tool — not just this one. When the user asks things like "have I built this before", "how did I implement X in my other apps", or "find every Y I've built", call search_all_projects first instead of relying on memory or the Ledger alone. Cite results EXACTLY in the form \`ProjectName › path:Lline\` (e.g. "In Compani, \`src/auth/invite.ts:L42\`") so the citation stays clickable. Once you find a promising hit, use read_reference_project_file to pull the full context before describing or reusing it.`;
+
     const abortController = new AbortController();
     req.on("close", () => abortController.abort());
 

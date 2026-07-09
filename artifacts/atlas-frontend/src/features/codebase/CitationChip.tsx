@@ -3,25 +3,54 @@
 // from markdown/plain text via <MessageCitations text={...} /> or the
 // recursive helper renderChildrenWithCitations(children) for react-markdown
 // component overrides.
-import React, { Children, cloneElement, isValidElement, type ReactNode } from "react";
-import { openCodebase } from "../../hooks/useProjectSource";
+import React, { Children, cloneElement, isValidElement, useEffect, useState, type ReactNode } from "react";
+import { openCodebase, resolveProjectIdByName } from "../../hooks/useProjectSource";
 
 export interface CitationChipProps {
   path: string;
   lineStart?: number;
   lineEnd?: number;
   compact?: boolean;
+  // Present for cross-project citations produced by search_all_projects,
+  // formatted by Atlas as "ProjectName › path:Lline". The chip resolves the
+  // name to a project id lazily (name→id lookup) since chat text only ever
+  // carries the human-readable name.
+  projectName?: string;
 }
 
-export const CitationChip: React.FC<CitationChipProps> = ({ path, lineStart, lineEnd, compact }) => {
-  const label = lineStart
+export const CitationChip: React.FC<CitationChipProps> = ({
+  path,
+  lineStart,
+  lineEnd,
+  compact,
+  projectName,
+}) => {
+  const [crossProjectId, setCrossProjectId] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!projectName) return;
+    let alive = true;
+    void resolveProjectIdByName(projectName).then((id) => { if (alive) setCrossProjectId(id); });
+    return () => { alive = false; };
+  }, [projectName]);
+
+  const lineLabel = lineStart
     ? `${path}:L${lineStart}${lineEnd && lineEnd !== lineStart ? `-${lineEnd}` : ""}`
     : path;
+  const label = projectName ? `${projectName} › ${lineLabel}` : lineLabel;
+  const isCrossProject = Boolean(projectName && crossProjectId);
   return (
     <button
       type="button"
-      onClick={() => openCodebase({ path, lineStart, lineEnd })}
-      title={`Open ${label} in Codebase panel`}
+      onClick={() =>
+        openCodebase({
+          path,
+          lineStart,
+          lineEnd,
+          ...(isCrossProject ? { crossProjectId, crossProjectName: projectName } : {}),
+        })
+      }
+      title={isCrossProject ? `Open ${label} (from ${projectName})` : `Open ${label} in Codebase panel`}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -48,8 +77,12 @@ export const CitationChip: React.FC<CitationChipProps> = ({ path, lineStart, lin
 // Regex matches:  path/to/file.ext        (word after / or start)
 //                 path/to/file.ext:L12
 //                 path/to/file.ext:L12-L24
-// Requires an extension so bare words aren't captured.
-const CITATION_RE = /([\w./-]+\.[a-zA-Z][\w]{0,6})(?::L(\d+)(?:-L?(\d+))?)?/g;
+//                 ProjectName › path/to/file.ext:L12   (cross-project, from search_all_projects)
+// Requires an extension so bare words aren't captured. The project-name
+// group is deliberately conservative (no "›" inside it) so it doesn't
+// swallow unrelated prose before an unrelated path elsewhere in the message.
+const CITATION_RE =
+  /(?:([\w][\w .-]{0,60}[\w])\s›\s)?([\w./-]+\.[a-zA-Z][\w]{0,6})(?::L(\d+)(?:-L?(\d+))?)?/g;
 
 export const MessageCitations: React.FC<{ text: string }> = ({ text }) => {
   const parts: React.ReactNode[] = [];
@@ -57,7 +90,7 @@ export const MessageCitations: React.FC<{ text: string }> = ({ text }) => {
   let m: RegExpExecArray | null;
   const re = new RegExp(CITATION_RE);
   while ((m = re.exec(text)) !== null) {
-    const [full, path, ls, le] = m;
+    const [full, projectName, path, ls, le] = m;
     // Only chip-ify if it looks like a file path (has a slash OR looks like source file)
     if (!path.includes("/") && !ls) { continue; }
     if (m.index > last) parts.push(text.slice(last, m.index));
@@ -67,6 +100,7 @@ export const MessageCitations: React.FC<{ text: string }> = ({ text }) => {
         path={path}
         lineStart={ls ? Number(ls) : undefined}
         lineEnd={le ? Number(le) : undefined}
+        projectName={projectName || undefined}
       />,
     );
     last = m.index + full.length;
@@ -94,7 +128,7 @@ export function renderChildrenWithCitations(children: ReactNode): ReactNode {
       let last = 0;
       let m: RegExpExecArray | null;
       while ((m = re.exec(child)) !== null) {
-        const [full, path, ls, le] = m;
+        const [full, projectName, path, ls, le] = m;
         if (!path.includes("/") && !ls) continue;
         if (m.index > last) parts.push(child.slice(last, m.index));
         parts.push(
@@ -103,6 +137,7 @@ export function renderChildrenWithCitations(children: ReactNode): ReactNode {
             path={path}
             lineStart={ls ? Number(ls) : undefined}
             lineEnd={le ? Number(le) : undefined}
+            projectName={projectName || undefined}
           />,
         );
         last = m.index + full.length;

@@ -9,8 +9,10 @@ import {
   useProjectSource,
   useSourceFile,
   searchSource,
+  peekOtherProjectFile,
   type SearchHit,
   type CodebaseOpenDetail,
+  type CrossProjectFile,
 } from "../../hooks/useProjectSource";
 
 interface Props {
@@ -102,18 +104,55 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
 
   const { file, loading: fileLoading } = useSourceFile(sourceId, activePath);
 
-  // Deep-link listener → file viewer.
+  // Cross-project peek overlay (Phase 3A step 2). This panel is bound to a
+  // single projectId, so a citation pointing at ANOTHER project can't just
+  // switch activePath/sourceId — it opens as a read-only overlay on top
+  // instead, fetched via peekOtherProjectFile.
+  const [crossProject, setCrossProject] = useState<{
+    projectId: number;
+    projectName: string;
+    path: string;
+    lineStart?: number;
+    lineEnd?: number;
+  } | null>(null);
+  const [crossFile, setCrossFile] = useState<CrossProjectFile | null>(null);
+  const [crossLoading, setCrossLoading] = useState(false);
+  const [crossError, setCrossError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!crossProject) { setCrossFile(null); setCrossError(null); return; }
+    let alive = true;
+    setCrossLoading(true);
+    setCrossError(null);
+    peekOtherProjectFile(crossProject.projectId, crossProject.path)
+      .then((f) => { if (alive) setCrossFile(f); })
+      .catch((e) => { if (alive) setCrossError(String(e)); })
+      .finally(() => { if (alive) setCrossLoading(false); });
+    return () => { alive = false; };
+  }, [crossProject]);
+
+  // Deep-link listener → file viewer (same project) or cross-project overlay.
   useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent<CodebaseOpenDetail>).detail;
       if (!detail?.path) return;
+      if (detail.crossProjectId && detail.crossProjectId !== projectId) {
+        setCrossProject({
+          projectId: detail.crossProjectId,
+          projectName: detail.crossProjectName ?? `Project #${detail.crossProjectId}`,
+          path: detail.path,
+          lineStart: detail.lineStart,
+          lineEnd: detail.lineEnd,
+        });
+        return;
+      }
       setActivePath(detail.path);
       setLineRange({ start: detail.lineStart, end: detail.lineEnd });
       setView("file");
     };
     window.addEventListener("codebase:open", onOpen);
     return () => window.removeEventListener("codebase:open", onOpen);
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     if (!file || !lineRange.start || !fileScrollRef.current) return;
@@ -154,7 +193,7 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, position: "relative" }}>
       {/* Header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -349,9 +388,89 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
           </div>
         )}
       </div>
+
+      {crossProject && (
+        <CrossProjectOverlay
+          projectName={crossProject.projectName}
+          path={crossProject.path}
+          lineStart={crossProject.lineStart}
+          lineEnd={crossProject.lineEnd}
+          file={crossFile}
+          loading={crossLoading}
+          error={crossError}
+          onClose={() => setCrossProject(null)}
+        />
+      )}
     </div>
   );
 };
+
+function CrossProjectOverlay({
+  projectName, path, lineStart, lineEnd, file, loading, error, onClose,
+}: {
+  projectName: string;
+  path: string;
+  lineStart?: number;
+  lineEnd?: number;
+  file: CrossProjectFile | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  const lines = file
+    ? file.content.split("\n").map((text, i) => {
+        const n = i + 1;
+        const inRange = lineStart && n >= lineStart && n <= (lineEnd ?? lineStart);
+        return { n, text, inRange };
+      })
+    : null;
+  return (
+    <div style={{
+      position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+      background: "rgba(10,10,10,0.97)", zIndex: 20,
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "8px 12px", borderBottom: BORDER, flexShrink: 0, gap: 8,
+      }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          <span style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+            letterSpacing: "0.09em", textTransform: "uppercase", color: GOLD, opacity: 0.85,
+          }}>Read-only · from {projectName}</span>
+          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: FG }}>
+            {path}{lineStart ? `:L${lineStart}${lineEnd && lineEnd !== lineStart ? `-${lineEnd}` : ""}` : ""}
+          </span>
+        </div>
+        <button type="button" onClick={onClose} style={{
+          padding: "4px 10px", background: "transparent",
+          border: `1px solid ${MUTED}`, color: MUTED,
+          fontFamily: "var(--app-font-mono)", fontSize: 10,
+          letterSpacing: "0.09em", textTransform: "uppercase",
+          borderRadius: 3, cursor: "pointer", flexShrink: 0,
+        }}>Close</button>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+        {loading && <EmptyState label={`Loading ${path} from ${projectName}…`} />}
+        {error && <EmptyState label="Couldn't load that file" hint={error} />}
+        {lines && (
+          <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, lineHeight: 1.5 }}>
+            {lines.map((l) => (
+              <div key={l.n} data-line={l.n} style={{
+                display: "flex", gap: 10, padding: "0 10px",
+                background: l.inRange ? "rgba(201,162,76,0.12)" : "transparent",
+                borderLeft: l.inRange ? `2px solid ${GOLD}` : "2px solid transparent",
+              }}>
+                <span style={{ color: MUTED, opacity: 0.5, userSelect: "none", minWidth: 32, textAlign: "right" }}>{l.n}</span>
+                <span style={{ whiteSpace: "pre", color: FG }}>{l.text || " "}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function EmptyState({ label, hint, onRetry }: { label: string; hint?: string; onRetry?: () => void }) {
   return (

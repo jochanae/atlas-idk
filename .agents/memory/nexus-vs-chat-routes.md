@@ -28,3 +28,6 @@ nexus.ts classifies intent via WhisperGate (or forces CHAT when `justTalk === tr
 
 CHAT and DECIDE turns never write an execution_run row. Classifier failure falls back to DECIDE (not BUILD).
 Every turn emits SSE `event: meta` with `{intent, justTalk, fallback}` before the first text delta.
+
+## Two separate agent tool systems
+`chat.ts` (Workspace) uses the AI SDK `tool()` wrapper from `lib/agent-tools/` (registered via a `buildAgentTools`-style factory). `nexus.ts` (legacy Ask Atlas/portfolio surface) uses raw `Anthropic.Tool[]` definitions (`NEXUS_AGENT_TOOLS`/`NEXUS_WORKSPACE_TOOLS`) with manual dispatch — it does NOT call `buildAgentTools`. New workspace-only tools (e.g. `search_all_projects`) don't automatically reach nexus.ts; since Ask Atlas is documented as retired in favor of Workspace, new cross-project tools were scoped to chat.ts only, not backported to nexus.ts.
