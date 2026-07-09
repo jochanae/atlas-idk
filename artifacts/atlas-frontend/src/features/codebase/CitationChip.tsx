@@ -1,7 +1,9 @@
 // Tappable file:line citation chip. Emits `codebase:open` so any mounted
 // CodebasePanel focuses the file. Also renders inline citations parsed
-// from markdown/plain text via <MessageCitations text={...} />.
-import React from "react";
+// from markdown/plain text via <MessageCitations text={...} /> or the
+// recursive helper renderChildrenWithCitations(children) for react-markdown
+// component overrides.
+import React, { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import { openCodebase } from "../../hooks/useProjectSource";
 
 export interface CitationChipProps {
