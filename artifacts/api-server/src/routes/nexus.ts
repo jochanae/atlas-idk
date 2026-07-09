@@ -2222,9 +2222,21 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     ? (projects.find((p) => p.id === focusProjectId)?.name ?? null)
     : null;
   const shouldBrief = intent !== "CHAT" && userAskedAboutProject(message, focusProjectName);
-  // Only BUILD (and not Just Talk / Conversation Mode) may persist runs, call
-  // tools, bootstrap GitHub, or trigger Tier1 write side-effects.
+  // Only BUILD (and not Just Talk / Conversation Mode) may persist runs,
+  // bootstrap GitHub, trigger Tier1 write side-effects, or emit file-edit
+  // markers (FILE_EDIT_START / LINE_PATCH_START / GITHUB_PUSH / REPO_LINK).
   const allowBuildSideEffects = intent === "BUILD" && !justTalk && !conversationModeActive;
+  // The shared agent-tools registry (search_all_projects, architecture_diff,
+  // generate_deliverable, read_file, etc.) is read/generate-only — none of it
+  // edits files, so it does not need the same guard as allowBuildSideEffects.
+  // Previously tools were gated on allowBuildSideEffects (BUILD-only), which
+  // meant DECIDE turns ("search my projects for X", "compare architecture
+  // with Y", "show me reusable components") had the model narrate "let me
+  // look into that..." and then dead-end with no tool ever firing, because
+  // DECIDE's own system-prompt block forbade tool calls outright. Widening
+  // this to include DECIDE lets Atlas actually ground its answer/recommendation
+  // in real project data instead of promising to look and then not looking.
+  const allowToolAccess = (intent === "BUILD" || intent === "DECIDE") && !justTalk && !conversationModeActive;
   // CHAT turns emit nothing except the reply + meta. DECIDE may surface memory
   // read-only, but capture cards fire only on Commit.
   const isChatTurn = intent === "CHAT" || justTalk;
@@ -2900,7 +2912,7 @@ WHAT YOU SHOULD NOT DO:
   } else if (intent === "DECIDE") {
     systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---
 This is a decision turn. Give the user structured options, tradeoffs, or a recommendation.
-You MAY emit DECIDE / decision blocks. Do NOT call tools, emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or start a build unless the user explicitly approves an action in a later turn.
+You MAY emit DECIDE / decision blocks. You MAY call read/lookup/generate tools (search_all_projects, search_codebase, architecture_diff, project_knowledge, component_registry, read_file, list_reference_project_dir, read_reference_project_file, generate_deliverable) to ground your answer in real project data — if the user asks you to search, compare, look up, discover, or generate a document/deck/summary, actually call the tool this turn instead of just saying "let me look into that." Do NOT emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or start a code build unless the user explicitly approves that action in a later turn — those remain BUILD-only.
 
 CLARIFICATION CARDS — use when the request is under-specified:
 If the user's request has a clear action intent but the TARGET is ambiguous (vague pronoun, no named component, conflicting scope), emit a CLARIFY card. CRITICAL: you must NEVER ask clarification questions in prose — if you need to clarify, emit the structured block below and ONLY that block. A prose question ("What would you like the header to say?") is not a CLARIFY card and will confuse the user.
@@ -4749,24 +4761,37 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
   const SHARED_TOOL_NAME_SET = new Set([...SHARED_HOME_TOOL_NAMES, ...SHARED_WORKSPACE_TOOL_NAMES]);
 
   const runNexusTool = async (toolUse: Anthropic.ToolUseBlock): Promise<Record<string, unknown>> => {
-    switch (toolUse.name) {
-      case "create_project":
-        return runCreateProjectTool(toolUse);
-      case "tier1_upsert_field":
-        return runTier1UpsertFieldTool(toolUse);
-      case "tier1_mark_skipped":
-        return runTier1MarkSkippedTool();
-      case "read_file":
-        return runReadFileTool(toolUse);
-      default: {
-        if (SHARED_TOOL_NAME_SET.has(toolUse.name)) {
-          const ctx = await getSharedAgentCtx();
-          const input = isRecord(toolUse.input) ? toolUse.input : {};
-          return executeSharedAgentTool(ctx, toolUse.name, input);
+    const startedAt = performance.now();
+    const result = await (async (): Promise<Record<string, unknown>> => {
+      switch (toolUse.name) {
+        case "create_project":
+          return runCreateProjectTool(toolUse);
+        case "tier1_upsert_field":
+          return runTier1UpsertFieldTool(toolUse);
+        case "tier1_mark_skipped":
+          return runTier1MarkSkippedTool();
+        case "read_file":
+          return runReadFileTool(toolUse);
+        default: {
+          if (SHARED_TOOL_NAME_SET.has(toolUse.name)) {
+            const ctx = await getSharedAgentCtx();
+            const input = isRecord(toolUse.input) ? toolUse.input : {};
+            return executeSharedAgentTool(ctx, toolUse.name, input);
+          }
+          return { ok: false, error: "unknown_tool" };
         }
-        return { ok: false, error: "unknown_tool" };
       }
-    }
+    })();
+    // Permanent telemetry: this is the only place every tool call (shared
+    // registry + nexus-local) funnels through. Without it there was no way
+    // to distinguish "the model called the tool and got an empty result"
+    // from "the model never called the tool at all" — a real diagnostic gap
+    // uncovered when DECIDE-turn tool access was widened.
+    req.log.info(
+      { tool: toolUse.name, ok: result.ok !== false, ms: Math.round(performance.now() - startedAt), focusProjectId },
+      "nexus: tool executed",
+    );
+    return result;
   };
 
   const buildToolResultBlocks = async (
@@ -4942,10 +4967,11 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     );
   }
 
-  // Tools and forceCreate are BUILD-only. CHAT, DECIDE, Just Talk, and
-  // Conversation Mode must never enter the tool loop.
+  // Tools are BUILD- and DECIDE-only (read/generate registry, no file edits).
+  // forceCreate is BUILD-only. CHAT, Just Talk, and Conversation Mode must
+  // never enter the tool loop.
   streamClaude(anthropicMessages, {
-    tools: allowBuildSideEffects,
+    tools: allowToolAccess,
     startedAt: modelStartedAt,
     forceCreate: shouldForceCreate,
   });
