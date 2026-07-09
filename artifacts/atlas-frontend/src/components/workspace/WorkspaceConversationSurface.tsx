@@ -325,7 +325,14 @@ export function WorkspaceConversationSurface({
                   <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
                 ) : (
                   <>
-                    <ReactMarkdown>
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p>{renderChildrenWithCitations(children)}</p>,
+                        li: ({ children }) => <li>{renderChildrenWithCitations(children)}</li>,
+                        strong: ({ children }) => <strong>{renderChildrenWithCitations(children)}</strong>,
+                        em: ({ children }) => <em>{renderChildrenWithCitations(children)}</em>,
+                      }}
+                    >
                       {displayContent}
                     </ReactMarkdown>
                     {isLast && msg.streaming && <TypingDots />}
