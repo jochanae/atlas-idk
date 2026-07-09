@@ -273,7 +273,7 @@ function FileTab({ sourceId, focus, onBack }: { sourceId: string; focus: { path:
         </div>
       </div>
       {isLoading && <Empty label="Loading file…" />}
-      {error && <Empty label={`File error: ${(error as Error).message}`} />}
+      {error ? <Empty label={`File error: ${(error as Error).message}`} /> : null}
       {data && (
         <>
           <pre style={{ ...MONO, fontSize: 11, background: "rgba(255,255,255,0.03)", padding: 10, borderRadius: 6, overflow: "auto", margin: 0 }}>
