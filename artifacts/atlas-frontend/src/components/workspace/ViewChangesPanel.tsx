@@ -510,8 +510,15 @@ const TIMELINE_VERBS = new Set([
   "DNA_UPDATED", "DECISION_RECORDED", "PLAN_RECORDED",
   // Placeholder support — rendered only if backend emits real steps.
   "ARTIFACT_CREATED", "ERROR", "QUESTION_ASKED",
+  // Conversational milestones (2026-07-09 handoff).
+  "MILESTONE_REQUIREMENTS", "MILESTONE_DECISION",
+  "MILESTONE_DESIGN", "MILESTONE_PLAN", "ARTIFACT_GENERATED",
 ]);
-const EXPANDABLE_VERBS = new Set(["THOUGHT", "FILE_EDIT", "SUMMARY", "ERROR", "QUESTION_ASKED"]);
+const EXPANDABLE_VERBS = new Set([
+  "THOUGHT", "FILE_EDIT", "SUMMARY", "ERROR", "QUESTION_ASKED",
+  "MILESTONE_REQUIREMENTS", "MILESTONE_DECISION",
+  "MILESTONE_DESIGN", "MILESTONE_PLAN", "ARTIFACT_GENERATED",
+]);
 const ALWAYS_OPEN_VERBS = new Set(["SUMMARY", "ERROR"]);
 
 function stepColor(verb: string): string {
@@ -530,6 +537,11 @@ function stepColor(verb: string): string {
     ARTIFACT_CREATED:   "rgba(180,200,120,0.90)",
     ERROR:              "rgba(220,80,80,0.95)",
     QUESTION_ASKED:     "rgba(200,180,140,0.85)",
+    MILESTONE_REQUIREMENTS: "rgba(140,200,220,0.90)",
+    MILESTONE_DECISION:     "rgba(220,160,80,0.90)",
+    MILESTONE_DESIGN:       "rgba(170,130,230,0.90)",
+    MILESTONE_PLAN:         "rgba(200,180,140,0.90)",
+    ARTIFACT_GENERATED:     "rgba(180,200,120,0.90)",
   };
   return MAP[verb] ?? "rgba(180,180,180,0.75)";
 }
@@ -547,6 +559,11 @@ function stepLabel(verb: string, detail?: string | null): string {
     DNA_UPDATED: "DNA updated", DECISION_RECORDED: "Decision",
     PLAN_RECORDED: "Plan recorded",
     ARTIFACT_CREATED: "Output", ERROR: "Error", QUESTION_ASKED: "Question",
+    MILESTONE_REQUIREMENTS: "Requirements clarified",
+    MILESTONE_DECISION:     "Architecture decision",
+    MILESTONE_DESIGN:       "Design milestone",
+    MILESTONE_PLAN:         "Implementation plan",
+    ARTIFACT_GENERATED:     "Artifact created",
   };
   return MAP[verb] ?? verb;
 }
@@ -567,8 +584,14 @@ function StepIcon({ verb }: { verb: string }) {
   if (verb === "ARTIFACT_CREATED")  return <FileOutput   {...p} />;
   if (verb === "ERROR")             return <AlertOctagon {...p} />;
   if (verb === "QUESTION_ASKED")    return <HelpCircle   {...p} />;
+  if (verb === "MILESTONE_REQUIREMENTS") return <ListChecks {...p} />;
+  if (verb === "MILESTONE_DECISION")     return <BookMarked {...p} />;
+  if (verb === "MILESTONE_DESIGN")       return <Dna        {...p} />;
+  if (verb === "MILESTONE_PLAN")         return <ListChecks {...p} />;
+  if (verb === "ARTIFACT_GENERATED")     return <FileOutput {...p} />;
   return null;
 }
+
 
 function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }) {
   const color = stepColor(step.verb);
