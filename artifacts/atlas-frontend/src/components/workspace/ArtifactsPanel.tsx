@@ -509,10 +509,10 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
         </div>
       )}
       {loading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>Loading artifacts…</div>
+        <div style={{ display: "flex", justifyContent: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>Loading outputs…</div>
       ) : error ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>
-          <div>Couldn’t load artifacts.</div>
+          <div>Couldn’t load outputs.</div>
           <button type="button" onClick={() => void load()} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "transparent", border: "1px solid rgba(201,162,76,0.3)", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>Retry</button>
         </div>
       ) : !items || items.length === 0 ? (
