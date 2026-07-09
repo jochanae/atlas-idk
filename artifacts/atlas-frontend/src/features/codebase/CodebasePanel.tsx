@@ -1,13 +1,14 @@
-// CodebasePanel — project-scoped repo intelligence surface.
-// Mounted inside the Workspace shell (Files tab, "Codebase" sub-tab).
-// Deep-linked by CitationChip via the `codebase:open` window event.
+// Intelligence Panel — Atlas's indexed understanding of the project.
+// NOT a file browser. Workspace tab already owns files/tree/edit.
+// This surface answers: where is X used, who imports Y, what routes exist,
+// what components live here, what does this depend on, ask a question.
+//
+// Deep-linked from anywhere via `codebase:open` (CitationChip).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useProjectSource,
-  useSourceTree,
   useSourceFile,
   searchSource,
-  type TreeNode,
   type SearchHit,
   type CodebaseOpenDetail,
 } from "../../hooks/useProjectSource";
@@ -16,11 +17,21 @@ interface Props {
   projectId: number;
 }
 
-type SubView = "tree" | "search" | "file";
+type SubView = "search" | "symbols" | "routes" | "components" | "imports" | "questions" | "file";
 
 const GOLD = "var(--atlas-gold, #c9a24c)";
 const MUTED = "var(--atlas-muted, #8a8a8a)";
+const FG = "var(--atlas-fg, #d4d4d4)";
 const BORDER = "1px solid rgba(201,162,76,0.10)";
+
+const TAB_LABELS: Record<Exclude<SubView, "file">, string> = {
+  search: "Search",
+  symbols: "Symbols",
+  routes: "Routes",
+  components: "Components",
+  imports: "Imports",
+  questions: "Ask",
+};
 
 function StatusPill({ status }: { status: string }) {
   const color =
@@ -41,31 +52,37 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function TreeItem({ node, depth, onOpen }: { node: TreeNode; depth: number; onOpen: (p: string) => void }) {
-  const [open, setOpen] = useState(depth < 1);
-  const isDir = node.type === "dir";
-  const name = node.path.split("/").pop() || node.path;
+function StubView({
+  title, blurb, examples,
+}: { title: string; blurb: string; examples?: string[] }) {
   return (
-    <div>
-      <div
-        onClick={() => (isDir ? setOpen((o) => !o) : onOpen(node.path))}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: `2px 4px 2px ${8 + depth * 12}px`,
-          fontFamily: "var(--app-font-mono)", fontSize: 11,
-          color: isDir ? MUTED : "var(--atlas-fg, #d4d4d4)",
-          cursor: "pointer", userSelect: "none",
-        }}
-        onMouseOver={(e) => (e.currentTarget.style.background = "rgba(201,162,76,0.05)")}
-        onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
-      >
-        <span style={{ opacity: 0.5, width: 10 }}>{isDir ? (open ? "▾" : "▸") : ""}</span>
-        <span>{isDir ? "📁" : "📄"}</span>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{
+        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+        letterSpacing: "0.09em", textTransform: "uppercase",
+        color: GOLD, opacity: 0.85,
+      }}>{title}</div>
+      <div style={{ fontSize: 12, color: FG, opacity: 0.85, lineHeight: 1.55 }}>{blurb}</div>
+      {examples && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+          <div style={{ fontSize: 10, color: MUTED, textTransform: "uppercase", letterSpacing: "0.06em" }}>Will surface</div>
+          {examples.map((ex, i) => (
+            <div key={i} style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 11, color: MUTED,
+              paddingLeft: 10, borderLeft: `2px solid rgba(201,162,76,0.15)`,
+            }}>
+              {ex}
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{
+        marginTop: 8, padding: "6px 8px",
+        border: "1px dashed rgba(201,162,76,0.25)", borderRadius: 4,
+        fontSize: 10.5, color: MUTED, fontFamily: "var(--app-font-mono)",
+      }}>
+        Awaiting backend endpoint
       </div>
-      {isDir && open && node.children?.map((c) => (
-        <TreeItem key={c.path} node={c} depth={depth + 1} onOpen={onOpen} />
-      ))}
     </div>
   );
 }
@@ -73,19 +90,19 @@ function TreeItem({ node, depth, onOpen }: { node: TreeNode; depth: number; onOp
 export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
   const { source, loading, error, refresh } = useProjectSource(projectId);
   const sourceId = source?.id ?? null;
-  const { tree } = useSourceTree(source?.lastIngestStatus === "ready" ? sourceId : null);
 
-  const [view, setView] = useState<SubView>("tree");
+  const [view, setView] = useState<SubView>("search");
   const [activePath, setActivePath] = useState<string | null>(null);
   const [lineRange, setLineRange] = useState<{ start?: number; end?: number }>({});
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
   const fileScrollRef = useRef<HTMLDivElement | null>(null);
 
   const { file, loading: fileLoading } = useSourceFile(sourceId, activePath);
 
-  // Deep-link listener.
+  // Deep-link listener → file viewer.
   useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent<CodebaseOpenDetail>).detail;
@@ -98,7 +115,6 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
     return () => window.removeEventListener("codebase:open", onOpen);
   }, []);
 
-  // Scroll to line on file load.
   useEffect(() => {
     if (!file || !lineRange.start || !fileScrollRef.current) return;
     const el = fileScrollRef.current.querySelector<HTMLDivElement>(
@@ -107,15 +123,10 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
     if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [file, lineRange.start]);
 
-  const openFile = useCallback((path: string) => {
-    setActivePath(path);
-    setLineRange({});
-    setView("file");
-  }, []);
-
   const runSearch = useCallback(async () => {
     if (!sourceId || !query.trim()) return;
     setSearching(true);
+    setSearched(true);
     try { setHits(await searchSource(sourceId, query)); }
     finally { setSearching(false); }
   }, [sourceId, query]);
@@ -129,15 +140,14 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
     });
   }, [file, lineRange]);
 
-  // Empty / status states -----------------------------------------------------
-  if (!source && loading) {
-    return <EmptyState label="Loading project source…" />;
-  }
+  // ── Empty / unindexed states ────────────────────────────────────────────────
+  if (!source && loading) return <EmptyState label="Loading project intelligence…" />;
+
   if (!source) {
     return (
       <EmptyState
-        label="No indexed source for this project yet"
-        hint="Upload a ZIP, connect a repo, or generate files from the Workspace to begin indexing."
+        label="Atlas hasn't indexed this project yet"
+        hint="Once you upload a ZIP, connect a repo, or generate files in Workspace, Atlas will build a searchable index — symbols, routes, components, imports — and you'll be able to interrogate the project from here."
         onRetry={refresh}
       />
     );
@@ -145,7 +155,7 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-      {/* Header: source meta + status */}
+      {/* Header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "6px 10px", borderBottom: BORDER, flexShrink: 0, gap: 8,
@@ -154,7 +164,7 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
           <span style={{
             fontFamily: "var(--app-font-mono)", fontSize: 10,
             letterSpacing: "0.09em", textTransform: "uppercase", color: MUTED,
-          }}>{source.sourceType}</span>
+          }}>{source.sourceType} · indexed</span>
           <span style={{ fontSize: 10.5, color: MUTED }}>
             {source.fileCount} files · {(source.totalBytes / 1024).toFixed(1)} KB
           </span>
@@ -163,19 +173,15 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
       </div>
 
       {error && (
-        <div style={{ padding: "6px 10px", fontSize: 10.5, color: "#f87171", borderBottom: BORDER }}>
-          {error}
-        </div>
+        <div style={{ padding: "6px 10px", fontSize: 10.5, color: "#f87171", borderBottom: BORDER }}>{error}</div>
       )}
       {source.lastIngestError && (
-        <div style={{ padding: "6px 10px", fontSize: 10.5, color: "#f87171", borderBottom: BORDER }}>
-          {source.lastIngestError}
-        </div>
+        <div style={{ padding: "6px 10px", fontSize: 10.5, color: "#f87171", borderBottom: BORDER }}>{source.lastIngestError}</div>
       )}
 
-      {/* Sub-view tabs */}
-      <div style={{ display: "flex", borderBottom: BORDER, flexShrink: 0, height: 28 }}>
-        {(["tree", "search", "file"] as const).map((v) => {
+      {/* Sub-view tabs (Search is home; File appears only when a citation opens it) */}
+      <div style={{ display: "flex", borderBottom: BORDER, flexShrink: 0, height: 28, overflowX: "auto" }} className="scrollbar-none">
+        {(Object.keys(TAB_LABELS) as Array<keyof typeof TAB_LABELS>).map((v) => {
           const active = view === v;
           return (
             <button key={v} type="button" onClick={() => setView(v)} style={{
@@ -185,35 +191,41 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
               fontFamily: "var(--app-font-mono)", fontSize: 10,
               letterSpacing: "0.09em", textTransform: "uppercase",
               color: active ? GOLD : MUTED, opacity: active ? 1 : 0.55,
-              fontWeight: active ? 600 : 400,
+              fontWeight: active ? 600 : 400, whiteSpace: "nowrap", flexShrink: 0,
             }}>
-              {v}{v === "file" && activePath ? ` · ${activePath.split("/").pop()}` : ""}
+              {TAB_LABELS[v]}
             </button>
           );
         })}
+        {view === "file" && activePath && (
+          <button type="button" onClick={() => setView("file")} style={{
+            padding: "0 12px", height: "100%", border: "none",
+            borderBottom: `2px solid ${GOLD}`, background: "transparent",
+            fontFamily: "var(--app-font-mono)", fontSize: 10,
+            letterSpacing: "0.09em", textTransform: "uppercase",
+            color: GOLD, fontWeight: 600, cursor: "default", whiteSpace: "nowrap",
+          }}>
+            {activePath.split("/").pop()}
+          </button>
+        )}
       </div>
 
       {/* Content */}
       <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        {view === "tree" && (
-          tree
-            ? <TreeItem node={tree} depth={0} onOpen={openFile} />
-            : <EmptyState label={source.lastIngestStatus === "ready" ? "Empty tree" : "Indexing…"} />
-        )}
-
         {view === "search" && (
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <div style={{ padding: 8, borderBottom: BORDER, display: "flex", gap: 6 }}>
               <input
+                autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
-                placeholder="Search symbols, imports, text…"
+                placeholder="Search useAuth, /login, Dashboard…"
                 style={{
                   flex: 1, padding: "4px 8px",
                   background: "rgba(255,255,255,0.03)",
                   border: "1px solid rgba(201,162,76,0.15)",
-                  borderRadius: 3, color: "var(--atlas-fg, #d4d4d4)",
+                  borderRadius: 3, color: FG,
                   fontFamily: "var(--app-font-mono)", fontSize: 11, outline: "none",
                 }}
               />
@@ -226,10 +238,16 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
               }}>{searching ? "…" : "Go"}</button>
             </div>
             <div style={{ flex: 1, overflow: "auto" }}>
-              {hits.length === 0 && !searching && (
-                <div style={{ padding: 12, fontSize: 11, color: MUTED }}>
-                  {query ? "No hits" : "Enter a term and hit Enter"}
+              {!searched && (
+                <div style={{ padding: 16, fontSize: 11.5, color: MUTED, lineHeight: 1.6 }}>
+                  Search Atlas's index of this project.
+                  <div style={{ marginTop: 8, fontSize: 10.5 }}>
+                    Try: <code style={{ color: GOLD }}>useAuth</code>, <code style={{ color: GOLD }}>createProject</code>, <code style={{ color: GOLD }}>/api/sources</code>
+                  </div>
                 </div>
+              )}
+              {searched && hits.length === 0 && !searching && (
+                <div style={{ padding: 12, fontSize: 11, color: MUTED }}>No hits for "{query}"</div>
               )}
               {hits.map((h, i) => (
                 <div key={i} onClick={() => {
@@ -244,16 +262,75 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
                 onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <div style={{ color: GOLD }}>{h.path}<span style={{ color: MUTED }}>:L{h.line}</span></div>
-                  <div style={{ color: "var(--atlas-fg, #d4d4d4)", opacity: 0.75, whiteSpace: "pre", overflow: "hidden", textOverflow: "ellipsis" }}>{h.text}</div>
+                  <div style={{ color: FG, opacity: 0.75, whiteSpace: "pre", overflow: "hidden", textOverflow: "ellipsis" }}>{h.text}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {view === "symbols" && (
+          <StubView
+            title="Symbols"
+            blurb="Every exported function, class, hook, and type across the project — with the file and line they live in."
+            examples={[
+              "useAuth  ·  src/hooks/useAuth.ts:L12",
+              "Dashboard  ·  src/pages/Dashboard.tsx:L34",
+              "type ProjectSource  ·  lib/db/src/schema/project_sources.ts:L38",
+            ]}
+          />
+        )}
+
+        {view === "routes" && (
+          <StubView
+            title="Routes"
+            blurb="Client routes (TanStack/React Router) and API endpoints (/api/*) discovered by walking the project."
+            examples={[
+              "/login  →  src/routes/login.tsx",
+              "/workspace/$projectId  →  src/routes/workspace.$projectId.tsx",
+              "GET /api/sources/tree  →  server route handler",
+            ]}
+          />
+        )}
+
+        {view === "components" && (
+          <StubView
+            title="Components"
+            blurb="React components in the project, where each is defined, and every file that renders it."
+            examples={[
+              "CitationChip  ·  defined 1×  ·  used 4×",
+              "CodebasePanel  ·  defined 1×  ·  used 1× (workspace.tsx)",
+            ]}
+          />
+        )}
+
+        {view === "imports" && (
+          <StubView
+            title="Imports & Dependencies"
+            blurb="Reverse-import graph: pick a file to see who depends on it, and impact-analyze an edit before you make it."
+            examples={[
+              "src/hooks/useAuth.ts  →  12 downstream importers",
+              "@workspace/api-client-react  →  47 call sites",
+              "duplicate: two implementations of formatDate() detected",
+            ]}
+          />
+        )}
+
+        {view === "questions" && (
+          <StubView
+            title="Ask Atlas about this project"
+            blurb="Free-form Q&A grounded in the indexed source. Every answer cites file:line so you can jump straight to the code."
+            examples={[
+              '"Where does auth state get initialized?"',
+              '"What guards the /workspace route?"',
+              '"Which components would break if I rename ProjectSource?"',
+            ]}
+          />
+        )}
+
         {view === "file" && (
           <div ref={fileScrollRef} style={{ height: "100%", overflow: "auto" }}>
-            {!activePath && <EmptyState label="Select a file from Tree or Search" />}
+            {!activePath && <EmptyState label="Open a file from Search or a citation chip" />}
             {activePath && fileLoading && <EmptyState label={`Loading ${activePath}…`} />}
             {file && highlightedLines && (
               <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, lineHeight: 1.5 }}>
@@ -264,7 +341,7 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
                     borderLeft: l.inRange ? `2px solid ${GOLD}` : "2px solid transparent",
                   }}>
                     <span style={{ color: MUTED, opacity: 0.5, userSelect: "none", minWidth: 32, textAlign: "right" }}>{l.n}</span>
-                    <span style={{ whiteSpace: "pre", color: "var(--atlas-fg, #d4d4d4)" }}>{l.text || " "}</span>
+                    <span style={{ whiteSpace: "pre", color: FG }}>{l.text || " "}</span>
                   </div>
                 ))}
               </div>
@@ -280,13 +357,13 @@ function EmptyState({ label, hint, onRetry }: { label: string; hint?: string; on
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      height: "100%", padding: 20, gap: 8, textAlign: "center",
+      height: "100%", padding: 24, gap: 10, textAlign: "center",
     }}>
       <div style={{
-        fontFamily: "var(--app-font-mono)", fontSize: 11, color: MUTED,
-        letterSpacing: "0.06em",
+        fontFamily: "var(--app-font-mono)", fontSize: 11, color: GOLD,
+        letterSpacing: "0.09em", textTransform: "uppercase", opacity: 0.85,
       }}>{label}</div>
-      {hint && <div style={{ fontSize: 10.5, color: MUTED, opacity: 0.7, maxWidth: 320 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 11.5, color: MUTED, opacity: 0.75, maxWidth: 360, lineHeight: 1.55 }}>{hint}</div>}
       {onRetry && (
         <button type="button" onClick={onRetry} style={{
           marginTop: 6, padding: "4px 10px", background: "transparent",
@@ -294,7 +371,7 @@ function EmptyState({ label, hint, onRetry }: { label: string; hint?: string; on
           fontFamily: "var(--app-font-mono)", fontSize: 10,
           letterSpacing: "0.09em", textTransform: "uppercase",
           borderRadius: 3, cursor: "pointer",
-        }}>Retry</button>
+        }}>Check again</button>
       )}
     </div>
   );
