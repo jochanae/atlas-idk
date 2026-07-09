@@ -14,12 +14,13 @@ import {
   type CodebaseOpenDetail,
   type CrossProjectFile,
 } from "../../hooks/useProjectSource";
+import { ArchitectureDiffView } from "./ArchitectureDiffView";
 
 interface Props {
   projectId: number;
 }
 
-type SubView = "search" | "symbols" | "routes" | "components" | "imports" | "questions" | "file";
+type SubView = "search" | "symbols" | "routes" | "components" | "imports" | "questions" | "compare" | "file";
 
 const GOLD = "var(--atlas-gold, #c9a24c)";
 const MUTED = "var(--atlas-muted, #8a8a8a)";
@@ -33,6 +34,7 @@ const TAB_LABELS: Record<Exclude<SubView, "file">, string> = {
   components: "Components",
   imports: "Imports",
   questions: "Ask",
+  compare: "Compare",
 };
 
 function StatusPill({ status }: { status: string }) {
@@ -365,6 +367,10 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
               '"Which components would break if I rename ProjectSource?"',
             ]}
           />
+        )}
+
+        {view === "compare" && (
+          <ArchitectureDiffView projectId={projectId} />
         )}
 
         {view === "file" && (

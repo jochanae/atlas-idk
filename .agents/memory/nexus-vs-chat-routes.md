@@ -31,3 +31,6 @@ Every turn emits SSE `event: meta` with `{intent, justTalk, fallback}` before th
 
 ## Two separate agent tool systems
 `chat.ts` (Workspace) uses the AI SDK `tool()` wrapper from `lib/agent-tools/` (registered via a `buildAgentTools`-style factory). `nexus.ts` (legacy Ask Atlas/portfolio surface) uses raw `Anthropic.Tool[]` definitions (`NEXUS_AGENT_TOOLS`/`NEXUS_WORKSPACE_TOOLS`) with manual dispatch — it does NOT call `buildAgentTools`. New workspace-only tools (e.g. `search_all_projects`) don't automatically reach nexus.ts; since Ask Atlas is documented as retired in favor of Workspace, new cross-project tools were scoped to chat.ts only, not backported to nexus.ts.
+
+## Architecture diff reuses the source index, not new tables
+Architecture diff (Phase 3A step 2) compares two projects' routes/deps/data-entities/components/auth by re-running the SAME extraction primitives already used for indexing (scanProjectRoutes, package.json parse, AM data.entities, PascalCase export scan) rather than persisting a new "architecture snapshot" table. Category status is plain Jaccard-similarity bucketing (same/similar/different/onlyA/onlyB/empty) — a structural signal, not a semantic diff. Any future diff category should follow this pattern: derive on-demand from project_source_files + application_models, don't add new storage.

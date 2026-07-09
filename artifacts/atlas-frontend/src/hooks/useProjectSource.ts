@@ -178,6 +178,33 @@ export async function resolveProjectIdByName(name: string): Promise<number | und
   return projectNameCache.get(name);
 }
 
+// --- Architecture Diff — Phase 3A step 2 --------------------------------------
+
+export type DiffStatus = "same" | "similar" | "different" | "onlyA" | "onlyB" | "empty";
+
+export interface DiffCategory {
+  key: string;
+  label: string;
+  itemsA: string[];
+  itemsB: string[];
+  status: DiffStatus;
+}
+
+export interface ArchitectureDiffResult {
+  projectA: { id: number; name: string };
+  projectB: { id: number; name: string };
+  categories: DiffCategory[];
+}
+
+export async function fetchArchitectureDiff(
+  projectAId: number,
+  projectBId: number,
+): Promise<ArchitectureDiffResult> {
+  return jget<ArchitectureDiffResult>(
+    `/api/projects/${projectAId}/architecture-diff?compareTo=${projectBId}`,
+  );
+}
+
 // --- Deep-link event contract -------------------------------------------------
 // Any surface (Nexus chat, Workspace chat, Ledger entry) can dispatch this
 // to focus the CodebasePanel to a file / line range:
