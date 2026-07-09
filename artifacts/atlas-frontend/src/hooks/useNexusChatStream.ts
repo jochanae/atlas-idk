@@ -121,6 +121,19 @@ export interface NexusMessage {
   clarify?: { steps: Array<{ question: string; options: string[]; allowFreeText?: boolean; reason?: string }> } | null;
   /** Structured tradeoff matrix emitted by Atlas on DECIDE turns for binary/multi-way choices. */
   tradeoffMatrix?: { question: string; options: Array<{ label: string; pros: string[]; cons: string[]; atlas_leans?: boolean }>; context?: string } | null;
+  /** Decision Intelligence artifacts (Tradeoff Matrix / Decision Tree / Deviation Log) generated this turn. */
+  decisionArtifacts?: NexusDecisionArtifact[] | null;
+}
+
+export interface NexusDecisionArtifact {
+  id: number;
+  projectId: number;
+  type: "tradeoff_matrix" | "decision_tree" | "deviation_log";
+  version: number;
+  title: string;
+  payload: Record<string, unknown>;
+  ledgerEntryId: number | null;
+  createdAt: string;
 }
 
 export interface NexusHandoffSignal {
@@ -671,6 +684,7 @@ export function useNexusChatStream(
                     content: displayText,
                     navigateTo: navigateTo,
                     imageGen: ((meta as any).imageGen ?? null) as NexusMessage["imageGen"],
+                    decisionArtifacts: ((meta as any).decisionArtifacts ?? null) as NexusMessage["decisionArtifacts"],
                     streaming: false,
                     handoffSignal: handoff ?? null,
                     focusSuggestion,

@@ -8,8 +8,9 @@ import type { ProjectDNAPatch } from "@/hooks/useProjectDNA";
 import { ExperienceIntentCard } from "./ExperienceIntentCard";
 import { DesignPlanPanel } from "./DesignPlanPanel";
 import { PipelineSketchPanel } from "./PipelineSketchPanel";
+import { DecisionIntelligencePanel } from "./DecisionIntelligencePanel";
 
-type BPTab = "spec" | "components" | "data" | "logic" | "soul" | "design" | "sketch" | "docs";
+type BPTab = "spec" | "components" | "data" | "logic" | "soul" | "design" | "sketch" | "docs" | "decisions";
 
 const MONO = "var(--app-font-mono)";
 const GOLD = "var(--atlas-gold, #C9A24C)";
@@ -571,6 +572,7 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
     { id: "soul", label: "Soul", dot: hasSoul },
     { id: "sketch", label: "Sketch" },
     { id: "design", label: "Design" },
+    { id: "decisions", label: "Decisions" },
     { id: "docs", label: "Docs" },
   ];
 
@@ -684,6 +686,7 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
         )}
         {activeTab === "sketch" && <PipelineSketchPanel projectId={projectId} />}
         {activeTab === "design" && <DesignPlanPanel projectId={projectId} />}
+        {activeTab === "decisions" && <DecisionIntelligencePanel projectId={projectId} />}
         {activeTab === "docs" && <DocsTab projectId={projectId} />}
       </div>
 

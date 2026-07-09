@@ -301,6 +301,17 @@ export interface ChatMessage {
   catchPayload?: import("../lib/DecisionCatchTypes").CatchPayload | null;
   clarify?: ClarifyPayload | null;
   tradeoffMatrix?: TradeoffMatrix | null;
+  /** Decision Intelligence artifacts (Tradeoff Matrix / Decision Tree / Deviation Log) generated this turn. */
+  decisionArtifacts?: Array<{
+    id: number;
+    projectId: number;
+    type: "tradeoff_matrix" | "decision_tree" | "deviation_log";
+    version: number;
+    title: string;
+    payload: Record<string, unknown>;
+    ledgerEntryId: number | null;
+    createdAt: string;
+  }> | null;
   decisionDraft?: { entryId: number; title: string } | null;
   fileEdit?: FileEdit;
   fileEdits?: FileEdit[];

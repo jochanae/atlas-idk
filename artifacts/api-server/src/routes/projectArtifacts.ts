@@ -1,9 +1,18 @@
 import { Router, type IRouter } from "express";
-import { db, pool, projectArtifactsTable, projectsTable, applicationModelsTable } from "@workspace/db";
+import { db, pool, projectArtifactsTable, projectsTable, applicationModelsTable, nexusMessagesTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
 import { classifyProductArchetype } from "../lib/productIntelligence";
+import {
+  DECISION_ARTIFACT_TYPES,
+  generateTradeoffMatrixPayload,
+  generateDecisionTreePayload,
+  generateDeviationLogPayload,
+  saveDecisionArtifact,
+  buildContextFromMessages,
+  type DecisionArtifactType,
+} from "../lib/decisionArtifacts";
 
 export { logProjectArtifact } from "../lib/artifactLog";
 
@@ -519,5 +528,84 @@ Rules:
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ── Decision Intelligence: Tradeoff Matrix / Decision Tree / Deviation Log ────
+
+async function fetchConversationContext(projectId: number, conversationId?: string): Promise<string> {
+  const rows = conversationId
+    ? await db
+        .select({ role: nexusMessagesTable.role, content: nexusMessagesTable.content })
+        .from(nexusMessagesTable)
+        .where(and(eq(nexusMessagesTable.projectId, projectId), eq(nexusMessagesTable.conversationId, conversationId)))
+        .orderBy(desc(nexusMessagesTable.createdAt))
+        .limit(20)
+    : await db
+        .select({ role: nexusMessagesTable.role, content: nexusMessagesTable.content })
+        .from(nexusMessagesTable)
+        .where(eq(nexusMessagesTable.projectId, projectId))
+        .orderBy(desc(nexusMessagesTable.createdAt))
+        .limit(20);
+  return buildContextFromMessages(rows.reverse());
+}
+
+const DECISION_ROUTE_SLUG: Record<DecisionArtifactType, string> = {
+  tradeoff_matrix: "tradeoff-matrix",
+  decision_tree: "decision-tree",
+  deviation_log: "deviation-log",
+};
+
+for (const type of DECISION_ARTIFACT_TYPES) {
+  router.post(`/projects/:id/decisions/${DECISION_ROUTE_SLUG[type]}/generate`, async (req, res): Promise<void> => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const projectId = Number(req.params.id);
+      if (!projectId || isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+      if (!(await assertOwner(projectId, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+      const { context, conversationId, sessionId, sourceMessageId, recommended, chosen, reason } = req.body as {
+        context?: string;
+        conversationId?: string;
+        sessionId?: number | null;
+        sourceMessageId?: number | null;
+        recommended?: string;
+        chosen?: string;
+        reason?: string;
+      };
+
+      const resolvedContext = context && context.trim().length > 0
+        ? context
+        : await fetchConversationContext(projectId, conversationId);
+
+      if (!resolvedContext || resolvedContext.trim().length === 0) {
+        res.status(400).json({ error: "No conversation context available to generate from" });
+        return;
+      }
+
+      let payload: Record<string, unknown> | null = null;
+      if (type === "tradeoff_matrix") payload = await generateTradeoffMatrixPayload(resolvedContext);
+      else if (type === "decision_tree") payload = await generateDecisionTreePayload(resolvedContext);
+      else payload = await generateDeviationLogPayload(resolvedContext, { recommended, chosen, reason });
+
+      if (!payload) {
+        res.status(500).json({ error: "Generation produced no output — try again." });
+        return;
+      }
+
+      const result = await saveDecisionArtifact({
+        projectId,
+        sessionId: sessionId ?? null,
+        type,
+        payload,
+        sourceMessageId: sourceMessageId ?? null,
+      });
+
+      res.status(201).json(result);
+    } catch (err) {
+      req.log.error({ err, type }, `POST /projects/:id/decisions/${DECISION_ROUTE_SLUG[type]}/generate failed`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+}
 
 export default router;

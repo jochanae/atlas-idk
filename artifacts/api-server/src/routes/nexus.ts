@@ -14,6 +14,13 @@ import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
 import { detectDecisionCatch } from "../lib/decisionCatch";
 import { getGithubTokenForUser, bootstrapGitHubRepo } from "../lib/githubBootstrap";
 import { extractPageUrls, screenshotUrlsToBlocks, buildUrlNote } from "../lib/urlScreenshot";
+import {
+  generateTradeoffMatrixPayload,
+  generateDecisionTreePayload,
+  generateDeviationLogPayload,
+  saveDecisionArtifact,
+  buildContextFromMessages,
+} from "../lib/decisionArtifacts";
 import { findSemanticTensionsForProject } from "./tensions";
 import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
@@ -1708,6 +1715,8 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
       isBriefing: m.messageType === "briefing",
       // Restore persisted imageGen payload so sketches survive reload (P3)
       imageGen: (m.metadata as any)?.imageGen ?? null,
+      // Restore persisted decisionArtifacts so Decision Intelligence cards survive reload
+      decisionArtifacts: (m.metadata as any)?.decisionArtifacts ?? null,
       executionTimeMs: null,
       inputTokens: null,
       outputTokens: null,
@@ -2753,6 +2762,8 @@ WHAT YOU SHOULD NOT DO:
     systemPrompt += `\n\n--- VISUAL VAULT ---\n${vault.systemNote}\n--- END VISUAL VAULT ---`;
   }
 
+  systemPrompt += `\n\n--- DECISION ARTIFACTS ---\nWhen the conversation is weighing 3 or more competing options for a real decision, emit DECISION_ARTIFACT at the END of your response (after any other tokens) to save a structured artifact. Do NOT describe the artifact's contents in prose — the artifact renders itself as a card.\n\nDECISION_ARTIFACT:{"kind":"tradeoff_matrix"}\n- Use when comparing 3+ concrete options against criteria (cost, risk, speed, fit, etc.)\n\nDECISION_ARTIFACT:{"kind":"decision_tree"}\n- Use when the decision branches on conditions (if X then A, if Y then B)\n\nDECISION_ARTIFACT:{"kind":"deviation_log","recommended":"<what you recommended>","chosen":"<what the user chose instead>","reason":"<user's stated reason, or omit if not stated>"}\n- Use ONLY when the user explicitly overrides or goes against your recommendation\n\nRules:\n1. At most one short sentence before the token — never narrate the artifact's contents.\n2. Only emit when there is a real decision with real options actually discussed — never speculative or hypothetical.\n3. You may emit at most one tradeoff_matrix or decision_tree per response, plus one deviation_log if applicable.\n--- END DECISION ARTIFACTS ---`;
+
   // ── Live URL capture — screenshot any URLs in the message ─────────────────
   const detectedUrls = extractPageUrls(message);
   urlBlocks = await screenshotUrlsToBlocks(detectedUrls);
@@ -2997,6 +3008,26 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         const parsed = JSON.parse(json) as ImageGenToken;
         if (parsed.prompt && (parsed.mode === "render" || parsed.mode === "schematic")) {
           imageGenTokens.push(parsed);
+        }
+      } catch { /* ignore malformed tokens */ }
+      return "";
+    }).trim();
+
+    // Extract and strip DECISION_ARTIFACT tokens — Atlas requests a decision artifact
+    // (tradeoff matrix / decision tree / deviation log) be generated and saved.
+    const DECISION_ARTIFACT_RE = /^DECISION_ARTIFACT:\s*(\{[^\n]+\})\s*$/gm;
+    type DecisionArtifactToken = {
+      kind: "tradeoff_matrix" | "decision_tree" | "deviation_log";
+      recommended?: string;
+      chosen?: string;
+      reason?: string;
+    };
+    const decisionArtifactTokens: DecisionArtifactToken[] = [];
+    rawContent = rawContent.replace(DECISION_ARTIFACT_RE, (_match, json: string) => {
+      try {
+        const parsed = JSON.parse(json) as DecisionArtifactToken;
+        if (parsed.kind === "tradeoff_matrix" || parsed.kind === "decision_tree" || parsed.kind === "deviation_log") {
+          decisionArtifactTokens.push(parsed);
         }
       } catch { /* ignore malformed tokens */ }
       return "";
@@ -3662,6 +3693,35 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         logger.warn({ err: String(err), url: bvt.url, mode: bvt.mode }, "BROWSER_VISIT execution failed in nexus");
       }
     }
+
+    // Execute DECISION_ARTIFACT tokens — generate + persist tradeoff matrix / decision
+    // tree / deviation log artifacts requested by Atlas, then attach to the done event
+    // so the frontend can render them inline as cards.
+    const decisionArtifactResults: Array<Awaited<ReturnType<typeof saveDecisionArtifact>>> = [];
+    if (decisionArtifactTokens.length > 0 && focusProjectId) {
+      const decisionContext = await buildContextFromMessages(conversationHistory);
+      for (const token of decisionArtifactTokens.slice(0, 2)) {
+        try {
+          let payload: Record<string, unknown> | null = null;
+          if (token.kind === "tradeoff_matrix") payload = await generateTradeoffMatrixPayload(decisionContext);
+          else if (token.kind === "decision_tree") payload = await generateDecisionTreePayload(decisionContext);
+          else payload = await generateDeviationLogPayload(decisionContext, {
+            recommended: token.recommended, chosen: token.chosen, reason: token.reason,
+          });
+          if (!payload) continue;
+          const saved = await saveDecisionArtifact({
+            projectId: focusProjectId,
+            sessionId: sessionId ?? null,
+            type: token.kind,
+            payload,
+          });
+          decisionArtifactResults.push(saved);
+        } catch (err) {
+          logger.warn({ err: String(err), kind: token.kind }, "DECISION_ARTIFACT generation failed in nexus — non-fatal");
+        }
+      }
+    }
+
     const runMetadata = buildRunMetadata(visibleContent, {
       ...modelUsage,
       runActions: runActions.length > 0 ? runActions : null,
@@ -3984,6 +4044,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
       catchPayload: catchPayload ?? undefined,
       ...(clarify ? { clarify } : {}),
       ...(tradeoff ? { tradeoff } : {}),
+      ...(decisionArtifactResults.length > 0 ? { decisionArtifacts: decisionArtifactResults } : {}),
       ...(decisionDraft ? { decisionDraft } : {}),
       ...(nextSuggestions ? { nextSuggestions } : {}),
       ...(thinkingStable ? { thinkingStable: true } : {}),
@@ -4099,6 +4160,34 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
           }
         })();
       }
+    }
+
+    // Persist decisionArtifacts to the message so cards survive thread reload.
+    if (decisionArtifactResults.length > 0 && effectiveConversationId) {
+      (async () => {
+        try {
+          const [latest] = await db
+            .select({ id: nexusMessagesTable.id, metadata: nexusMessagesTable.metadata })
+            .from(nexusMessagesTable)
+            .where(
+              and(
+                eq(nexusMessagesTable.conversationId, effectiveConversationId),
+                eq(nexusMessagesTable.role, "assistant"),
+                eq(nexusMessagesTable.userId, userId),
+              )
+            )
+            .orderBy(desc(nexusMessagesTable.createdAt))
+            .limit(1);
+          if (latest) {
+            await db
+              .update(nexusMessagesTable)
+              .set({ metadata: { ...(latest.metadata ?? {}), decisionArtifacts: decisionArtifactResults } })
+              .where(eq(nexusMessagesTable.id, latest.id));
+          }
+        } catch (err: unknown) {
+          logger.warn({ err }, "decisionArtifacts metadata persist failed — non-fatal");
+        }
+      })();
     }
 
     res.end();

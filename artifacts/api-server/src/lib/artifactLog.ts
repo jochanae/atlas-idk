@@ -9,6 +9,9 @@ export const ARTIFACT_TYPES = [
   "visual_sketch",
   "landing_draft",
   "export_package",
+  "tradeoff_matrix",
+  "decision_tree",
+  "deviation_log",
 ] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 

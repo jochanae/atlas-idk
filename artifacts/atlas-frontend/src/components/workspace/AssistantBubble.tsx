@@ -27,6 +27,7 @@ import {
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import { DecisionCatchCard } from "./DecisionCatchCard";
+import { DecisionArtifactCard } from "./DecisionArtifactCard";
 import { detectPlanFromText } from "../../lib/plan";
 import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../../lib/plan";
 import { DecisionGateCard } from "./DecisionGateCard";
@@ -2438,6 +2439,10 @@ function AssistantBubbleImpl({
         {!message.streaming && message.tradeoffMatrix && (
           <TradeoffMatrixCard matrix={message.tradeoffMatrix} />
         )}
+
+        {!message.streaming && message.decisionArtifacts?.map((artifact) => (
+          <DecisionArtifactCard key={`${artifact.type}-${artifact.id}`} artifact={artifact} />
+        ))}
 
         {hasImageClarify && (
           <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
