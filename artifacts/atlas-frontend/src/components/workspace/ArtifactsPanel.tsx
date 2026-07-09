@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Wand2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/api";
+
+const DRAFT_TYPES: Array<{ type: string; label: string }> = [
+  { type: "draft_email", label: "Email Draft" },
+  { type: "draft_slack", label: "Slack Message" },
+  { type: "draft_pr", label: "PR Description" },
+  { type: "draft_changelog", label: "Changelog Entry" },
+];
 
 type ArtifactRecord = {
   id: number | string;
@@ -12,6 +19,14 @@ type ArtifactRecord = {
   content: string;
   createdAt?: string;
   created_at?: string;
+};
+
+type DraftResult = {
+  id: number;
+  type: string;
+  label: string;
+  title: string;
+  body: string;
 };
 
 function renderArtifactMarkdown(md: string): string {
@@ -67,6 +82,10 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | number | null>(null);
+  const [draftMenuOpen, setDraftMenuOpen] = useState(false);
+  const [generatingDraft, setGeneratingDraft] = useState<string | null>(null);
+  const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
+  const draftMenuRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -86,6 +105,64 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   }, [projectId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!draftMenuOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (draftMenuRef.current && !draftMenuRef.current.contains(e.target as Node)) {
+        setDraftMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [draftMenuOpen]);
+
+  const handleGenerateDraft = useCallback(async (type: string, label: string) => {
+    setDraftMenuOpen(false);
+    setGeneratingDraft(type);
+    try {
+      const r = await fetch(`/api/projects/${projectId}/deliverables/${type}/generate`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({}),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        throw new Error(data?.error || `HTTP ${r.status}`);
+      }
+      const artifact = await r.json();
+      const preview = artifact?.preview ?? {};
+      setDraftResult({
+        id: artifact.id,
+        type,
+        label,
+        title: preview.title ?? artifact.title ?? label,
+        body: preview.body ?? "",
+      });
+      toast(`${label} generated.`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to generate draft.";
+      toast(message.includes("No conversation context") ? "Start a conversation first — nothing to draft from yet." : message);
+    } finally {
+      setGeneratingDraft(null);
+    }
+  }, [projectId]);
+
+  const handleCopyDraft = useCallback(async () => {
+    if (!draftResult) return;
+    try {
+      await navigator.clipboard.writeText(draftResult.body);
+      toast("Copied to clipboard.");
+    } catch {
+      toast("Couldn't copy — select and copy manually.");
+    }
+  }, [draftResult]);
+
+  const handleDownloadDraft = useCallback(() => {
+    if (!draftResult) return;
+    window.open(`/api/projects/${projectId}/artifacts/${draftResult.id}/download`, "_blank");
+  }, [draftResult, projectId]);
 
   const handleDelete = useCallback(async (id: string | number) => {
     try {
@@ -172,6 +249,65 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 14px" }} className="scrollbar-none">
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12, position: "relative" }} ref={draftMenuRef}>
+        <button
+          type="button"
+          onClick={() => setDraftMenuOpen((v) => !v)}
+          disabled={generatingDraft !== null}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em",
+            background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", color: "var(--atlas-gold)",
+            padding: "6px 12px", borderRadius: 8, cursor: generatingDraft ? "default" : "pointer",
+            opacity: generatingDraft ? 0.6 : 1,
+          }}
+        >
+          <Wand2 size={13} />
+          {generatingDraft ? "Generating…" : "Generate Draft"}
+          <ChevronDown size={12} style={{ opacity: 0.7, transform: draftMenuOpen ? "rotate(180deg)" : "none", transition: "transform 160ms" }} />
+        </button>
+        {draftMenuOpen && (
+          <div
+            style={{
+              position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 20,
+              background: "var(--atlas-card)", border: "1px solid var(--atlas-border)", borderRadius: 10,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.3)", minWidth: 180, overflow: "hidden",
+            }}
+          >
+            {DRAFT_TYPES.map((d) => (
+              <button
+                key={d.type}
+                type="button"
+                onClick={() => void handleGenerateDraft(d.type, d.label)}
+                style={{
+                  display: "block", width: "100%", textAlign: "left", padding: "9px 12px",
+                  fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", background: "transparent", border: "none", cursor: "pointer",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {draftResult && (
+        <div style={{ border: "1px solid rgba(201,162,76,0.4)", borderRadius: 10, background: "var(--atlas-card)", padding: "12px 14px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--atlas-gold)", marginBottom: 4 }}>{draftResult.label} — copy-ready draft</div>
+              <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{draftResult.title}</div>
+            </div>
+            <button type="button" onClick={() => setDraftResult(null)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", background: "transparent", border: "none", cursor: "pointer", flexShrink: 0 }}>Dismiss</button>
+          </div>
+          <pre style={{ marginTop: 10, marginBottom: 10, maxHeight: 260, overflowY: "auto", fontSize: "var(--ts-sm)", lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--atlas-fg)", fontFamily: "inherit", background: "transparent" }}>{draftResult.body}</pre>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={() => void handleCopyDraft()} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Copy</button>
+            <button type="button" onClick={handleDownloadDraft} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Download .md</button>
+          </div>
+        </div>
+      )}
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>Loading artifacts…</div>
       ) : error ? (
