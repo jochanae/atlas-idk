@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import { renderChildrenWithCitations } from "@/features/codebase";
 import { Project, getListProjectsQueryKey, createProject, useCreateProject, createEntry, useCreateEntry } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
@@ -423,16 +424,16 @@ function HomeMarkdown({ text }: { text: string }) {
     <ReactMarkdown
       components={{
         p: ({ children }) => (
-          <p style={{ margin: "0 0 10px", lineHeight: 1.85 }}>{children}</p>
+          <p style={{ margin: "0 0 10px", lineHeight: 1.85 }}>{renderChildrenWithCitations(children)}</p>
         ),
-        strong: ({ children }) => <strong style={{ fontWeight: 650, color: "var(--atlas-fg)" }}>{children}</strong>,
-        em: ({ children }) => <em style={{ color: "var(--atlas-muted)" }}>{children}</em>,
-        h1: ({ children }) => <div style={{ fontSize: 14, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 4px" }}>{children}</div>,
-        h2: ({ children }) => <div style={{ fontSize: 13, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 3px" }}>{children}</div>,
-        h3: ({ children }) => <div style={{ fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)", letterSpacing: "0.07em", textTransform: "uppercase", margin: "10px 0 3px" }}>{children}</div>,
+        strong: ({ children }) => <strong style={{ fontWeight: 650, color: "var(--atlas-fg)" }}>{renderChildrenWithCitations(children)}</strong>,
+        em: ({ children }) => <em style={{ color: "var(--atlas-muted)" }}>{renderChildrenWithCitations(children)}</em>,
+        h1: ({ children }) => <div style={{ fontSize: 14, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 4px" }}>{renderChildrenWithCitations(children)}</div>,
+        h2: ({ children }) => <div style={{ fontSize: 13, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 3px" }}>{renderChildrenWithCitations(children)}</div>,
+        h3: ({ children }) => <div style={{ fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)", letterSpacing: "0.07em", textTransform: "uppercase", margin: "10px 0 3px" }}>{renderChildrenWithCitations(children)}</div>,
         ul: ({ children }) => <ul style={{ margin: "4px 0 10px 18px", padding: 0 }}>{children}</ul>,
         ol: ({ children }) => <ol style={{ margin: "4px 0 10px 18px", padding: 0 }}>{children}</ol>,
-        li: ({ children }) => <li style={{ margin: "2px 0", lineHeight: 1.75 }}>{children}</li>,
+        li: ({ children }) => <li style={{ margin: "2px 0", lineHeight: 1.75 }}>{renderChildrenWithCitations(children)}</li>,
         code: ({ children, className }) => {
           const isBlock = Boolean(className);
           if (isBlock) {

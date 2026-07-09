@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
+import { renderChildrenWithCitations } from "@/features/codebase";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { Tier1GapCard } from "@/components/workspace/Tier1GapCard";
 
@@ -324,7 +325,14 @@ export function WorkspaceConversationSurface({
                   <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
                 ) : (
                   <>
-                    <ReactMarkdown>
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p>{renderChildrenWithCitations(children)}</p>,
+                        li: ({ children }) => <li>{renderChildrenWithCitations(children)}</li>,
+                        strong: ({ children }) => <strong>{renderChildrenWithCitations(children)}</strong>,
+                        em: ({ children }) => <em>{renderChildrenWithCitations(children)}</em>,
+                      }}
+                    >
                       {displayContent}
                     </ReactMarkdown>
                     {isLast && msg.streaming && <TypingDots />}
