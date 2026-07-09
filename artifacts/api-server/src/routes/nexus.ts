@@ -1580,6 +1580,58 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
     const messages = await loadNexusMessages(nonBriefingMessages(whereClause, hasMessageType), hasMessageType);
 
     if (messages.length === 0 && conversationId && conversationId !== "__legacy__") {
+      // Legacy fallback: if this project has history in chat_messages (old route)
+      // but nothing in nexus_messages, serve it here and migrate it over so future
+      // loads find it in the right place. Fires once per project — after migration
+      // nexus_messages has the rows and this block is skipped.
+      if (Number.isInteger(focusProjectId) && focusProjectId > 0) {
+        const legacyMsgs = await db
+          .select({
+            id: chatMessagesTable.id,
+            role: chatMessagesTable.role,
+            content: chatMessagesTable.content,
+            createdAt: chatMessagesTable.createdAt,
+          })
+          .from(chatMessagesTable)
+          .innerJoin(sessionsTable, eq(sessionsTable.id, chatMessagesTable.sessionId))
+          .where(and(
+            eq(sessionsTable.projectId, focusProjectId),
+            inArray(chatMessagesTable.role, ["user", "assistant"]),
+          ))
+          .orderBy(asc(chatMessagesTable.createdAt));
+
+        if (legacyMsgs.length > 0) {
+          // Fire-and-forget migration into nexus_messages so future loads are instant.
+          (async () => {
+            try {
+              for (const msg of legacyMsgs) {
+                await db.insert(nexusMessagesTable).values({
+                  userId,
+                  projectId: focusProjectId,
+                  role: msg.role,
+                  content: msg.content,
+                  conversationId,
+                  messageType: "message",
+                });
+              }
+            } catch { /* non-critical — original data is safe in chat_messages */ }
+          })();
+
+          res.json(legacyMsgs.map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            isBriefing: false,
+            executionTimeMs: null, inputTokens: null, outputTokens: null,
+            costUsd: null, runStatus: null, runSummary: null, runActions: null, runArtifacts: null,
+            execution_time_ms: null, input_tokens: null, output_tokens: null,
+            cost_usd: null, run_status: null, run_summary: null, run_actions: null, run_artifacts: null,
+            createdAt: m.createdAt.toISOString(),
+          })));
+          return;
+        }
+      }
+
       const [existingBriefing] = hasMessageType
         ? await db
             .select({ id: nexusMessagesTable.id })

@@ -194,7 +194,28 @@ export function useNexusWorkspaceBridge(
         return r.json() as Promise<Array<{ id: number; role: string; content: string; isBriefing?: boolean }>>;
       })
       .then((msgs) => {
-        if (!msgs || msgs.length === 0) return;
+        if (!msgs || msgs.length === 0) {
+          // Zero messages for the stored conversationId. This can mean:
+          //   (a) genuinely new project with no history — correct, do nothing
+          //   (b) stale UUID in localStorage pointing at a ghost thread
+          // Distinguish by asking the server for the real latest conversation.
+          // Skip if the conversationId came from the URL (those are always correct).
+          if (!opts?.initialConversationId) {
+            fetch(`/api/projects/${pid}/latest-conversation`, { credentials: "include" })
+              .then((r) => r.json())
+              .then((data: { conversationId: string | null }) => {
+                if (data.conversationId && data.conversationId !== conversationId) {
+                  // Server knows a different conversation — ours is stale.
+                  storeConversationId(pid, data.conversationId);
+                  historyLoadedRef.current = false; // allow history to reload
+                  setConversationId(data.conversationId);
+                }
+                // If server matches or returns null → genuinely no history, stay put.
+              })
+              .catch(() => { /* non-fatal */ });
+          }
+          return;
+        }
         const real = msgs.filter((m) => !m.isBriefing && (m.role === "user" || m.role === "assistant"));
         if (real.length === 0) return;
         const nexusMsgs: NexusMessage[] = real.map((m) => ({
