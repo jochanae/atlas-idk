@@ -360,7 +360,10 @@ export function extractGithubPushToken(content: string): {
  * Defense in depth: strip operational markers on pure chat turns even if the
  * model ignored the CHAT system-prompt hint. Prose is preserved.
  */
-export function scrubOperationalMarkersForChat(rawContent: string): {
+export function scrubOperationalMarkersForChat(
+  rawContent: string,
+  options?: { keepImageGen?: boolean },
+): {
   content: string;
   strippedMarkers: string[];
 } {
@@ -380,7 +383,16 @@ export function scrubOperationalMarkersForChat(rawContent: string): {
   scrub(/^GITHUB_PUSH:\s*\{[^\n]*\}\s*$/gm, "GITHUB_PUSH");
   scrub(/^GITHUB_READ:\s*\{[^\n]*\}\s*$/gm, "GITHUB_READ");
   scrub(/^BUILD_RUN:\s*[^\n]+$/gm, "BUILD_RUN");
-  scrub(/^IMAGE_GEN:\s*\{[^\n]+\}\s*$/gm, "IMAGE_GEN");
+  // IMAGE_GEN is a benign, reversible, explicitly-requested action (never
+  // mutates code/files), so it's only scrubbed when the user has explicitly
+  // opted into a chat-only mode — not merely because the (fallible)
+  // intent classifier guessed CHAT for a phrasing like "are you able to
+  // sketch...". A model that emitted IMAGE_GEN saw an explicit visual
+  // request; silently dropping it makes the turn look like it died with
+  // no explanation. See .agents/memory/image-gen-chat-scrub.md.
+  if (!options?.keepImageGen) {
+    scrub(/^IMAGE_GEN:\s*\{[^\n]+\}\s*$/gm, "IMAGE_GEN");
+  }
   scrub(/^BROWSER_VISIT:\s*\{[^\n]+\}\s*$/gm, "BROWSER_VISIT");
   scrub(/^SHELL_RUN:\s*\{[^\n]+\}\s*$/gm, "SHELL_RUN");
   scrub(/^DATA_FETCH:\s*\{[^\n]+\}\s*$/gm, "DATA_FETCH");

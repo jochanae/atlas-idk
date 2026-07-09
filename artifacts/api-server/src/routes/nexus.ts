@@ -3022,7 +3022,15 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     // Ported from chat.ts. Must run BEFORE any FILE_EDIT / GITHUB_PUSH parsing
     // so operational markers never fire on conversational turns.
     if (intent === "CHAT" || justTalk || conversationModeActive) {
-      const scrubbed = scrubOperationalMarkersForChat(rawContent);
+      // IMAGE_GEN is exempted when the ONLY reason we're scrubbing is the
+      // (fallible) intent classifier guessing CHAT — e.g. "Are you able to
+      // sketch me an image of what this would look like?" reads as a
+      // capability question and gets misclassified, but the model still
+      // emitted IMAGE_GEN because the user explicitly asked for a visual.
+      // If the user has actually opted into Just Talk / Conversation Mode,
+      // still scrub it — that's an explicit no-tools request.
+      const keepImageGen = intent === "CHAT" && !justTalk && !conversationModeActive;
+      const scrubbed = scrubOperationalMarkersForChat(rawContent, { keepImageGen });
       if (scrubbed.strippedMarkers.length > 0) {
         logger.info(
           { strippedMarkers: scrubbed.strippedMarkers, focusProjectId, intent },
