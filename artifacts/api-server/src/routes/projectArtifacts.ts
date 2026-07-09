@@ -23,6 +23,7 @@ import "../lib/renderers/pptxRenderer";
 import "../lib/renderers/xlsxRenderer";
 import "../lib/renderers/mermaidRenderer";
 import "../lib/renderers/chartRenderer";
+import "../lib/renderers/bundleRenderer";
 
 export { logProjectArtifact } from "../lib/artifactLog";
 
@@ -671,6 +672,57 @@ router.post("/projects/:id/deliverables/:type/generate", async (req, res): Promi
     req.log.error({ err, type: req.params.type }, "POST /projects/:id/deliverables/:type/generate failed");
     const message = err instanceof Error ? err.message : "Internal server error";
     const status = message.startsWith("Artifact engine: no renderer registered") ? 404 : 500;
+    res.status(status).json({ error: message });
+  }
+});
+
+// POST /api/projects/:id/bundles/generate
+// Packages a set of existing file-backed artifacts from this project into a
+// single downloadable "Ship Package" zip via the "bundle" Artifact Engine
+// renderer. Unlike /deliverables/:type/generate, this does not need
+// conversation context — it consumes already-generated artifacts as input.
+router.post("/projects/:id/bundles/generate", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    if (!projectId || isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+    if (!(await assertOwner(projectId, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const { artifactIds, title, sessionId, sourceMessageId } = req.body as {
+      artifactIds?: number[];
+      title?: string;
+      sessionId?: number | null;
+      sourceMessageId?: number | null;
+    };
+
+    if (!Array.isArray(artifactIds) || artifactIds.length === 0) {
+      res.status(400).json({ error: "artifactIds must be a non-empty array" });
+      return;
+    }
+
+    const normalizedIds = artifactIds
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (normalizedIds.length === 0) {
+      res.status(400).json({ error: "artifactIds must contain valid artifact ids" });
+      return;
+    }
+
+    const artifact = await generateArtifact({
+      projectId,
+      sessionId: sessionId ?? null,
+      type: "bundle",
+      sourceMessageId: sourceMessageId ?? null,
+      input: { projectId, artifactIds: normalizedIds, title },
+    });
+
+    res.status(201).json(artifact);
+  } catch (err) {
+    req.log.error({ err }, "POST /projects/:id/bundles/generate failed");
+    const message = err instanceof Error ? err.message : "Internal server error";
+    const status = message.startsWith("Bundle renderer:") ? 400 : 500;
     res.status(status).json({ error: message });
   }
 });
