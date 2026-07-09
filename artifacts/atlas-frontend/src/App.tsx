@@ -17,6 +17,7 @@ import Projects from "./pages/projects";
 import Ledger from "./pages/ledger";
 import ParkingLot from "./pages/parking-lot";
 import KnowledgePage from "./pages/knowledge";
+import ComponentRegistryPage from "./pages/component-registry";
 import EntryDetail from "./pages/entry-detail";
 import CodePage from "./pages/code";
 import ConnectorsPage from "./pages/connectors";
@@ -220,6 +221,7 @@ function Router() {
           <Route path="/ledger/:projectId" component={Ledger} />
           <Route path="/parking" component={ParkingLot} />
           <Route path="/knowledge" component={KnowledgePage} />
+          <Route path="/component-registry" component={ComponentRegistryPage} />
           <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/compass" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/entry/:id" component={EntryDetail} />

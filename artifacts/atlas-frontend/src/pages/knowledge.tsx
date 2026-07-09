@@ -95,6 +95,14 @@ export default function KnowledgePage() {
           fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.1em",
           textTransform: "uppercase", color: GOLD,
         }}>ATLAS / PROJECT KNOWLEDGE</span>
+        <button
+          onClick={() => setLocation("/component-registry")}
+          style={{
+            marginLeft: "auto", background: "transparent", border: "none", color: MUTED,
+            fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.06em",
+            textTransform: "uppercase", cursor: "pointer",
+          }}
+        >Component Registry →</button>
       </div>
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 64px" }}>
