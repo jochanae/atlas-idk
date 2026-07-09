@@ -135,3 +135,90 @@ export const CapacityConsumeBody = z.object({
 export const CreateThoughtBody = z.object({
   content: z.string().min(1),
 });
+
+// ── Project Sources (F2 Source Intelligence) ──────────────────────────────
+
+export const ProjectSourceType = z.enum(["zip", "github", "replit", "generated", "pasted"]);
+export const ProjectSourceIngestStatus = z.enum(["pending", "indexing", "ready", "failed"]);
+
+export const IngestSourceBody = z.object({
+  sourceType: ProjectSourceType,
+  sourceRef: z.record(z.string(), z.unknown()).optional(),
+  payload: z.object({
+    storageKey: z.string().min(1).optional(),
+    files: z.array(z.object({ path: z.string().min(1), content: z.string() })).optional(),
+  }).default({}),
+  isPrimary: z.boolean().optional(),
+});
+
+export const IngestSourceResponse = z.object({
+  sourceId: z.string().uuid(),
+  status: z.literal("indexing"),
+});
+
+export const SourceListItem = z.object({
+  id: z.string().uuid(),
+  projectId: z.number().int(),
+  sourceType: ProjectSourceType,
+  sourceRef: z.record(z.string(), z.unknown()),
+  isPrimary: z.boolean(),
+  lastIngestedAt: z.string().nullable(),
+  lastIngestStatus: ProjectSourceIngestStatus,
+  lastIngestError: z.string().nullable(),
+  fileCount: z.number().int(),
+  totalBytes: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const SourceSearchHit = z.object({
+  path: z.string(),
+  line: z.number().int(),
+  preview: z.string(),
+  matchRange: z.tuple([z.number().int(), z.number().int()]),
+});
+
+export const SourceCitation = z.object({
+  path: z.string(),
+  lineStart: z.number().int(),
+  lineEnd: z.number().int(),
+  snippet: z.string(),
+});
+
+export const SourceQaBody = z.object({
+  question: z.string().min(1),
+  k: z.number().int().min(1).max(20).optional(),
+});
+
+export const SourceQaResponse = z.object({
+  answer: z.string(),
+  citations: z.array(SourceCitation),
+});
+
+export const SourceImpactBody = z.object({
+  paths: z.array(z.string()).min(1),
+  depth: z.number().int().min(1).max(5).optional(),
+});
+
+export const SourceDiffResponse = z.object({
+  since: z.string().uuid(),
+  sinceTakenAt: z.string(),
+  latestSnapshotId: z.string().uuid(),
+  latestTakenAt: z.string(),
+  added: z.array(z.string()),
+  removed: z.array(z.string()),
+  modified: z.array(z.object({
+    path: z.string(),
+    oldSha: z.string(),
+    newSha: z.string(),
+  })),
+});
+
+export const SourceRoute = z.object({
+  method: z.string().optional(),
+  path: z.string(),
+  handler: z.string().optional(),
+  file: z.string(),
+  line: z.number().int(),
+});
+
