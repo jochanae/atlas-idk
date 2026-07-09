@@ -1,2 +1,4 @@
 export { CodebasePanel } from "./CodebasePanel";
-export { CitationChip, CitationChips, openCitation, type Citation } from "./CitationChip";
+export { CitationChip, MessageCitations } from "./CitationChip";
+export { openCodebase } from "../../hooks/useProjectSource";
+export type { CodebaseOpenDetail } from "../../hooks/useProjectSource";

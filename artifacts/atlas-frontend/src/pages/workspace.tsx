@@ -54,6 +54,7 @@ import {
 } from "@/lib/activeProjectContext";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
+import { CodebasePanel } from "../features/codebase";
 import { SearchModal } from "../components/workspace/SearchModal";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
 import { MapTab } from "@/components/workspace/MapTab";
@@ -1892,7 +1893,7 @@ function RightPanel({
     return "ledger";
   });
   const [ledgerSubTab, setLedgerSubTab] = useState<"entries" | "memory">("entries");
-  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "github" | "database">("workspace");
+  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "codebase" | "github" | "database">("workspace");
   const [githubSubTab, setGithubSubTab] = useState<"repository" | "activity" | "settings">("activity");
 
   useEffect(() => {
@@ -1916,6 +1917,27 @@ function RightPanel({
     window.addEventListener("axiom:open-env-panel", handler);
     return () => window.removeEventListener("axiom:open-env-panel", handler);
   }, []);
+
+  // "codebase:open" — dispatched from CitationChip anywhere in the app.
+  // Opens Files → Codebase; CodebasePanel's own listener focuses the file/line.
+  // If we're not already on the panel, we re-dispatch after mount so the
+  // detail isn't lost.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const alreadyOpen = tab === "files" && workspaceSubTab === "codebase";
+      setTab("files");
+      setWorkspaceSubTab("codebase");
+      if (!alreadyOpen && detail) {
+        // Give CodebasePanel a tick to mount and register its listener.
+        window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("codebase:open", { detail }));
+        }, 60);
+      }
+    };
+    window.addEventListener("codebase:open", handler);
+    return () => window.removeEventListener("codebase:open", handler);
+  }, [tab, workspaceSubTab]);
 
   const openConnections = useCallback(() => {
     setTab("connections");
@@ -2271,10 +2293,11 @@ function RightPanel({
           }}
           className="scrollbar-none"
           >
-            {(["workspace", "github", "database"] as const).map((st) => {
+            {(["workspace", "codebase", "github", "database"] as const).map((st) => {
               const active = workspaceSubTab === st;
               const labels: Record<typeof st, string> = {
                 workspace: "Workspace",
+                codebase: "Codebase",
                 github: "GitHub",
                 database: "Database",
               };
@@ -2311,6 +2334,9 @@ function RightPanel({
           <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
             {workspaceSubTab === "workspace" && (
               <WorkspaceFilesPanel projectId={projectId} onOpenTerminal={onOpenTerminal} />
+            )}
+            {workspaceSubTab === "codebase" && (
+              <CodebasePanel projectId={projectId} />
             )}
             {workspaceSubTab === "github" && (
               <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
