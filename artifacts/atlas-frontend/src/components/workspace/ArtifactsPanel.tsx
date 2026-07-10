@@ -689,6 +689,104 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                           </div>
                         )}
                       </div>
+                    ) : typeStr === "pipeline_sketch" ? (
+                      (() => {
+                        let screens: Array<{ name?: string; description?: string; components?: string[] }> = [];
+                        try {
+                          const parsed = JSON.parse(content) as Record<string, unknown>;
+                          if (Array.isArray(parsed.screens)) screens = parsed.screens as typeof screens;
+                        } catch { /* fall through */ }
+                        if (screens.length === 0) {
+                          return (
+                            <div
+                              style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
+                              className="atlas-artifact-md"
+                              dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
+                            />
+                          );
+                        }
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                              Screens · {screens.length}
+                            </div>
+                            {screens.map((screen, idx) => (
+                              <div key={idx} style={{ padding: "8px 10px", borderRadius: 7, border: "1px solid var(--atlas-border)", background: "rgba(255,255,255,0.02)" }}>
+                                <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: screen.description ? 3 : 0 }}>
+                                  {screen.name ?? `Screen ${idx + 1}`}
+                                </div>
+                                {screen.description && (
+                                  <div style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.5 }}>{screen.description}</div>
+                                )}
+                                {Array.isArray(screen.components) && screen.components.length > 0 && (
+                                  <div style={{ marginTop: 5, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                    {screen.components.map((c, ci) => (
+                                      <span key={ci} style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", padding: "1px 6px", borderRadius: 4, background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "var(--atlas-gold)", opacity: 0.85 }}>{c}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()
+                    ) : typeStr === "design_plan" ? (
+                      (() => {
+                        let body: Record<string, unknown> = {};
+                        try {
+                          const parsed = JSON.parse(content) as Record<string, unknown>;
+                          body = (parsed.body as Record<string, unknown>) ?? parsed;
+                        } catch { /* fall through */ }
+                        const fields: Array<{ label: string; value: unknown }> = [
+                          { label: "Navigation", value: body.navigationPattern },
+                          { label: "Component Patterns", value: body.componentPatterns },
+                          { label: "Typography Scale", value: body.typographyScale },
+                          { label: "Card Density", value: body.cardDensity },
+                          { label: "Motion Philosophy", value: body.motionPhilosophy },
+                          { label: "Empty States", value: body.emptyStates },
+                        ].filter(f => typeof f.value === "string" && (f.value as string).trim());
+                        const responsive = body.responsiveIntent as Record<string, string> | undefined;
+                        const interaction = body.interactionPatterns as Record<string, string> | undefined;
+                        if (fields.length === 0 && !responsive && !interaction) {
+                          return (
+                            <div
+                              style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
+                              className="atlas-artifact-md"
+                              dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
+                            />
+                          );
+                        }
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                            {fields.map(({ label, value }) => (
+                              <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>{label}</span>
+                                <span style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", lineHeight: 1.5 }}>{String(value)}</span>
+                              </div>
+                            ))}
+                            {responsive && Object.keys(responsive).length > 0 && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>Responsive Intent</span>
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                  {Object.entries(responsive).map(([k, v]) => (
+                                    <span key={k} style={{ fontSize: "var(--ts-xs)", padding: "2px 7px", borderRadius: 5, background: "rgba(201,162,76,0.07)", border: "1px solid rgba(201,162,76,0.18)", color: "var(--atlas-gold)" }}>{k}: {v}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {interaction && Object.keys(interaction).length > 0 && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>Interaction Patterns</span>
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                  {Object.entries(interaction).filter(([, v]) => typeof v === "string" && v.trim()).map(([k, v]) => (
+                                    <span key={k} style={{ fontSize: "var(--ts-xs)", padding: "2px 7px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--atlas-muted)" }}>{k}: {String(v)}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
                     ) : (
                       <div
                         style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}

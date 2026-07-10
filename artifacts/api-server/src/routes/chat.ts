@@ -3986,9 +3986,9 @@ HARD RULE: Never answer from the context of a different project unless the user 
   }
 
   // Committed Design Plan: CONSTRAINTS + DESIGN INTENT
-  // Only injected when a Design Plan has been committed — represents locked decisions
-  // the founder approved. Builder must execute these, not invent alternatives.
-  if (!isFoundationMode && committedDesignPlan) {
+  // Only injected in Build lens — in Conversation mode it adds noise without value.
+  // The founder has already made these decisions; the builder needs them, the thinker doesn't.
+  if (!isFoundationMode && committedDesignPlan && body.workspaceLens === "build") {
     const dp = (committedDesignPlan.body as Record<string, unknown>) ?? {};
     const nav = dp.navigationPattern as string | undefined;
     const responsive = dp.responsiveIntent as { mobile?: string; tablet?: string; desktop?: string } | undefined;
@@ -4041,8 +4041,8 @@ HARD RULE: Never answer from the context of a different project unless the user 
       dpBlock += `\n--- END COMMITTED DESIGN PLAN ---`;
       systemPrompt += dpBlock;
     }
-  } else if (!isFoundationMode && projectId && !committedDesignPlan) {
-    // No committed Design Plan — note that design decisions are unconstrained
+  } else if (!isFoundationMode && projectId && !committedDesignPlan && body.workspaceLens === "build") {
+    // No committed Design Plan — note that design decisions are unconstrained (Build lens only)
     systemPrompt += `\n\n[No committed Design Plan for this project — design decisions are unconstrained. Apply the Project DNA and your best judgment.]`;
   }
 

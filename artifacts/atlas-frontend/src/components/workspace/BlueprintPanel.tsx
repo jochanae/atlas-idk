@@ -5,6 +5,7 @@ import { useModelAlignment } from "@/hooks/useModelAlignment";
 import type { AlignmentResult, AlignmentItemResult } from "@/hooks/useModelAlignment";
 import { useProjectDNA } from "@/hooks/useProjectDNA";
 import type { ProjectDNAPatch } from "@/hooks/useProjectDNA";
+import { useDesignPlan } from "@/hooks/useDesignPlan";
 import { ExperienceIntentCard } from "./ExperienceIntentCard";
 import { DesignPlanPanel } from "./DesignPlanPanel";
 import { PipelineSketchPanel } from "./PipelineSketchPanel";
@@ -515,9 +516,10 @@ function DocsTab({ projectId }: { projectId: number }) {
 interface BlueprintPanelProps {
   projectId: number;
   refreshTrigger?: number;
+  readinessScore?: number;
 }
 
-export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProps) {
+export function BlueprintPanel({ projectId, refreshTrigger, readinessScore }: BlueprintPanelProps) {
   const [activeTab, setActiveTab] = useState<BPTab>("spec");
   const [approving, setApproving] = useState(false);
   const { model, loading, approve, unapprove, refetch, patch } = useApplicationModel(projectId);
@@ -525,6 +527,7 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
   const { alignment, refetch: refetchAlignment } = useModelAlignment(projectId);
   const { dna, refetch: refetchDna, patch: dnaPatch } = useProjectDNA(projectId);
   const [dnaPatchSaving, setDnaPatchSaving] = useState(false);
+  const { plan: designPlan } = useDesignPlan(projectId);
 
   useEffect(() => {
     if (refreshTrigger === undefined || refreshTrigger === 0) return;
@@ -606,6 +609,47 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
             </span>
           )}
           <AlignmentBadge alignment={alignment} />
+          {/* #74 readiness + #80 stage + #78 design plan status */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+            {readinessScore != null && (
+              <span style={{
+                fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+                padding: "2px 7px", borderRadius: 5,
+                background: readinessScore >= 60 ? "rgba(52,211,153,0.1)" : readinessScore >= 30 ? "rgba(201,162,76,0.1)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${readinessScore >= 60 ? "rgba(52,211,153,0.3)" : readinessScore >= 30 ? "rgba(201,162,76,0.3)" : "rgba(255,255,255,0.1)"}`,
+                color: readinessScore >= 60 ? "rgb(52,211,153)" : readinessScore >= 30 ? GOLD : MUTED,
+              }}>
+                {readinessScore >= 60 ? "Ready to Build" : readinessScore >= 30 ? "Shaping" : "Exploring"} · {readinessScore}%
+              </span>
+            )}
+            {designPlan?.status === "committed" && (
+              <span style={{
+                fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+                padding: "2px 7px", borderRadius: 5,
+                background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.25)", color: "rgb(52,211,153)",
+              }}>
+                Design · Committed
+              </span>
+            )}
+            {designPlan?.status === "proposed" && (
+              <span style={{
+                fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+                padding: "2px 7px", borderRadius: 5,
+                background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.25)", color: GOLD,
+              }}>
+                Design · Proposed
+              </span>
+            )}
+            {designPlan?.status === "draft" && (
+              <span style={{
+                fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+                padding: "2px 7px", borderRadius: 5,
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: MUTED,
+              }}>
+                Design · Draft
+              </span>
+            )}
+          </div>
         </div>
         {hasAnyContent && (
           <ApproveButton

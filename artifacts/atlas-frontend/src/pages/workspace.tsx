@@ -2300,7 +2300,7 @@ function RightPanel({
         </div>
       )}
       {tab === "artifacts" && <ArtifactsPanel projectId={projectId} />}
-      {tab === "blueprints" && <BlueprintPanel projectId={projectId} refreshTrigger={amRefreshTrigger} />}
+      {tab === "blueprints" && <BlueprintPanel projectId={projectId} refreshTrigger={amRefreshTrigger} readinessScore={displayedReadinessScore} />}
       {tab === "files" && (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
           {/* Sub-tab bar: 4 focused tabs */}
