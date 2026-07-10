@@ -76,7 +76,11 @@ export default function Projects() {
     query: {
       queryKey: getListProjectsQueryKey(),
       refetchOnMount: "always",
-      refetchOnWindowFocus: true,
+      // Was `true`, which re-triggered `isLoadingData` (and thus the full-page
+      // spinner/skeleton below) every time the tab regained focus — perceived
+      // by users as the page "reloading". Matches the app-wide QueryClient
+      // default of `false` set in App.tsx.
+      refetchOnWindowFocus: false,
     },
   });
   const projects = Array.isArray(projectsRaw) ? projectsRaw : [];

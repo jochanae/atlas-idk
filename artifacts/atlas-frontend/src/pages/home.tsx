@@ -1766,7 +1766,13 @@ export default function Home() {
     query: {
       queryKey: getListProjectsQueryKey(),
       refetchOnMount: "always",
-      refetchOnWindowFocus: true,
+      // Was `true` — harmonized with the app-wide QueryClient default (`false`
+      // in App.tsx) and with the same fix in projects.tsx. A window-focus
+      // refetch here isn't gated on a loading UI, but it still caused an
+      // unnecessary network burst + project-list re-render on every tab
+      // refocus, which contributed to the "does this feel like a reload?"
+      // reports. See task-161 trace doc for the full investigation.
+      refetchOnWindowFocus: false,
       enabled: !!authUser,
     },
   });
