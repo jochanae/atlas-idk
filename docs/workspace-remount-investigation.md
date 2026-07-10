@@ -59,7 +59,23 @@ Because §2 established that the rendered Workspace surface talks to `/api/chat`
 
 ## 4. Symptoms re-verified post-fix (title-update delay, Timeline gaps, "No messages loaded")
 
-Since no forced-remount code path was found or removed (only the `refetchOnWindowFocus` flicker was fixed, and that was scoped to `/projects`+`/home` project-list queries, not the Workspace chat/session state), **these three symptoms were not side effects of a Workspace remount** — there was no remount to be a side effect of. They should be treated as separate, independent issues if they are still reproducible, and investigated on their own (title-update delay → likely a debounce/auto-name timing issue in `chat.ts`'s `setAutoNameKey` flow; Timeline gaps for image/sketch generation → likely an artifact-type not yet wired into the timeline read path; "No messages loaded" menu bug → likely a `sessionId`/query-key mismatch in the history hydration step above). None of these were in scope to fix under this task once the remount hypothesis didn't pan out as their common cause.
+Since no forced-remount code path was found or removed (only the `refetchOnWindowFocus` flicker was fixed, and that was scoped to `/projects`+`/home` project-list queries, not the Workspace chat/session state), **these three symptoms were not side effects of a Workspace remount** — there was no remount to be a side effect of. All three were re-verified live against the running app (`GET /api/auth/dev-test-login` → `POST /api/conversations` → `/workspace/:conversationId`, via an automated Playwright run), not just reasoned about statically.
+
+### 4a. Remount reproduction (the primary symptom) — REPRODUCED-AS-FIXED / NOT PRESENT
+Live test: created a conversation, sent a chat message, waited for the assistant's streamed response to finish, then backgrounded/foregrounded the browser tab **3 times** (3s hidden each time) via a real tab switch (not just dispatching a synthetic event). After each cycle:
+- No full-page reload or blank/white flash occurred.
+- The user message and assistant response remained visible (not cleared/reset).
+- The composer stayed interactive (accepted new keystrokes).
+A manual hard-refresh control step confirmed messages persist correctly across an actual reload too, for contrast. **Verdict: no remount reproduces on tab focus/blur today** — consistent with the static trace in §1, now confirmed live.
+
+### 4b. Title-update delay — ROOT CAUSE CONFIRMED, NOT A BUG (expected latency, by design)
+Live test: polled `GET /api/projects/:id` every 5s for 30s after creating a conversation with an initial message — the name had not changed within that window (title generation is a fire-and-forget async Anthropic Haiku call in `conversations.ts`'s `generateConversationTitle()`, with no fixed SLA, plus `useProjectState.ts`'s client poll only checks every 30s via `window.setInterval(..., 30_000)`). So a freshly created conversation can show its placeholder name for up to the combined server-generation-time + up-to-30s poll interval before the real title appears. This is an architectural latency (fire-and-forget model call + 30s poll), not a remount side effect and not a crash/bug — but it is a real, confirmed UX delay source, filed as follow-up task #164 with this exact root cause (not a hypothesis).
+
+### 4c. "No messages loaded in this session yet." — NOT REPRODUCED on plain reload
+Live test: reloaded `/workspace/:conversationId` (real browser navigation) for a session with an existing message, and checked immediately (within 1s) and again after a short wait — the fallback string never appeared, and the message was visible within 5s. This specific reproduction (fresh reload of a session with messages) does **not** trigger the bug. It remains possible the bug requires a different trigger (e.g. a race on a session with many messages, a slow network, or a specific navigation path) — filed as follow-up task #166 to investigate further with the reload-based repro ruled out as one non-trigger.
+
+### 4d. Timeline gaps — inconclusive (unrelated UI bug blocked verification)
+Attempting to open the workspace's "Changes"/Timeline view during live testing hit an unrelated pointer-event-interception bug (a full-screen overlay from "Build mode" intercepted clicks on the Changes tab), which is itself a separate, real bug worth fixing but blocked direct verification of the Timeline content gap in this session. The static evidence in §3 step 6 (IMAGE_GEN-specific handling in `ViewChangesPanel.tsx`) still stands as the best available lead. Follow-up task #165 covers both investigating the content gap and, if reproduced again, the Changes-tab-blocked-by-overlay issue found during this verification pass.
 
 ## 5. Changes made in this task
 
