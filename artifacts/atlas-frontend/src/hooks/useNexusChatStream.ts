@@ -123,6 +123,18 @@ export interface NexusMessage {
   tradeoffMatrix?: { question: string; options: Array<{ label: string; pros: string[]; cons: string[]; atlas_leans?: boolean }>; context?: string } | null;
   /** Decision Intelligence artifacts (Tradeoff Matrix / Decision Tree / Deviation Log) generated this turn. */
   decisionArtifacts?: NexusDecisionArtifact[] | null;
+  /** File-backed deliverables (pptx/docx/xlsx/pdf/mermaid/chart/draft) generated
+   *  this turn via generate-deliverable.ts. Same shape as /api/chat's `generatedArtifacts`
+   *  (task #171); must stay in sync so the Nexus transport doesn't silently drop it. */
+  generatedArtifacts?: Array<{
+    artifactId: number | string;
+    projectId?: number;
+    type: string;
+    title: string;
+    extension?: string;
+    downloadUrl: string;
+    summary?: string | null;
+  }> | null;
 }
 
 export interface NexusDecisionArtifact {
@@ -712,6 +724,7 @@ export function useNexusChatStream(
                     extractionQueued: !!(meta.extractionQueued),
                     clarify: ((meta as any).clarify ?? null) as NexusMessage["clarify"],
                     tradeoffMatrix: ((meta as any).tradeoff ?? null) as NexusMessage["tradeoffMatrix"],
+                    generatedArtifacts: ((meta as any).generatedArtifacts ?? null) as NexusMessage["generatedArtifacts"],
                   }
                 : m
             ));

@@ -83,6 +83,10 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     ...(nm.clarify ? { clarify: nm.clarify as ChatMessage["clarify"] } : {}),
     ...(nm.tradeoffMatrix ? { tradeoffMatrix: nm.tradeoffMatrix as ChatMessage["tradeoffMatrix"] } : {}),
     ...(nm.decisionArtifacts?.length ? { decisionArtifacts: nm.decisionArtifacts as ChatMessage["decisionArtifacts"] } : {}),
+    // File-backed deliverables (task #171 ArtifactCreatedCard) — was silently
+    // dropped on the Nexus transport because toChatMessage() never mapped it,
+    // even though nexus.ts's `done` event includes it (task #172 finding).
+    ...(nm.generatedArtifacts?.length ? { generatedArtifacts: nm.generatedArtifacts as ChatMessage["generatedArtifacts"] } : {}),
   };
 }
 
