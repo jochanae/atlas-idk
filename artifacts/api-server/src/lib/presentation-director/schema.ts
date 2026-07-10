@@ -6,6 +6,9 @@
 // `SlidePlan` and are responsible only for painting each slide's layout with
 // their own theme tokens.
 import { z } from "zod";
+import { ICON_KEYS } from "../deliverable-theme/icons/iconLibrary";
+
+const IconField = z.enum(ICON_KEYS).optional();
 
 const HeroSlide = z.object({
   layout: z.literal("hero"),
@@ -33,7 +36,7 @@ const FeatureGridSlide = z.object({
   layout: z.literal("feature_grid"),
   heading: z.string().min(1),
   features: z
-    .array(z.object({ title: z.string().min(1), description: z.string().min(1) }))
+    .array(z.object({ title: z.string().min(1), description: z.string().min(1), icon: IconField }))
     .min(2)
     .max(4),
 });
@@ -42,7 +45,7 @@ const TimelineSlide = z.object({
   layout: z.literal("timeline"),
   heading: z.string().min(1),
   milestones: z
-    .array(z.object({ label: z.string().min(1), description: z.string().optional() }))
+    .array(z.object({ label: z.string().min(1), description: z.string().optional(), icon: IconField }))
     .min(2)
     .max(6),
 });
@@ -51,7 +54,7 @@ const KpiMetricsSlide = z.object({
   layout: z.literal("kpi_metrics"),
   heading: z.string().min(1),
   metrics: z
-    .array(z.object({ value: z.string().min(1), label: z.string().min(1) }))
+    .array(z.object({ value: z.string().min(1), label: z.string().min(1), icon: IconField }))
     .min(2)
     .max(4),
 });
@@ -68,7 +71,7 @@ const ProcessFlowSlide = z.object({
   layout: z.literal("process_flow"),
   heading: z.string().min(1),
   steps: z
-    .array(z.object({ title: z.string().min(1), description: z.string().optional() }))
+    .array(z.object({ title: z.string().min(1), description: z.string().optional(), icon: IconField }))
     .min(2)
     .max(5),
 });

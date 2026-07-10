@@ -17,6 +17,7 @@
     "@google-cloud/storage": "^7.19.0",
     "@google/genai": "^1.51.0",
     "@replit/connectors-sdk": "^0.4.1",
+    "@resvg/resvg-js": "^2.6.2",
     "@slack/web-api": "^7.19.0",
     "@swc/helpers": "^0.5.23",
     "@workspace/api-zod": "workspace:*",

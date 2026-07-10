@@ -30,6 +30,7 @@ async function buildAll() {
     external: [
       "*.node",
       "sharp",
+      "@resvg/resvg-js",
       "better-sqlite3",
       "sqlite3",
       "canvas",
