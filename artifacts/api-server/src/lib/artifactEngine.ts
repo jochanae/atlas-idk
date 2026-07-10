@@ -12,6 +12,7 @@ import { db, entriesTable, projectArtifactsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
+import { verifyArtifact, type VerificationResult } from "./verificationEngine";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -43,6 +44,13 @@ export interface ArtifactRenderOutput {
    * client shows a "Ready to review — Render when you're ready" gate instead.
    */
   status?: "generated" | "needs_review";
+  /**
+   * Optional expected shape counts the renderer knows about ahead of render
+   * (e.g. { slides: 8 }, { sections: 5 }, { sheets: 3 }). The verification
+   * engine (F6A) diffs these against the actual rendered output to detect
+   * truncation. Renderers that don't know a target shape can omit this.
+   */
+  expectedCounts?: Record<string, number>;
 }
 
 export interface ArtifactRenderer<TInput = Record<string, unknown>> {
@@ -85,6 +93,8 @@ export interface GeneratedArtifact {
   objectPath: string;
   ledgerEntryId: number | null;
   createdAt: string;
+  /** F6A — result of the post-render verification pass, kept separate from `status` above. */
+  verification: VerificationResult;
 }
 
 /**
@@ -131,8 +141,8 @@ export async function generateArtifact<TInput>({
     throw new Error(`Artifact engine: no renderer registered for type "${type}"`);
   }
 
-  const rendered = await renderer.render(input);
-  const objectPath = await uploadRenderedFile(rendered.buffer, rendered.mimeType);
+  let rendered = await renderer.render(input);
+  let objectPath = await uploadRenderedFile(rendered.buffer, rendered.mimeType);
 
   const row = await insertArtifactWithNextVersion({
     projectId,
@@ -150,7 +160,81 @@ export async function generateArtifact<TInput>({
     payload: { preview: rendered.preview },
   });
 
-  let ledgerEntryId: number | null = null;
+  const ledgerEntryId = await linkLedgerEntry({ projectId, sessionId, sourceMessageId, type, rendered, renderer, row });
+
+  // F6A — post-render verification. The artifact row and Ledger entry above
+  // are never rolled back on a verification failure: nothing the user asked
+  // for should silently disappear. A failed/needs-review result is instead
+  // attached to the row's metadata so download/preview/reopen can surface it.
+  let verification = await verifyArtifact({
+    type,
+    category: renderer.category,
+    projectId,
+    input,
+    rendered,
+    objectPath,
+    rowPersisted: true,
+    ledgerEntryId,
+  });
+
+  if (verification.status === "failed" && verification.retryable) {
+    logger.warn(
+      { projectId, type, failureClass: verification.failureClass },
+      "artifactEngine: verification failed with a retryable failure class — retrying render once",
+    );
+    try {
+      const retryRendered = await renderer.render(input);
+      const retryObjectPath = await uploadRenderedFile(retryRendered.buffer, retryRendered.mimeType);
+      const retryVerification = await verifyArtifact({
+        type,
+        category: renderer.category,
+        projectId,
+        input,
+        rendered: retryRendered,
+        objectPath: retryObjectPath,
+        rowPersisted: true,
+        ledgerEntryId,
+      });
+      rendered = retryRendered;
+      objectPath = retryObjectPath;
+      verification = retryVerification;
+    } catch (err) {
+      logger.warn({ err, projectId, type }, "artifactEngine: retry render threw — keeping original (failed) verification");
+    }
+  }
+
+  await persistVerificationResult({ artifactId: row.id, rendered, objectPath, verification });
+
+  return {
+    id: row.id,
+    projectId: row.projectId,
+    type: row.type,
+    category: renderer.category,
+    version: row.version,
+    title: row.title,
+    mimeType: rendered.mimeType,
+    extension: rendered.extension,
+    sizeBytes: rendered.buffer.byteLength,
+    preview: rendered.preview,
+    summary: rendered.summary ?? null,
+    status: rendered.status ?? "generated",
+    objectPath,
+    ledgerEntryId,
+    createdAt: row.createdAt.toISOString(),
+    verification,
+  };
+}
+
+async function linkLedgerEntry(params: {
+  projectId: number;
+  sessionId: number | null;
+  sourceMessageId: number | null;
+  type: string;
+  rendered: ArtifactRenderOutput;
+  renderer: ArtifactRenderer<any>;
+  row: typeof projectArtifactsTable.$inferSelect;
+}): Promise<number | null> {
+  const { projectId, sessionId, sourceMessageId, type, rendered, renderer, row } = params;
   try {
     const [entry] = await db
       .insert(entriesTable)
@@ -173,28 +257,49 @@ export async function generateArtifact<TInput>({
         }),
       } as typeof entriesTable.$inferInsert)
       .returning({ id: entriesTable.id });
-    ledgerEntryId = entry?.id ?? null;
+    return entry?.id ?? null;
   } catch (err) {
     logger.warn({ err, projectId, type }, "artifactEngine: ledger link failed — non-fatal");
+    return null;
   }
+}
 
-  return {
-    id: row.id,
-    projectId: row.projectId,
-    type: row.type,
-    category: renderer.category,
-    version: row.version,
-    title: row.title,
-    mimeType: rendered.mimeType,
-    extension: rendered.extension,
-    sizeBytes: rendered.buffer.byteLength,
-    preview: rendered.preview,
-    summary: rendered.summary ?? null,
-    status: rendered.status ?? "generated",
-    objectPath,
-    ledgerEntryId,
-    createdAt: row.createdAt.toISOString(),
-  };
+/**
+ * Persists the verification result (and, on a successful retry, the updated
+ * objectPath/size/preview) onto the existing project_artifacts row. Never
+ * throws — a failure to persist the verification result itself should not
+ * fail the whole generateArtifact call, since the artifact and Ledger entry
+ * are already real and usable.
+ */
+async function persistVerificationResult(params: {
+  artifactId: number;
+  rendered: ArtifactRenderOutput;
+  objectPath: string;
+  verification: VerificationResult;
+}): Promise<void> {
+  try {
+    const [existing] = await db
+      .select({ metadata: projectArtifactsTable.metadata, payload: projectArtifactsTable.payload })
+      .from(projectArtifactsTable)
+      .where(eq(projectArtifactsTable.id, params.artifactId))
+      .limit(1);
+    const metadata = (existing?.metadata as Record<string, unknown>) ?? {};
+    const payload = (existing?.payload as Record<string, unknown>) ?? {};
+    await db
+      .update(projectArtifactsTable)
+      .set({
+        metadata: {
+          ...metadata,
+          objectPath: params.objectPath,
+          sizeBytes: params.rendered.buffer.byteLength,
+          verification: params.verification,
+        },
+        payload: { ...payload, preview: params.rendered.preview },
+      })
+      .where(eq(projectArtifactsTable.id, params.artifactId));
+  } catch (err) {
+    logger.warn({ err, artifactId: params.artifactId }, "artifactEngine: failed to persist verification result — non-fatal");
+  }
 }
 
 /**

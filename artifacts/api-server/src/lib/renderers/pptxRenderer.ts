@@ -97,6 +97,7 @@ registerArtifactRenderer({
         slideHeadings: plan.slides.map((s) => ("heading" in s ? s.heading : s.layout)),
         slideCount: plan.slides.length,
       },
+      expectedCounts: { slides: plan.slides.length },
       summary: `Generated deck "${plan.title}" (${plan.slides.length} slides, ${plan.purpose}, theme: ${theme.name}).`,
     };
   },

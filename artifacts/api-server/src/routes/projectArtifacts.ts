@@ -28,6 +28,10 @@ import "../lib/renderers/chartRenderer";
 import "../lib/renderers/bundleRenderer";
 import "../lib/renderers/draftRenderer";
 import "../lib/renderers/htmlRenderer";
+import "../lib/verifiers/pptxVerifier";
+import "../lib/verifiers/docxVerifier";
+import "../lib/verifiers/pdfVerifier";
+import "../lib/verifiers/htmlVerifier";
 // Side-effect imports: each delivery adapter registers itself with the Delivery Engine on load.
 import "../lib/adapters/emailAdapter";
 import "../lib/adapters/slackAdapter";
@@ -889,6 +893,7 @@ router.get("/projects/:id/artifacts/:artifactId/preview", async (req, res): Prom
       extension: found.extension,
       sizeBytes: metadata.sizeBytes,
       preview: payload.preview ?? {},
+      verification: metadata.verification ?? null,
       createdAt: found.row.createdAt.toISOString(),
     });
   } catch (err) {
@@ -921,6 +926,15 @@ router.get("/projects/:id/artifacts/:artifactId/download", async (req, res): Pro
     res.setHeader("Content-Type", found.mimeType);
     const safeTitle = found.row.title.replace(/[^a-z0-9-_ ]/gi, "").trim() || "deliverable";
     res.setHeader("Content-Disposition", `attachment; filename="${safeTitle}.${found.extension}"`);
+    // F6A — download must still work for an artifact that failed verification
+    // (nothing the user asked for should become inaccessible); this header
+    // just lets the client show a "may be incomplete" affordance.
+    const verificationStatus = (found.row.metadata as Record<string, unknown>)?.verification as
+      | { status?: string }
+      | undefined;
+    if (verificationStatus?.status) {
+      res.setHeader("X-Artifact-Verification-Status", verificationStatus.status);
+    }
 
     if (response.body) {
       const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);

@@ -255,6 +255,7 @@ registerArtifactRenderer({
         sectionHeadings: plan.sections.map((s) => s.heading),
         sectionCount: plan.sections.length,
       },
+      expectedCounts: { sections: plan.sections.length },
       summary: `Generated document "${plan.title}" (${plan.sections.length} sections).`,
     };
   },
