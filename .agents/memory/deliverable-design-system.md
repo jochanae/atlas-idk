@@ -14,6 +14,7 @@ Atlas's file renderers (PPTX/DOCX/PDF/HTML, under `artifacts/api-server/src/lib/
 - **3B.3 (done, PPTX only)** — Presentation Director + 12-layout catalog replaces the old title+bullets-only content plan. See `presentation-director.md`.
 - **3B.2 (done, PPTX only)** — project-theme inference is live. See `project-theme-inference.md`.
 - **3B.3-icons (done, PPTX only)** — real SVG icon vocabulary is live. See `presentation-icon-vocabulary.md`.
-- **3B.4 (not started)** — port the same token layer + Director/layout catalog + theme inference + icon vocabulary to DOCX/PDF/HTML so all four renderers converge on one identity.
+- **3B.4-docx-pdf (done)** — DOCX + PDF now themed and document-native. See `document-format-porting.md`.
+- **3B.4-html (not started, separate subtask)** — no HTML deliverable renderer exists yet at all (only pptx/docx/pdf/xlsx are registered). Creating one is scoped as its own subtask, not a "port" — it would be a new format, and per architecture decision it should reuse the Presentation Director's full slide/layout catalog (the richest of any format) once built, not the document-native DOCX/PDF model.
 
-3B.2, 3B.3, and 3B.3-icons are all PPTX-only so far — 3B.4 is the porting phase for DOCX/PDF/HTML, do not skip ahead to it without explicit scoping.
+3B.2, 3B.3, 3B.3-icons, and 3B.4-docx-pdf are done. 3B.4-html is a new-artifact-type subtask, not yet started — do not skip ahead to it without explicit scoping.

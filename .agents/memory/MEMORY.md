@@ -60,7 +60,8 @@
 - [Presentation Icon Vocabulary (3B.3-icons)](presentation-icon-vocabulary.md) — fixed 32-icon Feather-style vocabulary, rasterized via @resvg/resvg-js; that pkg must be esbuild-externalized like sharp
 - [Thinking/Doing/Receipt chat lifecycle](thinking-doing-receipt-lifecycle.md) — prose-suppression and run-card-visibility must share one verb classifier, or a turn can show both at once
 - [IMAGE_GEN vs CHAT output-guard scrub](image-gen-chat-scrub.md) — sketch/image requests could silently die with no image because output-guard scrub was tied to fallible intent classification, not explicit user opt-out
-- [Deliverable Design System (Phase 3B)](deliverable-design-system.md) — shared brand-token layer for PPTX/DOCX/PDF/HTML renderers; 3B.1-3B.3 + 3B.3-icons done (PPTX only), 3B.4 (other formats) not started
+- [Deliverable Design System (Phase 3B)](deliverable-design-system.md) — shared brand-token layer for PPTX/DOCX/PDF/HTML renderers; 3B.1-3B.3-icons (PPTX) + 3B.4-docx-pdf done, 3B.4-html not started (no HTML renderer exists at all yet)
+- [Document Format Porting (3B.4-docx-pdf)](document-format-porting.md) — DOCX+PDF share one document-native content model (cover/exec-summary/sections-of-blocks), themed via resolveDeliverableTheme(); not a slide-layout port
 - [Nexus shared agent-tools bridge](nexus-shared-agent-tools-bridge.md) — nexus.ts (raw Anthropic SDK) derives tool schemas from buildAgentTools() via anthropic-adapter.ts; never hand-roll a duplicate Anthropic.Tool for a capability already in the shared registry
 - [Nexus/chat v1 reliability fixes](nexus-chat-v1-reliability-fixes.md) — confirmation loop, WRITE_FILE marker, empty-response retry, session-reset; all 4 must-fix-before-v1 bugs resolved
 - [Artifact Engine Architecture](artifact-engine-architecture.md) — one shared engine for every file-backed deliverable; renderers are plug-ins (generate only); engine owns storage/persistence/Ledger/download/preview
