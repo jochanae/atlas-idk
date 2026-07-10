@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
+import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
@@ -2608,13 +2608,23 @@ If generate_deliverable is called and returns an error, report the actual failur
         ? projectTensions.map((tension) => `${tension.projectA.name} ↔ ${tension.projectB.name}: "${tension.entryA.title}" conflicts with "${tension.entryB.title}"`).join("\n")
         : "None detected.";
 
-      // Application Model for focused project — pages, components, data entities
-      const focusAMRows = await db.select({
-        pages: applicationModelsTable.pages,
-        components: applicationModelsTable.components,
-        data: applicationModelsTable.data,
-      }).from(applicationModelsTable).where(eq(applicationModelsTable.projectId, focusProjectId)).limit(1);
+      // Application Model + committed Design Plan for focused project — fetched in parallel
+      const [focusAMRows, committedDPRows] = await Promise.all([
+        db.select({
+          pages: applicationModelsTable.pages,
+          components: applicationModelsTable.components,
+          data: applicationModelsTable.data,
+        }).from(applicationModelsTable).where(eq(applicationModelsTable.projectId, focusProjectId)).limit(1),
+        db.select({
+          body: designPlansTable.body,
+          version: designPlansTable.version,
+        }).from(designPlansTable)
+          .where(and(eq(designPlansTable.projectId, focusProjectId), eq(designPlansTable.status, "committed")))
+          .orderBy(desc(designPlansTable.version))
+          .limit(1),
+      ]);
       const focusAM = focusAMRows[0] ?? null;
+      const committedDesignPlan = committedDPRows[0] ?? null;
 
       // Atlas State — fetch DNA to determine conversational posture
       const focusGenomeRow = await getProjectDNA(focusProjectId);
@@ -2716,6 +2726,59 @@ The user has ${ledgerGroups.parked.length} parked item${ledgerGroups.parked.leng
           systemPrompt += amBlock;
         }
       }
+      // ── Design Plan injection (Build mode only — conversation mode stays unconstrained) ──
+      if (!conversationModeActive && committedDesignPlan) {
+        const dp = (committedDesignPlan.body as Record<string, unknown>) ?? {};
+        const nav = dp.navigationPattern as string | undefined;
+        const responsive = dp.responsiveIntent as { mobile?: string; tablet?: string; desktop?: string } | undefined;
+        const hierarchy = (dp.informationHierarchy as string[]) ?? [];
+        const components = dp.componentPatterns as string | undefined;
+        const motion = dp.motionPhilosophy as string | undefined;
+        const density = dp.cardDensity as string | undefined;
+        const typography = dp.typographyScale as string | undefined;
+        const emptyStates = dp.emptyStates as string | undefined;
+        const interactions = dp.interactionPatterns as {
+          primaryAction?: string; secondaryAction?: string; editingStyle?: string;
+          confirmationBehavior?: string; gestures?: string; scrollingBehavior?: string;
+        } | undefined;
+        const hasConstraints = nav || (responsive && (responsive.mobile || responsive.tablet || responsive.desktop)) || hierarchy.length > 0 || components || typography || density;
+        const hasIntent = motion || emptyStates || interactions;
+        if (hasConstraints || hasIntent) {
+          let dpBlock = `\n\n--- COMMITTED DESIGN PLAN (v${committedDesignPlan.version}) ---`;
+          dpBlock += `\nThese decisions are locked. Execute them exactly — do not invent alternatives, ask for confirmation, or deviate unless the user explicitly overrides one.`;
+          if (hasConstraints) {
+            dpBlock += `\n\nCONSTRAINTS:`;
+            if (nav) dpBlock += `\n• Navigation pattern: ${nav}`;
+            if (responsive) {
+              if (responsive.mobile) dpBlock += `\n• Mobile: ${responsive.mobile}`;
+              if (responsive.tablet) dpBlock += `\n• Tablet: ${responsive.tablet}`;
+              if (responsive.desktop) dpBlock += `\n• Desktop: ${responsive.desktop}`;
+            }
+            if (hierarchy.length > 0) dpBlock += `\n• Information hierarchy: ${hierarchy.join(" → ")}`;
+            if (components) dpBlock += `\n• Component patterns: ${components}`;
+            if (typography) dpBlock += `\n• Typography scale: ${typography}`;
+            if (density) dpBlock += `\n• Card density: ${density}`;
+          }
+          if (hasIntent) {
+            dpBlock += `\n\nDESIGN INTENT:`;
+            if (motion) dpBlock += `\n• Motion philosophy: ${motion}`;
+            if (emptyStates) dpBlock += `\n• Empty states: ${emptyStates}`;
+            if (interactions) {
+              if (interactions.primaryAction) dpBlock += `\n• Primary action: ${interactions.primaryAction}`;
+              if (interactions.secondaryAction) dpBlock += `\n• Secondary action: ${interactions.secondaryAction}`;
+              if (interactions.editingStyle) dpBlock += `\n• Editing style: ${interactions.editingStyle}`;
+              if (interactions.confirmationBehavior) dpBlock += `\n• Confirmations: ${interactions.confirmationBehavior}`;
+              if (interactions.gestures) dpBlock += `\n• Gestures: ${interactions.gestures}`;
+              if (interactions.scrollingBehavior) dpBlock += `\n• Scrolling: ${interactions.scrollingBehavior}`;
+            }
+          }
+          dpBlock += `\n--- END COMMITTED DESIGN PLAN ---`;
+          systemPrompt += dpBlock;
+        }
+      } else if (!conversationModeActive && !committedDesignPlan) {
+        systemPrompt += `\n\n[No committed Design Plan for this project — design decisions are unconstrained. Apply your best judgment.]`;
+      }
+
       if (shouldBrief) {
       systemPrompt += `\n\nCROSS-PROJECT TENSIONS:
 ${tensionLines}
