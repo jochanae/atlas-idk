@@ -7,7 +7,7 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-async function generateConversationTitle(projectId: number, message: string): Promise<void> {
+async function generateConversationTitle(projectId: number, message: string): Promise<string | null> {
   try {
     const anthropic = new Anthropic();
     const response = await anthropic.messages.create({
@@ -25,8 +25,10 @@ async function generateConversationTitle(projectId: number, message: string): Pr
     if (title) {
       await db.update(projectsTable).set({ name: title }).where(eq(projectsTable.id, projectId));
     }
+    return title;
   } catch (err) {
-    logger.warn({ err, projectId }, "conversations: async title generation failed — non-fatal");
+    logger.warn({ err, projectId }, "conversations: title generation failed — non-fatal, falling back to placeholder name");
+    return null;
   }
 }
 
@@ -55,14 +57,28 @@ router.post("/conversations", async (req, res) => {
         initialMessage: projectsTable.initialMessage,
       });
 
+    // Generate the AI title synchronously (bounded) so the client receives the
+    // real name in this response instead of learning about it later with no
+    // notification. A short timeout keeps project creation from stalling if
+    // the model call is slow — in that case the fire-and-forget write still
+    // lands in the DB, it's just not in this particular response.
+    let finalName = project.name;
     if (trimmedInitial) {
-      generateConversationTitle(project.id, trimmedInitial).catch(() => {});
+      const TITLE_TIMEOUT_MS = 4000;
+      const titlePromise = generateConversationTitle(project.id, trimmedInitial);
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), TITLE_TIMEOUT_MS));
+      const title = await Promise.race([titlePromise, timeoutPromise]);
+      if (title) finalName = title;
+      // If the race timed out, let the generation finish in the background —
+      // it will still persist to the DB even though this response missed it.
+      titlePromise.catch(() => {});
     }
 
     return res.json({
       id: project.id,
       conversationId: project.conversationId,
       initialMessage: project.initialMessage ?? null,
+      name: finalName,
     });
   } catch (err) {
     logger.error({ err }, "conversations: failed to create conversation");

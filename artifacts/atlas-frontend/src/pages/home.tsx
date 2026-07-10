@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import { renderChildrenWithCitations } from "@/features/codebase";
-import { Project, getListProjectsQueryKey, createProject, useCreateProject, createEntry, useCreateEntry } from "@workspace/api-client-react";
+import { Project, getListProjectsQueryKey, getGetProjectQueryKey, createProject, useCreateProject, createEntry, useCreateEntry } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
@@ -337,7 +337,10 @@ function deriveProjectNameFromConversation(messages: HomeMessage[]): string {
 
   const clipped = normalized.slice(0, 40).trimEnd();
   const lastSpace = clipped.lastIndexOf(" ");
-  return (lastSpace > 0 ? clipped.slice(0, lastSpace) : clipped).trim() || "New Project";
+  const base = (lastSpace > 0 ? clipped.slice(0, lastSpace) : clipped).trim();
+  // Signal that this is a provisional placeholder, not the final title — the
+  // real Claude-generated title replaces it within a couple of seconds.
+  return base ? `${base}…` : "New Project";
 }
 
 const HOME_IMAGE_URL_RE = /(https?:\/\/[^\s<>"')]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s<>"')]+)?)/gi;
@@ -2776,9 +2779,14 @@ export default function Home() {
       body: JSON.stringify({}),
     })
       .then((r) => r.json())
-      .then((data: { id?: number; conversationId?: string; error?: string }) => {
+      .then((data: { id?: number; conversationId?: string; name?: string; error?: string }) => {
         if (data?.id) {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          if (data.name) {
+            queryClient.setQueryData(getGetProjectQueryKey(data.id), (prev: Project | undefined) =>
+              prev ? { ...prev, name: data.name! } : prev,
+            );
+          }
           if (data.conversationId) {
             try { sessionStorage.setItem(`atlas-cid-${data.conversationId}`, String(data.id)); } catch {}
             setLocation(`/workspace/${data.conversationId}`);
@@ -3034,6 +3042,7 @@ export default function Home() {
       const project = (await createRes.json().catch(() => null)) as {
         id?: number | string;
         conversationId?: string;
+        name?: string;
         error?: string;
         message?: string;
       } | null;
@@ -3064,6 +3073,11 @@ export default function Home() {
         } catch {}
       }
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      if (project.name) {
+        queryClient.setQueryData(getGetProjectQueryKey(projectId), (prev: Project | undefined) =>
+          prev ? { ...prev, name: project.name! } : prev,
+        );
+      }
       setActiveProjectId(projectId);
       if (project.conversationId) {
         setLocation(`/workspace/${project.conversationId}`);
