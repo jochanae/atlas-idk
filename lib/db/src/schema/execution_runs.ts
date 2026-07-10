@@ -21,6 +21,14 @@ export const executionRunsTable = pgTable("execution_runs", {
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   elapsedMs: integer("elapsed_ms"),
+  /**
+   * DB-assigned monotonic insertion order. Reads must tie-break on this
+   * (not just started_at) because a milestone run and its turn's
+   * code-execution run are deliberately stamped with the same turn
+   * startedAt for correct cross-turn ordering — started_at alone can't
+   * order runs written within the same turn.
+   */
+  seq: serial("seq"),
 });
 
 export const executionRunStepsTable = pgTable("execution_run_steps", {

@@ -620,6 +620,16 @@ async function ensureColumns(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE execution_run_steps ADD COLUMN IF NOT EXISTS artifact_url TEXT
     `);
+    // Monotonic insertion-order tie-breaker. `started_at` alone is not enough:
+    // a milestone run and its turn's code-execution run are both stamped with
+    // the same turn startedAt (by design, for correct cross-turn ordering),
+    // so reads sorting only by started_at DESC leave same-turn runs in
+    // non-deterministic order. `seq` is populated by DB identity/serial at
+    // insert time, so it reflects true write order regardless of what
+    // started_at value the caller passed in.
+    await db.execute(sql`
+      ALTER TABLE execution_runs ADD COLUMN IF NOT EXISTS seq SERIAL
+    `);
     logger.info("ensureColumns: execution_runs + execution_run_steps tables verified");
   } catch (err) {
     logger.warn({ err }, "ensureColumns: execution_runs tables failed — server will start anyway");

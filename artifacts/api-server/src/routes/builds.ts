@@ -243,13 +243,18 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
 
   try {
     // Fetch runs ordered newest-first
+    // Tie-break on `seq` (DB-assigned monotonic insertion order), not just
+    // started_at: a milestone run and its turn's code-execution run are
+    // deliberately stamped with the same turn startedAt so cross-turn
+    // ordering is correct, which makes started_at alone non-deterministic
+    // for runs written within the same turn.
     const runsResult = await db.execute(sql`
       SELECT
         id, project_id, thread_id, message_id, mode, status, summary,
         prompt, intent, receipts, started_at, completed_at, elapsed_ms
       FROM execution_runs
       WHERE project_id = ${projectId}
-      ORDER BY started_at DESC
+      ORDER BY started_at DESC, seq DESC
       LIMIT 50
     `);
 
