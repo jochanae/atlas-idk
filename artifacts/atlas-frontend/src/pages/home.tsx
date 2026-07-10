@@ -326,6 +326,26 @@ function deriveAtlasProposedProjectName(messages: HomeMessage[]): string | null 
   return null;
 }
 
+/**
+ * When POST /api/conversations couldn't wait for AI title generation to
+ * finish (titlePending), the DB write still completes shortly after in the
+ * background with zero push notification. Poll for it a couple of times so
+ * the sidebar/workspace header pick up the real title without a manual
+ * refresh (task #169 — Family Reunion benchmark).
+ */
+function scheduleTitlePendingRecheck(
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: number,
+): void {
+  const delaysMs = [3000, 8000];
+  for (const delay of delaysMs) {
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+    }, delay);
+  }
+}
+
 function deriveProjectNameFromConversation(messages: HomeMessage[]): string {
   const atlasProposedName = deriveAtlasProposedProjectName(messages);
   if (atlasProposedName) return atlasProposedName;
@@ -2779,13 +2799,16 @@ export default function Home() {
       body: JSON.stringify({}),
     })
       .then((r) => r.json())
-      .then((data: { id?: number; conversationId?: string; name?: string; error?: string }) => {
+      .then((data: { id?: number; conversationId?: string; name?: string; titlePending?: boolean; error?: string }) => {
         if (data?.id) {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           if (data.name) {
             queryClient.setQueryData(getGetProjectQueryKey(data.id), (prev: Project | undefined) =>
               prev ? { ...prev, name: data.name! } : prev,
             );
+          }
+          if (data.titlePending) {
+            scheduleTitlePendingRecheck(queryClient, data.id);
           }
           if (data.conversationId) {
             try { sessionStorage.setItem(`atlas-cid-${data.conversationId}`, String(data.id)); } catch {}
@@ -3043,6 +3066,7 @@ export default function Home() {
         id?: number | string;
         conversationId?: string;
         name?: string;
+        titlePending?: boolean;
         error?: string;
         message?: string;
       } | null;
@@ -3077,6 +3101,9 @@ export default function Home() {
         queryClient.setQueryData(getGetProjectQueryKey(projectId), (prev: Project | undefined) =>
           prev ? { ...prev, name: project.name! } : prev,
         );
+      }
+      if (project.titlePending) {
+        scheduleTitlePendingRecheck(queryClient, projectId);
       }
       setActiveProjectId(projectId);
       if (project.conversationId) {

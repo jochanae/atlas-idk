@@ -63,15 +63,21 @@ router.post("/conversations", async (req, res) => {
     // the model call is slow — in that case the fire-and-forget write still
     // lands in the DB, it's just not in this particular response.
     let finalName = project.name;
+    let titlePending = false;
     if (trimmedInitial) {
       const TITLE_TIMEOUT_MS = 4000;
       const titlePromise = generateConversationTitle(project.id, trimmedInitial);
       const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), TITLE_TIMEOUT_MS));
       const title = await Promise.race([titlePromise, timeoutPromise]);
-      if (title) finalName = title;
-      // If the race timed out, let the generation finish in the background —
-      // it will still persist to the DB even though this response missed it.
-      titlePromise.catch(() => {});
+      if (title) {
+        finalName = title;
+      } else {
+        // The race timed out — the client is told titling is still in
+        // flight so it can re-check shortly, and generation keeps running
+        // in the background and will still persist to the DB.
+        titlePending = true;
+        titlePromise.catch(() => {});
+      }
     }
 
     return res.json({
@@ -79,6 +85,7 @@ router.post("/conversations", async (req, res) => {
       conversationId: project.conversationId,
       initialMessage: project.initialMessage ?? null,
       name: finalName,
+      titlePending,
     });
   } catch (err) {
     logger.error({ err }, "conversations: failed to create conversation");
