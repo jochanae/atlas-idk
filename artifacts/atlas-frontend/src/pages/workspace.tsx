@@ -5800,6 +5800,15 @@ export default function Workspace() {
   });
   const projectFromList = allProjects?.find((p) => p.id === id) ?? null;
   const project = projectState.project ?? fallbackProject ?? projectFromList;
+  // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
+  console.log("[TITLE_DEBUG][workspace.tsx] project resolution", {
+    id,
+    ts: Date.now(),
+    projectStateName: projectState.project?.name,
+    fallbackProjectName: fallbackProject?.name,
+    projectFromListName: projectFromList?.name,
+    resolvedName: project?.name,
+  });
 
   // Populate the shared activeProjectContext so Ask Atlas (opened from within
   // the workspace or via the ambient floater) sees the same project identity,
