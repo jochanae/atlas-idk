@@ -535,7 +535,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             const metadata = asRecord(a.metadata);
             const payload = asRecord(a.payload);
             const preview = asRecord(payload.preview);
-            const content = a.content ?? textValue(payload.markdown) ?? textValue(preview.body) ?? "";
+            const content = a.content ?? textValue(payload.markdown) ?? textValue(preview.body) ?? textValue(preview.html) ?? "";
             const fileBacked = isFileBackedArtifact(a);
             const extension = textValue(metadata.extension)?.toLowerCase() ?? (fileBacked ? typeStr : "md");
             const label = typeLabel(a.type, metadata);

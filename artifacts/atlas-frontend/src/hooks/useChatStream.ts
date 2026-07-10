@@ -1132,28 +1132,41 @@ export function useChatStream(
           // persist them to the project artifacts gallery.
           const previewHtmlEdit = fes.find((e: any) => e.path === "preview/output.html");
           if (previewHtmlEdit?.content) {
-            // Push to Draft tab immediately (no user copy-paste needed).
-            window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
-              detail: { content: previewHtmlEdit.content },
-            }));
             workspaceEventBus.emit("preview-code", { code: previewHtmlEdit.content, path: "preview/output.html" });
-            // Persist to project_artifacts so it appears in the Artifacts tab.
-            fetch(`/api/projects/${projectId}/artifacts`, {
+            // Persist through the Artifact Engine so it becomes a real deliverable
+            // (project_artifacts row, Ledger entry, Deliverables listing, download) —
+            // the same self-contained HTML that already renders in the Draft sandbox.
+            fetch(`/api/projects/${projectId}/artifacts/html-deliverable`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
               body: JSON.stringify({
-                type: "html_preview",
+                html: previewHtmlEdit.content,
                 title: "Preview Output",
-                metadata: { path: "preview/output.html", generatedAt: new Date().toISOString() },
-                payload: { html: previewHtmlEdit.content },
               }),
             })
-              .then(() => {
+              .then((r) => (r.ok ? r.json() : null))
+              .then((artifact) => {
+                const needsReview = artifact?.status === "needs_review";
+                const reasons = (artifact?.preview?.reasons as string[] | undefined) ?? [];
+                // Push to Draft tab — auto-render when safe, hold for review otherwise.
+                window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
+                  detail: {
+                    content: previewHtmlEdit.content,
+                    artifactId: artifact?.id,
+                    needsReview,
+                    reasons,
+                  },
+                }));
                 // Tell PreviewPanel to refetch the artifacts gallery.
                 window.dispatchEvent(new CustomEvent("axiom:artifact-saved"));
               })
-              .catch(() => {});
+              .catch(() => {
+                // Fall back to rendering locally even if persistence failed.
+                window.dispatchEvent(new CustomEvent("axiom:preview-artifact", {
+                  detail: { content: previewHtmlEdit.content },
+                }));
+              });
           }
           if (isScenario) {
             setScenarioBuffer((prev) => [

@@ -248,7 +248,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
     if (t === "visual_sketch" || t === "pipeline_sketch" || t.includes("sketch")) return "sketch";
     if (t === "build_output" || t.includes("build")) return "build";
     if (t === "design_plan" || t === "blueprint_snapshot") return "design";
-    if (t === "html_preview" || t === "landing_draft" || t === "export_package") return "preview";
+    if (t === "html_preview" || t === "html" || t === "landing_draft" || t === "export_package") return "preview";
     return "other";
   };
 
@@ -275,6 +275,9 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [sandboxInput, setSandboxInput] = useState("");
   const [sandboxRendered, setSandboxRendered] = useState<string | null>(null);
   const [sandboxExpanded, setSandboxExpanded] = useState(false);
+  // When a persisted HTML deliverable is flagged incomplete/unsafe, hold it here
+  // instead of auto-rendering — the user sees a review banner with a Render action.
+  const [pendingReview, setPendingReview] = useState<{ content: string; reasons: string[] } | null>(null);
 
   // ── URL mode state ──────────────────────────────────────────────────────────
   const storageKey = `atlas-preview-${projectId}`;
@@ -747,13 +750,20 @@ ${t}
   // prop path so Draft auto-populates without user copy-paste.
   useEffect(() => {
     const handler = (ev: Event) => {
-      const { content } = (ev as CustomEvent<{ content: string }>).detail ?? {};
+      const { content, needsReview, reasons } = (ev as CustomEvent<{ content: string; needsReview?: boolean; reasons?: string[] }>).detail ?? {};
       if (!content) return;
       setSandboxInput(content);
-      setSandboxRendered(buildSrcdoc(content));
+      const hasRealProject = wsDsStatus === "running" || wsDsStatus === "starting" || wsDsStatus === "installing" || liveUrl;
+      if (needsReview) {
+        // Hold instead of auto-rendering — show a review banner + explicit Render action.
+        setPendingReview({ content, reasons: reasons ?? [] });
+        setSandboxRendered(null);
+      } else {
+        setPendingReview(null);
+        setSandboxRendered(buildSrcdoc(content));
+      }
       setSandboxExpanded(false);
       try { localStorage.setItem(sandboxStorageKey, content); } catch {}
-      const hasRealProject = wsDsStatus === "running" || wsDsStatus === "starting" || wsDsStatus === "installing" || liveUrl;
       if (!hasRealProject) setPreviewMode("sandbox");
     };
     window.addEventListener("axiom:preview-artifact", handler);
@@ -1466,7 +1476,28 @@ ${t}
           </div>
           {/* Sandbox preview area — fills container, no device-frame constraint */}
           <div ref={containerRef} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {sandboxRendered ? (
+            {pendingReview ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", gap: 14, textAlign: "center" }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" opacity={0.4}>
+                  <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z" stroke="var(--atlas-ember)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div style={{ fontSize: 11.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.02em" }}>
+                  Ready to review — Render when you're ready
+                </div>
+                {pendingReview.reasons.length > 0 && (
+                  <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", lineHeight: 1.7, maxWidth: 380 }}>
+                    {pendingReview.reasons.map((r, i) => <li key={i}>· {r}</li>)}
+                  </ul>
+                )}
+                <button
+                  onClick={() => {
+                    setSandboxRendered(buildSrcdoc(pendingReview.content));
+                    setPendingReview(null);
+                  }}
+                  style={{ padding: "6px 16px", borderRadius: 5, background: "var(--atlas-ember)", border: "none", color: "var(--atlas-fg)", fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", transition: "all 140ms ease" }}
+                >Render</button>
+              </div>
+            ) : sandboxRendered ? (
               <div style={{ flex: 1, overflow: "hidden", background: "#fff" }}>
                 <iframe
                   key={sandboxRendered.slice(0, 80)}
@@ -1593,6 +1624,7 @@ ${t}
                 landing_draft:      { label: "LANDING",   color: "rgba(251,146,60,0.85)",    bg: "rgba(251,146,60,0.06)", border: "rgba(251,146,60,0.18)" },
                 export_package:     { label: "EXPORT",    color: "rgba(34,211,238,0.85)",    bg: "rgba(34,211,238,0.06)", border: "rgba(34,211,238,0.18)" },
                 html_preview:       { label: "PREVIEW",   color: "rgba(251,191,36,0.85)",    bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.2)"  },
+                html:               { label: "HTML",       color: "rgba(251,191,36,0.85)",    bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.2)"  },
               };
 
               // Latest id per type (first occurrence in DESC list = highest version)

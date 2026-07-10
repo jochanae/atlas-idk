@@ -27,6 +27,7 @@ import "../lib/renderers/mermaidRenderer";
 import "../lib/renderers/chartRenderer";
 import "../lib/renderers/bundleRenderer";
 import "../lib/renderers/draftRenderer";
+import "../lib/renderers/htmlRenderer";
 // Side-effect imports: each delivery adapter registers itself with the Delivery Engine on load.
 import "../lib/adapters/emailAdapter";
 import "../lib/adapters/slackAdapter";
@@ -202,6 +203,60 @@ router.get("/projects/:id/artifacts", async (req, res): Promise<void> => {
     });
   } catch (err) {
     req.log.error({ err }, "GET /projects/:id/artifacts failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/projects/:id/artifacts/html-deliverable ────────────────────────
+// Wraps HTML the app already generated (Draft/Sandbox path) into a real
+// Artifact Engine deliverable: project_artifacts row, Ledger entry, Deliverables
+// listing, download. Does not generate new HTML — the client (useChatStream)
+// calls this right after it detects a FILE_EDIT at preview/output.html.
+router.post("/projects/:id/artifacts/html-deliverable", async (req, res): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const projectId = Number(req.params.id);
+    if (!projectId || isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+
+    if (!(await assertOwner(projectId, userId))) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+
+    const { html, title, truncated, sessionId, sourceMessageId } = req.body as {
+      html?: string;
+      title?: string;
+      truncated?: boolean;
+      sessionId?: number | null;
+      sourceMessageId?: number | null;
+    };
+
+    if (!html || typeof html !== "string" || !html.trim()) {
+      res.status(400).json({ error: "html is required" }); return;
+    }
+
+    const artifact = await generateArtifact({
+      projectId,
+      sessionId: sessionId ?? null,
+      type: "html",
+      sourceMessageId: sourceMessageId ?? null,
+      input: { html, title, truncated: !!truncated },
+    });
+
+    res.status(201).json({
+      id: artifact.id,
+      projectId: artifact.projectId,
+      type: artifact.type,
+      version: artifact.version,
+      title: artifact.title,
+      status: artifact.status,
+      preview: artifact.preview,
+      summary: artifact.summary,
+      downloadUrl: `/api/projects/${artifact.projectId}/artifacts/${artifact.id}/download`,
+      createdAt: artifact.createdAt,
+    });
+  } catch (err) {
+    req.log.error({ err }, "POST /projects/:id/artifacts/html-deliverable failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });

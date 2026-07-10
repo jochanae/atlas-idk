@@ -36,6 +36,13 @@ export interface ArtifactRenderOutput {
   preview: Record<string, unknown>;
   /** Optional short summary used for the Ledger entry. */
   summary?: string;
+  /**
+   * Whether this artifact is safe to auto-render on the client without user
+   * confirmation. Defaults to "generated" (auto-render). Renderers that detect
+   * incomplete/unsafe output (e.g. htmlRenderer) set "needs_review" so the
+   * client shows a "Ready to review — Render when you're ready" gate instead.
+   */
+  status?: "generated" | "needs_review";
 }
 
 export interface ArtifactRenderer<TInput = Record<string, unknown>> {
@@ -74,6 +81,7 @@ export interface GeneratedArtifact {
   preview: Record<string, unknown>;
   /** Short human summary from the renderer (slide count, section count, etc.). */
   summary: string | null;
+  status: "generated" | "needs_review";
   objectPath: string;
   ledgerEntryId: number | null;
   createdAt: string;
@@ -137,7 +145,7 @@ export async function generateArtifact<TInput>({
       extension: rendered.extension,
       objectPath,
       sizeBytes: rendered.buffer.byteLength,
-      status: "generated",
+      status: rendered.status ?? "generated",
     },
     payload: { preview: rendered.preview },
   });
@@ -182,6 +190,7 @@ export async function generateArtifact<TInput>({
     sizeBytes: rendered.buffer.byteLength,
     preview: rendered.preview,
     summary: rendered.summary ?? null,
+    status: rendered.status ?? "generated",
     objectPath,
     ledgerEntryId,
     createdAt: row.createdAt.toISOString(),
