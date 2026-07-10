@@ -75,3 +75,4 @@
 - [Timeline milestone live-route gap](timeline-milestone-live-route-gap.md) — classifier wired only into dormant nexus.ts, never called from live chat.ts; always grep both routes before debugging a "feature doesn't fire" bug
 - [Artifact Verification Engine (F6A)](artifact-verification-engine.md) — real-parse checks (not signature-only), retry only for transient/content-shape failures, pdf-parse v1 lib-entry-point gotcha, singular/plural expectedCounts key convention
 - [Deliverable generation reachability gaps](deliverable-reachability-gaps.md) — mermaid/chart/pdf renderers exist and are verified, but the agent chat tool only exposes pptx/docx/xlsx; use the generic deliverables REST route to exercise the others
+- [Visual QA multi-format coverage](visualqa-format-coverage.md) — DOCX+PDF share one checker (same preview shape); XLSX is best-effort (pagination ≠ worksheets); UI must treat skipped/unavailable as no-badge, not error

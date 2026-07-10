@@ -25,7 +25,7 @@ const SOFFICE_TIMEOUT_MS = 60_000;
 const PDFTOPPM_TIMEOUT_MS = 30_000;
 
 /** Formats this pipeline knows how to rasterize. Extend deliberately, not implicitly. */
-export type RenderableFormat = "pptx" | "pdf" | "docx";
+export type RenderableFormat = "pptx" | "pdf" | "docx" | "xlsx";
 
 export interface RenderedPage {
   index: number;
@@ -81,6 +81,11 @@ async function rasterizePdf(pdfBuffer: Buffer, workDir: string): Promise<Rendere
  * Never throws — a broken toolchain is reported as `status: "unavailable"`
  * (visual QA is additive to F6A, so its own absence must never fail the
  * artifact pipeline) and a genuinely bad file is reported as `"failed"`.
+ *
+ * Note on "xlsx": LibreOffice paginates a workbook per its built-in print
+ * area/page-break rules, not per-sheet, so the resulting PNG count does not
+ * map 1:1 onto worksheet count. Callers must treat xlsx pages as "whatever
+ * LibreOffice decided to print" — best-effort, not a per-sheet guarantee.
  */
 export async function renderToImages(
   buffer: Buffer,

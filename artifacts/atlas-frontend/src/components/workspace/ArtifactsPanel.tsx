@@ -127,6 +127,24 @@ function verificationStatus(metadata: Record<string, unknown>): "verified" | "fa
   return null;
 }
 
+type VisualQAIssueSummary = { rule: string; severity: "warning" | "error"; message: string; pageIndex?: number };
+
+function visualQAInfo(metadata: Record<string, unknown>): { issues: VisualQAIssueSummary[] } | null {
+  const verification = asRecord(metadata.verification);
+  const visualQA = asRecord(verification.visualQA);
+  const status = textValue(visualQA.status);
+  // Only "checked" carries a meaningful verdict — "skipped"/"unavailable" mean
+  // no visual QA rule set exists yet for this type or the toolchain wasn't
+  // available, neither of which is a quality signal worth surfacing as a warning.
+  if (status !== "checked") return null;
+  const rawIssues = Array.isArray(visualQA.issues) ? visualQA.issues : [];
+  const issues = rawIssues.filter(
+    (i): i is VisualQAIssueSummary =>
+      !!i && typeof i === "object" && typeof (i as VisualQAIssueSummary).rule === "string" && typeof (i as VisualQAIssueSummary).message === "string",
+  );
+  return { issues };
+}
+
 function artifactDate(a: ArtifactRecord): string {
   return a.createdAt ?? a.created_at ?? "";
 }
@@ -554,6 +572,9 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             const previewTitle = textValue(preview.title) ?? a.title;
             const previewSubtitle = textValue(preview.subtitle);
             const verifyStatus = fileBacked ? verificationStatus(metadata) : null;
+            const visualQA = fileBacked ? visualQAInfo(metadata) : null;
+            const visualQAIssues = visualQA?.issues ?? [];
+            const visualQAErrorCount = visualQAIssues.filter((i) => i.severity === "error").length;
             const looksHtml = !fileBacked && (typeStr.includes("html") || /<\s*(html|body|div|section|main|!doctype)/i.test(content));
             const sendToDraft = (e: React.MouseEvent) => {
               e.stopPropagation();
@@ -587,6 +608,14 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                       style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(229,115,115,0.14)", border: "1px solid rgba(229,115,115,0.4)", color: "rgb(229,115,115)", padding: "3px 8px", borderRadius: 6 }}
                     >
                       ⚠ May be incomplete
+                    </span>
+                  )}
+                  {visualQAIssues.length > 0 && (
+                    <span
+                      title={`Visual quality check found ${visualQAIssues.length} issue${visualQAIssues.length === 1 ? "" : "s"} — e.g. ${visualQAIssues[0].message}`}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: visualQAErrorCount > 0 ? "rgba(229,115,115,0.14)" : "rgba(230,181,90,0.14)", border: visualQAErrorCount > 0 ? "1px solid rgba(229,115,115,0.4)" : "1px solid rgba(230,181,90,0.4)", color: visualQAErrorCount > 0 ? "rgb(229,115,115)" : "rgb(230,181,90)", padding: "3px 8px", borderRadius: 6 }}
+                    >
+                      ⚠ {visualQAIssues.length} visual {visualQAIssues.length === 1 ? "issue" : "issues"}
                     </span>
                   )}
                   {fileBacked && (
@@ -630,7 +659,24 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                           {verifyStatus === "failed" && (
                             <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(229,115,115)" }}>⚠ May be incomplete — one or more checks failed after generation.</div>
                           )}
+                          {visualQA && visualQAIssues.length === 0 && (
+                            <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(110,180,120)" }}>✓ Visual quality check found no issues.</div>
+                          )}
                         </div>
+                        {visualQAIssues.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: 8, border: visualQAErrorCount > 0 ? "1px solid rgba(229,115,115,0.3)" : "1px solid rgba(230,181,90,0.3)", background: visualQAErrorCount > 0 ? "rgba(229,115,115,0.06)" : "rgba(230,181,90,0.06)" }}>
+                            <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Visual quality check</div>
+                            {visualQAIssues.map((issue, idx) => (
+                              <div key={`${a.id}-vqa-${idx}`} style={{ fontSize: "var(--ts-sm)", lineHeight: 1.45, color: "var(--atlas-fg)", opacity: 0.9 }}>
+                                <span style={{ color: issue.severity === "error" ? "rgb(229,115,115)" : "rgb(230,181,90)" }}>
+                                  {issue.severity === "error" ? "✕" : "⚠"}
+                                </span>{" "}
+                                {issue.pageIndex != null && <span style={{ color: "var(--atlas-muted)" }}>Page {issue.pageIndex + 1}: </span>}
+                                {issue.message}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {slideHeadings.length > 0 && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                             <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Slide outline</div>
