@@ -50,6 +50,10 @@ interface Props {
   onTryToFix?: () => void;
   receiptMessage?: ChatMessage | null;
   suppressGitHubReceipt?: boolean;
+  /** Task #171: the inline ArtifactCreatedCard already renders the deliverable
+   *  receipt anchored to its message — suppress the trailing run card's own
+   *  deliverable UI so the same output isn't announced twice. */
+  suppressDeliverableReceipt?: boolean;
   /** Phase 3: pre-fetched latest run from execution_runs table.
    *  When null and isActive=false, no trailing card is rendered. */
   executionRun?: ApiRun | null;
@@ -93,6 +97,7 @@ function adaptExecutionRun(
   run: ApiRun,
   messages: ChatMessage[],
   projectPreviewUrl?: string | null,
+  suppressDeliverable?: boolean,
 ): DerivedRun | null {
   // Anchor the trailing receipt to its own turn. If a newer user message has
   // arrived after the run's associated assistant message, the receipt belongs
@@ -124,7 +129,11 @@ function adaptExecutionRun(
   );
   // Task #158: a deliverable (DOCX/PPTX/PDF/etc.) generated via generate-deliverable.ts.
   // Its receipt uses the same unified card — never a separate "can't generate" path.
-  const deliverableStep = run.steps.find(s => s.verb === "ARTIFACT_CREATED");
+  // Task #171: when the inline ArtifactCreatedCard already covers this artifact,
+  // treat it as absent here so this run card doesn't render a redundant receipt.
+  const deliverableStep = suppressDeliverable
+    ? undefined
+    : run.steps.find(s => s.verb === "ARTIFACT_CREATED");
 
   // Pure conversational turns — only PROMPT/THOUGHT/SUMMARY/DECISION/QUESTION_ASKED
   // with no real tool invocations (FILE_READ, FILE_EDIT, COMMAND, etc.). These are
@@ -632,7 +641,7 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
   );
 }
 
-export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, executionRun }: Props) {
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, executionRun, suppressDeliverableReceipt }: Props) {
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
@@ -731,11 +740,11 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         const startedAt = new Date(executionRun.startedAt).getTime();
         // Suppress stale runs that predate this session's mount.
         if (Number.isFinite(startedAt) && startedAt < mountedAtRef.current - 2000) return null;
-        return adaptExecutionRun(executionRun, messages, projectPreviewUrl);
+        return adaptExecutionRun(executionRun, messages, projectPreviewUrl, suppressDeliverableReceipt);
       }
       return null;
     },
-    [isActive, executionRun, messages, projectPreviewUrl, receiptMessage],
+    [isActive, executionRun, messages, projectPreviewUrl, receiptMessage, suppressDeliverableReceipt],
   );
 
   const [now, setNow] = useState(() => Date.now());

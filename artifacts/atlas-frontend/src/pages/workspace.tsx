@@ -362,6 +362,18 @@ export interface ChatMessage {
   /** Durable receipt of a completed GitHub push. Source of truth after reload
    *  (liveStep.verb === "github_push" only covers the in-flight window). */
   githubPush?: GithubPushPayload;
+  /** File-backed deliverables (pptx/docx/xlsx/pdf/mermaid/chart/draft) generated
+   *  this turn via generate-deliverable.ts. Rendered as an inline
+   *  ArtifactCreatedCard anchored to this message (task #171). */
+  generatedArtifacts?: Array<{
+    artifactId: number | string;
+    projectId?: number;
+    type: string;
+    title: string;
+    extension?: string;
+    downloadUrl: string;
+    summary?: string | null;
+  }>;
 }
 
 export type MemoryChip = { label: string; insight?: string; tier?: 1 | 2 | 3 | 4 | 5 };

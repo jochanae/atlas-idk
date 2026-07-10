@@ -11,6 +11,7 @@ import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { ExecutionJournal, isExecutionStream } from "@/components/workspace/ExecutionJournal";
 import { TimelineRail } from "../TimelineRail";
 import { WriteFileCard } from "@/components/workspace/WriteFileCard";
+import { ArtifactCreatedCard } from "@/components/workspace/ArtifactCreatedCard";
 import { SystemActivityCard, BatchedActivityCard } from "@/components/workspace/SystemActivityCard";
 import { SuggestionChipRail } from "@/components/workspace/SuggestionChipRail";
 import { classifyActivity, type ActivityItem as WorkspaceActivityItem } from "@/hooks/useWorkspaceActivity";
@@ -867,6 +868,18 @@ export function ChatStream(props: ChatStreamProps) {
                   />
                 </div>
               )}
+              {!conversationMode && msg.generatedArtifacts && msg.generatedArtifacts.length > 0 && !msg.streaming && (
+                <div style={{ maxWidth: "80%", marginTop: -8, marginBottom: 4, paddingLeft: 4, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {msg.generatedArtifacts.map((artifact) => (
+                    <ArtifactCreatedCard
+                      key={artifact.artifactId}
+                      artifact={artifact}
+                      projectId={projectId}
+                      onOpen={() => onOpenArtifact?.(artifact.title)}
+                    />
+                  ))}
+                </div>
+              )}
               {/* Execution Journal — shows underneath Atlas's prose during active multi-step streams.
                   Model A: WorkspaceRunCard.ActiveCard owns the live step feed, so we skip
                   LiveGenerationCard here and only render the non-generation activity views.
@@ -889,6 +902,7 @@ export function ChatStream(props: ChatStreamProps) {
                 chatPending={false}
                 liveStep={null}
                 suppressGitHubReceipt
+                suppressDeliverableReceipt={Boolean(execLatestRun?.messageId != null && messages.find(m => m.id === execLatestRun.messageId)?.generatedArtifacts?.length)}
                 executionRun={execLatestRun}
                 onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
               />
@@ -969,6 +983,7 @@ export function ChatStream(props: ChatStreamProps) {
           chatPending={chatPending}
           liveStep={liveStep}
           suppressGitHubReceipt
+          suppressDeliverableReceipt={Boolean(execLatestRun?.messageId != null && messages.find(m => m.id === execLatestRun.messageId)?.generatedArtifacts?.length)}
           executionRun={execLatestRun}
           onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
         />
