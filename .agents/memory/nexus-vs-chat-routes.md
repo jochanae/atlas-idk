@@ -5,7 +5,7 @@ description: chat.ts (/api/chat) is the live Workspace chat path; nexus.ts (/api
 
 ## Corrected verdict (supersedes earlier "nexus.ts is the active path" note)
 
-Traced end-to-end during task-161 (forced-remount investigation) by following actual imports, not surface names:
+Traced end-to-end during a forced-remount investigation by following actual imports, not surface names:
 
 - `pages/workspace.tsx` (the real, rendered Workspace page) imports `useChatStream` from `@/hooks/useChatStream`, NOT `useNexusChatStream`.
 - `useChatStream.ts` defaults `endpoint = "/api/chat"`; `workspace.tsx`'s call site does not override it.
