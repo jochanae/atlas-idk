@@ -23,6 +23,41 @@ export interface PptxGenerationInput {
   styleOverride?: string;
 }
 
+/**
+ * Flattens every layout's distinct shape into a uniform heading + bullet-text
+ * summary, purely for structural visual QA checks (dense headings, orphan
+ * bullets) — no pixel data involved. Kept here (next to the schema-aware
+ * rendering code) rather than in the checker, since only the renderer knows
+ * how to read each layout variant's fields.
+ */
+function summarizeSlideContent(slide: SlidePlan["slides"][number]): { layout: string; heading?: string; itemTexts: string[] } {
+  switch (slide.layout) {
+    case "hero":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: [slide.subheading ?? ""].filter(Boolean) };
+    case "problem_opportunity":
+    case "solution":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.points };
+    case "feature_grid":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.features.map((f) => f.description) };
+    case "timeline":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.milestones.map((m) => m.label) };
+    case "kpi_metrics":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.metrics.map((m) => m.label) };
+    case "comparison":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.columns.flatMap((c) => c.points) };
+    case "process_flow":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.steps.map((s) => s.title) };
+    case "screenshot_showcase":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.highlights };
+    case "quote":
+      return { layout: slide.layout, heading: undefined, itemTexts: [slide.quote] };
+    case "closing_cta":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.actionItems };
+    case "content_bullets":
+      return { layout: slide.layout, heading: slide.heading, itemTexts: slide.bullets };
+  }
+}
+
 function defineDeckMaster(pptx: PptxGenJS, theme: DeliverableTheme, brandLabel: string): void {
   pptx.defineSlideMaster({
     title: MASTER_NAME,
@@ -96,6 +131,8 @@ registerArtifactRenderer({
         theme: theme.name,
         slideHeadings: plan.slides.map((s) => ("heading" in s ? s.heading : s.layout)),
         slideCount: plan.slides.length,
+        themeBackground: theme.colors.background,
+        contentSummary: plan.slides.map(summarizeSlideContent),
       },
       expectedCounts: { slides: plan.slides.length },
       summary: `Generated deck "${plan.title}" (${plan.slides.length} slides, ${plan.purpose}, theme: ${theme.name}).`,

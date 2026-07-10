@@ -37,6 +37,8 @@ import "../lib/verifiers/chartVerifier";
 import "../lib/verifiers/mermaidVerifier";
 import "../lib/verifiers/draftVerifier";
 import "../lib/verifiers/bundleVerifier";
+// Side-effect imports: each visual QA checker registers itself with the Visual QA Engine on load (F6B).
+import "../lib/visualQACheckers/pptxVisualQA";
 // Side-effect imports: each delivery adapter registers itself with the Delivery Engine on load.
 import "../lib/adapters/emailAdapter";
 import "../lib/adapters/slackAdapter";

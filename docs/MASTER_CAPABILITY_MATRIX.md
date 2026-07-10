@@ -43,8 +43,8 @@ These are not user-facing capabilities. They are the substrates every other capa
 | F3 | Artifact Engine | ○ | **Verified:** `artifactEngine.ts`, `artifactOrchestrator.ts`, `deliveryEngine.ts` exist; 9 real renderers in `lib/renderers/` (pptx, docx, pdf, xlsx, html, chart, mermaid, draft, bundle) with test coverage (`artifactEngine.test.ts`, `renderers.test.ts`, `generate-deliverable.test.ts`). One generator, many renderers — the architecture the matrix asked for is built. Ceiling is F6A/F6B (verification + visual QA), not the engine itself. | §3, §4 diagrams/charts, §7, §8 |
 | F4 | Decision Engine | △ | One decision object → many views (card, tradeoff matrix, RACI, tree, deviation log). Ledger + Decision Catch exist; artifact views do not. | §6 all rows, §7 changelog, §8 Ship Package |
 | F5 | Brand Identity Engine *(renamed from "Template / Voice profile")* | △ | Broader than voice: writing voice, visual language, typography, presentation style, illustration/icon language, color language — one identity every renderer consumes. **Verified:** `deliverable-theme/{inferTheme,projectSignals,themeSchema,tokens,icons}` and `presentation-director/{director,schema}` are real and infer theme from project signals. Writing-voice profile (tone learned from user samples) and an explicit brand-kit object (colors/fonts/icon set as a first-class entity) are confirmed absent — zero matches in server or DB schema. | §7 drafts, §3 docs, §8 bundles, §6 visual outputs |
-| F6A | Artifact Verification Engine *(split out of old F6)* | ❌ | Mechanical correctness, not visual judgment: did the renderer succeed, is the output file valid, did every requested slide/section/sheet get created, did the artifact save, can it reopen, is anything silently missing. **Confirmed absent** — no such checks found anywhere in `lib/`. This benefits every renderer (DOCX, PDF, PPTX, HTML, charts, Mermaid), so it should ship before F6B. | §3 all deliverables, §5, §6, §8 |
-| F6B | Visual QA Engine *(split out of old F6)* | ❌ | Render + judge quality: text overflow, orphan bullets, slide density, color contrast, spacing, empty slides, chart clipping, inconsistent typography. Only makes sense once F6A confirms the artifact is structurally valid. **Confirmed absent** — no headless-render/screenshot-diff pipeline exists. | §5 PPTX/PDF, §6 charts/diagrams, §10 video |
+| F6A | Artifact Verification Engine *(split out of old F6)* | ○ | Mechanical correctness, not visual judgment: did the renderer succeed, is the output file valid, did every requested slide/section/sheet get created, did the artifact save, can it reopen, is anything silently missing. **Verified:** `verificationEngine.ts` + per-type checkers in `lib/verifiers/*.ts` (pptx, docx, pdf, html, xlsx, chart, mermaid, draft, bundle); result persisted at `metadata.verification`; retryable-failure-class triggers one re-render in `artifactEngine.ts`. | §3 all deliverables, §5, §6, §8 |
+| F6B | Visual QA Engine *(split out of old F6)* | △ | Render + judge quality: text overflow, orphan bullets, slide density, color contrast, spacing, empty slides, chart clipping, inconsistent typography. **Verified (PPTX only):** `renderToImages.ts` (LibreOffice headless → PDF → `pdftoppm` → PNG, real headless render, not a stub) + `visualQAEngine.ts` (F6A-style plug-in registry) + `visualQACheckers/pptxVisualQA.ts` (pixel-level empty-slide/low-contrast/bottom-edge-overflow via `sharp`, plus structural dense-heading/orphan-bullet checks against the renderer's own `contentSummary` preview data). Persisted as `metadata.verification.visualQA`, additive sibling of F6A's fields — not merged into them. DOCX/PDF/XLSX/HTML have no checker registered yet (reported as `status: "skipped"`, not silently ignored). No auto-fixing; detect-only per scope. | §5 PPTX/PDF, §6 charts/diagrams, §10 video |
 | F7 | Ingestion pipeline (URL / image / audio) | ❌ | Unified fetch + parse + embed for URL, image (OCR/vision), audio (STT). Only file-ingestion-as-drift-signal exists. `urlScreenshot.ts` + `ssrf.ts` cover URL *screenshotting*, not general URL ingestion. | §7 drafts, §9 audio, §11 templates |
 | F8 | Memory tier integration | △ | 5-tier memory seeded by Forge; global narrative synthesized per-turn. Tier-3+ retrieval into artifact generation is not wired. | F5 identity, §6 reasoning artifacts, §7 comms drafts |
 | F9 | Ship Package bundler | ○ | **Verified:** `bundleRenderer.ts` exists and is imported by `projectArtifacts.ts` — a real renderer, not a stub. No dedicated bundle-and-share route (zip, one-shot link) exists yet, so this is further along than "missing" but short of "wired." | §8 |
@@ -134,12 +134,12 @@ Renderers are real (`lib/renderers/`, verified). Every row below is capped at �
 | DOCX edit (targeted mutation) | ❌ | F3 | — |
 | DOCX import (parse) | ❌ | F3 | — |
 | DOCX roundtrip (import → edit → export) | ❌ | F3 | Industry-standard failure point |
-| PPTX generate | ○ | F3 | `pptxRenderer.ts` + `presentation-director/` + real vector icons; no F6A/F6B pass yet |
+| PPTX generate | ○ | F3, F6A, F6B | `pptxRenderer.ts` + `presentation-director/` + real vector icons; F6A mechanical + F6B visual QA both now run on every generate |
 | PPTX edit | ❌ | F3 | — |
 | PPTX import | ❌ | F3 | — |
 | PPTX roundtrip | ❌ | F3 | — |
-| PPTX visual QA (render + screenshot diff) | ❌ | F6B | **Blocks PPTX generate from reaching ★** |
-| Production-quality presentations (end-to-end bar) | ★ Pending | F3, F5, F6A, F6B | Renderer + Director + Theme all exist (○ each); nothing here reaches ★ until F6A+F6B close |
+| PPTX visual QA (render + screenshot diff) | ○ | F6B | **Verified:** real render via LibreOffice→PDF→`pdftoppm` (not a stub), detect-only (empty-slide, low-contrast, bottom-edge-overflow, dense-heading, orphan-bullet); no auto-fix; confirmed against both a clean and a deliberately broken deck |
+| Production-quality presentations (end-to-end bar) | △ | F3, F5, F6A, F6B | Renderer + Director + Theme + F6A + F6B all exist; remaining gap to ★ is breadth (more visual QA rules, other formats), not existence |
 | XLSX generate (values only) | ○ | F3 | `xlsxRenderer.ts` exists and runs |
 | XLSX with live formulas | ❌ | F3 | Confirmed absent — zero formula support in renderer. Market chasm |
 | Pivot-ready structure | ❌ | F3 | — |
@@ -147,7 +147,7 @@ Renderers are real (`lib/renderers/`, verified). Every row below is capped at �
 | XLSX roundtrip (formulas preserved) | ❌ | F3 | — |
 | CSV export | △ | — | Escaping edge cases unverified |
 | PDF report (text-forward) | ○ | F3 | `pdfRenderer.ts` real, themed; no verification pass |
-| PDF (design-heavy, marketing) | △ | F3, F6B | — |
+| PDF (design-heavy, marketing) | △ | F3, F6B | F6B pipeline (`renderToImages.ts`) already handles PDF as an input format; no PDF-specific visual QA checker registered yet |
 | PDF (form / fillable) | ❌ | F3 | Parked until demand signal |
 | PDF (print-ready: bleed / CMYK / ICC) | — | — | Parked |
 
@@ -233,7 +233,7 @@ Small, high-frequency outputs. High leverage because they compound daily. **Veri
 |---|---|---|---|
 | Code diffs (line-level, LCS) | ✓ | — | DiffViewer |
 | Document diffs (semantic, Word) | ❌ | §5 DOCX import | — |
-| Slide visual diffs (PPTX) | ❌ | F6B | — |
+| Slide visual diffs (PPTX) | △ | F6B | Absolute checks (empty-slide, low-contrast, bottom-edge-overflow, orphan-bullet) exist via `visualQACheckers/pptxVisualQA.ts`; no diff-against-baseline comparison yet |
 | Behavioral diffs (code runtime, snapshot) | ❌ | — | Test-run + snapshot comparison |
 
 ## 14. Surfaces (workspace tabs, drawers, panels)
@@ -314,8 +314,8 @@ F10 Publish / share ──────────► §8 bundle links
 
 This matrix update does **not** imply F6A/F6B should start immediately. Runtime stability (#161/#162 — hard refresh recovery, Timeline entry loss, output discoverability) is the confirmed near-term blocker: a verified, production-quality Artifact Engine does not matter if users can't reliably find or keep what Atlas already generated. Recommended order:
 1. Close remaining runtime-stability work.
-2. Land F6A (Artifact Verification Engine) — mechanical correctness across all 9 renderers, reusable by every format.
-3. Land F6B (Visual QA Engine) — only once F6A guarantees structural validity to render against.
+2. ~~Land F6A (Artifact Verification Engine)~~ — done: mechanical correctness across all 9 renderers, reusable by every format.
+3. ~~Land F6B (Visual QA Engine)~~ — done for PPTX (headless render + detect-only pixel/structural checks); DOCX/PDF/XLSX/HTML checkers still to come.
 
 ---
 
@@ -325,7 +325,7 @@ How each foundation's status above was confirmed, so future audits can repeat it
 - **F2 / §3 / §12**: grepped for `sources.ts`, `sourceIngest.ts`, `lib/source-index/*`; read the actual `github`/`replit` branch in `routes/sources.ts` to confirm the `501` response text; read `extract.ts` to confirm regex-based (not AST/LSP) symbol extraction.
 - **F3 / §5 / §6**: listed `lib/renderers/` directory contents directly; confirmed presence of `artifactEngine.test.ts`, `renderers.test.ts`, `generate-deliverable.test.ts`; grepped `xlsxRenderer.ts` for `formula` (zero matches — confirmed absent).
 - **F5**: listed `deliverable-theme/` and `presentation-director/` directory contents; grepped server + DB schema for `voiceProfile`/`brandKit` (zero matches — confirmed absent).
-- **F6A/F6B**: grepped `lib/` for screenshot-diff/render-compare/visual-QA patterns (zero matches — confirmed absent).
+- **F6A/F6B**: `lib/verificationEngine.ts` + `lib/verifiers/*.ts` (F6A) and `lib/visualQAEngine.ts` + `lib/renderToImages.ts` + `lib/visualQACheckers/pptxVisualQA.ts` (F6B, PPTX only) confirmed present and tested; both persist under `metadata.verification` on generated artifacts.
 - **F7**: read `urlScreenshot.ts` to confirm it screenshots (does not fetch+parse) URLs.
 - **F9**: confirmed `bundleRenderer.ts` is imported by `routes/projectArtifacts.ts` (real, wired) but found no dedicated bundle/zip/share route.
 - **§7**: read the `DraftType` union directly in `draftRenderer.ts`.

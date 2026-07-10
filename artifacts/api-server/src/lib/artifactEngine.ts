@@ -13,6 +13,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 import { verifyArtifact, type VerificationResult } from "./verificationEngine";
+import { runVisualQA, type VisualQAResult } from "./visualQAEngine";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -95,6 +96,8 @@ export interface GeneratedArtifact {
   createdAt: string;
   /** F6A — result of the post-render verification pass, kept separate from `status` above. */
   verification: VerificationResult;
+  /** F6B — additive visual QA pass; sibling of `verification`, not merged into it. */
+  visualQA: VisualQAResult;
 }
 
 /**
@@ -203,7 +206,27 @@ export async function generateArtifact<TInput>({
     }
   }
 
-  await persistVerificationResult({ artifactId: row.id, rendered, objectPath, verification });
+  // F6B — additive visual QA pass. Runs only for types with a registered
+  // checker (see visualQACheckers/*); everything else reports "skipped".
+  // Never allowed to affect artifact status/rollback — same non-fatal
+  // posture as F6A's own persistence step below.
+  const visualQA = await runVisualQA({
+    type,
+    buffer: rendered.buffer,
+    input,
+    preview: rendered.preview,
+  }).catch((err) => {
+    logger.warn({ err, projectId, type }, "artifactEngine: visual QA threw unexpectedly — treating as skipped");
+    return {
+      status: "skipped" as const,
+      reason: err instanceof Error ? err.message : String(err),
+      pagesChecked: 0,
+      issues: [],
+      checkedAt: new Date().toISOString(),
+    } satisfies VisualQAResult;
+  });
+
+  await persistVerificationResult({ artifactId: row.id, rendered, objectPath, verification, visualQA });
 
   return {
     id: row.id,
@@ -222,6 +245,7 @@ export async function generateArtifact<TInput>({
     ledgerEntryId,
     createdAt: row.createdAt.toISOString(),
     verification,
+    visualQA,
   };
 }
 
@@ -276,6 +300,7 @@ async function persistVerificationResult(params: {
   rendered: ArtifactRenderOutput;
   objectPath: string;
   verification: VerificationResult;
+  visualQA: VisualQAResult;
 }): Promise<void> {
   try {
     const [existing] = await db
@@ -292,7 +317,7 @@ async function persistVerificationResult(params: {
           ...metadata,
           objectPath: params.objectPath,
           sizeBytes: params.rendered.buffer.byteLength,
-          verification: params.verification,
+          verification: { ...params.verification, visualQA: params.visualQA },
         },
         payload: { ...payload, preview: params.rendered.preview },
       })
