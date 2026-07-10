@@ -32,6 +32,11 @@ import "../lib/verifiers/pptxVerifier";
 import "../lib/verifiers/docxVerifier";
 import "../lib/verifiers/pdfVerifier";
 import "../lib/verifiers/htmlVerifier";
+import "../lib/verifiers/xlsxVerifier";
+import "../lib/verifiers/chartVerifier";
+import "../lib/verifiers/mermaidVerifier";
+import "../lib/verifiers/draftVerifier";
+import "../lib/verifiers/bundleVerifier";
 // Side-effect imports: each delivery adapter registers itself with the Delivery Engine on load.
 import "../lib/adapters/emailAdapter";
 import "../lib/adapters/slackAdapter";

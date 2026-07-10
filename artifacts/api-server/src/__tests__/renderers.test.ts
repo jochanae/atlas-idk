@@ -56,12 +56,20 @@ beforeEach(() => {
 
 describe("docx renderer", () => {
   it("renders a valid docx buffer from a content plan", async () => {
+    // Content plan follows the document-native model (Phase 3B.4): sections
+    // are made of typed `blocks`, not flat `paragraphs`/`bullets` arrays.
     mockCreate.mockResolvedValueOnce(
       jsonResponse({
         title: "Sprint 4 Recap",
         sections: [
-          { heading: "Overview", paragraphs: ["We shipped the bundle renderer."] },
-          { heading: "Next steps", bullets: ["Add tests", "Add UI triggers"] },
+          {
+            heading: "Overview",
+            blocks: [{ type: "paragraph", text: "We shipped the bundle renderer." }],
+          },
+          {
+            heading: "Next steps",
+            blocks: [{ type: "bullets", items: ["Add tests", "Add UI triggers"] }],
+          },
         ],
       }),
     );
@@ -87,10 +95,16 @@ describe("docx renderer", () => {
 
 describe("pdf renderer", () => {
   it("renders a valid pdf buffer (starts with the PDF magic header)", async () => {
+    // PDF shares the same document-native content plan as DOCX (Phase 3B.4).
     mockCreate.mockResolvedValueOnce(
       jsonResponse({
         title: "Status Report",
-        sections: [{ heading: "Summary", paragraphs: ["Everything is on track."] }],
+        sections: [
+          {
+            heading: "Summary",
+            blocks: [{ type: "paragraph", text: "Everything is on track." }],
+          },
+        ],
       }),
     );
     const renderer = getArtifactRenderer("pdf")!;
@@ -102,11 +116,23 @@ describe("pdf renderer", () => {
 
 describe("pptx renderer", () => {
   it("renders a valid pptx (zip) buffer", async () => {
+    // Content comes from the renderer-agnostic Presentation Director
+    // (Phase 3B.3): a `SlidePlan` with a discriminated `layout` union per
+    // slide (min 3 slides), not a flat `{ heading, bullets }` shape.
     mockCreate.mockResolvedValueOnce(
       jsonResponse({
         title: "Q3 Review",
         subtitle: "Team sync",
-        slides: [{ heading: "Wins", bullets: ["Shipped bundle renderer"] }],
+        purpose: "recap",
+        slides: [
+          { layout: "hero", heading: "Q3 Review", subheading: "Team sync" },
+          { layout: "content_bullets", heading: "Wins", bullets: ["Shipped bundle renderer"] },
+          {
+            layout: "closing_cta",
+            heading: "Next up",
+            actionItems: ["Ship the verification engine"],
+          },
+        ],
       }),
     );
     const renderer = getArtifactRenderer("pptx")!;

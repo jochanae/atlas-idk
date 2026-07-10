@@ -120,6 +120,13 @@ function isFileBackedArtifact(a: ArtifactRecord): boolean {
   return Boolean(metadata.objectPath || metadata.extension || metadata.mimeType || metadata.category === "presentation" || metadata.category === "document" || metadata.category === "spreadsheet");
 }
 
+function verificationStatus(metadata: Record<string, unknown>): "verified" | "failed" | null {
+  const verification = asRecord(metadata.verification);
+  const status = textValue(verification.status);
+  if (status === "verified" || status === "failed") return status;
+  return null;
+}
+
 function artifactDate(a: ArtifactRecord): string {
   return a.createdAt ?? a.created_at ?? "";
 }
@@ -546,6 +553,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             const slideCount = typeof preview.slideCount === "number" ? preview.slideCount : null;
             const previewTitle = textValue(preview.title) ?? a.title;
             const previewSubtitle = textValue(preview.subtitle);
+            const verifyStatus = fileBacked ? verificationStatus(metadata) : null;
             const looksHtml = !fileBacked && (typeStr.includes("html") || /<\s*(html|body|div|section|main|!doctype)/i.test(content));
             const sendToDraft = (e: React.MouseEvent) => {
               e.stopPropagation();
@@ -573,6 +581,14 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                       {category && <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.8 }}>· {category}</span>}
                     </div>
                   </div>
+                  {verifyStatus === "failed" && (
+                    <span
+                      title="One or more checks failed after generation — the file may be incomplete or malformed."
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(229,115,115,0.14)", border: "1px solid rgba(229,115,115,0.4)", color: "rgb(229,115,115)", padding: "3px 8px", borderRadius: 6 }}
+                    >
+                      ⚠ May be incomplete
+                    </span>
+                  )}
                   {fileBacked && (
                     <span
                       role="button"
@@ -608,6 +624,12 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                           <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                             {label}{extension ? ` · .${extension}` : ""}{slideCount != null ? ` · ${slideCount} slides` : ""}
                           </div>
+                          {verifyStatus === "verified" && (
+                            <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(110,180,120)" }}>✓ Verified — passed all structural checks after generation.</div>
+                          )}
+                          {verifyStatus === "failed" && (
+                            <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(229,115,115)" }}>⚠ May be incomplete — one or more checks failed after generation.</div>
+                          )}
                         </div>
                         {slideHeadings.length > 0 && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

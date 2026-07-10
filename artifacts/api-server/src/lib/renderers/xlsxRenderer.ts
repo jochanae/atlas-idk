@@ -10,7 +10,15 @@ export interface XlsxGenerationInput {
   context: string;
   title?: string;
   docType?: string;
+  /** When true, asks the model to include real formula cells (e.g. SUM totals) instead of only literal values. */
+  includeFormulas?: boolean;
 }
+
+const XlsxCellSchema = z.union([
+  z.string(),
+  z.number(),
+  z.object({ formula: z.string().min(1) }),
+]);
 
 const XlsxContentPlanSchema = z.object({
   title: z.string().min(1),
@@ -19,17 +27,26 @@ const XlsxContentPlanSchema = z.object({
       z.object({
         name: z.string().min(1),
         columns: z.array(z.string()).min(1),
-        rows: z.array(z.array(z.union([z.string(), z.number()]))),
+        rows: z.array(z.array(XlsxCellSchema)),
       }),
     )
     .min(1),
 });
 type XlsxContentPlan = z.infer<typeof XlsxContentPlanSchema>;
+type XlsxCell = z.infer<typeof XlsxCellSchema>;
 
-const XLSX_CONTENT_PROMPT = `You are a data analyst producing a {DOC_TYPE} spreadsheet from the conversation context below.
+function isFormulaCell(cell: XlsxCell): cell is { formula: string } {
+  return typeof cell === "object" && cell !== null && "formula" in cell;
+}
+
+function xlsxPrompt(docType: string, context: string, includeFormulas: boolean): string {
+  const formulaRule = includeFormulas
+    ? `- Where a total, average, or other derived value is discussed, add it as a formula cell: { "formula": "SUM(B2:B5)" } (no leading "="). Use real spreadsheet formulas referencing the sheet's own cells, not made-up syntax.`
+    : `- Use only literal string/number cell values — do not use formulas.`;
+  return `You are a data analyst producing a ${docType} spreadsheet from the conversation context below.
 
 Conversation context:
-{CONTEXT}
+${context}
 
 Output ONLY valid JSON (no markdown, no explanation) with this shape:
 {
@@ -38,7 +55,7 @@ Output ONLY valid JSON (no markdown, no explanation) with this shape:
     {
       "name": "<sheet name, e.g. 'Budget'>",
       "columns": ["<column header>"],
-      "rows": [["<cell value>"]]
+      "rows": [["<cell value, or {\\"formula\\": \\"SUM(B2:B5)\\"} for a computed cell>"]]
     }
   ]
 }
@@ -46,7 +63,9 @@ Output ONLY valid JSON (no markdown, no explanation) with this shape:
 Rules:
 - Produce 1-3 sheets that reflect tabular/data-driven content actually discussed (budgets, comparisons, schedules, etc.) — do not invent numbers or rows that weren't discussed or reasonably implied.
 - Every row array must have the same length as the columns array.
-- Sheet names must be short (max 31 characters, no special characters).`;
+- Sheet names must be short (max 31 characters, no special characters).
+${formulaRule}`;
+}
 
 function buildXlsxBuffer(plan: XlsxContentPlan): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
@@ -64,7 +83,8 @@ function buildXlsxBuffer(plan: XlsxContentPlan): Promise<Buffer> {
     });
 
     for (const row of sheetPlan.rows) {
-      sheet.addRow(row);
+      const rowValues = row.map((cell) => (isFormulaCell(cell) ? { formula: cell.formula } : cell));
+      sheet.addRow(rowValues);
     }
 
     sheet.columns.forEach((col) => {
@@ -85,7 +105,8 @@ registerArtifactRenderer({
   category: "spreadsheet",
   async render(input: XlsxGenerationInput): Promise<ArtifactRenderOutput> {
     const docType = input.docType ?? "table";
-    const prompt = XLSX_CONTENT_PROMPT.replace("{DOC_TYPE}", docType).replace("{CONTEXT}", input.context);
+    const includeFormulas = input.includeFormulas ?? false;
+    const prompt = xlsxPrompt(docType, input.context, includeFormulas);
     const plan = await generateValidatedContentPlan(prompt, XlsxContentPlanSchema, "XLSX renderer");
     if (input.title) plan.title = input.title;
 
@@ -103,8 +124,15 @@ registerArtifactRenderer({
       extension: "xlsx",
       preview: {
         title: plan.title,
-        sheets: plan.sheets.map((s) => ({ name: s.name, columns: s.columns, rowCount: s.rows.length })),
+        formulasRequested: includeFormulas,
+        sheets: plan.sheets.map((s) => ({
+          name: s.name,
+          columns: s.columns,
+          rowCount: s.rows.length,
+          hasFormulas: s.rows.some((r) => r.some(isFormulaCell)),
+        })),
       },
+      expectedCounts: { sheets: plan.sheets.length },
       summary: `Generated workbook "${plan.title}" (${plan.sheets.length} sheet${plan.sheets.length === 1 ? "" : "s"}).`,
     };
   },
