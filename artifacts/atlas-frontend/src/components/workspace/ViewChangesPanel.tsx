@@ -963,8 +963,24 @@ export function ViewChangesPanel({
 
   // Refresh run list immediately when a run completes — eliminates the 30s lag
   // before the Timeline and Changes lenses reflect the finished run.
+  //
+  // Settle-race fix: "run-completed" fires the instant the SSE stream closes,
+  // but conversational milestone classification (maybeEmitMilestones) is a
+  // fire-and-forget background job on the server that can still be writing
+  // its execution_runs row after the stream ends. The immediate invalidate
+  // below often wins the race (chat.ts now awaits classification with a
+  // bounded timeout before closing the stream), but when the classifier is
+  // slower than that timeout this single invalidate would miss the new
+  // milestone entirely with no future recheck. Mirrors the same bounded
+  // delayed-recheck pattern used to fix project-title propagation delay.
   useWorkspaceEvent("run-completed", ({ projectId: changedPid }) => {
-    if (changedPid === projectId) invalidateDbRuns();
+    if (changedPid !== projectId) return;
+    invalidateDbRuns();
+    // Note: workspaceEventBus doesn't honor a per-call cleanup return, but these
+    // are cheap idempotent refetches — an extra invalidate if another run
+    // completes in the meantime is harmless.
+    setTimeout(() => invalidateDbRuns(), 3000);
+    setTimeout(() => invalidateDbRuns(), 8000);
   }, [projectId, invalidateDbRuns]);
   // Refresh when the user navigates to the changes/diff tab so the view is never stale.
   useWorkspaceEvent("tab-change", ({ tab }) => {

@@ -36,6 +36,7 @@ import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
 import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProject, runWorkspaceTier1Extraction } from "../services/tier1";
 import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
 import { detectDecisionCatch } from "../lib/decisionCatch";
+import { maybeEmitMilestones } from "../lib/milestoneClassifier";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -7111,6 +7112,44 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     } catch (runErr) {
       logger.warn({ err: runErr, projectId }, "execution_run: persist failed — non-fatal");
     }
+  }
+
+  // ── Conversational Timeline milestones ────────────────────────────────────
+  // This is the live Workspace chat route (chat.ts), not the dormant nexus.ts
+  // Ask-Atlas path — milestone classification previously existed only in
+  // nexus.ts, so real Workspace conversations never produced Timeline
+  // milestones at all. Wired here now. Deliberately NOT gated on
+  // whisperIntent !== "CHAT" (unlike persistExecutionRun above): a real
+  // decision or plan can land inside a turn WhisperGate tagged CHAT (e.g.
+  // "let's go with Postgres for this"), and the classifier's own prompt is
+  // already conservative about returning zero milestones for small talk —
+  // so skipping CHAT turns entirely was a false-negative source, not a
+  // safety net.
+  // Bounded await (short timeout) so the milestone row exists by the time the
+  // SSE stream ends and the frontend's run-completed listener re-fetches —
+  // same pattern used to fix the project-title propagation delay. If the
+  // classifier is slower than the timeout, it still finishes and persists in
+  // the background; ViewChangesPanel has its own delayed re-check as a
+  // backstop for that case.
+  if (!isFoundationMode && !isFlowMode && projectId && fullText.length > 40) {
+    const MILESTONE_TIMEOUT_MS = 3500;
+    const milestonePromise = maybeEmitMilestones({
+      projectId,
+      threadId: sessionId ?? null,
+      messageId: (intentMsgId ?? savedMsgId) ?? null,
+      userText: message,
+      assistantText: fullText,
+      intent: (whisperIntent as "CHAT" | "DECIDE" | "BUILD") ?? "CHAT",
+      startedAt: now,
+      excludeArtifactGenerated: standaloneArtifacts.length > 0 || responseFileEdits.length > 0,
+    });
+    await Promise.race([
+      milestonePromise,
+      new Promise((resolve) => setTimeout(resolve, MILESTONE_TIMEOUT_MS)),
+    ]);
+    milestonePromise.catch((err) => {
+      logger.warn({ err: String(err), projectId }, "maybeEmitMilestones failed — non-fatal");
+    });
   }
 
   // ── Tier 1 workspace tool extraction (legacy path) ────────────────────────

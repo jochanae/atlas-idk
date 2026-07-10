@@ -150,52 +150,72 @@ export async function maybeEmitMilestones(opts: {
   userText: string;
   assistantText: string;
   intent: "CHAT" | "DECIDE" | "BUILD";
-}): Promise<void> {
+  /**
+   * The turn's own start time (not the classifier's completion time). Using
+   * this instead of `new Date()` keeps milestone runs sorted correctly next
+   * to code-execution runs for the same turn — the classifier can finish
+   * seconds after the turn ended, and sorting by classifier-completion time
+   * caused milestone entries to drift out of chronological order relative to
+   * other runs started around the same moment.
+   */
+  startedAt?: Date;
+  /**
+   * Set when this turn already produced a durable ARTIFACT_CREATED step via
+   * a file write or standalone-artifact extraction, so the classifier's own
+   * ARTIFACT_GENERATED verb (meant for content that was NOT written anywhere)
+   * doesn't create a redundant duplicate entry for the same real-world event.
+   */
+  excludeArtifactGenerated?: boolean;
+}): Promise<{ emitted: boolean }> {
   const key = `ms:${opts.projectId}:${opts.messageId ?? opts.userText.slice(0, 40)}`;
-  if (milestoneInFlight.has(key)) return;
+  if (milestoneInFlight.has(key)) return { emitted: false };
   milestoneInFlight.add(key);
 
-  void (async () => {
-    try {
-      const milestones = await classifyTurnMilestones({
-        userText: opts.userText,
-        assistantText: opts.assistantText,
-      });
-      if (milestones.length === 0) return;
+  try {
+    const rawMilestones = await classifyTurnMilestones({
+      userText: opts.userText,
+      assistantText: opts.assistantText,
+    });
+    const milestones = opts.excludeArtifactGenerated
+      ? rawMilestones.filter((m) => m.verb !== "ARTIFACT_GENERATED")
+      : rawMilestones;
+    if (milestones.length === 0) return { emitted: false };
 
-      const runId = randomUUID();
-      const now = new Date();
-      const summary = milestones
-        .map((m) => m.content.split(" — ")[0])
-        .filter(Boolean)
-        .slice(0, 3)
-        .join(" · ");
+    const runId = randomUUID();
+    const startedAt = opts.startedAt ?? new Date();
+    const completedAt = new Date();
+    const summary = milestones
+      .map((m) => m.content.split(" — ")[0])
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(" · ");
 
+    await db.execute(sql`
+      INSERT INTO execution_runs
+        (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
+      VALUES
+        (${runId}, ${opts.projectId}, ${opts.threadId ?? null}, ${opts.messageId ?? null},
+         ${"conversation"}, ${"succeeded"}, ${summary || "Conversation milestone"}, ${opts.userText.slice(0, 2000) || null},
+         ${opts.intent}, ${startedAt}, ${completedAt}, ${Math.max(0, completedAt.getTime() - startedAt.getTime())})
+    `);
+
+    for (let i = 0; i < milestones.length; i++) {
+      const m = milestones[i];
       await db.execute(sql`
-        INSERT INTO execution_runs
-          (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
-        VALUES
-          (${runId}, ${opts.projectId}, ${opts.threadId ?? null}, ${opts.messageId ?? null},
-           ${"conversation"}, ${"succeeded"}, ${summary || "Conversation milestone"}, ${opts.userText.slice(0, 2000) || null},
-           ${opts.intent}, ${now}, ${now}, ${0})
+        INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
+        VALUES (${runId}, ${m.verb}, ${null}, ${"ok"}, ${m.detail}, ${m.content}, ${i})
       `);
-
-      for (let i = 0; i < milestones.length; i++) {
-        const m = milestones[i];
-        await db.execute(sql`
-          INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, order_index)
-          VALUES (${runId}, ${m.verb}, ${null}, ${"ok"}, ${m.detail}, ${m.content}, ${i})
-        `);
-      }
-
-      logger.info(
-        { runId, projectId: opts.projectId, verbs: milestones.map((m) => m.verb) },
-        "milestoneClassifier: emitted conversational milestones",
-      );
-    } catch (err) {
-      logger.warn({ err: String(err) }, "milestoneClassifier: emit failed — non-fatal");
-    } finally {
-      milestoneInFlight.delete(key);
     }
-  })();
+
+    logger.info(
+      { runId, projectId: opts.projectId, verbs: milestones.map((m) => m.verb) },
+      "milestoneClassifier: emitted conversational milestones",
+    );
+    return { emitted: true };
+  } catch (err) {
+    logger.warn({ err: String(err) }, "milestoneClassifier: emit failed — non-fatal");
+    return { emitted: false };
+  } finally {
+    milestoneInFlight.delete(key);
+  }
 }

@@ -72,5 +72,6 @@
 - [atlasIdentity.ts is a template literal](atlasidentity-template-literal.md) — file body is one big backtick string; never use backticks inside inserted prompt text or it breaks the string
 - [Two agent tool systems](nexus-vs-chat-routes.md) — chat.ts uses AI SDK tool() wrapper; nexus.ts uses raw Anthropic.Tool[] with manual dispatch; new tools don't cross over automatically
 - [HTML deliverable via Artifact Engine](html-deliverable-artifact-engine.md) — HTML routed through Artifact Engine (type "html"), reusing Draft/Sandbox pathway; safety heuristic gates auto-render vs review
+- [Timeline milestone live-route gap](timeline-milestone-live-route-gap.md) — classifier wired only into dormant nexus.ts, never called from live chat.ts; always grep both routes before debugging a "feature doesn't fire" bug
 - [Artifact Verification Engine (F6A)](artifact-verification-engine.md) — real-parse checks (not signature-only), retry only for transient/content-shape failures, pdf-parse v1 lib-entry-point gotcha, singular/plural expectedCounts key convention
 - [Deliverable generation reachability gaps](deliverable-reachability-gaps.md) — mermaid/chart/pdf renderers exist and are verified, but the agent chat tool only exposes pptx/docx/xlsx; use the generic deliverables REST route to exercise the others

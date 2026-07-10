@@ -3991,9 +3991,13 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     }
 
     // Conversational Timeline milestones (MILESTONE_REQUIREMENTS/DECISION/DESIGN/PLAN,
-    // ARTIFACT_GENERATED) — fire-and-forget post-turn classifier. BUILD and DECIDE turns
-    // only; CHAT/Just Talk never gets classified (small talk must not hit the Timeline).
-    if (!isChatTurn && focusProjectId && (intent === "BUILD" || intent === "DECIDE")) {
+    // ARTIFACT_GENERATED) — fire-and-forget post-turn classifier.
+    // Previously gated on `!isChatTurn`, which dropped real decisions/plans
+    // that landed inside a CHAT-tagged turn (e.g. "let's go with Postgres").
+    // The classifier's own prompt is already conservative about returning
+    // zero milestones for small talk, so that gate was a false-negative
+    // source rather than a safety net — loosened to match the chat.ts fix.
+    if (focusProjectId) {
       void maybeEmitMilestones({
         projectId: focusProjectId,
         threadId: sessionId ?? null,
@@ -4001,6 +4005,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         userText: body.message ?? "",
         assistantText: visibleContent,
         intent,
+        startedAt: turnStartedAt,
       });
     }
 
