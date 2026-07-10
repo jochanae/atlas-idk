@@ -4435,6 +4435,51 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
   let pendingNavProjectId: number | null = null;
   let pendingNavProjectName: string | null = null;
 
+  // Presentation-layer fix (task #162): IMAGE_GEN is emitted by the model as raw
+  // JSON at the end of its response ("\nIMAGE_GEN:{...}"). Streaming that text
+  // verbatim to the client makes the raw prompt/description flash as prose
+  // before the image swaps in. Mirror chat.ts's marker-suppression pattern here:
+  // hold back the tail of the stream so a partial "\nIMAGE_GEN:" prefix never
+  // reaches the client, and once the full marker is seen, stop emitting text
+  // for the rest of the turn and tell the client an image is coming instead.
+  let emitPtr = 0;
+  let imagePendingSent = false;
+  const IG_MARKER = "\nIMAGE_GEN:";
+  const IG_BOF = "IMAGE_GEN:"; // when the marker is the very first thing in the response
+  const IG_LOOKAHEAD = IG_MARKER.length + 1;
+
+  const flushNexusText = () => {
+    if (imagePendingSent) return;
+
+    let markerIdx = fullText.indexOf(IG_MARKER, emitPtr);
+    if (markerIdx === -1 && emitPtr === 0 && fullText.startsWith(IG_BOF)) {
+      markerIdx = 0;
+    }
+
+    if (markerIdx !== -1) {
+      // Found the marker (or its start) — emit any clean text before it, then
+      // switch to the loading signal. IMAGE_GEN is always the last token per
+      // the system prompt, so no further text needs to be scanned this turn.
+      if (markerIdx > emitPtr) {
+        const before = fullText.slice(emitPtr, markerIdx);
+        if (before) res.write(`event: token\ndata: ${JSON.stringify(before)}\n\n`);
+      }
+      emitPtr = fullText.length;
+      imagePendingSent = true;
+      res.write(`event: image_pending\ndata: ${JSON.stringify({ pending: true })}\n\n`);
+      return;
+    }
+
+    // No marker found yet — emit everything except a tail long enough to hold
+    // a partial "\nIMAGE_GEN:" prefix that might still be arriving in pieces.
+    const safeEnd = Math.max(emitPtr, fullText.length - IG_LOOKAHEAD);
+    if (safeEnd > emitPtr) {
+      const toEmit = fullText.slice(emitPtr, safeEnd);
+      res.write(`event: token\ndata: ${JSON.stringify(toEmit)}\n\n`);
+      emitPtr = safeEnd;
+    }
+  };
+
   const appendClaudeUsage = (finalMessage: Anthropic.Message, startedAt: number) => {
     const inputTokens = nullableNumber((finalMessage as any)?.usage?.input_tokens);
     const outputTokens = nullableNumber((finalMessage as any)?.usage?.output_tokens);
@@ -4871,7 +4916,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
 
     stream.on("text", (text) => {
       fullText += text;
-      res.write(`event: token\ndata: ${JSON.stringify(text)}\n\n`);
+      flushNexusText();
     });
 
     stream.on("error", (err) => {

@@ -55,7 +55,7 @@ interface Props {
   executionRun?: ApiRun | null;
 }
 
-type DerivedStatus = "running" | "applied" | "failed" | "pushed" | "sketched" | "delivered";
+type DerivedStatus = "running" | "applied" | "failed" | "pushed" | "sketched" | "delivered" | "insight";
 type PreviewSource = "sandbox" | "generated" | "local" | "url" | null;
 
 interface DerivedRun {
@@ -74,7 +74,17 @@ interface DerivedRun {
   githubPush?: GithubPushPayload;
   sketchImageUrl?: string;
   deliverable?: { name: string; downloadUrl: string };
+  /** Semantic kicker for insight-only receipts (e.g. "Decision shaped"). Only set when status === "insight". */
+  insightKicker?: string;
 }
+
+// Insight-only step verbs that still warrant a durable receipt card (something
+// the user may want to revisit later) but never a "Run Complete" build kicker.
+// Each maps to a semantic, event-type-specific kicker per task #162.
+const INSIGHT_KICKERS: Record<string, string> = {
+  DECISION_RECORDED: "Decision shaped",
+  DNA_UPDATED: "Requirement clarified",
+};
 
 const PRODUCED_EXT = /\.(html?|pdf|md|png|jpe?g|gif|svg|webp)$/i;
 const APP_FILE_RE = /(^|\/)(src\/|app\/|pages\/|routes\/|package\.json$|vite\.config|tailwind\.config)/i;
@@ -116,9 +126,11 @@ function adaptExecutionRun(
   // Its receipt uses the same unified card — never a separate "can't generate" path.
   const deliverableStep = run.steps.find(s => s.verb === "ARTIFACT_CREATED");
 
-  // Pure conversational turns — only PROMPT/THOUGHT/SUMMARY with no real tool
-  // invocations (FILE_READ, FILE_EDIT, COMMAND, etc.). Never show a receipt card.
-  const CONVERSATIONAL_ONLY = new Set(["PROMPT", "THOUGHT", "SUMMARY", "DECISION"]);
+  // Pure conversational turns — only PROMPT/THOUGHT/SUMMARY/DECISION/QUESTION_ASKED
+  // with no real tool invocations (FILE_READ, FILE_EDIT, COMMAND, etc.). These are
+  // already fully represented in the response text/Timeline, so never show a
+  // receipt card for them (task #162).
+  const CONVERSATIONAL_ONLY = new Set(["PROMPT", "THOUGHT", "SUMMARY", "DECISION", "QUESTION_ASKED"]);
   const hasRealExecution = run.steps.some(s => !CONVERSATIONAL_ONLY.has(s.verb));
   if (!hasRealExecution && !hasGithubPush && !hasImageGen && !hasFileWork && !deliverableStep) return null;
 
@@ -126,11 +138,25 @@ function adaptExecutionRun(
   const summaryStep = run.steps.find(s => s.verb === "SUMMARY");
   const executiveSummary = summaryStep?.content?.trim() || undefined;
 
+  // Steps that drove `hasRealExecution` but are otherwise pure insight capture
+  // (no file edits, image, push, or deliverable) — e.g. a ledger decision or a
+  // DNA/requirement field update. These are durable enough to keep a card for,
+  // but must never claim "Run Complete" since nothing was built.
+  const nonConversationalSteps = run.steps.filter(s => !CONVERSATIONAL_ONLY.has(s.verb));
+  const insightOnly =
+    nonConversationalSteps.length > 0 &&
+    nonConversationalSteps.every(s => s.verb in INSIGHT_KICKERS) &&
+    !hasGithubPush && !hasImageGen && !hasFileWork && !deliverableStep;
+  const insightKicker = insightOnly
+    ? INSIGHT_KICKERS[nonConversationalSteps[0].verb] ?? "Insight captured"
+    : undefined;
+
   let status: DerivedStatus;
   if (run.status === "failed") status = "failed";
   else if (deliverableStep) status = "delivered";
   else if (hasGithubPush) status = "pushed";
   else if (hasImageGen && !hasFileWork) status = "sketched";
+  else if (insightOnly) status = "insight";
   else status = "applied";
 
   const pathSet = new Set<string>();
@@ -240,6 +266,7 @@ function adaptExecutionRun(
     ...(githubPush ? { githubPush } : {}),
     ...(sketchImageUrl ? { sketchImageUrl } : {}),
     ...(deliverable ? { deliverable } : {}),
+    ...(insightKicker ? { insightKicker } : {}),
   };
 }
 
@@ -297,9 +324,18 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
 }
 
 const RECEIPT_TONE: Record<
-  "running" | "success" | "failed" | "pushed" | "sketched" | "delivered",
+  "running" | "success" | "failed" | "pushed" | "sketched" | "delivered" | "insight",
   { border: string; ring: string; fg: string; iconBg: string; cardBg: string }
 > = {
+  // Insight receipts (decision shaped, requirement clarified, etc.) are neutral
+  // and quiet — they should never read as a build/success flash.
+  insight: {
+    border: "hsl(var(--border))",
+    ring: "transparent",
+    fg: "hsl(var(--muted-foreground))",
+    iconBg: "hsl(var(--muted))",
+    cardBg: "hsl(var(--card))",
+  },
   running: {
     border: "var(--atlas-gold-border)",
     ring: "transparent",
@@ -352,6 +388,7 @@ function ReceiptIcon({ status }: { status: DerivedStatus }) {
   if (status === "failed") return <XCircle size={12} strokeWidth={1.75} />;
   if (status === "pushed") return <Github size={12} strokeWidth={1.75} />;
   if (status === "sketched") return <ImageIcon size={12} strokeWidth={1.75} />;
+  if (status === "insight") return <Circle size={9} strokeWidth={2} fill="currentColor" />;
   return null;
 }
 
@@ -834,6 +871,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     : run.status === "failed" ? "failed"
     : run.status === "pushed" ? "pushed"
     : run.status === "sketched" ? "sketched"
+    : run.status === "insight" ? "insight"
     : "running";
   const tone = RECEIPT_TONE[toneKey];
   const fileCount = run.files.length;
@@ -843,6 +881,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     : run.status === "delivered" ? "Ready to Download"
     : run.status === "pushed" ? "Pushed to GitHub"
     : run.status === "sketched" ? "Sketch Complete"
+    : run.status === "insight" ? (run.insightKicker ?? "Insight captured")
     : "Build Unsuccessful";
   const elapsedMs =
     run.status === "running"

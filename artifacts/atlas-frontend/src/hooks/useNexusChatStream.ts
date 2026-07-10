@@ -463,6 +463,17 @@ export function useNexusChatStream(
             setLiveStep(nextStep);
             setLiveSteps(prev => [...prev, nextStep].slice(-6));
           },
+          onImagePending: () => {
+            // Backend detected the IMAGE_GEN marker and stopped streaming raw
+            // prompt/description text. Flip the streaming message into the
+            // loading state so SketchReveal renders user-facing copy instead
+            // of any partial prose that already streamed in (task #162).
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? { ...m, pendingSketch: true }
+                : m
+            ));
+          },
           onImage: (imgPayload) => {
             // Async image delivery: patch the last assistant message and clear the Sketching step.
             const raw = imgPayload?.images?.[0]?.imageUrl;

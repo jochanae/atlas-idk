@@ -20,6 +20,12 @@ export interface AtlasStreamCallbacks {
    * Server sends this once image generation completes so the HUD can update.
    */
   onImage?: (payload: { images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }> }) => void;
+  /**
+   * Called when the backend has detected an image is about to be generated
+   * (IMAGE_GEN marker seen) but before the image itself arrives. Lets the UI
+   * show user-facing loading copy instead of the raw prompt/marker text.
+   */
+  onImagePending?: () => void;
   /** Called on stream error */
   onError?: (message: string) => void;
 }
@@ -202,6 +208,8 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                   images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }>;
                 };
                 callbacks.onImage?.(imgPayload);
+              } else if (evtName === "image_pending") {
+                callbacks.onImagePending?.();
               } else if (evtName === "error") {
                 const errMsg = JSON.parse(evtData) as string;
                 callbacks.onError?.(errMsg || "Something went wrong.");

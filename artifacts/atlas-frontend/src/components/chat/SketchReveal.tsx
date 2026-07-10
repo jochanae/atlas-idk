@@ -116,7 +116,7 @@ export default function SketchReveal({
                   animation: "atlas-sketch-pulse 1.8s ease-in-out infinite",
                 }}
               >
-                Sketching…
+                Creating concept sketch…
               </span>
             </motion.div>
           )}
