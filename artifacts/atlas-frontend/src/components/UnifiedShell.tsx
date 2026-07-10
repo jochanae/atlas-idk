@@ -549,42 +549,17 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const resolvedName = project?.name?.trim();
   const name = resolvedName || (hydrating ? "" : "Untitled project");
 
-  // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-  useEffect(() => {
-    console.log("[TITLE_DEBUG][ShellProjectSwitcher] mount", { projectId, ts: Date.now() });
-    return () => {
-      console.log("[TITLE_DEBUG][ShellProjectSwitcher] unmount", { projectId, ts: Date.now() });
-    };
-  }, [projectId]);
-
   // When the project just loaded but has a placeholder name (Haiku title not yet generated),
   // treat it as still-pending: show shimmer and fast-poll until the real name arrives.
   const PLACEHOLDER_NAMES = new Set(["New Conversation", "New Project"]);
   const isTitlePending = project != null && PLACEHOLDER_NAMES.has(project.name ?? "");
 
-  // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-  console.log("[TITLE_DEBUG][ShellProjectSwitcher] render", {
-    projectId,
-    ts: Date.now(),
-    psProjectName: ps.project?.name,
-    hydrating,
-    resolvedName,
-    renderedName: name,
-    isTitlePending,
-    psLoading: ps.loading,
-  });
-
   useEffect(() => {
-    // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-    console.log("[TITLE_DEBUG][ShellProjectSwitcher] poll-effect run", { projectId, isTitlePending, ts: Date.now() });
     if (!isTitlePending || !projectId) return;
-    console.log("[TITLE_DEBUG][ShellProjectSwitcher] fast-poll STARTED (4s interval)", { projectId, ts: Date.now() });
     const interval = window.setInterval(() => {
-      console.log("[TITLE_DEBUG][ShellProjectSwitcher] fast-poll tick -> ps.refresh()", { projectId, ts: Date.now() });
       void ps.refresh();
     }, 4000);
     return () => {
-      console.log("[TITLE_DEBUG][ShellProjectSwitcher] fast-poll CLEARED", { projectId, ts: Date.now() });
       window.clearInterval(interval);
     };
   }, [isTitlePending, projectId, ps.refresh]);

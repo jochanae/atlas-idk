@@ -57,8 +57,6 @@ export function useProjectState(projectId: number | null) {
 
       setLoading(true);
       setError(null);
-      // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-      console.log("[TITLE_DEBUG][useProjectState] fetch start", { projectId, ts: Date.now() });
 
       try {
         const res = await fetch(`/api/projects/${projectId}/state`, {
@@ -68,12 +66,6 @@ export function useProjectState(projectId: number | null) {
         if (res.status === 404) clearStoredActiveProject();
         if (!res.ok) throw new Error(`Project state failed: HTTP ${res.status}`);
         const payload = (await res.json()) as Partial<ProjectStatePayload>;
-        // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-        console.log("[TITLE_DEBUG][useProjectState] fetch success", {
-          projectId,
-          ts: Date.now(),
-          name: payload.project?.name,
-        });
         const nextState: ProjectStatePayload = {
           ...EMPTY_PROJECT_STATE,
           ...payload,
@@ -96,17 +88,9 @@ export function useProjectState(projectId: number | null) {
         return nextState;
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
-          // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-          console.log("[TITLE_DEBUG][useProjectState] fetch aborted", { projectId, ts: Date.now() });
           return null;
         }
         const nextError = err instanceof Error ? err : new Error("Project state failed");
-        // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-        console.log("[TITLE_DEBUG][useProjectState] fetch FAILED", {
-          projectId,
-          ts: Date.now(),
-          error: nextError.message,
-        });
         setError(nextError);
         return null;
       } finally {
@@ -124,8 +108,6 @@ export function useProjectState(projectId: number | null) {
       return;
     }
 
-    // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-    console.log("[TITLE_DEBUG][useProjectState] mount/effect run", { projectId, ts: Date.now() });
     const controller = new AbortController();
     void loadProjectState(controller.signal);
     const interval = window.setInterval(() => {
@@ -133,8 +115,6 @@ export function useProjectState(projectId: number | null) {
     }, 30_000);
 
     return () => {
-      // TEMP DIAGNOSTIC (title bug repro) — remove after investigation
-      console.log("[TITLE_DEBUG][useProjectState] effect cleanup", { projectId, ts: Date.now() });
       controller.abort();
       window.clearInterval(interval);
     };
