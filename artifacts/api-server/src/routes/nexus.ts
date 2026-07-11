@@ -1964,6 +1964,11 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     userType?: HomeUserType;
     conversationMode?: boolean;
     justTalk?: boolean;
+    /** Stable client-minted run identifier. When present, the backend
+     *  pre-inserts an execution_runs row in `running` status and reuses the
+     *  same id for the terminal update — giving Timeline/Changes a single
+     *  identity across live → completed. Falls back to a server-minted id. */
+    runId?: string;
   };
 
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
