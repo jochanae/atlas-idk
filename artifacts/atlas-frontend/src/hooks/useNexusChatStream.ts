@@ -441,6 +441,7 @@ export function useNexusChatStream(
           mode: resolvedMode,
           conversationId: activeConversationIdRef.current ?? undefined,
           focusProjectId: resolvedFocusProjectId ?? undefined,
+          runId: turnRunId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
           ...(imgAttachments.length > 0
             ? {
