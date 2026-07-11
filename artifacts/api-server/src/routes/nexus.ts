@@ -1429,7 +1429,52 @@ async function loadRecentNexusMessagesForConversation(
  *  Nexus equivalent of persistExecutionRun() in chat.ts — runs fire-and-forget at the
  *  end of every focusProjectId turn so the Timeline in ViewChangesPanel shows
  *  conversation activity (reads, summary, DNA updates, decisions) not just build-runner steps. */
+/**
+ * Insert an execution_runs row in `running` status at the START of a turn so
+ * Timeline/Changes can filter by runId while the work is still in flight.
+ * Called from the /nexus/chat handler right after SSE headers are flushed.
+ * The completion path (persistNexusExecutionRun) UPDATEs the same row.
+ */
+async function insertRunningExecutionRun(args: {
+  runId: string;
+  projectId: number;
+  sessionId: number | null | undefined;
+  conversationId: string | null;
+  userMessage: string;
+  intent?: string | null;
+  mode?: string;
+  startedAt: Date;
+}): Promise<void> {
+  try {
+    const promptText = (args.userMessage ?? "").trim();
+    await db.execute(sql`
+      INSERT INTO execution_runs
+        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at)
+      VALUES
+        (${args.runId}, ${args.projectId}, ${args.sessionId ?? null}, ${null}, ${args.conversationId ?? null},
+         ${args.mode ?? "conversation"}, ${"running"}, ${null}, ${promptText || null}, ${args.intent ?? null},
+         ${args.startedAt})
+      ON CONFLICT (id) DO NOTHING
+    `);
+  } catch (err) {
+    logger.warn({ err, runId: args.runId }, "nexus: insertRunningExecutionRun failed — non-fatal");
+  }
+}
+
+/** Fire-and-forget incremental step persist during streaming. Uses a negative
+ *  order_index so canonical rewrite in persistNexusExecutionRun (which uses 0+)
+ *  can safely DELETE these before re-inserting the cleaned final set. */
+function appendLiveStepAsync(runId: string, verb: string, target: string | null, status: string, detail: string | null, orderIdx: number): void {
+  void db.execute(sql`
+    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, order_index)
+    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${orderIdx})
+  `).catch((err) => {
+    logger.debug({ err, runId, verb }, "nexus: incremental step insert failed — non-fatal");
+  });
+}
+
 async function persistNexusExecutionRun(args: {
+  runId?: string | null;
   projectId: number;
   sessionId: number | null | undefined;
   conversationId: string | null;
@@ -1453,7 +1498,10 @@ async function persistNexusExecutionRun(args: {
   try {
     const completedAt = new Date();
     const elapsedMs = Math.max(0, completedAt.getTime() - args.startedAt.getTime());
-    const runId = randomUUID();
+    // Reuse the pre-inserted `running` row when the handler minted a runId at
+    // turn start; otherwise mint a fresh one for the completion insert path.
+    const runId = args.runId ?? randomUUID();
+    const preInserted = !!args.runId;
 
     // A target looks like a file path if it has no spaces and contains "/" or a file extension
     const isFilePath = (t: string | null | undefined) =>
@@ -1489,14 +1537,31 @@ async function persistNexusExecutionRun(args: {
     const messageIdValue = args.messageId ?? null;
     const conversationIdValue = args.conversationId ?? null;
 
-    await db.execute(sql`
-      INSERT INTO execution_runs
-        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
-      VALUES
-        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
-         ${derivedMode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
-         ${args.startedAt}, ${completedAt}, ${elapsedMs})
-    `);
+    if (preInserted) {
+      // Update the row that was inserted at turn-start with terminal state.
+      await db.execute(sql`
+        UPDATE execution_runs SET
+          message_id = ${messageIdValue},
+          mode = ${derivedMode},
+          status = ${"succeeded"},
+          summary = ${summary},
+          intent = ${intentValue},
+          completed_at = ${completedAt},
+          elapsed_ms = ${elapsedMs}
+        WHERE id = ${runId}
+      `);
+      // Drop any incremental live steps so the canonical set below is authoritative.
+      await db.execute(sql`DELETE FROM execution_run_steps WHERE run_id = ${runId}`);
+    } else {
+      await db.execute(sql`
+        INSERT INTO execution_runs
+          (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
+        VALUES
+          (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
+           ${derivedMode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
+           ${args.startedAt}, ${completedAt}, ${elapsedMs})
+      `);
+    }
 
     type Step = {
       verb: string;
