@@ -9940,29 +9940,33 @@ export default function Workspace() {
                 <path d="M4.5 2l3 4-3 4" />
               </svg>
             </button>
-            {exportExpanded && (
+            {exportExpanded && (() => {
+              const exportMsgCount = (useNexusWorkspaceChat ? nexusBridge.messages.length : 0) || messages.length;
+              const noMessages = exportMsgCount === 0;
+              return (
               <div style={{ padding: "0 6px 4px", display: "flex", flexDirection: "column", gap: 2 }}>
-                {messages.length === 0 && (
+                {noMessages && (
                   <div style={{ padding: "6px 10px 4px 28px", fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.75 }}>
                     No messages loaded in this session yet.
                   </div>
                 )}
                 <button
                   onClick={() => { downloadConversation("md"); setShowProjectMenu(false); }}
-                  disabled={messages.length === 0}
-                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: messages.length === 0 ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: messages.length === 0 ? 0.4 : 1 }}
+                  disabled={noMessages}
+                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: noMessages ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: noMessages ? 0.4 : 1 }}
                 >
                   Download as Markdown
                 </button>
                 <button
                   onClick={() => { downloadConversation("json"); setShowProjectMenu(false); }}
-                  disabled={messages.length === 0}
-                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: messages.length === 0 ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: messages.length === 0 ? 0.4 : 1 }}
+                  disabled={noMessages}
+                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: noMessages ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: noMessages ? 0.4 : 1 }}
                 >
                   Download as JSON
                 </button>
               </div>
-            )}
+              );
+            })()}
 
             {/* Archive group (expandable) */}
             <button
