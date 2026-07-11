@@ -241,22 +241,36 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
   const projectId = parseInt(req.params.projectId, 10);
   if (isNaN(projectId)) { res.status(400).json({ error: "Invalid projectId" }); return; }
 
+  const conversationId = typeof req.query.conversationId === "string" && req.query.conversationId.trim().length > 0
+    ? req.query.conversationId.trim()
+    : null;
+
   try {
-    // Fetch runs ordered newest-first
-    // Tie-break on `seq` (DB-assigned monotonic insertion order), not just
-    // started_at: a milestone run and its turn's code-execution run are
-    // deliberately stamped with the same turn startedAt so cross-turn
-    // ordering is correct, which makes started_at alone non-deterministic
-    // for runs written within the same turn.
-    const runsResult = await db.execute(sql`
-      SELECT
-        id, project_id, thread_id, message_id, mode, status, summary,
-        prompt, intent, receipts, started_at, completed_at, elapsed_ms
-      FROM execution_runs
-      WHERE project_id = ${projectId}
-      ORDER BY started_at DESC, seq DESC
-      LIMIT 50
-    `);
+    // Fetch runs ordered newest-first, optionally scoped to a single conversation.
+    // conversation_id was added late — existing rows are NULL. When a
+    // conversationId filter is provided we include NULL-conversation rows for
+    // backward compatibility (they may legitimately belong to this thread) so
+    // the Timeline is never emptier than it was before the column existed.
+    const runsResult = conversationId
+      ? await db.execute(sql`
+        SELECT
+          id, project_id, thread_id, message_id, conversation_id, mode, status, summary,
+          prompt, intent, receipts, started_at, completed_at, elapsed_ms
+        FROM execution_runs
+        WHERE project_id = ${projectId}
+          AND (conversation_id = ${conversationId} OR conversation_id IS NULL)
+        ORDER BY started_at DESC, seq DESC
+        LIMIT 50
+      `)
+      : await db.execute(sql`
+        SELECT
+          id, project_id, thread_id, message_id, conversation_id, mode, status, summary,
+          prompt, intent, receipts, started_at, completed_at, elapsed_ms
+        FROM execution_runs
+        WHERE project_id = ${projectId}
+        ORDER BY started_at DESC, seq DESC
+        LIMIT 50
+      `);
 
     if (runsResult.rows.length === 0) {
       res.json({ runs: [] });
@@ -289,6 +303,7 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
         projectId: r.project_id,
         threadId: r.thread_id,
         messageId: r.message_id,
+        conversationId: (r.conversation_id as string | null) ?? null,
         mode: r.mode,
         status: r.status,
         summary: r.summary,
