@@ -129,6 +129,58 @@ type RunArtifact = {
   meta?: string;
 };
 
+// ── Plan continuation engine types ───────────────────────────────────────────
+// Structured envelope the model emits when it identifies a safe, read-only
+// next action it can execute automatically. Server validates this against
+// CONTINUATION_ALLOWLIST before proceeding — the model proposes, the
+// orchestrator authorizes.
+type ContinuationEnvelope = {
+  gate: "execution";
+  action: string;
+  risk: "read_only";
+  tools_required: string[];
+  reason: string;
+  requires_user_input: false;
+};
+
+const isValidContinuationEnvelope = (v: unknown): v is ContinuationEnvelope => {
+  if (!v || typeof v !== "object") return false;
+  const e = v as Record<string, unknown>;
+  return (
+    e.gate === "execution" &&
+    typeof e.action === "string" && e.action.length > 0 && e.action.length <= 128 &&
+    e.risk === "read_only" &&
+    Array.isArray(e.tools_required) &&
+    typeof e.reason === "string" && e.reason.length > 0 &&
+    e.requires_user_input === false
+  );
+};
+
+// Server-side allowlist: defines which risk levels and gate types are
+// permitted for automatic continuation, and what action patterns are blocked
+// regardless of risk level.
+const CONTINUATION_ALLOWLIST = {
+  permitted_risk: ["read_only"] as const,
+  permitted_gate: ["execution"] as const,
+  // Tools that must NOT appear in tools_required for auto-continuation
+  blocked_tools: new Set([
+    "file_edit", "line_patch", "github_push", "build_project",
+    "deploy", "install_package", "update_dna", "delete_file",
+    "write_file", "create_file", "run_sql", "exec",
+  ]),
+  // Action keywords that indicate non-read-only intent — blocked even with risk:read_only
+  blocked_action_re: /\b(edit|write|create|delete|remove|modify|update|change|install|deploy|push|build|migrate|alter|drop|truncate|patch|overwrite|rename|move)\b/i,
+};
+
+const isContinuationAllowlisted = (e: ContinuationEnvelope): boolean => {
+  if (!CONTINUATION_ALLOWLIST.permitted_risk.includes(e.risk)) return false;
+  if (!CONTINUATION_ALLOWLIST.permitted_gate.includes(e.gate)) return false;
+  if (e.requires_user_input !== false) return false;
+  if (CONTINUATION_ALLOWLIST.blocked_action_re.test(e.action)) return false;
+  if (e.tools_required.some(t => CONTINUATION_ALLOWLIST.blocked_tools.has(t))) return false;
+  return true;
+};
+
 type NexusRunMetadata = {
   executionTimeMs?: number | null;
   inputTokens?: number | null;
@@ -3180,6 +3232,21 @@ TRADEOFF_START
 {"question":"<the decision>","options":[{"label":"<name>","pros":["<strength>"],"cons":["<cost>"],"atlas_leans":<true|false>}],"context":"<optional one-sentence framing>"}
 TRADEOFF_END
 Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atlas_leans:true (your recommendation), or omit it if genuinely balanced. The block is extracted and rendered as a visual card — do NOT duplicate its content in prose. Skip for simple questions with a clear answer.
+
+PLAN CONTINUATION — auto-execute the first safe step after a roadmap:
+When you produce a plan or roadmap and the first "Now" item is something you can execute immediately using available read-only tools (search_codebase, read_file, project_knowledge, component_registry, list_reference_project_dir, read_reference_project_file), emit this block at the very END of your response (after all prose and structured blocks):
+
+PLAN_CONTINUATION_START
+{"gate":"execution","action":"<snake_case_action>","risk":"read_only","tools_required":["<tool1>","<tool2>"],"reason":"<one sentence: why this step is first and what it answers>","requires_user_input":false}
+PLAN_CONTINUATION_END
+
+The orchestrator will automatically execute the investigation and append findings to this turn.
+Rules — the model proposes, the server authorizes:
+- "risk" MUST be "read_only" — only emit for inspect/audit/verify/check/review actions.
+- NEVER emit for: file edits, DNA updates, package installs, schema changes, paid API calls, GitHub push, deploy, delete, or any action that modifies project state.
+- "requires_user_input" MUST be false — if a product decision is needed first, this is a decision gate; do not emit the block.
+- Only one block per response. Do not nest or stack continuations.
+- The continuation response MUST return: (1) what was inspected with exact file paths, (2) evidence and key observations, (3) classification (production-ready | extendable | prototype | stub | dead-code), (4) unresolved questions, (5) next gate — "decision: [what decision is needed]" OR "execution: [next safe read-only step]".
 --- END WHISPERGATE ---`;
   } else if (allowBuildSideEffects) {
     systemPrompt += `\n\n--- WHISPERGATE INTENT: BUILD ---\nThis is a BUILD turn. The user wants you to create, edit, fix, or ship code. Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over narration.\n--- END WHISPERGATE ---`;
@@ -3273,6 +3340,14 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
   const finishStream = async (rawContentIn: string) => {
     streamDone = true;
     let rawContent = rawContentIn;
+
+    // Safety strip: PLAN_CONTINUATION blocks that were not consumed by the
+    // continuation engine (invalid envelope, blocked by allowlist, already at
+    // hop limit, or second-pass input) must never appear in visible content.
+    rawContent = rawContent
+      .replace(/\nPLAN_CONTINUATION_START[\s\S]*?PLAN_CONTINUATION_END(?:\n|$)/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
 
     // ── Output Guard (WhisperGate CHAT scrub) ────────────────────────────────
     // Ported from chat.ts. Must run BEFORE any FILE_EDIT / GITHUB_PUSH parsing
@@ -5232,7 +5307,18 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
 
   const streamClaude = async (
     messagesForClaude: Anthropic.MessageParam[],
-    options: { tools: boolean; startedAt: number; forceCreate?: boolean; retryCount?: number; toolHopCount?: number },
+    options: {
+      tools: boolean;
+      startedAt: number;
+      forceCreate?: boolean;
+      retryCount?: number;
+      toolHopCount?: number;
+      /** Incremented on each automatic plan-continuation pass. Hard-capped at 1. */
+      continuationHopCount?: number;
+      /** First-pass cleaned text to prepend when finishStream is called on the
+       * continuation pass — produces one combined message rather than two. */
+      continuationPrefix?: string;
+    },
   ): Promise<void> => {
     if (options.forceCreate) {
       try {
@@ -5363,7 +5449,135 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
           }
         }
 
-        await finishStream(fullText);
+        // ── Plan continuation engine ─────────────────────────────────────────
+        // Runs on the FIRST pass only (not during a continuation second pass).
+        // Parses the PLAN_CONTINUATION block the model may emit after a roadmap,
+        // validates the envelope against the server-side allowlist, and — if
+        // approved — launches a read-only investigation continuation before
+        // finishStream is called on the first pass.
+        //
+        // Contract: model proposes via structured envelope; server authorizes
+        // via allowlist. If the envelope is invalid or blocked, execution falls
+        // through to the normal finishStream path (safety strip handles cleanup).
+        const MAX_CONTINUATION_HOPS = 1;
+        if ((options.continuationHopCount ?? 0) < MAX_CONTINUATION_HOPS && !options.continuationPrefix) {
+          const contMatch = fullText.match(
+            /\nPLAN_CONTINUATION_START\s*([\s\S]*?)\s*PLAN_CONTINUATION_END(?:\n|$)/,
+          );
+          if (contMatch) {
+            let contEnvelope: ContinuationEnvelope | null = null;
+            try {
+              const parsed = JSON.parse(contMatch[1].trim()) as unknown;
+              if (isValidContinuationEnvelope(parsed)) {
+                contEnvelope = parsed;
+              } else {
+                req.log.warn(
+                  { preview: contMatch[1].slice(0, 300) },
+                  "nexus: PLAN_CONTINUATION failed shape validation — skipping auto-continuation",
+                );
+              }
+            } catch (err) {
+              req.log.warn(
+                { err: String(err), preview: contMatch[1].slice(0, 300) },
+                "nexus: PLAN_CONTINUATION JSON parse failed — skipping auto-continuation",
+              );
+            }
+
+            if (contEnvelope) {
+              if (isContinuationAllowlisted(contEnvelope)) {
+                // Strip the continuation block from the first-pass text before
+                // persisting it — the block is an internal signal, not prose.
+                const cleanedFirstPass = fullText
+                  .replace(contMatch[0], "\n")
+                  .replace(/\n{3,}/g, "\n\n")
+                  .trim();
+
+                // Signal to the client so the user can see Atlas is continuing.
+                writeStep({
+                  verb: "Continuing automatically",
+                  target: "read-only audit",
+                  detail: contEnvelope.reason,
+                  status: "ok",
+                });
+                if (!res.writableEnded && !res.destroyed) {
+                  res.write(
+                    `event: continuation\ndata: ${JSON.stringify({
+                      action: contEnvelope.action,
+                      reason: contEnvelope.reason,
+                      risk: contEnvelope.risk,
+                    })}\n\n`,
+                  );
+                }
+
+                // Build the continuation turn: assistant turn = cleaned first-pass
+                // plan, user turn = auto-continuation prompt with strict findings contract.
+                const continuationMessages: Anthropic.MessageParam[] = [
+                  ...messagesForClaude,
+                  { role: "assistant", content: cleanedFirstPass },
+                  {
+                    role: "user",
+                    content: `AUTO-CONTINUATION — Read-only investigation.
+
+You proposed: ${contEnvelope.action.replace(/_/g, " ")}
+Reason: ${contEnvelope.reason}
+Tools available for this investigation: ${contEnvelope.tools_required.join(", ")}
+
+Execute this investigation now. Return ALL of the following — do not skip any section:
+1. What was inspected — exact file paths, routes, components
+2. Evidence — relevant code structure, key observations, quotes where helpful
+3. Classification for each surface inspected: production-ready | extendable | prototype | stub | dead-code
+4. Unresolved questions — genuine gaps that need external knowledge or a decision
+5. Next gate — exactly one of:
+   - "decision: [state the specific product or architecture decision needed]"
+   - "execution: [state the next safe read-only step you can run immediately]"
+
+Do NOT produce another roadmap. Do NOT say "I'll inspect." Execute and return findings now.`,
+                  },
+                ];
+
+                req.log.info(
+                  {
+                    focusProjectId,
+                    intent,
+                    action: contEnvelope.action,
+                    tools: contEnvelope.tools_required,
+                    continuationHopCount: (options.continuationHopCount ?? 0) + 1,
+                  },
+                  "nexus: plan continuation approved — launching read-only investigation",
+                );
+
+                streamClaude(continuationMessages, {
+                  ...options,
+                  tools: true,
+                  continuationHopCount: (options.continuationHopCount ?? 0) + 1,
+                  continuationPrefix: cleanedFirstPass,
+                  startedAt: performance.now(),
+                  retryCount: 0,
+                });
+                return; // First pass: do NOT call finishStream — second pass handles it
+              } else {
+                req.log.warn(
+                  {
+                    action: contEnvelope.action,
+                    risk: contEnvelope.risk,
+                    gate: contEnvelope.gate,
+                    tools: contEnvelope.tools_required,
+                  },
+                  "nexus: PLAN_CONTINUATION failed allowlist check — skipping auto-continuation, falling through to finishStream",
+                );
+              }
+            }
+          }
+        }
+
+        // Normal finish path — also handles the continuation second pass, where
+        // continuationPrefix holds the first-pass plan text and fullText is the
+        // investigation findings. Combined into one persisted message so the
+        // thread contains the complete plan + findings as a single assistant turn.
+        const rawForFinish = options.continuationPrefix
+          ? `${options.continuationPrefix}\n\n---\n\n${fullText}`
+          : fullText;
+        await finishStream(rawForFinish);
       } catch (err) {
         req.log.error({ err }, "nexus/chat stream finalization error");
         await failStream("Atlas ran into an issue. Please try again.", "failed");
