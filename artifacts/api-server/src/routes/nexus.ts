@@ -4045,23 +4045,28 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
       if (!already) _nexusNonCodeSteps.push(step);
     }
 
-    // Only persist a run row when the turn produced a real side effect worth
-    // a durable receipt/Timeline entry: build/tool execution (allowBuildSideEffects),
-    // a generated artifact, or a persistent insight step (DNA_UPDATED). Pure
-    // conversation — including QUESTION_ASKED and DECISION_RECORDED alone —
-    // never creates an execution_run; those outcomes live in the prose and Ledger.
-    const RECEIPT_WORTHY_VERBS = new Set(["DNA_UPDATED", "ARTIFACT_CREATED"]);
-    const hasReceiptWorthyStep = _nexusNonCodeSteps.some((s) => RECEIPT_WORTHY_VERBS.has(s.verb));
-    const shouldPersistRun =
-      !!focusProjectId &&
-      !isChatTurn &&
-      (allowBuildSideEffects
-        || sharedSideEffects.generatedArtifacts.length > 0
-        || hasReceiptWorthyStep);
+    // Persist a run row for EVERY completed project-scoped turn so Timeline is
+    // a complete account of the thread (PROMPT / THOUGHT / FILE_READ / DECISION
+    // / SUMMARY / etc.). Skip only pure CHAT greetings and off-project Ask Atlas
+    // turns. Receipt eligibility is a SEPARATE concern handled by the frontend
+    // via a verb-based classifier in WorkspaceRunCard — not by whether we
+    // persisted or by the `mode` field alone.
+    const shouldPersistRun = !!focusProjectId && !isChatTurn;
     if (shouldPersistRun && focusProjectId) {
+      const RECEIPT_WORTHY_VERBS = new Set([
+        "ARTIFACT_CREATED", "DNA_UPDATED", "GITHUB_PUSH",
+        "BUILD_COMPLETED", "TEST_COMPLETED", "DEPLOY_COMPLETED", "DATABASE_CHANGE",
+      ]);
+      const DECISION_VERBS = new Set(["DECISION_RECORDED", "PLAN_RECORDED"]);
+      const hasBuildish = allowBuildSideEffects
+        || sharedSideEffects.generatedArtifacts.length > 0
+        || _nexusNonCodeSteps.some((s) => RECEIPT_WORTHY_VERBS.has(s.verb));
+      const hasDecision = _nexusNonCodeSteps.some((s) => DECISION_VERBS.has(s.verb));
+      const runMode = hasBuildish ? "build" : hasDecision ? "decide" : "conversation";
       void persistNexusExecutionRun({
         projectId: focusProjectId,
         sessionId,
+        conversationId: effectiveConversationId,
         userMessage: body.message ?? "",
         atlasResponse: visibleContent,
         runActions,
@@ -4069,6 +4074,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         startedAt: turnStartedAt,
         intent,
         messageId: nexusMsgId ?? sourceChatMessageId,
+        mode: runMode,
       });
     }
 
