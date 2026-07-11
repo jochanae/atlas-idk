@@ -368,6 +368,14 @@ export function useNexusChatStream(
     setIsStreaming(true);
     const streamingId = Date.now().toString();
     streamingIdRef.current = streamingId;
+    // Mint the stable run identity for this turn. Sent to the backend so the
+    // execution_runs row is inserted under the same id — live card, Timeline,
+    // Changes and receipt all read/write against this single identity.
+    const turnRunId = (typeof crypto !== "undefined" && "randomUUID" in crypto)
+      ? crypto.randomUUID()
+      : `run-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    activeRunIdRef.current = turnRunId;
+    setActiveRunId(turnRunId);
     stepSeqRef.current = 0;
     projectReadyNotifiedStreamRef.current = null;
     cleanedUpRef.current = false;
