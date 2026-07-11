@@ -835,22 +835,27 @@ export function ChatComposer(props: ChatComposerProps) {
 
             {/* Right: plan mode + voice input + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
-              {!isCompact && (<>
+              {/* Plan + voice stay mounted at all times so the composer
+                  geometry does not shift when send→stop toggles. In compact
+                  they dim & shrink instead of unmounting. */}
               <button
                 onClick={togglePlanMode}
+                disabled={chatPending}
                 title="Plan mode"
                 aria-label={composerModeIsPlan ? "Exit plan mode" : "Switch to plan mode"}
                 aria-pressed={composerModeIsPlan}
                 style={{
-                  minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
+                  minWidth: isCompact ? 32 : 44, minHeight: isCompact ? 32 : 44, padding: isCompact ? 5 : 7, borderRadius: 8,
                   background: composerModeIsPlan
                     ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
                     : "transparent",
                   border: `1px solid ${composerModeIsPlan ? "rgba(201,162,76,0.55)" : "rgba(255,255,255,0.10)"}`,
                   boxShadow: composerModeIsPlan ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)" : "none",
                   color: composerModeAccent,
-                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: chatPending ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
+                  opacity: chatPending ? 0.45 : 1,
                 }}
               >
                 {/* Checklist + dot — Plan mode signifier */}
@@ -871,6 +876,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   />
                 </svg>
               </button>
+              {!isCompact && (
               <button
                 onClick={toggleVoice}
                 disabled={!voiceSupported}
@@ -893,7 +899,8 @@ export function ChatComposer(props: ChatComposerProps) {
                   <line x1="8" y1="14" x2="8" y2="16" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                 </svg>
               </button>
-              </>)}
+              )}
+
 
               <button
                 className="atlas-send-btn"
