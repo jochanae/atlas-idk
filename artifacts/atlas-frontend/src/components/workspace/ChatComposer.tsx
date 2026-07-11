@@ -834,7 +834,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
 
             {/* Right: plan mode + voice input + send */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: "auto" }}>
               {/* Plan + voice stay mounted at all times so the composer
                   geometry does not shift when send→stop toggles. In compact
                   they dim & shrink instead of unmounting. */}
