@@ -225,6 +225,10 @@ export interface UseNexusChatStreamReturn {
   isPending: boolean;
   liveStep: NexusLiveStep | null;
   liveSteps: NexusLiveStep[];
+  /** Stable runId for the currently-streaming turn (null when idle). Same id
+   *  will appear on execution_runs.id once persisted, so tapping the live card
+   *  can deep-link to Timeline/Changes for this run. */
+  activeRunId: string | null;
   shapingPayload: NexusShapingPayload | null;
   setShapingPayload: React.Dispatch<React.SetStateAction<NexusShapingPayload | null>>;
   shapingHeld: boolean;
