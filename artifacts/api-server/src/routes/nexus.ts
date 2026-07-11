@@ -3167,7 +3167,20 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     const step: RunAction = { ...action, status: action.status ?? "ok" };
     runActions.push(step);
     if (!res.writableEnded && !res.destroyed) {
-      res.write(`event: step\ndata: ${JSON.stringify(step)}\n\n`);
+      res.write(`event: step\ndata: ${JSON.stringify({ ...step, runId: activeRunId })}\n\n`);
+    }
+    // Incremental persistence — Timeline picks up live steps within the
+    // frontend's 1.5s poll while a run is still `running`. Canonical rewrite
+    // in persistNexusExecutionRun() deletes these before writing the clean set.
+    if (activeRunId) {
+      appendLiveStepAsync(
+        activeRunId,
+        String(step.verb ?? "STEP"),
+        step.target ?? null,
+        step.status ?? "ok",
+        step.detail ?? null,
+        liveStepOrderIdx++,
+      );
     }
   };
 
