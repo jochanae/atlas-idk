@@ -5206,6 +5206,13 @@ export default function Workspace() {
 
 
   const downloadConversation = useCallback((format: "md" | "json") => {
+    // Prefer Nexus bridge messages (canonical source rendered on screen) and
+    // fall back to classic `messages` when Nexus isn't active. Fixes the
+    // "unable to export" case where classic state is empty because Nexus owns
+    // the conversation.
+    const sourceMessages = (useNexusWorkspaceChat && nexusBridge.messages.length > 0)
+      ? nexusBridge.messages
+      : messages;
     const pname = projectState.project?.name ?? "atlas";
     const projectName = pname.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
     const stamp = new Date().toISOString().slice(0, 10);
@@ -5216,10 +5223,10 @@ export default function Workspace() {
         project: pname,
         sessionId,
         exportedAt: new Date().toISOString(),
-        messages: messages.map((m) => ({
+        messages: sourceMessages.map((m) => ({
           role: m.role,
           content: m.content,
-          sentAt: m.sentAt ?? null,
+          sentAt: (m as any).sentAt ?? null,
           model: (m as any).model ?? null,
         })),
       }, null, 2)], { type: "application/json" });
@@ -5229,7 +5236,7 @@ export default function Workspace() {
         `_Exported ${new Date().toLocaleString()}_`,
         "",
       ];
-      for (const m of messages) {
+      for (const m of sourceMessages) {
         const who = m.role === "user" ? "You" : "Atlas";
         lines.push(`## ${who}`);
         lines.push("");
@@ -5249,7 +5256,7 @@ export default function Workspace() {
     a.remove();
     URL.revokeObjectURL(url);
     toast.success(`Downloaded ${filename}`);
-  }, [messages, projectState.project, sessionId]);
+  }, [messages, nexusBridge.messages, useNexusWorkspaceChat, projectState.project, sessionId]);
 
 
   const handleNewSession = useCallback(async () => {
@@ -9933,29 +9940,33 @@ export default function Workspace() {
                 <path d="M4.5 2l3 4-3 4" />
               </svg>
             </button>
-            {exportExpanded && (
+            {exportExpanded && (() => {
+              const exportMsgCount = (useNexusWorkspaceChat ? nexusBridge.messages.length : 0) || messages.length;
+              const noMessages = exportMsgCount === 0;
+              return (
               <div style={{ padding: "0 6px 4px", display: "flex", flexDirection: "column", gap: 2 }}>
-                {messages.length === 0 && (
+                {noMessages && (
                   <div style={{ padding: "6px 10px 4px 28px", fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.75 }}>
                     No messages loaded in this session yet.
                   </div>
                 )}
                 <button
                   onClick={() => { downloadConversation("md"); setShowProjectMenu(false); }}
-                  disabled={messages.length === 0}
-                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: messages.length === 0 ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: messages.length === 0 ? 0.4 : 1 }}
+                  disabled={noMessages}
+                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: noMessages ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: noMessages ? 0.4 : 1 }}
                 >
                   Download as Markdown
                 </button>
                 <button
                   onClick={() => { downloadConversation("json"); setShowProjectMenu(false); }}
-                  disabled={messages.length === 0}
-                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: messages.length === 0 ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: messages.length === 0 ? 0.4 : 1 }}
+                  disabled={noMessages}
+                  style={{ textAlign: "left", padding: "7px 10px 7px 28px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12, cursor: noMessages ? "not-allowed" : "pointer", fontFamily: "var(--app-font-sans)", opacity: noMessages ? 0.4 : 1 }}
                 >
                   Download as JSON
                 </button>
               </div>
-            )}
+              );
+            })()}
 
             {/* Archive group (expandable) */}
             <button
