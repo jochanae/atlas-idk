@@ -3059,7 +3059,7 @@ WHAT YOU SHOULD NOT DO:
   // See handoff: identity spans user turn → thinking → live steps → Timeline
   // → Changes → completion → receipt → reload.
   const clientRunId = typeof body.runId === "string" && /^[0-9a-fA-F-]{8,}$/.test(body.runId) ? body.runId : null;
-  const willPersistRun = !!focusProjectId && intent !== "CHAT";
+  const willPersistRun = !!focusProjectId && !isChatTurn;
   const activeRunId: string | null = willPersistRun ? (clientRunId ?? randomUUID()) : null;
   let runPreInserted = false;
   let runTerminalized = false;
