@@ -4194,6 +4194,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
       const hasDecision = _nexusNonCodeSteps.some((s) => DECISION_VERBS.has(s.verb));
       const runMode = hasBuildish ? "build" : hasDecision ? "decide" : "conversation";
       void persistNexusExecutionRun({
+        runId: activeRunId,
         projectId: focusProjectId,
         sessionId,
         conversationId: effectiveConversationId,
@@ -4206,6 +4207,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         messageId: nexusMsgId ?? sourceChatMessageId,
         mode: runMode,
       });
+      runTerminalized = true;
     }
 
     // Background genome extraction — non-blocking, rate-limited. Skip on CHAT.
