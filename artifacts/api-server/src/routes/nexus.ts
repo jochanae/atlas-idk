@@ -3090,6 +3090,10 @@ WHAT YOU SHOULD NOT DO:
   const clientRunId = typeof body.runId === "string" && /^[0-9a-fA-F-]{8,}$/.test(body.runId) ? body.runId : null;
   const willPersistRun = !!focusProjectId && !isChatTurn;
   const activeRunId: string | null = willPersistRun ? (clientRunId ?? randomUUID()) : null;
+  // Hoisted above the pre-insert block so insertRunningExecutionRun and the
+  // failure-record path in finishStream can both reference turnStartedAt.
+  const turnStartedAt = new Date();
+  const runActions: RunAction[] = [];
   let runPreInserted = false;
   let runTerminalized = false;
   let liveStepOrderIdx = 0;
@@ -3189,8 +3193,6 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     systemPrompt += `\n\n${NEXUS_MEMORY_CHIPS_PROTOCOL}`;
   }
 
-  const turnStartedAt = new Date();
-  const runActions: RunAction[] = [];
   // Non-code steps (DNA updates, decisions, plans) accumulated during the turn
   // and passed to persistNexusExecutionRun at the end.
   type _NcStep = {
@@ -3924,15 +3926,104 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     // Guard: if all content was stripped down to signal tokens with nothing left,
     // do NOT persist a blank message to the thread — it replays as an empty
     // assistant turn that confuses the model on the next request.
-    // Instead, surface a retriable error to the client.
+    //
+    // Recovery path: when structured output exists (TRADEOFF or CLARIFY blocks
+    // were produced but no prose accompanies them), synthesize a minimal prose
+    // hook so the structured card has something to anchor to. The frontend already
+    // has TradeoffMatrixCard and ClarifyCard — we just need a non-empty
+    // visibleContent so the message is persisted and the card renders correctly.
+    // This is preferable to a full retry (another model call).
+    //
+    // Failure path: when no structured output exists to recover from, persist a
+    // durable failed execution record (queryable by intent, failure reason, and
+    // structured block diagnostics) then surface an error to the client.
     if (!visibleContent.trim()) {
-      req.log.warn({ focusProjectId, conversationId: effectiveConversationId }, "nexus: empty response after token stripping — not persisting to DB");
-      writeStep({ verb: "Failed", target: "response", detail: "Model returned no content", status: "fail" });
-      if (!res.writableEnded && !res.destroyed) {
-        res.write(`event: error\ndata: ${JSON.stringify({ error: "empty_response", message: "Atlas didn't generate a response. Please try again." })}\n\n`);
-        res.end();
+      const hadTradeoff = !!tradeoff;
+      const hadClarify = !!clarify;
+      const hadMemoryChips = (aiMemoryChips?.length ?? 0) > 0;
+      const hadRawContent = rawContent.trim().length > 0;
+
+      const failureReason = hadTradeoff
+        ? "structured_blocks_only_tradeoff"
+        : hadClarify
+        ? "structured_blocks_only_clarify"
+        : hadMemoryChips
+        ? "memory_chips_only"
+        : hadRawContent
+        ? "content_fully_scrubbed"
+        : "model_no_output";
+
+      req.log.warn(
+        {
+          focusProjectId,
+          conversationId: effectiveConversationId,
+          intent,
+          failureReason,
+          hadTradeoff,
+          hadClarify,
+          hadMemoryChips,
+          rawContentLength: rawContent.length,
+        },
+        "nexus: empty response after token stripping — attempting recovery"
+      );
+
+      if (hadTradeoff) {
+        // ── Recovery: TRADEOFF card exists, synthesize prose hook ─────────
+        // The TradeoffMatrixCard will render the structured data; we only need
+        // a non-empty prose anchor so the message is persisted and the card
+        // attaches to a real assistant turn.
+        visibleContent = "Here's a comparison of the options:";
+        req.log.info(
+          { focusProjectId, intent, failureReason },
+          "nexus: recovered empty response — synthesized prose hook for tradeoff card"
+        );
+        writeStep({ verb: "Recovered", target: "response", detail: "Prose hook synthesized for tradeoff card", status: "ok" });
+        // No return — visibleContent is now non-empty; execution continues to the
+        // normal persist + done-event path below.
+      } else if (hadClarify) {
+        // ── Recovery: CLARIFY card exists, synthesize prose hook ──────────
+        visibleContent = "I need a bit more information to give you the best answer:";
+        req.log.info(
+          { focusProjectId, intent, failureReason },
+          "nexus: recovered empty response — synthesized prose hook for clarify card"
+        );
+        writeStep({ verb: "Recovered", target: "response", detail: "Prose hook synthesized for clarify card", status: "ok" });
+        // No return — continue to normal persist path.
+      } else {
+        // ── Failure: no recoverable structured output ─────────────────────
+        // Log a durable failed execution record so this is queryable and not
+        // silently dropped. Fields: intent, failure reason, structured block
+        // diagnostics (hadMemoryChips, rawContentLength).
+        writeStep({ verb: "Failed", target: "response", detail: `Empty after stripping: ${failureReason}`, status: "fail" });
+
+        if (focusProjectId != null) {
+          persistNexusExecutionRun({
+            runId: activeRunId,
+            projectId: focusProjectId,
+            sessionId,
+            conversationId: effectiveConversationId,
+            userMessage: message,
+            atlasResponse: `[EMPTY — ${failureReason}]`,
+            runActions,
+            startedAt: turnStartedAt,
+            intent,
+            mode: allowBuildSideEffects ? "build" : intent === "DECIDE" ? "decide" : "conversation",
+          }).catch((err) =>
+            req.log.warn({ err }, "nexus: failed to persist empty-response failure record")
+          );
+        } else {
+          req.log.warn(
+            { intent, failureReason, conversationId: effectiveConversationId },
+            "nexus: empty response without projectId — skipping failure record persist"
+          );
+        }
+
+        if (!res.writableEnded && !res.destroyed) {
+          res.write(`event: error\ndata: ${JSON.stringify({ error: "empty_response", message: "Atlas didn't generate a response. Please try again." })}\n\n`);
+          res.end();
+        }
+        return;
       }
-      return;
     }
 
     writeStep({ verb: "Saved", target: "response", detail: "Thread updated" });
