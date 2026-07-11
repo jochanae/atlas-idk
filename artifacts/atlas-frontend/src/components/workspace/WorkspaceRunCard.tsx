@@ -500,8 +500,10 @@ function InlineThinkingPulse({ steps }: { steps: LiveStepItem[] }) {
 }
 
 /** The live execution card shown while Atlas is working.
- *  One card. One current step. Fixed height. No growing list. */
-function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: string }) {
+ *  One card. One current step. Fixed height. No growing list.
+ *  Tapping the card (when a runId is available) opens Timeline/Changes for
+ *  the in-flight run — the same identity that will later carry the receipt. */
+function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoal: string; runId?: string | null }) {
   const current = steps[steps.length - 1];
   const stepCount = steps.length;
 
@@ -517,8 +519,21 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         ? "Thinking with Atlas"
         : stepHeadline;
 
+  const clickable = !!runId;
+  const openTimeline = () => {
+    if (!runId) return;
+    window.dispatchEvent(new CustomEvent("axiom:open-changes", { detail: { runId } }));
+  };
+
   return (
     <div
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      aria-label={clickable ? "Open Timeline for the in-flight run" : undefined}
+      onClick={clickable ? openTimeline : undefined}
+      onKeyDown={clickable
+        ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTimeline(); } }
+        : undefined}
       style={{
         position: "relative",
         background: "hsl(var(--card))",
@@ -530,8 +545,10 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         maxWidth: "100%",
         boxSizing: "border-box",
         overflow: "hidden",
+        cursor: clickable ? "pointer" : "default",
       }}
       data-wrc-active="true"
+      data-run-id={runId ?? undefined}
     >
       {/* Shimmer sweep */}
       <div
