@@ -46,7 +46,11 @@ interface Props {
   messages: ChatMessage[];
   projectPreviewUrl?: string | null;
   chatPending?: boolean;
-  liveStep?: { verb: string; target?: string; status?: string } | null;
+  liveStep?: { verb: string; target?: string; status?: string; runId?: string } | null;
+  /** Stable identity for the in-flight turn. Enables tap-to-open on the
+   *  ActiveCard so the Timeline/Changes drawer deep-links to the same runId
+   *  that will later back the completed receipt. */
+  activeRunId?: string | null;
   onTryToFix?: () => void;
   receiptMessage?: ChatMessage | null;
   suppressGitHubReceipt?: boolean;
