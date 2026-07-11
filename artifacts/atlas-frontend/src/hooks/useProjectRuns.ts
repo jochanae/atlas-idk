@@ -19,6 +19,7 @@ export interface ApiRun {
   projectId: number;
   threadId: number | null;
   messageId: number | null;
+  conversationId?: string | null;
   mode: string;
   status: string;
   summary: string | null;
@@ -32,16 +33,20 @@ export interface ApiRun {
 
 export function useProjectRuns(
   projectId: number | undefined,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; conversationId?: string | null },
 ) {
   const queryClient = useQueryClient();
+  const conversationId = options?.conversationId ?? null;
 
   const { data, isLoading } = useQuery<{ runs: ApiRun[] }>({
-    queryKey: ["project-runs", projectId],
+    // Cache key includes conversationId so switching threads in the same
+    // project doesn't reuse the previous thread's Timeline entries.
+    queryKey: ["project-runs", projectId, conversationId],
     queryFn: async () => {
-      const res = await fetch(`/api/projects/${projectId}/runs`, {
-        credentials: "include",
-      });
+      const url = conversationId
+        ? `/api/projects/${projectId}/runs?conversationId=${encodeURIComponent(conversationId)}`
+        : `/api/projects/${projectId}/runs`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error(`runs fetch failed: ${res.status}`);
       return res.json() as Promise<{ runs: ApiRun[] }>;
     },
