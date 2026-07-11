@@ -399,7 +399,11 @@ export function useNexusChatStream(
     }, STREAM_TIMEOUT_MS);
 
     // Add user message
+    // A: stable client-side id on every optimistic user message so ChatStream
+    // can key by identity instead of array index (prevents remount cascades
+    // when a new message/run-card is inserted mid-thread).
     const userMsg: NexusMessage = {
+      id: `user-${streamingId}`,
       role: "user",
       content: text,
       createdAt: new Date().toISOString(),
