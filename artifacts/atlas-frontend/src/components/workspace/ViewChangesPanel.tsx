@@ -861,13 +861,15 @@ function WorkspaceRunReceipts({
   projectName,
   runId,
   onSelectRun,
+  conversationId,
 }: {
   projectId: number;
   projectName: string;
   runId?: string | null;
   onSelectRun?: (id: string) => void;
+  conversationId?: string | null;
 }) {
-  const { runs: apiRuns, invalidate: invalidateApiRuns } = useProjectRuns(projectId);
+  const { runs: apiRuns, invalidate: invalidateApiRuns } = useProjectRuns(projectId, { conversationId });
   const [expanded, setExpanded] = useState(false);
 
   // Refresh run list immediately when a run completes — no more 30s stale window.
