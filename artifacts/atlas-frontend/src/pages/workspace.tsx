@@ -6532,6 +6532,19 @@ export default function Workspace() {
     }
     initialSent.current = true;
     setInput("");
+    // Suppress auto-send if the server already handled this first turn via the
+    // background first-turn task in POST /api/conversations. The bridge will
+    // have the user message (and possibly the assistant response) from history
+    // by the time this effect fires. Sending again would create a duplicate.
+    if (useNexusWorkspaceChat && nexusBridge.messages.length > 0) {
+      try {
+        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+        sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+        sessionStorage.removeItem("atlas-opening-attachments");
+      } catch {}
+      setOpeningMessage(null);
+      return;
+    }
     // Pass messagesRef.current so transferred thread messages are included as history context.
     // Pass attachments so images from the homepage (Ask Atlas) carry into the first workspace message.
     if (useNexusWorkspaceChat) {

@@ -198,7 +198,7 @@ export function useNexusWorkspaceBridge(
     })
       .then((r) => {
         if (!r.ok) return null;
-        return r.json() as Promise<Array<{ id: number; role: string; content: string; isBriefing?: boolean }>>;
+        return r.json() as Promise<Array<{ id: number; role: string; content: string; isBriefing?: boolean; createdAt?: string }>>;
       })
       .then((msgs) => {
         if (!msgs || msgs.length === 0) {
@@ -229,8 +229,47 @@ export function useNexusWorkspaceBridge(
           id: String(m.id),
           role: m.role as "user" | "assistant",
           content: m.content,
+          createdAt: m.createdAt ?? new Date().toISOString(),
         }));
         setMessages(nexusMsgs);
+
+        // For URL-routed new-project handoffs, if only the user message exists
+        // (no assistant response yet), the server's background first-turn Claude
+        // call is still in flight. Poll every 3s (up to 5 times) until the
+        // assistant response appears, then surface it automatically.
+        if (opts?.initialConversationId && real.length === 1 && real[0].role === "user") {
+          let attempts = 0;
+          const maxAttempts = 5;
+          const convIdSnapshot = conversationId;
+          const pidSnapshot = pid;
+          const poll = () => {
+            if (attempts >= maxAttempts) return;
+            attempts++;
+            setTimeout(() => {
+              fetch(
+                `/api/nexus/thread?conversationId=${encodeURIComponent(convIdSnapshot)}&focusProjectId=${pidSnapshot}`,
+                { credentials: "include" },
+              )
+                .then((r) => (r.ok ? (r.json() as Promise<Array<{ id: number; role: string; content: string; isBriefing?: boolean; createdAt?: string }>>) : null))
+                .then((newMsgs) => {
+                  if (!newMsgs) { poll(); return; }
+                  const newReal = newMsgs.filter((m) => !m.isBriefing && (m.role === "user" || m.role === "assistant"));
+                  if (newReal.length > 1) {
+                    setMessages(newReal.map((m) => ({
+                      id: String(m.id),
+                      role: m.role as "user" | "assistant",
+                      content: m.content,
+                      createdAt: m.createdAt ?? new Date().toISOString(),
+                    })));
+                  } else {
+                    poll();
+                  }
+                })
+                .catch(() => poll());
+            }, 3000);
+          };
+          poll();
+        }
       })
       .catch(() => { /* non-fatal — just starts with empty history */ });
   // eslint-disable-next-line react-hooks/exhaustive-deps
