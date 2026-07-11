@@ -1432,6 +1432,7 @@ async function loadRecentNexusMessagesForConversation(
 async function persistNexusExecutionRun(args: {
   projectId: number;
   sessionId: number | null | undefined;
+  conversationId: string | null;
   userMessage: string;
   atlasResponse: string;
   runActions: RunAction[];
@@ -1445,6 +1446,9 @@ async function persistNexusExecutionRun(args: {
   startedAt: Date;
   intent?: string | null;
   messageId?: number | null;
+  /** Explicit run mode: 'build' | 'decide' | 'conversation'. Metadata only —
+   * receipt eligibility is a separate, verb-based classifier on the frontend. */
+  mode?: string;
 }): Promise<void> {
   try {
     const completedAt = new Date();
@@ -1458,13 +1462,23 @@ async function persistNexusExecutionRun(args: {
     const fileReadActions = args.runActions.filter(
       (a) => ["Reading", "Read", "Not found"].includes(a.verb) && isFilePath(a.target)
     );
-    const hasNonCode = (args.nonCodeSteps?.length ?? 0) > 0;
-    const mode = fileReadActions.length > 0 ? "operational" : "conversation";
 
-    // Don't persist a run row for pure conversational turns — they produce
-    // no files, no steps, no build ops — UNLESS there are non-code steps
-    // (DNA updates, decisions, plans, questions) worth surfacing in the Timeline.
-    if (mode === "conversation" && !hasNonCode) return;
+    // Derive mode when caller didn't pass one. Metadata only — Timeline shows
+    // every persisted run regardless of mode; the chat-receipt classifier is
+    // verb-driven on the frontend.
+    const RECEIPT_WORTHY_VERBS = new Set([
+      "ARTIFACT_CREATED", "DNA_UPDATED", "GITHUB_PUSH",
+      "BUILD_COMPLETED", "TEST_COMPLETED", "DEPLOY_COMPLETED", "DATABASE_CHANGE",
+    ]);
+    const DECISION_VERBS = new Set(["DECISION_RECORDED", "PLAN_RECORDED"]);
+    const nc = args.nonCodeSteps ?? [];
+    const hasBuildish = nc.some((s) => RECEIPT_WORTHY_VERBS.has(s.verb));
+    const hasDecision = nc.some((s) => DECISION_VERBS.has(s.verb));
+    const derivedMode = args.mode
+      ?? (hasBuildish ? "build"
+        : hasDecision ? "decide"
+        : fileReadActions.length > 0 ? "operational"
+        : "conversation");
 
     const summary = fileReadActions.length > 0
       ? `Read ${fileReadActions.length} file${fileReadActions.length === 1 ? "" : "s"} \u00b7 ${args.atlasResponse.slice(0, 80).replace(/\n/g, " ").trim()}\u2026`
@@ -1473,13 +1487,14 @@ async function persistNexusExecutionRun(args: {
     const promptText = args.userMessage.trim();
     const intentValue = args.intent?.trim() || null;
     const messageIdValue = args.messageId ?? null;
+    const conversationIdValue = args.conversationId ?? null;
 
     await db.execute(sql`
       INSERT INTO execution_runs
-        (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
+        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
       VALUES
-        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue},
-         ${mode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
+        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
+         ${derivedMode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
          ${args.startedAt}, ${completedAt}, ${elapsedMs})
     `);
 
