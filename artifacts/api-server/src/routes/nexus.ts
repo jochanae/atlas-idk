@@ -1444,6 +1444,7 @@ async function persistNexusExecutionRun(args: {
   }>;
   startedAt: Date;
   intent?: string | null;
+  messageId?: number | null;
 }): Promise<void> {
   try {
     const completedAt = new Date();
@@ -1471,12 +1472,13 @@ async function persistNexusExecutionRun(args: {
 
     const promptText = args.userMessage.trim();
     const intentValue = args.intent?.trim() || null;
+    const messageIdValue = args.messageId ?? null;
 
     await db.execute(sql`
       INSERT INTO execution_runs
         (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
       VALUES
-        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${null},
+        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue},
          ${mode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
          ${args.startedAt}, ${completedAt}, ${elapsedMs})
     `);
