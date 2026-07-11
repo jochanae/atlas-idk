@@ -126,7 +126,16 @@ export function useNexusWorkspaceBridge(
     conversationId: conversationId || null,
     conversationMode: opts?.conversationMode,
     onConversationId: (cid) => {
-      setConversationId(cid);
+      // When the workspace is URL-routed, opts.initialConversationId is the
+      // URL-param conversation and is the authority. Calling setConversationId
+      // here would change state → trigger the guard effect at line ~154 →
+      // reset historyLoadedRef → reload history from DB → setMessages(nexusMsgs)
+      // during the fetch window → blank screen after every completed turn.
+      // For URL-routed workspaces: persist to localStorage but do NOT update
+      // internal state (the URL param is already pinned via the guard effect).
+      if (!opts?.initialConversationId) {
+        setConversationId(cid);
+      }
       if (pid) {
         storeConversationId(pid, cid);
       }
