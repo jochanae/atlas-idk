@@ -257,6 +257,8 @@ export function useNexusChatStream(
   const [isPending, setIsPending] = useState(false);
   const [liveStep, setLiveStep] = useState<NexusLiveStep | null>(null);
   const [liveSteps, setLiveSteps] = useState<NexusLiveStep[]>([]);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const activeRunIdRef = useRef<string | null>(null);
   const [shapingPayload, setShapingPayload] = useState<NexusShapingPayload | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
   const shapingHeldRef = useRef(false);
