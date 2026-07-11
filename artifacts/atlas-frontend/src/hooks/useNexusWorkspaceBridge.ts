@@ -61,10 +61,16 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
   // Strip WRITE_FILE signal tokens from displayed content — the same cleanup
   // WorkspaceConversationSurface did before rendering.
   const cleaned = nm.content.replace(/WRITE_FILE:\s*\{[^}]+\}/g, "").trim();
+  // stableKey: derived once from the message's own identity, never from its
+  // array index.  nm.id is the DB row id (string) for persisted messages or a
+  // client-generated uuid for optimistic sends.  Falling back to
+  // role+createdAt is stable as long as the message itself doesn't change —
+  // no index used so inserting a new row never invalidates existing keys.
+  const stableKey = nm.id ?? `${nm.role[0]}-${nm.createdAt}`;
   return {
-    // ChatMessage.id is numeric; Nexus ids are strings. Use idx-based id so
-    // ChatStream keys/refs stay stable across renders.
+    // Keep numeric id for backward compat (planStates maps, per-message refs).
     id: idx + 1,
+    stableKey,
     role: nm.role,
     content: cleaned,
     streaming: nm.streaming ?? false,

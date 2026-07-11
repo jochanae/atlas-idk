@@ -770,7 +770,7 @@ export function ChatStream(props: ChatStreamProps) {
 
         if (msg.role === "assistant" && msg.githubPush && !conversationMode) {
           return (
-            <Fragment key={msg.id ?? `row-${i}`}>
+            <Fragment key={msg.stableKey ?? String(msg.id)}>
 
               <div data-atlas-msg-idx={i} data-msg-idx={i}>
                 <WorkspaceRunCard
@@ -789,7 +789,7 @@ export function ChatStream(props: ChatStreamProps) {
         }
 
         return (
-        <Fragment key={msg.id ?? `row-${i}`}>
+        <Fragment key={msg.stableKey ?? String(msg.id)}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
           {msg.role === "user" ? (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>

@@ -270,6 +270,11 @@ export interface DeployQa {
 
 export interface ChatMessage {
   id?: number;
+  /** Stable render key assigned once when the message enters state or is
+   *  hydrated — never derived from array index. ChatStream uses this for
+   *  Fragment keys so React never remounts an existing row when a new one
+   *  is inserted (no cascading repaint). */
+  stableKey?: string;
   role: "user" | "assistant";
   content: string;
   researchResult?: { type: "research"; url: string; title: string; summary: string | null; headings: string[] } | null;
