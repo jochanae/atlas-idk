@@ -257,6 +257,21 @@ async function ensureColumns(): Promise<void> {
 
   try {
     await db.execute(sql`
+      ALTER TABLE execution_runs
+        ADD COLUMN IF NOT EXISTS conversation_id text
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS execution_runs_conversation_id_idx
+        ON execution_runs (project_id, conversation_id)
+        WHERE conversation_id IS NOT NULL
+    `);
+    logger.info("ensureColumns: execution_runs.conversation_id verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: execution_runs.conversation_id failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS project_checkpoints (
         id text PRIMARY KEY,
         project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

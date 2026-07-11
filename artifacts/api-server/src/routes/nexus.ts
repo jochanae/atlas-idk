@@ -4227,6 +4227,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         projectId: focusProjectId,
         threadId: sessionId ?? null,
         messageId: nexusMsgId ?? sourceChatMessageId ?? null,
+        conversationId: effectiveConversationId ?? null,
         userText: body.message ?? "",
         assistantText: visibleContent,
         intent,

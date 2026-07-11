@@ -147,6 +147,8 @@ export async function maybeEmitMilestones(opts: {
   projectId: number;
   threadId?: number | null;
   messageId?: number | null;
+  /** Nexus conversation UUID — scopes this milestone run to the active thread. */
+  conversationId?: string | null;
   userText: string;
   assistantText: string;
   intent: "CHAT" | "DECIDE" | "BUILD";
@@ -184,6 +186,7 @@ export async function maybeEmitMilestones(opts: {
     const runId = randomUUID();
     const startedAt = opts.startedAt ?? new Date();
     const completedAt = new Date();
+    const conversationIdValue = opts.conversationId ?? null;
     const summary = milestones
       .map((m) => m.content.split(" — ")[0])
       .filter(Boolean)
@@ -192,9 +195,9 @@ export async function maybeEmitMilestones(opts: {
 
     await db.execute(sql`
       INSERT INTO execution_runs
-        (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
+        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
       VALUES
-        (${runId}, ${opts.projectId}, ${opts.threadId ?? null}, ${opts.messageId ?? null},
+        (${runId}, ${opts.projectId}, ${opts.threadId ?? null}, ${opts.messageId ?? null}, ${conversationIdValue},
          ${"conversation"}, ${"succeeded"}, ${summary || "Conversation milestone"}, ${opts.userText.slice(0, 2000) || null},
          ${opts.intent}, ${startedAt}, ${completedAt}, ${Math.max(0, completedAt.getTime() - startedAt.getTime())})
     `);
