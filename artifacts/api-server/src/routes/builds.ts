@@ -342,7 +342,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
 
   try {
     const runResult = await db.execute(sql`
-      SELECT id, project_id, thread_id, message_id, mode, status, summary,
+      SELECT id, project_id, thread_id, message_id, conversation_id, mode, status, summary,
              prompt, intent, started_at, completed_at, elapsed_ms
       FROM execution_runs
       WHERE id = ${id}
@@ -365,6 +365,7 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
       projectId: r.project_id,
       threadId: r.thread_id,
       messageId: r.message_id,
+      conversationId: (r.conversation_id as string | null) ?? null,
       mode: r.mode,
       status: r.status,
       summary: r.summary,

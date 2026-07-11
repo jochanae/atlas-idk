@@ -1429,7 +1429,52 @@ async function loadRecentNexusMessagesForConversation(
  *  Nexus equivalent of persistExecutionRun() in chat.ts — runs fire-and-forget at the
  *  end of every focusProjectId turn so the Timeline in ViewChangesPanel shows
  *  conversation activity (reads, summary, DNA updates, decisions) not just build-runner steps. */
+/**
+ * Insert an execution_runs row in `running` status at the START of a turn so
+ * Timeline/Changes can filter by runId while the work is still in flight.
+ * Called from the /nexus/chat handler right after SSE headers are flushed.
+ * The completion path (persistNexusExecutionRun) UPDATEs the same row.
+ */
+async function insertRunningExecutionRun(args: {
+  runId: string;
+  projectId: number;
+  sessionId: number | null | undefined;
+  conversationId: string | null;
+  userMessage: string;
+  intent?: string | null;
+  mode?: string;
+  startedAt: Date;
+}): Promise<void> {
+  try {
+    const promptText = (args.userMessage ?? "").trim();
+    await db.execute(sql`
+      INSERT INTO execution_runs
+        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at)
+      VALUES
+        (${args.runId}, ${args.projectId}, ${args.sessionId ?? null}, ${null}, ${args.conversationId ?? null},
+         ${args.mode ?? "conversation"}, ${"running"}, ${null}, ${promptText || null}, ${args.intent ?? null},
+         ${args.startedAt})
+      ON CONFLICT (id) DO NOTHING
+    `);
+  } catch (err) {
+    logger.warn({ err, runId: args.runId }, "nexus: insertRunningExecutionRun failed — non-fatal");
+  }
+}
+
+/** Fire-and-forget incremental step persist during streaming. Uses a negative
+ *  order_index so canonical rewrite in persistNexusExecutionRun (which uses 0+)
+ *  can safely DELETE these before re-inserting the cleaned final set. */
+function appendLiveStepAsync(runId: string, verb: string, target: string | null, status: string, detail: string | null, orderIdx: number): void {
+  void db.execute(sql`
+    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, order_index)
+    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${orderIdx})
+  `).catch((err) => {
+    logger.debug({ err, runId, verb }, "nexus: incremental step insert failed — non-fatal");
+  });
+}
+
 async function persistNexusExecutionRun(args: {
+  runId?: string | null;
   projectId: number;
   sessionId: number | null | undefined;
   conversationId: string | null;
@@ -1453,7 +1498,10 @@ async function persistNexusExecutionRun(args: {
   try {
     const completedAt = new Date();
     const elapsedMs = Math.max(0, completedAt.getTime() - args.startedAt.getTime());
-    const runId = randomUUID();
+    // Reuse the pre-inserted `running` row when the handler minted a runId at
+    // turn start; otherwise mint a fresh one for the completion insert path.
+    const runId = args.runId ?? randomUUID();
+    const preInserted = !!args.runId;
 
     // A target looks like a file path if it has no spaces and contains "/" or a file extension
     const isFilePath = (t: string | null | undefined) =>
@@ -1489,14 +1537,31 @@ async function persistNexusExecutionRun(args: {
     const messageIdValue = args.messageId ?? null;
     const conversationIdValue = args.conversationId ?? null;
 
-    await db.execute(sql`
-      INSERT INTO execution_runs
-        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
-      VALUES
-        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
-         ${derivedMode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
-         ${args.startedAt}, ${completedAt}, ${elapsedMs})
-    `);
+    if (preInserted) {
+      // Update the row that was inserted at turn-start with terminal state.
+      await db.execute(sql`
+        UPDATE execution_runs SET
+          message_id = ${messageIdValue},
+          mode = ${derivedMode},
+          status = ${"succeeded"},
+          summary = ${summary},
+          intent = ${intentValue},
+          completed_at = ${completedAt},
+          elapsed_ms = ${elapsedMs}
+        WHERE id = ${runId}
+      `);
+      // Drop any incremental live steps so the canonical set below is authoritative.
+      await db.execute(sql`DELETE FROM execution_run_steps WHERE run_id = ${runId}`);
+    } else {
+      await db.execute(sql`
+        INSERT INTO execution_runs
+          (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
+        VALUES
+          (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
+           ${derivedMode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
+           ${args.startedAt}, ${completedAt}, ${elapsedMs})
+      `);
+    }
 
     type Step = {
       verb: string;
@@ -1899,6 +1964,11 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     userType?: HomeUserType;
     conversationMode?: boolean;
     justTalk?: boolean;
+    /** Stable client-minted run identifier. When present, the backend
+     *  pre-inserts an execution_runs row in `running` status and reuses the
+     *  same id for the terminal update — giving Timeline/Changes a single
+     *  identity across live → completed. Falls back to a server-minted id. */
+    runId?: string;
   };
 
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
@@ -2983,6 +3053,53 @@ WHAT YOU SHOULD NOT DO:
     res.write(`event: meta\ndata: ${JSON.stringify({ intent, justTalk: !!justTalk, fallback: whisperFallback })}\n\n`);
   }
 
+  // ── Run identity spine ──────────────────────────────────────────────────
+  // Mint (or accept) a stable runId that spans the whole turn: pre-inserted
+  // `running` row → live steps → completion UPDATE → Timeline/Changes reads.
+  // See handoff: identity spans user turn → thinking → live steps → Timeline
+  // → Changes → completion → receipt → reload.
+  const clientRunId = typeof body.runId === "string" && /^[0-9a-fA-F-]{8,}$/.test(body.runId) ? body.runId : null;
+  const willPersistRun = !!focusProjectId && !isChatTurn;
+  const activeRunId: string | null = willPersistRun ? (clientRunId ?? randomUUID()) : null;
+  let runPreInserted = false;
+  let runTerminalized = false;
+  let liveStepOrderIdx = 0;
+  if (activeRunId && focusProjectId) {
+    // Fire pre-insert immediately (fire-and-forget) so Timeline can filter by
+    // runId within ~1s of the tap. Errors are non-fatal — completion path
+    // still works via ON CONFLICT DO NOTHING.
+    void insertRunningExecutionRun({
+      runId: activeRunId,
+      projectId: focusProjectId,
+      sessionId,
+      conversationId: effectiveConversationId,
+      userMessage: body.message ?? "",
+      intent,
+      mode: allowBuildSideEffects ? "build" : intent === "DECIDE" ? "decide" : "conversation",
+      startedAt: turnStartedAt,
+    });
+    runPreInserted = true;
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(`event: run\ndata: ${JSON.stringify({ runId: activeRunId, conversationId: effectiveConversationId })}\n\n`);
+    }
+  }
+
+  // Terminal cleanup — if the client disconnects or the request aborts before
+  // finishStream marks the run terminalized, mark it cancelled so no `running`
+  // row is orphaned in the ledger.
+  req.on("close", () => {
+    if (activeRunId && runPreInserted && !runTerminalized) {
+      void db.execute(sql`
+        UPDATE execution_runs
+        SET status = 'cancelled', completed_at = now(),
+            elapsed_ms = ${Math.max(0, Date.now() - turnStartedAt.getTime())}
+        WHERE id = ${activeRunId} AND status = 'running'
+      `).catch(() => { /* non-fatal */ });
+    }
+  });
+
+
+
   if (justTalk) {
     systemPrompt += `\n\n--- JUST TALK MODE ACTIVE ---\nJUST TALK MODE ACTIVE — the user has explicitly disabled build actions. Do not build, edit, run, create, deploy, or modify anything. Do not call tools. Do not propose file writes. Respond conversationally only. If the user asks for a build action, acknowledge and ask them to turn Just Talk off first.\n--- END JUST TALK MODE ---`;
   } else if (conversationModeActive) {
@@ -3050,7 +3167,20 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
     const step: RunAction = { ...action, status: action.status ?? "ok" };
     runActions.push(step);
     if (!res.writableEnded && !res.destroyed) {
-      res.write(`event: step\ndata: ${JSON.stringify(step)}\n\n`);
+      res.write(`event: step\ndata: ${JSON.stringify({ ...step, runId: activeRunId })}\n\n`);
+    }
+    // Incremental persistence — Timeline picks up live steps within the
+    // frontend's 1.5s poll while a run is still `running`. Canonical rewrite
+    // in persistNexusExecutionRun() deletes these before writing the clean set.
+    if (activeRunId) {
+      appendLiveStepAsync(
+        activeRunId,
+        String(step.verb ?? "STEP"),
+        step.target ?? null,
+        step.status ?? "ok",
+        step.detail ?? null,
+        liveStepOrderIdx++,
+      );
     }
   };
 
@@ -4064,6 +4194,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
       const hasDecision = _nexusNonCodeSteps.some((s) => DECISION_VERBS.has(s.verb));
       const runMode = hasBuildish ? "build" : hasDecision ? "decide" : "conversation";
       void persistNexusExecutionRun({
+        runId: activeRunId,
         projectId: focusProjectId,
         sessionId,
         conversationId: effectiveConversationId,
@@ -4076,6 +4207,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         messageId: nexusMsgId ?? sourceChatMessageId,
         mode: runMode,
       });
+      runTerminalized = true;
     }
 
     // Background genome extraction — non-blocking, rate-limited. Skip on CHAT.

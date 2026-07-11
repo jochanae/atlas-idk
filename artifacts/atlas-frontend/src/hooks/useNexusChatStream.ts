@@ -184,6 +184,9 @@ export interface NexusLiveStep {
   target?: string;
   detail?: string;
   status?: "ok" | "warn" | "fail";
+  /** Stable identity for this whole turn — same id spans user prompt → live
+   *  steps → Timeline row → Changes row → receipt. Set by useNexusChatStream. */
+  runId?: string;
 }
 
 export interface UseNexusChatStreamOptions {
@@ -222,6 +225,10 @@ export interface UseNexusChatStreamReturn {
   isPending: boolean;
   liveStep: NexusLiveStep | null;
   liveSteps: NexusLiveStep[];
+  /** Stable runId for the currently-streaming turn (null when idle). Same id
+   *  will appear on execution_runs.id once persisted, so tapping the live card
+   *  can deep-link to Timeline/Changes for this run. */
+  activeRunId: string | null;
   shapingPayload: NexusShapingPayload | null;
   setShapingPayload: React.Dispatch<React.SetStateAction<NexusShapingPayload | null>>;
   shapingHeld: boolean;
@@ -250,6 +257,8 @@ export function useNexusChatStream(
   const [isPending, setIsPending] = useState(false);
   const [liveStep, setLiveStep] = useState<NexusLiveStep | null>(null);
   const [liveSteps, setLiveSteps] = useState<NexusLiveStep[]>([]);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const activeRunIdRef = useRef<string | null>(null);
   const [shapingPayload, setShapingPayload] = useState<NexusShapingPayload | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
   const shapingHeldRef = useRef(false);
@@ -291,6 +300,8 @@ export function useNexusChatStream(
     setIsPending(false);
     setLiveStep(null);
     setLiveSteps([]);
+    setActiveRunId(null);
+    activeRunIdRef.current = null;
     sendInFlightRef.current = false;
   }, []);
 
@@ -357,6 +368,14 @@ export function useNexusChatStream(
     setIsStreaming(true);
     const streamingId = Date.now().toString();
     streamingIdRef.current = streamingId;
+    // Mint the stable run identity for this turn. Sent to the backend so the
+    // execution_runs row is inserted under the same id — live card, Timeline,
+    // Changes and receipt all read/write against this single identity.
+    const turnRunId = (typeof crypto !== "undefined" && "randomUUID" in crypto)
+      ? crypto.randomUUID()
+      : `run-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    activeRunIdRef.current = turnRunId;
+    setActiveRunId(turnRunId);
     stepSeqRef.current = 0;
     projectReadyNotifiedStreamRef.current = null;
     cleanedUpRef.current = false;
@@ -422,6 +441,7 @@ export function useNexusChatStream(
           mode: resolvedMode,
           conversationId: activeConversationIdRef.current ?? undefined,
           focusProjectId: resolvedFocusProjectId ?? undefined,
+          runId: turnRunId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
           ...(imgAttachments.length > 0
             ? {
@@ -471,6 +491,7 @@ export function useNexusChatStream(
               target: step.target,
               detail: step.detail,
               status: step.status,
+              runId: activeRunIdRef.current ?? turnRunId,
             };
             setLiveStep(nextStep);
             setLiveSteps(prev => [...prev, nextStep].slice(-6));
@@ -760,6 +781,7 @@ export function useNexusChatStream(
     isPending,
     liveStep,
     liveSteps,
+    activeRunId,
     shapingPayload,
     setShapingPayload,
     shapingHeld,

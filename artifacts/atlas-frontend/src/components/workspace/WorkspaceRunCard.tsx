@@ -46,7 +46,11 @@ interface Props {
   messages: ChatMessage[];
   projectPreviewUrl?: string | null;
   chatPending?: boolean;
-  liveStep?: { verb: string; target?: string; status?: string } | null;
+  liveStep?: { verb: string; target?: string; status?: string; runId?: string } | null;
+  /** Stable identity for the in-flight turn. Enables tap-to-open on the
+   *  ActiveCard so the Timeline/Changes drawer deep-links to the same runId
+   *  that will later back the completed receipt. */
+  activeRunId?: string | null;
   onTryToFix?: () => void;
   receiptMessage?: ChatMessage | null;
   suppressGitHubReceipt?: boolean;
@@ -112,6 +116,10 @@ function adaptExecutionRun(
     "DNA_UPDATED",
     "COMMAND", "SHELL", "BUILD", "INSTALL", "TEST", "RUN",
   ]);
+  // In-flight runs (pre-inserted `running` rows from the identity spine) never
+  // render as a completed receipt — the live ActiveCard owns that surface until
+  // the row terminalizes to succeeded/failed.
+  if (run.status === "running") return null;
   if (!run.steps.some(s => RECEIPT_WORTHY.has(s.verb))) return null;
 
   // Anchor stability — once a receipt has a messageId, it stays anchored in
@@ -492,8 +500,10 @@ function InlineThinkingPulse({ steps }: { steps: LiveStepItem[] }) {
 }
 
 /** The live execution card shown while Atlas is working.
- *  One card. One current step. Fixed height. No growing list. */
-function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: string }) {
+ *  One card. One current step. Fixed height. No growing list.
+ *  Tapping the card (when a runId is available) opens Timeline/Changes for
+ *  the in-flight run — the same identity that will later carry the receipt. */
+function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoal: string; runId?: string | null }) {
   const current = steps[steps.length - 1];
   const stepCount = steps.length;
 
@@ -509,8 +519,21 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         ? "Thinking with Atlas"
         : stepHeadline;
 
+  const clickable = !!runId;
+  const openTimeline = () => {
+    if (!runId) return;
+    window.dispatchEvent(new CustomEvent("axiom:open-changes", { detail: { runId } }));
+  };
+
   return (
     <div
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      aria-label={clickable ? "Open Timeline for the in-flight run" : undefined}
+      onClick={clickable ? openTimeline : undefined}
+      onKeyDown={clickable
+        ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTimeline(); } }
+        : undefined}
       style={{
         position: "relative",
         background: "hsl(var(--card))",
@@ -522,8 +545,10 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
         maxWidth: "100%",
         boxSizing: "border-box",
         overflow: "hidden",
+        cursor: clickable ? "pointer" : "default",
       }}
       data-wrc-active="true"
+      data-run-id={runId ?? undefined}
     >
       {/* Shimmer sweep */}
       <div
@@ -639,7 +664,7 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
   );
 }
 
-export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, executionRun, suppressDeliverableReceipt }: Props) {
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, activeRunId, onTryToFix, receiptMessage, executionRun, suppressDeliverableReceipt }: Props) {
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
@@ -856,7 +881,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   if (isActive) {
     if (hasBuildStep) {
       // Real tool-use turn (file reads/writes, builds, etc.) → full run card.
-      return <ActiveCard steps={liveSteps} taskGoal={taskGoal} />;
+      return <ActiveCard steps={liveSteps} taskGoal={taskGoal} runId={activeRunId ?? liveStep?.runId ?? null} />;
+      // Note: `activeRunId` prop is optional; when omitted the card falls back
+      // to liveStep.runId (Nexus transport attaches it to every step event).
     }
     // Conversational / thinking-only turn: "Thinking" = plain prose, no card.
     // ChatStream streams assistant prose unsuppressed during these steps, so
