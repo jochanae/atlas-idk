@@ -1116,6 +1116,7 @@ export function ViewChangesPanel({
         projectName={projectName?.trim() || "Workspace"}
         runId={runId}
         onSelectRun={setRunFilter}
+        conversationId={conversationId}
       />
 
       {/* ── Centered segmented toggle: Timeline · Changes ── */}
