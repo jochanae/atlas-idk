@@ -773,7 +773,23 @@ export function useNexusChatStream(
         },
       });
     } finally {
-      // Always reset — even if stream threw unexpectedly
+      // Guard: if the stream closed without delivering content (no tokens arrived,
+      // no onError fired), the assistant bubble stays at "" with streaming:true.
+      // This happens when the server sends event:error but the SSE connection closes
+      // before the client parses it, or when the model returned only stripped tokens.
+      // Convert the orphaned empty bubble to a visible error so the user is not
+      // left looking at a silent blank message.
+      const capturedId = streamingId;
+      setMessages(prev => prev.map(m =>
+        (m as any).id === capturedId && m.role === "assistant" && !m.content?.trim()
+          ? {
+              ...m,
+              content: "No response was generated. Please try again.",
+              streaming: false,
+              runStatus: "failed" as const,
+            }
+          : m
+      ));
       resetStreamState();
     }
   }, [focusProjectId, isPending, model, mode, conversationMode, onData, onProjectReady, stream, abortStream, resetStreamState]);
