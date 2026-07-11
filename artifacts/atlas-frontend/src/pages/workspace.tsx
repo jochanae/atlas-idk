@@ -60,7 +60,10 @@ import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/Fl
 import { MapTab } from "@/components/workspace/MapTab";
 import { ConversationViewSwitcher } from "@/components/workspace/ConversationViewSwitcher";
 import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
-import { StreamingText, ChunkedBubbles } from "@/components/workspace/StreamingText";
+// E: StreamingText/ChunkedBubbles were the legacy word-by-word typing path.
+// createTextPacer (rAF token release + prose growth) is now the single
+// streaming presentation path. Import removed to prevent accidental reuse.
+// The component file is kept intact for HomeChunkedBubbles parity reference.
 import { LinePatchReviewCard, ReviewPlanCard, ReviewTabPanel, PushDiffCard } from "@/components/workspace/ReviewCards";
 import { SessionTimeline } from "@/components/workspace/SessionTimeline";
 import { ViewChangesPanel } from "@/components/workspace/ViewChangesPanel";
