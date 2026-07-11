@@ -1576,7 +1576,7 @@ async function persistNexusExecutionRun(args: {
       `);
     }
 
-    logger.info({ runId, projectId: args.projectId, mode, intent: intentValue, stepCount: steps.length, nonCodeCount: args.nonCodeSteps?.length ?? 0 }, "nexus: persisted execution_run for workspace turn");
+    logger.info({ runId, projectId: args.projectId, conversationId: conversationIdValue, mode: derivedMode, intent: intentValue, stepCount: steps.length, nonCodeCount: args.nonCodeSteps?.length ?? 0 }, "nexus: persisted execution_run for workspace turn");
   } catch (err) {
     logger.warn({ err }, "nexus: persistNexusExecutionRun failed — non-fatal");
   }
