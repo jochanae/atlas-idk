@@ -112,6 +112,10 @@ function adaptExecutionRun(
     "DNA_UPDATED",
     "COMMAND", "SHELL", "BUILD", "INSTALL", "TEST", "RUN",
   ]);
+  // In-flight runs (pre-inserted `running` rows from the identity spine) never
+  // render as a completed receipt — the live ActiveCard owns that surface until
+  // the row terminalizes to succeeded/failed.
+  if (run.status === "running") return null;
   if (!run.steps.some(s => RECEIPT_WORTHY.has(s.verb))) return null;
 
   // Anchor stability — once a receipt has a messageId, it stays anchored in
