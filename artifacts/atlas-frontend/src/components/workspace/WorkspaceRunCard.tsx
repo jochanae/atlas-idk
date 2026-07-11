@@ -99,25 +99,32 @@ function adaptExecutionRun(
   projectPreviewUrl?: string | null,
   suppressDeliverable?: boolean,
 ): DerivedRun | null {
-  // Anchor the trailing receipt to its own turn. If a newer user message has
-  // arrived after the run's associated assistant message, the receipt belongs
-  // to a prior conversation — suppress so it doesn't float below the new turn.
+  // Receipt eligibility — a run only produces a durable receipt card when at
+  // least one step is a real side effect (file write, build/tool execution,
+  // GitHub push, image/artifact generation, or persistent insight like a DNA
+  // field update). Pure conversational turns — including ones that asked a
+  // question, recorded a decision, or read files for context — never get a
+  // "RUN COMPLETE" receipt; their outcome is already in the prose, Timeline,
+  // and Ledger.
+  const RECEIPT_WORTHY = new Set([
+    "FILE_EDIT", "FILE_DELETE", "LINE_PATCH",
+    "GITHUB_PUSH", "IMAGE_GEN", "ARTIFACT_CREATED",
+    "DNA_UPDATED",
+    "COMMAND", "SHELL", "BUILD", "INSTALL", "TEST", "RUN",
+  ]);
+  if (!run.steps.some(s => RECEIPT_WORTHY.has(s.verb))) return null;
+
+  // Anchor stability — once a receipt has a messageId, it stays anchored in
+  // its historical position even as the conversation continues. Only hide
+  // when we have no anchor at all AND the tail is a pending user turn (to
+  // avoid a truly orphaned trailing card).
   if (run.messageId !== null) {
     const msgIdx = messages.findIndex(m => m.id === run.messageId);
-    if (msgIdx !== -1) {
-      let userAfter = 0;
-      for (let k = msgIdx + 1; k < messages.length; k++) {
-        if (messages[k].role === "user") userAfter++;
-      }
-      if (userAfter >= 1) return null;
-    } else {
-      // Associated message isn't in the loaded thread (pruned/older session).
-      // If the current tail is a user message, this receipt is orphaned — hide it.
+    if (msgIdx === -1) {
       const last = messages[messages.length - 1];
       if (last?.role === "user") return null;
     }
   } else {
-    // No message anchor at all — never trail this under a pending user turn.
     const last = messages[messages.length - 1];
     if (last?.role === "user") return null;
   }
@@ -127,21 +134,12 @@ function adaptExecutionRun(
   const hasFileWork = run.steps.some(
     s => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH",
   );
-  // Task #158: a deliverable (DOCX/PPTX/PDF/etc.) generated via generate-deliverable.ts.
-  // Its receipt uses the same unified card — never a separate "can't generate" path.
-  // Task #171: when the inline ArtifactCreatedCard already covers this artifact,
-  // treat it as absent here so this run card doesn't render a redundant receipt.
   const deliverableStep = suppressDeliverable
     ? undefined
     : run.steps.find(s => s.verb === "ARTIFACT_CREATED");
 
-  // Pure conversational turns — only PROMPT/THOUGHT/SUMMARY/DECISION/QUESTION_ASKED
-  // with no real tool invocations (FILE_READ, FILE_EDIT, COMMAND, etc.). These are
-  // already fully represented in the response text/Timeline, so never show a
-  // receipt card for them (task #162).
-  const CONVERSATIONAL_ONLY = new Set(["PROMPT", "THOUGHT", "SUMMARY", "DECISION", "QUESTION_ASKED"]);
-  const hasRealExecution = run.steps.some(s => !CONVERSATIONAL_ONLY.has(s.verb));
-  if (!hasRealExecution && !hasGithubPush && !hasImageGen && !hasFileWork && !deliverableStep) return null;
+  // Steps that don't count as "real execution" for status derivation below.
+  const CONVERSATIONAL_ONLY = new Set(["PROMPT", "THOUGHT", "SUMMARY", "DECISION", "QUESTION_ASKED", "FILE_READ", "TREE", "FETCH", "DECISION_RECORDED"]);
 
   // Extract executive summary from the SUMMARY step (nexus workspace turns write this).
   const summaryStep = run.steps.find(s => s.verb === "SUMMARY");
