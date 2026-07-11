@@ -1,3 +1,4 @@
+- [Phantom-work pattern root cause](phantom-work-pattern.md) — "let me look" with no result: WhisperGate misclassifies project questions as CHAT → no DNA injected → no tools → model promises but cannot deliver
 - [Workspace blank-after-every-turn bug](workspace-blank-after-turn.md) — onConversationId in URL-routed workspace triggers history reload cascade → blank screen; fix: skip setConversationId when opts.initialConversationId is set
 - [LLM capability denial despite available tool](deliverable-capability-denial.md) — wiring a tool into the registry isn't enough; strong model priors need an explicit unconditional prompt assertion or the model denies the capability anyway
 - [Capability matrix verification method](capability-matrix-audit-method.md) — always re-verify MASTER_CAPABILITY_MATRIX.md against live code (grep dirs/files), never trust prior chat-derived audits; 5-level status legend now separates "runs" from "production-quality"

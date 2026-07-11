@@ -2546,10 +2546,39 @@ If generate_deliverable is called and returns an error, report the actual failur
   if (focusProjectId) {
     const focusProject = projects.find(p => p.id === focusProjectId);
     if (focusProject) {
-      // CHAT turns: name the project only — never inject status/overview briefing.
-      // Greetings must get a greeting back, not an Obsidian Ledger status recap.
+      // CHAT turns: inject lightweight project context so the model can answer
+      // project-knowledge questions ("what does this do?", "is our description stale?")
+      // without needing tools. Previously only the project name was injected, which
+      // caused the phantom-work pattern: model says "let me look" then can't look
+      // (no tools in CHAT mode), leaving the user with an unfulfilled promise.
       if (isChatTurn) {
-        systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nThe user is in "${focusProject.name}" but this turn is pure conversation (greeting / small talk). Reply briefly and conversationally. Do NOT give a project status overview, progress recap, readiness score, or unsolicited briefing. Do NOT open with "${focusProject.name} —" or "On ${focusProject.name}:". Just talk.\n--- END FOCUSED PROJECT ---`;
+        // Load DNA for CHAT turns — fast single-row fetch.
+        const chatGenomeRow = await getProjectDNA(focusProjectId).catch(() => null);
+        // Reuse already-loaded committedEntries — filter to this project.
+        const chatLedgerLines = committedEntries
+          .filter(e => e.projectId === focusProjectId)
+          .slice(0, 8)
+          .map(e => `  • ${e.title}${e.summary ? ` — ${e.summary.slice(0, 80)}` : ""}`)
+          .join("\n");
+
+        const chatDnaLines: string[] = [];
+        if (chatGenomeRow?.purpose) chatDnaLines.push(`Purpose: ${chatGenomeRow.purpose}`);
+        if (chatGenomeRow?.audience) chatDnaLines.push(`Audience: ${chatGenomeRow.audience}`);
+        if (chatGenomeRow?.wedge) chatDnaLines.push(`Wedge: ${chatGenomeRow.wedge}`);
+        if (chatGenomeRow?.differentiator) chatDnaLines.push(`Differentiator: ${chatGenomeRow.differentiator}`);
+        if (chatGenomeRow?.stage) chatDnaLines.push(`Stage: ${chatGenomeRow.stage}`);
+        if ((chatGenomeRow?.openQuestions ?? []).length > 0) {
+          chatDnaLines.push(`Open questions: ${(chatGenomeRow!.openQuestions ?? []).slice(0, 3).join("; ")}`);
+        }
+
+        systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nYou are inside the "${focusProject.name}" project workspace.`;
+        if (chatDnaLines.length > 0) {
+          systemPrompt += `\n\nProject DNA:\n${chatDnaLines.join("\n")}`;
+        }
+        if (chatLedgerLines) {
+          systemPrompt += `\n\nCommitted decisions:\n${chatLedgerLines}`;
+        }
+        systemPrompt += `\n\nIf this is a greeting or small talk, reply briefly. If the user asks about this project — its description, capabilities, decisions, gaps, or direction — answer from the context above. You have what is here. Do NOT end with "give me a second", "let me look", or "I'll pull that up" — either answer from the context above or say exactly what information you don't have.\n--- END FOCUSED PROJECT ---`;
       } else {
       // FILE TREE INJECTION — source-of-truth priority:
       //   1. Local workspace disk (same source as read_file) — always preferred.
@@ -3105,7 +3134,20 @@ WHAT YOU SHOULD NOT DO:
   } else if (conversationModeActive) {
     systemPrompt += `\n\n--- CONVERSATION MODE ACTIVE ---\nThe user has switched this thread to Conversation Mode. Do not call any tools, propose file edits, or take build actions — none are available this turn. Respond as a thinking partner only: discuss, brainstorm, question, and reason in prose. If the user asks you to build or change something, say you're in Conversation Mode and ask them to switch to Build Mode to proceed.\n--- END CONVERSATION MODE ---`;
   } else if (intent === "CHAT") {
-    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT call tools. Do NOT propose file writes. Do NOT emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or REPO_LINK. Do NOT give a project status briefing or unsolicited progress recap. Just talk with the user like a thoughtful partner — a short greeting gets a short greeting back.\n--- END WHISPERGATE ---`;
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: CHAT ---\nThis is a conversational turn. The user is NOT asking you to build, edit, deploy, generate files, or perform operations. Respond with prose only. Do NOT call tools. Do NOT propose file writes. Do NOT emit FILE_EDIT_START, LINE_PATCH_START, GITHUB_PUSH, or REPO_LINK. Do NOT give a project status briefing or unsolicited progress recap. Just talk with the user like a thoughtful partner — a short greeting gets a short greeting back.
+
+HARD OUTPUT RULE — ZERO EXCEPTIONS: You must NEVER end a response with language that promises future retrieval or action without delivering it in this same response. The following phrases are forbidden as terminal statements:
+- "give me a second"
+- "let me look"
+- "let me pull that up"
+- "I'll pull that up"
+- "I'll check"
+- "I'm looking into that"
+- "give me a moment"
+- any variation of "I'm about to [action]" as the last thing you say
+
+If you cannot retrieve information because tools are not available on this turn, say plainly what you don't have — e.g. "I don't have the current Ledger entries loaded in this context." If you can answer from the project context injected above, answer from it directly. Never promise an action you cannot complete in this turn.
+--- END WHISPERGATE ---`;
   } else if (intent === "DECIDE") {
     systemPrompt += `\n\n--- WHISPERGATE INTENT: DECIDE ---
 This is a decision turn. Give the user structured options, tradeoffs, or a recommendation.
