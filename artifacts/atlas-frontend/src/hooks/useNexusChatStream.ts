@@ -300,6 +300,8 @@ export function useNexusChatStream(
     setIsPending(false);
     setLiveStep(null);
     setLiveSteps([]);
+    setActiveRunId(null);
+    activeRunIdRef.current = null;
     sendInFlightRef.current = false;
   }, []);
 
