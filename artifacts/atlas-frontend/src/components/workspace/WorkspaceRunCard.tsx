@@ -647,7 +647,7 @@ function ActiveCard({ steps, taskGoal }: { steps: LiveStepItem[]; taskGoal: stri
   );
 }
 
-export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, onTryToFix, receiptMessage, executionRun, suppressDeliverableReceipt }: Props) {
+export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatPending, liveStep, activeRunId, onTryToFix, receiptMessage, executionRun, suppressDeliverableReceipt }: Props) {
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
