@@ -789,7 +789,7 @@ export function ChatStream(props: ChatStreamProps) {
         }
 
         return (
-        <Fragment key={i}>
+        <Fragment key={msg.id ?? `row-${i}`}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
           {msg.role === "user" ? (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
