@@ -3053,6 +3053,53 @@ WHAT YOU SHOULD NOT DO:
     res.write(`event: meta\ndata: ${JSON.stringify({ intent, justTalk: !!justTalk, fallback: whisperFallback })}\n\n`);
   }
 
+  // ── Run identity spine ──────────────────────────────────────────────────
+  // Mint (or accept) a stable runId that spans the whole turn: pre-inserted
+  // `running` row → live steps → completion UPDATE → Timeline/Changes reads.
+  // See handoff: identity spans user turn → thinking → live steps → Timeline
+  // → Changes → completion → receipt → reload.
+  const clientRunId = typeof body.runId === "string" && /^[0-9a-fA-F-]{8,}$/.test(body.runId) ? body.runId : null;
+  const willPersistRun = !!focusProjectId && intent !== "CHAT";
+  const activeRunId: string | null = willPersistRun ? (clientRunId ?? randomUUID()) : null;
+  let runPreInserted = false;
+  let runTerminalized = false;
+  let liveStepOrderIdx = 0;
+  if (activeRunId && focusProjectId) {
+    // Fire pre-insert immediately (fire-and-forget) so Timeline can filter by
+    // runId within ~1s of the tap. Errors are non-fatal — completion path
+    // still works via ON CONFLICT DO NOTHING.
+    void insertRunningExecutionRun({
+      runId: activeRunId,
+      projectId: focusProjectId,
+      sessionId,
+      conversationId: effectiveConversationId,
+      userMessage: body.message ?? "",
+      intent,
+      mode: allowBuildSideEffects ? "build" : intent === "DECIDE" ? "decide" : "conversation",
+      startedAt: turnStartedAt,
+    });
+    runPreInserted = true;
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(`event: run\ndata: ${JSON.stringify({ runId: activeRunId, conversationId: effectiveConversationId })}\n\n`);
+    }
+  }
+
+  // Terminal cleanup — if the client disconnects or the request aborts before
+  // finishStream marks the run terminalized, mark it cancelled so no `running`
+  // row is orphaned in the ledger.
+  req.on("close", () => {
+    if (activeRunId && runPreInserted && !runTerminalized) {
+      void db.execute(sql`
+        UPDATE execution_runs
+        SET status = 'cancelled', completed_at = now(),
+            elapsed_ms = ${Math.max(0, Date.now() - turnStartedAt.getTime())}
+        WHERE id = ${activeRunId} AND status = 'running'
+      `).catch(() => { /* non-fatal */ });
+    }
+  });
+
+
+
   if (justTalk) {
     systemPrompt += `\n\n--- JUST TALK MODE ACTIVE ---\nJUST TALK MODE ACTIVE — the user has explicitly disabled build actions. Do not build, edit, run, create, deploy, or modify anything. Do not call tools. Do not propose file writes. Respond conversationally only. If the user asks for a build action, acknowledge and ask them to turn Just Talk off first.\n--- END JUST TALK MODE ---`;
   } else if (conversationModeActive) {
