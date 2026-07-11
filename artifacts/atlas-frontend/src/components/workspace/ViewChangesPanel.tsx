@@ -948,6 +948,8 @@ interface Props {
   onRollbackPush: (record: PushRecord) => Promise<void>;
   runId?: string | null;
   projectName?: string | null;
+  /** Active conversation UUID — scopes Timeline/Changes to this thread. */
+  conversationId?: string | null;
 }
 
 export function ViewChangesPanel({
@@ -958,10 +960,11 @@ export function ViewChangesPanel({
   onRollbackPush: _onRollbackPush,
   runId,
   projectName,
+  conversationId,
 }: Props) {
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
-  const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId);
+  const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId, { conversationId });
 
   // Refresh run list immediately when a run completes — eliminates the 30s lag
   // before the Timeline and Changes lenses reflect the finished run.
