@@ -864,7 +864,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   if (isActive) {
     if (hasBuildStep) {
       // Real tool-use turn (file reads/writes, builds, etc.) → full run card.
-      return <ActiveCard steps={liveSteps} taskGoal={taskGoal} />;
+      return <ActiveCard steps={liveSteps} taskGoal={taskGoal} runId={activeRunId ?? liveStep?.runId ?? null} />;
     }
     // Conversational / thinking-only turn: "Thinking" = plain prose, no card.
     // ChatStream streams assistant prose unsuppressed during these steps, so
