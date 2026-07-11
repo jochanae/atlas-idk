@@ -491,6 +491,7 @@ export function useNexusChatStream(
               target: step.target,
               detail: step.detail,
               status: step.status,
+              runId: activeRunIdRef.current ?? turnRunId,
             };
             setLiveStep(nextStep);
             setLiveSteps(prev => [...prev, nextStep].slice(-6));
