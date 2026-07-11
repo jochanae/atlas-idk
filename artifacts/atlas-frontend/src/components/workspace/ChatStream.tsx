@@ -770,7 +770,8 @@ export function ChatStream(props: ChatStreamProps) {
 
         if (msg.role === "assistant" && msg.githubPush && !conversationMode) {
           return (
-            <Fragment key={i}>
+            <Fragment key={msg.id ?? `row-${i}`}>
+
               <div data-atlas-msg-idx={i} data-msg-idx={i}>
                 <WorkspaceRunCard
                   projectId={projectId}
