@@ -204,13 +204,12 @@ export function followScrollIfNearBottom(
   if (!container) return;
   const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
   if (distance <= threshold) {
-    // Smooth follow when the reader is close to the bottom — feels like the
-    // page is easing to keep up, not snapping under them. If they've scrolled
-    // away, leave them alone entirely.
-    try {
-      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-    } catch {
-      container.scrollTop = container.scrollHeight;
-    }
+    // B: instant bottom alignment while auto-follow is active. rAF-paced
+    // token releases produce many follow ticks per second; chained smooth
+    // scrolls fight each other and produce visible jitter/lag. An instant
+    // `scrollTop = scrollHeight` per tick reads as smooth because the
+    // content growth itself is smooth. Manual upward scroll still releases
+    // stick via the caller (useSmartAutoScroll / bounds check above).
+    container.scrollTop = container.scrollHeight;
   }
 }
