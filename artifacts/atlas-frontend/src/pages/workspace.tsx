@@ -4952,7 +4952,7 @@ export default function Workspace() {
 
   // Phase 2B: execution_runs data layer — provides durable run receipts to the
   // trailing WorkspaceRunCard instead of relying on message scanning (deriveRun).
-  const { execLatestRun } = useProjectRuns(id);
+  const { execLatestRun } = useProjectRuns(id, { conversationId: conversationId ?? null });
 
 
   const thinkFreelyThreadLoadedRef = useRef(false);
@@ -8644,6 +8644,7 @@ export default function Workspace() {
                 onRollbackPush={handleRollbackPush}
                 runId={focusedRunId}
                 projectName={project?.name ?? null}
+                conversationId={conversationId ?? null}
               />
             </div>
           ) : leftTab === "terminal" ? (

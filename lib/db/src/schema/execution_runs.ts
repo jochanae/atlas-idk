@@ -15,6 +15,8 @@ export const executionRunsTable = pgTable("execution_runs", {
   summary: text("summary"),
   /** WhisperGate classification for this turn: "CHAT" | "DECIDE" | "BUILD" */
   intent: text("intent"),
+  /** Nexus conversation UUID — scopes Timeline/Changes to the active thread. */
+  conversationId: text("conversation_id"),
   /** User prompt that kicked off the run (mirrors PROMPT step content). */
   prompt: text("prompt"),
   receipts: jsonb("receipts"),

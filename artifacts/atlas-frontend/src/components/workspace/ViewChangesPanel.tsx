@@ -861,13 +861,15 @@ function WorkspaceRunReceipts({
   projectName,
   runId,
   onSelectRun,
+  conversationId,
 }: {
   projectId: number;
   projectName: string;
   runId?: string | null;
   onSelectRun?: (id: string) => void;
+  conversationId?: string | null;
 }) {
-  const { runs: apiRuns, invalidate: invalidateApiRuns } = useProjectRuns(projectId);
+  const { runs: apiRuns, invalidate: invalidateApiRuns } = useProjectRuns(projectId, { conversationId });
   const [expanded, setExpanded] = useState(false);
 
   // Refresh run list immediately when a run completes — no more 30s stale window.
@@ -946,6 +948,8 @@ interface Props {
   onRollbackPush: (record: PushRecord) => Promise<void>;
   runId?: string | null;
   projectName?: string | null;
+  /** Active conversation UUID — scopes Timeline/Changes to this thread. */
+  conversationId?: string | null;
 }
 
 export function ViewChangesPanel({
@@ -956,10 +960,11 @@ export function ViewChangesPanel({
   onRollbackPush: _onRollbackPush,
   runId,
   projectName,
+  conversationId,
 }: Props) {
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
-  const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId);
+  const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId, { conversationId });
 
   // Refresh run list immediately when a run completes — eliminates the 30s lag
   // before the Timeline and Changes lenses reflect the finished run.
@@ -1111,6 +1116,7 @@ export function ViewChangesPanel({
         projectName={projectName?.trim() || "Workspace"}
         runId={runId}
         onSelectRun={setRunFilter}
+        conversationId={conversationId}
       />
 
       {/* ── Centered segmented toggle: Timeline · Changes ── */}
