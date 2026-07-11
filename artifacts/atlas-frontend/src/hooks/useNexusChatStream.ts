@@ -184,6 +184,9 @@ export interface NexusLiveStep {
   target?: string;
   detail?: string;
   status?: "ok" | "warn" | "fail";
+  /** Stable identity for this whole turn — same id spans user prompt → live
+   *  steps → Timeline row → Changes row → receipt. Set by useNexusChatStream. */
+  runId?: string;
 }
 
 export interface UseNexusChatStreamOptions {
