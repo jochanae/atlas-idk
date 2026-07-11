@@ -62,11 +62,12 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
   // WorkspaceConversationSurface did before rendering.
   const cleaned = nm.content.replace(/WRITE_FILE:\s*\{[^}]+\}/g, "").trim();
   // stableKey: derived once from the message's own identity, never from its
-  // array index.  nm.id is the DB row id (string) for persisted messages or a
-  // client-generated uuid for optimistic sends.  Falling back to
-  // role+createdAt is stable as long as the message itself doesn't change —
-  // no index used so inserting a new row never invalidates existing keys.
-  const stableKey = nm.id ?? `${nm.role[0]}-${nm.createdAt}`;
+  // array index.  nm.id is the DB row id (string) for persisted messages, or a
+  // client-generated uuid for optimistic sends — so this fallback fires only
+  // defensively (e.g. a future code path that omits id).  role+createdAt alone
+  // could theoretically collide at the same millisecond; appending content.length
+  // makes it collision-proof without touching array position.
+  const stableKey = nm.id ?? `${nm.role[0]}-${nm.createdAt}-${nm.content.length}`;
   return {
     // Keep numeric id for backward compat (planStates maps, per-message refs).
     id: idx + 1,
