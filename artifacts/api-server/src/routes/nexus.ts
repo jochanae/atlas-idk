@@ -1444,6 +1444,7 @@ async function persistNexusExecutionRun(args: {
   }>;
   startedAt: Date;
   intent?: string | null;
+  messageId?: number | null;
 }): Promise<void> {
   try {
     const completedAt = new Date();
@@ -1471,12 +1472,13 @@ async function persistNexusExecutionRun(args: {
 
     const promptText = args.userMessage.trim();
     const intentValue = args.intent?.trim() || null;
+    const messageIdValue = args.messageId ?? null;
 
     await db.execute(sql`
       INSERT INTO execution_runs
         (id, project_id, thread_id, message_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
       VALUES
-        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${null},
+        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue},
          ${mode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
          ${args.startedAt}, ${completedAt}, ${elapsedMs})
     `);
@@ -4028,13 +4030,19 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
       if (!already) _nexusNonCodeSteps.push(step);
     }
 
+    // Only persist a run row when the turn produced a real side effect worth
+    // a durable receipt/Timeline entry: build/tool execution (allowBuildSideEffects),
+    // a generated artifact, or a persistent insight step (DNA_UPDATED). Pure
+    // conversation — including QUESTION_ASKED and DECISION_RECORDED alone —
+    // never creates an execution_run; those outcomes live in the prose and Ledger.
+    const RECEIPT_WORTHY_VERBS = new Set(["DNA_UPDATED", "ARTIFACT_CREATED"]);
+    const hasReceiptWorthyStep = _nexusNonCodeSteps.some((s) => RECEIPT_WORTHY_VERBS.has(s.verb));
     const shouldPersistRun =
       !!focusProjectId &&
       !isChatTurn &&
       (allowBuildSideEffects
-        || (intent === "DECIDE" && _nexusNonCodeSteps.length > 0)
         || sharedSideEffects.generatedArtifacts.length > 0
-        || _nexusNonCodeSteps.some((s) => s.verb === "ARTIFACT_CREATED"));
+        || hasReceiptWorthyStep);
     if (shouldPersistRun && focusProjectId) {
       void persistNexusExecutionRun({
         projectId: focusProjectId,
@@ -4045,6 +4053,7 @@ Rules: 2–4 options only. Each option: 1–3 pros, 1–3 cons. At most ONE atla
         nonCodeSteps: _nexusNonCodeSteps,
         startedAt: turnStartedAt,
         intent,
+        messageId: nexusMsgId ?? sourceChatMessageId,
       });
     }
 

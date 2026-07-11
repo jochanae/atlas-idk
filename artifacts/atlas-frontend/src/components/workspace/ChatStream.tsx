@@ -408,18 +408,9 @@ export function ChatStream(props: ChatStreamProps) {
     if (chatPending) return -1; // live: trailing card owns the surface
     const idx = messages.findIndex(m => m.id === execLatestRun.messageId && m.role === "assistant");
     if (idx === -1) return -1;
-
-    const next = messages[idx + 1];
-    if (next?.role === "assistant") {
-      // Intent anchor: card sits after the intent bubble, before the summary.
-      return idx;
-    }
-
-    // Legacy single-assistant turn: card after the assistant message so the
-    // slice passed to WorkspaceRunCard always includes the message with the run's
-    // messageId (idx-1 excluded it, causing adaptExecutionRun to return null).
-    const lastAssistantIdx = messages.reduce((a, m, i) => m.role === "assistant" ? i : a, -1);
-    if (idx !== lastAssistantIdx) return -1;
+    // Anchor the receipt inline immediately after its originating assistant
+    // message, regardless of whether newer assistant/user turns exist. The
+    // receipt stays in its historical position as the conversation continues.
     return idx;
   }, [execLatestRun?.messageId, chatPending, messages]);
 
