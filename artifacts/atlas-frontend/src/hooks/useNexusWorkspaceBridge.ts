@@ -306,5 +306,5 @@ export function useNexusWorkspaceBridge(
     [send]
   );
 
-  return { messages: chatMessages, chatPending, liveStep, send: sendText, abort };
+  return { messages: chatMessages, chatPending, liveStep, activeRunId, send: sendText, abort };
 }
