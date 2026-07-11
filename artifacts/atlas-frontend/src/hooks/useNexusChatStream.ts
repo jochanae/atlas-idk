@@ -781,6 +781,7 @@ export function useNexusChatStream(
     isPending,
     liveStep,
     liveSteps,
+    activeRunId,
     shapingPayload,
     setShapingPayload,
     shapingHeld,
