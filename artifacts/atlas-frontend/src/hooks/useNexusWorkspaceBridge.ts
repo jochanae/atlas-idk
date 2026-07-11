@@ -94,6 +94,8 @@ export interface NexusWorkspaceBridge {
   messages: ChatMessage[];
   chatPending: boolean;
   liveStep: NexusLiveStep | null;
+  /** Stable identity of the in-flight turn (null when idle). */
+  activeRunId: string | null;
   send: (text: string, attachments?: Array<{ base64: string; mediaType: string; name?: string }>) => void;
   abort: () => void;
 }
