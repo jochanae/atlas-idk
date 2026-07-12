@@ -4,33 +4,62 @@ import { AtlasReceipt } from "@/components/AtlasReceipt";
 import { RepositoryFeed } from "@/components/RepositoryFeed";
 import { useRunHydration } from "@/hooks/useRunHydration";
 import { useRepositoryEvents } from "@/hooks/useRepositoryEvents";
-import { isTerminal, type Run } from "@contract";
+import { isTerminal, type Run, type ConversationMessage } from "@contract";
 
 /**
  * ChatSurface — reads only from RunContext + hydration hooks.
  *
- * Two-layer activity model:
- *   Layer 1 — Atlas receipts: inline, one per terminal BUILD run. Data
- *             hydrated via useRunHydration; loading/error/empty/disconnected
- *             states rendered by the receipt itself.
- *   Layer 2 — Repository feed: quiet collapsible group of external activity.
- *             Events tied to an Atlas run's runId are filtered out.
+ * Renders (in order):
+ *   1. Historical conversation messages (paginated via provider).
+ *   2. Atlas receipts for terminal BUILD runs.
+ *   3. Quiet repository-activity feed.
+ *   4. Active-turn indicator (CHAT/DECIDE thinking).
+ *   5. Active BUILD plan card / execution card.
  */
-export function ChatSurface() {
-  const { activeBuildRun, activeTurn, runs, confirm, cancel, commit, connectionStatus } = useRun();
+export function ChatSurface({
+  conversationId,
+  useMockActivity = false,
+}: {
+  conversationId: string;
+  useMockActivity?: boolean;
+}) {
+  const {
+    activeBuildRun, activeTurn, runs,
+    confirm, cancel, commit,
+    connectionStatus,
+    messages, messagesStatus, hasMoreMessages, loadMoreMessages,
+  } = useRun();
   const disconnected = connectionStatus === "disconnected";
 
   const terminalBuilds = runs.filter((r) => r.intent === "BUILD" && isTerminal(r.status));
-  const chatTurns = runs.filter((r) => r.intent !== "BUILD" && isTerminal(r.status));
   const ownedRunIds = terminalBuilds.map((r) => r.id);
-  const feed = useRepositoryEvents({ ownedRunId: terminalBuilds[0]?.id });
+  const feed = useRepositoryEvents({
+    conversationId,
+    useMockData: useMockActivity,
+    ownedRunId: terminalBuilds[0]?.id,
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {chatTurns.map((r) => (
-        <div key={r.id} style={{ fontSize: 14, color: "var(--text)" }}>
-          {r.response ?? <span style={{ color: "var(--muted)", fontStyle: "italic" }}>—</span>}
-        </div>
+      {hasMoreMessages && (
+        <button
+          onClick={loadMoreMessages}
+          disabled={messagesStatus === "loading"}
+          style={{
+            alignSelf: "center", fontSize: 12, color: "var(--muted)",
+            background: "transparent", border: "1px solid var(--border)",
+            padding: "4px 10px", borderRadius: 999,
+          }}
+        >
+          {messagesStatus === "loading" ? "Loading…" : "Load earlier messages"}
+        </button>
+      )}
+      {messagesStatus === "error" && (
+        <div style={{ color: "var(--fail)", fontSize: 12 }}>Couldn't load conversation history.</div>
+      )}
+
+      {messages.map((m) => (
+        <MessageRow key={m.id} message={m} />
       ))}
 
       {terminalBuilds.map((r) => (
@@ -52,27 +81,46 @@ export function ChatSurface() {
       )}
 
       {activeBuildRun && (
-        <>
-          {(activeBuildRun.status === "received" || activeBuildRun.status === "thinking" || activeBuildRun.status === "planning") && !activeBuildRun.plan ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <StatusBadge status={activeBuildRun.status} />
-              <ThinkingIndicator />
-            </div>
-          ) : (
-            <PlanCard
-              run={activeBuildRun}
-              onConfirm={() => confirm(activeBuildRun.id)}
-              onCancel={() => cancel(activeBuildRun.id)}
-            />
-          )}
-        </>
+        (activeBuildRun.status === "received" || activeBuildRun.status === "thinking" || activeBuildRun.status === "planning") && !activeBuildRun.plan ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <StatusBadge status={activeBuildRun.status} />
+            <ThinkingIndicator />
+          </div>
+        ) : (
+          <PlanCard
+            run={activeBuildRun}
+            onConfirm={() => confirm(activeBuildRun.id)}
+            onCancel={() => cancel(activeBuildRun.id)}
+          />
+        )
       )}
 
-      {!activeBuildRun && !activeTurn && runs.length === 0 && (
+      {!activeBuildRun && !activeTurn && runs.length === 0 && messages.length === 0 && messagesStatus === "ready" && (
         <div style={{ color: "var(--muted)", fontStyle: "italic" }}>
-          No runs yet — start a mock lifecycle from the panel on the right.
+          No conversation history yet.
         </div>
       )}
+    </div>
+  );
+}
+
+function MessageRow({ message }: { message: ConversationMessage }) {
+  const isUser = message.role === "user";
+  return (
+    <div
+      style={{
+        alignSelf: isUser ? "flex-end" : "flex-start",
+        maxWidth: "82%",
+        padding: isUser ? "8px 12px" : 0,
+        borderRadius: isUser ? 12 : 0,
+        background: isUser ? "var(--panel-2)" : "transparent",
+        border: isUser ? "1px solid var(--border)" : "none",
+        fontSize: 14,
+        color: "var(--text)",
+        whiteSpace: "pre-wrap",
+      }}
+    >
+      {message.content}
     </div>
   );
 }
