@@ -1,7 +1,9 @@
 import { useRun } from "@/context/RunProvider";
+import type { PendingMessage } from "@/context/RunContext";
 import { PlanCard, ThinkingIndicator, StatusBadge } from "@/components/RunUi";
 import { AtlasReceipt } from "@/components/AtlasReceipt";
 import { RepositoryFeed } from "@/components/RepositoryFeed";
+import { Composer } from "@/components/Composer";
 import { useRunHydration } from "@/hooks/useRunHydration";
 import { useRepositoryEvents } from "@/hooks/useRepositoryEvents";
 import { isTerminal, type Run, type ConversationMessage } from "@contract";
