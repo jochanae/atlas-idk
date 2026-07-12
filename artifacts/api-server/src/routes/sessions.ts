@@ -192,6 +192,110 @@ router.post("/projects/:projectId/sessions", async (req, res): Promise<void> => 
   }).catch(() => { /* silent */ });
 });
 
+// ── Atlas session routes ─────────────────────────────────────────────────────
+// IMPORTANT: These must be defined BEFORE /sessions/:id or Express will treat
+// the literal "atlas" as the :id param (→ NaN → 400 validation error).
+
+// GET /api/sessions/atlas — list recent Atlas sessions for the authenticated user
+// Uses raw SQL because user_id is not in the Drizzle sessionsTable schema.
+router.get("/sessions/atlas", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const result = await db.execute(sql`
+    SELECT id, title, mode, status, message_count AS "messageCount",
+           created_at AS "createdAt", updated_at AS "updatedAt"
+    FROM sessions
+    WHERE project_id IS NULL AND user_id = ${userId}
+    ORDER BY updated_at DESC
+    LIMIT 20
+  `);
+  const rows = (result as any).rows ?? result;
+  res.json(Array.isArray(rows) ? rows : []);
+});
+
+// POST /api/sessions/atlas — create a new Atlas session (projectId = null)
+const ATLAS_SESSION_SYSTEM_PROMPT = `You are Atlas, a strategic thinking partner helping builders create meaningful software.
+
+This is the very first message in a new conversation. The user just shared their idea or question.
+
+Your job:
+- Engage immediately with what they're building or thinking through — be specific, not generic
+- Surface the most important open question or tension that will shape this
+- Move the conversation toward clarity on the ONE thing that matters most right now
+- Tone: direct and builder-oriented, like a trusted co-founder sitting next to them
+
+Format: 2–4 short paragraphs. End with exactly ONE focused question.
+
+Rules:
+- Do NOT open with a greeting or introduction
+- Do NOT say "Great idea!" or give generic affirmations
+- Do NOT recap their description back to them
+- Be specific — name the actual challenge, user, or decision they need to wrestle with`;
+
+router.post("/sessions/atlas", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const body = z.object({
+    title: z.string().optional(),
+    mode: z.string().optional(),
+    initialMessage: z.string().optional(),
+  }).safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+
+  // Use raw SQL so the out-of-schema `user_id` column is actually written.
+  const title = body.data.title ?? "New conversation";
+  const mode = body.data.mode ?? "think";
+  const trimmedInitial = body.data.initialMessage?.trim() || null;
+
+  const insertResult = await db.execute(sql`
+    INSERT INTO sessions (project_id, user_id, title, mode, status)
+    VALUES (NULL, ${userId}, ${title}, ${mode}, 'active')
+    RETURNING *
+  `);
+  const insertRows = (insertResult as any).rows ?? insertResult;
+  const session = (Array.isArray(insertRows) ? insertRows[0] : insertRows) as Record<string, unknown>;
+  const sessionId = Number(session.id);
+
+  if (trimmedInitial && Number.isFinite(sessionId) && sessionId > 0) {
+    try {
+      await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: trimmedInitial });
+      await db.execute(sql`UPDATE sessions SET message_count = message_count + 1, updated_at = NOW() WHERE id = ${sessionId}`);
+    } catch (err) {
+      logger.warn({ err, sessionId }, "sessions/atlas: failed to persist initial user message — non-fatal");
+    }
+
+    void (async () => {
+      try {
+        const anthropic = new Anthropic();
+        const response = await anthropic.messages.create({
+          model: "claude-haiku-4-5",
+          max_tokens: 1024,
+          system: ATLAS_SESSION_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: trimmedInitial }],
+        });
+        const content = response.content[0]?.type === "text" ? response.content[0].text.trim() : null;
+        if (content) {
+          await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content });
+          await db.execute(sql`UPDATE sessions SET message_count = message_count + 1, updated_at = NOW() WHERE id = ${sessionId}`);
+          logger.info({ sessionId }, "sessions/atlas: background first-turn Atlas response saved");
+        }
+      } catch (err) {
+        logger.warn({ err, sessionId }, "sessions/atlas: background first-turn Atlas response failed — non-fatal");
+      }
+    })();
+  }
+
+  res.status(201).json({
+    ...session,
+    createdAt: session.createdAt instanceof Date
+      ? (session.createdAt as Date).toISOString()
+      : String(session.createdAt ?? ""),
+    updatedAt: session.updatedAt instanceof Date
+      ? (session.updatedAt as Date).toISOString()
+      : String(session.updatedAt ?? ""),
+  });
+});
+
+// ── End Atlas session routes ──────────────────────────────────────────────────
+
 router.get("/sessions/:id", async (req, res): Promise<void> => {
   const params = GetSessionParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
@@ -463,113 +567,6 @@ router.post("/sessions/:id/summarize", async (req, res): Promise<void> => {
     .where(eq(projectsTable.id, session.projectId));
 
   res.json({ ok: true, summary });
-});
-
-// ── Atlas session routes — general conversations not tied to a project ────────
-// GET /api/sessions/atlas — list recent Atlas sessions for the authenticated user
-// Uses raw SQL because user_id is not in the Drizzle sessionsTable schema.
-router.get("/sessions/atlas", async (req, res): Promise<void> => {
-  const userId = (req as any).authUser.id as number;
-  const result = await db.execute(sql`
-    SELECT id, title, mode, status, message_count AS "messageCount",
-           created_at AS "createdAt", updated_at AS "updatedAt"
-    FROM sessions
-    WHERE project_id IS NULL AND user_id = ${userId}
-    ORDER BY updated_at DESC
-    LIMIT 20
-  `);
-  res.json(result.rows);
-});
-
-// POST /api/sessions/atlas — create a new Atlas session (projectId = null)
-const ATLAS_SESSION_SYSTEM_PROMPT = `You are Atlas, a strategic thinking partner helping builders create meaningful software.
-
-This is the very first message in a new conversation. The user just shared their idea or question.
-
-Your job:
-- Engage immediately with what they're building or thinking through — be specific, not generic
-- Surface the most important open question or tension that will shape this
-- Move the conversation toward clarity on the ONE thing that matters most right now
-- Tone: direct and builder-oriented, like a trusted co-founder sitting next to them
-
-Format: 2–4 short paragraphs. End with exactly ONE focused question.
-
-Rules:
-- Do NOT open with a greeting or introduction
-- Do NOT say "Great idea!" or give generic affirmations
-- Do NOT recap their description back to them
-- Be specific — name the actual challenge, user, or decision they need to wrestle with`;
-
-router.post("/sessions/atlas", async (req, res): Promise<void> => {
-  const userId = (req as any).authUser.id as number;
-  const body = z.object({
-    title: z.string().optional(),
-    mode: z.string().optional(),
-    initialMessage: z.string().optional(),
-  }).safeParse(req.body);
-  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
-
-  // Use raw SQL so the out-of-schema `user_id` column is actually written.
-  // Drizzle's typed insert silently drops columns that are not in the schema.
-  const title = body.data.title ?? "New conversation";
-  const mode = body.data.mode ?? "think";
-  const trimmedInitial = body.data.initialMessage?.trim() || null;
-
-  const result = await db.execute(sql`
-    INSERT INTO sessions (project_id, user_id, title, mode, status)
-    VALUES (NULL, ${userId}, ${title}, ${mode}, 'active')
-    RETURNING *
-  `);
-  const session = result.rows[0] as Record<string, unknown>;
-  const sessionId = Number(session.id);
-
-  // If an initial message was provided, persist it synchronously so the
-  // workspace history load finds it immediately on mount, then fire the
-  // Atlas response as a fire-and-forget background task.
-  if (trimmedInitial && Number.isFinite(sessionId) && sessionId > 0) {
-    try {
-      await db.insert(chatMessagesTable).values({
-        sessionId,
-        role: "user",
-        content: trimmedInitial,
-      });
-      // Keep message_count in sync (raw SQL because user_id is not in Drizzle schema)
-      await db.execute(sql`UPDATE sessions SET message_count = message_count + 1, updated_at = NOW() WHERE id = ${sessionId}`);
-    } catch (err) {
-      logger.warn({ err, sessionId }, "sessions/atlas: failed to persist initial user message — non-fatal");
-    }
-
-    // Fire-and-forget: generate and persist the first Atlas response.
-    void (async () => {
-      try {
-        const anthropic = new Anthropic();
-        const response = await anthropic.messages.create({
-          model: "claude-haiku-4-5",
-          max_tokens: 1024,
-          system: ATLAS_SESSION_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: trimmedInitial }],
-        });
-        const content = response.content[0]?.type === "text" ? response.content[0].text.trim() : null;
-        if (content) {
-          await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content });
-          await db.execute(sql`UPDATE sessions SET message_count = message_count + 1, updated_at = NOW() WHERE id = ${sessionId}`);
-          logger.info({ sessionId }, "sessions/atlas: background first-turn Atlas response saved");
-        }
-      } catch (err) {
-        logger.warn({ err, sessionId }, "sessions/atlas: background first-turn Atlas response failed — non-fatal");
-      }
-    })();
-  }
-
-  res.status(201).json({
-    ...session,
-    createdAt: session.createdAt instanceof Date
-      ? (session.createdAt as Date).toISOString()
-      : String(session.createdAt ?? ""),
-    updatedAt: session.updatedAt instanceof Date
-      ? (session.updatedAt as Date).toISOString()
-      : String(session.updatedAt ?? ""),
-  });
 });
 
 export default router;
