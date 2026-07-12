@@ -41,6 +41,7 @@ import {
   beginContractRun,
   patchResForContractCompletion,
   failContractRun,
+  updateContractRunIntent,
   type ContractRunCtx,
 } from "../lib/chatContractBridge";
 
@@ -3341,6 +3342,8 @@ router.post("/chat", async (req, res): Promise<void> => {
     });
     whisperIntent = whisper.intent;
     whisperConfidence = whisper.confidence;
+    // Stamp the correct intent on the contract run now that we know it.
+    void updateContractRunIntent(_contractCtx, whisper.intent as "CHAT" | "DECIDE" | "BUILD");
     // Tell the client immediately so it can suppress step UI / run cards.
     // Client hook (useChatStream) listens for evtName === "intent".
     res.write(`data: ${JSON.stringify({ type: "intent", intent: whisper.intent, confidence: whisper.confidence, reason: whisper.reason, fallback: whisper.fallback })}\n\n`);

@@ -185,8 +185,8 @@ router.use(requireAuth, publishRouter);
 // Home artifacts — standalone docs/plans saved from Ask Atlas (no project required)
 router.use(requireAuth, homeArtifactsRouter);
 
-// Self-repair routes — super_admin only
-router.use(requireAdmin, selfRouter);
+// Self-repair routes — super_admin only, path-scoped to /self/*
+router.use("/self", requireAdmin, selfRouter);
 
 // Run Lifecycle Contract — Phase 1 SSE infrastructure (additive, no nexus changes)
 router.use(requireAuth, runsRouter);

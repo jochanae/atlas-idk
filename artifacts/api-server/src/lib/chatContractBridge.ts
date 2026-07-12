@@ -184,6 +184,33 @@ export async function failContractRun(
 }
 
 // ---------------------------------------------------------------------------
+// 5. Update run intent after WhisperGate classification
+//
+// beginContractRun defaults to "CHAT". Once classifyIntent() resolves we
+// call this to stamp the correct intent — DECIDE or BUILD — on the run row.
+// Fire-and-forget: called as void from chat.ts, never throws.
+// ---------------------------------------------------------------------------
+
+export async function updateContractRunIntent(
+  ctx: ContractRunCtx | null,
+  intent: "CHAT" | "DECIDE" | "BUILD",
+): Promise<void> {
+  if (!ctx || intent === "CHAT") return; // CHAT is the default, no update needed
+  try {
+    await pool.query(
+      `UPDATE contract_runs SET intent = $1, updated_at = now() WHERE id = $2`,
+      [intent, ctx.runId],
+    );
+    logger.info(
+      { runId: ctx.runId, intent },
+      "chatContractBridge: run intent updated",
+    );
+  } catch (err) {
+    logger.error({ err, runId: ctx?.runId }, "chatContractBridge: updateContractRunIntent failed (non-fatal)");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 5. Patch res.write to auto-detect "done" and call endContractRun
 //
 // This is the zero-surgery integration strategy: rather than modifying each

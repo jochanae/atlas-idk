@@ -14,34 +14,29 @@ function safePath(p: string): string | null {
   const full = resolve(join(WORKSPACE_ROOT, normalize(p)));
   if (!full.startsWith(WORKSPACE_ROOT + "/")) return null;
   const rel = relative(WORKSPACE_ROOT, full);
-  if (ALLOWED_PREFIXES.some((prefix) => rel.startsWith(prefix))) return full;
-  return null;
+  if (!ALLOWED_PREFIXES.some((prefix) => rel.startsWith(prefix))) return null;
+  return full;
 }
 
-interface FileTree {
-  name: string;
-  path: string;
-  type: "file" | "dir";
-  children?: FileTree[];
-}
+type TreeNode =
+  | { name: string; path: string; type: "file" }
+  | { name: string; path: string; type: "dir"; children: TreeNode[] };
 
-function buildTree(dir: string, relBase: string, depth = 0): FileTree[] {
-  if (depth > 4) return [];
-  try {
-    return readdirSync(dir)
-      .filter((name) => !name.startsWith(".") && name !== "node_modules" && name !== "dist")
-      .map((name) => {
-        const full = join(dir, name);
-        const rel = join(relBase, name);
-        const st = statSync(full);
-        if (st.isDirectory()) {
-          return { name, path: rel, type: "dir" as const, children: buildTree(full, rel, depth + 1) };
-        }
-        return { name, path: rel, type: "file" as const };
-      });
-  } catch {
-    return [];
+function buildTree(absDir: string, relBase: string): TreeNode[] {
+  const entries = readdirSync(absDir);
+  const nodes: TreeNode[] = [];
+  for (const entry of entries) {
+    if (entry.startsWith(".") || entry === "node_modules") continue;
+    const absEntry = join(absDir, entry);
+    const relEntry = join(relBase, entry);
+    const st = statSync(absEntry);
+    if (st.isDirectory()) {
+      nodes.push({ name: entry, path: relEntry, type: "dir", children: buildTree(absEntry, relEntry) });
+    } else {
+      nodes.push({ name: entry, path: relEntry, type: "file" });
+    }
   }
+  return nodes;
 }
 
 // Track files written via self/apply since last push (resets on push or server restart)
@@ -50,7 +45,8 @@ const recentlyWritten = new Set<string>();
 const router: IRouter = Router();
 
 // GET /api/self/tree — list Atlas's own source tree
-router.get("/self/tree", (_req, res) => {
+// (mounted at /self, so route path is /tree → full path /api/self/tree)
+router.get("/tree", (_req, res) => {
   const tree = [
     {
       name: "atlas/src",
@@ -68,8 +64,8 @@ router.get("/self/tree", (_req, res) => {
   res.json({ tree });
 });
 
-// GET /api/self/read?path=... — read a source file
-router.get("/self/read", (req, res) => {
+// GET /api/self/read?path=...
+router.get("/read", (req, res) => {
   const p = req.query["path"] as string | undefined;
   if (!p) {
     res.status(400).json({ error: "path query param required" });
@@ -90,7 +86,7 @@ router.get("/self/read", (req, res) => {
 });
 
 // POST /api/self/apply — write a repaired source file
-router.post("/self/apply", (req, res) => {
+router.post("/apply", (req, res) => {
   const { path: p, content } = req.body as { path?: string; content?: string };
   if (!p || content === undefined) {
     res.status(400).json({ error: "path and content are required" });
@@ -120,12 +116,12 @@ router.post("/self/apply", (req, res) => {
 });
 
 // GET /api/self/modified — list files written since last push
-router.get("/self/modified", (_req, res) => {
+router.get("/modified", (_req, res) => {
   res.json({ files: Array.from(recentlyWritten) });
 });
 
 // POST /api/self/push — commit files to GitHub via API (no local git required)
-router.post("/self/push", async (req, res) => {
+router.post("/push", async (req, res) => {
   const {
     files,
     message = "feat: atlas self-update",
