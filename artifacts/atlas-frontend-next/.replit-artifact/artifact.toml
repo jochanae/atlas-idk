@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/atlas-next/"
+title = "Atlas Frontend (Next)"
+version = "0.1.0"
+id = "artifacts/atlas-frontend-next"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/atlas-next/" ]
+localPort = 20250
+
+[services.development]
+run = "pnpm --filter @workspace/atlas-frontend-next run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/atlas-frontend-next", "run", "build" ]
+publicDir = "artifacts/atlas-frontend-next/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20250"
+BASE_PATH = "/atlas-next/"
