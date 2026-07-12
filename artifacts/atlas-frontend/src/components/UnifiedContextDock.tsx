@@ -763,17 +763,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               icon: <span style={{ fontFamily: "var(--app-font-serif, Georgia, serif)", fontWeight: 600, fontSize: 15, lineHeight: 1, letterSpacing: "-0.02em", opacity: 0.92, filter: "drop-shadow(0 0 2.5px rgba(212,175,55,0.22))" }}>A</span>,
               action: () => {
                 setShowAtlasHub(false);
-                // Ask Atlas is a Home-only Portfolio Thinking mode. If we're
-                // not on /home (e.g. inside a workspace), navigate there first
-                // so the conversation never mounts inside workspace chrome.
-                const dispatchAsk = () => window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
-                if (location !== "/home") {
-                  setLocation("/home");
-                  // Wait for Home to mount its listener before dispatching.
-                  window.setTimeout(dispatchAsk, 120);
-                } else {
-                  dispatchAsk();
-                }
+                setLocation("/atlas");
               },
             },
             {
