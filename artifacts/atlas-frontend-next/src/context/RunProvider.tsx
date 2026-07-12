@@ -291,6 +291,97 @@ export function RunProvider({
   }, [conversationId, nextCursor]);
 
   // -------------------------------------------------------------------------
+  // Composer send (canonical V1.2 turn-entry endpoint)
+  // -------------------------------------------------------------------------
+  const sendMessage = useCallback(async (
+    content: string,
+    idempotencyKey: string,
+  ): Promise<SendMessageResult> => {
+    const trimmed = content.trim();
+    if (!trimmed) return { ok: false, error: "Empty message" };
+
+    const clientId = `pending-${idempotencyKey}`;
+    // If this exact idempotencyKey is already pending (double-tap), don't
+    // stack a second optimistic row — reuse the existing pending entry.
+    let existed = false;
+    setPendingMessages((prev) => {
+      if (prev.some((p) => p.idempotencyKey === idempotencyKey)) {
+        existed = true;
+        return prev;
+      }
+      const optimistic: PendingMessage = {
+        clientId,
+        idempotencyKey,
+        content: trimmed,
+        status: "sending",
+      };
+      return [...prev, optimistic];
+    });
+
+    try {
+      const res = await api.sendMessage(conversationId, {
+        content: trimmed,
+        idempotencyKey,
+      });
+      setPendingMessages((prev) =>
+        prev.map((p) =>
+          p.idempotencyKey === idempotencyKey
+            ? { ...p, status: "accepted", runId: res.runId, userMessageId: res.userMessageId }
+            : p,
+        ),
+      );
+      // Refresh history so the persisted user row lands and reconciles.
+      // We do NOT optimistically create runs, assistant messages, or receipts.
+      api.listMessages(conversationId, { limit: MESSAGE_PAGE_SIZE })
+        .then((page) => {
+          setMessages(page.messages);
+          setNextCursor(page.nextCursor);
+          setMessagesStatus("ready");
+        })
+        .catch(() => { /* keep optimistic row until next refresh */ });
+      return {
+        ok: true,
+        runId: res.runId,
+        userMessageId: res.userMessageId,
+        intent: res.intent,
+        duplicate: !!res.duplicate,
+      };
+    } catch (err) {
+      const apiErr = err instanceof ApiError ? err : null;
+      const code =
+        (apiErr?.body && typeof apiErr.body === "object" && "code" in apiErr.body
+          ? String((apiErr.body as { code?: unknown }).code ?? "")
+          : "") ||
+        (apiErr?.body && typeof apiErr.body === "object" && "error" in apiErr.body
+          ? String((apiErr.body as { error?: unknown }).error ?? "")
+          : "");
+      const message = (err as Error).message ?? "Send failed";
+      setPendingMessages((prev) =>
+        prev.map((p) =>
+          p.idempotencyKey === idempotencyKey
+            ? { ...p, status: "error", error: message }
+            : p,
+        ),
+      );
+      // Silence unused warning when there was no new optimistic row.
+      void existed;
+      return { ok: false, error: message, code: code || undefined };
+    }
+  }, [conversationId]);
+
+  // Prune pending entries once the server-persisted user message shows up.
+  useEffect(() => {
+    if (pendingMessages.length === 0) return;
+    setPendingMessages((prev) =>
+      prev.filter((p) => {
+        if (!p.userMessageId) return true;
+        return !messages.some((m) => m.id === p.userMessageId);
+      }),
+    );
+    // messages is the reconciliation source; safe to depend on it.
+  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // -------------------------------------------------------------------------
   // Fetchers (thin passthroughs — surfaces call these)
   // -------------------------------------------------------------------------
   const fetchSteps = useCallback((runId: string) => api.getSteps(runId), []);
@@ -314,6 +405,8 @@ export function RunProvider({
       messagesStatus,
       hasMoreMessages: !!nextCursor,
       loadMoreMessages,
+      pendingMessages,
+      sendMessage,
       confirm,
       cancel,
       commit,
@@ -325,6 +418,7 @@ export function RunProvider({
     };
   }, [
     runsById, messages, messagesStatus, nextCursor, loadMoreMessages,
+    pendingMessages, sendMessage,
     confirm, cancel, commit,
     fetchSteps, fetchChanges, fetchTerminal, fetchOutputs,
     connectionStatus,
