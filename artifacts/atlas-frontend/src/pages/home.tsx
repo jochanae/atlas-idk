@@ -5419,7 +5419,7 @@ export default function Home() {
         items={drawerAtlasConversations.map((c) => ({
           id: c.id,
           title: c.title || "New conversation",
-          msgCount: 0,
+          msgCount: c.messageCount ?? 0,
           timestamp: c.updatedAt ?? c.createdAt ?? null,
           active: false,
         }))}
@@ -5427,22 +5427,26 @@ export default function Home() {
           setShowAtlasHistory(false);
           const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
           try {
-            const r = await fetch("/api/sessions/atlas", {
+            // Canonical: POST /api/conversations creates a conversation-first
+            // thread. Navigate to /workspace/:conversationId to open it.
+            const r = await fetch("/api/conversations", {
               method: "POST", credentials: "include",
               headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({ title: "New conversation", mode: "think" }),
+              body: JSON.stringify({}),
             });
-            const s = await r.json() as { id: number };
-            setLocation(`/atlas/${s.id}`);
-          } catch { setLocation("/atlas"); }
+            const s = await r.json() as { conversationId: string };
+            if (s?.conversationId) setLocation(`/workspace/${s.conversationId}`);
+          } catch { /* stay on home */ }
         }}
-        onSelect={(id) => { setShowAtlasHistory(false); setLocation(`/atlas/${id}`); }}
-        onDelete={async (id) => {
-          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-          await fetch(`/api/sessions/${id}`, {
-            method: "DELETE", credentials: "include",
-            headers: tok ? { Authorization: `Bearer ${tok}` } : {},
-          }).catch(() => {});
+        onSelect={(id) => {
+          setShowAtlasHistory(false);
+          const conv = drawerAtlasConversations.find((c) => c.id === id);
+          if (conv?.conversationId) setLocation(`/workspace/${conv.conversationId}`);
+        }}
+        onDelete={async (_id) => {
+          // Delete is a legacy sessions concept and is not yet wired for
+          // conversation-first records. Refetch keeps the list in sync if a
+          // future endpoint lands.
           fetchAtlasConversations();
         }}
       />
