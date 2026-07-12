@@ -4726,7 +4726,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   const isDive = isDiveCmd || activeMode === "deep" || activeMode === "deepdive";
   const effectiveDiveTopic = isDiveCmd ? diveTopic : message;
   if (isDive) {
-    await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message, intentType: body.mode ?? null });
+    try { await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message, intentType: body.mode ?? null }); }
+    catch (e: any) { logger.warn({ sessionId, err: e?.message }, "chat_messages deep-dive user insert failed — non-fatal"); }
     const diveResult = await runDeepDive(effectiveDiveTopic, systemPrompt);
     const surface = detectSurfaceSignal({
       content: diveResult.content,
@@ -4734,20 +4735,26 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
       recentMessages: history,
     });
     const runMetadata = runMetadataInsertValues(diveResult.content);
-    const [savedDive] = await db.insert(chatMessagesTable).values({
-      sessionId,
-      role: "assistant",
-      content: diveResult.content,
-      intentType: "EXPLORE",
-      ...usageInsertValues(diveResult.usage),
-      ...runMetadata,
-    }).returning();
-    await db.update(sessionsTable).set({
-      messageCount: sql`${sessionsTable.messageCount} + 2`,
-      ...runMetadata,
-    }).where(eq(sessionsTable.id, sessionId));
+    let savedDiveId: number | undefined;
+    try {
+      const [savedDive] = await db.insert(chatMessagesTable).values({
+        sessionId,
+        role: "assistant",
+        content: diveResult.content,
+        intentType: "EXPLORE",
+        ...usageInsertValues(diveResult.usage),
+        ...runMetadata,
+      }).returning();
+      savedDiveId = savedDive.id;
+    } catch (e: any) { logger.warn({ sessionId, err: e?.message }, "chat_messages deep-dive assistant insert failed — non-fatal"); }
+    try {
+      await db.update(sessionsTable).set({
+        messageCount: sql`${sessionsTable.messageCount} + 2`,
+        ...runMetadata,
+      }).where(eq(sessionsTable.id, sessionId));
+    } catch { /* non-fatal */ }
     const inputTokenCount = diveResult.usage.inputTokens;
-    res.write(`data: ${JSON.stringify({ type: "done", content: diveResult.content, modelUsed: diveResult.model, terminalCmd: null, terminalResult: null, surface, intentType: "EXPLORE", catchPayload: null, messageId: savedDive.id, model: "gemini", isDeepDive: true, developerLens: { routing: { activeModel: "claude-sonnet-4-6", provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: "done", content: diveResult.content, modelUsed: diveResult.model, terminalCmd: null, terminalResult: null, surface, intentType: "EXPLORE", catchPayload: null, messageId: savedDiveId ?? null, model: "gemini", isDeepDive: true, developerLens: { routing: { activeModel: "claude-sonnet-4-6", provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
     res.end();
     return;
   }
@@ -4970,14 +4977,19 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     } catch (dbErr: any) {
       const errMsg = dbErr?.message ?? "";
       const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
+      const isFkViolation = errMsg.includes("foreign key constraint") || dbErr?.cause?.code === "23503";
       if (isMissingColumn) {
         logger.warn({ dbErr: errMsg }, "DB schema behind on user message insert — falling back to core insert");
-        await db.insert(chatMessagesTable).values({
-          sessionId,
-          role: "user",
-          content: message,
-          intentType: null,
-        });
+        try {
+          await db.insert(chatMessagesTable).values({
+            sessionId,
+            role: "user",
+            content: message,
+            intentType: null,
+          });
+        } catch { /* non-fatal — conversation_messages has the record */ }
+      } else if (isFkViolation) {
+        logger.warn({ sessionId }, "chat_messages user insert: session FK not found — skipping legacy write (conversation_messages is authoritative)");
       } else {
         throw dbErr;
       }
@@ -6358,28 +6370,33 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     } catch (dbErr: any) {
       const errMsg = dbErr?.message ?? "";
       const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
+      const isFkViolation = errMsg.includes("foreign key constraint") || dbErr?.cause?.code === "23503";
       if (isMissingColumn) {
         logger.warn({ dbErr: errMsg }, "DB schema behind — falling back to core insert without run metadata");
-        const [savedMsg] = await db
-          .insert(chatMessagesTable)
-          .values({
-            sessionId,
-            role: "assistant",
-            content: splitBuildTurn ? intentPersistContent : persistContent,
-            intentType: detectedIntentType,
-            catchPayload: catchPayload ?? undefined,
-            imageB64: imageB64Val,
-            imageMimeType: imageMimeTypeVal,
-          })
-          .returning();
-        if (splitBuildTurn) {
-          intentMsgId = savedMsg.id;
-        }
-        savedMsgId = savedMsg.id;
-        await db
-          .update(sessionsTable)
-          .set({ messageCount: sql`${sessionsTable.messageCount} + 2` })
-          .where(eq(sessionsTable.id, sessionId));
+        try {
+          const [savedMsg] = await db
+            .insert(chatMessagesTable)
+            .values({
+              sessionId,
+              role: "assistant",
+              content: splitBuildTurn ? intentPersistContent : persistContent,
+              intentType: detectedIntentType,
+              catchPayload: catchPayload ?? undefined,
+              imageB64: imageB64Val,
+              imageMimeType: imageMimeTypeVal,
+            })
+            .returning();
+          if (splitBuildTurn) {
+            intentMsgId = savedMsg.id;
+          }
+          savedMsgId = savedMsg.id;
+          await db
+            .update(sessionsTable)
+            .set({ messageCount: sql`${sessionsTable.messageCount} + 2` })
+            .where(eq(sessionsTable.id, sessionId));
+        } catch { /* non-fatal — conversation_messages is authoritative */ }
+      } else if (isFkViolation) {
+        logger.warn({ sessionId }, "chat_messages assistant insert: session FK not found — skipping legacy write (conversation_messages is authoritative)");
       } else {
         throw dbErr;
       }
