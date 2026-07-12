@@ -1819,7 +1819,9 @@ export default function Home() {
   const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
   const fetchAtlasConversations = useCallback(() => {
     const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-    fetch("/api/sessions/atlas", {
+    // Canonical source: conversation-first records. Legacy /api/sessions/atlas
+    // is intentionally NOT read here — it belongs to the old session model.
+    fetch("/api/conversations", {
       credentials: "include",
       headers: tok ? { Authorization: `Bearer ${tok}` } : {},
     })
