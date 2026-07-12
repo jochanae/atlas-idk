@@ -1,51 +1,83 @@
 import { useCallback, useEffect, useState } from "react";
-import { useRun } from "@/context/RunProvider";
+import { useRun } from "@/context/RunContext";
 import type { RepositoryEvent } from "@/components/RepositoryFeed";
+import * as api from "@/lib/api";
 import { mockRepositoryEvents } from "@/mocks/mockActivity";
 
-export type FeedFlavor = "success" | "empty" | "slow" | "error";
-
 /**
- * useRepositoryEvents — mocked repository-activity fetcher.
+ * useRepositoryEvents — repository quiet-updates fetcher.
  *
- * Kept in the frontend until Replit confirms the Phase 2 /api/nexus/activity
- * endpoint conforms to V1.2 and preserves runId ownership. Do NOT swap this
- * for a live fetch inside a surface — swap it here or in the provider.
+ * Live path: GET /api/nexus/activity. On network / shape errors, the caller
+ * receives an error state and the RepositoryFeed renders its own recovery UI.
+ *
+ * The identity rule from the two-layer brief is enforced downstream: events
+ * whose `runId` matches an Atlas-owned run are filtered out by the feed.
  */
+export type FeedStatus = "loading" | "ready" | "empty" | "error" | "disconnected";
+
+export interface RepositoryEventsState {
+  status: FeedStatus;
+  data: RepositoryEvent[];
+  error?: string;
+  reload: () => void;
+}
+
+function coerceEvent(raw: unknown): RepositoryEvent | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const id = typeof r.id === "string" ? r.id : null;
+  const origin = r.origin as RepositoryEvent["origin"] | undefined;
+  const title = typeof r.title === "string" ? r.title : null;
+  const timestamp = typeof r.timestamp === "string" ? r.timestamp : null;
+  if (!id || !origin || !title || !timestamp) return null;
+  return {
+    id, origin, title, timestamp,
+    subtitle: typeof r.subtitle === "string" ? r.subtitle : undefined,
+    sha: typeof r.sha === "string" ? r.sha : undefined,
+    url: typeof r.url === "string" ? r.url : undefined,
+    runId: typeof r.runId === "string" ? r.runId : undefined,
+  };
+}
+
 export function useRepositoryEvents({
+  conversationId,
+  useMockData = false,
   ownedRunId,
-  flavor = "success",
 }: {
+  conversationId?: string;
+  useMockData?: boolean;
   ownedRunId?: string;
-  flavor?: FeedFlavor;
-}) {
+}): RepositoryEventsState {
   const { connectionStatus } = useRun();
   const disconnected = connectionStatus === "disconnected";
-  const [state, setState] = useState<{
-    status: "loading" | "ready" | "empty" | "error" | "disconnected";
-    data: RepositoryEvent[];
-    error?: string;
-  }>({ status: "loading", data: [] });
+  const [state, setState] = useState<Omit<RepositoryEventsState, "reload">>({
+    status: "loading", data: [],
+  });
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     if (disconnected) {
       setState({ status: "disconnected", data: [] });
       return;
     }
     setState({ status: "loading", data: [] });
-    const latency = flavor === "slow" ? 1200 : 200;
-    const t = setTimeout(() => {
-      if (flavor === "error") {
-        setState({ status: "error", data: [], error: "Couldn't load repository activity." });
-        return;
-      }
-      const data = flavor === "empty" ? [] : mockRepositoryEvents(ownedRunId);
+    if (useMockData) {
+      const data = mockRepositoryEvents(ownedRunId);
       setState({ status: data.length ? "ready" : "empty", data });
-    }, latency);
-    return () => clearTimeout(t);
-  }, [disconnected, flavor, ownedRunId]);
+      return;
+    }
+    try {
+      const raw = await api.listRepositoryActivity(conversationId);
+      const data = (Array.isArray(raw) ? raw : []).map(coerceEvent).filter((e): e is RepositoryEvent => e !== null);
+      setState({ status: data.length ? "ready" : "empty", data });
+    } catch (e) {
+      setState({
+        status: "error", data: [],
+        error: (e as Error).message ?? "Couldn't load repository activity.",
+      });
+    }
+  }, [disconnected, useMockData, ownedRunId, conversationId]);
 
-  useEffect(() => { const c = load(); return c; }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   return { ...state, reload: load };
 }
