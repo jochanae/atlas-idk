@@ -28,3 +28,25 @@ Second pass: `finishStream` called with `continuationPrefix + "\n\n---\n\n" + fu
 - Second-pass findings contract: inspected files, evidence, classification (production-ready | extendable | prototype | stub | dead-code), unresolved questions, next gate
 
 **Why:** The user explicitly rejected prompt-only continuations as probabilistic. The orchestration rule makes continuation deterministic after the signal appears. The allowlist ensures model misjudgment of gate type cannot execute state-modifying actions.
+
+## Regex fix — snake_case action blocking
+The `blocked_action_re` must NOT use a trailing `\b`. Snake_case action
+names like `edit_analytics_component` have no word boundary between the
+verb and `_analytics` (both are `\w`). Leading `\b` only is sufficient.
+
+Wrong:  `/\b(edit|write|...)\b/i`  — misses `edit_analytics_component`
+Correct: `/\b(edit|write|...)/i`   — correctly blocks it
+
+## Live verification evidence (2026-07-11)
+Acceptance test 5/5 passed. T4 live SSE: done.content showed
+`"intoiq — here's the roadmap, followed by the investigation findings.\n\n---\n\n## NOW / NEXT / LATER:"`.
+The `---` separator is the two-pass combiner signal. Combined message
+was 4367 chars with specific file references. DB row: `assistant|4367|f`.
+
+## Model behavior note
+The continuation only fires when the model defers investigation to a
+second pass rather than answering from injected DNA/Ledger context.
+When the project DNA is rich enough to answer inline, the model does so
+without emitting PLAN_CONTINUATION (single-pass, also valid). The engine
+is an optimization for investigation-heavy DECIDE turns, not a universal
+wrapper around all tool calls.

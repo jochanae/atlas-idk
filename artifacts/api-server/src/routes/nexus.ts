@@ -168,8 +168,11 @@ const CONTINUATION_ALLOWLIST = {
     "deploy", "install_package", "update_dna", "delete_file",
     "write_file", "create_file", "run_sql", "exec",
   ]),
-  // Action keywords that indicate non-read-only intent — blocked even with risk:read_only
-  blocked_action_re: /\b(edit|write|create|delete|remove|modify|update|change|install|deploy|push|build|migrate|alter|drop|truncate|patch|overwrite|rename|move)\b/i,
+  // Action keywords that indicate non-read-only intent — blocked even with risk:read_only.
+  // No trailing \b: snake_case actions like "edit_analytics_page" have no word boundary
+  // between the verb and the following underscore (both are \w), so \b after the verb
+  // would silently miss them. A leading \b is sufficient to avoid matching mid-word.
+  blocked_action_re: /\b(edit|write|create|delete|remove|modify|update|change|install|deploy|push|build|migrate|alter|drop|truncate|patch|overwrite|rename|move)/i,
 };
 
 const isContinuationAllowlisted = (e: ContinuationEnvelope): boolean => {
