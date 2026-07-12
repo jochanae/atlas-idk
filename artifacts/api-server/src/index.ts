@@ -916,6 +916,187 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: project_sources tables failed — server will start anyway");
   }
+
+  // ── Phase 1: Run Lifecycle Contract tables ──────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS contract_runs (
+        id text PRIMARY KEY,
+        project_id integer,
+        conversation_id text NOT NULL,
+        user_id integer NOT NULL,
+        status text NOT NULL DEFAULT 'received',
+        intent text NOT NULL,
+        prompt text NOT NULL DEFAULT '',
+        response text,
+        summary text,
+        plan jsonb,
+        step_count integer NOT NULL DEFAULT 0,
+        steps_done integer NOT NULL DEFAULT 0,
+        error jsonb,
+        verification jsonb,
+        commit_state jsonb,
+        snapshot_ref text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        completed_at timestamptz,
+        elapsed_ms integer
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS contract_runs_conversation_id_idx
+        ON contract_runs (conversation_id, created_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS contract_runs_user_id_idx
+        ON contract_runs (user_id, created_at DESC)
+    `);
+    logger.info("ensureColumns: contract_runs table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: contract_runs failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS contract_run_steps (
+        id text PRIMARY KEY,
+        run_id text NOT NULL REFERENCES contract_runs(id) ON DELETE CASCADE,
+        seq integer NOT NULL,
+        verb text NOT NULL,
+        status text NOT NULL DEFAULT 'pending',
+        title text NOT NULL DEFAULT '',
+        detail text,
+        file_path text,
+        command text,
+        exit_code integer,
+        output_summary text,
+        artifact jsonb,
+        started_at timestamptz,
+        completed_at timestamptz
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS contract_run_steps_run_id_idx
+        ON contract_run_steps (run_id, seq ASC)
+    `);
+    logger.info("ensureColumns: contract_run_steps table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: contract_run_steps failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS contract_run_changes (
+        id text PRIMARY KEY,
+        run_id text NOT NULL REFERENCES contract_runs(id) ON DELETE CASCADE,
+        step_id text,
+        seq integer NOT NULL DEFAULT 0,
+        file_path text NOT NULL,
+        verb text NOT NULL,
+        before_content text,
+        after_content text,
+        status text NOT NULL DEFAULT 'pending'
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS contract_run_changes_run_id_idx
+        ON contract_run_changes (run_id, seq ASC)
+    `);
+    logger.info("ensureColumns: contract_run_changes table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: contract_run_changes failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS contract_run_outputs (
+        id text PRIMARY KEY,
+        run_id text NOT NULL REFERENCES contract_runs(id) ON DELETE CASCADE,
+        step_id text,
+        name text NOT NULL,
+        type text NOT NULL,
+        mime_type text NOT NULL DEFAULT 'application/octet-stream',
+        size_bytes integer,
+        status text NOT NULL DEFAULT 'generating',
+        download_url text,
+        preview_url text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS contract_run_outputs_run_id_idx
+        ON contract_run_outputs (run_id, created_at ASC)
+    `);
+    logger.info("ensureColumns: contract_run_outputs table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: contract_run_outputs failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS contract_terminal_lines (
+        id serial PRIMARY KEY,
+        run_id text NOT NULL REFERENCES contract_runs(id) ON DELETE CASCADE,
+        step_id text,
+        stream text NOT NULL DEFAULT 'stdout',
+        text text NOT NULL,
+        timestamp timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS contract_terminal_lines_run_id_idx
+        ON contract_terminal_lines (run_id, id ASC)
+    `);
+    logger.info("ensureColumns: contract_terminal_lines table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: contract_terminal_lines failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS conversation_events (
+        id serial PRIMARY KEY,
+        conversation_id text NOT NULL,
+        run_id text NOT NULL,
+        event_id text NOT NULL UNIQUE,
+        seq integer NOT NULL,
+        type text NOT NULL,
+        payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+        timestamp timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS conversation_events_conversation_id_seq_idx
+        ON conversation_events (conversation_id, seq ASC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS conversation_events_run_id_idx
+        ON conversation_events (run_id, seq ASC)
+    `);
+    logger.info("ensureColumns: conversation_events table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: conversation_events failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS conversation_messages (
+        id text PRIMARY KEY,
+        run_id text NOT NULL,
+        conversation_id text NOT NULL,
+        role text NOT NULL,
+        content text NOT NULL DEFAULT '',
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS conversation_messages_conversation_id_idx
+        ON conversation_messages (conversation_id, created_at ASC)
+    `);
+    logger.info("ensureColumns: conversation_messages table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: conversation_messages failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

@@ -72,6 +72,7 @@ import sourcesRouter from "./sources";
 import architectureDiffRouter from "./architecture-diff";
 import knowledgeRouter from "./knowledge";
 import componentRegistryRouter from "./componentRegistry";
+import runsRouter from "./runs";
 
 const router: IRouter = Router();
 
@@ -186,5 +187,8 @@ router.use(requireAuth, homeArtifactsRouter);
 
 // Self-repair routes — super_admin only
 router.use(requireAdmin, selfRouter);
+
+// Run Lifecycle Contract — Phase 1 SSE infrastructure (additive, no nexus changes)
+router.use(requireAuth, runsRouter);
 
 export default router;

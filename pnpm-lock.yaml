@@ -205,6 +205,9 @@ importers:
       '@workspace/integrations-openai-ai-server':
         specifier: workspace:*
         version: link:../../lib/integrations-openai-ai-server
+      '@workspace/run-contract':
+        specifier: workspace:*
+        version: link:../../lib/run-contract
       '@workspace/source-index':
         specifier: workspace:*
         version: link:../../lib/source-index
@@ -1025,6 +1028,8 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+
+  lib/run-contract: {}
 
   lib/source-index:
     devDependencies:

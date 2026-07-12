@@ -18,6 +18,9 @@
     },
     {
       "path": "../../lib/source-index"
+    },
+    {
+      "path": "../../lib/run-contract"
     }
   ]
 }
