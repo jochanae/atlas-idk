@@ -323,10 +323,11 @@ Generate 4–7 sub-nodes that break this node down one level deeper. Requirement
 - Be specific to this project's context (not generic)
 - Each sub-node is concrete and represents a real concern or component
 - Use these node types: requirement, blocker, decision, priority, sprint, goal
+- If a decision or answer for a sub-node is clearly and explicitly stated in the conversation, set resolved: true and include strategicAnswer with the actual answer (1–2 sentences, in the user's own words). Only include strategicAnswer if the answer is unambiguous in the conversation — do not infer or guess.
 ${transcriptContext ? `\nProject conversation context:\n${transcriptContext.slice(0, 3000)}` : ""}
 
 Respond with ONLY a JSON array. Each element:
-{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of context","x":0,"y":0}`;
+{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of context","strategicAnswer":"include only if clearly stated in conversation — omit otherwise","x":0,"y":0}`;
 
   try {
     const message = await anthropic.messages.create({
@@ -349,13 +350,17 @@ Respond with ONLY a JSON array. Each element:
       .slice(0, 8)
       .map((n, i) => {
         const rec = n as Record<string, unknown>;
+        const strategicAnswer = typeof rec.strategicAnswer === "string" && rec.strategicAnswer.trim().length > 0
+          ? rec.strategicAnswer.trim()
+          : undefined;
         return {
           id: `${nodeId}-s${i}-${String(rec.id ?? i).slice(0, 16).replace(/[^a-z0-9-]/gi, "")}`,
           label: String(rec.label).slice(0, 60),
           type: VALID_TYPES.includes(rec.type as NodeType) ? (rec.type as NodeType) : "requirement" as NodeType,
-          resolved: false,
+          resolved: Boolean(strategicAnswer),
           meta: VALID_META.includes(rec.meta as NodeMeta) ? (rec.meta as NodeMeta) : "should" as NodeMeta,
           details: typeof rec.details === "string" ? rec.details : undefined,
+          ...(strategicAnswer ? { strategicAnswer } : {}),
           x: 0,
           y: 0,
         };
