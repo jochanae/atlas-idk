@@ -5545,17 +5545,21 @@ export default function Home() {
         onNewAtlasConversation={async () => {
           const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
           try {
-            const r = await fetch("/api/sessions/atlas", {
+            const r = await fetch("/api/conversations", {
               method: "POST", credentials: "include",
               headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({ title: "New conversation", mode: "think" }),
+              body: JSON.stringify({}),
             });
-            const s = await r.json() as { id: number };
-            setLocation(`/atlas/${s.id}`);
-          } catch { setLocation("/atlas"); }
+            const s = await r.json() as { conversationId: string };
+            if (s?.conversationId) setLocation(`/workspace/${s.conversationId}`);
+          } catch { /* stay on home */ }
           setShowDrawer(false);
         }}
-        onOpenAtlasConversation={(id) => { setLocation(`/atlas/${id}`); setShowDrawer(false); }}
+        onOpenAtlasConversation={(id) => {
+          const conv = drawerAtlasConversations.find((c) => c.id === id);
+          if (conv?.conversationId) setLocation(`/workspace/${conv.conversationId}`);
+          setShowDrawer(false);
+        }}
       />
 
       <ShellLogSheet
