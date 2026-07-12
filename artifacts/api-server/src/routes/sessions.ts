@@ -533,6 +533,8 @@ router.post("/sessions/atlas", async (req, res): Promise<void> => {
         role: "user",
         content: trimmedInitial,
       });
+      // Keep message_count in sync (raw SQL because user_id is not in Drizzle schema)
+      await db.execute(sql`UPDATE sessions SET message_count = message_count + 1, updated_at = NOW() WHERE id = ${sessionId}`);
     } catch (err) {
       logger.warn({ err, sessionId }, "sessions/atlas: failed to persist initial user message — non-fatal");
     }
@@ -550,6 +552,7 @@ router.post("/sessions/atlas", async (req, res): Promise<void> => {
         const content = response.content[0]?.type === "text" ? response.content[0].text.trim() : null;
         if (content) {
           await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content });
+          await db.execute(sql`UPDATE sessions SET message_count = message_count + 1, updated_at = NOW() WHERE id = ${sessionId}`);
           logger.info({ sessionId }, "sessions/atlas: background first-turn Atlas response saved");
         }
       } catch (err) {

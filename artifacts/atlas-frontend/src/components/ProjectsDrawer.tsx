@@ -12,9 +12,6 @@ export type AtlasConversation = {
   messageCount?: number;
   updatedAt?: string | null;
   createdAt?: string | null;
-  /** Present when the row comes from the conversation-first list
-   *  (`GET /api/conversations`). Used to route to `/workspace/:conversationId`. */
-  conversationId?: string | null;
 };
 
 export type DrawerProject = {

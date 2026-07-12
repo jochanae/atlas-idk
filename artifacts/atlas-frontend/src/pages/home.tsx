@@ -1819,9 +1819,7 @@ export default function Home() {
   const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
   const fetchAtlasConversations = useCallback(() => {
     const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-    // Canonical source: conversation-first records. Legacy /api/sessions/atlas
-    // is intentionally NOT read here — it belongs to the old session model.
-    fetch("/api/conversations", {
+    fetch("/api/sessions/atlas", {
       credentials: "include",
       headers: tok ? { Authorization: `Bearer ${tok}` } : {},
     })
@@ -1829,6 +1827,10 @@ export default function Home() {
       .then((data: AtlasConversation[]) => { if (Array.isArray(data)) setDrawerAtlasConversations(data); })
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    if (!authUser) return;
+    fetchAtlasConversations();
+  }, [authUser, fetchAtlasConversations]);
   useEffect(() => {
     if (!showDrawer && !showAtlasHistory) return;
     fetchAtlasConversations();
@@ -3069,25 +3071,24 @@ export default function Home() {
 
     try {
       const authToken = localStorage.getItem("atlas-auth-token");
-      // Canonical conversation-first flow: POST /api/conversations creates a
-      // projects row with conversationId + persists the opening user message
-      // to nexus_messages. Response returns the conversationId we navigate to.
-      const createRes = await fetch("/api/conversations", {
+      // Same flow as "New Conversation" in the drawer: create an Atlas session
+      // (projectId = null) so the conversation appears in the ATLAS section and
+      // navigates to /atlas/:id — not a project.
+      const createRes = await fetch("/api/sessions/atlas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ initialMessage: messageText }),
+        body: JSON.stringify({ title: "New conversation", mode: "think", initialMessage: messageText }),
       });
       const session = (await createRes.json().catch(() => null)) as {
-        conversationId?: string;
-        id?: number;
+        id?: number | string;
         error?: string;
         message?: string;
       } | null;
-      if (!createRes.ok || !session?.conversationId) {
+      if (!createRes.ok || !session?.id) {
         const err = new Error(
           (session as any)?.error ?? (session as any)?.message ?? "Failed to create conversation",
         ) as Error & { status?: number };
@@ -3108,7 +3109,7 @@ export default function Home() {
           sessionStorage.setItem(OPENING_ATTACHMENTS_STORAGE_KEY, JSON.stringify(atts));
         } catch {}
       }
-      setLocation(`/workspace/${session.conversationId}`);
+      setLocation(`/atlas/${session.id}`);
     } catch (err) {
       handleSubmitError(err);
     } finally {
@@ -5420,7 +5421,7 @@ export default function Home() {
         items={drawerAtlasConversations.map((c) => ({
           id: c.id,
           title: c.title || "New conversation",
-          msgCount: c.messageCount ?? 0,
+          msgCount: 0,
           timestamp: c.updatedAt ?? c.createdAt ?? null,
           active: false,
         }))}
@@ -5428,26 +5429,22 @@ export default function Home() {
           setShowAtlasHistory(false);
           const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
           try {
-            // Canonical: POST /api/conversations creates a conversation-first
-            // thread. Navigate to /workspace/:conversationId to open it.
-            const r = await fetch("/api/conversations", {
+            const r = await fetch("/api/sessions/atlas", {
               method: "POST", credentials: "include",
               headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({}),
+              body: JSON.stringify({ title: "New conversation", mode: "think" }),
             });
-            const s = await r.json() as { conversationId: string };
-            if (s?.conversationId) setLocation(`/workspace/${s.conversationId}`);
-          } catch { /* stay on home */ }
+            const s = await r.json() as { id: number };
+            setLocation(`/atlas/${s.id}`);
+          } catch { setLocation("/atlas"); }
         }}
-        onSelect={(id) => {
-          setShowAtlasHistory(false);
-          const conv = drawerAtlasConversations.find((c) => c.id === id);
-          if (conv?.conversationId) setLocation(`/workspace/${conv.conversationId}`);
-        }}
-        onDelete={async (_id) => {
-          // Delete is a legacy sessions concept and is not yet wired for
-          // conversation-first records. Refetch keeps the list in sync if a
-          // future endpoint lands.
+        onSelect={(id) => { setShowAtlasHistory(false); setLocation(`/atlas/${id}`); }}
+        onDelete={async (id) => {
+          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+          await fetch(`/api/sessions/${id}`, {
+            method: "DELETE", credentials: "include",
+            headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+          }).catch(() => {});
           fetchAtlasConversations();
         }}
       />
@@ -5546,21 +5543,17 @@ export default function Home() {
         onNewAtlasConversation={async () => {
           const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
           try {
-            const r = await fetch("/api/conversations", {
+            const r = await fetch("/api/sessions/atlas", {
               method: "POST", credentials: "include",
               headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({}),
+              body: JSON.stringify({ title: "New conversation", mode: "think" }),
             });
-            const s = await r.json() as { conversationId: string };
-            if (s?.conversationId) setLocation(`/workspace/${s.conversationId}`);
-          } catch { /* stay on home */ }
+            const s = await r.json() as { id: number };
+            setLocation(`/atlas/${s.id}`);
+          } catch { setLocation("/atlas"); }
           setShowDrawer(false);
         }}
-        onOpenAtlasConversation={(id) => {
-          const conv = drawerAtlasConversations.find((c) => c.id === id);
-          if (conv?.conversationId) setLocation(`/workspace/${conv.conversationId}`);
-          setShowDrawer(false);
-        }}
+        onOpenAtlasConversation={(id) => { setLocation(`/atlas/${id}`); setShowDrawer(false); }}
       />
 
       <ShellLogSheet
