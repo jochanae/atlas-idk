@@ -11,6 +11,7 @@ import type {
 } from "@contract";
 import { isTerminal } from "@contract";
 import { runFixtures, driveMockRun } from "@/mocks/mockRuns";
+import { getEntry, delay, derivedChanges } from "@/mocks/mockHydration";
 
 /**
  * RunProvider — singleton per conversation.
@@ -21,19 +22,23 @@ import { runFixtures, driveMockRun } from "@/mocks/mockRuns";
  * activeBuildRun and activeTurn are separate — a BUILD may be awaiting
  * confirmation while a CHAT turn streams simultaneously.
  */
+export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "disconnected";
+
 export interface RunContextValue {
   activeBuildRun: Run | null;
   activeTurn: Run | null;
   runs: Run[];
   confirm(runId: string): Promise<void>;
   cancel(runId: string): Promise<void>;
-  commit(runId: string): Promise<void>;
+  commit(runId: string, opts?: { fail?: boolean }): Promise<void>;
   fetchSteps(runId: string): Promise<RunStep[]>;
   fetchChanges(runId: string): Promise<RunChange[]>;
   fetchTerminal(runId: string, page: number): Promise<RunTerminalPage>;
   fetchOutputs(runId: string): Promise<RunArtifact[]>;
-  connectionStatus: "connecting" | "connected" | "reconnecting" | "disconnected";
-  /** MOCK ONLY — start a scripted lifecycle for a given intent. Removed in Phase 2. */
+  connectionStatus: ConnectionStatus;
+  /** MOCK ONLY */
+  __setConnectionStatus(status: ConnectionStatus): void;
+  /** MOCK ONLY — start a scripted lifecycle for a given intent. */
   __startMockRun(intent: RunIntent, story?: keyof typeof runFixtures): string;
 }
 
