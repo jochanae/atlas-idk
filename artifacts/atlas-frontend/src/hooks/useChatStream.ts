@@ -973,10 +973,10 @@ export function useChatStream(
                       intentType: res.intentType ?? null,
                       sentAt: new Date().toISOString(),
                       model: sendCtxRef.current.wsModel,
-                      ...(fes.length > 0 ? { fileEdits: fes, fileEdit: fes[0] } : {}),
+                      ...(fes.length > 0 ? { fileEdits: fes as FileEdit[], fileEdit: fes[0] as FileEdit } : {}),
                       ...(lps.length > 0 ? { linePatches: lps } : {}),
                       ...(fds.length > 0 ? { fileDeletes: fds } : {}),
-                    },
+                    } as ChatMessage,
                   ]);
                   resetSummaryPlaceholder();
                 } else if (evtName === "tool_call") {

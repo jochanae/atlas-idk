@@ -19,7 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
  * Footer/dock scroll behavior is independent and intentionally untouched.
  */
 
-export type ComposerVisibility = "full" | "compact" | "hidden";
+export type ComposerVisibility = "full" | "compact" | "docked" | "hidden";
 
 export type StageArtifactKind =
   | "preview"

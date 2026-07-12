@@ -1168,7 +1168,7 @@ export function FilesPanel({
                 permissionStatus={githubPermissionStatus}
                 statusLabel={githubStatusLabel}
                 onRunImport={runFullImport}
-                onHydrate={() => { if (effectiveRepo && token) runAutoScan(effectiveRepo, token); }}
+                onHydrate={() => { if (effectiveRepo && token) runAutoScan(effectiveRepo as GhRepo, token); }}
                 onUnlink={unlinkRepo}
                 onConnectGitHub={() => { void connect(tokenInput || ""); }}
                 isUnlinking={isUnlinking}

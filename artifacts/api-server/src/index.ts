@@ -24,6 +24,7 @@ if (Number.isNaN(port) || port <= 0) {
 
 async function initStripe() {
   try {
+    // @ts-ignore — stripe-replit-sync is an optional Replit-managed package
     const { runMigrations } = await import('stripe-replit-sync');
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) throw new Error('DATABASE_URL required for Stripe');
