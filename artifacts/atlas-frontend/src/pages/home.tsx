@@ -59,8 +59,7 @@ import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { HomeArtifactLibrarySheet } from "@/components/HomeArtifactLibrarySheet";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
-import { useFoundationChat } from "@/hooks/useFoundationChat";
+import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
@@ -1979,8 +1978,19 @@ export default function Home() {
     }
     setProjectReadyAutoHandoffCount(count => count + 1);
   }, []);
-  const nexusChat = useFoundationChat({
+  const nexusChat = useNexusChatStream({
+    focusProjectId: homeFocus ?? null,
+    model: homeModel,
+    mode: homeMode,
+    conversationId: activeConversationId,
+    onData: handleNexusDataEvent,
     onProjectReady: handleNexusProjectReady,
+    
+    projectContext: homeFocus != null ? {
+      projectId: homeFocus,
+      memorySummary: homeProjectState.memorySummary,
+      decisions: homeProjectState.decisions,
+    } : null,
   });
   const activeProjectCtx = useActiveProjectContext();
   // askAtlasChat stream + askAtlasInProject wiring removed (Turn E-lite).
@@ -2951,7 +2961,7 @@ export default function Home() {
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
     // Ask Atlas send-routing branch removed (Turn E-lite). All sends now
     // flow through nexusChat via the shouldStayOnHome path below.
-    const shouldStayOnHome = options?.forceStayOnHome ?? true;
+    const shouldStayOnHome = options?.forceStayOnHome ?? false;
 
     // All blocking gates — nothing above this line mutates project/send state.
     // Each gate is a clean exit: no flags set, no API calls made.
