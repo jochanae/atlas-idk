@@ -3377,6 +3377,16 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // ── EARLY PARALLEL QUERIES ────────────────────────────────────────────────
   // Fire all DB queries that only need projectId/userId (not project metadata).
+  // Foundation mode: fetch user's full project list so Atlas can emit correct NAVIGATE_TO routes.
+  const _foundationProjects = (isFoundationMode && userId)
+    ? db.select({ id: projectsTable.id, name: projectsTable.name, status: projectsTable.status, description: projectsTable.description })
+        .from(projectsTable)
+        .where(eq(projectsTable.userId, userId))
+        .orderBy(desc(projectsTable.updatedAt))
+        .limit(30)
+        .catch(() => [] as Array<{ id: number; name: string; status: string | null; description: string | null }>)
+    : Promise.resolve([] as Array<{ id: number; name: string; status: string | null; description: string | null }>);
+
   // These overlap with Batch 1 and the repo tree fetch, saving 300–500 ms/request.
   const _cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const _earlyBatch2 = (!isFoundationMode && projectId) ? Promise.all([
@@ -3813,6 +3823,28 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Build layered system prompt — use project data already fetched in the first Promise.all
   let systemPrompt = isFoundationMode ? FOUNDATION_SYSTEM_PROMPT : DEV_SYSTEM_PROMPT;
+
+  // Foundation mode: inject the user's project list so Atlas knows real project IDs
+  // and can emit NAVIGATE_TO:{"route":"/project/<id>"} correctly instead of
+  // telling the user to navigate manually.
+  if (isFoundationMode) {
+    const foundationProjects = await _foundationProjects;
+    if (foundationProjects.length > 0) {
+      const committed = foundationProjects.filter(p => p.status === "committed");
+      const others = foundationProjects.filter(p => p.status !== "committed");
+      const lines: string[] = [];
+      for (const p of committed) lines.push(`- ${p.name} (id: ${p.id})${p.description ? ` — ${p.description}` : ""}`);
+      for (const p of others) lines.push(`- ${p.name} (id: ${p.id}, status: ${p.status ?? "unknown"})${p.description ? ` — ${p.description}` : ""}`);
+      systemPrompt += `\n\n--- USER'S PROJECTS ---
+${lines.join("\n")}
+
+When the user asks to go to a project, open a project, or navigate anywhere — match their request to one of the IDs above and immediately end your response with:
+NAVIGATE_TO:{"route":"/project/<id>"}
+Do NOT tell the user to navigate manually. Do NOT describe UI steps. Just confirm and emit the marker.
+--- END USER'S PROJECTS ---`;
+    }
+  }
+
   // ACTIVE PROJECT is injected FIRST — before platform knowledge — so the model knows
   // exactly which project it is in before any other context is loaded.
   if (!isFoundationMode && project) {
