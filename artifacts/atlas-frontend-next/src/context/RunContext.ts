@@ -16,6 +16,20 @@ export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "di
  * providers. Mock-only helpers are optional; live provider leaves them
  * undefined so surfaces can key off their presence.
  */
+export interface PendingMessage {
+  clientId: string;               // stable local id ("pending-…")
+  idempotencyKey: string;
+  content: string;
+  status: "sending" | "accepted" | "error";
+  error?: string;
+  runId?: string;                 // filled after 202
+  userMessageId?: string;         // filled after 202
+}
+
+export type SendMessageResult =
+  | { ok: true; runId: string; userMessageId: string; intent: RunIntent | null; duplicate: boolean }
+  | { ok: false; error: string; code?: string };
+
 export interface RunContextValue {
   activeBuildRun: Run | null;
   activeTurn: Run | null;
@@ -24,6 +38,11 @@ export interface RunContextValue {
   messagesStatus: "loading" | "ready" | "error" | "idle";
   loadMoreMessages: () => Promise<void>;
   hasMoreMessages: boolean;
+
+  /** Optimistic user messages awaiting server persistence. */
+  pendingMessages: PendingMessage[];
+  /** Composer entry point. Generates no ids itself — caller passes idempotencyKey. */
+  sendMessage(content: string, idempotencyKey: string): Promise<SendMessageResult>;
 
   confirm(runId: string): Promise<void>;
   cancel(runId: string): Promise<void>;

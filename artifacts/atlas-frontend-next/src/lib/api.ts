@@ -119,6 +119,42 @@ export function listMessages(
   );
 }
 
+/**
+ * Canonical turn-entry endpoint (V1.2).
+ * POST /api/conversations/:conversationId/messages
+ *   Body:  { content, idempotencyKey }
+ *   202:   { runId, userMessageId, intent, duplicate? }
+ *
+ * Rules (see composer spec):
+ *   - Caller generates one client-side UUID per send attempt as
+ *     `idempotencyKey`. Retries reuse the same key.
+ *   - Response is "accepted", not "completed": assistant prose and run
+ *     state arrive over SSE + REST hydration.
+ *   - `duplicate: true` means the server matched the idempotency key to
+ *     an existing run; reuse both ids and do not add another user row.
+ *   - Non-`ws-{n}` conversation ids currently 400 with
+ *     UNSUPPORTED_CONVERSATION_ID; surface that verbatim.
+ */
+export interface SendMessageRequest {
+  content: string;
+  idempotencyKey: string;
+}
+export interface SendMessageResponse {
+  runId: string;
+  userMessageId: string;
+  intent: "CHAT" | "DECIDE" | "BUILD" | null;
+  duplicate?: boolean;
+}
+export function sendMessage(
+  conversationId: string,
+  body: SendMessageRequest,
+): Promise<SendMessageResponse> {
+  return req<SendMessageResponse>(
+    `/api/conversations/${conversationId}/messages`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Repository quiet updates
 // ---------------------------------------------------------------------------
