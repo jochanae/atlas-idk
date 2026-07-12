@@ -467,19 +467,18 @@ router.post("/sessions/:id/summarize", async (req, res): Promise<void> => {
 
 // ── Atlas session routes — general conversations not tied to a project ────────
 // GET /api/sessions/atlas — list recent Atlas sessions for the authenticated user
+// Uses raw SQL because user_id is not in the Drizzle sessionsTable schema.
 router.get("/sessions/atlas", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
-  const sessions = await db
-    .select()
-    .from(sessionsTable)
-    .where(and(isNull(sessionsTable.projectId), eq((sessionsTable as any).userId, userId)))
-    .orderBy(desc(sessionsTable.updatedAt))
-    .limit(20);
-  res.json(sessions.map(s => ({
-    ...s,
-    createdAt: s.createdAt.toISOString(),
-    updatedAt: s.updatedAt.toISOString(),
-  })));
+  const result = await db.execute(sql`
+    SELECT id, title, mode, status, message_count AS "messageCount",
+           created_at AS "createdAt", updated_at AS "updatedAt"
+    FROM sessions
+    WHERE project_id IS NULL AND user_id = ${userId}
+    ORDER BY updated_at DESC
+    LIMIT 20
+  `);
+  res.json(result.rows);
 });
 
 // POST /api/sessions/atlas — create a new Atlas session (projectId = null)
