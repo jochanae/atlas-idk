@@ -9,11 +9,12 @@
 
 **Every assistant turn — CHAT, DECIDE, or BUILD — receives a canonical Run ID and a lightweight Run record.**
 
-There is no separate "message" system for conversation and a "run" system for execution. That split is how state fragmentation started. The unified rule is:
+Messages and runs are not competing state systems. They may be separate database records, but they share one canonical turn identity via `runId`. The conversation history remains durable and ordered; runs carry the execution state for that same turn. Neither replaces the other.
 
-- CHAT turns → lightweight Run, no execution card, does not block BUILD
-- DECIDE turns → lightweight Run, no execution card, does not block BUILD  
-- BUILD turns → full Run, execution card rendered, subject to one-active-BUILD restriction
+The unified rule:
+- CHAT turns → lightweight Run + ConversationMessage record, no execution card, does not block BUILD
+- DECIDE turns → lightweight Run + ConversationMessage record, no execution card, does not block BUILD
+- BUILD turns → full Run + ConversationMessage record, execution card rendered, subject to one-active-BUILD restriction
 
 This gives the system:
 - Consistent SSE streaming (all events carry a `runId`)
@@ -21,6 +22,39 @@ This gives the system:
 - Refresh restoration without special cases
 - One lifecycle vocabulary across all surfaces
 - Audit trail for every interaction (Timeline shows all turns, not just builds)
+
+### ConversationMessage
+
+Every user message and every assistant turn produces a `ConversationMessage` record. The chat renderer reads from conversation messages — not from runs.
+
+```typescript
+interface ConversationMessage {
+  id: string
+  runId: string              // links this message to its canonical run
+  conversationId: string
+  role: "user" | "assistant"
+  content: string            // final settled content (streaming prose resolves here)
+  createdAt: string          // ISO 8601
+}
+```
+
+**Conversation history endpoint (paginated):**
+```
+GET /api/conversations/:conversationId/messages?cursor=&limit=50  → ConversationPage
+```
+```typescript
+interface ConversationPage {
+  messages: ConversationMessage[]
+  nextCursor: string | null  // null when no more history
+  total: number
+}
+```
+
+**Ordering:** messages are ordered by `createdAt` ascending. The cursor is opaque — do not parse it.
+
+**Duplicate submission prevention:** the client includes an idempotency key on each user message send. The server rejects a second request with the same key within 60 seconds.
+
+**Streaming → settled:** while a CHAT/DECIDE turn is streaming, `token` SSE events carry the prose. When `run_complete` fires, the final `content` is written to the `ConversationMessage` record. The chat renderer transitions from the SSE token stream to the settled message at that point.
 
 ---
 
@@ -328,6 +362,7 @@ type RunEventType =
   | "plan_ready"               // payload: { plan: PlanBlock }
   | "step_update"              // payload: { step: RunStep } (metadata only, no diff content)
   | "verification_update"      // payload: { verification: RunVerification }
+  | "commit_update"            // payload: { commit: RunCommit }
   | "run_complete"             // payload: { run: Run } — Run object WITHOUT step content
   | "stream_error"             // payload: { code: string; message: string }
 ```
@@ -424,7 +459,7 @@ POST   /api/runs/:id/commit                           → { ok: true, sha: strin
 **Frontend:**
 - When `409 RUN_ACTIVE` is received: toast "A build is already running. Wait for it to finish or cancel it."
 - The Cancel button on the active build card must remain visible
-- One live BUILD card in chat at all times — never zero, never two
+- While a non-terminal BUILD run exists, exactly one live BUILD card is visible in chat. When no active BUILD run exists, zero BUILD cards are shown. Never two simultaneously.
 
 ---
 
@@ -536,13 +571,16 @@ Never display `response` where `summary` is expected. Never use `prompt` as a di
 
 ## 14. TypeScript Types Package
 
-Replit will publish canonical types at:
-```
-lib/run-contract/src/index.ts
-```
-Importable as `@workspace/run-contract` within the monorepo.
+Canonical types live at `lib/run-contract/src/index.ts`, importable as `@workspace/run-contract` within the monorepo. Lovable receives these as a generated TypeScript file.
 
-Lovable receives these as a generated TypeScript file. The source of truth is this document. If the generated types and this document disagree, this document wins and the types must be regenerated.
+**Source of truth hierarchy:**
+1. `docs/RUN_LIFECYCLE_CONTRACT.md` — human-readable authority (this document)
+2. `lib/run-contract/src/index.ts` — the executable types both backend and frontend compile against
+3. Mock fixtures and backend event payloads are validated against the same types
+
+When the document and the types disagree, the document wins and the types must be corrected. The reverse is also true: if a type change is needed, this document must be updated first and the version bumped. Neither team may silently drift the types away from the contract.
+
+A future CI step will validate that backend-emitted SSE payloads satisfy the TypeScript types (compile-time) and that Lovable mock fixtures parse without error. Until that step exists, both teams are responsible for manual verification on each version bump.
 
 ---
 
@@ -566,3 +604,4 @@ Against mock data and local state:
 |---|---|---|
 | 1.0 | 2026-07-12 | Initial frozen contract |
 | 1.1 | 2026-07-12 | Critical fix: CHAT/DECIDE create lightweight runs (no two-system split). Made `projectId` nullable. Split `RunProvider.currentRun` into `activeBuildRun` + `activeTurn`. Replaced `THOUGHT` verb with user-safe `ACTIVITY`. Moved step content out of `run_complete` to dedicated endpoints. Added `RunArtifactSummary` to steps. Defined BUILD skip transitions explicitly. Added `snapshotRef` for cancellation recovery. Added SSE auth, durable event persistence, and multi-instance rules. |
+| 1.2 | 2026-07-12 | Clarified foundational rule: messages and runs share `runId` but are separate durable records, not competing systems. Added `ConversationMessage` schema and paginated `/messages` endpoint with ordering and duplicate-prevention rules. Added `commit_update` SSE event for post-terminal commit state changes. Fixed concurrent-run wording: zero cards when no active BUILD, one card while active, never two. Replaced single-source-of-truth claim with explicit source-of-truth hierarchy (document → types → fixtures). |

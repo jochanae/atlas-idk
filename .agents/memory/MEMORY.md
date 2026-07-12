@@ -79,3 +79,4 @@
 - [Deliverable generation reachability gaps](deliverable-reachability-gaps.md) — mermaid/chart/pdf renderers exist and are verified, but the agent chat tool only exposes pptx/docx/xlsx; use the generic deliverables REST route to exercise the others
 - [Visual QA multi-format coverage](visualqa-format-coverage.md) — DOCX+PDF share one checker (same preview shape); XLSX is best-effort (pagination ≠ worksheets); UI must treat skipped/unavailable as no-badge, not error
 - [Plan Continuation Engine](plan-continuation-engine.md) — structured envelope auto-executes read-only investigations after DECIDE roadmaps; model proposes, server allowlist authorizes; hard cap 1 hop
+- [Run Lifecycle Contract](run-lifecycle-contract-decisions.md) — V1.2 frozen; @workspace/run-contract types at lib/run-contract/src/index.ts; three invariants: one system not two, activeBuildRun≠activeTurn, commit_update fires post-terminal

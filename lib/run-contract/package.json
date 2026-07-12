@@ -1,0 +1,14 @@
+{
+  "name": "@workspace/run-contract",
+  "version": "1.2.0",
+  "description": "Canonical Run Lifecycle Contract types — v1.2. Both backend and frontend compile against this package.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}
