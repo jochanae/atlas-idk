@@ -911,6 +911,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   const fileCount = run.files.length;
   const kicker =
     run.status === "running" ? "Working"
+    : run.status === "applied" && executionRun?.status === "awaiting_approval" ? "Applied Locally"
     : run.status === "applied" ? "Run Complete"
     : run.status === "delivered" ? "Ready to Download"
     : run.status === "pushed" ? "Pushed to GitHub"

@@ -3259,7 +3259,18 @@ Rules — the model proposes, the server authorizes:
 - The continuation response MUST return: (1) what was inspected with exact file paths, (2) evidence and key observations, (3) classification (production-ready | extendable | prototype | stub | dead-code), (4) unresolved questions, (5) next gate — "decision: [what decision is needed]" OR "execution: [next safe read-only step]".
 --- END WHISPERGATE ---`;
   } else if (allowBuildSideEffects) {
-    systemPrompt += `\n\n--- WHISPERGATE INTENT: BUILD ---\nThis is a BUILD turn. The user wants you to create, edit, fix, or ship code. Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over narration.\n--- END WHISPERGATE ---`;
+    systemPrompt += `\n\n--- WHISPERGATE INTENT: BUILD ---
+This is a BUILD turn. The user wants you to create, edit, fix, or ship code.
+
+Surface contract — enforce this on every BUILD response:
+• CHAT BEFORE: one sentence — what is changing and why (plain language, no file listing, no code).
+• FILE_EDIT / LINE_PATCH blocks: the code lives here. These are stripped from visible chat and shown in Changes. Never duplicate their content in prose.
+• CHAT AFTER: one sentence — the result and what it means. Format: "[outcome]. [N] file[s] changed."
+• FORBIDDEN in chat prose: source code, diffs, file contents, implementation narration, line-by-line explanation, every-file listings.
+
+The run card, Timeline, and Changes surfaces hold all detail. Chat explains. Run card tracks. Changes shows.
+Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over narration.
+--- END WHISPERGATE ---`;
     systemPrompt += `\n\n${NEXUS_BUILD_PROTOCOLS}`;
     systemPrompt += `\n\n${ATLAS_DESIGN_INTELLIGENCE}`;
   }

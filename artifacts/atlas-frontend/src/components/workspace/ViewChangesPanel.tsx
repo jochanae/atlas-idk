@@ -417,13 +417,15 @@ function getChangeLabel(row: FileRow): { label: string; color: string } {
   return { label: row.summary, color: "rgba(var(--atlas-muted), 0.55)" };
 }
 
-function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }) {
+function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectId: number; runStatus?: string }) {
   // Auto-expand the first file when there are ≤3 files and viewable content exists.
   const firstKey = rows.length > 0 ? `${rows[0].messageId}-${rows[0].path}-0` : null;
   const autoExpand = rows.length <= 3 && (!!rows[0]?.content || !!rows[0]?.beforeContent);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => autoExpand && firstKey ? new Set([firstKey]) : new Set()
   );
+
+  const isProposed = runStatus === "awaiting_approval";
 
   if (rows.length === 0) {
     return (
@@ -434,6 +436,27 @@ function ChangesLens({ rows, projectId }: { rows: FileRow[]; projectId: number }
   }
   return (
     <div style={{ padding: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+      {isProposed && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "7px 10px", borderRadius: 5, marginBottom: 4,
+          background: "rgba(var(--atlas-gold-rgb), 0.07)",
+          border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)",
+        }}>
+          <span style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            color: "var(--atlas-gold)", opacity: 0.9,
+            padding: "2px 6px", borderRadius: 3,
+            background: "rgba(var(--atlas-gold-rgb), 0.12)",
+            border: "1px solid rgba(var(--atlas-gold-rgb), 0.3)",
+            flexShrink: 0,
+          }}>Proposed</span>
+          <span style={{
+            fontSize: 11.5, color: "var(--atlas-fg)", opacity: 0.65, lineHeight: 1.4,
+          }}>Applied locally — approve in chat to push to GitHub</span>
+        </div>
+      )}
       {rows.map((r, i) => {
         const key = `${r.messageId}-${r.path}-${i}`;
         const isExpanded = expandedPaths.has(key);
@@ -762,9 +785,11 @@ function RunHeader({ run }: { run: ApiRun }) {
   });
 
   const statusTone: Record<string, string> = {
-    completed: "rgba(100,200,120,0.9)",
-    running: "rgba(var(--atlas-gold-rgb), 0.9)",
-    failed: "rgba(220,80,80,0.9)",
+    completed:          "rgba(100,200,120,0.9)",
+    succeeded:          "rgba(100,200,120,0.9)",
+    running:            "rgba(var(--atlas-gold-rgb), 0.9)",
+    awaiting_approval:  "rgba(var(--atlas-gold-rgb), 0.85)",
+    failed:             "rgba(220,80,80,0.9)",
   };
   const tone = statusTone[status] ?? "rgba(180,180,180,0.8)";
 
@@ -1176,7 +1201,7 @@ export function ViewChangesPanel({
           </div>
         )
       ) : (
-        <ChangesLens rows={changeRows} projectId={projectId} />
+        <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} />
       )}
     </div>
   );
