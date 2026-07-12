@@ -62,7 +62,7 @@ export function AtlasReceipt({ run, hydration, disconnected, onCommit }: AtlasRe
   const showDetails = ch.status !== "idle";
   const detailsPending = ch.status === "loading";
   const detailsError = ch.status === "error";
-  const detailsDisabled = detailsPending || dis || ch.status === "empty" || ch.status === "disconnected";
+  const detailsDisabled = detailsPending || dis || ch.status === "empty";
 
   const outputsPending = outs.status === "loading";
   const outputsError = outs.status === "error";
