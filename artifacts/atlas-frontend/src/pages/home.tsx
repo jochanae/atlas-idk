@@ -2174,7 +2174,6 @@ export default function Home() {
 
   useEffect(() => {
     setActiveProjectId(homeFocus);
-    return () => setActiveProjectId(null);
   }, [homeFocus, setActiveProjectId]);
 
   // Derive first name from auth (updates when /me resolves)
