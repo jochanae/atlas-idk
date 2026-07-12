@@ -287,6 +287,51 @@ const MARKDOWN_COMPONENTS: import("react-markdown").Components = {
       {renderMarkdownChildren(children)}
     </li>
   ),
+  a: ({ href, children }) => {
+    const isInternal = typeof href === "string" && href.startsWith("/");
+    if (isInternal) {
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("axiom:navigate-internal", { detail: { href } }))
+          }
+          style={{
+            display: "inline",
+            background: "none",
+            border: "none",
+            padding: 0,
+            color: "var(--atlas-gold)",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontSize: "inherit",
+            lineHeight: "inherit",
+            letterSpacing: "inherit",
+            textDecoration: "underline",
+            textDecorationStyle: "dotted",
+            textUnderlineOffset: "3px",
+          }}
+        >
+          {children}
+        </button>
+      );
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: "var(--atlas-gold)",
+          textDecoration: "underline",
+          textDecorationStyle: "dotted",
+          textUnderlineOffset: "3px",
+        }}
+      >
+        {children}
+      </a>
+    );
+  },
 };
 
 export function MarkdownProse({ content }: { content: string }) {

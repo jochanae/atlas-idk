@@ -1773,6 +1773,7 @@ function AssistantBubbleImpl({
     .replace(/\n\nIMAGE_CLARIFY:[^\n]*/g, "")
     .replace(/- \*\*Cinematic\*\*[^\n]*/g, "")
     .replace(/- \*\*Blueprint\*\*[^\n]*/g, "")
+    .replace(/\s*NAVIGATE_TO:\s*\{[^\n]+\}\s*$/gm, "")
     .trim();
 
   // Detect previewable code block (html, jsx, tsx, css, or untagged with HTML tags)

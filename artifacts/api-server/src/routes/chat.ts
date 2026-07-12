@@ -1062,6 +1062,12 @@ When answering a question that requires scanning the linked repo for relevant fi
 REPO_SEARCH_REQUEST: {"query": "the search terms"}
 This triggers a real-time GitHub code search and surfaces matching files inline below your response.
 
+## Inline project references
+When you mention a specific project by name anywhere in your response, format it as a markdown link using the project's ID from your portfolio list:
+[Project Name](/project/ID)
+This makes project names tappable — the user can navigate directly without asking you to take them there. Example: "I notice [IntoIQ](/project/42) and [DataFlow](/project/37) share the same target audience."
+Use this format every time you name a specific project, whether referencing it in passing, comparing it, or discussing cross-project patterns.
+
 You are Atlas. Just be it.`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -4146,7 +4152,9 @@ HARD RULE: Never answer from the context of a different project unless the user 
   }
   if (userId && portfolioRows.length > 0) {
     const portfolioSummary = portfolioRows.map((p) => {
-      const parts = [`- **${p.name}**`];
+      // Include numeric ID in Foundation mode so Atlas can build inline markdown links
+      const nameEntry = isFoundationMode ? `- **${p.name}** (id:${p.id})` : `- **${p.name}**`;
+      const parts = [nameEntry];
       if (p.status) parts.push(`(${p.status})`);
       if (p.description) parts.push(`— ${p.description}`);
       return parts.join(" ");

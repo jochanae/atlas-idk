@@ -1055,6 +1055,8 @@ export function useChatStream(
               setDetectedLens(null);
               res.content = contentWithoutToolCall;
             }
+            // Strip NAVIGATE_TO signal — navigation is handled via onDoneEvent/handleThinkingDone
+            res.content = res.content.replace(/\s*NAVIGATE_TO:\s*\{[^\n]+\}\s*$/gm, "").trim();
             res.content = appendGithubAutoLinkStatus(res.content, githubAutoLinkStatus);
           } else if (githubAutoLinkStatus) {
             res.content = githubAutoLinkStatus;

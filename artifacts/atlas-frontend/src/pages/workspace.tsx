@@ -4784,7 +4784,16 @@ export default function Workspace() {
       // consecutive loop counter so the next build handoff starts fresh.
       autoApplyCountRef.current = 0;
     }
-  }, []);
+    // NAVIGATE_TO — Atlas requesting in-conversation navigation to a project
+    if (payload?.content && typeof payload.content === "string") {
+      const navMatch = (payload.content as string).match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
+      if (navMatch) {
+        const route = navMatch[1];
+        // Defer to let setMessages / state flush first
+        setTimeout(() => setLocation(route), 200);
+      }
+    }
+  }, [setLocation]);
 
   const {
     messages,
@@ -5471,15 +5480,22 @@ export default function Workspace() {
       setShowDrawer(true);
     };
     const closeProjectMenu = () => setShowProjectMenu(false);
+    // Inline project link clicks from MessageRenderer (markdown [Name](/project/id))
+    const onInternalNav = (e: Event) => {
+      const href = (e as CustomEvent).detail?.href as string | undefined;
+      if (href) setLocation(href);
+    };
     window.addEventListener("axiom:open-projects-drawer", openProjectMenu);
     window.addEventListener("axiom:open-nav-drawer", openNavDrawer);
     window.addEventListener("axiom:close-project-menu", closeProjectMenu);
+    window.addEventListener("axiom:navigate-internal", onInternalNav);
     return () => {
       window.removeEventListener("axiom:open-projects-drawer", openProjectMenu);
       window.removeEventListener("axiom:open-nav-drawer", openNavDrawer);
       window.removeEventListener("axiom:close-project-menu", closeProjectMenu);
+      window.removeEventListener("axiom:navigate-internal", onInternalNav);
     };
-  }, []);
+  }, [setLocation]);
   // Atlas scope — events dispatched from ShellAtlasTitle dropdown + ShellAtlasDownload
   useEffect(() => {
     if (!isAtlasScope) return;
