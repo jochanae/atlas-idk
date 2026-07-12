@@ -5480,18 +5480,21 @@ export default function Workspace() {
       window.removeEventListener("axiom:close-project-menu", closeProjectMenu);
     };
   }, []);
-  // Atlas scope — events dispatched from ShellAtlasTitle dropdown
+  // Atlas scope — events dispatched from ShellAtlasTitle dropdown + ShellAtlasDownload
   useEffect(() => {
     if (!isAtlasScope) return;
     const onNew = () => { void handleNewSession(); };
     const onHistory = () => setSessionsSheetOpen(true);
+    const onDownload = () => downloadConversation("md");
     window.addEventListener("axiom:atlas-new-conversation", onNew);
     window.addEventListener("axiom:atlas-open-history", onHistory);
+    window.addEventListener("axiom:atlas-download-chat", onDownload);
     return () => {
       window.removeEventListener("axiom:atlas-new-conversation", onNew);
       window.removeEventListener("axiom:atlas-open-history", onHistory);
+      window.removeEventListener("axiom:atlas-download-chat", onDownload);
     };
-  }, [isAtlasScope, handleNewSession]);
+  }, [isAtlasScope, handleNewSession, downloadConversation]);
   // Preset apply — fired by WorkspacePresetsBar
   useEffect(() => {
     const onApplyPreset = (e: Event) => {

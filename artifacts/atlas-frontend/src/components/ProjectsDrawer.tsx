@@ -226,25 +226,6 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 8 }}>
-            {onNewAtlasConversation && (
-              <button
-                type="button"
-                onClick={() => { onNewAtlasConversation(); onClose(); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  width: "100%", padding: "7px 10px",
-                  borderRadius: 8, border: "none",
-                  background: "transparent", cursor: "pointer", textAlign: "left",
-                  color: "rgba(201,162,76,0.65)",
-                  transition: "background 140ms ease",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.06)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-              >
-                <span style={{ color: "rgba(201,162,76,0.5)", display: "flex", flexShrink: 0 }}><Plus size={13} strokeWidth={1.8} /></span>
-                <span style={{ fontSize: 12, fontFamily: "var(--app-font-sans)", color: "rgba(201,162,76,0.75)" }}>New conversation</span>
-              </button>
-            )}
             {atlasConversations && atlasConversations.length > 0 ? (
               atlasConversations.slice(0, 5).map((conv) => {
                 const isActive = conv.id === activeAtlasSessionId;

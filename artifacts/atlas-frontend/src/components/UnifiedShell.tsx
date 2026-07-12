@@ -831,6 +831,33 @@ function ShellAtlasTitle() {
   );
 }
 
+function ShellAtlasDownload() {
+  return (
+    <button
+      type="button"
+      title="Download conversation"
+      aria-label="Download conversation"
+      onClick={() => window.dispatchEvent(new Event("axiom:atlas-download-chat"))}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 32, height: 32, borderRadius: 8, border: "none",
+        background: "transparent", cursor: "pointer",
+        color: "var(--atlas-fg)", opacity: 0.55,
+        transition: "opacity 140ms ease, background 140ms ease",
+        WebkitTapHighlightColor: "transparent",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.55"; e.currentTarget.style.background = "transparent"; }}
+    >
+      {/* download arrow */}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v13M7 11l5 5 5-5" />
+        <path d="M4 20h16" />
+      </svg>
+    </button>
+  );
+}
+
 const atlasMenuItemStyle: CSSProperties = {
   display: "flex", alignItems: "center", gap: 8,
   width: "100%", padding: "9px 14px", border: "none",
@@ -2724,6 +2751,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: isTinyMobile ? 3 : 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellPlayButton visible={location === "/workspace" || isProjectRoute(location)} />
+            {location.startsWith("/atlas/") && <ShellAtlasDownload />}
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
 
