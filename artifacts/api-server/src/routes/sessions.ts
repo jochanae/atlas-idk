@@ -491,18 +491,25 @@ router.post("/sessions/atlas", async (req, res): Promise<void> => {
   }).safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
 
-  const [session] = await (db.insert(sessionsTable) as any).values({
-    projectId: null,
-    userId,
-    title: body.data.title ?? "New conversation",
-    mode: body.data.mode ?? "think",
-    status: "active",
-  }).returning();
+  // Use raw SQL so the out-of-schema `user_id` column is actually written.
+  // Drizzle's typed insert silently drops columns that are not in the schema.
+  const title = body.data.title ?? "New conversation";
+  const mode = body.data.mode ?? "think";
+  const result = await db.execute(sql`
+    INSERT INTO sessions (project_id, user_id, title, mode, status)
+    VALUES (NULL, ${userId}, ${title}, ${mode}, 'active')
+    RETURNING *
+  `);
+  const session = result.rows[0] as Record<string, unknown>;
 
   res.status(201).json({
     ...session,
-    createdAt: session.createdAt.toISOString(),
-    updatedAt: session.updatedAt.toISOString(),
+    createdAt: session.createdAt instanceof Date
+      ? (session.createdAt as Date).toISOString()
+      : String(session.createdAt ?? ""),
+    updatedAt: session.updatedAt instanceof Date
+      ? (session.updatedAt as Date).toISOString()
+      : String(session.updatedAt ?? ""),
   });
 });
 
