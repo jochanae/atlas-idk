@@ -5286,21 +5286,23 @@ export default function Workspace() {
     setSessionActionBusy(true);
     try {
       if (isAtlasScope) {
-        // Atlas scope: POST /sessions/atlas, then navigate to the new session URL
+        // Atlas scope: canonical conversation-first flow. POST /api/conversations
+        // creates a projects row with conversationId and navigates to the
+        // /workspace/:conversationId route. No more /api/sessions/atlas here.
         const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-        const r = await fetch("/api/sessions/atlas", {
+        const r = await fetch("/api/conversations", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-          body: JSON.stringify({ title: "New conversation", mode: "think" }),
+          body: JSON.stringify({}),
         });
-        const newS = await r.json() as { id: number };
+        const created = await r.json() as { conversationId?: string };
         setMessages([]);
         priorLoaded.current = false;
         historyMsgCountRef.current = 0;
         setShowProjectMenu(false);
         toast.success("Started a new conversation");
-        setLocation(`/atlas/${newS.id}`);
+        if (created?.conversationId) setLocation(`/workspace/${created.conversationId}`);
       } else {
         const s = await createSession.mutateAsync({ projectId: id, data: { title: "New session", mode: "think" } });
         setMessages([]);
@@ -5456,10 +5458,12 @@ export default function Workspace() {
   });
   const [showDrawer, setShowDrawer] = useState(false);
   const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
+  const [downloadFormatOpen, setDownloadFormatOpen] = useState(false);
   useEffect(() => {
     if (!showDrawer) return;
     const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-    fetch("/api/sessions/atlas", {
+    // Canonical source: conversation-first records. See GET /api/conversations.
+    fetch("/api/conversations", {
       credentials: "include",
       headers: tok ? { Authorization: `Bearer ${tok}` } : {},
     })
@@ -5500,8 +5504,12 @@ export default function Workspace() {
   useEffect(() => {
     if (!isAtlasScope) return;
     const onNew = () => { void handleNewSession(); };
-    const onHistory = () => setSessionsSheetOpen(true);
-    const onDownload = () => downloadConversation("md");
+    // "Conversation history" opens the projects drawer whose ATLAS section is
+    // now backed by the canonical GET /api/conversations list.
+    const onHistory = () => setShowDrawer(true);
+    // Ask which format instead of hard-coding markdown; the same choice was
+    // already available in the project dropdown menu.
+    const onDownload = () => setDownloadFormatOpen(true);
     window.addEventListener("axiom:atlas-new-conversation", onNew);
     window.addEventListener("axiom:atlas-open-history", onHistory);
     window.addEventListener("axiom:atlas-download-chat", onDownload);
@@ -9673,6 +9681,59 @@ export default function Workspace() {
         onDelete={(sid) => handleDeleteSessionFromSheet(sid)}
       />
 
+      {/* Download format picker — restored so the shell download action offers
+          Markdown and JSON, matching the project dropdown menu. */}
+      {downloadFormatOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setDownloadFormatOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-label="Download conversation"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(320px, 100%)",
+              borderRadius: 14,
+              background: "var(--atlas-bg, #0a0a0c)",
+              border: "1px solid rgba(201,162,76,0.25)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+              padding: "20px 20px 16px",
+            }}
+          >
+            <p style={{ margin: 0, fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
+              Download conversation
+            </p>
+            <p style={{ margin: "8px 0 16px", fontSize: 13, lineHeight: 1.5, color: "var(--atlas-fg)", opacity: 0.75 }}>
+              Choose a format.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => { downloadConversation("md"); setDownloadFormatOpen(false); }}
+                style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(201,162,76,0.35)", background: "rgba(201,162,76,0.08)", color: "var(--atlas-fg)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+              >
+                <strong>Markdown</strong> — .md · readable, shareable
+              </button>
+              <button
+                type="button"
+                onClick={() => { downloadConversation("json"); setDownloadFormatOpen(false); }}
+                style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.04)", color: "var(--atlas-fg)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+              >
+                <strong>JSON</strong> — .json · full structure with metadata
+              </button>
+              <button
+                type="button"
+                onClick={() => setDownloadFormatOpen(false)}
+                style={{ marginTop: 4, padding: "8px 12px", borderRadius: 8, border: "none", background: "transparent", color: "var(--atlas-muted)", fontSize: 12, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
 
 
@@ -10166,17 +10227,21 @@ export default function Workspace() {
         onNewAtlasConversation={async () => {
           const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
           try {
-            const r = await fetch("/api/sessions/atlas", {
+            const r = await fetch("/api/conversations", {
               method: "POST", credentials: "include",
               headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({ title: "New conversation", mode: "think" }),
+              body: JSON.stringify({}),
             });
-            const s = await r.json() as { id: number };
-            setLocation(`/atlas/${s.id}`);
-          } catch { setLocation("/atlas"); }
+            const s = await r.json() as { conversationId: string };
+            if (s?.conversationId) setLocation(`/workspace/${s.conversationId}`);
+          } catch { /* stay put */ }
           setShowDrawer(false);
         }}
-        onOpenAtlasConversation={(sid) => { setLocation(`/atlas/${sid}`); setShowDrawer(false); }}
+        onOpenAtlasConversation={(rowId) => {
+          const conv = drawerAtlasConversations.find((c) => c.id === rowId);
+          if (conv?.conversationId) setLocation(`/workspace/${conv.conversationId}`);
+          setShowDrawer(false);
+        }}
       />
 
 

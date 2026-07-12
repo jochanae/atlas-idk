@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { db, projectsTable, nexusMessagesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
@@ -174,6 +174,80 @@ router.post("/conversations", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "conversations: failed to create conversation");
     return res.status(500).json({ error: "Failed to create conversation" });
+  }
+});
+
+// GET /api/conversations — canonical list of conversation-first threads for
+// the authenticated user. Backs the projects-drawer ATLAS section, the home
+// gold clock, and the header conversation-history dropdown. Single source of
+// truth: `projects` rows with a non-null conversation_id, joined against
+// nexus_messages for message count + latest preview.
+router.get("/conversations", async (req, res) => {
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const limitRaw = Number(req.query.limit ?? 50);
+    const limit = Math.max(1, Math.min(200, Number.isFinite(limitRaw) ? limitRaw : 50));
+
+    // Aggregate per-conversation stats in a single query so we don't fan out
+    // N+1 selects per row. Left-join nexus_messages so brand-new conversations
+    // with no messages yet still appear.
+    const rows = await db
+      .select({
+        id: projectsTable.id,
+        conversationId: projectsTable.conversationId,
+        name: projectsTable.name,
+        status: projectsTable.status,
+        initialMessage: projectsTable.initialMessage,
+        createdAt: projectsTable.createdAt,
+        updatedAt: projectsTable.updatedAt,
+        messageCount: sql<number>`COALESCE(COUNT(${nexusMessagesTable.id}), 0)::int`,
+        lastMessageAt: sql<Date | null>`MAX(${nexusMessagesTable.createdAt})`,
+        lastMessagePreview: sql<string | null>`
+          (SELECT LEFT(nm.content, 160)
+             FROM nexus_messages nm
+            WHERE nm.conversation_id = ${projectsTable.conversationId}
+            ORDER BY nm.created_at DESC
+            LIMIT 1)
+        `,
+      })
+      .from(projectsTable)
+      .leftJoin(
+        nexusMessagesTable,
+        eq(nexusMessagesTable.conversationId, projectsTable.conversationId),
+      )
+      .where(
+        and(
+          eq(projectsTable.userId, userId),
+          isNotNull(projectsTable.conversationId),
+        ),
+      )
+      .groupBy(projectsTable.id)
+      .orderBy(desc(sql`GREATEST(${projectsTable.updatedAt}, COALESCE(MAX(${nexusMessagesTable.createdAt}), ${projectsTable.createdAt}))`))
+      .limit(limit);
+
+    return res.json(
+      rows.map((r: typeof rows[number]) => ({
+        id: r.id,
+        conversationId: r.conversationId,
+        // Alias `title` for parity with legacy `/api/sessions/atlas` shape so
+        // the three history surfaces can consume this list without a bespoke
+        // adapter.
+        title: r.name,
+        name: r.name,
+        status: r.status,
+        initialMessage: r.initialMessage ?? null,
+        messageCount: Number(r.messageCount ?? 0),
+        lastMessagePreview: r.lastMessagePreview ?? null,
+        lastMessageAt: r.lastMessageAt ?? null,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      })),
+    );
+  } catch (err) {
+    logger.error({ err }, "conversations: failed to list conversations");
+    return res.status(500).json({ error: "Failed to list conversations" });
   }
 });
 
