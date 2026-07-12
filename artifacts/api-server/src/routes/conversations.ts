@@ -228,7 +228,7 @@ router.get("/conversations", async (req, res) => {
       .limit(limit);
 
     return res.json(
-      rows.map((r) => ({
+      rows.map((r: typeof rows[number]) => ({
         id: r.id,
         conversationId: r.conversationId,
         // Alias `title` for parity with legacy `/api/sessions/atlas` shape so
