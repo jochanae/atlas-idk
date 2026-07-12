@@ -162,6 +162,8 @@ export function MockRunProvider({
       activeBuildRun, activeTurn, runs: list,
       messages: [], messagesStatus: "ready" as const, hasMoreMessages: false,
       loadMoreMessages: async () => {},
+      pendingMessages: [],
+      sendMessage: async () => ({ ok: false as const, error: "Mock provider does not send messages" }),
       confirm, cancel, commit,
       fetchSteps: async () => [] as RunStep[],
       fetchChanges,
