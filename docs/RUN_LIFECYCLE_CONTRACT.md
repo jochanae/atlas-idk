@@ -1,4 +1,4 @@
-# Run Lifecycle Contract — Version 1.1
+# Run Lifecycle Contract — Version 1.2
 **Status: FROZEN — do not implement against a draft version.**
 **Both teams (Replit backend, Lovable frontend) build against this document.**
 **Changes require a version bump and agreement from both teams before implementation.**
