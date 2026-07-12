@@ -10,20 +10,32 @@ import { isTerminal } from "@contract";
  *   - BUILD run in [thinking/planning]: compact thinking indicator only.
  *   - BUILD run in awaiting_confirmation: PlanCard with Apply/Cancel.
  *   - BUILD run in executing/testing/verifying: PlanCard with progress.
- *   - BUILD run in terminal state: ReceiptChip (with Commit if succeeded).
+ *   - BUILD run in succeeded: ReceiptChip (with Commit button).
+ *   - BUILD run in failed/cancelled with error: PlanCard in terminal state
+ *     (shows TOOL_FAILURE code, message, and partial-write warning).
+ *   - BUILD run in cancelled without error: ReceiptChip.
  *   - Zero BUILD cards when no active BUILD run.
  */
 export function ChatSurface() {
   const { activeBuildRun, activeTurn, runs, confirm, cancel, commit } = useRun();
 
-  const buildReceipts = runs.filter((r) => r.intent === "BUILD" && isTerminal(r.status));
+  const buildTerminal = runs.filter((r) => r.intent === "BUILD" && isTerminal(r.status));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Historical receipts (BUILD only — CHAT/DECIDE resolve into normal messages) */}
-      {buildReceipts.map((r) => (
-        <ReceiptChip key={r.id} run={r} onCommit={() => commit(r.id)} />
-      ))}
+      {/* Terminal BUILD runs — PlanCard for runs with errors, ReceiptChip otherwise */}
+      {buildTerminal.map((r) =>
+        r.error ? (
+          <PlanCard
+            key={r.id}
+            run={r}
+            onConfirm={() => {}}
+            onCancel={() => {}}
+          />
+        ) : (
+          <ReceiptChip key={r.id} run={r} onCommit={() => commit(r.id)} />
+        )
+      )}
 
       {/* Active turn indicator (CHAT/DECIDE) */}
       {activeTurn && (
