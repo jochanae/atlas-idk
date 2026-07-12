@@ -50,6 +50,7 @@ export function RunProvider({
     useState<RunContextValue["messagesStatus"]>("idle");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
+  const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
 
   const seenEventIds = useRef<Set<string>>(new Set());
   const lastSeqRef = useRef<number>(0);
