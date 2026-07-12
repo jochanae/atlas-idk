@@ -323,11 +323,12 @@ Generate 4–7 sub-nodes that break this node down one level deeper. Requirement
 - Be specific to this project's context (not generic)
 - Each sub-node is concrete and represents a real concern or component
 - Use these node types: requirement, blocker, decision, priority, sprint, goal
-- If a decision or answer for a sub-node is clearly and explicitly stated in the conversation, set resolved: true and include strategicAnswer with the actual answer (1–2 sentences, in the user's own words). Only include strategicAnswer if the answer is unambiguous in the conversation — do not infer or guess.
+- If a decision or answer for a sub-node is clearly and explicitly stated in the conversation, set resolved: true and add a "strategicAnswer" field with the actual answer (1–2 sentences, in the user's own words). Omit the "strategicAnswer" field entirely if the answer is not unambiguously stated — do not infer or guess.
 ${transcriptContext ? `\nProject conversation context:\n${transcriptContext.slice(0, 3000)}` : ""}
 
-Respond with ONLY a JSON array. Each element:
-{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of context","strategicAnswer":"include only if clearly stated in conversation — omit otherwise","x":0,"y":0}`;
+Respond with ONLY a JSON array. Each element MUST have these fields:
+{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of context","x":0,"y":0}
+Only add "strategicAnswer":"<actual answer from conversation>" and set resolved:true on elements where the answer is unambiguously present in the conversation above.`;
 
   try {
     const message = await anthropic.messages.create({
