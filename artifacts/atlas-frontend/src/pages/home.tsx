@@ -3069,24 +3069,25 @@ export default function Home() {
 
     try {
       const authToken = localStorage.getItem("atlas-auth-token");
-      // Same flow as "New Conversation" in the drawer: create an Atlas session
-      // (projectId = null) so the conversation appears in the ATLAS section and
-      // navigates to /atlas/:id — not a project.
-      const createRes = await fetch("/api/sessions/atlas", {
+      // Canonical conversation-first flow: POST /api/conversations creates a
+      // projects row with conversationId + persists the opening user message
+      // to nexus_messages. Response returns the conversationId we navigate to.
+      const createRes = await fetch("/api/conversations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ title: "New conversation", mode: "think", initialMessage: messageText }),
+        body: JSON.stringify({ initialMessage: messageText }),
       });
       const session = (await createRes.json().catch(() => null)) as {
-        id?: number | string;
+        conversationId?: string;
+        id?: number;
         error?: string;
         message?: string;
       } | null;
-      if (!createRes.ok || !session?.id) {
+      if (!createRes.ok || !session?.conversationId) {
         const err = new Error(
           (session as any)?.error ?? (session as any)?.message ?? "Failed to create conversation",
         ) as Error & { status?: number };
@@ -3107,7 +3108,7 @@ export default function Home() {
           sessionStorage.setItem(OPENING_ATTACHMENTS_STORAGE_KEY, JSON.stringify(atts));
         } catch {}
       }
-      setLocation(`/atlas/${session.id}`);
+      setLocation(`/workspace/${session.conversationId}`);
     } catch (err) {
       handleSubmitError(err);
     } finally {
