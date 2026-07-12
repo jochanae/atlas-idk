@@ -37,6 +37,12 @@ import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProj
 import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
 import { detectDecisionCatch } from "../lib/decisionCatch";
 import { maybeEmitMilestones } from "../lib/milestoneClassifier";
+import {
+  beginContractRun,
+  patchResForContractCompletion,
+  failContractRun,
+  type ContractRunCtx,
+} from "../lib/chatContractBridge";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3127,6 +3133,10 @@ router.post("/chat", async (req, res): Promise<void> => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
+  // Contract bridge context — declared outside the try so the catch block can call
+  // failContractRun.  Null when the bridge init fails (non-fatal).
+  let _contractCtx: ContractRunCtx | null = null;
+
   // Task #2 fix (v1 readiness follow-up): the entire turn used to run
   // unguarded after headers were flushed, so any uncaught error deep in this
   // handler (e.g. a reference-project tool failure, a malformed lens branch)
@@ -3152,6 +3162,15 @@ router.post("/chat", async (req, res): Promise<void> => {
   const activeModel = selectChatModelForMessage(message, (body.workspaceLens ?? "").toLowerCase());
   const now = new Date();
   const userId = (req as any).authUser?.id as number | undefined;
+
+  // ── V1.2 Contract bridge — CHAT run lifecycle ────────────────────────────────
+  // Best-effort: errors are caught inside beginContractRun and never propagate.
+  // patchResForContractCompletion wraps res.write to auto-fire endContractRun
+  // when the "done" SSE event is detected, covering all branches in this handler.
+  if (userId && sessionId) {
+    _contractCtx = await beginContractRun(sessionId, userId, projectId, message);
+    if (_contractCtx) patchResForContractCompletion(res, _contractCtx);
+  }
 
   // ── Intercept /research <url> slash command ──────────────────────────────────
   // User-facing shorthand: /research https://competitor.com  (or just /research domain.com)
@@ -7334,6 +7353,8 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     })();
   }
   } catch (err) {
+    // Best-effort: record the failure in the contract layer so SSE clients see run_status: failed
+    void failContractRun(_contractCtx, String(err)).catch(() => {});
     logger.error({ err, sessionId: body.sessionId, projectId: body.projectId }, "chat route: unhandled error — surfacing recoverable error instead of stalling");
     if (body.sessionId) {
       try {
