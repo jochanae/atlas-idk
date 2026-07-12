@@ -5458,6 +5458,7 @@ export default function Workspace() {
   });
   const [showDrawer, setShowDrawer] = useState(false);
   const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
+  const [downloadFormatOpen, setDownloadFormatOpen] = useState(false);
   useEffect(() => {
     if (!showDrawer) return;
     const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
