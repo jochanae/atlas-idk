@@ -9681,6 +9681,59 @@ export default function Workspace() {
         onDelete={(sid) => handleDeleteSessionFromSheet(sid)}
       />
 
+      {/* Download format picker — restored so the shell download action offers
+          Markdown and JSON, matching the project dropdown menu. */}
+      {downloadFormatOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setDownloadFormatOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-label="Download conversation"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(320px, 100%)",
+              borderRadius: 14,
+              background: "var(--atlas-bg, #0a0a0c)",
+              border: "1px solid rgba(201,162,76,0.25)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+              padding: "20px 20px 16px",
+            }}
+          >
+            <p style={{ margin: 0, fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
+              Download conversation
+            </p>
+            <p style={{ margin: "8px 0 16px", fontSize: 13, lineHeight: 1.5, color: "var(--atlas-fg)", opacity: 0.75 }}>
+              Choose a format.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => { downloadConversation("md"); setDownloadFormatOpen(false); }}
+                style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(201,162,76,0.35)", background: "rgba(201,162,76,0.08)", color: "var(--atlas-fg)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+              >
+                <strong>Markdown</strong> — .md · readable, shareable
+              </button>
+              <button
+                type="button"
+                onClick={() => { downloadConversation("json"); setDownloadFormatOpen(false); }}
+                style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.04)", color: "var(--atlas-fg)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+              >
+                <strong>JSON</strong> — .json · full structure with metadata
+              </button>
+              <button
+                type="button"
+                onClick={() => setDownloadFormatOpen(false)}
+                style={{ marginTop: 4, padding: "8px 12px", borderRadius: 8, border: "none", background: "transparent", color: "var(--atlas-muted)", fontSize: 12, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
 
 
