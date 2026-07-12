@@ -22,6 +22,7 @@ import { pool } from "@workspace/db";
 import { createRun, updateRunStatus } from "../routes/runs";
 import * as bus from "./runEventBus";
 import { logger } from "./logger";
+import type { PlanBlock } from "@workspace/run-contract";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -33,6 +34,8 @@ export interface ContractRunCtx {
   startedAt: number;
   /** Guards against double-completion when multiple done events fire */
   _done: boolean;
+  /** Set by updateContractRunIntent once WhisperGate classifies the turn */
+  intent?: "CHAT" | "DECIDE" | "BUILD";
 }
 
 // ---------------------------------------------------------------------------
@@ -131,15 +134,33 @@ export async function endContractRun(
       [ctx.runId, ctx.conversationId, response],
     );
 
-    // Transition: thinking → succeeded  (also emits run_complete)
+    // DECIDE: emit plan_ready before transitioning to succeeded.
+    // The PlanBlock for a DECIDE turn carries a minimal header — file-level
+    // detail is a BUILD concern; DECIDE delivers prose options, not diffs.
+    if (ctx.intent === "DECIDE") {
+      const plan: PlanBlock = {
+        title: "Decision ready",
+        rationale: null,
+        complexity: "LOW",
+        estimatedChanges: 0,
+        items: [],
+      };
+      await bus.publish(ctx.conversationId, ctx.runId, "plan_ready", { plan });
+      logger.info(
+        { runId: ctx.runId },
+        "chatContractBridge: DECIDE plan_ready emitted",
+      );
+    }
+
+    // Transition: (thinking|planning) → succeeded  (also emits run_complete)
     await updateRunStatus(ctx.runId, ctx.conversationId, "succeeded", {
       response,
       elapsedMs,
     });
 
     logger.info(
-      { runId: ctx.runId, conversationId: ctx.conversationId, elapsedMs },
-      "chatContractBridge: run succeeded (CHAT)",
+      { runId: ctx.runId, conversationId: ctx.conversationId, elapsedMs, intent: ctx.intent ?? "CHAT" },
+      "chatContractBridge: run succeeded",
     );
   } catch (err) {
     logger.error(
@@ -201,10 +222,20 @@ export async function updateContractRunIntent(
       `UPDATE contract_runs SET intent = $1, updated_at = now() WHERE id = $2`,
       [intent, ctx.runId],
     );
+    // Store on ctx so endContractRun knows which lifecycle to follow
+    ctx.intent = intent;
     logger.info(
       { runId: ctx.runId, intent },
       "chatContractBridge: run intent updated",
     );
+    // DECIDE: thinking → planning (model is about to generate structured options)
+    if (intent === "DECIDE") {
+      await updateRunStatus(ctx.runId, ctx.conversationId, "planning");
+      logger.info(
+        { runId: ctx.runId },
+        "chatContractBridge: DECIDE run transitioned to planning",
+      );
+    }
   } catch (err) {
     logger.error({ err, runId: ctx?.runId }, "chatContractBridge: updateContractRunIntent failed (non-fatal)");
   }

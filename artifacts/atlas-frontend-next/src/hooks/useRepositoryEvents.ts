@@ -70,6 +70,12 @@ export function useRepositoryEvents({
       const data = (Array.isArray(raw) ? raw : []).map(coerceEvent).filter((e): e is RepositoryEvent => e !== null);
       setState({ status: data.length ? "ready" : "empty", data });
     } catch (e) {
+      // 4xx (not authenticated, no linked repo, not found) → silent empty state.
+      // Only genuine 5xx or network failures surface an error with a retry button.
+      if (e instanceof api.ApiError && e.status < 500) {
+        setState({ status: "empty", data: [] });
+        return;
+      }
       setState({
         status: "error", data: [],
         error: (e as Error).message ?? "Couldn't load repository activity.",
