@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { db, projectsTable, nexusMessagesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
