@@ -5,8 +5,15 @@ import type {
   TypedRunEvent,
 } from "@contract";
 import { isTerminal } from "@contract";
-import { RunContext, type ConnectionStatus, type RunContextValue } from "./RunContext";
+import {
+  RunContext,
+  type ConnectionStatus,
+  type RunContextValue,
+  type PendingMessage,
+  type SendMessageResult,
+} from "./RunContext";
 import * as api from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { openConversationStream } from "@/lib/sse";
 
 export { useRun } from "./RunContext";
