@@ -105,14 +105,23 @@ function RepositoryRow({ event }: { event: RepositoryEvent }) {
  *
  * Ported from legacy `BatchedActivityCard`. Filters out events tied to
  * known Atlas run IDs (those are rendered inline as receipts instead).
+ *
+ * Rendering rules by state:
+ *   loading       — shows a subtle skeleton row so the surface reserves space
+ *   error         — inline error with Retry button (never silently blank)
+ *   disconnected  — visible dashed row indicating the feed can't refresh
+ *   empty / hidden — returns null so the chat stays quiet
  */
 export function RepositoryFeed({
   events,
   ownedRunIds,
+  state = "ready",
+  onRetry,
 }: {
   events: RepositoryEvent[];
-  /** Atlas run IDs whose commits should not be duplicated in the feed. */
   ownedRunIds?: string[];
+  state?: "loading" | "ready" | "empty" | "error" | "disconnected";
+  onRetry?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ownedSet = new Set(ownedRunIds ?? []);
@@ -120,7 +129,42 @@ export function RepositoryFeed({
     .filter((e) => !(e.runId && ownedSet.has(e.runId)))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  if (filtered.length === 0) return null;
+  if (state === "loading") {
+    return (
+      <div style={shellStyle}>
+        <span style={{ fontSize: 11, opacity: 0.6 }}>·</span>
+        <span style={{ flex: 1, fontFamily: "ui-monospace, monospace", opacity: 0.5 }}>
+          loading repository activity…
+        </span>
+      </div>
+    );
+  }
+  if (state === "error") {
+    return (
+      <div style={{ ...shellStyle, color: "var(--fail)", borderColor: "var(--fail)" }}>
+        <span style={{ flex: 1, fontFamily: "ui-monospace, monospace" }}>
+          couldn't load repository activity
+        </span>
+        {onRetry && (
+          <button onClick={onRetry} style={{
+            background: "transparent", border: "1px solid var(--fail)",
+            color: "var(--fail)", borderRadius: 6, padding: "2px 8px",
+            fontSize: 11, cursor: "pointer",
+          }}>Retry</button>
+        )}
+      </div>
+    );
+  }
+  if (state === "disconnected") {
+    return (
+      <div style={{ ...shellStyle, color: "var(--warn)" }}>
+        <span style={{ flex: 1, fontFamily: "ui-monospace, monospace" }}>
+          disconnected — repository activity paused
+        </span>
+      </div>
+    );
+  }
+  if (state === "empty" || filtered.length === 0) return null;
   const newest = filtered[0];
 
   return (
@@ -157,3 +201,16 @@ export function RepositoryFeed({
     </div>
   );
 }
+
+const shellStyle: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 10,
+  padding: "7px 12px",
+  background: "rgba(255,255,255,0.02)",
+  border: "1px dashed var(--border)",
+  borderRadius: 8,
+  color: "var(--muted)",
+  fontSize: 12,
+  margin: "6px 0",
+  maxWidth: 560,
+};
+

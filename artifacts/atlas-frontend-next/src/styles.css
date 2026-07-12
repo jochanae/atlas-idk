@@ -18,3 +18,5 @@ html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); }
 button { font: inherit; cursor: pointer; }
 code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+@keyframes atlas-spin { to { transform: rotate(360deg); } }

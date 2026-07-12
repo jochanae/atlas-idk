@@ -11,6 +11,7 @@ import type {
 } from "@contract";
 import { isTerminal } from "@contract";
 import { runFixtures, driveMockRun } from "@/mocks/mockRuns";
+import { getEntry, delay, derivedChanges } from "@/mocks/mockHydration";
 
 /**
  * RunProvider — singleton per conversation.
@@ -21,19 +22,23 @@ import { runFixtures, driveMockRun } from "@/mocks/mockRuns";
  * activeBuildRun and activeTurn are separate — a BUILD may be awaiting
  * confirmation while a CHAT turn streams simultaneously.
  */
+export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "disconnected";
+
 export interface RunContextValue {
   activeBuildRun: Run | null;
   activeTurn: Run | null;
   runs: Run[];
   confirm(runId: string): Promise<void>;
   cancel(runId: string): Promise<void>;
-  commit(runId: string): Promise<void>;
+  commit(runId: string, opts?: { fail?: boolean }): Promise<void>;
   fetchSteps(runId: string): Promise<RunStep[]>;
   fetchChanges(runId: string): Promise<RunChange[]>;
   fetchTerminal(runId: string, page: number): Promise<RunTerminalPage>;
   fetchOutputs(runId: string): Promise<RunArtifact[]>;
-  connectionStatus: "connecting" | "connected" | "reconnecting" | "disconnected";
-  /** MOCK ONLY — start a scripted lifecycle for a given intent. Removed in Phase 2. */
+  connectionStatus: ConnectionStatus;
+  /** MOCK ONLY */
+  __setConnectionStatus(status: ConnectionStatus): void;
+  /** MOCK ONLY — start a scripted lifecycle for a given intent. */
   __startMockRun(intent: RunIntent, story?: keyof typeof runFixtures): string;
 }
 
@@ -182,10 +187,10 @@ export function RunProvider({
     });
   }, []);
 
-  const commit = useCallback(async (runId: string) => {
+  const commit = useCallback(async (runId: string, opts?: { fail?: boolean }) => {
     setRunsById((prev) => {
       const r = prev[runId];
-      if (!r || r.status !== "succeeded") return prev;
+      if (!r) return prev;
       const running: Run = { ...r, commit: { status: "running", sha: null, url: null, error: null, committedAt: null } };
       return { ...prev, [runId]: running };
     });
@@ -193,6 +198,19 @@ export function RunProvider({
     setRunsById((prev) => {
       const r = prev[runId];
       if (!r) return prev;
+      if (opts?.fail) {
+        return {
+          ...prev,
+          [runId]: {
+            ...r,
+            commit: {
+              status: "failed", sha: null, url: null,
+              error: "GitHub push rejected: branch is protected.",
+              committedAt: null,
+            },
+          },
+        };
+      }
       const sha = "a1b2c3d4e5f6";
       return {
         ...prev,
@@ -210,7 +228,31 @@ export function RunProvider({
     });
   }, []);
 
-  const noopFetch = useCallback(async <T,>(_: string, seed: T): Promise<T> => seed, []);
+  const fetchChanges = useCallback(async (runId: string): Promise<RunChange[]> => {
+    const entry = getEntry(runId);
+    const flavor = entry?.changes ?? "success";
+    const latency = flavor === "slow" ? 1500 : 250;
+    await delay(latency, null);
+    if (flavor === "error") throw new Error("Network error while fetching changes");
+    if (flavor === "empty") return [];
+    if (entry?.changesData) return entry.changesData;
+    // Derive from the run's plan when no explicit fixture
+    const run = runsById[runId];
+    if (run?.plan?.items?.length) return derivedChanges(runId, run.plan.items);
+    return [];
+  }, [runsById]);
+
+  const fetchOutputs = useCallback(async (runId: string): Promise<RunArtifact[]> => {
+    const entry = getEntry(runId);
+    const flavor = entry?.outputs ?? "empty";
+    const latency = flavor === "slow" ? 1500 : 300;
+    await delay(latency, null);
+    if (flavor === "error") throw new Error("Network error while fetching outputs");
+    if (flavor === "empty") return [];
+    return entry?.outputsData ?? [];
+  }, []);
+
+  const setConnection = useCallback((s: ConnectionStatus) => setConnectionStatus(s), []);
 
   const value = useMemo<RunContextValue>(() => {
     const list = Object.values(runsById).sort(
@@ -227,17 +269,19 @@ export function RunProvider({
       confirm,
       cancel,
       commit,
-      fetchSteps: (id) => noopFetch(id, [] as RunStep[]),
-      fetchChanges: (id) => noopFetch(id, [] as RunChange[]),
-      fetchTerminal: (id, page) =>
-        noopFetch(id, { lines: [], totalLines: 0, page, pageSize: 100 } as RunTerminalPage),
-      fetchOutputs: (id) => noopFetch(id, [] as RunArtifact[]),
+      fetchSteps: async () => [] as RunStep[],
+      fetchChanges,
+      fetchTerminal: async (_id: string, page: number) =>
+        ({ lines: [], totalLines: 0, page, pageSize: 100 } as RunTerminalPage),
+      fetchOutputs,
       connectionStatus,
+      __setConnectionStatus: setConnection,
       __startMockRun: startMockRun,
     };
-  }, [runsById, confirm, cancel, commit, noopFetch, connectionStatus, startMockRun]);
+  }, [runsById, confirm, cancel, commit, fetchChanges, fetchOutputs, connectionStatus, setConnection, startMockRun]);
 
   return <RunContext.Provider value={value}>{children}</RunContext.Provider>;
 }
 
 export type { Run, RunStatus, RunIntent };
+
