@@ -546,7 +546,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   }, [buildBlueprintExport]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", paddingBottom: 64 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
       <div style={{
         height: 1, flexShrink: 0,
         background: "linear-gradient(to right, transparent 0%, rgba(var(--atlas-gold-rgb),0.18) 20%, rgba(var(--atlas-gold-rgb),0.38) 50%, rgba(var(--atlas-gold-rgb),0.18) 80%, transparent 100%)",
