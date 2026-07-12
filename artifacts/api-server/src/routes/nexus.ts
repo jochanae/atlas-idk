@@ -1549,6 +1549,12 @@ async function persistNexusExecutionRun(args: {
   /** Explicit run mode: 'build' | 'decide' | 'conversation'. Metadata only —
    * receipt eligibility is a separate, verb-based classifier on the frontend. */
   mode?: string;
+  /**
+   * When true the run has FILE_EDIT blocks applied locally but not yet pushed to
+   * GitHub.  Status is set to "awaiting_approval" instead of "succeeded" so the
+   * Timeline correctly reflects that the user still needs to approve the push.
+   */
+  pendingApproval?: boolean;
 }): Promise<void> {
   try {
     const completedAt = new Date();
@@ -1592,13 +1598,14 @@ async function persistNexusExecutionRun(args: {
     const messageIdValue = args.messageId ?? null;
     const conversationIdValue = args.conversationId ?? null;
 
+    const terminalStatus = args.pendingApproval ? "awaiting_approval" : "succeeded";
     if (preInserted) {
       // Update the row that was inserted at turn-start with terminal state.
       await db.execute(sql`
         UPDATE execution_runs SET
           message_id = ${messageIdValue},
           mode = ${derivedMode},
-          status = ${"succeeded"},
+          status = ${terminalStatus},
           summary = ${summary},
           intent = ${intentValue},
           completed_at = ${completedAt},
@@ -1613,7 +1620,7 @@ async function persistNexusExecutionRun(args: {
           (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
         VALUES
           (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
-           ${derivedMode}, ${"succeeded"}, ${summary}, ${promptText || null}, ${intentValue},
+           ${derivedMode}, ${terminalStatus}, ${summary}, ${promptText || null}, ${intentValue},
            ${args.startedAt}, ${completedAt}, ${elapsedMs})
       `);
     }
@@ -4419,6 +4426,10 @@ Rules — the model proposes, the server authorizes:
         intent,
         messageId: nexusMsgId ?? sourceChatMessageId,
         mode: runMode,
+        // Mark as awaiting_approval when the turn proposed file changes that still
+        // need a GitHub push.  The frontend sets the run to "succeeded" via
+        // PATCH /api/runs/:id once the push is confirmed.
+        pendingApproval: responseFileEdits.length > 0 && !githubPushDone,
       });
       runTerminalized = true;
     }
@@ -4556,6 +4567,7 @@ Rules — the model proposes, the server authorizes:
       responseFileEdits.length > 0 ? summarizeFileEdits(responseFileEdits) : undefined;
     res.write(`event: done\ndata: ${JSON.stringify({
       content: visibleContent,
+      runId: activeRunId,
       modelUsed,
       surface,
       memoryUpdated,

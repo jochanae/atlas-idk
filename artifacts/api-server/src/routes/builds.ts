@@ -394,4 +394,23 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
   }
 });
 
+// ── PATCH /api/runs/:id — update a single run's status ───────────────────────
+// Called by the frontend after a GitHub push succeeds to transition a run
+// from "awaiting_approval" to "succeeded" (or to mark it "failed").
+router.patch("/runs/:id", async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const { status } = req.body as { status?: string };
+  const ALLOWED = new Set(["awaiting_approval", "succeeded", "failed", "cancelled"]);
+  if (!id || !status || !ALLOWED.has(status)) {
+    res.status(400).json({ error: "Missing or invalid id/status" }); return;
+  }
+  try {
+    await db.execute(sql`UPDATE execution_runs SET status = ${status} WHERE id = ${id}`);
+    res.json({ ok: true, id, status });
+  } catch (err) {
+    logger.warn({ err, id, status }, "runs: PATCH /runs/:id failed");
+    res.status(500).json({ error: "Failed to update run status" });
+  }
+});
+
 export default router;

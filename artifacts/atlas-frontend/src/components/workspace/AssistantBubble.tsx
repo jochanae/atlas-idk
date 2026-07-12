@@ -2539,6 +2539,16 @@ function AssistantBubbleImpl({
               });
               setPlanStatus("completed");
               setShowPlanPushModal(false);
+              // Transition the run from awaiting_approval → succeeded now that the push is done.
+              const runId = (message as any).runId as string | null | undefined;
+              if (runId) {
+                fetch(`/api/runs/${runId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({ status: "succeeded" }),
+                }).catch(() => { /* non-fatal */ });
+              }
               onStreamActivityComplete?.();
             }}
             onPrCreated={onPrCreated}

@@ -353,6 +353,9 @@ export interface ChatMessage {
   /** Time-travel: messages bypassed by a rollback. Kept in-array but filtered
    *  from upstream prompt history (safeguard #3) and dimmed in the UI. */
   reverted?: boolean;
+  /** Stable run ID (execution_runs.id) for this turn — used by the Plan card to
+   *  PATCH the run from "awaiting_approval" → "succeeded" after GitHub push. */
+  runId?: string | null;
   /** Atlas-proposed workspace file write — set when Atlas emits WRITE_FILE signal. */
   writeFileProposal?: { path: string };
   /** Build Readiness Gate — present when intentType === "readiness_gate". */
