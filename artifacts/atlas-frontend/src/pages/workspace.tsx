@@ -5459,7 +5459,8 @@ export default function Workspace() {
   useEffect(() => {
     if (!showDrawer) return;
     const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-    fetch("/api/sessions/atlas", {
+    // Canonical source: conversation-first records. See GET /api/conversations.
+    fetch("/api/conversations", {
       credentials: "include",
       headers: tok ? { Authorization: `Bearer ${tok}` } : {},
     })
