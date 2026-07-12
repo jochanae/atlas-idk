@@ -483,11 +483,30 @@ router.get("/sessions/atlas", async (req, res): Promise<void> => {
 });
 
 // POST /api/sessions/atlas — create a new Atlas session (projectId = null)
+const ATLAS_SESSION_SYSTEM_PROMPT = `You are Atlas, a strategic thinking partner helping builders create meaningful software.
+
+This is the very first message in a new conversation. The user just shared their idea or question.
+
+Your job:
+- Engage immediately with what they're building or thinking through — be specific, not generic
+- Surface the most important open question or tension that will shape this
+- Move the conversation toward clarity on the ONE thing that matters most right now
+- Tone: direct and builder-oriented, like a trusted co-founder sitting next to them
+
+Format: 2–4 short paragraphs. End with exactly ONE focused question.
+
+Rules:
+- Do NOT open with a greeting or introduction
+- Do NOT say "Great idea!" or give generic affirmations
+- Do NOT recap their description back to them
+- Be specific — name the actual challenge, user, or decision they need to wrestle with`;
+
 router.post("/sessions/atlas", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   const body = z.object({
     title: z.string().optional(),
     mode: z.string().optional(),
+    initialMessage: z.string().optional(),
   }).safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
 
@@ -495,12 +514,50 @@ router.post("/sessions/atlas", async (req, res): Promise<void> => {
   // Drizzle's typed insert silently drops columns that are not in the schema.
   const title = body.data.title ?? "New conversation";
   const mode = body.data.mode ?? "think";
+  const trimmedInitial = body.data.initialMessage?.trim() || null;
+
   const result = await db.execute(sql`
     INSERT INTO sessions (project_id, user_id, title, mode, status)
     VALUES (NULL, ${userId}, ${title}, ${mode}, 'active')
     RETURNING *
   `);
   const session = result.rows[0] as Record<string, unknown>;
+  const sessionId = Number(session.id);
+
+  // If an initial message was provided, persist it synchronously so the
+  // workspace history load finds it immediately on mount, then fire the
+  // Atlas response as a fire-and-forget background task.
+  if (trimmedInitial && Number.isFinite(sessionId) && sessionId > 0) {
+    try {
+      await db.insert(chatMessagesTable).values({
+        sessionId,
+        role: "user",
+        content: trimmedInitial,
+      });
+    } catch (err) {
+      logger.warn({ err, sessionId }, "sessions/atlas: failed to persist initial user message — non-fatal");
+    }
+
+    // Fire-and-forget: generate and persist the first Atlas response.
+    void (async () => {
+      try {
+        const anthropic = new Anthropic();
+        const response = await anthropic.messages.create({
+          model: "claude-haiku-4-5",
+          max_tokens: 1024,
+          system: ATLAS_SESSION_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: trimmedInitial }],
+        });
+        const content = response.content[0]?.type === "text" ? response.content[0].text.trim() : null;
+        if (content) {
+          await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content });
+          logger.info({ sessionId }, "sessions/atlas: background first-turn Atlas response saved");
+        }
+      } catch (err) {
+        logger.warn({ err, sessionId }, "sessions/atlas: background first-turn Atlas response failed — non-fatal");
+      }
+    })();
+  }
 
   res.status(201).json({
     ...session,

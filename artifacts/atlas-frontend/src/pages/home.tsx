@@ -3067,41 +3067,33 @@ export default function Home() {
 
     try {
       const authToken = localStorage.getItem("atlas-auth-token");
-      const createRes = await fetch("/api/conversations", {
+      // Same flow as "New Conversation" in the drawer: create an Atlas session
+      // (projectId = null) so the conversation appears in the ATLAS section and
+      // navigates to /atlas/:id — not a project.
+      const createRes = await fetch("/api/sessions/atlas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({
-          initialMessage: messageText,
-          name: deriveProjectNameFromConversation([{ role: "user", content: messageText }]),
-        }),
+        body: JSON.stringify({ title: "New conversation", mode: "think", initialMessage: messageText }),
       });
-      const project = (await createRes.json().catch(() => null)) as {
+      const session = (await createRes.json().catch(() => null)) as {
         id?: number | string;
-        conversationId?: string;
-        name?: string;
-        titlePending?: boolean;
         error?: string;
         message?: string;
       } | null;
-      if (!createRes.ok || !project?.id) {
+      if (!createRes.ok || !session?.id) {
         const err = new Error(
-          project?.error ?? project?.message ?? "Failed to create project",
+          (session as any)?.error ?? (session as any)?.message ?? "Failed to create conversation",
         ) as Error & { status?: number };
         err.status = createRes.status;
         throw err;
       }
-      const projectId = Number(project.id);
-      if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
+      // Store the typed message so the workspace picks it up as the opening send.
       try {
         sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, messageText);
-        sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
-        if (project.conversationId) {
-          sessionStorage.setItem(`atlas-cid-${project.conversationId}`, String(projectId));
-        }
       } catch {}
       if (imageFiles.length > 0) {
         try {
@@ -3113,21 +3105,7 @@ export default function Home() {
           sessionStorage.setItem(OPENING_ATTACHMENTS_STORAGE_KEY, JSON.stringify(atts));
         } catch {}
       }
-      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      if (project.name) {
-        queryClient.setQueryData(getGetProjectQueryKey(projectId), (prev: Project | undefined) =>
-          prev ? { ...prev, name: project.name! } : prev,
-        );
-      }
-      if (project.titlePending) {
-        scheduleTitlePendingRecheck(queryClient, projectId);
-      }
-      setActiveProjectId(projectId);
-      if (project.conversationId) {
-        setLocation(`/workspace/${project.conversationId}`);
-      } else {
-        setLocation(`/project/${projectId}`);
-      }
+      setLocation(`/atlas/${session.id}`);
     } catch (err) {
       handleSubmitError(err);
     } finally {
