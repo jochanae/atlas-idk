@@ -201,11 +201,14 @@ router.post("/projects/:projectId/sessions", async (req, res): Promise<void> => 
 router.get("/sessions/atlas", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   const result = await db.execute(sql`
-    SELECT id, title, mode, status, message_count AS "messageCount",
-           created_at AS "createdAt", updated_at AS "updatedAt"
-    FROM sessions
-    WHERE project_id IS NULL AND user_id = ${userId}
-    ORDER BY updated_at DESC
+    SELECT s.id, s.title, s.mode, s.status,
+           COUNT(cm.id)::int AS "messageCount",
+           s.created_at AS "createdAt", s.updated_at AS "updatedAt"
+    FROM sessions s
+    LEFT JOIN chat_messages cm ON cm.session_id = s.id
+    WHERE s.project_id IS NULL AND s.user_id = ${userId}
+    GROUP BY s.id, s.title, s.mode, s.status, s.created_at, s.updated_at
+    ORDER BY s.updated_at DESC
     LIMIT 20
   `);
   const rows = (result as any).rows ?? result;
@@ -213,24 +216,6 @@ router.get("/sessions/atlas", async (req, res): Promise<void> => {
 });
 
 // POST /api/sessions/atlas — create a new Atlas session (projectId = null)
-const ATLAS_SESSION_SYSTEM_PROMPT = `You are Atlas, a strategic thinking partner helping builders create meaningful software.
-
-This is the very first message in a new conversation. The user just shared their idea or question.
-
-Your job:
-- Engage immediately with what they're building or thinking through — be specific, not generic
-- Surface the most important open question or tension that will shape this
-- Move the conversation toward clarity on the ONE thing that matters most right now
-- Tone: direct and builder-oriented, like a trusted co-founder sitting next to them
-
-Format: 2–4 short paragraphs. End with exactly ONE focused question.
-
-Rules:
-- Do NOT open with a greeting or introduction
-- Do NOT say "Great idea!" or give generic affirmations
-- Do NOT recap their description back to them
-- Be specific — name the actual challenge, user, or decision they need to wrestle with`;
-
 router.post("/sessions/atlas", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   const body = z.object({
@@ -241,10 +226,19 @@ router.post("/sessions/atlas", async (req, res): Promise<void> => {
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
 
   // Use raw SQL so the out-of-schema `user_id` column is actually written.
-  const title = body.data.title ?? "New conversation";
+  // Auto-generate title from initialMessage when the caller sends a generic default.
+  const GENERIC_TITLES = new Set(["New conversation", "new conversation", "New Conversation", ""]);
+  const rawTitle = body.data.title ?? "";
+  const trimmedInitialForTitle = body.data.initialMessage?.trim() ?? "";
+  const title = GENERIC_TITLES.has(rawTitle) && trimmedInitialForTitle
+    ? trimmedInitialForTitle.slice(0, 60) + (trimmedInitialForTitle.length > 60 ? "…" : "")
+    : rawTitle || "New conversation";
   const mode = body.data.mode ?? "think";
-  const trimmedInitial = body.data.initialMessage?.trim() || null;
 
+  // NOTE: We intentionally do NOT save the initialMessage here.
+  // The workspace reads it from sessionStorage and sends it via /api/chat,
+  // which handles message persistence, title auto-update, and Atlas response
+  // through the full pipeline. Saving it here would create duplicates.
   const insertResult = await db.execute(sql`
     INSERT INTO sessions (project_id, user_id, title, mode, status)
     VALUES (NULL, ${userId}, ${title}, ${mode}, 'active')
@@ -252,36 +246,6 @@ router.post("/sessions/atlas", async (req, res): Promise<void> => {
   `);
   const insertRows = (insertResult as any).rows ?? insertResult;
   const session = (Array.isArray(insertRows) ? insertRows[0] : insertRows) as Record<string, unknown>;
-  const sessionId = Number(session.id);
-
-  if (trimmedInitial && Number.isFinite(sessionId) && sessionId > 0) {
-    try {
-      await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: trimmedInitial });
-      await db.execute(sql`UPDATE sessions SET message_count = message_count + 1, updated_at = NOW() WHERE id = ${sessionId}`);
-    } catch (err) {
-      logger.warn({ err, sessionId }, "sessions/atlas: failed to persist initial user message — non-fatal");
-    }
-
-    void (async () => {
-      try {
-        const anthropic = new Anthropic();
-        const response = await anthropic.messages.create({
-          model: "claude-haiku-4-5",
-          max_tokens: 1024,
-          system: ATLAS_SESSION_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: trimmedInitial }],
-        });
-        const content = response.content[0]?.type === "text" ? response.content[0].text.trim() : null;
-        if (content) {
-          await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content });
-          await db.execute(sql`UPDATE sessions SET message_count = message_count + 1, updated_at = NOW() WHERE id = ${sessionId}`);
-          logger.info({ sessionId }, "sessions/atlas: background first-turn Atlas response saved");
-        }
-      } catch (err) {
-        logger.warn({ err, sessionId }, "sessions/atlas: background first-turn Atlas response failed — non-fatal");
-      }
-    })();
-  }
 
   res.status(201).json({
     ...session,

@@ -59,7 +59,9 @@ Before asking any clarifying question, resolve it against the active conversatio
 
 ## No protocol markers in prose
 
-Never emit control markers, intent labels, or SSE-style tokens in the visible response. That includes INTENT_TYPE:, MEMORY_T1..T5:, NAVIGATE_TO:, PROJECT_READY:, FILE_EDIT_START, or any similar structured token unless the current turn is legitimately using that protocol. When in doubt, don't emit it — telemetry belongs in the pipeline, not in the conversation.
+Never emit control markers, intent labels, or SSE-style tokens in the visible response. That includes INTENT_TYPE:, MEMORY_T1..T5:, PROJECT_READY:, FILE_EDIT_START, or any similar structured token unless the current turn is legitimately using that protocol. When in doubt, don't emit it — telemetry belongs in the pipeline, not in the conversation.
+
+Exception: NAVIGATE_TO:{"route":"..."} IS a legitimate protocol token in Foundation/Atlas mode. When the user asks to go to a project or you need to navigate, you MUST emit it. See the navigation instructions below if they are present.
 
 ## Curiosity
 

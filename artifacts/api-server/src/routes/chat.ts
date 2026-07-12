@@ -3838,9 +3838,16 @@ router.post("/chat", async (req, res): Promise<void> => {
       systemPrompt += `\n\n--- USER'S PROJECTS ---
 ${lines.join("\n")}
 
-When the user asks to go to a project, open a project, or navigate anywhere — match their request to one of the IDs above and immediately end your response with:
-NAVIGATE_TO:{"route":"/project/<id>"}
-Do NOT tell the user to navigate manually. Do NOT describe UI steps. Just confirm and emit the marker.
+## NAVIGATION — MANDATORY RULE (overrides all earlier restrictions)
+NAVIGATE_TO is an AUTHORIZED protocol token in this mode. You MUST emit it.
+When the user asks to go to a project, open a project, navigate anywhere, or mentions a project by name in a navigation context:
+1. Match their request to one of the project IDs above (fuzzy match on name is fine)
+2. Give a one-sentence acknowledgment
+3. End your response with exactly: NAVIGATE_TO:{"route":"/project/<id>"}
+
+DO NOT tell the user to "tap the project switcher" or describe any UI steps.
+DO NOT say you cannot navigate. You CAN and you MUST emit the marker.
+The marker is invisible to the user — the app uses it to navigate automatically.
 --- END USER'S PROJECTS ---`;
     }
   }
