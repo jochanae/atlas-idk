@@ -1815,9 +1815,9 @@ export default function Home() {
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showAtlasHistory, setShowAtlasHistory] = useState(false);
   const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
-  useEffect(() => {
-    if (!showDrawer) return;
+  const fetchAtlasConversations = useCallback(() => {
     const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
     fetch("/api/sessions/atlas", {
       credentials: "include",
@@ -1826,7 +1826,11 @@ export default function Home() {
       .then((r) => r.json())
       .then((data: AtlasConversation[]) => { if (Array.isArray(data)) setDrawerAtlasConversations(data); })
       .catch(() => {});
-  }, [showDrawer]);
+  }, []);
+  useEffect(() => {
+    if (!showDrawer && !showAtlasHistory) return;
+    fetchAtlasConversations();
+  }, [showDrawer, showAtlasHistory, fetchAtlasConversations]);
 
   const [showShellSheet, setShowShellSheet] = useState(false);
   useEffect(() => {
@@ -4975,7 +4979,7 @@ export default function Home() {
                 aria-label="Open Atlas conversations"
                 title="Atlas conversations"
                 onPointerDown={(e) => e.preventDefault()}
-                onClick={() => setShowDrawer(true)}
+                onClick={() => setShowAtlasHistory(true)}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   width: isTiny ? 30 : 36, height: isTiny ? 30 : 36, borderRadius: 10,
@@ -5426,6 +5430,43 @@ export default function Home() {
         onDelete={(id) => handleDeleteConversation(String(id))}
       />
 
+      {/* ── Atlas conversation history sheet — opened by gold clock ── */}
+      <SessionHistorySheet
+        open={showAtlasHistory}
+        onClose={() => setShowAtlasHistory(false)}
+        title="ATLAS CONVERSATIONS"
+        loading={false}
+        emptyHint="No Atlas conversations yet. Tap + New to start one."
+        items={drawerAtlasConversations.map((c) => ({
+          id: c.id,
+          title: c.title || "New conversation",
+          msgCount: 0,
+          timestamp: c.updatedAt ?? c.createdAt ?? null,
+          active: false,
+        }))}
+        onNew={async () => {
+          setShowAtlasHistory(false);
+          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+          try {
+            const r = await fetch("/api/sessions/atlas", {
+              method: "POST", credentials: "include",
+              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+              body: JSON.stringify({ title: "New conversation", mode: "think" }),
+            });
+            const s = await r.json() as { id: number };
+            setLocation(`/atlas/${s.id}`);
+          } catch { setLocation("/atlas"); }
+        }}
+        onSelect={(id) => { setShowAtlasHistory(false); setLocation(`/atlas/${id}`); }}
+        onDelete={async (id) => {
+          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+          await fetch(`/api/sessions/${id}`, {
+            method: "DELETE", credentials: "include",
+            headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+          }).catch(() => {});
+          fetchAtlasConversations();
+        }}
+      />
 
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
       {showProfile && <AccountHubPanel onClose={() => setShowProfile(false)} />}

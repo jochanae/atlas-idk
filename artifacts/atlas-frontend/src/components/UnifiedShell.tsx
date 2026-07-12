@@ -756,6 +756,91 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 }
 
 
+function ShellAtlasTitle() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-flex" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "4px 10px", borderRadius: 8,
+          border: "1px solid rgba(201,162,76,0.22)",
+          background: open ? "rgba(201,162,76,0.10)" : "rgba(201,162,76,0.04)",
+          color: "var(--atlas-fg)", cursor: "pointer",
+          fontFamily: "var(--app-font-sans)", fontSize: 14, fontWeight: 500,
+          letterSpacing: "-0.01em", lineHeight: 1.3,
+          transition: "background 140ms ease, border-color 140ms ease",
+          WebkitTapHighlightColor: "transparent",
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(201,162,76,0.10)"; }}
+        onMouseLeave={(e) => { if (!open) (e.currentTarget as HTMLButtonElement).style.background = "rgba(201,162,76,0.04)"; }}
+      >
+        <span
+          style={{
+            width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+            background: "var(--atlas-gold)", boxShadow: "0 0 6px rgba(201,162,76,0.5)",
+          }}
+        />
+        <span style={{ opacity: 0.92 }}>Atlas</span>
+        {/* chevron */}
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, transform: open ? "rotate(180deg)" : "none", transition: "transform 140ms ease" }}>
+          <path d="M2 4l4 4 4-4" />
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+          minWidth: 180, borderRadius: 10, padding: "4px 0",
+          background: "var(--atlas-bg, #0a0a0c)",
+          border: "1px solid rgba(201,162,76,0.18)",
+          boxShadow: "0 12px 36px rgba(0,0,0,0.55), 0 0 0 1px rgba(201,162,76,0.08)",
+          zIndex: 999,
+        }}>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); window.dispatchEvent(new Event("axiom:atlas-new-conversation")); }}
+            style={atlasMenuItemStyle}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            New conversation
+          </button>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); window.dispatchEvent(new Event("axiom:atlas-open-history")); }}
+            style={atlasMenuItemStyle}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>
+            Conversation history
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const atlasMenuItemStyle: CSSProperties = {
+  display: "flex", alignItems: "center", gap: 8,
+  width: "100%", padding: "9px 14px", border: "none",
+  background: "transparent", cursor: "pointer", textAlign: "left",
+  fontFamily: "var(--app-font-sans)", fontSize: 13, fontWeight: 400,
+  color: "var(--atlas-fg)", letterSpacing: "-0.01em",
+  transition: "background 100ms ease",
+  WebkitTapHighlightColor: "transparent",
+};
+
 function ShellConversationTitle({ title }: { title: string | null }) {
   const resolvedTitle = title?.trim();
   if (!resolvedTitle) return null;
@@ -2630,8 +2715,10 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           >
             {activeProjectId != null && location !== "/home" ? (
               <ShellProjectSwitcher projectId={activeProjectId} />
+            ) : location.startsWith("/atlas") ? (
+              <ShellAtlasTitle />
             ) : (
-              <ShellConversationTitle title={location === "/home" ? activeConversationTitle : location.startsWith("/atlas") ? "Atlas" : null} />
+              <ShellConversationTitle title={location === "/home" ? activeConversationTitle : null} />
             )}
             {location !== "/home" && !isProjectRoute(location) && <HudToggleDot />}
           </div>

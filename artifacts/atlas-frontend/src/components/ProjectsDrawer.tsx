@@ -11,6 +11,7 @@ export type AtlasConversation = {
   title: string;
   messageCount?: number;
   updatedAt?: string | null;
+  createdAt?: string | null;
 };
 
 export type DrawerProject = {
@@ -155,7 +156,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           `}</style>
           <button
             type="button"
-            onClick={() => { onNewProject(); onClose(); }}
+            onClick={() => { onNewAtlasConversation?.(); onClose(); }}
             style={{
               display: "flex", alignItems: "center", gap: 10,
               width: "100%", padding: "10px 12px", marginBottom: 10,
