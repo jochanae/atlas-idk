@@ -5503,8 +5503,12 @@ export default function Workspace() {
   useEffect(() => {
     if (!isAtlasScope) return;
     const onNew = () => { void handleNewSession(); };
-    const onHistory = () => setSessionsSheetOpen(true);
-    const onDownload = () => downloadConversation("md");
+    // "Conversation history" opens the projects drawer whose ATLAS section is
+    // now backed by the canonical GET /api/conversations list.
+    const onHistory = () => setShowDrawer(true);
+    // Ask which format instead of hard-coding markdown; the same choice was
+    // already available in the project dropdown menu.
+    const onDownload = () => setDownloadFormatOpen(true);
     window.addEventListener("axiom:atlas-new-conversation", onNew);
     window.addEventListener("axiom:atlas-open-history", onHistory);
     window.addEventListener("axiom:atlas-download-chat", onDownload);
