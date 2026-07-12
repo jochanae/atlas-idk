@@ -45,66 +45,100 @@ export function ChatSurface({
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {hasMoreMessages && (
-        <button
-          onClick={loadMoreMessages}
-          disabled={messagesStatus === "loading"}
-          style={{
-            alignSelf: "center", fontSize: 12, color: "var(--muted)",
-            background: "transparent", border: "1px solid var(--border)",
-            padding: "4px 10px", borderRadius: 999,
-          }}
-        >
-          {messagesStatus === "loading" ? "Loading…" : "Load earlier messages"}
-        </button>
-      )}
-      {messagesStatus === "error" && (
-        <div style={{ color: "var(--fail)", fontSize: 12 }}>Couldn't load conversation history.</div>
-      )}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, minHeight: 0, overflow: "auto" }}>
+        {hasMoreMessages && (
+          <button
+            onClick={loadMoreMessages}
+            disabled={messagesStatus === "loading"}
+            style={{
+              alignSelf: "center", fontSize: 12, color: "var(--muted)",
+              background: "transparent", border: "1px solid var(--border)",
+              padding: "4px 10px", borderRadius: 999,
+            }}
+          >
+            {messagesStatus === "loading" ? "Loading…" : "Load earlier messages"}
+          </button>
+        )}
+        {messagesStatus === "error" && (
+          <div style={{ color: "var(--fail)", fontSize: 12 }}>Couldn't load conversation history.</div>
+        )}
 
-      {messages.map((m) => (
-        <MessageRow key={m.id} message={m} />
-      ))}
+        {messages.map((m) => (
+          <MessageRow key={m.id} message={m} />
+        ))}
 
-      {terminalBuilds.map((r) => (
-        <ReceiptRow key={r.id} run={r} disconnected={disconnected} onCommit={() => commit(r.id)} />
-      ))}
+        {pendingMessages.map((p) => (
+          <PendingMessageRow key={p.clientId} pending={p} />
+        ))}
 
-      <RepositoryFeed
-        events={feed.data}
-        ownedRunIds={ownedRunIds}
-        state={feed.status}
-        onRetry={feed.reload}
-      />
+        {terminalBuilds.map((r) => (
+          <ReceiptRow key={r.id} run={r} disconnected={disconnected} onCommit={() => commit(r.id)} />
+        ))}
 
-      {activeTurn && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <StatusBadge status={activeTurn.status} />
-          <ThinkingIndicator />
-        </div>
-      )}
+        <RepositoryFeed
+          events={feed.data}
+          ownedRunIds={ownedRunIds}
+          state={feed.status}
+          onRetry={feed.reload}
+        />
 
-      {activeBuildRun && (
-        (activeBuildRun.status === "received" || activeBuildRun.status === "thinking" || activeBuildRun.status === "planning") && !activeBuildRun.plan ? (
+        {activeTurn && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <StatusBadge status={activeBuildRun.status} />
+            <StatusBadge status={activeTurn.status} />
             <ThinkingIndicator />
           </div>
-        ) : (
-          <PlanCard
-            run={activeBuildRun}
-            onConfirm={() => confirm(activeBuildRun.id)}
-            onCancel={() => cancel(activeBuildRun.id)}
-          />
-        )
-      )}
+        )}
 
-      {!activeBuildRun && !activeTurn && runs.length === 0 && messages.length === 0 && messagesStatus === "ready" && (
-        <div style={{ color: "var(--muted)", fontStyle: "italic" }}>
-          No conversation history yet.
-        </div>
-      )}
+        {activeBuildRun && (
+          (activeBuildRun.status === "received" || activeBuildRun.status === "thinking" || activeBuildRun.status === "planning") && !activeBuildRun.plan ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <StatusBadge status={activeBuildRun.status} />
+              <ThinkingIndicator />
+            </div>
+          ) : (
+            <PlanCard
+              run={activeBuildRun}
+              onConfirm={() => confirm(activeBuildRun.id)}
+              onCancel={() => cancel(activeBuildRun.id)}
+            />
+          )
+        )}
+
+        {!activeBuildRun && !activeTurn && runs.length === 0 && messages.length === 0 && pendingMessages.length === 0 && messagesStatus === "ready" && (
+          <div style={{ color: "var(--muted)", fontStyle: "italic" }}>
+            No conversation history yet.
+          </div>
+        )}
+      </div>
+      {showComposer && <Composer />}
+    </div>
+  );
+}
+
+function PendingMessageRow({ pending }: { pending: PendingMessage }) {
+  return (
+    <div
+      style={{
+        alignSelf: "flex-end",
+        maxWidth: "82%",
+        padding: "8px 12px",
+        borderRadius: 12,
+        background: "var(--panel-2)",
+        border: "1px dashed var(--border)",
+        fontSize: 14,
+        color: "var(--text)",
+        whiteSpace: "pre-wrap",
+        opacity: pending.status === "error" ? 0.7 : 0.85,
+      }}
+      aria-live="polite"
+    >
+      {pending.content}
+      <div style={{ marginTop: 4, fontSize: 11, color: pending.status === "error" ? "var(--fail)" : "var(--muted)" }}>
+        {pending.status === "sending" && "Sending…"}
+        {pending.status === "accepted" && "Accepted · syncing…"}
+        {pending.status === "error" && `Failed: ${pending.error ?? "unknown error"}`}
+      </div>
     </div>
   );
 }
