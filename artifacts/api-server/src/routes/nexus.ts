@@ -2088,10 +2088,26 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
           ideaMode: sessionsTable.ideaMode,
         })
         .from(sessionsTable)
-        .innerJoin(projectsTable, eq(sessionsTable.projectId, projectsTable.id))
-        .where(and(eq(sessionsTable.id, sessionId), eq(projectsTable.userId, userId)))
+        .where(eq(sessionsTable.id, sessionId))
         .limit(1)
     : [];
+  // Auth: Atlas sessions (null projectId) owned by user_id directly; project sessions via project ownership
+  if (sessionId && sessionContext.length > 0) {
+    const ctx = sessionContext[0]!;
+    if (ctx.projectId == null) {
+      // Atlas session — verify user_id matches
+      const [sRow] = await db.select({ sessionUserId: (sessionsTable as any).userId }).from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1);
+      if (!sRow || (sRow as any).sessionUserId !== userId) {
+        res.status(404).json({ error: "Session not found" }); return;
+      }
+    } else {
+      // Project session — verify via project ownership
+      const [pRow] = await db.select({ userId: projectsTable.userId }).from(projectsTable).where(eq(projectsTable.id, ctx.projectId)).limit(1);
+      if (!pRow || pRow.userId !== userId) {
+        res.status(404).json({ error: "Session not found" }); return;
+      }
+    }
+  }
   if (sessionId && sessionContext.length === 0) {
     res.status(404).json({ error: "Session not found" });
     return;

@@ -2,10 +2,12 @@ import { pgTable, text, serial, integer, timestamp, boolean, numeric, jsonb } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
+import { usersTable } from "./users";
 
 export const sessionsTable = pgTable("sessions", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projectsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   mode: text("mode"),
   status: text("status").notNull().default("active"),

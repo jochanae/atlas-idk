@@ -7424,20 +7424,23 @@ router.post("/scenario-keep", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Missing sessionId or messages" });
     return;
   }
-  // Verify session ownership: session → project → user
+  // Verify session ownership — handles both project-scoped and Atlas (null projectId) sessions.
   const authUserId = (req as any).authUser?.id as number | undefined;
   const [sessionRow] = await db
-    .select({ projectId: sessionsTable.projectId })
+    .select({ projectId: sessionsTable.projectId, sessionUserId: (sessionsTable as any).userId })
     .from(sessionsTable)
     .where(eq(sessionsTable.id, sessionId));
   if (!sessionRow) { res.status(404).json({ error: "Session not found" }); return; }
-  const [projRow] = await db
-    .select({ userId: projectsTable.userId })
-    .from(projectsTable)
-    .where(eq(projectsTable.id, sessionRow.projectId));
-  if (!projRow || projRow.userId !== authUserId) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
+  if (sessionRow.projectId == null) {
+    // Atlas session: auth directly by user_id on session
+    if ((sessionRow as any).sessionUserId !== authUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+  } else {
+    // Project session: auth via project ownership
+    const [projRow] = await db
+      .select({ userId: projectsTable.userId })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, sessionRow.projectId));
+    if (!projRow || projRow.userId !== authUserId) { res.status(403).json({ error: "Forbidden" }); return; }
   }
   const validMsgs = msgs
     .filter(m => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())

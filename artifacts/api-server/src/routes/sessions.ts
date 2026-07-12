@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and, desc, isNotNull } from "drizzle-orm";
+import { eq, sql, and, desc, isNotNull, isNull } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { upsertEmbedding } from "../lib/embeddings";
 import { z } from "zod";
@@ -67,15 +67,23 @@ async function projectBelongsToUser(projectId: number, userId: number): Promise<
   return rows.length > 0;
 }
 
-// Resolve the projectId for a session and verify ownership.
+// Resolve ownership for a session — handles both project-scoped and Atlas (projectId = null) sessions.
 async function sessionBelongsToUser(sessionId: number, userId: number): Promise<boolean> {
-  const rows = await db
-    .select({ id: sessionsTable.id })
+  const [row] = await db
+    .select({ projectId: sessionsTable.projectId, sessionUserId: (sessionsTable as any).userId })
     .from(sessionsTable)
-    .innerJoin(projectsTable, eq(sessionsTable.projectId, projectsTable.id))
-    .where(and(eq(sessionsTable.id, sessionId), eq(projectsTable.userId, userId)))
+    .where(eq(sessionsTable.id, sessionId))
     .limit(1);
-  return rows.length > 0;
+  if (!row) return false;
+  // Atlas session: auth by direct user_id on session
+  if (row.projectId == null) return (row as any).sessionUserId === userId;
+  // Project session: auth via project ownership
+  const [proj] = await db
+    .select({ userId: projectsTable.userId })
+    .from(projectsTable)
+    .where(eq(projectsTable.id, row.projectId))
+    .limit(1);
+  return proj?.userId === userId;
 }
 
 router.get("/projects/:projectId/sessions", async (req, res): Promise<void> => {
@@ -215,18 +223,13 @@ router.patch("/sessions/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const userId = (req as any).authUser.id as number;
+  if (!(await sessionBelongsToUser(params.data.id, userId))) {
+    res.status(404).json({ error: "Session not found" }); return;
+  }
   const [session] = await db
     .update(sessionsTable)
     .set({ title: parsed.data.title })
-    .where(and(
-      eq(sessionsTable.id, params.data.id),
-      sql`exists (
-        select 1
-        from ${projectsTable}
-        where ${projectsTable.id} = ${sessionsTable.projectId}
-          and ${projectsTable.userId} = ${userId}
-      )`,
-    ))
+    .where(eq(sessionsTable.id, params.data.id))
     .returning({ id: sessionsTable.id, title: sessionsTable.title });
 
   if (!session) { res.status(404).json({ error: "Session not found" }); return; }
@@ -427,6 +430,9 @@ router.post("/sessions/:id/summarize", async (req, res): Promise<void> => {
     .map(m => `${m.role === "user" ? "You" : "Atlas"}: ${m.content.slice(0, 500)}`)
     .join("\n\n");
 
+  // Atlas sessions (null projectId) have no project memory store — skip.
+  if (session.projectId == null) { res.json({ ok: true, skipped: "atlas-session-no-project-memory" }); return; }
+
   // Load current project memory
   const [project] = await db
     .select({ memory: projectsTable.memory })
@@ -457,6 +463,47 @@ router.post("/sessions/:id/summarize", async (req, res): Promise<void> => {
     .where(eq(projectsTable.id, session.projectId));
 
   res.json({ ok: true, summary });
+});
+
+// ── Atlas session routes — general conversations not tied to a project ────────
+// GET /api/sessions/atlas — list recent Atlas sessions for the authenticated user
+router.get("/sessions/atlas", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const sessions = await db
+    .select()
+    .from(sessionsTable)
+    .where(and(isNull(sessionsTable.projectId), eq((sessionsTable as any).userId, userId)))
+    .orderBy(desc(sessionsTable.updatedAt))
+    .limit(20);
+  res.json(sessions.map(s => ({
+    ...s,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+  })));
+});
+
+// POST /api/sessions/atlas — create a new Atlas session (projectId = null)
+router.post("/sessions/atlas", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const body = z.object({
+    title: z.string().optional(),
+    mode: z.string().optional(),
+  }).safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+
+  const [session] = await (db.insert(sessionsTable) as any).values({
+    projectId: null,
+    userId,
+    title: body.data.title ?? "New conversation",
+    mode: body.data.mode ?? "think",
+    status: "active",
+  }).returning();
+
+  res.status(201).json({
+    ...session,
+    createdAt: session.createdAt.toISOString(),
+    updatedAt: session.updatedAt.toISOString(),
+  });
 });
 
 export default router;

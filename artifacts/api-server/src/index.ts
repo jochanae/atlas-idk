@@ -1105,6 +1105,22 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: conversation_messages failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`ALTER TABLE sessions ALTER COLUMN project_id DROP NOT NULL`);
+    await db.execute(sql`
+      ALTER TABLE sessions
+        ADD COLUMN IF NOT EXISTS user_id integer REFERENCES users(id) ON DELETE SET NULL
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS sessions_user_id_idx
+        ON sessions (user_id, updated_at DESC)
+        WHERE project_id IS NULL
+    `);
+    logger.info("ensureColumns: sessions nullable project_id + user_id verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: sessions atlas columns failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

@@ -12,6 +12,7 @@ import { useListProjects } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
+import type { AtlasConversation } from "../components/ProjectsDrawer";
 import { ShellLogSheet } from "../components/ShellLogSheet";
 import { ParkingBadgeIcon } from "@/components/ParkingBadgeIcon";
 import { TimelineRail } from "../components/TimelineRail";
@@ -49,7 +50,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2, Globe, ArrowRight } from "lucide-react";
+import { ChevronDown, Crosshair, Clock, Briefcase, X, Maximize2, Minimize2, Globe, ArrowRight } from "lucide-react";
 import { ParkSheet } from "@/components/ParkSheet";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
@@ -1814,6 +1815,19 @@ export default function Home() {
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
+  useEffect(() => {
+    if (!showDrawer) return;
+    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+    fetch("/api/sessions/atlas", {
+      credentials: "include",
+      headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+    })
+      .then((r) => r.json())
+      .then((data: AtlasConversation[]) => { if (Array.isArray(data)) setDrawerAtlasConversations(data); })
+      .catch(() => {});
+  }, [showDrawer]);
+
   const [showShellSheet, setShowShellSheet] = useState(false);
   useEffect(() => {
     const open = () => setShowShellSheet(true);
@@ -4955,13 +4969,13 @@ export default function Home() {
                 style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
-              {/* Projects shortcut — icon only, no card. Replaced conversation-history clock. */}
+              {/* Atlas session history — gold clock, opens the Atlas conversation list */}
               <button
                 type="button"
-                aria-label="Open projects"
-                title="Projects"
+                aria-label="Open Atlas conversations"
+                title="Atlas conversations"
                 onPointerDown={(e) => e.preventDefault()}
-                onClick={() => setLocation("/projects")}
+                onClick={() => setShowDrawer(true)}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   width: isTiny ? 30 : 36, height: isTiny ? 30 : 36, borderRadius: 10,
@@ -4981,7 +4995,7 @@ export default function Home() {
                   e.currentTarget.style.borderColor = "var(--atlas-gold-border, rgba(201,162,76,0.55))";
                 }}
               >
-                <FolderClosed size={15} strokeWidth={1.7} />
+                <Clock size={15} strokeWidth={1.7} />
               </button>
 
               <ComposerActions
@@ -5503,6 +5517,21 @@ export default function Home() {
         onOpenShell={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-shell")); }}
         onSelectConversation={(id) => { setShowDrawer(false); void handleSwitchConversation(id); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
+        atlasConversations={drawerAtlasConversations}
+        onNewAtlasConversation={async () => {
+          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+          try {
+            const r = await fetch("/api/sessions/atlas", {
+              method: "POST", credentials: "include",
+              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+              body: JSON.stringify({ title: "New conversation", mode: "think" }),
+            });
+            const s = await r.json() as { id: number };
+            setLocation(`/atlas/${s.id}`);
+          } catch { setLocation("/atlas"); }
+          setShowDrawer(false);
+        }}
+        onOpenAtlasConversation={(id) => { setLocation(`/atlas/${id}`); setShowDrawer(false); }}
       />
 
       <ShellLogSheet

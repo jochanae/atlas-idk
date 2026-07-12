@@ -86,7 +86,7 @@ export function useShellState(): ShellState {
 }
 
 function depthFromPath(pathname: string): ShellDepth {
-  if (pathname.startsWith("/project/") || pathname.startsWith("/workspace/")) return "operational";
+  if (pathname.startsWith("/project/") || pathname.startsWith("/workspace/") || pathname.startsWith("/atlas")) return "operational";
   return "ambient";
 }
 
@@ -2631,7 +2631,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             {activeProjectId != null && location !== "/home" ? (
               <ShellProjectSwitcher projectId={activeProjectId} />
             ) : (
-              <ShellConversationTitle title={location === "/home" ? activeConversationTitle : null} />
+              <ShellConversationTitle title={location === "/home" ? activeConversationTitle : location.startsWith("/atlas") ? "Atlas" : null} />
             )}
             {location !== "/home" && !isProjectRoute(location) && <HudToggleDot />}
           </div>

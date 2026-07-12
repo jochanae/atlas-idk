@@ -39,6 +39,7 @@ import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { WorkspacePlayBridge } from "../components/WorkspacePlayBridge";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
+import type { AtlasConversation } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { PreviewPanel, type ManifestDecision } from "../components/workspace/PreviewPanel";
@@ -4282,7 +4283,7 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
 // ── Workspace ────────────────────────────────────────────────────────────────
 export default function Workspace() {
   const composerVisibility = useComposerVisibility();
-  const { projectId, conversationId } = useParams<{ projectId?: string; conversationId?: string }>();
+  const { projectId, conversationId, atlasSessionId } = useParams<{ projectId?: string; conversationId?: string; atlasSessionId?: string }>();
   const [, setLocation] = useLocation();
 
   // Clear any home shaping state (e.g. "opening") so the workspace always
@@ -4326,6 +4327,7 @@ export default function Workspace() {
   const id = conversationId
     ? cidResolvedId
     : (Number(projectId) || Number(window.location.pathname.split('/project/')[1]?.split('/')[0]) || 0);
+  const isAtlasScope = !!atlasSessionId || window.location.pathname.startsWith('/atlas');
   // Moved above its first use (greeting-fetch effect) to avoid a TDZ crash:
   // "Cannot access 'openingMessage' before initialization". Depends only on
   // `id` (declared just above) and module-level storage-key constants.
@@ -4889,6 +4891,14 @@ export default function Workspace() {
     },
   });
 
+  // Atlas scope: sync sessionId from route param so the workspace loads the correct conversation.
+  useEffect(() => {
+    if (!isAtlasScope || !atlasSessionId) return;
+    const numId = Number(atlasSessionId);
+    if (Number.isFinite(numId) && numId > 0) setSessionId(numId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atlasSessionId, isAtlasScope]);
+
   // When the server auto-applies FILE_EDIT blocks during a build handoff, send
   // LOCAL_APPLY_SUCCESS so Atlas knows files are on disk and can read them back.
   // We run a deterministic import-resolution audit first and embed any specific
@@ -5266,21 +5276,39 @@ export default function Workspace() {
     if (sessionActionBusy) return;
     setSessionActionBusy(true);
     try {
-      const s = await createSession.mutateAsync({ projectId: id, data: { title: "New session", mode: "think" } });
-      setMessages([]);
-      priorLoaded.current = false;
-      historyMsgCountRef.current = 0;
-      setSessionId(s.id);
-      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
-      setShowProjectMenu(false);
-      toast.success("Started a new session");
+      if (isAtlasScope) {
+        // Atlas scope: POST /sessions/atlas, then navigate to the new session URL
+        const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+        const r = await fetch("/api/sessions/atlas", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+          body: JSON.stringify({ title: "New conversation", mode: "think" }),
+        });
+        const newS = await r.json() as { id: number };
+        setMessages([]);
+        priorLoaded.current = false;
+        historyMsgCountRef.current = 0;
+        setShowProjectMenu(false);
+        toast.success("Started a new conversation");
+        setLocation(`/atlas/${newS.id}`);
+      } else {
+        const s = await createSession.mutateAsync({ projectId: id, data: { title: "New session", mode: "think" } });
+        setMessages([]);
+        priorLoaded.current = false;
+        historyMsgCountRef.current = 0;
+        setSessionId(s.id);
+        queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
+        setShowProjectMenu(false);
+        toast.success("Started a new session");
+      }
     } catch (e) {
       reportError(e, { projectId: id });
       toast.error("Could not start new session");
     } finally {
       setSessionActionBusy(false);
     }
-  }, [createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
+  }, [createSession, id, isAtlasScope, queryClient, setLocation, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
 
   const handleArchiveAndNew = useCallback(async (_reason: string) => {
     if (sessionActionBusy) return;
@@ -5418,6 +5446,19 @@ export default function Workspace() {
     flow: false,
   });
   const [showDrawer, setShowDrawer] = useState(false);
+  const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
+  useEffect(() => {
+    if (!showDrawer) return;
+    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+    fetch("/api/sessions/atlas", {
+      credentials: "include",
+      headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+    })
+      .then((r) => r.json())
+      .then((data: AtlasConversation[]) => { if (Array.isArray(data)) setDrawerAtlasConversations(data); })
+      .catch(() => {});
+  }, [showDrawer]);
+
   useEffect(() => {
     // The project-name chevron dispatches `open-projects-drawer` and opens the
     // full project dropdown (switch / rename / settings / clone / ledger /
@@ -10089,6 +10130,22 @@ export default function Workspace() {
         onOpenSpecify={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-specify", { detail: { projectName: project?.name ?? "" } })); }}
         onOpenWrite={() => { setShowDrawer(false); if (isMobile) { setMobileTab("write"); setRightOpen(true); } else { setDesktopForceTab("write" as never); setTimeout(() => setDesktopForceTab(undefined), 120); } }}
         userLabel={loadProfile().name || null}
+        atlasConversations={drawerAtlasConversations}
+        activeAtlasSessionId={isAtlasScope && atlasSessionId ? Number(atlasSessionId) : null}
+        onNewAtlasConversation={async () => {
+          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+          try {
+            const r = await fetch("/api/sessions/atlas", {
+              method: "POST", credentials: "include",
+              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+              body: JSON.stringify({ title: "New conversation", mode: "think" }),
+            });
+            const s = await r.json() as { id: number };
+            setLocation(`/atlas/${s.id}`);
+          } catch { setLocation("/atlas"); }
+          setShowDrawer(false);
+        }}
+        onOpenAtlasConversation={(sid) => { setLocation(`/atlas/${sid}`); setShowDrawer(false); }}
       />
 
 

@@ -98,7 +98,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 const SKIP_TRANSITION = ["/landing", "/login", "/reset-password"];
 
 function isUnifiedShellPath(pathname: string): boolean {
-  return pathname === "/home" || pathname.startsWith("/project/") || pathname.startsWith("/workspace/");
+  return pathname === "/home" || pathname.startsWith("/project/") || pathname.startsWith("/workspace/") || pathname.startsWith("/atlas");
 }
 
 function PageTransition() {
@@ -167,6 +167,8 @@ function UnifiedShellRoutes() {
       <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100dvh" }}><LoadingSpinner /></div>}>
         <Switch>
           <Route path="/home" component={Home} />
+          <Route path="/atlas/:atlasSessionId" component={Workspace} />
+          <Route path="/atlas" component={Workspace} />
           <Route path="/project/:projectId" component={Workspace} />
           <Route path="/workspace/:conversationId" component={Workspace} />
         </Switch>

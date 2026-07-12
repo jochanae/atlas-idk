@@ -2,9 +2,16 @@ import { useEffect, useState } from "react";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal, MessageSquare } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
+
+export type AtlasConversation = {
+  id: number;
+  title: string;
+  messageCount?: number;
+  updatedAt?: string | null;
+};
 
 export type DrawerProject = {
   id: number;
@@ -31,9 +38,13 @@ type Props = {
   onOpenShell?: () => void;
   onSelectConversation?: (id: string) => void;
   userLabel?: string | null;
+  atlasConversations?: AtlasConversation[];
+  activeAtlasSessionId?: number | null;
+  onNewAtlasConversation?: () => void;
+  onOpenAtlasConversation?: (id: number) => void;
 };
 
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, userLabel }: Props) {
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, userLabel, atlasConversations, activeAtlasSessionId, onNewAtlasConversation, onOpenAtlasConversation }: Props) {
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
@@ -193,8 +204,79 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             </svg>
           </button>
 
-          {/* Conversations section removed — Ask Atlas surface deprecated. */}
+          {/* ── ATLAS section — general conversations ─────────────────── */}
+          <div style={{ display: "flex", alignItems: "center", padding: "2px 4px", marginBottom: 2, marginTop: 4 }}>
+            <button type="button" style={{
+              flex: 1, display: "flex", alignItems: "center", gap: 6,
+              padding: "5px 8px", borderRadius: 6, border: "none",
+              background: "transparent", cursor: "default",
+              color: "var(--atlas-gold)",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+              fontFamily: "var(--app-font-mono)",
+            }}>
+              <MessageSquare size={10} strokeWidth={2.2} style={{ opacity: 0.7 }} />
+              Atlas
+            </button>
+            {onNewAtlasConversation && (
+              <button type="button" onClick={() => { onNewAtlasConversation(); onClose(); }} aria-label="New Atlas conversation" title="New conversation" style={{ ...iconBtn, width: 26, height: 26 }}>
+                <Plus size={13} strokeWidth={1.8} />
+              </button>
+            )}
+          </div>
 
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 8 }}>
+            {onNewAtlasConversation && (
+              <button
+                type="button"
+                onClick={() => { onNewAtlasConversation(); onClose(); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  width: "100%", padding: "7px 10px",
+                  borderRadius: 8, border: "none",
+                  background: "transparent", cursor: "pointer", textAlign: "left",
+                  color: "rgba(201,162,76,0.65)",
+                  transition: "background 140ms ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.06)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <span style={{ color: "rgba(201,162,76,0.5)", display: "flex", flexShrink: 0 }}><Plus size={13} strokeWidth={1.8} /></span>
+                <span style={{ fontSize: 12, fontFamily: "var(--app-font-sans)", color: "rgba(201,162,76,0.75)" }}>New conversation</span>
+              </button>
+            )}
+            {atlasConversations && atlasConversations.length > 0 ? (
+              atlasConversations.slice(0, 5).map((conv) => {
+                const isActive = conv.id === activeAtlasSessionId;
+                return (
+                  <button
+                    key={conv.id}
+                    type="button"
+                    onClick={() => { onOpenAtlasConversation?.(conv.id); onClose(); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "7px 10px",
+                      borderRadius: 8, border: "none",
+                      background: isActive ? "rgba(201,162,76,0.07)" : "transparent",
+                      cursor: "pointer", textAlign: "left",
+                      borderLeft: isActive ? "2px solid rgba(201,162,76,0.5)" : "2px solid transparent",
+                      transition: "all 140ms ease",
+                    }}
+                    onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(201,162,76,0.04)"; }}
+                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <span style={{ color: "var(--atlas-muted)", opacity: 0.55, flexShrink: 0, display: "flex" }}><MessageSquare size={12} strokeWidth={1.5} /></span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: isActive ? "var(--atlas-gold)" : "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-sans)" }}>
+                      {conv.title || "Untitled conversation"}
+                    </span>
+                  </button>
+                );
+              })
+            ) : (atlasConversations && atlasConversations.length === 0) ? (
+              <div style={{ padding: "4px 14px", fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.5, fontStyle: "italic" }}>No conversations yet.</div>
+            ) : null}
+          </div>
+
+          <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "2px 6px 8px" }} />
 
           {/* PROJECTS section */}
 
