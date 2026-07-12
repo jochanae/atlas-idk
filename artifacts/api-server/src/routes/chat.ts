@@ -3169,7 +3169,20 @@ router.post("/chat", async (req, res): Promise<void> => {
   // patchResForContractCompletion wraps res.write to auto-fire endContractRun
   // when the "done" SSE event is detected, covering all branches in this handler.
   if (userId && sessionId) {
-    _contractCtx = await beginContractRun(sessionId, userId, projectId, message);
+    const _preCreatedRunId = typeof (body as any)._contractRunId === "string"
+      ? (body as any)._contractRunId as string
+      : null;
+    if (_preCreatedRunId) {
+      // POST /api/conversations/:id/messages already scaffolded the run — skip beginContractRun
+      _contractCtx = {
+        conversationId: `ws-${sessionId}`,
+        runId: _preCreatedRunId,
+        startedAt: Date.now(),
+        _done: false,
+      };
+    } else {
+      _contractCtx = await beginContractRun(sessionId, userId, projectId, message);
+    }
     if (_contractCtx) patchResForContractCompletion(res, _contractCtx);
   }
 

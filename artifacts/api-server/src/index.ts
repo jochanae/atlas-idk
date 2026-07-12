@@ -951,6 +951,14 @@ async function ensureColumns(): Promise<void> {
       CREATE INDEX IF NOT EXISTS contract_runs_user_id_idx
         ON contract_runs (user_id, created_at DESC)
     `);
+    await db.execute(sql`
+      ALTER TABLE contract_runs ADD COLUMN IF NOT EXISTS idempotency_key text
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS contract_runs_idempotency_idx
+        ON contract_runs (user_id, idempotency_key)
+        WHERE idempotency_key IS NOT NULL
+    `);
     logger.info("ensureColumns: contract_runs table verified");
   } catch (err) {
     logger.warn({ err }, "ensureColumns: contract_runs failed — server will start anyway");

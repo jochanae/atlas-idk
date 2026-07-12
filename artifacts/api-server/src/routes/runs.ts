@@ -322,6 +322,161 @@ router.get("/conversations/:conversationId/messages", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// POST /api/conversations/:conversationId/messages — canonical turn-entry
+//
+// This is the single authoritative entry point for sending a new conversation
+// turn from the V1.2 frontend (atlas-frontend-next / Lovable).
+//
+// Contract:
+//   - Validates conversation ownership
+//   - Persists the user ConversationMessage
+//   - Creates a canonical Run (received → thinking)
+//   - Emits run_created + run_status events via the durable RunEventBus
+//   - Fires the production pipeline (POST /api/chat) in the background
+//   - Supports duplicate-submit prevention via client-supplied idempotencyKey
+//   - Returns 202 immediately with { runId, userMessageId, intent: null }
+//
+// Pipeline routing: only ws-{sessionId} conversationIds are supported in V1.2.
+// The production pipeline (chat.ts) is keyed on integer sessionId.
+// ---------------------------------------------------------------------------
+
+router.post("/conversations/:conversationId/messages", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { conversationId } = req.params;
+    const { content, projectId = null, idempotencyKey } = req.body as {
+      content?: string;
+      projectId?: number | null;
+      idempotencyKey?: string;
+    };
+
+    if (!content?.trim()) {
+      res.status(400).json({ error: "content is required" });
+      return;
+    }
+    if (!idempotencyKey) {
+      res.status(400).json({ error: "idempotencyKey is required" });
+      return;
+    }
+
+    // 1. Idempotency: if this key was already processed, return the existing run
+    const existing = await db.execute<any>(sql`
+      SELECT id FROM contract_runs
+      WHERE idempotency_key = ${idempotencyKey} AND user_id = ${userId}
+      LIMIT 1
+    `);
+    if (existing.rows[0]) {
+      const existingRunId: string = existing.rows[0].id;
+      const userMsg = await db.execute<any>(sql`
+        SELECT id FROM conversation_messages
+        WHERE run_id = ${existingRunId} AND role = 'user'
+        LIMIT 1
+      `);
+      res.json({
+        runId: existingRunId,
+        userMessageId: userMsg.rows[0]?.id ?? null,
+        intent: null,
+        duplicate: true,
+      });
+      return;
+    }
+
+    // 2. Verify conversation ownership
+    const hasAccess = await verifyConversationAccess(conversationId, userId);
+    if (!hasAccess) {
+      res.status(403).json({ error: "FORBIDDEN" });
+      return;
+    }
+
+    // 3. Derive sessionId — only ws-{n} format routable to the production pipeline
+    const wsMatch = conversationId.match(/^ws-(\d+)$/);
+    if (!wsMatch) {
+      res.status(400).json({
+        error: "UNSUPPORTED_CONVERSATION_ID",
+        message:
+          "Only ws-{sessionId} conversationIds are routable to the production pipeline in V1.2. " +
+          "Create or open a session-backed conversation to use this endpoint.",
+      });
+      return;
+    }
+    const sessionId = parseInt(wsMatch[1], 10);
+
+    // 4. Create the canonical Run row (status: received, intent: CHAT default)
+    const run = await createRun({
+      conversationId,
+      userId,
+      projectId: projectId != null ? Number(projectId) : null,
+      intent: "CHAT",
+      prompt: content,
+      idempotencyKey,
+    });
+
+    // 5. Persist the user ConversationMessage linked to this run
+    await pool.query(
+      `INSERT INTO conversation_messages
+         (id, run_id, conversation_id, role, content, created_at)
+       VALUES (gen_random_uuid(), $1, $2, 'user', $3, now())`,
+      [run.id, conversationId, content],
+    );
+
+    // 6. Transition received → thinking (emits run_status event to RunEventBus)
+    await updateRunStatus(run.id, conversationId, "thinking");
+
+    // 7. Fetch the persisted userMessageId
+    const userMsgResult = await db.execute<any>(sql`
+      SELECT id FROM conversation_messages
+      WHERE run_id = ${run.id} AND role = 'user'
+      LIMIT 1
+    `);
+    const userMessageId: string | null = userMsgResult.rows[0]?.id ?? null;
+
+    // 8. Fire the production pipeline asynchronously (fire-and-forget)
+    //    chat.ts detects _contractRunId and skips beginContractRun, using the
+    //    run we just created instead of creating a duplicate.
+    const apiPort = process.env["PORT"] ?? 8080;
+    const internalUrl = `http://localhost:${apiPort}/api/chat`;
+    const forwardCookie = String(req.headers["cookie"] ?? "");
+
+    setImmediate(() => {
+      void fetch(internalUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: forwardCookie,
+        },
+        body: JSON.stringify({
+          message: content,
+          sessionId,
+          projectId: projectId ?? undefined,
+          _contractRunId: run.id,
+        }),
+        signal: AbortSignal.timeout(120_000),
+      }).catch((err: unknown) => {
+        logger.error(
+          { err, runId: run.id, sessionId },
+          "POST /conversations/:id/messages: async pipeline call failed",
+        );
+      });
+    });
+
+    // 9. Return immediately — pipeline runs async, client listens via SSE
+    res.status(202).json({
+      runId: run.id,
+      userMessageId,
+      intent: null,
+    });
+  } catch (err) {
+    logger.error({ err }, "POST /conversations/:id/messages error");
+    res.status(500).json({ error: "INTERNAL", message: "Failed to submit message" });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Helper: get active (non-terminal) run for a conversation
 // ---------------------------------------------------------------------------
 
@@ -834,6 +989,7 @@ export interface CreateRunOptions {
   intent: "CHAT" | "DECIDE" | "BUILD";
   prompt: string;
   snapshotRef?: string;
+  idempotencyKey?: string;
 }
 
 export async function createRun(opts: CreateRunOptions): Promise<Run> {
@@ -843,11 +999,11 @@ export async function createRun(opts: CreateRunOptions): Promise<Run> {
   await db.execute(sql`
     INSERT INTO contract_runs
       (id, project_id, conversation_id, user_id, status, intent,
-       prompt, step_count, steps_done, created_at, updated_at)
+       prompt, step_count, steps_done, idempotency_key, created_at, updated_at)
     VALUES
       (${id}, ${opts.projectId}, ${opts.conversationId}, ${opts.userId},
        'received', ${opts.intent}, ${opts.prompt}, 0, 0,
-       now(), now())
+       ${opts.idempotencyKey ?? null}, now(), now())
   `);
 
   await bus.publish(opts.conversationId, id, "run_created", {
