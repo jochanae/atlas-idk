@@ -5286,21 +5286,23 @@ export default function Workspace() {
     setSessionActionBusy(true);
     try {
       if (isAtlasScope) {
-        // Atlas scope: POST /sessions/atlas, then navigate to the new session URL
+        // Atlas scope: canonical conversation-first flow. POST /api/conversations
+        // creates a projects row with conversationId and navigates to the
+        // /workspace/:conversationId route. No more /api/sessions/atlas here.
         const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-        const r = await fetch("/api/sessions/atlas", {
+        const r = await fetch("/api/conversations", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-          body: JSON.stringify({ title: "New conversation", mode: "think" }),
+          body: JSON.stringify({}),
         });
-        const newS = await r.json() as { id: number };
+        const created = await r.json() as { conversationId?: string };
         setMessages([]);
         priorLoaded.current = false;
         historyMsgCountRef.current = 0;
         setShowProjectMenu(false);
         toast.success("Started a new conversation");
-        setLocation(`/atlas/${newS.id}`);
+        if (created?.conversationId) setLocation(`/workspace/${created.conversationId}`);
       } else {
         const s = await createSession.mutateAsync({ projectId: id, data: { title: "New session", mode: "think" } });
         setMessages([]);
