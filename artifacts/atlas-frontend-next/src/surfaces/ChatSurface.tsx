@@ -21,15 +21,18 @@ import { isTerminal, type Run, type ConversationMessage } from "@contract";
 export function ChatSurface({
   conversationId,
   useMockActivity = false,
+  showComposer = true,
 }: {
   conversationId: string;
   useMockActivity?: boolean;
+  showComposer?: boolean;
 }) {
   const {
     activeBuildRun, activeTurn, runs,
     confirm, cancel, commit,
     connectionStatus,
     messages, messagesStatus, hasMoreMessages, loadMoreMessages,
+    pendingMessages,
   } = useRun();
   const disconnected = connectionStatus === "disconnected";
 
