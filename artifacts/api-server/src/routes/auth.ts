@@ -388,10 +388,30 @@ router.post("/auth/admin/force-reset", async (req, res): Promise<void> => {
 
 // GET /api/auth/dev-test-login — DEV ONLY: creates a fresh test account and sets session cookie
 // Blocked in production. Used by automated e2e tests to bypass OAuth UI.
+// Optional params:
+//   ?userId=N       — reuse an existing user by ID instead of creating a fresh one
+//   ?tier=pro       — set subscription tier on a newly-created user
+//   ?redirect=PATH  — redirect to PATH after login instead of /home
 router.get("/auth/dev-test-login", async (req, res): Promise<void> => {
   if (process.env.NODE_ENV === "production") {
     res.status(404).json({ error: "Not found" });
     return;
+  }
+
+  const redirectTarget = typeof req.query.redirect === "string" ? req.query.redirect : "/home";
+
+  // If ?userId=N is supplied and that user exists, reuse them (no new account created).
+  const requestedUserId = typeof req.query.userId === "string" ? parseInt(req.query.userId, 10) : null;
+  if (requestedUserId && !Number.isNaN(requestedUserId)) {
+    const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.id, requestedUserId)).limit(1);
+    if (existingUser) {
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await db.insert(userSessionsTable).values({ userId: existingUser.id, token, expiresAt });
+      createSessionCookie(token, res);
+      res.redirect(redirectTarget);
+      return;
+    }
   }
 
   const ts = Date.now();
@@ -421,7 +441,7 @@ router.get("/auth/dev-test-login", async (req, res): Promise<void> => {
 
   createSessionCookie(token, res);
   // Redirect straight to the home page so the browser lands authenticated
-  res.redirect("/home");
+  res.redirect(redirectTarget);
 });
 
 export default router;

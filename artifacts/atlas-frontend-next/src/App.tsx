@@ -16,7 +16,8 @@ export function App({ conversationId }: { conversationId: string }) {
 }
 
 function Shell({ conversationId }: { conversationId: string }) {
-  const [tab, setTab] = useState<Tab>("chat");
+  const initialTab = (new URLSearchParams(window.location.search).get("tab") as Tab | null) ?? "chat";
+  const [tab, setTab] = useState<Tab>(initialTab);
   const { connectionStatus } = useRun();
 
   return (

@@ -1,6 +1,6 @@
 import { useRun } from "@/context/RunProvider";
 import type { PendingMessage } from "@/context/RunContext";
-import { PlanCard, ThinkingIndicator, StatusBadge } from "@/components/RunUi";
+import { PlanCard, ThinkingIndicator, StatusBadge, DecideStreamRow } from "@/components/RunUi";
 import { AtlasReceipt } from "@/components/AtlasReceipt";
 import { RepositoryFeed } from "@/components/RepositoryFeed";
 import { Composer } from "@/components/Composer";
@@ -28,7 +28,7 @@ export function ChatSurface({
   showComposer?: boolean;
 }) {
   const {
-    activeBuildRun, activeTurn, runs,
+    activeBuildRun, activeTurn, activeDecideStream, runs,
     confirm, cancel, commit,
     connectionStatus,
     messages, messagesStatus, hasMoreMessages, loadMoreMessages,
@@ -83,7 +83,19 @@ export function ChatSurface({
           onRetry={feed.reload}
         />
 
-        {activeTurn && (
+        {/* DECIDE streaming prose — shown independently of activeTurn so it
+            bridges the completion gap (run terminal but message refresh not
+            yet landed). Clears when the settled assistant MessageRow appears. */}
+        {activeDecideStream && (
+          <DecideStreamRow
+            text={activeDecideStream.text}
+            done={!activeTurn || isTerminal(activeTurn.status)}
+          />
+        )}
+
+        {/* Thinking indicator for active non-BUILD turns that have no
+            streaming text yet (CHAT always; DECIDE before first token). */}
+        {activeTurn && !activeDecideStream && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <StatusBadge status={activeTurn.status} />
             <ThinkingIndicator />

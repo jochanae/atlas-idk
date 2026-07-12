@@ -204,6 +204,40 @@ export async function getLatestRunComplete(
   return result.rows[0] ?? null;
 }
 
+// ---------------------------------------------------------------------------
+// Ephemeral broadcast — fans out to live SSE clients WITHOUT a DB write.
+//
+// Use for high-frequency transient events (live token streaming) that must
+// not pollute the durable event store. The contract guarantees only
+// sequenced, persisted events are replayed on reconnect; these are not.
+// ---------------------------------------------------------------------------
+
+export function broadcast<T>(
+  conversationId: string,
+  runId: string,
+  type: RunEventType,
+  payload: T,
+): void {
+  const event: RunEvent<unknown> = {
+    eventId: `live-${randomUUID()}`,
+    seq: -1,            // negative → never confused with a real event seq
+    runId,
+    conversationId,
+    type,
+    timestamp: new Date().toISOString(),
+    payload,
+  };
+  const clients = getClients(conversationId);
+  const wire = formatSSE(event as RunEvent<unknown>);
+  for (const client of clients) {
+    try {
+      client.res.write(wire);
+    } catch {
+      clients.delete(client);
+    }
+  }
+}
+
 export async function getActiveRunEvents(
   conversationId: string,
   runId: string,

@@ -159,7 +159,7 @@ export function MockRunProvider({
     const activeBuildRun = list.find((r) => r.intent === "BUILD" && !isTerminal(r.status)) ?? null;
     const activeTurn = list.find((r) => r.intent !== "BUILD" && !isTerminal(r.status)) ?? null;
     return {
-      activeBuildRun, activeTurn, runs: list,
+      activeBuildRun, activeTurn, activeDecideStream: null, runs: list,
       messages: [], messagesStatus: "ready" as const, hasMoreMessages: false,
       loadMoreMessages: async () => {},
       pendingMessages: [],

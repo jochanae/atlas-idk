@@ -33,6 +33,8 @@ export type SendMessageResult =
 export interface RunContextValue {
   activeBuildRun: Run | null;
   activeTurn: Run | null;
+  /** Non-null while a DECIDE turn is streaming or until its message refresh lands. */
+  activeDecideStream: { runId: string; text: string } | null;
   runs: Run[];
   messages: ConversationMessage[];
   messagesStatus: "loading" | "ready" | "error" | "idle";

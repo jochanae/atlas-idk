@@ -51,6 +51,12 @@ export function RunProvider({
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
+  /**
+   * Streaming text accumulated from ephemeral `token` SSE broadcasts.
+   * Keyed by runId. Cleared after the message-list refresh that follows
+   * run_complete so the settled assistant MessageRow replaces it cleanly.
+   */
+  const [streamingText, setStreamingText] = useState<Record<string, string>>({});
 
   const seenEventIds = useRef<Set<string>>(new Set());
   const lastSeqRef = useRef<number>(0);
@@ -92,11 +98,28 @@ export function RunProvider({
   // Apply SSE events
   // -------------------------------------------------------------------------
   const applyEvent = useCallback((evt: TypedRunEvent) => {
+    // ── Ephemeral live-token broadcast ────────────────────────────────────
+    // Token events from DECIDE turns arrive with seq = -1 (not from the
+    // durable event store). Accumulate into streamingText and return early —
+    // they are never deduped by eventId or sequenced by watermark.
+    if (evt.type === "token") {
+      const text = (evt.payload as { text?: string }).text ?? "";
+      if (text) {
+        setStreamingText((prev) => ({
+          ...prev,
+          [evt.runId]: (prev[evt.runId] ?? "") + text,
+        }));
+      }
+      return;
+    }
+
+    // ── All other events: dedupe + seq watermark ──────────────────────────
     if (evt.eventId) {
       if (seenEventIds.current.has(evt.eventId)) return;
       seenEventIds.current.add(evt.eventId);
     }
-    if (typeof evt.seq === "number" && evt.seq > lastSeqRef.current) {
+    // Only advance the watermark for real (positive) seq values.
+    if (typeof evt.seq === "number" && evt.seq > 0 && evt.seq > lastSeqRef.current) {
       lastSeqRef.current = evt.seq;
     }
 
@@ -173,22 +196,31 @@ export function RunProvider({
         case "run_complete": {
           return { ...prev, [evt.runId]: evt.payload.run };
         }
-        case "token":
         case "stream_error":
           return prev;
       }
       return prev;
     });
 
-    // When a turn completes, refresh the corresponding conversation messages
-    // so the settled assistant content lands from the durable store.
+    // When a turn completes, refresh messages from the durable store so the
+    // settled assistant row appears. Streaming text for this run is cleared
+    // in the same .then() so the DecideStreamRow persists until the
+    // MessageRow is ready — no flash of empty content.
     if (evt.type === "run_complete") {
+      const completedRunId = evt.runId;
       api.listMessages(conversationId, { limit: MESSAGE_PAGE_SIZE })
         .then((page) => {
           setMessages(page.messages);
           setNextCursor(page.nextCursor);
+          // Clear only after messages land — eliminates the flash-of-empty gap.
+          setStreamingText((prev) => {
+            if (!prev[completedRunId]) return prev;
+            const next = { ...prev };
+            delete next[completedRunId];
+            return next;
+          });
         })
-        .catch(() => { /* leave existing messages */ });
+        .catch(() => { /* leave existing messages + streaming text */ });
     }
   }, [conversationId]);
 
@@ -397,9 +429,24 @@ export function RunProvider({
       list.find((r) => r.intent === "BUILD" && !isTerminal(r.status)) ?? null;
     const activeTurn =
       list.find((r) => r.intent !== "BUILD" && !isTerminal(r.status)) ?? null;
+
+    // activeDecideStream: non-null while a DECIDE turn has accumulated live
+    // streaming text. Stays non-null after the run goes terminal until the
+    // message-refresh .then() clears it — bridging the completion gap so no
+    // flash of empty content occurs between streaming and MessageRow.
+    const decideCandidate =
+      (activeTurn?.intent === "DECIDE" ? activeTurn : null) ??
+      list.find((r) => r.intent === "DECIDE" && !!streamingText[r.id]) ??
+      null;
+    const activeDecideStream =
+      decideCandidate && streamingText[decideCandidate.id]
+        ? { runId: decideCandidate.id, text: streamingText[decideCandidate.id] }
+        : null;
+
     return {
       activeBuildRun,
       activeTurn,
+      activeDecideStream,
       runs: list,
       messages,
       messagesStatus,
@@ -417,7 +464,7 @@ export function RunProvider({
       connectionStatus,
     };
   }, [
-    runsById, messages, messagesStatus, nextCursor, loadMoreMessages,
+    runsById, streamingText, messages, messagesStatus, nextCursor, loadMoreMessages,
     pendingMessages, sendMessage,
     confirm, cancel, commit,
     fetchSteps, fetchChanges, fetchTerminal, fetchOutputs,

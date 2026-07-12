@@ -65,8 +65,12 @@ export function openConversationStream(opts: SseOptions): SseHandle {
       } catch {
         return;
       }
-      const lastSeen = getLastSeenSeq?.() ?? 0;
-      if (typeof parsed.seq === "number" && parsed.seq <= lastSeen) return;
+      // Live token events are ephemeral (seq = -1) and must bypass the
+      // watermark check — they are never replayed from the event store.
+      if (parsed.type !== "token") {
+        const lastSeen = getLastSeenSeq?.() ?? 0;
+        if (typeof parsed.seq === "number" && parsed.seq <= lastSeen) return;
+      }
       onEvent(parsed);
     };
 

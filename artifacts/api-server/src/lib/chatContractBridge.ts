@@ -218,12 +218,13 @@ export async function updateContractRunIntent(
 ): Promise<void> {
   if (!ctx || intent === "CHAT") return; // CHAT is the default, no update needed
   try {
+    // Set synchronously before the DB await so the token-broadcast gate in
+    // patchResForContractCompletion can read ctx.intent immediately.
+    ctx.intent = intent;
     await pool.query(
       `UPDATE contract_runs SET intent = $1, updated_at = now() WHERE id = $2`,
       [intent, ctx.runId],
     );
-    // Store on ctx so endContractRun knows which lifecycle to follow
-    ctx.intent = intent;
     logger.info(
       { runId: ctx.runId, intent },
       "chatContractBridge: run intent updated",
@@ -279,6 +280,20 @@ export function patchResForContractCompletion(
                 (parsed["content"] as string).length > 0
               ) {
                 endContractRun(ctx, parsed["content"] as string).catch(() => {});
+              }
+              // For DECIDE turns: broadcast each live token to connected SSE
+              // clients without a DB write (ephemeral fan-out). ctx.intent is
+              // set synchronously in updateContractRunIntent before any await,
+              // so it is reliably DECIDE by the time tokens flow.
+              if (
+                parsed["type"] === "token" &&
+                typeof parsed["content"] === "string" &&
+                (parsed["content"] as string).length > 0 &&
+                ctx.intent === "DECIDE"
+              ) {
+                bus.broadcast(ctx.conversationId, ctx.runId, "token", {
+                  text: parsed["content"] as string,
+                });
               }
             } catch {
               /* not JSON — ignore */

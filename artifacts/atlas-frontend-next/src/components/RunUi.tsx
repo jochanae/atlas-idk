@@ -158,6 +158,48 @@ export function PlanCard({ run, onConfirm, onCancel }: PlanCardProps) {
   );
 }
 
+/**
+ * DecideStreamRow — shown while a DECIDE turn is generating its response.
+ *
+ * Replaces the generic ThinkingIndicator once tokens start arriving.
+ * Persists until the settled assistant MessageRow appears in history
+ * (controlled by the parent via the `done` flag).
+ */
+export function DecideStreamRow({ text, done }: { text: string; done?: boolean }) {
+  return (
+    <div
+      style={{
+        alignSelf: "flex-start",
+        maxWidth: "82%",
+        fontSize: 14,
+        color: "var(--text)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span
+          style={{
+            fontSize: 10,
+            fontFamily: "ui-monospace, monospace",
+            color: "var(--run)",
+            letterSpacing: "0.08em",
+            padding: "2px 6px",
+            border: "1px solid color-mix(in srgb, var(--run) 40%, transparent)",
+            borderRadius: 4,
+          }}
+        >
+          DECIDE
+        </span>
+        {!done && (
+          <span style={{ color: "var(--muted)", fontSize: 12 }}>
+            <span className="dots">···</span>
+          </span>
+        )}
+      </div>
+      <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{text}</div>
+    </div>
+  );
+}
+
 interface ReceiptChipProps {
   run: Run;
   onCommit?: () => void;
