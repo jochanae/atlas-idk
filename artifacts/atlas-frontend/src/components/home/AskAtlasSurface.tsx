@@ -245,6 +245,11 @@ export function AskAtlasSurface({
   const handleSubmit = () => {
     if (!canSubmit) return;
     void onSubmit();
+    // Collapse composer to compact resting state + release focus so the
+    // sheet shrinks and the conversation reclaims the screen.
+    setFocused(false);
+    setRestingState("compact");
+    try { textareaRef.current?.blur(); } catch {}
   };
 
   const handleProjectOpen = async (projectId: number) => {
@@ -803,25 +808,6 @@ export function AskAtlasSurface({
               <line x1="3" y1="21" x2="10" y2="14" />
             </svg>
           </button>
-        )}
-        {/* Portfolio Thinking · Not Building label — hidden in compact resting mode */}
-        {!restingCompact && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 10,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            color: isParchment ? "rgba(15,23,42,0.45)" : "color-mix(in oklab, var(--atlas-gold) 72%, transparent)",
-            paddingBottom: 2,
-          }}
-        >
-          <span>Portfolio Thinking</span>
-        </div>
         )}
         <div
           className="atlas-composer-live"
