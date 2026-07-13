@@ -222,6 +222,19 @@ export function AskAtlasRenderer({
             </li>
           ),
 
+          // ── Divider ────────────────────────────────────────────────────────
+          hr: () => (
+            <hr
+              style={{
+                border: "none",
+                borderTop: isParchment
+                  ? "1px solid rgba(146,64,14,0.18)"
+                  : "1px solid rgba(212,175,55,0.18)",
+                margin: "1em 0",
+              }}
+            />
+          ),
+
           // ── Inline formatting ──────────────────────────────────────────────
           strong: ({ children }) => <strong>{processChildren(children)}</strong>,
           em: ({ children }) => <em>{processChildren(children)}</em>,
