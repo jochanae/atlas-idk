@@ -296,7 +296,7 @@ export function AskAtlasSurface({
         background: "transparent",
         zIndex: 60,
         overscrollBehavior: "contain",
-        touchAction: "none",
+        touchAction: "pan-y",
       }}
     >
       {subheader}
