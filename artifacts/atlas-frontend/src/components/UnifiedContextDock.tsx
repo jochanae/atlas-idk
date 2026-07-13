@@ -763,7 +763,17 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               icon: <span style={{ fontFamily: "var(--app-font-serif, Georgia, serif)", fontWeight: 600, fontSize: 15, lineHeight: 1, letterSpacing: "-0.02em", opacity: 0.92, filter: "drop-shadow(0 0 2.5px rgba(212,175,55,0.22))" }}>A</span>,
               action: () => {
                 setShowAtlasHub(false);
-                setLocation("/atlas");
+                const onHome = location === "/home" || location === "/";
+                if (!onHome) {
+                  setLocation("/home");
+                  window.setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
+                    window.dispatchEvent(new Event("atlas:focus-composer"));
+                  }, 60);
+                } else {
+                  window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
+                  window.dispatchEvent(new Event("atlas:focus-composer"));
+                }
               },
             },
             {
