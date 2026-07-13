@@ -173,6 +173,11 @@ export function AskAtlasSurface({
   crystallized = false,
   isRestoring = false,
 }: Props) {
+  // Internal verbs describe model machinery, not user-relevant actions.
+  // Only surface steps that answer "what is Atlas doing for me right now?"
+  const SUPPRESS_STEP_VERBS = new Set(["Reading", "Saved", "Recovered", "Failed", "Cancelled"]);
+  const visibleLiveStep = liveStep && !SUPPRESS_STEP_VERBS.has(liveStep.verb) ? liveStep : undefined;
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [, setLocation] = useLocation();
@@ -468,7 +473,7 @@ export function AskAtlasSurface({
                         {sanitizeForStreaming(displayContent)}
                         <span className="atlas-cursor" aria-hidden />
                       </span>
-                      {liveStep && displayContent.trim().length > 0 && (
+                      {visibleLiveStep && displayContent.trim().length > 0 && (
                         <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, opacity: 0.5 }}>
                           <span style={{
                             width: 5,
@@ -484,7 +489,7 @@ export function AskAtlasSurface({
                             letterSpacing: "0.08em",
                             color: "var(--atlas-muted)",
                           }}>
-                            {liveStep.verb}{liveStep.target ? ` ${liveStep.target}` : ""}
+                            {visibleLiveStep.verb}{visibleLiveStep.target ? ` ${visibleLiveStep.target}` : ""}
                           </span>
                         </div>
                       )}
@@ -686,8 +691,8 @@ export function AskAtlasSurface({
                 messages[messages.length - 1]?.role === "assistant" &&
                 messages[messages.length - 1]?.content.trim().length > 0
               )}
-              liveStep={liveStep}
-              pendingPhrase={isSending && !isStreaming ? "Reaching Atlas..." : pendingPhrase}
+              liveStep={visibleLiveStep}
+              pendingPhrase=""
             />
           </div>
         )}

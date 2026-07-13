@@ -21,7 +21,7 @@ function SingleStep({
   isStreaming,
   hasContent,
   liveStep,
-  pendingPhrase = "Working...",
+  pendingPhrase = "",
 }: {
   isStreaming: boolean;
   hasContent: boolean;
@@ -44,16 +44,18 @@ function SingleStep({
           flexShrink: 0,
         }}
       />
-      <span
-        style={{
-          fontFamily: "var(--app-font-mono)",
-          fontSize: 11,
-          letterSpacing: "0.08em",
-          color: "var(--atlas-muted)",
-        }}
-      >
-        {text}
-      </span>
+      {text && (
+        <span
+          style={{
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            color: "var(--atlas-muted)",
+          }}
+        >
+          {text}
+        </span>
+      )}
     </div>
   );
 }
