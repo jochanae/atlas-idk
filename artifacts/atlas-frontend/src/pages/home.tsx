@@ -2199,7 +2199,10 @@ export default function Home() {
   // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
   // button and routes sends to askAtlasChat.
   // Also visible while restoring so the surface never flashes blank on return.
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring);
+  // True when the user explicitly started a new conversation — keeps the surface
+  // visible even before the first message lands (messages.length === 0 after clear).
+  const [askAtlasNewConvMode, setAskAtlasNewConvMode] = useState(false);
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring || askAtlasNewConvMode);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -2221,8 +2224,12 @@ export default function Home() {
   }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
 
   // Keep stale surface-open storage from forcing Ask Atlas back open later.
+  // Also clear new-conversation mode so it doesn't bleed into the next session.
   useEffect(() => {
-    if (!askAtlasSurfaceOpen) askAtlasSession.setSurfaceOpen(false);
+    if (!askAtlasSurfaceOpen) {
+      askAtlasSession.setSurfaceOpen(false);
+      setAskAtlasNewConvMode(false);
+    }
   }, [askAtlasSurfaceOpen]);
 
   // Restore Ask Atlas thread after hard refresh or navigation return — the surface
@@ -3871,6 +3878,7 @@ export default function Home() {
 
     if (id === activeConversationId) {
       handleNewConversation();
+      setAskAtlasNewConvMode(true);
     }
 
     try { localStorage.removeItem(`atlas-thread-title:${id}`); } catch {}
@@ -5865,6 +5873,7 @@ export default function Home() {
         onNew={() => {
           setShowHistory(false);
           handleNewConversation();
+          setAskAtlasNewConvMode(true);
           setAskAtlasSurfaceOpen(true);
           setDepth("active");
         }}
