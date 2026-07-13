@@ -4795,6 +4795,15 @@ export default function Workspace() {
     }
   }, [setLocation]);
 
+  // For Atlas scope: provide a synthetic session entry so useChatStream
+  // picks up the correct Atlas sessionId directly and never calls
+  // ensureSessionId() (which would create a spurious project-0 session).
+  const _atlasNumId = isAtlasScope && atlasSessionId ? Number(atlasSessionId) : 0;
+  const effectiveSessions = (_atlasNumId > 0)
+    ? ([{ id: _atlasNumId, projectId: 0, title: "", mode: "think", status: "active" as Session["status"], messageCount: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }] as Session[])
+    : sessions;
+  const effectiveSessionsLoading = (_atlasNumId > 0) ? false : sessionsLoading;
+
   const {
     messages,
     setMessages,
@@ -4816,8 +4825,8 @@ export default function Workspace() {
     doSend,
     handleRegenerate,
   } = useChatStream(effectiveId, {
-    sessions,
-    sessionsLoading,
+    sessions: effectiveSessions,
+    sessionsLoading: effectiveSessionsLoading,
     createSession,
     queryClient,
     getListSessionsQueryKey,
@@ -4901,10 +4910,15 @@ export default function Workspace() {
   });
 
   // Atlas scope: sync sessionId from route param so the workspace loads the correct conversation.
+  // Also reset priorLoaded so history reloads when navigating between Atlas sessions.
   useEffect(() => {
     if (!isAtlasScope || !atlasSessionId) return;
     const numId = Number(atlasSessionId);
-    if (Number.isFinite(numId) && numId > 0) setSessionId(numId);
+    if (Number.isFinite(numId) && numId > 0) {
+      priorLoaded.current = false;
+      setMessages([]);
+      setSessionId(numId);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [atlasSessionId, isAtlasScope]);
 
