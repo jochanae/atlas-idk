@@ -804,25 +804,6 @@ export function AskAtlasSurface({
             </svg>
           </button>
         )}
-        {/* Portfolio Thinking · Not Building label — hidden in compact resting mode */}
-        {!restingCompact && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 10,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            color: isParchment ? "rgba(15,23,42,0.45)" : "color-mix(in oklab, var(--atlas-gold) 72%, transparent)",
-            paddingBottom: 2,
-          }}
-        >
-          <span>Portfolio Thinking</span>
-        </div>
-        )}
         <div
           className="atlas-composer-live"
           style={{
