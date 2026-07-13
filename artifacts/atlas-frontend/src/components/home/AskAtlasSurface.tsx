@@ -785,30 +785,6 @@ export function AskAtlasSurface({
             </button>
           </>
         )}
-        {/* Dock toggle — one tap collapses to the floating "A". Only after first message. */}
-        {!focused && messages.length > 0 && (
-          <button
-            type="button"
-            aria-label={restingDocked ? "Restore composer" : "Dock composer"}
-            title={restingDocked ? "Restore composer" : "Minimize to floating A"}
-            onClick={() => runAbsorb(() => setRestingState("docked"))}
-            style={{
-              position: "absolute", top: 4, right: 8, zIndex: 6,
-              width: 22, height: 22, padding: 0,
-              background: "transparent", border: "none",
-              color: "var(--atlas-muted)", opacity: 0.55, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="4 14 10 14 10 20" />
-              <polyline points="20 10 14 10 14 4" />
-              <line x1="14" y1="10" x2="21" y2="3" />
-              <line x1="3" y1="21" x2="10" y2="14" />
-            </svg>
-          </button>
-        )}
         <div
           className="atlas-composer-live"
           style={{
@@ -829,6 +805,30 @@ export function AskAtlasSurface({
             ...getAuraVars("axiom", isParchment),
           } as CSSProperties}
         >
+          {/* Dock toggle — inside the bordered composer box so it doesn't float outside */}
+          {!focused && messages.length > 0 && (
+            <button
+              type="button"
+              aria-label={restingDocked ? "Restore composer" : "Dock composer"}
+              title={restingDocked ? "Restore composer" : "Minimize to floating A"}
+              onClick={() => runAbsorb(() => setRestingState("docked"))}
+              style={{
+                position: "absolute", top: 8, right: 10, zIndex: 6,
+                width: 22, height: 22, padding: 0,
+                background: "transparent", border: "none",
+                color: "var(--atlas-muted)", opacity: 0.55, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 14 10 14 10 20" />
+                <polyline points="20 10 14 10 14 4" />
+                <line x1="14" y1="10" x2="21" y2="3" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+            </button>
+          )}
           {/* Attachment preview strip */}
           {attachedFiles.length > 0 && (
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
