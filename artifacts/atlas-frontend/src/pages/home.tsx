@@ -1913,6 +1913,8 @@ export default function Home() {
       .catch(() => {});
   }, []);
   useEffect(() => { fetchAtlasConversations(); }, [fetchAtlasConversations]);
+  // Also refresh when the drawer opens so the list is always fresh.
+  useEffect(() => { if (showDrawer) fetchAtlasConversations(); }, [showDrawer, fetchAtlasConversations]);
 
   const [resumeBustSignal, setResumeBustSignal] = useState(0);
   const [showProjectsSheet, setShowProjectsSheet] = useState(false);
@@ -5914,7 +5916,11 @@ export default function Home() {
         }}
         onOpenAtlasConversation={(id) => {
           setShowDrawer(false);
-          setLocation(`/atlas/${id}`);
+          // Restore this Ask Atlas conversation on the home surface.
+          askAtlasSession.setConversationId(String(id));
+          setAskAtlasConversationId(String(id));
+          setAskAtlasSurfaceOpen(true);
+          nexusChat.clearMessages();
         }}
       />
 
