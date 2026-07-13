@@ -2145,9 +2145,8 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    // Default to open — Ask Atlas is the primary home conversation surface.
-    // Toggling the button off closes it and restores normal composer behavior.
-    return true;
+    // Stays off until the user taps the composer — onFocus flips it on.
+    return false;
   });
   // True while the thread restore fetch is in-flight. Initialized synchronously
   // from storage so the surface is visible immediately on return (no blank flash).
@@ -5146,7 +5145,7 @@ export default function Home() {
                   if (createError) setCreateError(null);
                 }}
                 onKeyDown={handleKeyDown}
-                onFocus={() => { setInputFocused(true); setTypewriterPaused(true); }}
+                onFocus={() => { setInputFocused(true); setTypewriterPaused(true); setAskAtlasSurfaceOpen(true); nexusChat.clearMessages(); }}
                 onBlur={() => { setInputFocused(false); setTypewriterPaused(false); }}
                 rows={2}
                 style={{
