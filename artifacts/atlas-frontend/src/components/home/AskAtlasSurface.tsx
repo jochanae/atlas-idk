@@ -47,7 +47,7 @@ import { ComposerActions, type ComposerMenuAction } from "@/components/composer/
 // ComposerDock removed — footer center "A" is the single composer anchor.
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
-import { type LiveStep } from "@/components/workspace/StepProgress";
+import { type LiveStep, StepProgress } from "@/components/workspace/StepProgress";
 import SketchReveal from "@/components/chat/SketchReveal";
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
@@ -463,10 +463,32 @@ export function AskAtlasSurface({
                     />
                   )}
                   {msg.role === "assistant" && msg.streaming ? (
-                    <span className="atlas-live-stream-text" style={{ whiteSpace: "pre-wrap" }}>
-                      {sanitizeForStreaming(displayContent)}
-                      <span className="atlas-cursor" aria-hidden />
-                    </span>
+                    <>
+                      <span className="atlas-live-stream-text" style={{ whiteSpace: "pre-wrap" }}>
+                        {sanitizeForStreaming(displayContent)}
+                        <span className="atlas-cursor" aria-hidden />
+                      </span>
+                      {liveStep && displayContent.trim().length > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, opacity: 0.5 }}>
+                          <span style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: "50%",
+                            background: "var(--atlas-gold)",
+                            animation: "atlas-pulse 1.4s ease-in-out infinite",
+                            flexShrink: 0,
+                          }} />
+                          <span style={{
+                            fontFamily: "var(--app-font-mono)",
+                            fontSize: 10,
+                            letterSpacing: "0.08em",
+                            color: "var(--atlas-muted)",
+                          }}>
+                            {liveStep.verb}{liveStep.target ? ` ${liveStep.target}` : ""}
+                          </span>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <AskAtlasRenderer
                       content={displayContent}
@@ -654,6 +676,21 @@ export function AskAtlasSurface({
             </div>
           );
         })}
+
+        {(isSending || isStreaming) && (
+          <div style={{ padding: "8px 0 0" }}>
+            <StepProgress
+              mode="single"
+              isStreaming={isSending || isStreaming}
+              hasContent={Boolean(
+                messages[messages.length - 1]?.role === "assistant" &&
+                messages[messages.length - 1]?.content.trim().length > 0
+              )}
+              liveStep={liveStep}
+              pendingPhrase={isSending && !isStreaming ? "Reaching Atlas..." : pendingPhrase}
+            />
+          </div>
+        )}
 
         {/* Thinking receipts removed from the inline conversation flow —
             they belong in a dismissible floating HUD, not interrupting
