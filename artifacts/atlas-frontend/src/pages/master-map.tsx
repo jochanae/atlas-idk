@@ -968,16 +968,8 @@ export default function MasterMap() {
         setPeek(null);
         setWarping(true);
         setTimeout(() => {
-          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-          fetch("/api/sessions/atlas", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-            body: JSON.stringify({ title: "New conversation", mode: "think" }),
-          })
-            .then((r) => r.json())
-            .then((s: { id?: number }) => { setLocation(s.id ? `/atlas/${s.id}` : "/atlas"); })
-            .catch(() => { setLocation("/atlas"); });
+          try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
+          setLocation("/home");
         }, 950);
         return;
       }

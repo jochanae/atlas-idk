@@ -117,7 +117,6 @@ import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer, type ChatComposerProps } from "@/components/workspace/ChatComposer";
-import { WorkspaceConversationSurface } from "@/components/workspace/WorkspaceConversationSurface";
 import { useNexusWorkspaceBridge } from "@/hooks/useNexusWorkspaceBridge";
 
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";

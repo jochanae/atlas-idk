@@ -167,8 +167,6 @@ function UnifiedShellRoutes() {
       <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100dvh" }}><LoadingSpinner /></div>}>
         <Switch>
           <Route path="/home" component={Home} />
-          <Route path="/atlas/:atlasSessionId" component={Workspace} />
-          <Route path="/atlas" component={Workspace} />
           <Route path="/project/:projectId" component={Workspace} />
           <Route path="/workspace/:conversationId" component={Workspace} />
         </Switch>

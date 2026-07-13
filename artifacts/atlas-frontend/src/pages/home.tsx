@@ -2011,6 +2011,20 @@ export default function Home() {
     window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
     return () => window.removeEventListener("axiom:ask-atlas", onAsk as EventListener);
   }, []);
+
+  // When navigating here from Master Map center tap (or any other surface that
+  // wants to open Ask Atlas), check for the sessionStorage flag and open immediately.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("atlas-open-ask")) {
+        sessionStorage.removeItem("atlas-open-ask");
+        askAtlasSession.clearClosed();
+        setAskAtlasSurfaceOpen(true);
+        window.setTimeout(() => { textareaRef.current?.focus(); }, 60);
+      }
+    } catch {}
+  }, []);
+
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
