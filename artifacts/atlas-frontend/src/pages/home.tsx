@@ -11,6 +11,7 @@ import { useListProjects } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
+import type { AtlasConversation } from "../components/ProjectsDrawer";
 import { ShellLogSheet } from "../components/ShellLogSheet";
 import { ParkingBadgeIcon } from "@/components/ParkingBadgeIcon";
 import { TimelineRail } from "../components/TimelineRail";
@@ -1892,6 +1893,27 @@ export default function Home() {
     window.addEventListener("axiom:open-invite", open);
     return () => window.removeEventListener("axiom:open-invite", open);
   }, []);
+  const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
+  const fetchAtlasConversations = useCallback(() => {
+    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+    fetch("/api/sessions/atlas", {
+      credentials: "include",
+      headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Array<{ id: number; title?: string | null; messageCount?: number; updatedAt?: string | null; createdAt?: string | null }>) => {
+        setDrawerAtlasConversations(data.map(s => ({
+          id: s.id,
+          title: s.title || "New conversation",
+          messageCount: s.messageCount ?? 0,
+          updatedAt: s.updatedAt ?? null,
+          createdAt: s.createdAt ?? null,
+        })));
+      })
+      .catch(() => {});
+  }, []);
+  useEffect(() => { fetchAtlasConversations(); }, [fetchAtlasConversations]);
+
   const [resumeBustSignal, setResumeBustSignal] = useState(0);
   const [showProjectsSheet, setShowProjectsSheet] = useState(false);
   const [showOverviewSheet, setShowOverviewSheet] = useState(false);
@@ -2123,9 +2145,9 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    // Ask Atlas opens only by explicit user action. Stored conversation IDs are
-    // history, not an instruction to re-enter Ask Atlas or a project context.
-    return false;
+    // Default to open — Ask Atlas is the primary home conversation surface.
+    // Toggling the button off closes it and restores normal composer behavior.
+    return true;
   });
   // True while the thread restore fetch is in-flight. Initialized synchronously
   // from storage so the surface is visible immediately on return (no blank flash).
@@ -5874,6 +5896,27 @@ export default function Home() {
         onOpenShell={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-shell")); }}
         onSelectConversation={(id) => { setShowDrawer(false); void handleSwitchConversation(id); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
+        atlasConversations={drawerAtlasConversations}
+        onNewAtlasConversation={async () => {
+          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+          try {
+            const r = await fetch("/api/sessions/atlas", {
+              method: "POST", credentials: "include",
+              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+              body: JSON.stringify({ title: "New conversation", mode: "think" }),
+            });
+            const s = await r.json() as { id: number };
+            fetchAtlasConversations();
+            setShowDrawer(false);
+            setAskAtlasSurfaceOpen(true);
+            nexusChat.clearMessages();
+            askAtlasSession.clearConversationId();
+          } catch { setShowDrawer(false); }
+        }}
+        onOpenAtlasConversation={(id) => {
+          setShowDrawer(false);
+          setLocation(`/atlas/${id}`);
+        }}
       />
 
       <ShellLogSheet

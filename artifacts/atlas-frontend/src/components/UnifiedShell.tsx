@@ -2433,6 +2433,10 @@ function ShellFooter() {
     window.dispatchEvent(new CustomEvent("axiom:open-specify"));
   }, []);
 
+  const openAskAtlas = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
+  }, []);
+
 
   const navItems = useMemo<[ShellNavItem, ShellNavItem, ShellNavItem, ShellNavItem]>(() => {
     if (renderDepth === "operational") {
@@ -2519,7 +2523,7 @@ function ShellFooter() {
       >
         <ShellFooterNavItem item={navItems[0]} visible={itemsVisible} />
         <ShellFooterNavItem item={navItems[1]} visible={itemsVisible} />
-        <ShellCenterButton onTap={centerAction} onLongPress={openSpecify} />
+        <ShellCenterButton onTap={centerAction} onLongPress={openAskAtlas} />
         <ShellFooterNavItem item={navItems[2]} visible={itemsVisible} />
         <ShellFooterNavItem item={navItems[3]} visible={itemsVisible} />
       </div>
