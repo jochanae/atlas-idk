@@ -968,11 +968,7 @@ export default function MasterMap() {
         setPeek(null);
         setWarping(true);
         setTimeout(() => {
-          try {
-            sessionStorage.setItem("atlas-open-ask", "1");
-            sessionStorage.setItem("atlas-open-ask-seed", "Give me a strategic overview of my current projects — what's active, what needs attention, and where should I focus?");
-            sessionStorage.setItem("atlas-open-ask-autosend", "1");
-          } catch {}
+          try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
           setLocation("/home");
         }, 950);
         return;

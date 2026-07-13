@@ -2002,19 +2002,10 @@ export default function Home() {
   // Radial menu "Ask Atlas" → open the AskAtlasSurface + focus its composer.
   useEffect(() => {
     const onAsk = (e: Event) => {
-      const detail = (e as CustomEvent<{ seed?: string; autoSend?: boolean }>).detail;
+      const detail = (e as CustomEvent<{ seed?: string }>).detail;
       askAtlasSession.clearClosed();
       setAskAtlasSurfaceOpen(true);
-      setAskAtlasSurfaceForced(true);
-      if (detail?.seed) {
-        if (detail.autoSend) {
-          window.setTimeout(() => {
-            void askAtlasChat.send({ text: detail.seed! });
-          }, 80);
-        } else {
-          setInput(detail.seed);
-        }
-      }
+      if (detail?.seed) setInput(detail.seed);
       window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
     };
     window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
@@ -2026,19 +2017,9 @@ export default function Home() {
   useEffect(() => {
     try {
       if (sessionStorage.getItem("atlas-open-ask")) {
-        const seed = sessionStorage.getItem("atlas-open-ask-seed") ?? undefined;
-        const autoSend = sessionStorage.getItem("atlas-open-ask-autosend") === "1";
         sessionStorage.removeItem("atlas-open-ask");
-        sessionStorage.removeItem("atlas-open-ask-seed");
-        sessionStorage.removeItem("atlas-open-ask-autosend");
         askAtlasSession.clearClosed();
         setAskAtlasSurfaceOpen(true);
-        setAskAtlasSurfaceForced(true);
-        if (seed && autoSend) {
-          window.setTimeout(() => { void askAtlasChat.send({ text: seed }); }, 120);
-        } else if (seed) {
-          setInput(seed);
-        }
         window.setTimeout(() => { textareaRef.current?.focus(); }, 60);
       }
     } catch {}
@@ -2185,14 +2166,12 @@ export default function Home() {
   const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
     return false;
   });
-  // True when the surface was explicitly opened by an intentional action (radial
-  // menu, Master Map center tap, lock button, etc.) rather than just composer focus.
-  // Ensures the full overlay renders immediately even before the first message.
-  const [askAtlasSurfaceForced, setAskAtlasSurfaceForced] = useState(false);
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
-  // only appears once the user has actually sent the first message, OR when
-  // explicitly triggered (askAtlasSurfaceForced=true), OR while restoring.
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring || askAtlasSurfaceForced);
+  // only appears once the user has actually sent the first message. Until then
+  // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
+  // button and routes sends to askAtlasChat.
+  // Also visible while restoring so the surface never flashes blank on return.
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -2395,7 +2374,6 @@ export default function Home() {
       // stream so the hero/quick-actions come back.
       void callAskAtlasMode(false);
       setAskAtlasSurfaceOpen(false);
-      setAskAtlasSurfaceForced(false);
       try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
       try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
       conversationThreadRequestRef.current = null;
@@ -2412,7 +2390,6 @@ export default function Home() {
       setShowHistory(false);
       setShowFocusPicker(false);
       setAskAtlasSurfaceOpen(true);
-      setAskAtlasSurfaceForced(true);
       window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
       toast("Ask Atlas · Strategic view", {
         className: "atlas-toast-premium",
