@@ -2034,9 +2034,15 @@ export default function Home() {
     try {
       if (sessionStorage.getItem("atlas-open-ask")) {
         sessionStorage.removeItem("atlas-open-ask");
+        const seed = sessionStorage.getItem("atlas-open-ask-seed");
+        sessionStorage.removeItem("atlas-open-ask-seed");
         askAtlasSession.clearClosed();
         setAskAtlasSurfaceOpen(true);
-        window.setTimeout(() => { textareaRef.current?.focus(); }, 60);
+        if (seed === "portfolio") {
+          askAtlasSeedPendingRef.current = true;
+        } else {
+          window.setTimeout(() => { textareaRef.current?.focus(); }, 60);
+        }
       }
     } catch {}
   }, []);
@@ -3504,15 +3510,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!askAtlasSeedPendingRef.current || threadLoading || isSending) return;
-    if (nexusChat.messages.length > 0) {
+    if (!askAtlasSeedPendingRef.current || isSending) return;
+    // Guard against firing when the conversation already has content.
+    if (askAtlasChat.messages.length > 0) {
       askAtlasSeedPendingRef.current = false;
       return;
     }
+    // Wait until Ask Atlas is actually open before sending.
+    if (!askAtlasSurfaceOpen) return;
 
     askAtlasSeedPendingRef.current = false;
     void handleSubmit(ASK_ATLAS_PORTFOLIO_SEED, { forceStayOnHome: true });
-  }, [handleSubmit, isSending, nexusChat.messages.length, threadLoading]);
+  }, [handleSubmit, isSending, askAtlasChat.messages.length, askAtlasSurfaceOpen]);
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {

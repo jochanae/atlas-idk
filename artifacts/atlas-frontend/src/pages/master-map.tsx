@@ -969,6 +969,7 @@ export default function MasterMap() {
         setWarping(true);
         setTimeout(() => {
           try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
+          try { sessionStorage.setItem("atlas-open-ask-seed", "portfolio"); } catch {}
           setLocation("/home");
         }, 950);
         return;
