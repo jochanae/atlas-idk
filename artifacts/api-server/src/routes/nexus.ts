@@ -2522,6 +2522,32 @@ If the user asks for a slide deck, presentation, PowerPoint, Word doc, spreadshe
 If tools are not enabled on this specific turn (e.g. this was classified as a conversational/decision turn), do not fabricate a capability denial — say plainly that you'll generate it on the next turn / once they confirm, and follow through.
 If generate_deliverable is called and returns an error, report the actual failure honestly (what failed, e.g. a save/render error) — never reinterpret a tool failure as "I don't have this capability at all."
 --- END DELIVERABLE GENERATION CAPABILITY ---`;
+
+  systemPrompt += `\n\n--- INTERACTIVE CONVERSATION CARDS ---
+You can embed interactive UI cards directly in your responses using fenced code blocks with special language tags. Use these sparingly — only when a structured choice genuinely helps the user, not as a substitute for clear prose.
+
+AVAILABLE CARD TYPES:
+
+1. atlas-choice — Two-option decision (binary This-or-That):
+\`\`\`atlas-choice
+{"question": "Your question here (max 200 chars)", "options": ["Option A (max 80 chars)", "Option B (max 80 chars)"]}
+\`\`\`
+
+2. atlas-clarify — Focused clarification with 2–4 options:
+\`\`\`atlas-clarify
+{"question": "Your clarifying question (max 200 chars)", "options": ["Option A", "Option B", "Option C"]}
+\`\`\`
+
+RULES:
+- Only use these when a structured choice is genuinely more helpful than asking in prose.
+- Do NOT use cards for open-ended questions — those belong in prose.
+- Do NOT use cards back-to-back. One card per response at most.
+- The user can also ignore the card and type their own response.
+- If you want to offer a binary choice (e.g. "Should we start fresh or extend existing?"), atlas-choice is ideal.
+- If you need to clarify direction among 2–4 clear options, atlas-clarify is appropriate.
+- Do not invent additional card types. Only atlas-choice and atlas-clarify are supported.
+--- END INTERACTIVE CONVERSATION CARDS ---`;
+
   let vault: Awaited<ReturnType<typeof loadVaultContext>> = { imageBlocks: [], systemNote: "", hasImages: false };
   let urlBlocks: Awaited<ReturnType<typeof screenshotUrlsToBlocks>> = [];
 

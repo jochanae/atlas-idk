@@ -5741,6 +5741,7 @@ export default function Home() {
           setAttachedFiles(combined);
         }}
         onSketch={(prompt) => { void askAtlasChat.send({ text: prompt }); }}
+        onSend={(text) => { void askAtlasChat.send({ text }); }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}

@@ -17,20 +17,26 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 // Code fences are preserved verbatim. Does NOT attempt full markdown parsing.
 function sanitizeForStreaming(text: string): string {
   const lines = text.split("\n");
+  const out: string[] = [];
   let inFence = false;
-  return lines
-    .map((line) => {
-      if (/^```/.test(line)) { inFence = !inFence; return line; }
-      if (inFence) return line;
-      return line
-        // heading markers → keep the heading text, drop the hashes
+  let inAtlasFence = false;
+  for (const line of lines) {
+    // Atlas card fences — hide the entire block during streaming so the
+    // user never sees raw JSON payload.
+    if (!inFence && /^```atlas-/.test(line)) { inAtlasFence = true; continue; }
+    if (inAtlasFence) { if (/^```\s*$/.test(line)) inAtlasFence = false; continue; }
+    // Regular code fences — preserve verbatim.
+    if (/^```/.test(line)) { inFence = !inFence; out.push(line); continue; }
+    if (inFence) { out.push(line); continue; }
+    // Outside all fences — strip the most visually jarring markdown syntax.
+    out.push(
+      line
         .replace(/^#{1,6}\s+/, "")
-        // bold-italic, bold, italic → keep the inner text
         .replace(/\*{1,3}([^*\n]+)\*{1,3}/g, "$1")
-        // table separator lines (|---|---| etc.) → blank
-        .replace(/^\s*\|[-:\s|]+\|\s*$/, "");
-    })
-    .join("\n");
+        .replace(/^\s*\|[-:\s|]+\|\s*$/, ""),
+    );
+  }
+  return out.join("\n");
 }
 import { type NexusHandoffSignal } from "@/hooks/useNexusChatStream";
 import { useLocation } from "wouter";
@@ -104,6 +110,9 @@ interface Props {
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
   onCreateProject?: (nameOverride?: string) => void;
+  /** When an interactive card (atlas-choice, atlas-clarify) is tapped, this
+   *  sends the chosen option text as a user message into the conversation. */
+  onSend?: (text: string) => void;
   /** When provided, clicking the crystallize button opens the destination picker
    *  sheet instead of immediately creating a new project. */
   onCrystallize?: () => void;
@@ -144,6 +153,7 @@ export function AskAtlasSurface({
   toggleVoice,
   onOpenHistory,
   onCreateProject,
+  onSend,
   onCrystallize,
   onAddAsset,
   onMore,
@@ -460,6 +470,7 @@ export function AskAtlasSurface({
                       onNavigate={(id) => void handleProjectOpen(id)}
                       isParchment={isParchment}
                       onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
+                      onSend={onSend}
                     />
                   )}
 

@@ -2,6 +2,8 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useLocation } from "wouter";
+import { parseAtlasCard } from "./AtlasCardParser";
+import { AtlasConversationCard } from "./AtlasConversationCards";
 
 type Project = { id: number; name: string };
 
@@ -11,6 +13,8 @@ interface Props {
   onNavigate: (projectId: number) => void;
   isParchment?: boolean;
   onCreateProject?: (nameOverride?: string) => void;
+  /** When provided, interactive cards can submit a reply into the conversation. */
+  onSend?: (text: string) => void;
 }
 
 const FILE_PATH_RE =
@@ -24,6 +28,7 @@ export function AskAtlasRenderer({
   onNavigate,
   isParchment,
   onCreateProject,
+  onSend,
 }: Props) {
   if (!content) return null;
 
@@ -253,19 +258,53 @@ export function AskAtlasRenderer({
             </a>
           ),
 
-          // ── Code ──────────────────────────────────────────────────────────
-          pre: ({ children }) => (
-            <pre
-              style={{
-                overflowX: "auto",
-                maxWidth: "100%",
-                WebkitOverflowScrolling: "touch",
-                margin: "0.75em 0",
-              }}
-            >
-              {children}
-            </pre>
-          ),
+          // ── Code / Atlas cards ─────────────────────────────────────────────
+          // Atlas card blocks (atlas-choice, atlas-clarify) are intercepted here
+          // at the <pre> level so we can bypass the <pre> wrapper entirely.
+          // Invalid or unparseable payloads fall back to null (hidden silently).
+          pre: ({ children }) => {
+            let atlasLang = "";
+            let rawContent = "";
+            try {
+              const child = React.Children.only(children) as React.ReactElement<{
+                className?: string;
+                children?: React.ReactNode;
+              }>;
+              const lang = child?.props?.className?.replace(/^language-/, "") ?? "";
+              if (lang.startsWith("atlas-")) {
+                atlasLang = lang;
+                rawContent = String(child.props.children ?? "");
+              }
+            } catch { /* not a single-child code block — pass through */ }
+
+            if (atlasLang) {
+              const card = parseAtlasCard(atlasLang, rawContent);
+              if (card && onSend) {
+                return (
+                  <AtlasConversationCard
+                    card={card}
+                    onSend={onSend}
+                    isParchment={isParchment}
+                  />
+                );
+              }
+              // Graceful fallback: malformed/unsupported card → hide silently.
+              return null;
+            }
+
+            return (
+              <pre
+                style={{
+                  overflowX: "auto",
+                  maxWidth: "100%",
+                  WebkitOverflowScrolling: "touch",
+                  margin: "0.75em 0",
+                }}
+              >
+                {children}
+              </pre>
+            );
+          },
 
           // ── Table (GFM) ────────────────────────────────────────────────────
           // Wrap in a scrollable container so wide tables don't overflow on mobile.
