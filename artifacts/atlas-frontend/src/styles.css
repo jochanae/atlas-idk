@@ -1034,12 +1034,30 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
 }
 
 .atlas-live-stream-text {
-  font-size: 16.5px;
-  line-height: 1.75;
-  letter-spacing: 0.015em;
+  font-size: 16px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
   font-family: var(--app-font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+@media (max-width: 640px) {
+  .atlas-live-stream-text { font-size: 15.5px; line-height: 1.65; }
+}
+/* Assistant prose flow — comfortable measure + generous paragraph rhythm. */
+.atlas-prose-flow {
+  font-size: 16px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  font-family: var(--app-font-sans);
+  color: var(--atlas-fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  max-width: 68ch;
+  word-break: break-word;
+}
+@media (max-width: 640px) {
+  .atlas-prose-flow { font-size: 15.5px; line-height: 1.65; max-width: 100%; }
 }
 
 /* ── First-run overlay animations ── */
