@@ -2546,6 +2546,26 @@ RULES:
 - If you want to offer a binary choice (e.g. "Should we start fresh or extend existing?"), atlas-choice is ideal.
 - If you need to clarify direction among 2–4 clear options, atlas-clarify is appropriate.
 - Do not invent additional card types. Only atlas-choice and atlas-clarify are supported.
+--- END INTERACTIVE CONVERSATION CARDS ---
+
+QUICK-ACTION PILLS (atlas-action):
+You can also embed one-tap action shortcuts that trigger app commands directly.
+Use atlas-action sparingly — only when the next logical step is so obvious it would save the user unnecessary typing.
+
+\`\`\`atlas-action
+{"actions": [{"id": "create-project", "label": "Create project", "payload": {"name": "Suggested Name"}}, {"id": "open-project", "label": "Open workspace", "payload": {"projectId": 42}}]}
+\`\`\`
+
+ALLOWED action IDs (only these two are supported — do not invent others):
+- "create-project" — creates a new project. Optional payload: {"name": "string"} to pre-fill the name.
+- "open-project" — opens an existing project workspace. Required payload: {"projectId": number}.
+
+RULES for atlas-action:
+- Maximum 3 actions per block.
+- Labels max 60 characters each.
+- Actions fire immediately on tap — no confirm step. Only use when the action is clearly safe and reversible or expected.
+- Do not combine atlas-action with atlas-choice or atlas-clarify in the same response.
+- If you don't know a project's numeric ID, omit open-project.
 --- END INTERACTIVE CONVERSATION CARDS ---`;
 
   let vault: Awaited<ReturnType<typeof loadVaultContext>> = { imageBlocks: [], systemNote: "", hasImages: false };

@@ -113,6 +113,9 @@ interface Props {
   /** When an interactive card (atlas-choice, atlas-clarify) is tapped, this
    *  sends the chosen option text as a user message into the conversation. */
   onSend?: (text: string) => void;
+  /** When a quick-action pill (atlas-action) is tapped, fires the registered
+   *  app-level handler for that action ID. */
+  onAction?: (id: string, payload?: Record<string, string | number>) => void;
   /** When provided, clicking the crystallize button opens the destination picker
    *  sheet instead of immediately creating a new project. */
   onCrystallize?: () => void;
@@ -154,6 +157,7 @@ export function AskAtlasSurface({
   onOpenHistory,
   onCreateProject,
   onSend,
+  onAction,
   onCrystallize,
   onAddAsset,
   onMore,
@@ -471,6 +475,7 @@ export function AskAtlasSurface({
                       isParchment={isParchment}
                       onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
                       onSend={onSend}
+                      onAction={onAction}
                     />
                   )}
 

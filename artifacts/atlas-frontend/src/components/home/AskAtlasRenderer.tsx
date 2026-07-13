@@ -4,6 +4,8 @@ import remarkGfm from "remark-gfm";
 import { useLocation } from "wouter";
 import { parseAtlasCard } from "./AtlasCardParser";
 import { AtlasConversationCard } from "./AtlasConversationCards";
+import { parseAtlasAction } from "./AtlasActionParser";
+import { AtlasActionRow } from "./AtlasActionRow";
 
 type Project = { id: number; name: string };
 
@@ -15,6 +17,8 @@ interface Props {
   onCreateProject?: (nameOverride?: string) => void;
   /** When provided, interactive cards can submit a reply into the conversation. */
   onSend?: (text: string) => void;
+  /** When provided, quick-action pills trigger app-level commands (create-project, open-project). */
+  onAction?: (id: string, payload?: Record<string, string | number>) => void;
 }
 
 const FILE_PATH_RE =
@@ -29,6 +33,7 @@ export function AskAtlasRenderer({
   isParchment,
   onCreateProject,
   onSend,
+  onAction,
 }: Props) {
   if (!content) return null;
 
@@ -278,6 +283,22 @@ export function AskAtlasRenderer({
             } catch { /* not a single-child code block — pass through */ }
 
             if (atlasLang) {
+              // ── Quick-action row ──
+              if (atlasLang === "atlas-action") {
+                const block = parseAtlasAction(rawContent);
+                if (block && onAction) {
+                  return (
+                    <AtlasActionRow
+                      block={block}
+                      onAction={onAction}
+                      isParchment={isParchment}
+                    />
+                  );
+                }
+                return null;
+              }
+
+              // ── Choice / clarify cards ──
               const card = parseAtlasCard(atlasLang, rawContent);
               if (card && onSend) {
                 return (
@@ -288,7 +309,7 @@ export function AskAtlasRenderer({
                   />
                 );
               }
-              // Graceful fallback: malformed/unsupported card → hide silently.
+              // Graceful fallback: malformed/unsupported block → hide silently.
               return null;
             }
 

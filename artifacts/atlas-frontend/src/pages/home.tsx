@@ -5742,6 +5742,15 @@ export default function Home() {
         }}
         onSketch={(prompt) => { void askAtlasChat.send({ text: prompt }); }}
         onSend={(text) => { void askAtlasChat.send({ text }); }}
+        onAction={(id, payload) => {
+          if (id === "create-project") {
+            const name = typeof payload?.name === "string" ? payload.name : undefined;
+            handleAskAtlasCreateProject(name);
+          } else if (id === "open-project") {
+            const projectId = typeof payload?.projectId === "number" ? payload.projectId : undefined;
+            if (projectId) setLocation(`/project/${projectId}`);
+          }
+        }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
