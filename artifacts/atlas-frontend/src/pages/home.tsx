@@ -1931,10 +1931,23 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     try {
-      // If Ask Atlas has a prior conversation it will restore into its own surface.
-      // Don't also load it into nexusChat — that's what creates the mystery surface.
-      if (askAtlasSession.getConversationId() && !askAtlasSession.isClosed()) return null;
-      return sessionStorage.getItem("atlas-home-conversation-id") ?? localStorage.getItem("atlas-home-conversation-id") ?? null;
+      const askAtlasId = askAtlasSession.getConversationId();
+      const homeId = sessionStorage.getItem("atlas-home-conversation-id") ?? localStorage.getItem("atlas-home-conversation-id");
+
+      // One-time migration: if nexusChat has a stale conversation ID but Ask Atlas
+      // doesn't, claim it for Ask Atlas so it loads in the right surface.
+      // User never needs to clear their browser storage manually.
+      if (!askAtlasId && homeId) {
+        askAtlasSession.setConversationId(homeId);
+        try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+        try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+        return null; // nexusChat gets nothing
+      }
+
+      // If Ask Atlas already owns a conversation, nexusChat gets nothing.
+      if (askAtlasId && !askAtlasSession.isClosed()) return null;
+
+      return homeId;
     } catch {
       return null;
     }
