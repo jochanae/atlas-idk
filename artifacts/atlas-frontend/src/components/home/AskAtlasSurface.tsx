@@ -11,6 +11,27 @@
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+
+// Strips the most visually jarring raw-markdown syntax during streaming so the
+// user doesn't see **asterisks** and ## hashes for the full response duration.
+// Code fences are preserved verbatim. Does NOT attempt full markdown parsing.
+function sanitizeForStreaming(text: string): string {
+  const lines = text.split("\n");
+  let inFence = false;
+  return lines
+    .map((line) => {
+      if (/^```/.test(line)) { inFence = !inFence; return line; }
+      if (inFence) return line;
+      return line
+        // heading markers → keep the heading text, drop the hashes
+        .replace(/^#{1,6}\s+/, "")
+        // bold-italic, bold, italic → keep the inner text
+        .replace(/\*{1,3}([^*\n]+)\*{1,3}/g, "$1")
+        // table separator lines (|---|---| etc.) → blank
+        .replace(/^\s*\|[-:\s|]+\|\s*$/, "");
+    })
+    .join("\n");
+}
 import { type NexusHandoffSignal } from "@/hooks/useNexusChatStream";
 import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
@@ -429,7 +450,7 @@ export function AskAtlasSurface({
                   )}
                   {msg.role === "assistant" && msg.streaming ? (
                     <span className="atlas-live-stream-text" style={{ whiteSpace: "pre-wrap" }}>
-                      {displayContent}
+                      {sanitizeForStreaming(displayContent)}
                       <span className="atlas-cursor" aria-hidden />
                     </span>
                   ) : (

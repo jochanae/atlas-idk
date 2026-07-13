@@ -1,5 +1,6 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useLocation } from "wouter";
 
 type Project = { id: number; name: string };
@@ -61,7 +62,7 @@ export function AskAtlasRenderer({
       stage1.push({ type: "text", text });
     }
 
-    // Pass 2: project names within text segments
+    // Pass 2: project names
     const stage2: Seg[] = [];
     const combined = namePattern ? new RegExp(`(${namePattern})`, "gi") : null;
     for (const seg of stage1) {
@@ -78,7 +79,7 @@ export function AskAtlasRenderer({
       }
     }
 
-    // Pass 3: file paths within remaining text segments
+    // Pass 3: file paths
     const stage3: Seg[] = [];
     for (const seg of stage2) {
       if (seg.type !== "text") { stage3.push(seg); continue; }
@@ -93,7 +94,6 @@ export function AskAtlasRenderer({
       if (last < seg.text.length) stage3.push({ type: "text", text: seg.text.slice(last) });
     }
 
-    // If nothing special was found, return the plain string to avoid wrapping.
     if (stage3.every((s) => s.type === "text")) return text;
 
     return (
@@ -158,6 +158,8 @@ export function AskAtlasRenderer({
                   borderRadius: 4,
                   padding: "1px 4px",
                   cursor: "default",
+                  wordBreak: "break-all",
+                  overflowWrap: "anywhere",
                 }}
               >
                 {seg.text}
@@ -170,8 +172,7 @@ export function AskAtlasRenderer({
     );
   }
 
-  // Walk ReactMarkdown's children prop — apply tokenizeText to any bare string nodes
-  // while leaving existing React elements (links, etc.) untouched.
+  // Walk ReactMarkdown children — apply tokenizeText to bare string nodes.
   function processChildren(children: React.ReactNode): React.ReactNode {
     const mapped = React.Children.map(children, (child) => {
       if (typeof child === "string") return tokenizeText(child);
@@ -181,13 +182,47 @@ export function AskAtlasRenderer({
   }
 
   return (
-    // Reset whiteSpace to normal so markdown block structure renders correctly.
-    // The parent container has pre-wrap for the streaming path; we override here.
-    <div style={{ whiteSpace: "normal" }}>
+    <div style={{ whiteSpace: "normal", overflowX: "hidden", maxWidth: "100%" }}>
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           p: ({ children }) => <p>{processChildren(children)}</p>,
-          li: ({ children }) => <li>{processChildren(children)}</li>,
+
+          // ── Lists ──────────────────────────────────────────────────────────
+          ul: ({ children }) => (
+            <ul
+              style={{
+                paddingLeft: "1.4em",
+                margin: "0.4em 0",
+                listStyleType: "disc",
+              }}
+            >
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol
+              style={{
+                paddingLeft: "1.4em",
+                margin: "0.4em 0",
+                listStyleType: "decimal",
+              }}
+            >
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li
+              style={{
+                display: "list-item",
+                margin: "0.18em 0",
+              }}
+            >
+              {processChildren(children)}
+            </li>
+          ),
+
+          // ── Inline formatting ──────────────────────────────────────────────
           strong: ({ children }) => <strong>{processChildren(children)}</strong>,
           em: ({ children }) => <em>{processChildren(children)}</em>,
           a: ({ href, children }) => (
@@ -203,6 +238,87 @@ export function AskAtlasRenderer({
             >
               {processChildren(children)}
             </a>
+          ),
+
+          // ── Code ──────────────────────────────────────────────────────────
+          pre: ({ children }) => (
+            <pre
+              style={{
+                overflowX: "auto",
+                maxWidth: "100%",
+                WebkitOverflowScrolling: "touch",
+                margin: "0.75em 0",
+              }}
+            >
+              {children}
+            </pre>
+          ),
+
+          // ── Table (GFM) ────────────────────────────────────────────────────
+          // Wrap in a scrollable container so wide tables don't overflow on mobile.
+          table: ({ children }) => (
+            <div
+              style={{
+                overflowX: "auto",
+                maxWidth: "100%",
+                WebkitOverflowScrolling: "touch",
+                margin: "0.75em 0",
+                borderRadius: 6,
+                border: isParchment
+                  ? "1px solid rgba(146,64,14,0.2)"
+                  : "1px solid rgba(212,175,55,0.15)",
+              }}
+            >
+              <table
+                style={{
+                  borderCollapse: "collapse",
+                  width: "100%",
+                  minWidth: "max-content",
+                  fontSize: "0.9em",
+                }}
+              >
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => <thead>{children}</thead>,
+          tbody: ({ children }) => <tbody>{children}</tbody>,
+          tr: ({ children }) => (
+            <tr
+              style={{
+                borderBottom: isParchment
+                  ? "1px solid rgba(146,64,14,0.12)"
+                  : "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              {children}
+            </tr>
+          ),
+          th: ({ children }) => (
+            <th
+              style={{
+                padding: "7px 12px",
+                textAlign: "left",
+                fontWeight: 600,
+                color: linkColor,
+                whiteSpace: "nowrap",
+                borderBottom: isParchment
+                  ? "1px solid rgba(146,64,14,0.25)"
+                  : "1px solid rgba(212,175,55,0.25)",
+              }}
+            >
+              {processChildren(children)}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td
+              style={{
+                padding: "6px 12px",
+                verticalAlign: "top",
+              }}
+            >
+              {processChildren(children)}
+            </td>
           ),
         }}
       >

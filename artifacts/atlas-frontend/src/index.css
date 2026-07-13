@@ -50,6 +50,9 @@
   color: hsl(var(--code-fg));
   border: 1px solid hsl(var(--code-border));
   backdrop-filter: blur(12px);
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .prose pre code,
