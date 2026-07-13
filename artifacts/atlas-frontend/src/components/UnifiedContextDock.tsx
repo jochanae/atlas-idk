@@ -765,11 +765,9 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 setShowAtlasHub(false);
                 const onHome = location === "/home" || location === "/";
                 if (!onHome) {
+                  // Use sessionStorage flag — more reliable than setTimeout across navigation
+                  try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
                   setLocation("/home");
-                  window.setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
-                    window.dispatchEvent(new Event("atlas:focus-composer"));
-                  }, 60);
                 } else {
                   window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
                   window.dispatchEvent(new Event("atlas:focus-composer"));
