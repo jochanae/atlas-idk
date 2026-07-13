@@ -7,7 +7,7 @@ import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
 
 export type AtlasConversation = {
-  id: number;
+  id: string | number;
   title: string;
   messageCount?: number;
   updatedAt?: string | null;
@@ -42,7 +42,7 @@ type Props = {
   atlasConversations?: AtlasConversation[];
   activeAtlasSessionId?: number | null;
   onNewAtlasConversation?: () => void;
-  onOpenAtlasConversation?: (id: number) => void;
+  onOpenAtlasConversation?: (id: string | number) => void;
 };
 
 export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, userLabel, atlasConversations, activeAtlasSessionId, onNewAtlasConversation, onOpenAtlasConversation }: Props) {

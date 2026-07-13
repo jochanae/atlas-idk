@@ -299,7 +299,7 @@ export function AskAtlasSurface({
         display: "flex",
         flexDirection: "column",
         background: "transparent",
-        zIndex: 60,
+        zIndex: 260,
         overscrollBehavior: "contain",
         touchAction: "pan-y",
       }}
@@ -699,7 +699,7 @@ export function AskAtlasSurface({
             opacity: focused ? 1 : 0,
             pointerEvents: focused ? "auto" : "none",
             transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1)",
-            zIndex: 55,
+            zIndex: 255,
           }}
         />
       )}
@@ -710,7 +710,7 @@ export function AskAtlasSurface({
           position: "fixed",
           left: 0, right: 0, bottom: 0,
           height: "60vh",
-          zIndex: 60,
+          zIndex: 260,
           padding: "18px 16px calc(20px + env(safe-area-inset-bottom, 0px))",
           background: isParchment ? "#FFFFFF" : "var(--atlas-surface, #0b0b0d)",
           borderTopLeftRadius: 20,

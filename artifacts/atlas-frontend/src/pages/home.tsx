@@ -1895,18 +1895,15 @@ export default function Home() {
   }, []);
   const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
   const fetchAtlasConversations = useCallback(() => {
-    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-    fetch("/api/sessions/atlas", {
-      credentials: "include",
-      headers: tok ? { Authorization: `Bearer ${tok}` } : {},
-    })
-      .then(r => r.ok ? r.json() : [])
-      .then((data: Array<{ id: number; title?: string | null; messageCount?: number; updatedAt?: string | null; createdAt?: string | null }>) => {
-        setDrawerAtlasConversations(data.map(s => ({
+    fetch("/api/nexus/conversations", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { conversations: [] })
+      .then((data: { conversations?: Array<{ id: string; title?: string | null; messageCount?: number; createdAt?: string | null }> }) => {
+        const list = data.conversations ?? [];
+        setDrawerAtlasConversations(list.map(s => ({
           id: s.id,
           title: s.title || "New conversation",
           messageCount: s.messageCount ?? 0,
-          updatedAt: s.updatedAt ?? null,
+          updatedAt: s.createdAt ?? null,
           createdAt: s.createdAt ?? null,
         })));
       })
@@ -5916,11 +5913,8 @@ export default function Home() {
         }}
         onOpenAtlasConversation={(id) => {
           setShowDrawer(false);
-          // Restore this Ask Atlas conversation on the home surface.
-          askAtlasSession.setConversationId(String(id));
-          setAskAtlasConversationId(String(id));
-          setAskAtlasSurfaceOpen(true);
-          nexusChat.clearMessages();
+          // Use the same resume path as the clock history sheet.
+          void handleSwitchConversation(String(id));
         }}
       />
 
