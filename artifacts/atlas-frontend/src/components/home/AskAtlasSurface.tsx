@@ -195,17 +195,21 @@ export function AskAtlasSurface({
 
   // Smart Anchor auto-scroll — stick to bottom only if user is already near bottom.
   // If they scrolled up to re-read, freeze; don't yank them back during streaming.
+  // Force-jump ONLY when the user sends a new message (not on each assistant turn),
+  // so incoming Atlas replies never rip the reader away from mid-conversation.
+  const userMessageCount = messages.filter(m => m.role === "user").length;
   useSmartAutoScroll(scrollRef, [messages.length, isStreaming], {
     enabled: open,
-    // Force-jump only when message count increments (new turn), not on every streaming tick.
-    forceDeps: [messages.length],
+    threshold: 160,
+    forceDeps: [userMessageCount],
   });
 
   // Follow scroll during streaming — fires on every token so the view tracks
-  // the growing bubble instead of jumping when streaming ends.
+  // the growing bubble instead of jumping when streaming ends. Only follows
+  // when the reader is still near the bottom (respects manual scroll-up).
   useEffect(() => {
     if (!isStreaming) return;
-    followScrollIfNearBottom(scrollRef.current, 160);
+    followScrollIfNearBottom(scrollRef.current, 200);
   }, [messages, isStreaming]);
 
 
