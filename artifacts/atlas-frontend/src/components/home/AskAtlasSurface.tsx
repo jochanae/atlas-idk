@@ -48,6 +48,7 @@ import { ComposerActions, type ComposerMenuAction } from "@/components/composer/
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { type LiveStep, StepProgress } from "@/components/workspace/StepProgress";
+import { ArtifactCreatedCard } from "@/components/workspace/ArtifactCreatedCard";
 import SketchReveal from "@/components/chat/SketchReveal";
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
@@ -84,6 +85,15 @@ export type AskAtlasMessage = {
   pendingSketch?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
+  generatedArtifacts?: Array<{
+    artifactId: number | string;
+    projectId?: number;
+    type: string;
+    title: string;
+    extension?: string;
+    downloadUrl: string;
+    summary?: string | null;
+  }> | null;
 };
 
 export type { LiveStep as AskAtlasLiveStep } from "@/components/workspace/StepProgress";
@@ -506,7 +516,18 @@ export function AskAtlasSurface({
                     />
                   )}
 
-
+                  {msg.role === "assistant" && !msg.streaming &&
+                    msg.generatedArtifacts && msg.generatedArtifacts.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                      {msg.generatedArtifacts.map((artifact) => (
+                        <ArtifactCreatedCard
+                          key={artifact.artifactId}
+                          artifact={artifact}
+                          projectId={artifact.projectId ?? 0}
+                        />
+                      ))}
+                    </div>
+                  )}
 
                 </div>
                 {tokenTarget && (
