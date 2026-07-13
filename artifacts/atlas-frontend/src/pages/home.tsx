@@ -1931,6 +1931,9 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     try {
+      // If Ask Atlas has a prior conversation it will restore into its own surface.
+      // Don't also load it into nexusChat — that's what creates the mystery surface.
+      if (askAtlasSession.getConversationId() && !askAtlasSession.isClosed()) return null;
       return sessionStorage.getItem("atlas-home-conversation-id") ?? localStorage.getItem("atlas-home-conversation-id") ?? null;
     } catch {
       return null;
@@ -2158,13 +2161,19 @@ export default function Home() {
   const [shapingHeld, setShapingHeld] = useState(false);
   // ── Ask Atlas mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    // Stays off until the user taps the composer — onFocus flips it on.
-    return false;
+    // Auto-resume: if the user has a prior Ask Atlas conversation and didn't
+    // explicitly close it this session, open the surface immediately on load.
+    const hasConversation = Boolean(askAtlasSession.getConversationId());
+    const wasClosed = askAtlasSession.isClosed(); // session-scoped, resets per tab
+    return hasConversation && !wasClosed;
   });
   // True while the thread restore fetch is in-flight. Initialized synchronously
   // from storage so the surface is visible immediately on return (no blank flash).
   const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
-    return false;
+    // Start restoring immediately if auto-resuming so the surface renders at once.
+    const hasConversation = Boolean(askAtlasSession.getConversationId());
+    const wasClosed = askAtlasSession.isClosed();
+    return hasConversation && !wasClosed;
   });
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
@@ -2217,7 +2226,26 @@ export default function Home() {
       .then(r => r.ok ? r.json() : [])
       .then((msgs: Array<{ role: string; content: string }>) => {
         const normalized = normalizeLoadedHomeMessages(msgs);
-        if (normalized.length > 0) askAtlasChat.setMessages(normalized as any);
+        if (normalized.length > 0) {
+          // Check if we should add a welcome-back greeting (once per conversation per session).
+          const greetedKey = `atlas-aa-greeted-${askAtlasConversationId}`;
+          const alreadyGreeted = sessionStorage.getItem(greetedKey) === "1";
+          if (!alreadyGreeted) {
+            try { sessionStorage.setItem(greetedKey, "1"); } catch {}
+            // Find the last assistant message to use as context hint.
+            const lastAssistant = [...normalized].reverse().find(m => m.role === "assistant");
+            const contextHint = lastAssistant
+              ? (typeof lastAssistant.content === "string" ? lastAssistant.content : "").slice(0, 80).replace(/\n/g, " ").trim()
+              : null;
+            const greeting = contextHint
+              ? `Welcome back. Picking up where we left off — ${contextHint}… What's next?`
+              : "Welcome back. Ready to continue.";
+            const welcomeMsg = { id: `aa-resume-${Date.now()}`, role: "assistant" as const, content: greeting };
+            askAtlasChat.setMessages([...(normalized as any), welcomeMsg]);
+          } else {
+            askAtlasChat.setMessages(normalized as any);
+          }
+        }
         askAtlasRestoreAttemptRef.current = askAtlasConversationId;
       })
       .catch(() => {
