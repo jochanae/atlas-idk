@@ -245,6 +245,11 @@ export function AskAtlasSurface({
   const handleSubmit = () => {
     if (!canSubmit) return;
     void onSubmit();
+    // Collapse composer to compact resting state + release focus so the
+    // sheet shrinks and the conversation reclaims the screen.
+    setFocused(false);
+    setRestingState("compact");
+    try { textareaRef.current?.blur(); } catch {}
   };
 
   const handleProjectOpen = async (projectId: number) => {
