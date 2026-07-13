@@ -2434,8 +2434,19 @@ function ShellFooter() {
   }, []);
 
   const openAskAtlas = useCallback(() => {
+    // Match the homepage entry: clear the session "closed" flag, ensure we're
+    // on /home so the AskAtlasSurface listener is mounted, then dispatch.
+    try { sessionStorage.removeItem("atlas-ask-atlas-closed"); } catch {}
+    const onHome = location === "/home" || location === "/";
+    if (!onHome) {
+      setLocation("/home");
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
+      }, 50);
+      return;
+    }
     window.dispatchEvent(new CustomEvent("axiom:ask-atlas"));
-  }, []);
+  }, [location, setLocation]);
 
 
   const navItems = useMemo<[ShellNavItem, ShellNavItem, ShellNavItem, ShellNavItem]>(() => {
