@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
-import { renderChildrenWithCitations } from "@/features/codebase";
-import { Project, getListProjectsQueryKey, getGetProjectQueryKey, createProject, useCreateProject, createEntry, useCreateEntry } from "@workspace/api-client-react";
+import { Project, getListProjectsQueryKey, createProject, useCreateProject, createEntry, useCreateEntry } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
@@ -12,7 +11,6 @@ import { useListProjects } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
-import type { AtlasConversation } from "../components/ProjectsDrawer";
 import { ShellLogSheet } from "../components/ShellLogSheet";
 import { ParkingBadgeIcon } from "@/components/ParkingBadgeIcon";
 import { TimelineRail } from "../components/TimelineRail";
@@ -29,9 +27,10 @@ import { WriteTab } from "@/components/workspace/WriteTab";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
+import { AskAtlasSurface } from "@/components/home/AskAtlasSurface";
+import { CrystallizeSheet } from "@/components/home/CrystallizeSheet";
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
 import { FocusModeAura } from "@/components/FocusModeAura";
-
 
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
@@ -50,7 +49,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, Clock, Briefcase, X, Maximize2, Minimize2, Globe, ArrowRight } from "lucide-react";
+import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2, Globe, ArrowRight } from "lucide-react";
 import { ParkSheet } from "@/components/ParkSheet";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
@@ -68,19 +67,9 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
+import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { askAtlasSession } from "@/lib/askAtlasSession";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
-
-// Ask Atlas dead-state shims (Turn D). Surface + streams are gone; these
-// keep the remaining internal state referenceable until the next sweep
-// deletes the state itself. All behavior is no-op.
-const askAtlasSession = {
-  getConversationId: (): string | null => null,
-  setConversationId: (_id: string) => {},
-  clearConversationId: () => {},
-  setSurfaceOpen: (_open: boolean) => {},
-  clearClosed: () => {},
-};
-const triggerNexusHandoff = async (_opts: any): Promise<void> => {};
 
 
 const PLACEHOLDERS = [
@@ -109,8 +98,92 @@ const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to thi
 const ASK_ATLAS_PORTFOLIO_SEED =
   "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
 
-// AskAtlasTitleCarousel removed (Turn D).
-
+function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
+  const ctx = useActiveProjectContext();
+  const restoreWorkspaceChip = () => {
+    window.dispatchEvent(new CustomEvent("axiom:restore-workspace-context-chip"));
+  };
+  // Header title rotation stripped (Pass 1). Header is permanently
+  // "Ask Atlas"; the project name lives in the CommitPill only.
+  return (
+    <>
+      <style>{`
+        @keyframes ask-atlas-title-ping {
+          0% { transform: scale(1); opacity: 0.6; }
+          75%, 100% { transform: scale(2.2); opacity: 0; }
+        }
+      `}</style>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
+        <button
+          type="button"
+          onClick={ctx ? restoreWorkspaceChip : undefined}
+          title={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
+          aria-label={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
+          disabled={!ctx}
+          style={{
+            position: "relative",
+            display: "inline-flex",
+            width: 18,
+            height: 18,
+            flexShrink: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            border: 0,
+            background: "transparent",
+            cursor: ctx ? "pointer" : "default",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8, flexShrink: 0 }}>
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 999,
+              background: "rgb(167,139,250)",
+              opacity: 0.45,
+              animation: "ask-atlas-title-ping 1.6s cubic-bezier(0,0,0.2,1) infinite",
+            }}
+          />
+          <span
+            aria-hidden
+            style={{
+              position: "relative",
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background: "rgb(139,92,246)",
+              boxShadow: "0 0 8px rgba(139,92,246,0.6)",
+            }}
+          />
+          </span>
+        </button>
+        <span
+          title="Ask Atlas"
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+            maxWidth: "100%",
+            color: "var(--atlas-gold)",
+            fontFamily: "var(--app-font-sans)",
+            fontSize: "var(--ts-body)",
+            fontWeight: 500,
+            lineHeight: "var(--lh-snug)",
+            letterSpacing: "var(--ls-tight)",
+            opacity: 0.92,
+          }}
+        >
+          Ask Atlas
+        </span>
+      </div>
+    </>
+  );
+}
 
 
 type HomeHandoffSignal = {
@@ -327,26 +400,6 @@ function deriveAtlasProposedProjectName(messages: HomeMessage[]): string | null 
   return null;
 }
 
-/**
- * When POST /api/conversations couldn't wait for AI title generation to
- * finish (titlePending), the DB write still completes shortly after in the
- * background with zero push notification. Poll for it a couple of times so
- * the sidebar/workspace header pick up the real title without a manual
- * refresh (task #169 — Family Reunion benchmark).
- */
-function scheduleTitlePendingRecheck(
-  queryClient: ReturnType<typeof useQueryClient>,
-  projectId: number,
-): void {
-  const delaysMs = [3000, 8000];
-  for (const delay of delaysMs) {
-    setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-    }, delay);
-  }
-}
-
 function deriveProjectNameFromConversation(messages: HomeMessage[]): string {
   const atlasProposedName = deriveAtlasProposedProjectName(messages);
   if (atlasProposedName) return atlasProposedName;
@@ -358,10 +411,7 @@ function deriveProjectNameFromConversation(messages: HomeMessage[]): string {
 
   const clipped = normalized.slice(0, 40).trimEnd();
   const lastSpace = clipped.lastIndexOf(" ");
-  const base = (lastSpace > 0 ? clipped.slice(0, lastSpace) : clipped).trim();
-  // Signal that this is a provisional placeholder, not the final title — the
-  // real Claude-generated title replaces it within a couple of seconds.
-  return base ? `${base}…` : "New Project";
+  return (lastSpace > 0 ? clipped.slice(0, lastSpace) : clipped).trim() || "New Project";
 }
 
 const HOME_IMAGE_URL_RE = /(https?:\/\/[^\s<>"')]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s<>"')]+)?)/gi;
@@ -448,16 +498,16 @@ function HomeMarkdown({ text }: { text: string }) {
     <ReactMarkdown
       components={{
         p: ({ children }) => (
-          <p style={{ margin: "0 0 10px", lineHeight: 1.85 }}>{renderChildrenWithCitations(children)}</p>
+          <p style={{ margin: "0 0 10px", lineHeight: 1.85 }}>{children}</p>
         ),
-        strong: ({ children }) => <strong style={{ fontWeight: 650, color: "var(--atlas-fg)" }}>{renderChildrenWithCitations(children)}</strong>,
-        em: ({ children }) => <em style={{ color: "var(--atlas-muted)" }}>{renderChildrenWithCitations(children)}</em>,
-        h1: ({ children }) => <div style={{ fontSize: 14, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 4px" }}>{renderChildrenWithCitations(children)}</div>,
-        h2: ({ children }) => <div style={{ fontSize: 13, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 3px" }}>{renderChildrenWithCitations(children)}</div>,
-        h3: ({ children }) => <div style={{ fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)", letterSpacing: "0.07em", textTransform: "uppercase", margin: "10px 0 3px" }}>{renderChildrenWithCitations(children)}</div>,
+        strong: ({ children }) => <strong style={{ fontWeight: 650, color: "var(--atlas-fg)" }}>{children}</strong>,
+        em: ({ children }) => <em style={{ color: "var(--atlas-muted)" }}>{children}</em>,
+        h1: ({ children }) => <div style={{ fontSize: 14, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 4px" }}>{children}</div>,
+        h2: ({ children }) => <div style={{ fontSize: 13, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 3px" }}>{children}</div>,
+        h3: ({ children }) => <div style={{ fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)", letterSpacing: "0.07em", textTransform: "uppercase", margin: "10px 0 3px" }}>{children}</div>,
         ul: ({ children }) => <ul style={{ margin: "4px 0 10px 18px", padding: 0 }}>{children}</ul>,
         ol: ({ children }) => <ol style={{ margin: "4px 0 10px 18px", padding: 0 }}>{children}</ol>,
-        li: ({ children }) => <li style={{ margin: "2px 0", lineHeight: 1.75 }}>{renderChildrenWithCitations(children)}</li>,
+        li: ({ children }) => <li style={{ margin: "2px 0", lineHeight: 1.75 }}>{children}</li>,
         code: ({ children, className }) => {
           const isBlock = Boolean(className);
           if (isBlock) {
@@ -1790,13 +1840,7 @@ export default function Home() {
     query: {
       queryKey: getListProjectsQueryKey(),
       refetchOnMount: "always",
-      // Was `true` — harmonized with the app-wide QueryClient default (`false`
-      // in App.tsx) and with the same fix in projects.tsx. A window-focus
-      // refetch here isn't gated on a loading UI, but it still caused an
-      // unnecessary network burst + project-list re-render on every tab
-      // refocus, which contributed to the "does this feel like a reload?"
-      // reports. See task-161 trace doc for the full investigation.
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       enabled: !!authUser,
     },
   });
@@ -1815,27 +1859,6 @@ export default function Home() {
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
-  const [showAtlasHistory, setShowAtlasHistory] = useState(false);
-  const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
-  const fetchAtlasConversations = useCallback(() => {
-    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-    fetch("/api/sessions/atlas", {
-      credentials: "include",
-      headers: tok ? { Authorization: `Bearer ${tok}` } : {},
-    })
-      .then((r) => r.json())
-      .then((data: AtlasConversation[]) => { if (Array.isArray(data)) setDrawerAtlasConversations(data); })
-      .catch(() => {});
-  }, []);
-  useEffect(() => {
-    if (!authUser) return;
-    fetchAtlasConversations();
-  }, [authUser, fetchAtlasConversations]);
-  useEffect(() => {
-    if (!showDrawer && !showAtlasHistory) return;
-    fetchAtlasConversations();
-  }, [showDrawer, showAtlasHistory, fetchAtlasConversations]);
-
   const [showShellSheet, setShowShellSheet] = useState(false);
   useEffect(() => {
     const open = () => setShowShellSheet(true);
@@ -1892,10 +1915,11 @@ export default function Home() {
       return null;
     }
   });
-  // Ask Atlas state removed (Turn E-lite). Inert consts so remaining
-  // dead-branch style ternaries still compile.
-  const askAtlasConversationId: string | null = null;
-
+  const [askAtlasConversationId, setAskAtlasConversationId] = useState<string | null>(() => askAtlasSession.getConversationId());
+  const [askAtlasCrystallized, setAskAtlasCrystallized] = useState(false);
+  const rememberAskAtlasConversationId = (conversationId: string) => {
+    askAtlasSession.setConversationId(conversationId);
+  };
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
@@ -1951,9 +1975,21 @@ export default function Home() {
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showLibrarySheet, setShowLibrarySheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
-  // Ask Atlas surface removed (Turn D). axiom:ask-atlas event listener
-  // removed in Turn E-lite — nothing to open.
-
+  // Ask Atlas is a standalone surface — see AskAtlasSurface.
+  // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
+  // the same purple-header surface. No inline routing, no split renderer.
+  // Radial menu "Ask Atlas" → open the AskAtlasSurface + focus its composer.
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const detail = (e as CustomEvent<{ seed?: string }>).detail;
+      askAtlasSession.clearClosed();
+      setAskAtlasSurfaceOpen(true);
+      if (detail?.seed) setInput(detail.seed);
+      window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
+    };
+    window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
+    return () => window.removeEventListener("axiom:ask-atlas", onAsk as EventListener);
+  }, []);
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
@@ -1997,23 +2033,29 @@ export default function Home() {
     } : null,
   });
   const activeProjectCtx = useActiveProjectContext();
-  // askAtlasChat stream + askAtlasInProject wiring removed (Turn E-lite).
-  // The surface is gone; nothing routes to a second stream anymore.
-  // Inert stub preserves the shape referenced by dead-branch style ternaries.
-  const askAtlasChat = {
-    messages: [] as any[],
-    isStreaming: false,
-    isPending: false,
-    liveStep: null as any,
-    handoffSignal: null as any,
-    send: async (_opts?: any): Promise<void> => {},
-    setMessages: (_msgs: any) => {},
-    clearMessages: () => {},
-    abort: () => {},
-  };
-  const askAtlasConversationActive = false;
-  const askAtlasBusy = false;
-
+  const askAtlasInProject = activeProjectCtx && activeProjectCtx.sessionId
+    ? {
+        projectId: activeProjectCtx.projectId,
+        sessionId: activeProjectCtx.sessionId,
+        seed: buildWorkspaceContextSeed(activeProjectCtx),
+      }
+    : null;
+  const askAtlasChat = useNexusChatStream({
+    focusProjectId: null,
+    model: "claude",
+    conversationId: askAtlasConversationId,
+    projectContext: null,
+    askAtlasInProject,
+    onConversationId: (id) => {
+      setAskAtlasConversationId(id);
+      rememberAskAtlasConversationId(id);
+    },
+    onThinkingStable: () => setAskAtlasCrystallized(true),
+  });
+  const askAtlasConversationActive = askAtlasChat.messages.length > 0;
+  const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
+  // (Clear-nexus-on-ask-atlas-open effect declared below, after
+  //  askAtlasSurfaceOpen state is created.)
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
   // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
@@ -2079,24 +2121,78 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
-  // ── Ask Atlas surface removed (Turn E-lite) ─────────────────────────────
-  // Surface, restore effect, session mirror, and thread-restore fetch are
-  // all gone. Inert consts keep dead-branch style ternaries compiling.
-  const askAtlasSurfaceOpen = false;
-  const setAskAtlasSurfaceOpen = (_v: boolean) => {};
-  const setAskAtlasConversationId = (_v: string | null) => {};
-  const isAskAtlasRestoring = false;
-  const askAtlasSurfaceVisible = false;
+  // ── Ask Atlas mode ────────────────────────────────────────────────────────────
+  const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
+    // Ask Atlas opens only by explicit user action. Stored conversation IDs are
+    // history, not an instruction to re-enter Ask Atlas or a project context.
+    return false;
+  });
+  // True while the thread restore fetch is in-flight. Initialized synchronously
+  // from storage so the surface is visible immediately on return (no blank flash).
+  const [isAskAtlasRestoring, setIsAskAtlasRestoring] = useState(() => {
+    return false;
+  });
+  // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
+  // only appears once the user has actually sent the first message. Until then
+  // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
+  // button and routes sends to askAtlasChat.
+  // Also visible while restoring so the surface never flashes blank on return.
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
   useEffect(() => {
-    const active = nexusChat.messages.length > 0;
+    const active = askAtlasSurfaceVisible || nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
     return () => { document.body.removeAttribute("data-axiom-thread"); };
-  }, [nexusChat.messages.length]);
+  }, [askAtlasSurfaceVisible, nexusChat.messages.length]);
 
+  useEffect(() => {
+    document.body.setAttribute("data-axiom-ask-atlas", askAtlasSurfaceVisible ? "true" : "false");
+    return () => { document.body.removeAttribute("data-axiom-ask-atlas"); };
+  }, [askAtlasSurfaceVisible]);
 
+  // Clear any ambient nexus messages the instant Ask Atlas opens so the two
+  // renderers can never coexist on screen.
+  useEffect(() => {
+    if (askAtlasSurfaceOpen) nexusChat.clearMessages();
+  }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
+
+  // Keep stale surface-open storage from forcing Ask Atlas back open later.
+  useEffect(() => {
+    if (!askAtlasSurfaceOpen) askAtlasSession.setSurfaceOpen(false);
+  }, [askAtlasSurfaceOpen]);
+
+  // Restore Ask Atlas thread after hard refresh or navigation return — the surface
+  // may be open (from localStorage) but askAtlasChat is empty because the standard
+  // thread-load effect populates nexusChat, not askAtlasChat.
+  const askAtlasRestoreAttemptRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!askAtlasSurfaceOpen || !askAtlasConversationId) {
+      setIsAskAtlasRestoring(false);
+      return;
+    }
+    if (askAtlasRestoreAttemptRef.current === askAtlasConversationId) return;
+    if (askAtlasChat.messages.length > 0) {
+      askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+      setIsAskAtlasRestoring(false);
+      return;
+    }
+    setIsAskAtlasRestoring(true);
+    fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(askAtlasConversationId)}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((msgs: Array<{ role: string; content: string }>) => {
+        const normalized = normalizeLoadedHomeMessages(msgs);
+        if (normalized.length > 0) askAtlasChat.setMessages(normalized as any);
+        askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+      })
+      .catch(() => {
+        askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+      })
+      .finally(() => {
+        setIsAskAtlasRestoring(false);
+      });
+  }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasChat.messages.length, askAtlasChat.setMessages]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -2178,6 +2274,7 @@ export default function Home() {
 
   useEffect(() => {
     setActiveProjectId(homeFocus);
+    return () => setActiveProjectId(null);
   }, [homeFocus, setActiveProjectId]);
 
   // Derive first name from auth (updates when /me resolves)
@@ -2237,14 +2334,35 @@ export default function Home() {
 
   const handleLockTap = useCallback(() => {
     vibrate(50);
-    // Ask Atlas removed (Turn E-lite). Lock-tap now just closes overlays
-    // and dismisses to ambient home; there is no strategic-view mode.
-    setShowOverviewSheet(false);
-    setShowHistory(false);
-    setShowFocusPicker(false);
-    setDepth("ambient");
-  }, [vibrate, setDepth]);
-
+    if (askAtlasSurfaceOpen) {
+      // Exit Ask Atlas → return to the ambient homepage, NOT a stranded
+      // "Untitled conversation" view. Clear the active thread and message
+      // stream so the hero/quick-actions come back.
+      void callAskAtlasMode(false);
+      setAskAtlasSurfaceOpen(false);
+      try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+      try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+      conversationThreadRequestRef.current = null;
+      thinkOutLoudInlineRef.current = false;
+      setActiveConversationId(null);
+      setAskAtlasConversationId(null);
+      askAtlasSession.clearConversationId();
+      nexusChat.setMessages([]);
+      askAtlasChat.clearMessages();
+      setEarnedTitle(null);
+      setDepth("ambient");
+    } else {
+      setShowOverviewSheet(false);
+      setShowHistory(false);
+      setShowFocusPicker(false);
+      setAskAtlasSurfaceOpen(true);
+      window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
+      toast("Ask Atlas · Strategic view", {
+        className: "atlas-toast-premium",
+        description: "Macro view across every project.",
+      });
+    }
+  }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, askAtlasChat.clearMessages, setDepth]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
@@ -2788,7 +2906,7 @@ export default function Home() {
           if (initialThought?.trim()) {
             try { sessionStorage.setItem(`atlas-post-intake-${p.id}`, initialThought.trim()); } catch {}
           }
-          setLocation(`/project/${p.id}`);
+          setLocation(`/project/${p.id}?intake=1`);
         },
         onError: (err: any) => {
           const msg = extractApiErrorMessage(err);
@@ -2820,22 +2938,14 @@ export default function Home() {
       body: JSON.stringify({}),
     })
       .then((r) => r.json())
-      .then((data: { id?: number; conversationId?: string; name?: string; titlePending?: boolean; error?: string }) => {
+      .then((data: { id?: number; conversationId?: string; error?: string }) => {
         if (data?.id) {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          if (data.name) {
-            queryClient.setQueryData(getGetProjectQueryKey(data.id), (prev: Project | undefined) =>
-              prev ? { ...prev, name: data.name! } : prev,
-            );
-          }
-          if (data.titlePending) {
-            scheduleTitlePendingRecheck(queryClient, data.id);
-          }
           if (data.conversationId) {
             try { sessionStorage.setItem(`atlas-cid-${data.conversationId}`, String(data.id)); } catch {}
-            setLocation(`/workspace/${data.conversationId}`);
+            setLocation(`/workspace/${data.conversationId}?intake=1`);
           } else {
-            setLocation(`/project/${data.id}`);
+            setLocation(`/project/${data.id}?intake=1`);
           }
         }
       })
@@ -2963,10 +3073,38 @@ export default function Home() {
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
-    // Ask Atlas send-routing branch removed (Turn E-lite). All sends now
-    // flow through nexusChat via the shouldStayOnHome path below.
+    // Ask Atlas surface routing — the surface is the sole owner of askAtlasChat.
+    // When it's open, EVERY send goes through askAtlasChat regardless of how
+    // the surface was opened (composer pill, resume, radial, history). This
+    // eliminates the old split where entry point determined data source.
+    const hasAskAtlasContent = !!text || attachedFiles.some(f => f.type.startsWith("image/"));
+    if (askAtlasSurfaceOpen && hasAskAtlasContent) {
+      if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
+      submitInFlightRef.current = true;
+      setInput("");
+      const filesToConvert = attachedFiles.filter(f => f.type.startsWith("image/"));
+      setAttachedFiles([]);
+      textareaRef.current?.blur();
+      let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
+      if (filesToConvert.length > 0) {
+        try {
+          askAtlasAttachments = await Promise.all(
+            filesToConvert.slice(0, 10).map(async (f) => {
+              const safe = await fileToBase64Safe(f);
+              return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
+            })
+          );
+        } catch {}
+      }
+      void askAtlasChat.send({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
+        submitInFlightRef.current = false;
+      });
+      return;
+    }
     const shouldStayOnHome = options?.forceStayOnHome ?? false;
-
+    if (shouldStayOnHome && !askAtlasSurfaceOpen && !thinkOutLoudInlineRef.current) {
+      setAskAtlasSurfaceOpen(true);
+    }
     // All blocking gates — nothing above this line mutates project/send state.
     // Each gate is a clean exit: no flags set, no API calls made.
     if (!shouldStayOnHome && !backendReady) {
@@ -3071,33 +3209,36 @@ export default function Home() {
 
     try {
       const authToken = localStorage.getItem("atlas-auth-token");
-      // Same flow as "New Conversation" in the drawer: create an Atlas session
-      // (projectId = null) so the conversation appears in the ATLAS section and
-      // navigates to /atlas/:id — not a project.
-      const createRes = await fetch("/api/sessions/atlas", {
+      const createRes = await fetch("/api/conversations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ title: "New conversation", mode: "think", initialMessage: messageText }),
+        body: JSON.stringify({ initialMessage: messageText }),
       });
-      const session = (await createRes.json().catch(() => null)) as {
+      const project = (await createRes.json().catch(() => null)) as {
         id?: number | string;
+        conversationId?: string;
         error?: string;
         message?: string;
       } | null;
-      if (!createRes.ok || !session?.id) {
+      if (!createRes.ok || !project?.id) {
         const err = new Error(
-          (session as any)?.error ?? (session as any)?.message ?? "Failed to create conversation",
+          project?.error ?? project?.message ?? "Failed to create project",
         ) as Error & { status?: number };
         err.status = createRes.status;
         throw err;
       }
-      // Store the typed message so the workspace picks it up as the opening send.
+      const projectId = Number(project.id);
+      if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
       try {
         sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, messageText);
+        sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
+        if (project.conversationId) {
+          sessionStorage.setItem(`atlas-cid-${project.conversationId}`, String(projectId));
+        }
       } catch {}
       if (imageFiles.length > 0) {
         try {
@@ -3109,7 +3250,13 @@ export default function Home() {
           sessionStorage.setItem(OPENING_ATTACHMENTS_STORAGE_KEY, JSON.stringify(atts));
         } catch {}
       }
-      setLocation(`/atlas/${session.id}`);
+      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      setActiveProjectId(projectId);
+      if (project.conversationId) {
+        setLocation(`/workspace/${project.conversationId}`);
+      } else {
+        setLocation(`/project/${projectId}`);
+      }
     } catch (err) {
       handleSubmitError(err);
     } finally {
@@ -3529,21 +3676,26 @@ export default function Home() {
     setIsHandoffReady(false);
     try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
-    try { localStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
-    try { sessionStorage.removeItem("atlas-ask-atlas-conversation-id"); } catch {}
     conversationThreadRequestRef.current = null;
     thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
+    setAskAtlasConversationId(null);
+    askAtlasSession.clearConversationId();
+    askAtlasSession.setSurfaceOpen(false);
     clearActiveProjectContext();
     nexusChat.clearMessages();
+    askAtlasChat.clearMessages();
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.clearMessages]);
+  }, [nexusChat.clearMessages, askAtlasChat.clearMessages]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
     const reset = () => {
+      void callAskAtlasMode(false);
+      setAskAtlasSurfaceOpen(false);
+      askAtlasSession.setSurfaceOpen(false);
       clearActiveProjectContext();
       handleNewConversation();
       setDepth("ambient");
@@ -3551,8 +3703,7 @@ export default function Home() {
     };
     window.addEventListener("axiom:home-reset", reset);
     return () => window.removeEventListener("axiom:home-reset", reset);
-  }, [handleNewConversation, setDepth]);
-
+  }, [callAskAtlasMode, handleNewConversation, setDepth]);
 
 
   // Hydrate earned title when the active conversation changes.
@@ -3597,13 +3748,16 @@ export default function Home() {
           })
         : [];
 
-      // Route resumed threads into nexusChat (Ask Atlas surface removed
-      // in Turn D; there's only one renderer now).
-      nexusChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
+      // Route resumed threads into askAtlasChat so AskAtlasSurface renders
+      // them — not into nexusChat which feeds the ambient homepage renderer.
+      askAtlasChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
+      nexusChat.clearMessages();
 
       // Pre-mark the thread-request ref with the new id BEFORE calling
-      // setActiveConversationId so the load useEffect's guard sees the id
-      // already handled and skips — preventing a duplicate re-populate.
+      // setActiveConversationId so the load useEffect's guard at line ~2678
+      // sees the id already handled and skips — preventing nexusChat from
+      // being re-populated with the same messages and activating the ambient
+      // home surface behind AskAtlasSurface.
       conversationThreadRequestRef.current = { conversationId: id, requestId: Date.now() };
 
       setActiveConversationId(id);
@@ -3611,6 +3765,9 @@ export default function Home() {
       try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
       try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
 
+      // Open the real AskAtlasSurface with the correct surface flag so the
+      // pinned header, scroll, composer, and message styling all match.
+      setAskAtlasSurfaceOpen(true);
       setDepth("active");
       try {
         await fetch(`/api/sessions/${encodeURIComponent(id)}/reflection-mode`, {
@@ -3623,8 +3780,7 @@ export default function Home() {
 
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId, nexusChat.setMessages, setDepth]);
-
+  }, [setActiveConversationId, askAtlasChat.setMessages, nexusChat.clearMessages, setDepth]);
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
@@ -3842,8 +3998,64 @@ export default function Home() {
       }}
     >
       {/* FocusModeAura removed — aura now lives on the composer border (see composerAura.ts) */}
-      {/* Ask Atlas title-slot portal removed (Turn D). */}
+      {/* Ask Atlas runs inline through the ambient home shell:
+          header title only, no overlay, no duplicate header, no separate composer. */}
 
+      {askAtlasTitleSlot && askAtlasSurfaceVisible && createPortal(
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <AskAtlasTitleCarousel earnedTitle={earnedTitle} />
+          {askAtlasChat.messages.length > 0 && (
+            <button
+              type="button"
+              title="Download thread"
+              aria-label="Download Ask Atlas thread"
+              onClick={(e) => {
+                e.stopPropagation();
+                const lines = askAtlasChat.messages
+                  .filter((m: any) => m.content && m.content.trim().length > 0)
+                  .map((m: any) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.content}\n`)
+                  .join("\n");
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+                const blob = new Blob(
+                  [`ASK ATLAS\n${stamp}\n\n${lines}`],
+                  { type: "text/plain;charset=utf-8" },
+                );
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `ask-atlas-${stamp}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 0);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 22,
+                height: 22,
+                padding: 0,
+                borderRadius: 999,
+                background: "transparent",
+                border: "none",
+                color: "var(--atlas-gold)",
+                opacity: 0.75,
+                cursor: "pointer",
+                flexShrink: 0,
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 2.5v8.5" />
+                <path d="M4.5 7.5L8 11l3.5-3.5" />
+                <path d="M3 13.5h10" />
+              </svg>
+            </button>
+          )}
+        </div>,
+        askAtlasTitleSlot
+      )}
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
           onClick={async () => {
@@ -3996,7 +4208,7 @@ export default function Home() {
                 }
                 runRepoScan(p.id, overlayRepoUrl);
                 sessionStorage.setItem("atlas-open-tab", "map");
-                setLocation(`/project/${p.id}`);
+                setLocation(`/project/${p.id}?intake=1`);
               },
               onError: (err: any) => {
                 setCreateError(extractApiErrorMessage(err) ?? "Failed to create project");
@@ -4020,7 +4232,7 @@ export default function Home() {
                   }).catch(() => {});
                 }
                 runRepoScan(p.id, overlayRepoUrl);
-                setLocation(`/project/${p.id}`);
+                setLocation(`/project/${p.id}?intake=1`);
               },
               onError: (err: any) => {
                 setCreateError(extractApiErrorMessage(err) ?? "Failed to create project");
@@ -4954,13 +5166,13 @@ export default function Home() {
                 style={{ display: "flex", alignItems: "center", gap: isTiny ? 0 : 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
-              {/* Atlas session history — gold clock, opens the Atlas conversation list */}
+              {/* History clock — icon only, no card. */}
               <button
                 type="button"
-                aria-label="Open Atlas conversations"
-                title="Atlas conversations"
+                aria-label="Where were we"
+                title="Conversation history"
                 onPointerDown={(e) => e.preventDefault()}
-                onClick={() => setShowAtlasHistory(true)}
+                onClick={() => void handleOpenHistory()}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   width: isTiny ? 30 : 36, height: isTiny ? 30 : 36, borderRadius: 10,
@@ -4980,7 +5192,10 @@ export default function Home() {
                   e.currentTarget.style.borderColor = "var(--atlas-gold-border, rgba(201,162,76,0.55))";
                 }}
               >
-                <Clock size={15} strokeWidth={1.7} />
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <polyline points="12 7 12 12 15 14" />
+                </svg>
               </button>
 
               <ComposerActions
@@ -5010,7 +5225,77 @@ export default function Home() {
               />
 
 
-              {/* Ask Atlas toggle removed — home composer routes to workspace on Send. */}
+              {/* Ask Atlas toggle — inline mode switch on the home composer.
+                  OFF = Workspace (default); ON = composer routes to inline Ask
+                  Atlas on Send. Inspired by the workspace Plan Mode button. */}
+              <button
+                type="button"
+                title="Open Ask Atlas"
+                aria-label="Open Ask Atlas"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (askAtlasSurfaceOpen) {
+                    // Full ambient reset — mirrors handleLockTap's close path so
+                    // toggling off always lands back on the empty homepage, not a
+                    // stranded thread with the surface just hidden.
+                    void callAskAtlasMode(false);
+                    setAskAtlasSurfaceOpen(false);
+                    try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+                    try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+                    conversationThreadRequestRef.current = null;
+                    thinkOutLoudInlineRef.current = false;
+                    setActiveConversationId(null);
+                    setAskAtlasConversationId(null);
+                    askAtlasSession.clearConversationId();
+                    nexusChat.setMessages([]);
+                    askAtlasChat.clearMessages();
+                    setEarnedTitle(null);
+                    setDepth("ambient");
+                    return;
+                  }
+                  nexusChat.clearMessages();
+                  setAskAtlasSurfaceOpen(true);
+                  const seed = input.trim();
+                  if (seed) setInput(seed);
+                  window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                style={{
+                  height: isTiny ? 28 : 34,
+                  display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
+                  padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
+                  background: askAtlasSurfaceOpen
+                    ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
+                    : "transparent",
+                  border: askAtlasSurfaceOpen
+                    ? "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)"
+                    : "1px solid var(--atlas-border, rgba(120,113,108,0.18))",
+                  boxShadow: "none",
+                  color: askAtlasSurfaceOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
+                  whiteSpace: "nowrap",
+                  minWidth: 0,
+                  flexShrink: 0,
+                  WebkitTapHighlightColor: "transparent",
+                  transition: "all 180ms ease",
+                }}
+              >
+                <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+                {!isTiny && <span>Ask Atlas</span>}
+                {askAtlasSurfaceOpen && (
+                  <span style={{
+                    width: 5, height: 5, borderRadius: "50%",
+                    background: "var(--atlas-gold)",
+                    flexShrink: 0,
+                    boxShadow: "0 0 4px rgba(201,162,76,0.6)",
+                  }} />
+                )}
+              </button>
 
 
               </div>
@@ -5345,8 +5630,95 @@ export default function Home() {
         )}
       </div>
 
-      {/* AskAtlasSurface removed (Turn D). */}
-
+      <AskAtlasSurface
+        open={askAtlasSurfaceVisible}
+        isRestoring={isAskAtlasRestoring && askAtlasChat.messages.length === 0}
+        messages={askAtlasChat.messages as any}
+        projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
+        conversationId={askAtlasConversationId}
+        input={input}
+        setInput={setInput}
+        hasAttachments={attachedFiles.length > 0}
+        onSubmit={() => {
+          const result = handleSubmit(undefined, { forceStayOnHome: true });
+          setInput("");
+          return result;
+        }}
+        isSending={askAtlasBusy}
+        isStreaming={askAtlasChat.isStreaming}
+        crystallized={askAtlasCrystallized}
+        pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
+        liveStep={askAtlasChat.liveStep}
+        isListening={isListening}
+        toggleVoice={toggleVoice}
+        onOpenHistory={handleOpenHistory}
+        onCreateProject={handleAskAtlasCreateProject}
+        onCrystallize={() => setCrystallizeSheetOpen(true)}
+        onAddAsset={() => fileInputRef.current?.click()}
+        onMore={() => setShowDrawer(true)}
+        onFiles={(files) => {
+          const combined = [...attachedFiles, ...files].slice(0, 10);
+          if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
+          setAttachedFiles(combined);
+        }}
+        onSketch={(prompt) => { void askAtlasChat.send({ text: prompt }); }}
+        attachedFiles={attachedFiles}
+        onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+        subheader={null}
+        focusChip={
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <button
+              type="button"
+              title="Exit Ask Atlas"
+              aria-label="Exit Ask Atlas"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                askAtlasSession.markClosed();
+                askAtlasSession.setSurfaceOpen(false);
+                setAskAtlasSurfaceOpen(false);
+                askAtlasChat.abort();
+                askAtlasChat.clearMessages();
+              }}
+              onClick={(e) => { e.stopPropagation(); }}
+              style={{
+                height: isTiny ? 28 : 34,
+                display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,
+                padding: isTiny ? "0 6px" : "0 10px", borderRadius: 999,
+                background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+                color: "var(--atlas-gold)",
+                cursor: "pointer",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
+                whiteSpace: "nowrap", minWidth: 0, flexShrink: 0,
+                WebkitTapHighlightColor: "transparent",
+                transition: "all 180ms ease",
+              }}
+            >
+              <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+              {!isTiny && <span>Ask Atlas</span>}
+              <span style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: "var(--atlas-gold)",
+                flexShrink: 0,
+                boxShadow: "0 0 4px color-mix(in oklab, var(--atlas-gold) 60%, transparent)",
+              }} />
+            </button>
+          </div>
+        }
+        handoffSignal={askAtlasChat.handoffSignal}
+        onMenuAction={(action) => {
+          if (action === "history") { setShowTimeTravel(true); return; }
+          if (action === "settings") { setLocation("/account"); return; }
+          if (action === "code") { setLocation("/code"); return; }
+          if (action === "connectors") { setLocation("/connectors"); return; }
+          if (action === "files" || action === "share" ||
+              action === "publish" ||
+              action === "more:forge") { setLocation("/projects"); return; }
+          toast("Open a project to use that");
+        }}
+      />
 
       {askAtlasConversationActive && showFocusPicker && (
         <>
@@ -5411,43 +5783,6 @@ export default function Home() {
         onDelete={(id) => handleDeleteConversation(String(id))}
       />
 
-      {/* ── Atlas conversation history sheet — opened by gold clock ── */}
-      <SessionHistorySheet
-        open={showAtlasHistory}
-        onClose={() => setShowAtlasHistory(false)}
-        title="ATLAS CONVERSATIONS"
-        loading={false}
-        emptyHint="No Atlas conversations yet. Tap + New to start one."
-        items={drawerAtlasConversations.map((c) => ({
-          id: c.id,
-          title: c.title || "New conversation",
-          msgCount: 0,
-          timestamp: c.updatedAt ?? c.createdAt ?? null,
-          active: false,
-        }))}
-        onNew={async () => {
-          setShowAtlasHistory(false);
-          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-          try {
-            const r = await fetch("/api/sessions/atlas", {
-              method: "POST", credentials: "include",
-              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({ title: "New conversation", mode: "think" }),
-            });
-            const s = await r.json() as { id: number };
-            setLocation(`/atlas/${s.id}`);
-          } catch { setLocation("/atlas"); }
-        }}
-        onSelect={(id) => { setShowAtlasHistory(false); setLocation(`/atlas/${id}`); }}
-        onDelete={async (id) => {
-          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-          await fetch(`/api/sessions/${id}`, {
-            method: "DELETE", credentials: "include",
-            headers: tok ? { Authorization: `Bearer ${tok}` } : {},
-          }).catch(() => {});
-          fetchAtlasConversations();
-        }}
-      />
 
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
       {showProfile && <AccountHubPanel onClose={() => setShowProfile(false)} />}
@@ -5539,21 +5874,6 @@ export default function Home() {
         onOpenShell={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-shell")); }}
         onSelectConversation={(id) => { setShowDrawer(false); void handleSwitchConversation(id); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
-        atlasConversations={drawerAtlasConversations}
-        onNewAtlasConversation={async () => {
-          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-          try {
-            const r = await fetch("/api/sessions/atlas", {
-              method: "POST", credentials: "include",
-              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({ title: "New conversation", mode: "think" }),
-            });
-            const s = await r.json() as { id: number };
-            setLocation(`/atlas/${s.id}`);
-          } catch { setLocation("/atlas"); }
-          setShowDrawer(false);
-        }}
-        onOpenAtlasConversation={(id) => { setLocation(`/atlas/${id}`); setShowDrawer(false); }}
       />
 
       <ShellLogSheet
@@ -5561,8 +5881,16 @@ export default function Home() {
         onClose={() => setShowShellSheet(false)}
       />
 
-      {/* CrystallizeSheet removed (Turn D). */}
-
+      <CrystallizeSheet
+        open={crystallizeSheetOpen}
+        onClose={() => setCrystallizeSheetOpen(false)}
+        projects={projects ?? []}
+        handoffSignal={nexusChat.handoffSignal}
+        hasConversation={(nexusChat.messages?.length ?? 0) > 0}
+        onNewWorkspace={() => { setCrystallizeSheetOpen(false); handleAskAtlasCreateProject(); }}
+        onExistingProject={handleCrystallizeToExisting}
+        onPortfolioNote={handleCrystallizePortfolioNote}
+      />
 
       {writeOverlayProjectId != null && createPortal(
         <div
@@ -6019,9 +6347,6 @@ export default function Home() {
           )},
           { label: "Parking", onClick: () => setLocation("/parking"), icon: (
             <ParkingBadgeIcon size={20} />
-          )},
-          { label: "Knowledge", onClick: () => setLocation("/knowledge"), icon: (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4a2 2 0 00-2 2v13"/><path d="M12 4a2 2 0 012 2v13"/><path d="M4 7c2-1 5-1 8 0v13c-3-1-6-1-8 0V7z"/><path d="M20 7c-2-1-5-1-8 0v13c3-1 6-1 8 0V7z"/></svg>
           )},
           { label: "Profile", onClick: () => setShowProfile(true), icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
