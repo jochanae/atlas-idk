@@ -3815,17 +3815,12 @@ export default function Home() {
       askAtlasChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
       nexusChat.clearMessages();
 
-      // Pre-mark the thread-request ref with the new id BEFORE calling
-      // setActiveConversationId so the load useEffect's guard at line ~2678
-      // sees the id already handled and skips — preventing nexusChat from
-      // being re-populated with the same messages and activating the ambient
-      // home surface behind AskAtlasSurface.
-      conversationThreadRequestRef.current = { conversationId: id, requestId: Date.now() };
-
-      setActiveConversationId(id);
+      // Tell Ask Atlas it owns this conversation — both in state and storage.
+      // Do NOT write to atlas-home-conversation-id (nexusChat's key) or nexusChat
+      // will restore this conversation into the mystery surface on next load.
+      setAskAtlasConversationId(id);
+      rememberAskAtlasConversationId(id);
       setReviewingPlanIds(new Set());
-      try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
-      try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
 
       // Open the real AskAtlasSurface with the correct surface flag so the
       // pinned header, scroll, composer, and message styling all match.
@@ -3842,7 +3837,7 @@ export default function Home() {
 
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId, askAtlasChat.setMessages, nexusChat.clearMessages, setDepth]);
+  }, [setAskAtlasConversationId, rememberAskAtlasConversationId, askAtlasChat.setMessages, nexusChat.clearMessages, setDepth]);
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
