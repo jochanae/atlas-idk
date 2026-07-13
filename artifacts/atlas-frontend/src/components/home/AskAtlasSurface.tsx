@@ -195,17 +195,21 @@ export function AskAtlasSurface({
 
   // Smart Anchor auto-scroll — stick to bottom only if user is already near bottom.
   // If they scrolled up to re-read, freeze; don't yank them back during streaming.
+  // Force-jump ONLY when the user sends a new message (not on each assistant turn),
+  // so incoming Atlas replies never rip the reader away from mid-conversation.
+  const userMessageCount = messages.filter(m => m.role === "user").length;
   useSmartAutoScroll(scrollRef, [messages.length, isStreaming], {
     enabled: open,
-    // Force-jump only when message count increments (new turn), not on every streaming tick.
-    forceDeps: [messages.length],
+    threshold: 160,
+    forceDeps: [userMessageCount],
   });
 
   // Follow scroll during streaming — fires on every token so the view tracks
-  // the growing bubble instead of jumping when streaming ends.
+  // the growing bubble instead of jumping when streaming ends. Only follows
+  // when the reader is still near the bottom (respects manual scroll-up).
   useEffect(() => {
     if (!isStreaming) return;
-    followScrollIfNearBottom(scrollRef.current, 160);
+    followScrollIfNearBottom(scrollRef.current, 200);
   }, [messages, isStreaming]);
 
 
@@ -292,7 +296,7 @@ export function AskAtlasSurface({
         background: "transparent",
         zIndex: 60,
         overscrollBehavior: "contain",
-        touchAction: "none",
+        touchAction: "pan-y",
       }}
     >
       {subheader}
@@ -391,32 +395,23 @@ export function AskAtlasSurface({
             const { target: tokenTarget, cleanContent } = extractNavigateTo(msg.content);
             const displayContent = cleanContent;
             return (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span
                   style={{
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontFamily: "var(--app-font-mono)",
-                    letterSpacing: "0.12em",
+                    letterSpacing: "0.14em",
                     textTransform: "uppercase",
                     color: "var(--atlas-gold)",
-                    opacity: 0.55,
+                    opacity: 0.42,
                   }}
                 >
                   Atlas
                 </span>
                 <div
-                  className="atlas-prose"
+                  className="atlas-prose atlas-prose-flow"
                   style={{
-                    fontSize: 16.5,
-                    lineHeight: 1.75,
-                    letterSpacing: "0.015em",
-                    color: "var(--atlas-fg)",
-                    fontFamily: "var(--app-font-sans)",
                     whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    opacity: 0.94,
-                    WebkitFontSmoothing: "antialiased",
-                    MozOsxFontSmoothing: "grayscale",
                   }}
                 >
                   {(msg.imageUrl || msg.pendingSketch) && (
@@ -428,7 +423,7 @@ export function AskAtlasSurface({
                     />
                   )}
                   {msg.role === "assistant" && msg.streaming ? (
-                    <span className="atlas-live-stream-text" style={{ whiteSpace: "pre-wrap", opacity: 0.92 }}>
+                    <span className="atlas-live-stream-text" style={{ whiteSpace: "pre-wrap" }}>
                       {displayContent}
                       <span className="atlas-cursor" aria-hidden />
                     </span>
