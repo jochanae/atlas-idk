@@ -88,6 +88,7 @@ import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
+import { askAtlasSession } from "@/lib/askAtlasSession";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
 import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../lib/plan";
@@ -5470,13 +5471,18 @@ export default function Workspace() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
   const fetchWorkspaceAtlasConversations = useCallback(() => {
-    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-    fetch("/api/sessions/atlas", {
-      credentials: "include",
-      headers: tok ? { Authorization: `Bearer ${tok}` } : {},
-    })
-      .then((r) => r.json())
-      .then((data: AtlasConversation[]) => { if (Array.isArray(data)) setDrawerAtlasConversations(data); })
+    fetch("/api/nexus/conversations", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : { conversations: [] })
+      .then((data: { conversations?: Array<{ id: string; title?: string | null; messageCount?: number; createdAt?: string | null }> }) => {
+        const list = data.conversations ?? [];
+        setDrawerAtlasConversations(list.map(s => ({
+          id: s.id,
+          title: s.title || "New conversation",
+          messageCount: s.messageCount ?? 0,
+          updatedAt: s.createdAt ?? null,
+          createdAt: s.createdAt ?? null,
+        })));
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -10182,20 +10188,20 @@ export default function Workspace() {
         userLabel={loadProfile().name || null}
         atlasConversations={drawerAtlasConversations}
         activeAtlasSessionId={isAtlasScope && atlasSessionId ? Number(atlasSessionId) : null}
-        onNewAtlasConversation={async () => {
-          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-          try {
-            const r = await fetch("/api/sessions/atlas", {
-              method: "POST", credentials: "include",
-              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({ title: "New conversation", mode: "think" }),
-            });
-            const s = await r.json() as { id: number };
-            setLocation(`/atlas/${s.id}`);
-          } catch { setLocation("/atlas"); }
+        onNewAtlasConversation={() => {
+          // Start a fresh Ask Atlas conversation on home.
+          askAtlasSession.clearClosed();
+          try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
+          setLocation("/home");
           setShowDrawer(false);
         }}
-        onOpenAtlasConversation={(sid) => { setLocation(`/atlas/${sid}`); setShowDrawer(false); }}
+        onOpenAtlasConversation={(sid) => {
+          // Open this nexus conversation in the proper Ask Atlas surface on home.
+          askAtlasSession.setConversationId(String(sid));
+          askAtlasSession.clearClosed();
+          setLocation("/home");
+          setShowDrawer(false);
+        }}
       />
 
 
