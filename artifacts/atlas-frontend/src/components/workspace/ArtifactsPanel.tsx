@@ -945,7 +945,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             {draftMenuOpen && draftMenuPos && createPortal(
               <div
                 ref={draftPortalRef}
-                style={{ position: "fixed", top: draftMenuPos.top, right: draftMenuPos.right, zIndex: 9999, background: "var(--atlas-card)", border: "1px solid var(--atlas-border)", borderRadius: 9, boxShadow: "0 8px 32px rgba(0,0,0,0.45)", minWidth: 170, overflow: "hidden" }}
+                style={{ position: "fixed", top: draftMenuPos.top, right: draftMenuPos.right, zIndex: 9999, background: "var(--atlas-surface-alt, #16151B)", border: "1px solid var(--atlas-border, rgba(230,198,135,0.15))", borderRadius: 9, boxShadow: "0 8px 32px rgba(0,0,0,0.6)", minWidth: 170, overflow: "hidden" }}
               >
                 {DRAFT_TYPES.map((d) => (
                   <button

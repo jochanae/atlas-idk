@@ -6914,11 +6914,11 @@ export default function Workspace() {
   useEffect(() => {
     const ARTIFACT_PREFIX = "ARTIFACT: ";
 
-    // Restore sessionStorage on first run so remounts skip already-processed messages
+    // Restore localStorage on first run so remounts AND browser restarts skip already-processed messages
     if (!artifactStorageInitRef.current && artifactStorageKey) {
       artifactStorageInitRef.current = true;
       try {
-        const stored = sessionStorage.getItem(artifactStorageKey);
+        const stored = localStorage.getItem(artifactStorageKey);
         if (stored) {
           (JSON.parse(stored) as string[]).forEach(k => processedArtifactRef.current.add(k));
         }
@@ -6936,13 +6936,13 @@ export default function Workspace() {
       if (processedArtifactRef.current.has(key)) return;
       processedArtifactRef.current.add(key);
 
-      // Persist key so remounts don't re-toast (stale-state fix)
+      // Persist key to localStorage so browser restarts don't re-toast (stale-state fix)
       if (artifactStorageKey) {
         try {
-          const stored = sessionStorage.getItem(artifactStorageKey);
+          const stored = localStorage.getItem(artifactStorageKey);
           const existing = stored ? (JSON.parse(stored) as string[]) : [];
           if (!existing.includes(key)) {
-            sessionStorage.setItem(artifactStorageKey, JSON.stringify([...existing, key]));
+            localStorage.setItem(artifactStorageKey, JSON.stringify([...existing, key]));
           }
         } catch { /* ignore */ }
       }
