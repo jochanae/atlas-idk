@@ -15,6 +15,7 @@ import type { AtlasConversation } from "../components/ProjectsDrawer";
 import { ShellLogSheet } from "../components/ShellLogSheet";
 import { ParkingBadgeIcon } from "@/components/ParkingBadgeIcon";
 import { TimelineRail } from "../components/TimelineRail";
+import { AskAtlasTimeline } from "../components/home/AskAtlasTimeline";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import SketchReveal from "@/components/chat/SketchReveal";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
@@ -5820,16 +5821,8 @@ export default function Home() {
       />
 
       {askAtlasSurfaceVisible && askAtlasChat.messages.length > 0 && (
-        <TimelineRail
-          messages={(askAtlasChat.messages as Array<{ role: string; createdAt?: string; content?: string | null }>).map((m) => ({
-            role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
-            createdAt: m.createdAt,
-            text: m.content ?? undefined,
-          }))}
-          alwaysVisible={true}
-          hideSearch={true}
-          topOffset={100}
-          bottomOffset={160}
+        <AskAtlasTimeline
+          messages={(askAtlasChat.messages as Array<{ createdAt?: string }>)}
         />
       )}
 
