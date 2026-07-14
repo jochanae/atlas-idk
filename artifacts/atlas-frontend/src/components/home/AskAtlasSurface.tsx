@@ -405,7 +405,7 @@ export function AskAtlasSurface({
             maxWidth: 760,
             display: "flex",
             flexDirection: "column",
-            gap: 16,
+            gap: 26,
           }}
         >
 
