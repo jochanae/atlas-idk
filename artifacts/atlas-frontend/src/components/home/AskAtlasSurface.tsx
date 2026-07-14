@@ -40,6 +40,23 @@ function sanitizeForStreaming(text: string): string {
 }
 import { type NexusHandoffSignal } from "@/hooks/useNexusChatStream";
 import { useLocation } from "wouter";
+
+function formatMsgDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const now = new Date();
+    const sameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    if (sameDay) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const sameYear = d.getFullYear() === now.getFullYear();
+    if (sameYear) return d.toLocaleDateString([], { month: "short", day: "numeric" });
+    return d.toLocaleDateString([], { month: "short", day: "numeric", year: "2-digit" });
+  } catch {
+    return "";
+  }
+}
 import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { AskAtlasRenderer } from "./AskAtlasRenderer";
@@ -452,17 +469,24 @@ export function AskAtlasSurface({
             const displayContent = cleanContent;
             return (
               <div key={i} data-msg-idx={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span
-                  style={{
-                    fontSize: 9.5,
-                    fontFamily: "var(--app-font-mono)",
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
-                    color: "var(--atlas-gold)",
-                    opacity: 0.42,
-                  }}
-                >
-                  Atlas
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      fontSize: 9.5,
+                      fontFamily: "var(--app-font-mono)",
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: "var(--atlas-gold)",
+                      opacity: 0.42,
+                    }}
+                  >
+                    Atlas
+                  </span>
+                  {msg.createdAt && (
+                    <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.32, letterSpacing: "0.04em" }}>
+                      {formatMsgDate(msg.createdAt)}
+                    </span>
+                  )}
                 </span>
                 <div
                   className="atlas-prose atlas-prose-flow"
@@ -633,17 +657,24 @@ export function AskAtlasSurface({
 
           return (
             <div key={i} data-msg-idx={i} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontFamily: "var(--app-font-mono)",
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: "color-mix(in oklab, var(--atlas-gold) 85%, transparent)",
-                  opacity: 0.65,
-                }}
-              >
-                You
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {msg.createdAt && (
+                  <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.32, letterSpacing: "0.04em" }}>
+                    {formatMsgDate(msg.createdAt)}
+                  </span>
+                )}
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "color-mix(in oklab, var(--atlas-gold) 85%, transparent)",
+                    opacity: 0.65,
+                  }}
+                >
+                  You
+                </span>
               </span>
               <div
                 style={{

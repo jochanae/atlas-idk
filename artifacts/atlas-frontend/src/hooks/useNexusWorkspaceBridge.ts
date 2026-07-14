@@ -94,6 +94,8 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     // dropped on the Nexus transport because toChatMessage() never mapped it,
     // even though nexus.ts's `done` event includes it (task #172 finding).
     ...(nm.generatedArtifacts?.length ? { generatedArtifacts: nm.generatedArtifacts as ChatMessage["generatedArtifacts"] } : {}),
+    // Wire the message timestamp so UserBubble/AssistantBubble can display it.
+    sentAt: nm.createdAt ?? undefined,
   };
 }
 

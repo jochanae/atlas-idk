@@ -2755,8 +2755,8 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
               zIndex: 1,
             }}
           >
-            {activeProjectId != null && location !== "/home" ? (
-              <ShellProjectSwitcher projectId={activeProjectId} />
+            {(activeProjectId ?? projectIdFromPath(location)) != null && location !== "/home" ? (
+              <ShellProjectSwitcher projectId={(activeProjectId ?? projectIdFromPath(location))!} />
             ) : location.startsWith("/atlas") ? (
               <ShellAtlasTitle />
             ) : (
