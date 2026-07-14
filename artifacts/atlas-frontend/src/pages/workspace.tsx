@@ -6901,27 +6901,82 @@ export default function Workspace() {
 
   // ARTIFACT protocol — intercept ARTIFACT: <json> lines in assistant responses.
   // Strips the line from display and POSTs the artifact to /api/artifacts.
+  //
+  // Key design choices:
+  // 1. Uses balanced-brace extraction instead of a single-line regex so multiline
+  //    JSON output from the model (Claude sometimes pretty-prints) is handled correctly.
+  // 2. Persists processed message keys to sessionStorage so remounts (navigating
+  //    away and back) never re-toast for the same already-handled artifact.
   const processedArtifactRef = useRef<Set<string>>(new Set());
+  const artifactStorageInitRef = useRef(false);
+  const artifactStorageKey = id != null ? `artifact-processed-${id}` : null;
+
   useEffect(() => {
-    const ARTIFACT_RE = /^ARTIFACT:\s*(\{.*\})\s*$/m;
+    const ARTIFACT_PREFIX = "ARTIFACT: ";
+
+    // Restore sessionStorage on first run so remounts skip already-processed messages
+    if (!artifactStorageInitRef.current && artifactStorageKey) {
+      artifactStorageInitRef.current = true;
+      try {
+        const stored = sessionStorage.getItem(artifactStorageKey);
+        if (stored) {
+          (JSON.parse(stored) as string[]).forEach(k => processedArtifactRef.current.add(k));
+        }
+      } catch { /* ignore */ }
+    }
+
     messages.forEach((m, idx) => {
       if (m.role !== "assistant" || m.streaming) return;
       if (typeof m.content !== "string") return;
-      const match = m.content.match(ARTIFACT_RE);
-      if (!match) return;
+
+      const prefixIdx = m.content.indexOf(ARTIFACT_PREFIX);
+      if (prefixIdx === -1) return;
+
       const key = `${m.id ?? `i${idx}`}`;
       if (processedArtifactRef.current.has(key)) return;
       processedArtifactRef.current.add(key);
 
-      let parsed: { type?: string; title?: string; content?: string } | null = null;
-      try { parsed = JSON.parse(match[1]); } catch { parsed = null; }
+      // Persist key so remounts don't re-toast (stale-state fix)
+      if (artifactStorageKey) {
+        try {
+          const stored = sessionStorage.getItem(artifactStorageKey);
+          const existing = stored ? (JSON.parse(stored) as string[]) : [];
+          if (!existing.includes(key)) {
+            sessionStorage.setItem(artifactStorageKey, JSON.stringify([...existing, key]));
+          }
+        } catch { /* ignore */ }
+      }
 
-      // Strip the line from displayed message
-      const cleaned = m.content.replace(ARTIFACT_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+      // Extract JSON using balanced-brace matching — handles multiline model output.
+      // The simple regex /^ARTIFACT:\s*(\{.*\})$/m fails when Claude pretty-prints
+      // the JSON across multiple lines because `.` does not match newlines.
+      const jsonStart = m.content.indexOf("{", prefixIdx);
+      let parsed: { type?: string; title?: string; content?: string } | null = null;
+      let matchedBlock = "";
+
+      if (jsonStart !== -1) {
+        let depth = 0, jsonEnd = -1;
+        for (let ci = jsonStart; ci < m.content.length; ci++) {
+          const ch = m.content[ci];
+          if (ch === "{") depth++;
+          else if (ch === "}") { depth--; if (depth === 0) { jsonEnd = ci + 1; break; } }
+        }
+        if (jsonEnd !== -1) {
+          const jsonStr = m.content.slice(jsonStart, jsonEnd);
+          try { parsed = JSON.parse(jsonStr); } catch { parsed = null; }
+          // Block to strip: from start of "ARTIFACT: " line to end of JSON block
+          const lineStart = m.content.lastIndexOf("\n", prefixIdx);
+          matchedBlock = m.content.slice(lineStart + 1, jsonEnd);
+        }
+      }
+
+      const cleaned = matchedBlock
+        ? m.content.replace(matchedBlock, "").replace(/\n{3,}/g, "\n\n").trim()
+        : m.content;
 
       if (!parsed || !parsed.type || !parsed.title || typeof parsed.content !== "string") {
         setMessages((prev) => prev.map((pm, pi) => (pi === idx ? { ...pm, content: cleaned } : pm)));
-        toast("Failed to save artifact.");
+        toast("Artifact format wasn't readable — regenerate or check Outputs.");
         return;
       }
 
@@ -6942,14 +6997,19 @@ export default function Workspace() {
               content: parsed!.content,
             }),
           });
-          if (!res.ok) throw new Error();
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({})) as { error?: string };
+            toast(errData.error ?? "Failed to save artifact — try again.");
+            return;
+          }
           if (res.status === 201) toast(`${title} saved to Outputs.`);
+          // 200 = already exists → silent (no duplicate toast)
         } catch {
-          toast("Failed to save artifact.");
+          toast("Failed to save artifact — check your connection.");
         }
       })();
     });
-  }, [messages, setMessages, id, sessionId]);
+  }, [messages, setMessages, id, sessionId, artifactStorageKey]);
 
   // Mirror an unanswered Intel Panel question into the chat as an assistant
   // message — does not call the AI, just appends to the visible thread.

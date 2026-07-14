@@ -1334,7 +1334,11 @@ export default function CodePage() {
     <div style={{
       display: "flex", flexDirection: "column",
       height: "100dvh", maxHeight: "100dvh",
-      paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      // On mobile the UnifiedShell renders a fixed 64px bottom nav bar.
+      // Without this offset the bottom of the content panels is hidden behind it.
+      paddingBottom: isMobile
+        ? "calc(64px + env(safe-area-inset-bottom, 0px))"
+        : "env(safe-area-inset-bottom, 0px)",
       background: "var(--atlas-bg)", color: "var(--atlas-fg)", overflow: "hidden",
     }}>
       <div style={{
