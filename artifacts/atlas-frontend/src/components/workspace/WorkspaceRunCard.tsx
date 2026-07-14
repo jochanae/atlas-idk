@@ -537,7 +537,7 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
       style={{
         position: "relative",
         background: "hsl(var(--card))",
-        border: "1px solid var(--atlas-gold-border)",
+        border: "1px solid rgba(139, 92, 246, 0.45)",
         borderRadius: 12,
         padding: "14px 16px",
         margin: "6px 0 4px",
@@ -546,6 +546,7 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
         boxSizing: "border-box",
         overflow: "hidden",
         cursor: clickable ? "pointer" : "default",
+        animation: "wrc-purple-pulse 2.5s ease-in-out infinite",
       }}
       data-wrc-active="true"
       data-run-id={runId ?? undefined}
@@ -556,7 +557,7 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
         style={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(90deg, transparent 0%, rgba(201,162,76,0.05) 50%, transparent 100%)",
+          background: "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.04) 50%, transparent 100%)",
           backgroundSize: "200% 100%",
           animation: "wrc-shimmer 2.4s ease-in-out infinite",
           pointerEvents: "none",
@@ -588,7 +589,7 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
             width: 7,
             height: 7,
             borderRadius: 999,
-            background: "var(--atlas-gold)",
+            background: "rgba(139, 92, 246, 0.9)",
             flexShrink: 0,
             marginTop: 5,
             animation: "wrc-dot-pulse 1.4s ease-in-out infinite",
@@ -611,8 +612,8 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
             width: 18,
             height: 18,
             borderRadius: 999,
-            border: "1.5px solid hsl(var(--muted-foreground) / 0.2)",
-            borderTopColor: "var(--atlas-gold)",
+            border: "1.5px solid hsl(var(--muted-foreground) / 0.15)",
+            borderTopColor: "rgba(139, 92, 246, 0.9)",
             flexShrink: 0,
             animation: "wrc-spin 0.8s linear infinite",
           }}
@@ -658,6 +659,16 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
         }
         @keyframes wrc-spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes wrc-purple-pulse {
+          0%, 100% {
+            box-shadow: 0 0 12px 1px rgba(139, 92, 246, 0.18);
+            border-color: rgba(139, 92, 246, 0.38);
+          }
+          50% {
+            box-shadow: 0 0 20px 4px rgba(139, 92, 246, 0.38);
+            border-color: rgba(139, 92, 246, 0.72);
+          }
         }
       `}</style>
     </div>
@@ -966,8 +977,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         alignSelf: "flex-start",
         cursor: "pointer",
         animation:
-          toneKey === "success" ? "wrc-border-flash-success 1.6s ease-out forwards"
-          : toneKey === "failed" ? "wrc-border-flash-failed 1.6s ease-out forwards"
+          toneKey === "success" ? "wrc-border-cooldown 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards"
+          : toneKey === "failed"  ? "wrc-border-cooldown-failed 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards"
           : undefined,
       }}
       data-run-id={run.id}
@@ -1255,15 +1266,19 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       </div>
 
       <style>{`
-        @keyframes wrc-border-flash-success {
-          0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0);    border-color: hsl(var(--border)); }
-          25%  { box-shadow: 0 0 0 4px rgba(74,222,128,0.18); border-color: rgba(74,222,128,0.85); }
-          100% { box-shadow: 0 0 0 0 rgba(74,222,128,0);    border-color: hsl(var(--border)); }
+        /* Cool Down: purple energy drains out, green briefly emerges, card settles */
+        @keyframes wrc-border-cooldown {
+          0%   { box-shadow: 0 0 14px 3px rgba(139,92,246,0.38); border-color: rgba(139,92,246,0.70); }
+          18%  { box-shadow: 0 0 26px 6px rgba(139,92,246,0.28); border-color: rgba(139,92,246,0.85); }
+          55%  { box-shadow: 0 0 6px 1px rgba(74,222,128,0.12);  border-color: rgba(74,222,128,0.45); }
+          100% { box-shadow: none;                                border-color: hsl(var(--border)); }
         }
-        @keyframes wrc-border-flash-failed {
-          0%   { box-shadow: 0 0 0 0 rgba(248,113,113,0);    border-color: hsl(var(--border)); }
-          25%  { box-shadow: 0 0 0 4px rgba(248,113,113,0.18); border-color: rgba(248,113,113,0.85); }
-          100% { box-shadow: 0 0 0 0 rgba(248,113,113,0);    border-color: hsl(var(--border)); }
+        /* Cool Down (failed): purple → warm amber, never red */
+        @keyframes wrc-border-cooldown-failed {
+          0%   { box-shadow: 0 0 14px 3px rgba(139,92,246,0.38); border-color: rgba(139,92,246,0.70); }
+          18%  { box-shadow: 0 0 26px 6px rgba(139,92,246,0.28); border-color: rgba(139,92,246,0.85); }
+          55%  { box-shadow: 0 0 6px 1px rgba(251,191,36,0.15);  border-color: rgba(251,191,36,0.50); }
+          100% { box-shadow: none;                                border-color: hsl(var(--border)); }
         }
         @keyframes wrc-shimmer {
           0%   { background-position: -200% center; }
