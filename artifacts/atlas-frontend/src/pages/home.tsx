@@ -5819,6 +5819,20 @@ export default function Home() {
         }}
       />
 
+      {askAtlasSurfaceVisible && askAtlasChat.messages.length > 0 && (
+        <TimelineRail
+          messages={(askAtlasChat.messages as Array<{ role: string; createdAt?: string; content?: string | null }>).map((m) => ({
+            role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+            createdAt: m.createdAt,
+            text: m.content ?? undefined,
+          }))}
+          alwaysVisible={true}
+          hideSearch={true}
+          topOffset={100}
+          bottomOffset={160}
+        />
+      )}
+
       {askAtlasConversationActive && showFocusPicker && (
         <>
           <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
