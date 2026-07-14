@@ -70,6 +70,7 @@ import SketchReveal from "@/components/chat/SketchReveal";
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 import { ParkSheet } from "@/components/ParkSheet";
+import { TimelineRail } from "@/components/TimelineRail";
 
 
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
@@ -1195,6 +1196,20 @@ export function AskAtlasSurface({
           projects={projects}
           onClose={() => setShowParkSheet(false)}
           onOpenFull={() => { setShowParkSheet(false); setLocation("/parking"); }}
+        />
+      )}
+
+      {messages.length > 0 && (
+        <TimelineRail
+          messages={messages.map((m) => ({
+            role: m.role === "user" ? "user" : "assistant",
+            createdAt: m.createdAt,
+            text: m.content ?? undefined,
+          }))}
+          alwaysVisible={true}
+          hideSearch={true}
+          topOffset={100}
+          bottomOffset={160}
         />
       )}
     </div>
