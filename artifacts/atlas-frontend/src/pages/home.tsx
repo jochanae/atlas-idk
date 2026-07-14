@@ -5820,11 +5820,7 @@ export default function Home() {
         }}
       />
 
-      {askAtlasSurfaceVisible && askAtlasChat.messages.length > 0 && (
-        <AskAtlasTimeline
-          messages={(askAtlasChat.messages as Array<{ createdAt?: string }>)}
-        />
-      )}
+      {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Atlas too. */}
 
       {askAtlasConversationActive && showFocusPicker && (
         <>
