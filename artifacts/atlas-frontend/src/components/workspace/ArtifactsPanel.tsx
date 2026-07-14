@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Download, FileOutput, Wand2 } from "lucide-react";
+import { ChevronDown, Download, FileOutput, FileText, LayoutGrid, List, Search, Wand2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/api";
 
 const DRAFT_TYPES: Array<{ type: string; label: string }> = [
@@ -33,9 +33,6 @@ type DraftResult = {
   body: string;
 };
 
-// Maps a draft artifact type to the Delivery Engine provider that can send it,
-// plus the target field(s) the user needs to fill in. draft_changelog has no
-// delivery provider yet — it stays copy/download only.
 const DELIVERY_BY_DRAFT_TYPE: Record<string, { provider: string; actionLabel: string }> = {
   draft_email: { provider: "email", actionLabel: "Send Email" },
   draft_slack: { provider: "slack", actionLabel: "Post to Slack" },
@@ -48,8 +45,80 @@ type DeliveryState = {
   externalRef?: Record<string, unknown> | null;
 };
 
+const CATEGORY_LABELS: Record<string, string> = {
+  presentations: "Presentations",
+  documents: "Documents",
+  spreadsheets: "Spreadsheets",
+  pdfs: "PDFs",
+  drafts: "Drafts",
+  notes: "Notes",
+  sketches: "Sketches",
+  other: "Other",
+};
+
+const CATEGORY_ORDER = ["presentations", "documents", "spreadsheets", "pdfs", "drafts", "notes", "sketches", "other"];
+
+function categorize(a: ArtifactRecord): string {
+  const t = (a.type ?? "").toLowerCase();
+  const meta = a.metadata && typeof a.metadata === "object" && !Array.isArray(a.metadata) ? a.metadata as Record<string, unknown> : {};
+  const ext = (typeof meta.extension === "string" ? meta.extension : "").toLowerCase();
+  const norm = ext || t;
+  if (norm === "pptx" || t.includes("presentation") || t.includes("slide")) return "presentations";
+  if (norm === "docx" || norm === "doc" || t.includes("word") || t.includes("document") || t.includes("report")) return "documents";
+  if (norm === "xlsx" || norm === "xls" || norm === "csv" || t.includes("spreadsheet")) return "spreadsheets";
+  if (norm === "pdf") return "pdfs";
+  if (t.startsWith("draft_")) return "drafts";
+  if (norm === "markdown" || norm === "md" || t.includes("markdown") || t.includes("plan") || t.includes("brief") || t.includes("html")) return "notes";
+  if (t.includes("sketch") || t.includes("design")) return "sketches";
+  return "other";
+}
+
+function typeColor(type: string, metadata: Record<string, unknown>): string {
+  const t = type.toLowerCase();
+  const ext = (typeof metadata.extension === "string" ? metadata.extension : "").toLowerCase();
+  const norm = ext || t;
+  if (norm === "pptx" || t.includes("presentation")) return "var(--atlas-gold)";
+  if (norm === "docx" || norm === "doc" || t.includes("document")) return "rgba(100,160,255,0.85)";
+  if (norm === "pdf") return "rgba(229,115,115,0.85)";
+  if (norm === "xlsx" || norm === "xls" || t.includes("spreadsheet")) return "rgba(100,200,120,0.85)";
+  if (t.startsWith("draft_")) return "rgba(190,140,255,0.85)";
+  return "var(--atlas-muted)";
+}
+
+function TypeIcon({ type, metadata, size = 16 }: { type: string; metadata: Record<string, unknown>; size?: number }) {
+  const t = type.toLowerCase();
+  const ext = (typeof metadata.extension === "string" ? metadata.extension : "").toLowerCase();
+  const norm = ext || t;
+  if (norm === "pptx" || t.includes("presentation") || t.includes("slide")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <rect x="2" y="3" width="20" height="14" rx="2" strokeWidth="1.5" />
+        <path d="M8 21h8M12 17v4" strokeWidth="1.5" strokeLinecap="round" />
+        <rect x="6" y="7" width="4" height="5" rx="0.8" fill="currentColor" opacity="0.35" strokeWidth="0" />
+        <path d="M12.5 9h3M12.5 11h2" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (norm === "xlsx" || norm === "xls" || t.includes("spreadsheet")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.5" />
+        <path d="M3 9h18M3 15h18M9 3v18M15 3v18" strokeWidth="1.1" opacity="0.5" />
+      </svg>
+    );
+  }
+  if (t.startsWith("draft_")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M12 20h9" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return <FileText size={size} strokeWidth={1.5} />;
+}
+
 function renderArtifactMarkdown(md: string): string {
-  // Minimal markdown -> HTML (headings, bold, italic, code, links, lists, paragraphs)
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const lines = md.split("\n");
   const out: string[] = [];
@@ -133,9 +202,6 @@ function visualQAInfo(metadata: Record<string, unknown>): { issues: VisualQAIssu
   const verification = asRecord(metadata.verification);
   const visualQA = asRecord(verification.visualQA);
   const status = textValue(visualQA.status);
-  // Only "checked" carries a meaningful verdict — "skipped"/"unavailable" mean
-  // no visual QA rule set exists yet for this type or the toolchain wasn't
-  // available, neither of which is a quality signal worth surfacing as a warning.
   if (status !== "checked") return null;
   const rawIssues = Array.isArray(visualQA.issues) ? visualQA.issues : [];
   const issues = rawIssues.filter(
@@ -149,11 +215,28 @@ function artifactDate(a: ArtifactRecord): string {
   return a.createdAt ?? a.created_at ?? "";
 }
 
+function relativeDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export function ArtifactsPanel({ projectId }: { projectId: number }) {
   const [items, setItems] = useState<ArtifactRecord[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | number | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [searchQuery, setSearchQuery] = useState("");
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
   const [generatingDraft, setGeneratingDraft] = useState<string | null>(null);
   const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
@@ -230,6 +313,33 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [draftMenuOpen]);
+
+  const filteredItems = useMemo(() => {
+    if (!items) return [];
+    if (!searchQuery.trim()) return items;
+    const q = searchQuery.toLowerCase();
+    return items.filter((a) =>
+      a.title.toLowerCase().includes(q) ||
+      (a.type ?? "").toLowerCase().includes(q) ||
+      (typeof asRecord(a.metadata).extension === "string"
+        ? (asRecord(a.metadata).extension as string).toLowerCase().includes(q)
+        : false),
+    );
+  }, [items, searchQuery]);
+
+  const grouped = useMemo(() => {
+    const g: Record<string, ArtifactRecord[]> = {};
+    for (const a of filteredItems) {
+      const cat = categorize(a);
+      if (!g[cat]) g[cat] = [];
+      g[cat].push(a);
+    }
+    return g;
+  }, [filteredItems]);
+
+  const showRecent = !searchQuery.trim() && filteredItems.length > 4;
+  const recentItems = filteredItems.slice(0, 3);
+  const activeCategoryCount = CATEGORY_ORDER.filter((c) => (grouped[c]?.length ?? 0) > 0).length;
 
   const handleGenerateDraft = useCallback(async (type: string, label: string) => {
     setDraftMenuOpen(false);
@@ -407,60 +517,397 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
     win.document.close();
   }, []);
 
+  // ── Expanded detail renderer (reused for both list and grid modes) ──────────
+  const renderExpandedDetail = (a: ArtifactRecord) => {
+    const typeStr = (a.type ?? "").toLowerCase();
+    const metadata = asRecord(a.metadata);
+    const payload = asRecord(a.payload);
+    const preview = asRecord(payload.preview);
+    const content = a.content ?? textValue(payload.markdown) ?? textValue(preview.body) ?? textValue(preview.html) ?? "";
+    const fileBacked = isFileBackedArtifact(a);
+    const extension = textValue(metadata.extension)?.toLowerCase() ?? (fileBacked ? typeStr : "md");
+    const label = typeLabel(a.type, metadata);
+    const slideHeadings = Array.isArray(preview.slideHeadings)
+      ? preview.slideHeadings.filter((h): h is string => typeof h === "string" && h.trim().length > 0)
+      : [];
+    const slideCount = typeof preview.slideCount === "number" ? preview.slideCount : null;
+    const previewTitle = textValue(preview.title) ?? a.title;
+    const previewSubtitle = textValue(preview.subtitle);
+    const verifyStatus = fileBacked ? verificationStatus(metadata) : null;
+    const visualQA = fileBacked ? visualQAInfo(metadata) : null;
+    const visualQAIssues = visualQA?.issues ?? [];
+    const visualQAErrorCount = visualQAIssues.filter((i) => i.severity === "error").length;
+    const looksHtml = !fileBacked && (typeStr.includes("html") || /<\s*(html|body|div|section|main|!doctype)/i.test(content));
+    const sendToDraft = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "sandbox", content } }));
+      toast("Sent to Draft preview.");
+    };
+    const downloadFile = (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      window.open(`/api/projects/${projectId}/artifacts/${a.id}/download`, "_blank");
+    };
+    return (
+      <div style={{ borderTop: "1px solid var(--atlas-border)", padding: "12px 14px" }}>
+        {fileBacked ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(201,162,76,0.18)", background: "rgba(201,162,76,0.05)" }}>
+              <div style={{ fontSize: "var(--ts-sm)", fontWeight: 650, marginBottom: 4 }}>{previewTitle}</div>
+              {previewSubtitle && <div style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.5 }}>{previewSubtitle}</div>}
+              <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                {label}{extension ? ` · .${extension}` : ""}{slideCount != null ? ` · ${slideCount} slides` : ""}
+              </div>
+              {verifyStatus === "verified" && (
+                <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(110,180,120)" }}>✓ Verified — passed all structural checks after generation.</div>
+              )}
+              {verifyStatus === "failed" && (
+                <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(229,115,115)" }}>⚠ May be incomplete — one or more checks failed after generation.</div>
+              )}
+              {visualQA && visualQAIssues.length === 0 && (
+                <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(110,180,120)" }}>✓ Visual quality check found no issues.</div>
+              )}
+            </div>
+            {visualQAIssues.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: 8, border: visualQAErrorCount > 0 ? "1px solid rgba(229,115,115,0.3)" : "1px solid rgba(230,181,90,0.3)", background: visualQAErrorCount > 0 ? "rgba(229,115,115,0.06)" : "rgba(230,181,90,0.06)" }}>
+                <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Visual quality check</div>
+                {visualQAIssues.map((issue, idx) => (
+                  <div key={`${a.id}-vqa-${idx}`} style={{ fontSize: "var(--ts-sm)", lineHeight: 1.45, color: "var(--atlas-fg)", opacity: 0.9 }}>
+                    <span style={{ color: issue.severity === "error" ? "rgb(229,115,115)" : "rgb(230,181,90)" }}>
+                      {issue.severity === "error" ? "✕" : "⚠"}
+                    </span>{" "}
+                    {issue.pageIndex != null && <span style={{ color: "var(--atlas-muted)" }}>Page {issue.pageIndex + 1}: </span>}
+                    {issue.message}
+                  </div>
+                ))}
+              </div>
+            )}
+            {slideHeadings.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Slide outline</div>
+                {slideHeadings.map((heading, idx) => (
+                  <div key={`${a.id}-slide-${idx}`} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: "var(--ts-sm)", lineHeight: 1.45 }}>
+                    <span style={{ fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", opacity: 0.75, fontSize: "var(--ts-xs)", minWidth: 18 }}>{idx + 2}</span>
+                    <span style={{ color: "var(--atlas-fg)", opacity: 0.88 }}>{heading}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : typeStr === "pipeline_sketch" ? (
+          (() => {
+            let screens: Array<{ name?: string; description?: string; components?: string[] }> = [];
+            try {
+              const parsed = JSON.parse(content) as Record<string, unknown>;
+              if (Array.isArray(parsed.screens)) screens = parsed.screens as typeof screens;
+            } catch { /* fall through */ }
+            if (screens.length === 0) {
+              return (
+                <div
+                  style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
+                  className="atlas-artifact-md"
+                  dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
+                />
+              );
+            }
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Screens · {screens.length}
+                </div>
+                {screens.map((screen, idx) => (
+                  <div key={idx} style={{ padding: "8px 10px", borderRadius: 7, border: "1px solid var(--atlas-border)", background: "rgba(255,255,255,0.02)" }}>
+                    <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: screen.description ? 3 : 0 }}>
+                      {screen.name ?? `Screen ${idx + 1}`}
+                    </div>
+                    {screen.description && (
+                      <div style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.5 }}>{screen.description}</div>
+                    )}
+                    {Array.isArray(screen.components) && screen.components.length > 0 && (
+                      <div style={{ marginTop: 5, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                        {screen.components.map((c, ci) => (
+                          <span key={ci} style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", padding: "1px 6px", borderRadius: 4, background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "var(--atlas-gold)", opacity: 0.85 }}>{c}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()
+        ) : typeStr === "design_plan" ? (
+          (() => {
+            let body: Record<string, unknown> = {};
+            try {
+              const parsed = JSON.parse(content) as Record<string, unknown>;
+              body = (parsed.body as Record<string, unknown>) ?? parsed;
+            } catch { /* fall through */ }
+            const fields: Array<{ label: string; value: unknown }> = [
+              { label: "Navigation", value: body.navigationPattern },
+              { label: "Component Patterns", value: body.componentPatterns },
+              { label: "Typography Scale", value: body.typographyScale },
+              { label: "Card Density", value: body.cardDensity },
+              { label: "Motion Philosophy", value: body.motionPhilosophy },
+              { label: "Empty States", value: body.emptyStates },
+            ].filter((f) => typeof f.value === "string" && (f.value as string).trim());
+            const responsive = body.responsiveIntent as Record<string, string> | undefined;
+            const interaction = body.interactionPatterns as Record<string, string> | undefined;
+            if (fields.length === 0 && !responsive && !interaction) {
+              return (
+                <div
+                  style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
+                  className="atlas-artifact-md"
+                  dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
+                />
+              );
+            }
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {fields.map(({ label, value }) => (
+                  <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>{label}</span>
+                    <span style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", lineHeight: 1.5 }}>{String(value)}</span>
+                  </div>
+                ))}
+                {responsive && Object.keys(responsive).length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>Responsive Intent</span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {Object.entries(responsive).map(([k, v]) => (
+                        <span key={k} style={{ fontSize: "var(--ts-xs)", padding: "2px 7px", borderRadius: 5, background: "rgba(201,162,76,0.07)", border: "1px solid rgba(201,162,76,0.18)", color: "var(--atlas-gold)" }}>{k}: {v}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {interaction && Object.keys(interaction).length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>Interaction Patterns</span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {Object.entries(interaction).filter(([, v]) => typeof v === "string" && v.trim()).map(([k, v]) => (
+                        <span key={k} style={{ fontSize: "var(--ts-xs)", padding: "2px 7px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--atlas-muted)" }}>{k}: {String(v)}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        ) : (
+          <div
+            style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
+            className="atlas-artifact-md"
+            dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
+          />
+        )}
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          {looksHtml && (
+            <button type="button" onClick={sendToDraft} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Send to Draft</button>
+          )}
+          {fileBacked ? (
+            <button type="button" onClick={downloadFile} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Download .{extension || a.type}</button>
+          ) : (
+            <>
+              <button type="button" onClick={() => handleExport(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export MD</button>
+              <button type="button" onClick={() => handleExportPDF(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export PDF</button>
+            </>
+          )}
+          {a.source === "project" && (
+            <button type="button" onClick={() => void handleDelete(a.id)} style={{ fontSize: "var(--ts-xs)", color: "rgb(229,115,115)", background: "transparent", border: "1px solid rgba(229,115,115,0.3)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Delete</button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Item row (list mode) ────────────────────────────────────────────────────
+  const renderListItem = (a: ArtifactRecord) => {
+    const isOpen = String(expanded) === String(a.id);
+    const metadata = asRecord(a.metadata);
+    const fileBacked = isFileBackedArtifact(a);
+    const label = typeLabel(a.type, metadata);
+    const created = artifactDate(a);
+    const dateLabel = relativeDate(created);
+    const color = typeColor(a.type, metadata);
+    const verifyStatus = fileBacked ? verificationStatus(metadata) : null;
+    const visualQA = fileBacked ? visualQAInfo(metadata) : null;
+    const visualQAIssues = visualQA?.issues ?? [];
+    const visualQAErrorCount = visualQAIssues.filter((i) => i.severity === "error").length;
+    const downloadFile = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      window.open(`/api/projects/${projectId}/artifacts/${a.id}/download`, "_blank");
+    };
+    return (
+      <div key={a.id} style={{ border: "1px solid var(--atlas-border)", borderRadius: 9, background: "var(--atlas-card)", overflow: "hidden" }}>
+        <button
+          type="button"
+          onClick={() => setExpanded(isOpen ? null : a.id)}
+          style={{ width: "100%", textAlign: "left", padding: "9px 12px", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)" }}
+        >
+          <div style={{ flexShrink: 0, color, opacity: 0.85 }}>
+            <TypeIcon type={a.type} metadata={metadata} size={15} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
+            {dateLabel && (
+              <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", marginTop: 1 }}>{dateLabel}</div>
+            )}
+          </div>
+          {verifyStatus === "failed" && (
+            <span title="One or more checks failed after generation." style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(229,115,115,0.14)", border: "1px solid rgba(229,115,115,0.4)", color: "rgb(229,115,115)", padding: "2px 6px", borderRadius: 5 }}>⚠</span>
+          )}
+          {visualQAIssues.length > 0 && (
+            <span title={`${visualQAIssues.length} visual issue${visualQAIssues.length === 1 ? "" : "s"}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: visualQAErrorCount > 0 ? "rgba(229,115,115,0.14)" : "rgba(230,181,90,0.14)", border: visualQAErrorCount > 0 ? "1px solid rgba(229,115,115,0.4)" : "1px solid rgba(230,181,90,0.4)", color: visualQAErrorCount > 0 ? "rgb(229,115,115)" : "rgb(230,181,90)", padding: "2px 6px", borderRadius: 5 }}>⚠ {visualQAIssues.length}</span>
+          )}
+          {fileBacked && (
+            <span
+              role="button" tabIndex={0}
+              onClick={downloadFile}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); downloadFile(e as unknown as React.MouseEvent); } }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.7, padding: "2px 4px", borderRadius: 4, cursor: "pointer" }}
+            >
+              <Download size={11} strokeWidth={1.5} />
+            </span>
+          )}
+          <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.10)", border: "1px solid rgba(201,162,76,0.25)", color: "var(--atlas-gold)", padding: "2px 5px", borderRadius: 5, flexShrink: 0 }}>{label}</span>
+          <ChevronDown size={13} style={{ opacity: 0.45, flexShrink: 0, transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 160ms" }} />
+        </button>
+        {isOpen && renderExpandedDetail(a)}
+      </div>
+    );
+  };
+
+  // ── Item card (grid mode) ───────────────────────────────────────────────────
+  const renderGridItems = (gridItems: ArtifactRecord[]) => (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      {gridItems.map((a) => {
+        const isOpen = String(expanded) === String(a.id);
+        const metadata = asRecord(a.metadata);
+        const fileBacked = isFileBackedArtifact(a);
+        const label = typeLabel(a.type, metadata);
+        const created = artifactDate(a);
+        const dateLabel = relativeDate(created);
+        const color = typeColor(a.type, metadata);
+        const downloadFile = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          window.open(`/api/projects/${projectId}/artifacts/${a.id}/download`, "_blank");
+        };
+        return (
+          <Fragment key={a.id}>
+            <button
+              type="button"
+              onClick={() => setExpanded(isOpen ? null : a.id)}
+              style={{ textAlign: "left", padding: "10px 10px 9px", border: `1px solid ${isOpen ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`, borderRadius: 9, background: isOpen ? "rgba(201,162,76,0.04)" : "var(--atlas-card)", cursor: "pointer", color: "var(--atlas-fg)", display: "flex", flexDirection: "column", gap: 6, minHeight: 80 }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 4 }}>
+                <div style={{ color, opacity: 0.85 }}>
+                  <TypeIcon type={a.type} metadata={metadata} size={18} />
+                </div>
+                {fileBacked && (
+                  <span
+                    role="button" tabIndex={0}
+                    onClick={downloadFile}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); downloadFile(e as unknown as React.MouseEvent); } }}
+                    style={{ color: "var(--atlas-muted)", opacity: 0.55, display: "flex", padding: 2 }}
+                    title="Download"
+                  >
+                    <Download size={11} strokeWidth={1.5} />
+                  </span>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "var(--ts-xs)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.4 }}>{a.title}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", color, opacity: 0.7, padding: "1px 4px", borderRadius: 3, border: `1px solid ${color}` }}>{label}</span>
+                {dateLabel && <span style={{ fontSize: 9, color: "var(--atlas-muted)", opacity: 0.5, flexShrink: 0 }}>{dateLabel}</span>}
+              </div>
+            </button>
+            {isOpen && (
+              <div style={{ gridColumn: "1 / -1", border: "1px solid rgba(201,162,76,0.25)", borderRadius: 9, background: "var(--atlas-card)", overflow: "hidden", marginTop: -2 }}>
+                {renderExpandedDetail(a)}
+              </div>
+            )}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+
+  // ── Section label ───────────────────────────────────────────────────────────
+  const SectionLabel = ({ label, count }: { label: string; count: number }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, marginTop: 12 }}>
+      <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.55 }}>{label}</span>
+      <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.35 }}>{count}</span>
+      <div style={{ flex: 1, height: 1, background: "var(--atlas-border)", opacity: 0.5 }} />
+    </div>
+  );
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 14px" }} className="scrollbar-none">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, position: "relative" }} ref={draftMenuRef}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 12 }} ref={draftMenuRef}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          {/* Title */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 7, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
             <FileOutput size={13} /> Outputs
           </div>
-          <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.6, marginTop: 3 }}>
-            Generated files, decks, documents, and saved drafts.
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setDraftMenuOpen((v) => !v)}
-          disabled={generatingDraft !== null}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em",
-            background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", color: "var(--atlas-gold)",
-            padding: "6px 12px", borderRadius: 8, cursor: generatingDraft ? "default" : "pointer",
-            opacity: generatingDraft ? 0.6 : 1,
-          }}
-        >
-          <Wand2 size={13} />
-          {generatingDraft ? "Generating…" : "Generate Draft"}
-          <ChevronDown size={12} style={{ opacity: 0.7, transform: draftMenuOpen ? "rotate(180deg)" : "none", transition: "transform 160ms" }} />
-        </button>
-        {draftMenuOpen && (
-          <div
-            style={{
-              position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 20,
-              background: "var(--atlas-card)", border: "1px solid var(--atlas-border)", borderRadius: 10,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.3)", minWidth: 180, overflow: "hidden",
-            }}
-          >
-            {DRAFT_TYPES.map((d) => (
+          {/* List / Grid toggle */}
+          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--atlas-border)" }}>
+            {(["list", "grid"] as const).map((mode) => (
               <button
-                key={d.type}
-                type="button"
-                onClick={() => void handleGenerateDraft(d.type, d.label)}
-                style={{
-                  display: "block", width: "100%", textAlign: "left", padding: "9px 12px",
-                  fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", background: "transparent", border: "none", cursor: "pointer",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                key={mode} type="button"
+                onClick={() => setViewMode(mode)}
+                title={mode === "list" ? "List view" : "Grid view"}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 26, border: "none", cursor: "pointer", transition: "background 120ms, color 120ms", background: viewMode === mode ? "rgba(201,162,76,0.15)" : "transparent", color: viewMode === mode ? "var(--atlas-gold)" : "var(--atlas-muted)" }}
               >
-                {d.label}
+                {mode === "list" ? <List size={12} strokeWidth={2} /> : <LayoutGrid size={12} strokeWidth={2} />}
               </button>
             ))}
           </div>
-        )}
+          {/* Generate Draft */}
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setDraftMenuOpen((v) => !v)}
+              disabled={generatingDraft !== null}
+              style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", color: "var(--atlas-gold)", padding: "5px 9px", borderRadius: 7, cursor: generatingDraft ? "default" : "pointer", opacity: generatingDraft ? 0.6 : 1 }}
+            >
+              <Wand2 size={11} />
+              {generatingDraft ? "…" : "Draft"}
+              <ChevronDown size={11} style={{ opacity: 0.7, transform: draftMenuOpen ? "rotate(180deg)" : "none", transition: "transform 160ms" }} />
+            </button>
+            {draftMenuOpen && (
+              <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, background: "var(--atlas-card)", border: "1px solid var(--atlas-border)", borderRadius: 9, boxShadow: "0 8px 24px rgba(0,0,0,0.3)", minWidth: 170, overflow: "hidden" }}>
+                {DRAFT_TYPES.map((d) => (
+                  <button
+                    key={d.type} type="button"
+                    onClick={() => void handleGenerateDraft(d.type, d.label)}
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", background: "transparent", border: "none", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Search */}
+        <div style={{ position: "relative" }}>
+          <Search size={12} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--atlas-muted)", opacity: 0.4, pointerEvents: "none" }} />
+          <input
+            type="text"
+            placeholder="Search outputs…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: "100%", paddingLeft: 28, paddingRight: 10, paddingTop: 7, paddingBottom: 7, borderRadius: 8, border: "1px solid var(--atlas-border)", background: "rgba(255,255,255,0.02)", color: "var(--atlas-fg)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-sans)", outline: "none", boxSizing: "border-box" }}
+          />
+        </div>
       </div>
+
+      {/* ── Draft result card ──────────────────────────────────────────────── */}
       {draftResult && (
         <div style={{ border: "1px solid rgba(201,162,76,0.4)", borderRadius: 10, background: "var(--atlas-card)", padding: "12px 14px", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
@@ -482,22 +929,10 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             return (
               <div style={{ marginBottom: 10, paddingTop: 10, borderTop: "1px solid var(--atlas-border)" }}>
                 {deliveryConfig.provider === "email" && (
-                  <input
-                    type="email"
-                    placeholder="recipient@email.com"
-                    value={deliveryTarget.to ?? ""}
-                    onChange={(e) => setDeliveryTarget((t) => ({ ...t, to: e.target.value }))}
-                    style={{ ...inputStyle, width: "100%", marginBottom: 8 }}
-                  />
+                  <input type="email" placeholder="recipient@email.com" value={deliveryTarget.to ?? ""} onChange={(e) => setDeliveryTarget((t) => ({ ...t, to: e.target.value }))} style={{ ...inputStyle, width: "100%", marginBottom: 8 }} />
                 )}
                 {deliveryConfig.provider === "slack" && (
-                  <input
-                    type="text"
-                    placeholder="Slack channel (optional — uses default)"
-                    value={deliveryTarget.channel ?? ""}
-                    onChange={(e) => setDeliveryTarget((t) => ({ ...t, channel: e.target.value }))}
-                    style={{ ...inputStyle, width: "100%", marginBottom: 8 }}
-                  />
+                  <input type="text" placeholder="Slack channel (optional — uses default)" value={deliveryTarget.channel ?? ""} onChange={(e) => setDeliveryTarget((t) => ({ ...t, channel: e.target.value }))} style={{ ...inputStyle, width: "100%", marginBottom: 8 }} />
                 )}
                 {deliveryConfig.provider === "github_pr" && (
                   <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
@@ -507,17 +942,8 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                   </div>
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeliverDraft()}
-                    disabled={delivery.status === "sending" || delivery.status === "sent"}
-                    style={{
-                      fontSize: "var(--ts-xs)", color: delivery.status === "sent" ? "var(--atlas-muted)" : "var(--atlas-gold)",
-                      background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8,
-                      padding: "5px 10px", cursor: delivery.status === "sending" || delivery.status === "sent" ? "default" : "pointer",
-                      opacity: delivery.status === "sending" ? 0.6 : 1,
-                    }}
-                  >
+                  <button type="button" onClick={() => void handleDeliverDraft()} disabled={delivery.status === "sending" || delivery.status === "sent"}
+                    style={{ fontSize: "var(--ts-xs)", color: delivery.status === "sent" ? "var(--atlas-muted)" : "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: delivery.status === "sending" || delivery.status === "sent" ? "default" : "pointer", opacity: delivery.status === "sending" ? 0.6 : 1 }}>
                     {delivery.status === "sending" ? "Sending…" : delivery.status === "sent" ? "Sent ✓" : deliveryConfig.actionLabel}
                   </button>
                   {delivery.status === "failed" && (
@@ -533,289 +959,64 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
           </div>
         </div>
       )}
+
+      {/* ── States ─────────────────────────────────────────────────────────── */}
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>Loading outputs…</div>
       ) : error ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-sm)" }}>
-          <div>Couldn’t load outputs.</div>
+          <div>Couldn't load outputs.</div>
           <button type="button" onClick={() => void load()} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "transparent", border: "1px solid rgba(201,162,76,0.3)", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>Retry</button>
         </div>
-      ) : !items || items.length === 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, paddingBottom: 40 }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.2" strokeLinecap="round" style={{ opacity: 0.25 }}>
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>
-          </svg>
-          <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-muted)", opacity: 0.5, textAlign: "center", lineHeight: 1.65 }}>
-            No outputs saved yet.<br />
-            <span style={{ fontSize: "var(--ts-sm)" }}>Generated files and saved drafts appear here.</span>
+      ) : filteredItems.length === 0 ? (
+        searchQuery ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "28px 16px", color: "var(--atlas-muted)" }}>
+            <Search size={22} strokeWidth={1.2} style={{ opacity: 0.2 }} />
+            <div style={{ fontSize: "var(--ts-sm)", opacity: 0.55, textAlign: "center" }}>No outputs match "{searchQuery}"</div>
+            <button type="button" onClick={() => setSearchQuery("")} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline", opacity: 0.7 }}>Clear search</button>
           </div>
-        </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, paddingBottom: 40 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.2" strokeLinecap="round" style={{ opacity: 0.25 }}>
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>
+            </svg>
+            <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-muted)", opacity: 0.5, textAlign: "center", lineHeight: 1.65 }}>
+              No outputs saved yet.<br />
+              <span style={{ fontSize: "var(--ts-sm)" }}>Generated files and saved drafts appear here.</span>
+            </div>
+          </div>
+        )
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.map((a) => {
-            const isOpen = String(expanded) === String(a.id);
-            const created = a.createdAt ?? a.created_at ?? "";
-            const dateLabel = created ? new Date(created).toLocaleString() : "";
-            const typeStr = (a.type ?? "").toLowerCase();
-            const metadata = asRecord(a.metadata);
-            const payload = asRecord(a.payload);
-            const preview = asRecord(payload.preview);
-            const content = a.content ?? textValue(payload.markdown) ?? textValue(preview.body) ?? textValue(preview.html) ?? "";
-            const fileBacked = isFileBackedArtifact(a);
-            const extension = textValue(metadata.extension)?.toLowerCase() ?? (fileBacked ? typeStr : "md");
-            const label = typeLabel(a.type, metadata);
-            const category = textValue(metadata.category);
-            const slideHeadings = Array.isArray(preview.slideHeadings)
-              ? preview.slideHeadings.filter((h): h is string => typeof h === "string" && h.trim().length > 0)
-              : [];
-            const slideCount = typeof preview.slideCount === "number" ? preview.slideCount : null;
-            const previewTitle = textValue(preview.title) ?? a.title;
-            const previewSubtitle = textValue(preview.subtitle);
-            const verifyStatus = fileBacked ? verificationStatus(metadata) : null;
-            const visualQA = fileBacked ? visualQAInfo(metadata) : null;
-            const visualQAIssues = visualQA?.issues ?? [];
-            const visualQAErrorCount = visualQAIssues.filter((i) => i.severity === "error").length;
-            const looksHtml = !fileBacked && (typeStr.includes("html") || /<\s*(html|body|div|section|main|!doctype)/i.test(content));
-            const sendToDraft = (e: React.MouseEvent) => {
-              e.stopPropagation();
-              window.dispatchEvent(new CustomEvent("axiom:open-preview", {
-                detail: { source: "sandbox", content },
-              }));
-              toast("Sent to Draft preview.");
-            };
-            const downloadFile = (e?: React.MouseEvent) => {
-              e?.stopPropagation();
-              window.open(`/api/projects/${projectId}/artifacts/${a.id}/download`, "_blank");
-            };
+        <>
+          {/* Recent section */}
+          {showRecent && (
+            <>
+              <SectionLabel label="Recent" count={recentItems.length} />
+              {viewMode === "grid"
+                ? renderGridItems(recentItems)
+                : <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{recentItems.map((a) => renderListItem(a))}</div>
+              }
+              <div style={{ height: 1, background: "var(--atlas-border)", margin: "12px 0 4px", opacity: 0.4 }} />
+            </>
+          )}
+
+          {/* Category sections */}
+          {CATEGORY_ORDER.map((cat) => {
+            const catItems = grouped[cat];
+            if (!catItems?.length) return null;
             return (
-              <div key={a.id} style={{ border: "1px solid var(--atlas-border)", borderRadius: 10, background: "var(--atlas-card)", overflow: "hidden" }}>
-                <button
-                  type="button"
-                  onClick={() => setExpanded(isOpen ? null : a.id)}
-                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)" }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{previewTitle}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
-                      {dateLabel && <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)" }}>{dateLabel}</span>}
-                      {slideCount != null && <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.8 }}>· {slideCount} slides</span>}
-                      {category && <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.8 }}>· {category}</span>}
-                    </div>
-                  </div>
-                  {verifyStatus === "failed" && (
-                    <span
-                      title="One or more checks failed after generation — the file may be incomplete or malformed."
-                      style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(229,115,115,0.14)", border: "1px solid rgba(229,115,115,0.4)", color: "rgb(229,115,115)", padding: "3px 8px", borderRadius: 6 }}
-                    >
-                      ⚠ May be incomplete
-                    </span>
-                  )}
-                  {visualQAIssues.length > 0 && (
-                    <span
-                      title={`Visual quality check found ${visualQAIssues.length} issue${visualQAIssues.length === 1 ? "" : "s"} — e.g. ${visualQAIssues[0].message}`}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: visualQAErrorCount > 0 ? "rgba(229,115,115,0.14)" : "rgba(230,181,90,0.14)", border: visualQAErrorCount > 0 ? "1px solid rgba(229,115,115,0.4)" : "1px solid rgba(230,181,90,0.4)", color: visualQAErrorCount > 0 ? "rgb(229,115,115)" : "rgb(230,181,90)", padding: "3px 8px", borderRadius: 6 }}
-                    >
-                      ⚠ {visualQAIssues.length} visual {visualQAIssues.length === 1 ? "issue" : "issues"}
-                    </span>
-                  )}
-                  {fileBacked && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={downloadFile}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); downloadFile(e as unknown as React.MouseEvent); } }}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.14)", border: "1px solid rgba(201,162,76,0.4)", color: "var(--atlas-gold)", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}
-                    >
-                      <Download size={11} /> Download
-                    </span>
-                  )}
-                  {looksHtml && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={sendToDraft}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sendToDraft(e as unknown as React.MouseEvent); } }}
-                      style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.14)", border: "1px solid rgba(201,162,76,0.4)", color: "var(--atlas-gold)", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}
-                    >
-                      Preview
-                    </span>
-                  )}
-                  <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "2px 6px", borderRadius: 6 }}>{label}</span>
-                  <ChevronDown size={14} style={{ opacity: 0.6, transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 160ms" }} />
-                </button>
-                {isOpen && (
-                  <div style={{ borderTop: "1px solid var(--atlas-border)", padding: "12px 14px" }}>
-                    {fileBacked ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        <div style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(201,162,76,0.18)", background: "rgba(201,162,76,0.05)" }}>
-                          <div style={{ fontSize: "var(--ts-sm)", fontWeight: 650, marginBottom: 4 }}>{previewTitle}</div>
-                          {previewSubtitle && <div style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.5 }}>{previewSubtitle}</div>}
-                          <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                            {label}{extension ? ` · .${extension}` : ""}{slideCount != null ? ` · ${slideCount} slides` : ""}
-                          </div>
-                          {verifyStatus === "verified" && (
-                            <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(110,180,120)" }}>✓ Verified — passed all structural checks after generation.</div>
-                          )}
-                          {verifyStatus === "failed" && (
-                            <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(229,115,115)" }}>⚠ May be incomplete — one or more checks failed after generation.</div>
-                          )}
-                          {visualQA && visualQAIssues.length === 0 && (
-                            <div style={{ marginTop: 8, fontSize: "var(--ts-xs)", color: "rgb(110,180,120)" }}>✓ Visual quality check found no issues.</div>
-                          )}
-                        </div>
-                        {visualQAIssues.length > 0 && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: 8, border: visualQAErrorCount > 0 ? "1px solid rgba(229,115,115,0.3)" : "1px solid rgba(230,181,90,0.3)", background: visualQAErrorCount > 0 ? "rgba(229,115,115,0.06)" : "rgba(230,181,90,0.06)" }}>
-                            <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Visual quality check</div>
-                            {visualQAIssues.map((issue, idx) => (
-                              <div key={`${a.id}-vqa-${idx}`} style={{ fontSize: "var(--ts-sm)", lineHeight: 1.45, color: "var(--atlas-fg)", opacity: 0.9 }}>
-                                <span style={{ color: issue.severity === "error" ? "rgb(229,115,115)" : "rgb(230,181,90)" }}>
-                                  {issue.severity === "error" ? "✕" : "⚠"}
-                                </span>{" "}
-                                {issue.pageIndex != null && <span style={{ color: "var(--atlas-muted)" }}>Page {issue.pageIndex + 1}: </span>}
-                                {issue.message}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {slideHeadings.length > 0 && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Slide outline</div>
-                            {slideHeadings.map((heading, idx) => (
-                              <div key={`${a.id}-slide-${idx}`} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: "var(--ts-sm)", lineHeight: 1.45 }}>
-                                <span style={{ fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", opacity: 0.75, fontSize: "var(--ts-xs)", minWidth: 18 }}>{idx + 2}</span>
-                                <span style={{ color: "var(--atlas-fg)", opacity: 0.88 }}>{heading}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : typeStr === "pipeline_sketch" ? (
-                      (() => {
-                        let screens: Array<{ name?: string; description?: string; components?: string[] }> = [];
-                        try {
-                          const parsed = JSON.parse(content) as Record<string, unknown>;
-                          if (Array.isArray(parsed.screens)) screens = parsed.screens as typeof screens;
-                        } catch { /* fall through */ }
-                        if (screens.length === 0) {
-                          return (
-                            <div
-                              style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
-                              className="atlas-artifact-md"
-                              dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
-                            />
-                          );
-                        }
-                        return (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            <div style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                              Screens · {screens.length}
-                            </div>
-                            {screens.map((screen, idx) => (
-                              <div key={idx} style={{ padding: "8px 10px", borderRadius: 7, border: "1px solid var(--atlas-border)", background: "rgba(255,255,255,0.02)" }}>
-                                <div style={{ fontSize: "var(--ts-sm)", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: screen.description ? 3 : 0 }}>
-                                  {screen.name ?? `Screen ${idx + 1}`}
-                                </div>
-                                {screen.description && (
-                                  <div style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.5 }}>{screen.description}</div>
-                                )}
-                                {Array.isArray(screen.components) && screen.components.length > 0 && (
-                                  <div style={{ marginTop: 5, display: "flex", flexWrap: "wrap", gap: 4 }}>
-                                    {screen.components.map((c, ci) => (
-                                      <span key={ci} style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", padding: "1px 6px", borderRadius: 4, background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "var(--atlas-gold)", opacity: 0.85 }}>{c}</span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()
-                    ) : typeStr === "design_plan" ? (
-                      (() => {
-                        let body: Record<string, unknown> = {};
-                        try {
-                          const parsed = JSON.parse(content) as Record<string, unknown>;
-                          body = (parsed.body as Record<string, unknown>) ?? parsed;
-                        } catch { /* fall through */ }
-                        const fields: Array<{ label: string; value: unknown }> = [
-                          { label: "Navigation", value: body.navigationPattern },
-                          { label: "Component Patterns", value: body.componentPatterns },
-                          { label: "Typography Scale", value: body.typographyScale },
-                          { label: "Card Density", value: body.cardDensity },
-                          { label: "Motion Philosophy", value: body.motionPhilosophy },
-                          { label: "Empty States", value: body.emptyStates },
-                        ].filter(f => typeof f.value === "string" && (f.value as string).trim());
-                        const responsive = body.responsiveIntent as Record<string, string> | undefined;
-                        const interaction = body.interactionPatterns as Record<string, string> | undefined;
-                        if (fields.length === 0 && !responsive && !interaction) {
-                          return (
-                            <div
-                              style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
-                              className="atlas-artifact-md"
-                              dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
-                            />
-                          );
-                        }
-                        return (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                            {fields.map(({ label, value }) => (
-                              <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>{label}</span>
-                                <span style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", lineHeight: 1.5 }}>{String(value)}</span>
-                              </div>
-                            ))}
-                            {responsive && Object.keys(responsive).length > 0 && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>Responsive Intent</span>
-                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                  {Object.entries(responsive).map(([k, v]) => (
-                                    <span key={k} style={{ fontSize: "var(--ts-xs)", padding: "2px 7px", borderRadius: 5, background: "rgba(201,162,76,0.07)", border: "1px solid rgba(201,162,76,0.18)", color: "var(--atlas-gold)" }}>{k}: {v}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {interaction && Object.keys(interaction).length > 0 && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--atlas-muted)" }}>Interaction Patterns</span>
-                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                  {Object.entries(interaction).filter(([, v]) => typeof v === "string" && v.trim()).map(([k, v]) => (
-                                    <span key={k} style={{ fontSize: "var(--ts-xs)", padding: "2px 7px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--atlas-muted)" }}>{k}: {String(v)}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      <div
-                        style={{ fontSize: "var(--ts-sm)", lineHeight: 1.6, color: "var(--atlas-fg)" }}
-                        className="atlas-artifact-md"
-                        dangerouslySetInnerHTML={{ __html: renderArtifactMarkdown(content) }}
-                      />
-                    )}
-                    <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                      {looksHtml && (
-                        <button type="button" onClick={sendToDraft} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Send to Draft</button>
-                      )}
-                      {fileBacked ? (
-                        <button type="button" onClick={downloadFile} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Download .{extension || a.type}</button>
-                      ) : (
-                        <>
-                          <button type="button" onClick={() => handleExport(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export MD</button>
-                          <button type="button" onClick={() => handleExportPDF(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export PDF</button>
-                        </>
-                      )}
-                      {a.source === "project" && (
-                        <button type="button" onClick={() => void handleDelete(a.id)} style={{ fontSize: "var(--ts-xs)", color: "rgb(229,115,115)", background: "transparent", border: "1px solid rgba(229,115,115,0.3)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Delete</button>
-                      )}
-                    </div>
-                  </div>
+              <div key={cat}>
+                {activeCategoryCount > 1 && (
+                  <SectionLabel label={CATEGORY_LABELS[cat]} count={catItems.length} />
                 )}
+                {viewMode === "grid"
+                  ? <div style={{ marginBottom: 4 }}>{renderGridItems(catItems)}</div>
+                  : <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 4 }}>{catItems.map((a) => renderListItem(a))}</div>
+                }
               </div>
             );
           })}
-        </div>
+        </>
       )}
     </div>
   );

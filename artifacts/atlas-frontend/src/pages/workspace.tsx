@@ -6848,6 +6848,7 @@ export default function Workspace() {
         try { sessionStorage.setItem(`atlas-open-output-${id}`, String(detail.artifactId)); } catch {}
       }
       setLeftTab("artifacts");
+      setSubheaderOpen(true);
       if (isMobile) {
         setMobileTab("artifacts");
         setRightOpen(true);
