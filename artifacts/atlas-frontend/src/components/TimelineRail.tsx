@@ -151,7 +151,12 @@ export function TimelineRail({
     if (typeof window === "undefined") return;
     let raf = 0;
     const compute = () => {
-      const container = document.querySelector<HTMLElement>(".atlas-chat-timeline, .atlas-home-chat-messages-scroll, .atlas-ask-atlas-scroll");
+      // Priority order matters: Ask Atlas surface overlays home, so its scroll
+      // container must win over the (still-mounted) home messages scroll.
+      const container =
+        document.querySelector<HTMLElement>(".atlas-ask-atlas-scroll") ||
+        document.querySelector<HTMLElement>(".atlas-chat-timeline") ||
+        document.querySelector<HTMLElement>(".atlas-home-chat-messages-scroll");
       const cr = container?.getBoundingClientRect();
       const viewportTop = cr ? Math.max(0, cr.top) : 0;
       const viewportBottom = cr ? Math.min(window.innerHeight, cr.bottom) : window.innerHeight;
