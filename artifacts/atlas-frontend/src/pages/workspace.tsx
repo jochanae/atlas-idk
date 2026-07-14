@@ -8862,6 +8862,7 @@ export default function Workspace() {
               onReviewDiff: () => setLeftTab("diff"),
               onOpenArtifact: (_title: string) => {
                 setLeftTab("artifacts");
+                setSubheaderOpen(true);
                 if (isMobile) setMobileTab("artifacts");
               },
               onEditDeclined: () => {

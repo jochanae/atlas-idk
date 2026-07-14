@@ -237,6 +237,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   const [expanded, setExpanded] = useState<string | number | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [searchQuery, setSearchQuery] = useState("");
+  const [highlighted, setHighlighted] = useState<string | null>(null);
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
   const [generatingDraft, setGeneratingDraft] = useState<string | null>(null);
   const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
@@ -291,17 +292,33 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
       if (pending) {
         sessionStorage.removeItem(`atlas-open-output-${projectId}`);
         setExpanded(pending);
+        setHighlighted(pending);
+        const id = pending;
+        setTimeout(() => setHighlighted((h) => (h === id ? null : h)), 2200);
       }
     } catch {}
 
-    const handler = (event: Event) => {
+    const focusHandler = (event: Event) => {
       const detail = (event as CustomEvent<{ artifactId?: number | string; projectId?: number }>).detail ?? {};
       if (detail.projectId && detail.projectId !== projectId) return;
-      if (detail.artifactId != null) setExpanded(String(detail.artifactId));
+      if (detail.artifactId != null) {
+        const idStr = String(detail.artifactId);
+        setExpanded(idStr);
+        setHighlighted(idStr);
+        setTimeout(() => setHighlighted((h) => (h === idStr ? null : h)), 2200);
+      }
     };
-    window.addEventListener("axiom:focus-output", handler);
-    return () => window.removeEventListener("axiom:focus-output", handler);
-  }, [projectId]);
+    // Reload the list when the Outputs panel is opened so freshly created
+    // artifacts (from the live artifact_created SSE event) appear immediately.
+    const openHandler = () => { void load(); };
+
+    window.addEventListener("axiom:focus-output", focusHandler);
+    window.addEventListener("axiom:open-output", openHandler);
+    return () => {
+      window.removeEventListener("axiom:focus-output", focusHandler);
+      window.removeEventListener("axiom:open-output", openHandler);
+    };
+  }, [projectId, load]);
 
   useEffect(() => {
     if (!draftMenuOpen) return;
@@ -721,6 +738,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   // ── Item row (list mode) ────────────────────────────────────────────────────
   const renderListItem = (a: ArtifactRecord) => {
     const isOpen = String(expanded) === String(a.id);
+    const isHighlighted = String(highlighted) === String(a.id);
     const metadata = asRecord(a.metadata);
     const fileBacked = isFileBackedArtifact(a);
     const label = typeLabel(a.type, metadata);
@@ -736,7 +754,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
       window.open(`/api/projects/${projectId}/artifacts/${a.id}/download`, "_blank");
     };
     return (
-      <div key={a.id} style={{ border: "1px solid var(--atlas-border)", borderRadius: 9, background: "var(--atlas-card)", overflow: "hidden" }}>
+      <div key={a.id} style={{ border: isHighlighted ? "1px solid rgba(201,162,76,0.65)" : "1px solid var(--atlas-border)", borderRadius: 9, background: isHighlighted ? "rgba(201,162,76,0.06)" : "var(--atlas-card)", overflow: "hidden", transition: "border-color 400ms, background 400ms" }}>
         <button
           type="button"
           onClick={() => setExpanded(isOpen ? null : a.id)}
@@ -790,12 +808,13 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
           e.stopPropagation();
           window.open(`/api/projects/${projectId}/artifacts/${a.id}/download`, "_blank");
         };
+        const isHighlighted = String(highlighted) === String(a.id);
         return (
           <Fragment key={a.id}>
             <button
               type="button"
               onClick={() => setExpanded(isOpen ? null : a.id)}
-              style={{ textAlign: "left", padding: "10px 10px 9px", border: `1px solid ${isOpen ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`, borderRadius: 9, background: isOpen ? "rgba(201,162,76,0.04)" : "var(--atlas-card)", cursor: "pointer", color: "var(--atlas-fg)", display: "flex", flexDirection: "column", gap: 6, minHeight: 80 }}
+              style={{ textAlign: "left", padding: "10px 10px 9px", border: `1px solid ${isHighlighted ? "rgba(201,162,76,0.65)" : isOpen ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`, borderRadius: 9, background: isHighlighted ? "rgba(201,162,76,0.07)" : isOpen ? "rgba(201,162,76,0.04)" : "var(--atlas-card)", cursor: "pointer", color: "var(--atlas-fg)", display: "flex", flexDirection: "column", gap: 6, minHeight: 80, transition: "border-color 400ms, background 400ms" }}
             >
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 4 }}>
                 <div style={{ color, opacity: 0.85 }}>

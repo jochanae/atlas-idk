@@ -33,13 +33,10 @@ export function ArtifactCreatedCard({ artifact, projectId, onOpen }: Props) {
   const label = typeLabel(artifact.type, artifact.extension);
 
   const handleOpen = () => {
-    try {
-      sessionStorage.setItem(`atlas-open-output-${projectId}`, String(artifact.artifactId));
-    } catch {
-      /* ignore */
-    }
+    // axiom:open-output in workspace.tsx handles: tab switch, subheader open,
+    // sessionStorage, and a delayed axiom:focus-output to scroll to the item.
     window.dispatchEvent(
-      new CustomEvent("axiom:focus-output", {
+      new CustomEvent("axiom:open-output", {
         detail: { artifactId: artifact.artifactId, projectId },
       }),
     );

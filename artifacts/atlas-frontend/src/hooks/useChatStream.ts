@@ -920,6 +920,18 @@ export function useChatStream(
                       });
                     }
                   } catch { /* ignore malformed image event */ }
+                } else if (evtName === "artifact_created") {
+                  // Live signal: Atlas just generated a deliverable. Auto-open the
+                  // Outputs panel immediately (before the done event) so the user
+                  // doesn't have to hunt for it.
+                  try {
+                    const data = (typeEmbedded ?? JSON.parse(evtData)) as Record<string, unknown>;
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(new CustomEvent("axiom:open-output", {
+                        detail: { artifactId: data.artifactId, projectId },
+                      }));
+                    }
+                  } catch { /* ignore malformed artifact_created event */ }
                 } else if (evtName === "readiness_preflight") {
                   // Readiness gate passed — server emits a compact preflight banner
                   // showing the gate result before the Builder stream starts.
