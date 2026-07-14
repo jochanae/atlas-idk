@@ -5971,7 +5971,7 @@ export default function Home() {
           in the normal stacking context and position:fixed children anchor to the viewport. */}
       {askAtlasSurfaceVisible && askAtlasChat.messages.length > 0 && (
         <TimelineRail
-          alwaysVisible={true}
+          alwaysVisible={false}
           hideSearch={false}
           bottomOffset={120}
           messages={(askAtlasChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: (m as any).createdAt, text: (m as any).content }))}
