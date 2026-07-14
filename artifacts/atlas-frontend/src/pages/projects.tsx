@@ -755,6 +755,7 @@ export default function Projects() {
                         key={p.id}
                         project={p}
                         index={idx}
+                        dateLabel={rowDateLabel(p)}
                         hovered={hoveredId === p.id}
                         onMouseEnter={() => setHoveredId(p.id)}
                         onMouseLeave={() => setHoveredId(null)}
