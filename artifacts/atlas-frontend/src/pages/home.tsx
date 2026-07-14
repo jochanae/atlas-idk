@@ -4099,23 +4099,49 @@ export default function Home() {
               aria-label="Download Ask Atlas thread"
               onClick={(e) => {
                 e.stopPropagation();
-                const lines = askAtlasChat.messages
-                  .filter((m: any) => m.content && m.content.trim().length > 0)
-                  .map((m: any) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.content}\n`)
-                  .join("\n");
-                const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-                const blob = new Blob(
-                  [`ASK ATLAS\n${stamp}\n\n${lines}`],
-                  { type: "text/plain;charset=utf-8" },
-                );
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `ask-atlas-${stamp}.txt`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 0);
+                e.preventDefault();
+                try {
+                  const extract = (m: any): string => {
+                    if (typeof m?.content === "string" && m.content.trim()) return m.content;
+                    if (typeof m?.text === "string" && m.text.trim()) return m.text;
+                    if (Array.isArray(m?.parts)) {
+                      return m.parts
+                        .map((p: any) => (typeof p === "string" ? p : p?.text || p?.content || ""))
+                        .filter(Boolean)
+                        .join("\n");
+                    }
+                    return "";
+                  };
+                  const lines = askAtlasChat.messages
+                    .map((m: any) => ({ role: m?.role, body: extract(m) }))
+                    .filter((m) => m.body && m.body.trim().length > 0)
+                    .map((m) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.body}\n`)
+                    .join("\n");
+                  if (!lines) {
+                    console.warn("[ask-atlas download] no message content to export");
+                    return;
+                  }
+                  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+                  const body = `ASK ATLAS\n${stamp}\n\n${lines}`;
+                  const filename = `ask-atlas-${stamp}.txt`;
+                  const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = filename;
+                  a.rel = "noopener";
+                  a.target = "_blank";
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  // Mobile Safari fallback: if the download attribute is ignored,
+                  // open the blob in a new tab so the user still gets the content.
+                  setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                  }, 4000);
+                } catch (err) {
+                  console.error("[ask-atlas download] failed", err);
+                }
               }}
               style={{
                 display: "inline-flex",
