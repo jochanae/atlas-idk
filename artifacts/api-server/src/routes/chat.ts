@@ -3633,21 +3633,25 @@ router.post("/chat", async (req, res): Promise<void> => {
   let repoData: { fullName?: string; defaultBranch?: string } | null = null;
   const resolvedGithubToken = await resolveGithubTokenForRequest(userId, project?.githubToken);
 
-  if (project?.linkedRepo && needsCodeContext) {
+  if (project?.linkedRepo && resolvedGithubToken) {
     try {
       const parsedRepo = JSON.parse(project.linkedRepo) as string | { fullName?: string; defaultBranch?: string };
       repoData = typeof parsedRepo === "string"
         ? { fullName: parsedRepo, defaultBranch: "main" }
         : parsedRepo;
       if (repoData.fullName) {
-        writeStep(res, { verb: "Scanning", target: "project files", phase: "scan" });
+        // Recent activity is cheap (last 5 commits only) and is needed even for
+        // conversational questions like "what's been happening with my project?" or
+        // "do you know about the recent changes?". NOT gated behind needsCodeContext.
+        // Repo tree is heavier — keep it gated so short messages stay fast.
         const repoContextFetches: [Promise<RepoTreeSnapshot | null>, Promise<string | null>] = [
-          resolvedGithubToken
-            ? fetchRepoTree(repoData.fullName, resolvedGithubToken, repoData.defaultBranch ?? "main")
+          (resolvedGithubToken && needsCodeContext)
+            ? (writeStep(res, { verb: "Scanning", target: "project files", phase: "scan" }),
+               fetchRepoTree(repoData.fullName, resolvedGithubToken, repoData.defaultBranch ?? "main"))
             : Promise.resolve(null),
-          process.env.GITHUB_TOKEN
-            ? fetchRecentRepoActivity(repoData.fullName, process.env.GITHUB_TOKEN, now)
-            : Promise.resolve(null),
+          // Fixed: use resolvedGithubToken (user's own token, falls back to server env).
+          // Previously used process.env.GITHUB_TOKEN directly — always null in this env.
+          fetchRecentRepoActivity(repoData.fullName, resolvedGithubToken, now),
         ];
 
         const [repoTreeSnapshot, fetchedRecentRepoActivityContext] = await Promise.race([

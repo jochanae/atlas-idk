@@ -2770,9 +2770,11 @@ RULES for atlas-action:
         }
       }
 
-      // Fetch recent commits for the focused project so Atlas can interpret them
+      // Fetch recent commits for the focused project so Atlas can interpret them.
+      // NOT gated behind shouldBrief — commits are cheap (7 max) and Atlas needs
+      // them for ANY question about recent project activity, not just status overviews.
       let focusRecentCommits = "";
-      if (focusProject.linkedRepo && shouldBrief) {
+      if (focusProject.linkedRepo) {
         try {
           const repoFull = parseRepo(focusProject.linkedRepo ?? null);
           const ghToken = resolvedGhToken;
