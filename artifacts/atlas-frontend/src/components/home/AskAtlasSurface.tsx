@@ -457,7 +457,7 @@ export function AskAtlasSurface({
             const { target: tokenTarget, cleanContent } = extractNavigateTo(msg.content);
             const displayContent = cleanContent;
             return (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div key={i} data-msg-idx={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span
                   style={{
                     fontSize: 9.5,
@@ -638,7 +638,7 @@ export function AskAtlasSurface({
           }
 
           return (
-            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+            <div key={i} data-msg-idx={i} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
               <span
                 style={{
                   fontSize: 10,
