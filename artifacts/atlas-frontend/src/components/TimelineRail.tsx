@@ -195,7 +195,10 @@ export function TimelineRail({
       if (raf) return;
       raf = window.requestAnimationFrame(() => { raf = 0; compute(); });
     };
-    const container = document.querySelector<HTMLElement>(".atlas-chat-timeline, .atlas-home-chat-messages-scroll, .atlas-ask-atlas-scroll");
+    const container =
+      document.querySelector<HTMLElement>(".atlas-ask-atlas-scroll") ||
+      document.querySelector<HTMLElement>(".atlas-chat-timeline") ||
+      document.querySelector<HTMLElement>(".atlas-home-chat-messages-scroll");
     compute();
     container?.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
