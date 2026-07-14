@@ -1066,6 +1066,7 @@ export default function CodePage() {
   const [, navigate] = useLocation();
   const [showRail, setShowRail] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isTiny, setIsTiny] = useState(() => typeof window !== "undefined" && window.innerWidth < 420);
   const [mobilePane, setMobilePane] = useState<MobilePane>("Code");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(getRunIdFromUrl());
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
@@ -1120,13 +1121,17 @@ export default function CodePage() {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
     const updateIsMobile = () => setIsMobile(mediaQuery.matches);
 
+    const tinyQuery = window.matchMedia("(max-width: 420px)");
+    const updateIsTiny = () => setIsTiny(tinyQuery.matches);
+
     updateIsMobile();
+    updateIsTiny();
     mediaQuery.addEventListener("change", updateIsMobile);
-    window.addEventListener("resize", updateIsMobile);
+    tinyQuery.addEventListener("change", updateIsTiny);
 
     return () => {
       mediaQuery.removeEventListener("change", updateIsMobile);
-      window.removeEventListener("resize", updateIsMobile);
+      tinyQuery.removeEventListener("change", updateIsTiny);
     };
   }, []);
 
@@ -1359,29 +1364,32 @@ export default function CodePage() {
         <button
           onClick={handleBack}
           style={{
-            display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px",
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: isTiny ? "6px 8px" : "6px 10px",
             background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 8, color: "var(--atlas-muted)", cursor: "pointer", fontSize: 12,
             flexShrink: 0,
           }}
         >
-          <ArrowLeft size={13} /> Back
+          <ArrowLeft size={13} />{!isTiny && " Back"}
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <div style={{
-            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+            width: isTiny ? 26 : 30, height: isTiny ? 26 : 30, borderRadius: 8, flexShrink: 0,
             background: "linear-gradient(135deg, rgba(230,198,135,0.22), rgba(230,198,135,0.06))",
             border: "1px solid rgba(230,198,135,0.3)",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "var(--atlas-gold)",
           }}>
-            <Code2 size={15} />
+            <Code2 size={isTiny ? 13 : 15} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, minWidth: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em" }}>
-              Generation Workspace
-            </span>
+            {!isTiny && (
+              <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em" }}>
+                Generation Workspace
+              </span>
+            )}
             <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.04em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {projectQ.data
                 ? `Project: ${projectQ.data.name}`
@@ -1396,8 +1404,8 @@ export default function CodePage() {
 
         {/* Status badge — shown on both mobile and desktop */}
         <div style={{
-          display: "inline-flex", alignItems: "center", gap: 6,
-          padding: "5px 10px", borderRadius: 99,
+          display: "inline-flex", alignItems: "center", gap: isTiny ? 4 : 6,
+          padding: isTiny ? "5px 7px" : "5px 10px", borderRadius: 99,
           background: badgeGreen ? "rgba(124,227,160,0.08)" : "rgba(255,255,255,0.04)",
           border: `1px solid ${badgeGreen ? "rgba(124,227,160,0.25)" : "rgba(255,255,255,0.08)"}`,
           color: badgeGreen ? "#7CE3A0" : "var(--atlas-muted)",
@@ -1408,7 +1416,7 @@ export default function CodePage() {
             background: badgeGreen ? "#7CE3A0" : "rgba(255,255,255,0.4)",
             boxShadow: badgeGreen ? "0 0 8px #7CE3A0" : "none",
           }} />
-          {badgeLabel}
+          {!isTiny && badgeLabel}
         </div>
 
         {/* Desktop-only action buttons */}

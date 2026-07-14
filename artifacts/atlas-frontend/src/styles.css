@@ -1253,6 +1253,8 @@ html.atlas-landing-active,
   }
   .atlas-app-header-row svg { max-width: 16px; max-height: 16px; }
   .atlas-app-header-row .atlas-readiness-pill { padding: 2px 5px !important; }
+  /* Hide AXIOM wordmark on outer-fold / tiny screens so header items don't overlap */
+  .atlas-wordmark { display: none !important; }
 }
 
 /* ── Restore full header on inner-fold / tablets (≥ 600px) ─────────────── */
