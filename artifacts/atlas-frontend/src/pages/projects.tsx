@@ -1190,6 +1190,7 @@ type ProjectItem = {
 function ProjectRow({
   project: p,
   index,
+  dateLabel,
   hovered,
   onMouseEnter,
   onMouseLeave,
@@ -1204,6 +1205,7 @@ function ProjectRow({
 }: {
   project: ProjectItem;
   index: number;
+  dateLabel?: string;
   hovered: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -1219,7 +1221,7 @@ function ProjectRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const showActions = hovered;
   const menuRef = useRef<HTMLDivElement>(null);
-  const date = new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const date = dateLabel ?? new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   useEffect(() => {
     if (!menuOpen) return;
