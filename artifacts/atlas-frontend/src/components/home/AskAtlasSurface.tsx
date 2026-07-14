@@ -45,11 +45,14 @@ function formatMsgDate(iso: string): string {
   try {
     const d = new Date(iso);
     const now = new Date();
-    const sameDay =
-      d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate();
-    if (sameDay) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return `${diffH}h ago`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD < 7) return `${diffD}d ago`;
     const sameYear = d.getFullYear() === now.getFullYear();
     if (sameYear) return d.toLocaleDateString([], { month: "short", day: "numeric" });
     return d.toLocaleDateString([], { month: "short", day: "numeric", year: "2-digit" });
