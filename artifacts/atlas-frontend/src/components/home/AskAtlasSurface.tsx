@@ -1137,11 +1137,15 @@ export function AskAtlasSurface({
               <button
                 type="button"
                 onPointerDown={(e) => {
-                  e.preventDefault();
-                  if (canSubmit) handleSubmit();
+                  // Capture the pointer so the release/click always fires on THIS
+                  // button, even if the composer height shifts after send and the
+                  // finger ends up over a different element (previously this could
+                  // fire the header settings/profile button by accident).
+                  try { (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId); } catch {}
                 }}
                 onClick={(e) => {
-                  if (e.detail === 0) handleSubmit();
+                  e.stopPropagation();
+                  if (canSubmit) handleSubmit();
                 }}
                 disabled={!canSubmit}
                 aria-label="Send"
@@ -1163,6 +1167,7 @@ export function AskAtlasSurface({
                   opacity: isSending ? 0.55 : 1,
                   boxShadow: canSubmit ? "0 0 18px -4px color-mix(in oklab, var(--atlas-gold) 45%, transparent)" : "none",
                   transition: "background 200ms ease, border-color 200ms ease, box-shadow 200ms ease",
+                  touchAction: "manipulation",
                 }}
               >
                 <svg viewBox="0 0 20 20" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
