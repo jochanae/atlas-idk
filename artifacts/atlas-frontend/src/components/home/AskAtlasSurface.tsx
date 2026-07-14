@@ -38,6 +38,14 @@ function sanitizeForStreaming(text: string): string {
   }
   return out.join("\n");
 }
+
+// Repair a common LLM whitespace glitch: a sentence-ending period/!?/em-dash
+// followed immediately by a capitalized word with no space. Conservative —
+// requires ≥2 lowercase letters before the punctuation and a Capital+lowercase
+// after, so URLs, abbreviations (U.S.A), and file extensions are untouched.
+function fixMissingSentenceSpaces(text: string): string {
+  return text.replace(/([a-z]{2}[.!?])([A-Z][a-z])/g, "$1 $2");
+}
 import { type NexusHandoffSignal } from "@/hooks/useNexusChatStream";
 import { useLocation } from "wouter";
 
