@@ -5339,6 +5339,8 @@ export default function Home() {
                     askAtlasChat.clearMessages();
                     setEarnedTitle(null);
                     setDepth("ambient");
+                    // Clear any chip-seeded text so the homepage composer is blank on return.
+                    setInput("");
                     return;
                   }
                   nexusChat.clearMessages();

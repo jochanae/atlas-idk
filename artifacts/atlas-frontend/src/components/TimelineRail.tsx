@@ -320,7 +320,9 @@ export function TimelineRail({
             bottom: railBottom,
             right: railRight,
             width: 14,
-            zIndex: 18,
+            // Elevate above surface overlays (e.g. AskAtlasSurface at z-index 260)
+            // when the rail is pinned visible — this is what makes it show through.
+            zIndex: alwaysVisible ? 265 : 18,
             pointerEvents: railVisible ? "auto" : "none",
             opacity: railVisible ? 1 : 0,
             transition: "opacity 260ms ease",

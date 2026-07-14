@@ -43,7 +43,9 @@ function clearStoredActiveProject() {
 
 export function useProjectState(projectId: number | null) {
   const [state, setState] = useState<ProjectStatePayload | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Start in loading=true when we have a projectId so the first render shows
+  // the shimmer rather than "Untitled project" for one frame.
+  const [loading, setLoading] = useState(() => projectId != null);
   const [error, setError] = useState<Error | null>(null);
 
   const loadProjectState = useCallback(
