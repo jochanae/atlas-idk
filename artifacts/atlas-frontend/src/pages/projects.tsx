@@ -117,6 +117,14 @@ export default function Projects() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  type SortMode = "recent" | "updated" | "name" | "created";
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    try { return (localStorage.getItem("atlas-projects-sort") as SortMode) || "recent"; } catch { return "recent"; }
+  });
+  const changeSort = (m: SortMode) => {
+    setSortMode(m);
+    try { localStorage.setItem("atlas-projects-sort", m); } catch {}
+  };
 
   // GitHub importer
   const [showGithubSheet, setShowGithubSheet] = useState(false);
