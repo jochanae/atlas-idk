@@ -14,6 +14,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 import { verifyArtifact, type VerificationResult } from "./verificationEngine";
 import { runVisualQA, type VisualQAResult } from "./visualQAEngine";
+import { generateThumbnail } from "./thumbnailGenerator";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -147,6 +148,15 @@ export async function generateArtifact<TInput>({
   let rendered = await renderer.render(input);
   let objectPath = await uploadRenderedFile(rendered.buffer, rendered.mimeType);
 
+  // Generate a lightweight SVG thumbnail stored as a data URL. Never
+  // allowed to fail the artifact creation — catch and ignore any error.
+  let thumbnailUrl: string | null = null;
+  try {
+    thumbnailUrl = generateThumbnail(type, rendered.extension, rendered.preview);
+  } catch (err) {
+    logger.warn({ err, type }, "artifactEngine: thumbnail generation failed — skipping");
+  }
+
   const row = await insertArtifactWithNextVersion({
     projectId,
     type,
@@ -159,6 +169,7 @@ export async function generateArtifact<TInput>({
       objectPath,
       sizeBytes: rendered.buffer.byteLength,
       status: rendered.status ?? "generated",
+      ...(thumbnailUrl ? { thumbnailUrl } : {}),
     },
     payload: { preview: rendered.preview },
   });

@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChevronDown, Download, FileOutput, FileText, LayoutGrid, List, Search, Wand2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/api";
@@ -239,11 +240,14 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
+  const [draftMenuPos, setDraftMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [generatingDraft, setGeneratingDraft] = useState<string | null>(null);
   const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
   const [deliveryTarget, setDeliveryTarget] = useState<Record<string, string>>({});
   const [delivery, setDelivery] = useState<DeliveryState>({ status: "idle" });
   const draftMenuRef = useRef<HTMLDivElement | null>(null);
+  const draftButtonRef = useRef<HTMLButtonElement | null>(null);
+  const draftPortalRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -323,12 +327,13 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   useEffect(() => {
     if (!draftMenuOpen) return;
     const onClickOutside = (e: MouseEvent) => {
-      if (draftMenuRef.current && !draftMenuRef.current.contains(e.target as Node)) {
-        setDraftMenuOpen(false);
-      }
+      const target = e.target as Node;
+      if (draftButtonRef.current?.contains(target)) return;
+      if (draftPortalRef.current?.contains(target)) return;
+      setDraftMenuOpen(false);
     };
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("mousedown", onClickOutside, { capture: true });
+    return () => document.removeEventListener("mousedown", onClickOutside, { capture: true });
   }, [draftMenuOpen]);
 
   const filteredItems = useMemo(() => {
@@ -814,8 +819,39 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
             <button
               type="button"
               onClick={() => setExpanded(isOpen ? null : a.id)}
-              style={{ textAlign: "left", padding: "10px 10px 9px", border: `1px solid ${isHighlighted ? "rgba(201,162,76,0.65)" : isOpen ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`, borderRadius: 9, background: isHighlighted ? "rgba(201,162,76,0.07)" : isOpen ? "rgba(201,162,76,0.04)" : "var(--atlas-card)", cursor: "pointer", color: "var(--atlas-fg)", display: "flex", flexDirection: "column", gap: 6, minHeight: 80, transition: "border-color 400ms, background 400ms" }}
+              style={{ textAlign: "left", padding: metadata?.thumbnailUrl ? "0" : "10px 10px 9px", border: `1px solid ${isHighlighted ? "rgba(201,162,76,0.65)" : isOpen ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`, borderRadius: 9, background: isHighlighted ? "rgba(201,162,76,0.07)" : isOpen ? "rgba(201,162,76,0.04)" : "var(--atlas-card)", cursor: "pointer", color: "var(--atlas-fg)", display: "flex", flexDirection: "column", gap: 0, minHeight: 80, transition: "border-color 400ms, background 400ms", overflow: "hidden" }}
             >
+              {metadata?.thumbnailUrl ? (
+                <>
+                  <div style={{ position: "relative", width: "100%", flexShrink: 0 }}>
+                    <img
+                      src={String(metadata.thumbnailUrl)}
+                      alt={a.title}
+                      style={{ display: "block", width: "100%", height: "auto", borderRadius: "9px 9px 0 0" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                    {fileBacked && (
+                      <span
+                        role="button" tabIndex={0}
+                        onClick={downloadFile}
+                        onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); downloadFile(ev as unknown as React.MouseEvent); } }}
+                        style={{ position: "absolute", top: 5, right: 5, color: "var(--atlas-muted)", background: "rgba(0,0,0,0.45)", borderRadius: 5, display: "flex", padding: 4 }}
+                        title="Download"
+                      >
+                        <Download size={10} strokeWidth={1.5} />
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ padding: "8px 9px 8px", display: "flex", flexDirection: "column", gap: 5 }}>
+                    <div style={{ fontSize: "var(--ts-xs)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.4 }}>{a.title}</div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                      <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", color, opacity: 0.7, padding: "1px 4px", borderRadius: 3, border: `1px solid ${color}` }}>{label}</span>
+                      {dateLabel && <span style={{ fontSize: 9, color: "var(--atlas-muted)", opacity: 0.5, flexShrink: 0 }}>{dateLabel}</span>}
+                    </div>
+                  </div>
+                </>
+              ) : (
+              <div style={{ padding: "10px 10px 9px", display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 80 }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 4 }}>
                 <div style={{ color, opacity: 0.85 }}>
                   <TypeIcon type={a.type} metadata={metadata} size={18} />
@@ -839,6 +875,8 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                 <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", color, opacity: 0.7, padding: "1px 4px", borderRadius: 3, border: `1px solid ${color}` }}>{label}</span>
                 {dateLabel && <span style={{ fontSize: 9, color: "var(--atlas-muted)", opacity: 0.5, flexShrink: 0 }}>{dateLabel}</span>}
               </div>
+              </div>
+              )}
             </button>
             {isOpen && (
               <div style={{ gridColumn: "1 / -1", border: "1px solid rgba(201,162,76,0.25)", borderRadius: 9, background: "var(--atlas-card)", overflow: "hidden", marginTop: -2 }}>
@@ -883,11 +921,20 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
               </button>
             ))}
           </div>
-          {/* Generate Draft */}
-          <div style={{ position: "relative" }}>
+          {/* Generate Draft — rendered via portal so it escapes any overflow/stacking context */}
+          <div>
             <button
+              ref={draftButtonRef}
               type="button"
-              onClick={() => setDraftMenuOpen((v) => !v)}
+              onClick={() => {
+                if (!draftMenuOpen) {
+                  const rect = draftButtonRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    setDraftMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                  }
+                }
+                setDraftMenuOpen((v) => !v);
+              }}
               disabled={generatingDraft !== null}
               style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", color: "var(--atlas-gold)", padding: "5px 9px", borderRadius: 7, cursor: generatingDraft ? "default" : "pointer", opacity: generatingDraft ? 0.6 : 1 }}
             >
@@ -895,12 +942,15 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
               {generatingDraft ? "…" : "Draft"}
               <ChevronDown size={11} style={{ opacity: 0.7, transform: draftMenuOpen ? "rotate(180deg)" : "none", transition: "transform 160ms" }} />
             </button>
-            {draftMenuOpen && (
-              <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, background: "var(--atlas-card)", border: "1px solid var(--atlas-border)", borderRadius: 9, boxShadow: "0 8px 24px rgba(0,0,0,0.3)", minWidth: 170, overflow: "hidden" }}>
+            {draftMenuOpen && draftMenuPos && createPortal(
+              <div
+                ref={draftPortalRef}
+                style={{ position: "fixed", top: draftMenuPos.top, right: draftMenuPos.right, zIndex: 9999, background: "var(--atlas-card)", border: "1px solid var(--atlas-border)", borderRadius: 9, boxShadow: "0 8px 32px rgba(0,0,0,0.45)", minWidth: 170, overflow: "hidden" }}
+              >
                 {DRAFT_TYPES.map((d) => (
                   <button
                     key={d.type} type="button"
-                    onClick={() => void handleGenerateDraft(d.type, d.label)}
+                    onClick={() => { setDraftMenuOpen(false); void handleGenerateDraft(d.type, d.label); }}
                     style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", background: "transparent", border: "none", cursor: "pointer" }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
@@ -908,7 +958,8 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
                     {d.label}
                   </button>
                 ))}
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </div>
