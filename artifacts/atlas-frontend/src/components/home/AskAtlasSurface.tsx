@@ -476,9 +476,9 @@ export function AskAtlasSurface({
           }
 
           if (msg.role === "assistant") {
-            const { target: tokenTarget, cleanContent } = extractNavigateTo(msg.content);
-            const displayContent = cleanContent;
-            return (
+             const { target: tokenTarget, cleanContent } = extractNavigateTo(msg.content);
+             const displayContent = fixMissingSentenceSpaces(cleanContent);
+             return (
               <div key={i} data-msg-idx={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span
