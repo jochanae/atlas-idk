@@ -117,6 +117,14 @@ export default function Projects() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  type SortMode = "recent" | "updated" | "name" | "created";
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    try { return (localStorage.getItem("atlas-projects-sort") as SortMode) || "recent"; } catch { return "recent"; }
+  });
+  const changeSort = (m: SortMode) => {
+    setSortMode(m);
+    try { localStorage.setItem("atlas-projects-sort", m); } catch {}
+  };
 
   // GitHub importer
   const [showGithubSheet, setShowGithubSheet] = useState(false);
@@ -317,12 +325,51 @@ export default function Projects() {
     } catch {}
   }, [queryClient]);
 
+  const openedTime = (p: any) => {
+    const v = p?.lastOpenedAt ?? p?.updatedAt ?? p?.createdAt;
+    return v ? new Date(v).getTime() : 0;
+  };
+  const updatedTime = (p: any) => {
+    const v = p?.updatedAt ?? p?.createdAt;
+    return v ? new Date(v).getTime() : 0;
+  };
+  const createdTime = (p: any) => (p?.createdAt ? new Date(p.createdAt).getTime() : 0);
+
   const listableProjects = [...(projects?.filter(p =>
     p.status !== "archived" &&
     (p as any).entity_type !== "idea"
-  ) ?? [])].sort((a, b) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  ) ?? [])].sort((a, b) => {
+    if (sortMode === "name") return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+    if (sortMode === "updated") return updatedTime(b) - updatedTime(a);
+    if (sortMode === "created") return createdTime(b) - createdTime(a);
+    return openedTime(b) - openedTime(a); // recent (default)
+  });
+
+  const continueWorking = sortMode === "recent" && listableProjects.length >= 4
+    ? [...listableProjects].sort((a, b) => openedTime(b) - openedTime(a)).slice(0, 3)
+    : [];
+
+  function formatRelativeShort(iso?: string | Date | null): string {
+    if (!iso) return "";
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) return "";
+    const diff = Date.now() - t;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days === 1) return "yesterday";
+    if (days < 7) return `${days}d ago`;
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  function rowDateLabel(p: any): string {
+    if (sortMode === "recent") return formatRelativeShort(p.lastOpenedAt ?? p.updatedAt ?? p.createdAt);
+    if (sortMode === "updated") return formatRelativeShort(p.updatedAt ?? p.createdAt);
+    // name / created → absolute created date
+    return new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
 
   const archivedProjects = projects?.filter(p =>
     p.status === "archived" &&
@@ -552,6 +599,108 @@ export default function Projects() {
           </div>
         ) : (
           <>
+            {/* Sort + Continue Working */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: 8, marginBottom: 14, flexWrap: "wrap",
+            }}>
+              <div style={{
+                ...sMono, fontSize: 9, letterSpacing: "0.14em",
+                color: "var(--atlas-muted)", opacity: 0.55, textTransform: "uppercase",
+              }}>
+                {sortMode === "recent" ? "Recently Opened"
+                  : sortMode === "updated" ? "Recently Updated"
+                  : sortMode === "name" ? "Name (A–Z)"
+                  : "Date Created"}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                {([
+                  ["recent", "Recent"],
+                  ["updated", "Updated"],
+                  ["name", "Name"],
+                  ["created", "Created"],
+                ] as Array<[SortMode, string]>).map(([m, label]) => {
+                  const active = sortMode === m;
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => changeSort(m)}
+                      style={{
+                        ...sMono, fontSize: 9.5, letterSpacing: "0.1em",
+                        textTransform: "uppercase", fontWeight: 600,
+                        padding: "5px 9px", borderRadius: 5,
+                        border: `1px solid ${active ? "rgba(201,162,76,0.45)" : "var(--atlas-border)"}`,
+                        background: active ? "rgba(201,162,76,0.08)" : "transparent",
+                        color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                        cursor: "pointer",
+                      }}
+                    >{label}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {continueWorking.length > 0 && (
+              <div style={{ marginBottom: 22 }}>
+                <div style={{
+                  ...sMono, fontSize: 9, letterSpacing: "0.14em",
+                  color: "var(--atlas-muted)", opacity: 0.55,
+                  textTransform: "uppercase", marginBottom: 8,
+                }}>
+                  Continue Working
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {continueWorking.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/project/${p.id}`}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "9px 12px", borderRadius: 7,
+                        border: "1px solid rgba(201,162,76,0.16)",
+                        background: "rgba(201,162,76,0.03)",
+                        textDecoration: "none",
+                        transition: "background 160ms ease, border-color 160ms ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(201,162,76,0.07)";
+                        e.currentTarget.style.borderColor = "rgba(201,162,76,0.32)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(201,162,76,0.03)";
+                        e.currentTarget.style.borderColor = "rgba(201,162,76,0.16)";
+                      }}
+                    >
+                      <span style={{
+                        width: 5, height: 5, borderRadius: "50%",
+                        background: "var(--atlas-gold)", flexShrink: 0, opacity: 0.75,
+                      }} />
+                      <span style={{
+                        flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500,
+                        color: "var(--atlas-fg)", whiteSpace: "nowrap",
+                        overflow: "hidden", textOverflow: "ellipsis",
+                      }}>
+                        {p.name || "Untitled"}
+                      </span>
+                      <span style={{
+                        ...sMono, fontSize: 10, letterSpacing: "0.06em",
+                        color: "var(--atlas-muted)", opacity: 0.6, flexShrink: 0,
+                      }}>
+                        {formatRelativeShort((p as any).lastOpenedAt ?? (p as any).updatedAt ?? p.createdAt)}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                <div style={{
+                  ...sMono, fontSize: 9, letterSpacing: "0.14em",
+                  color: "var(--atlas-muted)", opacity: 0.55,
+                  textTransform: "uppercase", marginTop: 22, marginBottom: 8,
+                }}>
+                  All Projects
+                </div>
+              </div>
+            )}
+
             {/* Flat project list */}
             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {listableProjects.map((p, idx) => (
@@ -559,6 +708,7 @@ export default function Projects() {
                   key={p.id}
                   project={p}
                   index={idx}
+                  dateLabel={rowDateLabel(p)}
                   hovered={hoveredId === p.id}
                   onMouseEnter={() => setHoveredId(p.id)}
                   onMouseLeave={() => setHoveredId(null)}
@@ -605,6 +755,7 @@ export default function Projects() {
                         key={p.id}
                         project={p}
                         index={idx}
+                        dateLabel={rowDateLabel(p)}
                         hovered={hoveredId === p.id}
                         onMouseEnter={() => setHoveredId(p.id)}
                         onMouseLeave={() => setHoveredId(null)}
@@ -1039,6 +1190,7 @@ type ProjectItem = {
 function ProjectRow({
   project: p,
   index,
+  dateLabel,
   hovered,
   onMouseEnter,
   onMouseLeave,
@@ -1053,6 +1205,7 @@ function ProjectRow({
 }: {
   project: ProjectItem;
   index: number;
+  dateLabel?: string;
   hovered: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -1068,7 +1221,7 @@ function ProjectRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const showActions = hovered;
   const menuRef = useRef<HTMLDivElement>(null);
-  const date = new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const date = dateLabel ?? new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   useEffect(() => {
     if (!menuOpen) return;
