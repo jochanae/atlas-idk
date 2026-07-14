@@ -1344,10 +1344,10 @@ export default function CodePage() {
       }} />
 
       {/* Top bar */}
+      {/* ── Header — identity row only ──────────────────────────────────────── */}
       <header style={{
         position: "relative", zIndex: 10,
         display: "flex", alignItems: "center", gap: 12, padding: "12px 18px",
-        flexWrap: isMobile ? "wrap" : undefined, rowGap: isMobile ? 8 : undefined,
         borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
         background: "color-mix(in oklab, var(--atlas-surface) 70%, transparent)",
         backdropFilter: "blur(14px)",
@@ -1358,14 +1358,15 @@ export default function CodePage() {
             display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px",
             background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 8, color: "var(--atlas-muted)", cursor: "pointer", fontSize: 12,
+            flexShrink: 0,
           }}
         >
           <ArrowLeft size={13} /> Back
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <div style={{
-            width: 30, height: 30, borderRadius: 8,
+            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
             background: "linear-gradient(135deg, rgba(230,198,135,0.22), rgba(230,198,135,0.06))",
             border: "1px solid rgba(230,198,135,0.3)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -1373,13 +1374,13 @@ export default function CodePage() {
           }}>
             <Code2 size={15} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, minWidth: 0 }}>
             <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em" }}>
               Generation Workspace
             </span>
-            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.04em" }}>
+            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.04em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {projectQ.data
-                ? `${projectQ.data.name}${projectQ.data.repo ? ` · ${projectQ.data.repo}` : ""}`
+                ? `Project: ${projectQ.data.name}`
                 : projectId == null
                   ? "No project selected"
                   : `Project #${projectId}`}
@@ -1389,13 +1390,14 @@ export default function CodePage() {
 
         <span style={{ flex: 1 }} />
 
+        {/* Status badge — shown on both mobile and desktop */}
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "5px 10px", borderRadius: 99,
           background: badgeGreen ? "rgba(124,227,160,0.08)" : "rgba(255,255,255,0.04)",
           border: `1px solid ${badgeGreen ? "rgba(124,227,160,0.25)" : "rgba(255,255,255,0.08)"}`,
           color: badgeGreen ? "#7CE3A0" : "var(--atlas-muted)",
-          fontSize: 11, ...MONO, letterSpacing: "0.06em",
+          fontSize: 11, ...MONO, letterSpacing: "0.06em", flexShrink: 0,
         }}>
           <span style={{
             width: 6, height: 6, borderRadius: 99,
@@ -1405,62 +1407,167 @@ export default function CodePage() {
           {badgeLabel}
         </div>
 
-        <ToolButton
-          icon={<RefreshCw size={13} style={isRefreshing ? { animation: "spin 0.8s linear infinite" } : undefined} />}
-          label={isRefreshing ? "Refreshing…" : "Refresh"}
-          disabled={isRefreshing}
-          onClick={() => { setRefreshPending(true); runsQ.refetch(); filesQ.refetch(); }}
-        />
-        <ToolButton
-          icon={<Wand2 size={13} />}
-          label={codegen.running ? "Generating…" : "New Generation"}
-          disabled={codegen.running || !activeRun}
-          onClick={() => {
-            if (!activeRun) return;
-            void codegen.run(activeRun.prompt, activeRun.summary || undefined);
-          }}
-        />
-        <ToolButton
-          icon={<Hammer size={13} />}
-          label="Update Project Map"
-          onClick={handleOpenForgeSync}
-        />
-        <ToolButton
-          icon={<Download size={13} />}
-          label={isDownloadingZip ? "Downloading…" : "Download .zip"}
-          onClick={() => { void handleDownloadZip(); }}
-          disabled={isDownloadingZip}
-        />
-        <ToolButton
-          icon={<Github size={13} />}
-          label={isPushingGithub ? "Pushing…" : "Push to GitHub"}
-          onClick={() => { void handlePushToGithub(); }}
-          disabled={isPushingGithub}
-          primary
-        />
-        <button
-          onClick={() => setShowRail((v) => !v)}
-          title="Toggle activity rail"
-          style={{
-            display: isMobile ? "none" : "inline-flex", alignItems: "center", justifyContent: "center",
-            width: 30, height: 30, borderRadius: 7,
-            background: showRail ? "rgba(230,198,135,0.1)" : "transparent",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: showRail ? "var(--atlas-gold)" : "var(--atlas-muted)", cursor: "pointer",
-          }}
-        >
-          <Activity size={13} />
-        </button>
+        {/* Desktop-only action buttons */}
+        {!isMobile && (
+          <>
+            <ToolButton
+              icon={<RefreshCw size={13} style={isRefreshing ? { animation: "spin 0.8s linear infinite" } : undefined} />}
+              label={isRefreshing ? "Refreshing…" : "Refresh"}
+              disabled={isRefreshing}
+              onClick={() => { setRefreshPending(true); runsQ.refetch(); filesQ.refetch(); }}
+            />
+            <ToolButton
+              icon={<Wand2 size={13} />}
+              label={codegen.running ? "Generating…" : "New Generation"}
+              disabled={codegen.running || !activeRun}
+              onClick={() => {
+                if (!activeRun) return;
+                void codegen.run(activeRun.prompt, activeRun.summary || undefined);
+              }}
+            />
+            <ToolButton
+              icon={<Hammer size={13} />}
+              label="Update Project Map"
+              onClick={handleOpenForgeSync}
+            />
+            <ToolButton
+              icon={<Download size={13} />}
+              label={isDownloadingZip ? "Downloading…" : "Download .zip"}
+              onClick={() => { void handleDownloadZip(); }}
+              disabled={isDownloadingZip}
+            />
+            <ToolButton
+              icon={<Github size={13} />}
+              label={isPushingGithub ? "Pushing…" : "Push to GitHub"}
+              onClick={() => { void handlePushToGithub(); }}
+              disabled={isPushingGithub}
+              primary={!!linkedRepo}
+            />
+            <button
+              onClick={() => setShowRail((v) => !v)}
+              title="Toggle activity rail"
+              style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                width: 30, height: 30, borderRadius: 7,
+                background: showRail ? "rgba(230,198,135,0.1)" : "transparent",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: showRail ? "var(--atlas-gold)" : "var(--atlas-muted)", cursor: "pointer",
+              }}
+            >
+              <Activity size={13} />
+            </button>
+          </>
+        )}
       </header>
 
+      {/* ── Mobile action bar ─────────────────────────────────────────────────── */}
       {isMobile && (
         <div style={{
           position: "relative", zIndex: 9,
-          padding: "8px 12px",
+          padding: "10px 14px",
+          borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+          background: "color-mix(in oklab, var(--atlas-surface) 80%, transparent)",
+          backdropFilter: "blur(14px)",
+          display: "flex", flexDirection: "column", gap: 10,
+        }}>
+          {/* GitHub repo state */}
+          {linkedRepo ? (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "6px 10px", borderRadius: 7,
+              background: "rgba(124,227,160,0.05)",
+              border: "1px solid rgba(124,227,160,0.15)",
+            }}>
+              <Github size={11} style={{ color: "#7CE3A0", flexShrink: 0 }} />
+              <span style={{ ...MONO, fontSize: 10, color: "#7CE3A0" }}>
+                {linkedRepo.fullName}
+              </span>
+              {activeRun?.pushedToBranch && (
+                <span style={{ ...MONO, fontSize: 10, color: "rgba(124,227,160,0.65)", marginLeft: 2 }}>
+                  · {activeRun.pushedToBranch}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "6px 10px", borderRadius: 7,
+              background: "rgba(255,138,138,0.05)",
+              border: "1px solid rgba(255,138,138,0.18)",
+            }}>
+              <AlertTriangle size={11} style={{ color: "rgba(255,138,138,0.7)", flexShrink: 0 }} />
+              <span style={{ ...MONO, fontSize: 10, color: "rgba(255,138,138,0.7)" }}>
+                No GitHub repository connected — link one in Project Settings to enable Push to GitHub.
+              </span>
+            </div>
+          )}
+
+          {/* Button groups */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {/* Generation group */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <ToolButton
+                icon={<RefreshCw size={13} style={isRefreshing ? { animation: "spin 0.8s linear infinite" } : undefined} />}
+                label={isRefreshing ? "Refreshing…" : "Refresh"}
+                disabled={isRefreshing}
+                onClick={() => { setRefreshPending(true); runsQ.refetch(); filesQ.refetch(); }}
+              />
+              <ToolButton
+                icon={<Wand2 size={13} />}
+                label={codegen.running ? "Generating…" : "New Generation"}
+                disabled={codegen.running || !activeRun}
+                onClick={() => {
+                  if (!activeRun) return;
+                  void codegen.run(activeRun.prompt, activeRun.summary || undefined);
+                }}
+              />
+            </div>
+
+            <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
+
+            {/* Project group */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <ToolButton
+                icon={<Hammer size={13} />}
+                label="Update Project Map"
+                onClick={handleOpenForgeSync}
+              />
+            </div>
+
+            <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
+
+            {/* Distribution group */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <ToolButton
+                icon={<Download size={13} />}
+                label={isDownloadingZip ? "Downloading…" : "Download .zip"}
+                onClick={() => { void handleDownloadZip(); }}
+                disabled={isDownloadingZip}
+              />
+              <ToolButton
+                icon={<Github size={13} />}
+                label={isPushingGithub ? "Pushing…" : linkedRepo ? "Push to GitHub" : "Push to GitHub"}
+                onClick={() => { void handlePushToGithub(); }}
+                disabled={isPushingGithub || !linkedRepo}
+                primary={!!linkedRepo}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mobile tab switcher ───────────────────────────────────────────────── */}
+      {isMobile && (
+        <div style={{
+          position: "relative", zIndex: 9,
+          padding: "8px 14px 6px",
           borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
           background: "color-mix(in oklab, var(--atlas-surface) 70%, transparent)",
           backdropFilter: "blur(14px)",
         }}>
+          <div style={{ ...MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", marginBottom: 7 }}>
+            Build Run Details
+          </div>
           <div style={{
             display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4,
             padding: 3, borderRadius: 10,
@@ -1586,7 +1693,7 @@ export default function CodePage() {
                 onSelectRun={handleSelectRun}
               />
             ) : (
-              <EmptyHint label={loading ? "Loading runs…" : "No runs to show."} />
+              <EmptyHint label={loading ? "Loading runs…" : "No build runs yet."} hint={loading ? undefined : "Start a generation from Workspace Chat or tap New Generation above."} />
             )}
           </aside>
         )}
@@ -1605,13 +1712,14 @@ export default function CodePage() {
   );
 }
 
-function EmptyHint({ label }: { label: string }) {
+function EmptyHint({ label, hint }: { label: string; hint?: string }) {
   return (
     <div style={{
       padding: 20, ...MONO, fontSize: 11, color: "var(--atlas-muted)",
-      textAlign: "center",
+      textAlign: "center", display: "flex", flexDirection: "column", gap: 5,
     }}>
-      {label}
+      <span>{label}</span>
+      {hint && <span style={{ fontSize: 10, opacity: 0.7 }}>{hint}</span>}
     </div>
   );
 }
