@@ -9,7 +9,7 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode }
  */
 export function CollapsibleMessageText({
   children,
-  maxCollapsedPx = 144, // ~6 lines at 24px line-height — mobile-first cap
+  maxCollapsedPx = 320, // ~11-13 lines at ~26px line-height — relaxed so normal paragraphs never collapse
   fadeFromColor: _fadeFromColor,
   textStyle,
 }: {
