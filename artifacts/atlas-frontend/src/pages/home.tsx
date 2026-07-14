@@ -5973,21 +5973,16 @@ export default function Home() {
         onSelectConversation={(id) => { setShowDrawer(false); void handleSwitchConversation(id); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
         atlasConversations={drawerAtlasConversations}
-        onNewAtlasConversation={async () => {
-          const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-          try {
-            const r = await fetch("/api/sessions/atlas", {
-              method: "POST", credentials: "include",
-              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-              body: JSON.stringify({ title: "New conversation", mode: "think" }),
-            });
-            const s = await r.json() as { id: number };
-            fetchAtlasConversations();
-            setShowDrawer(false);
-            setAskAtlasSurfaceOpen(true);
-            nexusChat.clearMessages();
-            askAtlasSession.clearConversationId();
-          } catch { setShowDrawer(false); }
+        onNewAtlasConversation={() => {
+          setShowDrawer(false);
+          handleNewConversation();
+          setAskAtlasNewConvMode(true);
+          setAskAtlasSurfaceOpen(true);
+          setDepth("active");
+          // Focus the composer once the surface mounts
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
+          }, 80);
         }}
         onOpenAtlasConversation={(id) => {
           setShowDrawer(false);
