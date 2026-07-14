@@ -615,6 +615,7 @@ export function ChatStream(props: ChatStreamProps) {
 
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+    <style>{`.atlas-chat-timeline > * + * { margin-top: 10px; }`}</style>
     <div
 
       ref={scrollRef}
