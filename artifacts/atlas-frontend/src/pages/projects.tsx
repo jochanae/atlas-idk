@@ -599,6 +599,108 @@ export default function Projects() {
           </div>
         ) : (
           <>
+            {/* Sort + Continue Working */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: 8, marginBottom: 14, flexWrap: "wrap",
+            }}>
+              <div style={{
+                ...sMono, fontSize: 9, letterSpacing: "0.14em",
+                color: "var(--atlas-muted)", opacity: 0.55, textTransform: "uppercase",
+              }}>
+                {sortMode === "recent" ? "Recently Opened"
+                  : sortMode === "updated" ? "Recently Updated"
+                  : sortMode === "name" ? "Name (A–Z)"
+                  : "Date Created"}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                {([
+                  ["recent", "Recent"],
+                  ["updated", "Updated"],
+                  ["name", "Name"],
+                  ["created", "Created"],
+                ] as Array<[SortMode, string]>).map(([m, label]) => {
+                  const active = sortMode === m;
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => changeSort(m)}
+                      style={{
+                        ...sMono, fontSize: 9.5, letterSpacing: "0.1em",
+                        textTransform: "uppercase", fontWeight: 600,
+                        padding: "5px 9px", borderRadius: 5,
+                        border: `1px solid ${active ? "rgba(201,162,76,0.45)" : "var(--atlas-border)"}`,
+                        background: active ? "rgba(201,162,76,0.08)" : "transparent",
+                        color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                        cursor: "pointer",
+                      }}
+                    >{label}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {continueWorking.length > 0 && (
+              <div style={{ marginBottom: 22 }}>
+                <div style={{
+                  ...sMono, fontSize: 9, letterSpacing: "0.14em",
+                  color: "var(--atlas-muted)", opacity: 0.55,
+                  textTransform: "uppercase", marginBottom: 8,
+                }}>
+                  Continue Working
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {continueWorking.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/project/${p.id}`}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "9px 12px", borderRadius: 7,
+                        border: "1px solid rgba(201,162,76,0.16)",
+                        background: "rgba(201,162,76,0.03)",
+                        textDecoration: "none",
+                        transition: "background 160ms ease, border-color 160ms ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(201,162,76,0.07)";
+                        e.currentTarget.style.borderColor = "rgba(201,162,76,0.32)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(201,162,76,0.03)";
+                        e.currentTarget.style.borderColor = "rgba(201,162,76,0.16)";
+                      }}
+                    >
+                      <span style={{
+                        width: 5, height: 5, borderRadius: "50%",
+                        background: "var(--atlas-gold)", flexShrink: 0, opacity: 0.75,
+                      }} />
+                      <span style={{
+                        flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500,
+                        color: "var(--atlas-fg)", whiteSpace: "nowrap",
+                        overflow: "hidden", textOverflow: "ellipsis",
+                      }}>
+                        {p.name || "Untitled"}
+                      </span>
+                      <span style={{
+                        ...sMono, fontSize: 10, letterSpacing: "0.06em",
+                        color: "var(--atlas-muted)", opacity: 0.6, flexShrink: 0,
+                      }}>
+                        {formatRelativeShort((p as any).lastOpenedAt ?? (p as any).updatedAt ?? p.createdAt)}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                <div style={{
+                  ...sMono, fontSize: 9, letterSpacing: "0.14em",
+                  color: "var(--atlas-muted)", opacity: 0.55,
+                  textTransform: "uppercase", marginTop: 22, marginBottom: 8,
+                }}>
+                  All Projects
+                </div>
+              </div>
+            )}
+
             {/* Flat project list */}
             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {listableProjects.map((p, idx) => (
@@ -606,6 +708,7 @@ export default function Projects() {
                   key={p.id}
                   project={p}
                   index={idx}
+                  dateLabel={rowDateLabel(p)}
                   hovered={hoveredId === p.id}
                   onMouseEnter={() => setHoveredId(p.id)}
                   onMouseLeave={() => setHoveredId(null)}
