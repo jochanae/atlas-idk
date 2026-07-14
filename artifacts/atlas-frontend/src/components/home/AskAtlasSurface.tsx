@@ -54,7 +54,7 @@ import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 import { ParkSheet } from "@/components/ParkSheet";
 
-import { TimelineRail } from "@/components/TimelineRail";
+
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 import { ThinkingReceiptsStrip } from "./ThinkingReceiptsStrip";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
@@ -355,12 +355,6 @@ export function AskAtlasSurface({
         touchAction: "pan-y",
       }}
     >
-      <TimelineRail
-        alwaysVisible={true}
-        hideSearch={false}
-        messages={messages.map(m => ({ role: m.role, createdAt: m.createdAt, text: m.content }))}
-        bottomOffset={120}
-      />
       {subheader}
       <WorkspaceContextChip />
       {/* Isolated scroll container */}

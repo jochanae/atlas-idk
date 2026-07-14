@@ -5949,9 +5949,19 @@ export default function Home() {
         />
       )}
 
-      {/* Right-edge timeline rail — home inline chat only. Hidden on ambient empty home and when AskAtlasSurface is open (that surface owns its own rail). */}
+      {/* Right-edge timeline rail — home inline chat. Hidden when AskAtlasSurface is open. */}
       {!askAtlasSurfaceVisible && nexusChat.messages.length > 0 && (
         <TimelineRail alwaysVisible={false} hideSearch={false} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
+      )}
+      {/* Ask Atlas timeline rail — rendered as a sibling (NOT inside AskAtlasSurface) so it lives
+          in the normal stacking context and position:fixed children anchor to the viewport. */}
+      {askAtlasSurfaceVisible && askAtlasChat.messages.length > 0 && (
+        <TimelineRail
+          alwaysVisible={true}
+          hideSearch={false}
+          bottomOffset={120}
+          messages={(askAtlasChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: (m as any).createdAt, text: (m as any).content }))}
+        />
       )}
 
       {/* Projects Drawer (slide-in menu) */}
