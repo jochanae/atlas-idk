@@ -506,6 +506,16 @@ export function useNexusChatStream(
             setLiveStep(nextStep);
             setLiveSteps(prev => [...prev, nextStep].slice(-6));
           },
+          onArtifactCreated: (data) => {
+            // Live signal: Atlas finished generating a deliverable during this
+            // stream. Open the Outputs panel immediately — before done fires —
+            // so the user sees where the file landed without hunting for it.
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("axiom:open-output", {
+                detail: { artifactId: data.artifactId, projectId: resolvedFocusProjectId ?? undefined },
+              }));
+            }
+          },
           onImagePending: () => {
             // Backend detected the IMAGE_GEN marker and stopped streaming raw
             // prompt/description text. Flip the streaming message into the

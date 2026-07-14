@@ -16,6 +16,11 @@ export interface AtlasStreamCallbacks {
   /** Called when stream completes — receives final full text and raw meta */
   onDone: (fullText: string, meta: Record<string, unknown>) => void;
   /**
+   * Called when the backend emits an `artifact_created` named SSE event.
+   * Fired live (before `done`) so the UI can open the Outputs panel immediately.
+   */
+  onArtifactCreated?: (data: Record<string, unknown>) => void;
+  /**
    * Called when an async image event arrives AFTER done.
    * Server sends this once image generation completes so the HUD can update.
    */
@@ -203,6 +208,8 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                 await pacer.finish();
                 const finalText = doneData.content ?? streamedText;
                 callbacks.onDone(finalText, doneData);
+              } else if (evtName === "artifact_created") {
+                callbacks.onArtifactCreated?.(JSON.parse(evtData) as Record<string, unknown>);
               } else if (evtName === "image") {
                 const imgPayload = JSON.parse(evtData) as {
                   images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }>;
