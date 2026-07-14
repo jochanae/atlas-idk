@@ -12,7 +12,12 @@ import Landing from "./pages/landing";
 import Login from "./pages/login";
 // Phase 1: lazy-load workspace — 400 KB+ file splits into its own chunk so the
 // home/landing bundle stays small. Suspense boundary in UnifiedShellRoutes below.
-const Workspace = lazy(() => import("./pages/workspace"));
+// Retry once after 1.5 s — handles transient HMR WebSocket disconnects on tab-switch.
+const Workspace = lazy(() =>
+  import("./pages/workspace").catch(
+    () => new Promise<void>((r) => setTimeout(r, 1500)).then(() => import("./pages/workspace"))
+  )
+);
 import Projects from "./pages/projects";
 import Ledger from "./pages/ledger";
 import ParkingLot from "./pages/parking-lot";

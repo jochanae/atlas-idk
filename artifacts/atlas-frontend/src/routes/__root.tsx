@@ -37,6 +37,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
             __html: `(function(){
   var KEY='__atlas_chunk_reload__';
   var RX=/Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Unable to preload CSS|Loading chunk \\\\d+ failed|Loading CSS chunk/i;
+  // Track the last time the page returned to foreground so we can suppress
+  // spurious chunk-load reloads that happen right as the HMR WS reconnects.
+  var lastVis=0;
+  document.addEventListener('visibilitychange',function(){
+    if(!document.hidden)lastVis=Date.now();
+  });
   function clearRuntimeCaches(){
     try{
       if('caches' in window){
@@ -54,8 +60,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
   function reload(msg){
     try{
       if(!msg||!RX.test(String(msg)))return false;
+      // Suppress for 8 s after returning from a background tab — HMR WS needs
+      // time to reconnect; the lazy retry in App.tsx will recover without a reload.
+      if(Date.now()-lastVis<8000)return false;
       var last=Number(sessionStorage.getItem(KEY)||0);
-      if(Date.now()-last<10000)return false;
+      if(Date.now()-last<60000)return false;
       sessionStorage.setItem(KEY,String(Date.now()));
       clearRuntimeCaches();
       location.reload();

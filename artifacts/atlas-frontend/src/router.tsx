@@ -2,6 +2,15 @@ import { createRouter, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { routeTree } from "./routeTree.gen";
 
+// Track when the page last returned to foreground — used to suppress chunk-load
+// reloads that happen right as the HMR WebSocket reconnects after a tab switch.
+let _lastBecameVisible = 0;
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) _lastBecameVisible = Date.now();
+  });
+}
+
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -26,16 +35,22 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
     }
   };
 
-  // Auto-reload on stale chunk errors (common after rebuilds)
+  // Auto-reload on stale chunk errors (common after rebuilds).
+  // Suppressed for 8 s after returning from a background tab — the lazy retry
+  // in App.tsx handles that case without a full reload.
   if (
     typeof window !== "undefined" &&
     /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Unable to preload CSS|Loading chunk \d+ failed|Loading CSS chunk/i.test(
       error?.message ?? ""
     )
   ) {
+    if (Date.now() - _lastBecameVisible < 8000) {
+      // Returned from background — let the lazy retry recover silently.
+      return null;
+    }
     const key = "__atlas_chunk_reload__";
     const last = Number(sessionStorage.getItem(key) ?? 0);
-    if (Date.now() - last > 10000) {
+    if (Date.now() - last > 60000) {
       sessionStorage.setItem(key, String(Date.now()));
       clearRuntimeCaches();
       window.location.reload();
