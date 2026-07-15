@@ -15,9 +15,11 @@ export interface LibraryAttachmentsBarProps {
   items: LibraryItem[];
   busyId: string | null;
   onDetach: (item: LibraryItem) => void;
+  /** Optional: open the item (opens Library sheet focused on this item). */
+  onOpen?: (item: LibraryItem) => void;
 }
 
-export function LibraryAttachmentsBar({ items, busyId, onDetach }: LibraryAttachmentsBarProps) {
+export function LibraryAttachmentsBar({ items, busyId, onDetach, onOpen }: LibraryAttachmentsBarProps) {
   if (!items.length) return null;
   return (
     <div
@@ -30,10 +32,11 @@ export function LibraryAttachmentsBar({ items, busyId, onDetach }: LibraryAttach
         const busy = busyId === item.id;
         const meta = metaFor(item.kind);
         const Icon = meta.icon;
+        const clickable = !!onOpen;
         return (
           <span
             key={item.id}
-            title={`${meta.typeLabel} · ${item.title}`}
+            title={clickable ? `Open · ${meta.typeLabel} · ${item.title}` : `${meta.typeLabel} · ${item.title}`}
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               maxWidth: 220,
@@ -47,10 +50,24 @@ export function LibraryAttachmentsBar({ items, busyId, onDetach }: LibraryAttach
               opacity: busy ? 0.5 : 1,
             }}
           >
-            <Icon size={11} strokeWidth={1.8} />
-            <span style={{
-              maxWidth: 170, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>{item.title}</span>
+            <button
+              type="button"
+              onClick={() => { if (!busy && onOpen) onOpen(item); }}
+              disabled={busy || !clickable}
+              aria-label={clickable ? `Open ${item.title}` : item.title}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "transparent", border: "none", padding: 0,
+                color: "inherit", font: "inherit", letterSpacing: "inherit",
+                cursor: clickable && !busy ? "pointer" : "default",
+                maxWidth: 190, textAlign: "left",
+              }}
+            >
+              <Icon size={11} strokeWidth={1.8} />
+              <span style={{
+                maxWidth: 170, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>{item.title}</span>
+            </button>
             <button
               type="button"
               aria-label={`Detach ${item.title}`}
@@ -69,3 +86,4 @@ export function LibraryAttachmentsBar({ items, busyId, onDetach }: LibraryAttach
     </div>
   );
 }
+
