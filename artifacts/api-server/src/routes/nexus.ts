@@ -1700,6 +1700,7 @@ async function persistNexusExecutionRun(args: {
     // rewrite). They must be re-inserted here so evidence survives the rewrite.
     const BUILD_EVIDENCE_VERBS = new Set([
       "Patching", "Writing", "Written",
+      "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "FILE_MOVE",
       "Typechecking", "Building", "Testing",
     ]);
     for (const a of args.runActions) {
