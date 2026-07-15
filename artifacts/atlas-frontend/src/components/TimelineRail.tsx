@@ -294,7 +294,9 @@ export function TimelineRail({
           cursor: "pointer",
           backdropFilter: "blur(6px)",
           boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
-          zIndex: 19,
+          // Must sit above AskAtlasSurface (z-index 260) so the magnifier is
+          // reachable on the Ask Atlas conversation surface too.
+          zIndex: 270,
           padding: 0,
           color: "var(--atlas-search-btn-fg, rgba(201,162,76,0.95))",
           transition: "transform 140ms ease, background 140ms ease",
