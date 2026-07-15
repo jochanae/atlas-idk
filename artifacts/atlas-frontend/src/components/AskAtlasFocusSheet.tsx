@@ -138,7 +138,7 @@ export function AskAtlasFocusSheet({
             </button>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-            {(["projects", "saved"] as const).map(t => (
+            {(["projects", "reference"] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -150,7 +150,7 @@ export function AskAtlasFocusSheet({
                   cursor: "pointer", marginBottom: -1,
                 }}
               >
-                {t === "projects" ? "Projects" : "Saved"}
+                {t === "projects" ? "Projects" : "Reference"}
               </button>
             ))}
           </div>
@@ -160,9 +160,6 @@ export function AskAtlasFocusSheet({
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 0 24px" }}>
           {tab === "projects" && (
             <>
-              <div style={{ padding: "4px 20px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>
-                What Atlas is focused on
-              </div>
               <button
                 type="button"
                 onClick={onSelectAllProjects}
@@ -191,13 +188,8 @@ export function AskAtlasFocusSheet({
             </>
           )}
 
-          {tab === "saved" && (
+          {tab === "reference" && (
             <div style={{ padding: "0 20px" }}>
-              {focusedProject && (
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.55, marginBottom: 10 }}>
-                  Saved · all conversations
-                </div>
-              )}
               {loading && (
                 <div style={{ textAlign: "center", padding: "40px 0", fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.1em" }}>
                   loading…
