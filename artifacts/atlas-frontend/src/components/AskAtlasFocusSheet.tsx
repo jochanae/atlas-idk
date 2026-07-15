@@ -280,7 +280,18 @@ export function AskAtlasFocusSheet({
                   <div style={{ fontSize: 14, lineHeight: 1.75, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", opacity: 0.88, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                     {selected.content}
                   </div>
-                  <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+                  <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {onInjectReference && (
+                      <button
+                        onClick={() => {
+                          onInjectReference({ title: selected.title, content: selected.content });
+                          onClose();
+                        }}
+                        style={{ background: "var(--atlas-gold, #c9a24c)", border: "1px solid var(--atlas-gold, #c9a24c)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "#000", fontSize: 12, fontFamily: "var(--app-font-sans)", fontWeight: 600 }}
+                      >
+                        Bring into conversation
+                      </button>
+                    )}
                     <button
                       onClick={() => { navigator.clipboard.writeText(selected.content).catch(() => {}); }}
                       style={{ background: "transparent", border: "1px solid var(--atlas-border, rgba(255,255,255,0.1))", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 12, fontFamily: "var(--app-font-sans)" }}
