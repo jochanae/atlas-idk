@@ -2051,6 +2051,7 @@ export default function Home() {
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "library">("projects");
+  const [focusSheetConversationId, setFocusSheetConversationId] = useState<string | null>(null);
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
@@ -4709,6 +4710,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setFocusSheetTab("library");
+                          setFocusSheetConversationId(activeConversationId ?? askAtlasConversationId ?? null);
                           setShowFocusPicker(true);
                         }}
                         title="Saved documents"
@@ -4901,6 +4903,7 @@ export default function Home() {
                                   onClick={async () => {
                                     if (savedMsgIdxSet.has(i)) {
                                       setFocusSheetTab("library");
+                                      setFocusSheetConversationId(activeConversationId ?? askAtlasConversationId ?? null);
                                       setShowFocusPicker(true);
                                       return;
                                     }
@@ -5287,6 +5290,7 @@ export default function Home() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setFocusSheetTab("projects");
+                    setFocusSheetConversationId(askAtlasSurfaceVisible ? askAtlasConversationId : activeConversationId);
                     setShowFocusPicker(true);
                   }}
                   style={{
@@ -6038,7 +6042,7 @@ export default function Home() {
         projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
         onSelectAllProjects={handleHomeFocusAllProjects}
         onSelectProject={handleHomeFocusSelect}
-        conversationId={askAtlasConversationId}
+        conversationId={focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId}
         attachedIds={libraryAttachedIds}
         onAttachmentsChange={() => { void refreshLibraryAttachments(); }}
         onClose={() => setShowFocusPicker(false)}
