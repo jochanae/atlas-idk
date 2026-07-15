@@ -5314,66 +5314,10 @@ export default function Home() {
                 </svg>
               </button>
 
-              {/* Focus chip — Ask Atlas only. Describes what Atlas is focused on
-                  (All Projects vs a specific project) and opens the tabbed
-                  Focus sheet (Projects | Saved). Atlas is always the speaker. */}
-              {(askAtlasSurfaceOpen || askAtlasConversationActive) && (() => {
-                const focusedName = homeFocus != null
-                  ? (selectableFocusProjects.find((p: Project) => p.id === homeFocus)?.name ?? "Project")
-                  : null;
-                return (
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      title="Set Atlas focus"
-                      aria-label="Set Atlas focus"
-                      onPointerDown={(e) => e.preventDefault()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFocusSheetTab("projects");
-                        setShowFocusPicker(true);
-                      }}
-                      style={{
-                        height: isTiny ? 28 : 34,
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: isTiny ? "0 8px" : "0 10px", borderRadius: 999,
-                        background: focusedName
-                          ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
-                          : "transparent",
-                        border: focusedName
-                          ? "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)"
-                          : "1px solid var(--atlas-border, rgba(120,113,108,0.28))",
-                        color: focusedName ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                        cursor: "pointer",
-                        fontFamily: "var(--app-font-mono)",
-                        fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
-                        whiteSpace: "nowrap", maxWidth: isTiny ? 140 : 200,
-                        overflow: "hidden", textOverflow: "ellipsis",
-                        WebkitTapHighlightColor: "transparent",
-                      }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="9" />
-                        <circle cx="12" cy="12" r="4" />
-                        <circle cx="12" cy="12" r="1" fill="currentColor" />
-                      </svg>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {focusedName ? `Focus · ${focusedName}` : "Focus · All"}
-                      </span>
-                      {focusedName && (
-                        <span
-                          role="button"
-                          aria-label="Clear focus"
-                          onClick={(e) => { e.stopPropagation(); handleHomeFocusAllProjects(); }}
-                          style={{ opacity: 0.7, fontSize: 12, lineHeight: 1, padding: "0 2px", cursor: "pointer" }}
-                        >
-                          ×
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                );
-              })()}
+              {/* Focus chip moved OUT of this crowded action row and INTO the
+                  composer rectangle itself (top-left). See focusLensChip below. */}
+
+
 
 
 
