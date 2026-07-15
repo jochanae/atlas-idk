@@ -4686,7 +4686,7 @@ PROSE RULES (enforced — contradiction detection is active):
       // Captures who the person IS (name, tone, work style), not what they're working on.
       void synthesizeUserIdentity({
         userId,
-        userName: (userNarrativeRow as any)?.name ?? null,
+        userName: null, // name is fetched inside the function from DB
       });
     }
 
