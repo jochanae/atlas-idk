@@ -2547,6 +2547,10 @@ export default function Home() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Latest Focus-lens chip node, populated on each render by the home
+  // composer JSX so <AskAtlasSurface> below can render the identical chip
+  // inside its own composer rectangle without duplicating the JSX.
+  const focusLensChipRef = useRef<React.ReactNode>(null);
   const recognitionRef = useRef<any>(null);
   const ptrContainerRef = useRef<HTMLDivElement>(null);
   const {
