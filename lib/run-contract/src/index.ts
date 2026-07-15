@@ -864,3 +864,88 @@ export const PERMITTED_VERBS_BY_MODE: Record<RunMode, ReadonlySet<RunStepVerb>> 
 export function isVerbPermitted(mode: RunMode, verb: RunStepVerb): boolean {
   return PERMITTED_VERBS_BY_MODE[mode].has(verb);
 }
+
+// ---------------------------------------------------------------------------
+// Browser Flow types — v1.5
+// ---------------------------------------------------------------------------
+
+/**
+ * Named viewport profiles for run_browser_flow.
+ * Dimensions are resolved server-side — the model never supplies pixel values.
+ */
+export type ViewportProfile = "DESKTOP" | "MOBILE" | "FOLD_CLOSED" | "FOLD_OPEN";
+
+/**
+ * Structured semantic target for browser interactions.
+ * Priority: testId > role > label > text > css (fallback).
+ * The runner refuses destructive targets ("Delete", "Remove account") in READ_ONLY scope.
+ */
+export type BrowserLocator =
+  | { by: "testId"; value: string }
+  | { by: "role"; role: string; name?: string }
+  | { by: "label"; value: string }
+  | { by: "text"; value: string }
+  | { by: "css"; value: string };
+
+/**
+ * One step in a browser flow. Steps execute in order; any failure stops the run.
+ * The model provides these — the server validates and enforces scope before executing.
+ */
+export type BrowserStepInput =
+  | { action: "navigate"; path: string }
+  | { action: "click"; target: BrowserLocator; waitAfterMs?: number }
+  | { action: "fill"; target: BrowserLocator; value: string }
+  | { action: "wait"; ms: number }
+  | { action: "wait_for"; selector: string; timeoutMs?: number }
+  | { action: "refresh" }
+  | { action: "screenshot"; label?: string };
+
+/**
+ * One assertion evaluated after steps complete.
+ * All assertions run even if some fail; the aggregate determines pass/fail.
+ */
+export type BrowserAssertionInput =
+  | { type: "text_visible"; value: string }
+  | { type: "url_contains"; value: string }
+  | { type: "element_visible"; selector: string }
+  | { type: "element_absent"; selector: string }
+  | { type: "no_console_errors" }
+  | { type: "no_network_errors"; pattern?: string };
+
+/**
+ * Per-viewport result stored in execution_run_steps.metadata.
+ * The step's status='ok' requires ALL viewports to pass.
+ */
+export interface BrowserProfileResult {
+  viewport: ViewportProfile | string;
+  success: boolean;
+  assertionsPassed: number;
+  assertionsFailed: number;
+  finalUrl: string;
+}
+
+/**
+ * Structured artifact reference stored in execution_run_steps.metadata.
+ * Object keys are GCS paths under browser-runs/{userId}/{projectId}/{runId}/{stepId}/.
+ */
+export interface BrowserArtifactRef {
+  type: "SCREENSHOT" | "TRACE" | "REPORT";
+  objectKey: string;
+  sha256: string;
+  createdAt: string;
+}
+
+/**
+ * Scope for a browser test session.
+ * READ_ONLY: blocks POST/PUT/PATCH/DELETE at the Playwright route layer.
+ * CONTROLLED_WRITE: permits specific mutation endpoints declared in allowedMutations.
+ */
+export type BrowserTestScope = "READ_ONLY" | "CONTROLLED_WRITE";
+
+/**
+ * An explicitly permitted mutation endpoint for CONTROLLED_WRITE scope.
+ */
+export interface MutationAllow {
+  method: "POST" | "PUT" | "PATCH" | "DELETE";
+  pathPattern: string;
+}

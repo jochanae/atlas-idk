@@ -3,7 +3,7 @@ import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "@workspace/db";
 import { usersTable, userSessionsTable } from "@workspace/db/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import { bootstrapCapacityPoolForUser } from "../lib/capacity";
 
@@ -442,6 +442,58 @@ router.get("/auth/dev-test-login", async (req, res): Promise<void> => {
   createSessionCookie(token, res);
   // Redirect straight to the home page so the browser lands authenticated
   res.redirect(redirectTarget);
+});
+
+// GET /api/auth/browser-test-session — creates a short-lived scoped session for run_browser_flow
+// Called by the Playwright browser runner (not by end users). Validates a browser_test_sessions
+// token minted server-side and returns a session cookie usable over localhost HTTP.
+router.get("/auth/browser-test-session", async (req, res): Promise<void> => {
+  const tokenParam = typeof req.query["token"] === "string" ? req.query["token"] : null;
+  if (!tokenParam) {
+    res.status(400).json({ error: "Missing token" });
+    return;
+  }
+
+  try {
+    // Validate the browser_test_sessions token
+    const rows = await db.execute(sql`
+      SELECT user_id, project_id, execution_run_id, scope, expires_at
+      FROM browser_test_sessions
+      WHERE token = ${tokenParam}::uuid
+        AND expires_at > NOW()
+      LIMIT 1
+    `);
+    if (!rows.rows.length) {
+      res.status(401).json({ error: "Invalid or expired browser test token" });
+      return;
+    }
+
+    const bts = rows.rows[0] as { user_id: number; project_id: number; scope: string };
+    const sessionToken = randomBytes(32).toString("hex");
+    // Short-lived: 10 minutes — just enough for the browser flow to complete
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await db.insert(userSessionsTable).values({
+      userId: bts.user_id,
+      token: sessionToken,
+      expiresAt,
+    });
+
+    // Set cookie without `secure` flag so localhost HTTP Playwright requests work.
+    // This is intentionally different from createSessionCookie — browser tests
+    // run over HTTP at localhost, not HTTPS. The token is still short-lived and
+    // scoped to this specific browser test session.
+    res.cookie("atlas-session", sessionToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      expires: expiresAt,
+      path: "/",
+    });
+    res.status(200).json({ ok: true, scope: bts.scope });
+  } catch (err) {
+    res.status(500).json({ error: "Browser test session error" });
+  }
 });
 
 export default router;

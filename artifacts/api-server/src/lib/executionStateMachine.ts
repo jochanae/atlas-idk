@@ -85,6 +85,13 @@ export function derivePurposeFromVerb(verb: string, command?: string | null): St
     // CODE_SEARCH — symbol/text search
     case "SEARCH":
     case "SEARCHING": return "CODE_SEARCH";
+    // BROWSER_FLOW — browser automation via run_browser_flow tool
+    case "BROWSER_TEST":
+    case "BROWSER TESTING":
+    case "BROWSER VERIFIED":
+    case "BROWSER FAILED":
+    case "BROWSER_VERIFIED":
+    case "BROWSER_FAILED": return "BROWSER_FLOW";
     // TEST — automated tests
     case "TEST":
     case "TESTING": return "TEST";
@@ -253,11 +260,12 @@ interface StepRecord {
   step_purpose: string | null;
   status: string;
   created_at: string;
+  metadata: Record<string, unknown> | null;
 }
 
 async function loadStep(stepId: number): Promise<StepRecord | null> {
   const rows = await db.execute(sql`
-    SELECT id, run_id, step_purpose, status, created_at
+    SELECT id, run_id, step_purpose, status, created_at, metadata
     FROM execution_run_steps
     WHERE id = ${stepId}
   `);
@@ -372,7 +380,26 @@ async function validateEvidenceRefs(
         return `USER_FLOW_VERIFIED requires a BROWSER_FLOW step. Provided: [${steps.map(s => s.step_purpose ?? "OTHER").join(", ")}]. Atlas cannot self-create a human-verification event.`;
       }
       if (browserStep.status !== "ok") {
-        return `BROWSER_FLOW step ${browserStep.id} has status "${browserStep.status}" — must be "ok".`;
+        return `BROWSER_FLOW step ${browserStep.id} has status "${browserStep.status}" — must be "ok". All required viewport profiles must pass.`;
+      }
+      // Multi-profile check: if metadata records failedProfiles, surface them
+      const meta = browserStep.metadata as Record<string, unknown> | null;
+      if (meta && Array.isArray(meta["failedProfiles"]) && (meta["failedProfiles"] as string[]).length > 0) {
+        const failed = (meta["failedProfiles"] as string[]).join(", ");
+        return `BROWSER_FLOW step ${browserStep.id} has failed profiles: [${failed}]. All required viewport profiles must pass before USER_FLOW_VERIFIED.`;
+      }
+      // Ordering: browser step must post-date the latest PATCH/BUILD/RUNTIME step
+      const latestChange = await latestStepWithPurpose(runId, [
+        ...PURPOSES_FOR_PATCH,
+        ...PURPOSES_FOR_BUILD,
+        ...PURPOSES_FOR_RUNTIME,
+      ]);
+      if (latestChange) {
+        const changeTime = new Date(latestChange.created_at).getTime();
+        const browserTime = new Date(browserStep.created_at).getTime();
+        if (browserTime <= changeTime) {
+          return `BROWSER_FLOW step ${browserStep.id} predates the latest change/build/runtime step. Re-run the browser flow after applying changes.`;
+        }
       }
       break;
     }

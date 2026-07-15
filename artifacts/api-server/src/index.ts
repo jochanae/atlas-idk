@@ -1164,6 +1164,25 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: execution_run_steps.step_purpose failed — server will start anyway");
   }
+
+  // v1.5: browser_test_sessions — scoped short-lived sessions for run_browser_flow
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS browser_test_sessions (
+        token            UUID PRIMARY KEY,
+        user_id          INTEGER NOT NULL,
+        project_id       INTEGER NOT NULL,
+        execution_run_id TEXT    NOT NULL,
+        scope            TEXT    NOT NULL DEFAULT 'READ_ONLY',
+        allowed_mutations JSONB  NOT NULL DEFAULT '[]'::jsonb,
+        expires_at       TIMESTAMPTZ NOT NULL,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    logger.info("ensureColumns: browser_test_sessions table (v1.5) verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: browser_test_sessions table failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

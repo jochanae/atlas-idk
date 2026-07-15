@@ -27,6 +27,7 @@ import { projectKnowledgeTool } from "./project-knowledge";
 import { componentRegistryTool } from "./component-registry";
 import { advanceExecutionStateTool } from "./advance-execution-state";
 import { getProjectSnapshotTool } from "./get-project-snapshot";
+import { runBrowserFlowTool } from "./run-browser-flow";
 
 export { createSideEffects, createPlanState } from "./context";
 export type {
@@ -68,6 +69,7 @@ export function buildAgentTools(ctx: AgentToolContext, options?: { includePlanTo
     component_registry: componentRegistryTool(ctx),
     advance_execution_state: advanceExecutionStateTool(ctx),
     get_project_snapshot: getProjectSnapshotTool(ctx),
+    run_browser_flow: runBrowserFlowTool(ctx),
   };
 
   if (!options?.includePlanTools) {
