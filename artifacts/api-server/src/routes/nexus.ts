@@ -4665,7 +4665,12 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
       ...(pendingNavProjectId !== null
         ? {
             navigateTo: {
-              route: `/project/${pendingNavProjectId}`,
+              // Prefer /workspace/<conversationId> so the workspace mounts with
+              // the adopted Ask Atlas thread pre-selected — no race between
+              // navigation and the DB adoption UPDATE.
+              route: effectiveConversationId
+                ? `/workspace/${effectiveConversationId}`
+                : `/project/${pendingNavProjectId}`,
               projectId: pendingNavProjectId,
               projectName: pendingNavProjectName,
             },
@@ -5174,13 +5179,39 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
       pendingNavProjectId = project.id;
       pendingNavProjectName = project.name;
 
-      // Link the Ask Atlas conversation so WorkspaceReceiptsBar can surface thinking receipts
+      // Adopt the Ask Atlas conversation into this new project — transactional
+      // so we never leave a project created without its conversation attached.
+      // Both statements are idempotent (scoped to conversation_id + user_id +
+      // project_id IS NULL / equal target) so retrying handoff cannot detach,
+      // duplicate, or reassign messages.
       if (effectiveConversationId) {
-        await db.execute(sql`
-          UPDATE projects
-          SET conversation_id = ${effectiveConversationId}
-          WHERE id = ${project.id} AND conversation_id IS NULL
-        `);
+        try {
+          await db.transaction(async (tx) => {
+            await tx.execute(sql`
+              UPDATE projects
+              SET conversation_id = ${effectiveConversationId}
+              WHERE id = ${project.id}
+                AND user_id = ${userId}
+                AND conversation_id IS NULL
+            `);
+            // Adopt every orphaned Ask Atlas message from this exact conversation
+            // for this exact user into the new project. Scoping to project_id IS
+            // NULL keeps this idempotent and prevents cross-project bleed.
+            await tx.execute(sql`
+              UPDATE nexus_messages
+              SET project_id = ${project.id}
+              WHERE conversation_id = ${effectiveConversationId}
+                AND user_id = ${userId}
+                AND project_id IS NULL
+            `);
+          });
+        } catch (adoptErr) {
+          logger.error(
+            { err: String(adoptErr), projectId: project.id, conversationId: effectiveConversationId, userId },
+            "Ask Atlas conversation adoption failed — project created but thread not linked",
+          );
+          throw adoptErr;
+        }
         await flushNexusTier1BufferToProject(effectiveConversationId, project.id, userId);
       }
 

@@ -12,6 +12,7 @@ import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } f
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
 import { ensureProjectWorkspaceDir } from "../lib/projectWorkspace";
 import { cloneRepoBackground } from "../lib/workspaceHydration";
+import { logger } from "../lib/logger";
 import {
   CreateProjectBody,
   UpdateProjectBody,
@@ -1799,7 +1800,7 @@ router.get("/projects/:projectId/latest-conversation", async (req, res): Promise
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const [project] = await db
-    .select({ id: projectsTable.id })
+    .select({ id: projectsTable.id, conversationId: projectsTable.conversationId })
     .from(projectsTable)
     .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
     .limit(1);
@@ -1815,7 +1816,17 @@ router.get("/projects/:projectId/latest-conversation", async (req, res): Promise
     .orderBy(desc(nexusMessagesTable.createdAt))
     .limit(1);
 
-  res.json({ conversationId: row?.conversationId ?? null });
+  // Fall back to projects.conversation_id — covers the race window right after
+  // Ask Atlas → project adoption and legacy projects whose messages were not
+  // reparented. Logged as a legacy gap so we can track migrations owed.
+  const resolved = row?.conversationId ?? project.conversationId ?? null;
+  if (!row?.conversationId && project.conversationId) {
+    logger.info(
+      { projectId, conversationId: project.conversationId, userId },
+      "latest-conversation: resolved via projects.conversation_id fallback (legacy or race)",
+    );
+  }
+  res.json({ conversationId: resolved });
 });
 
 export default router;
