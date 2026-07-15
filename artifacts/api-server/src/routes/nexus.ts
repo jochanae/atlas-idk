@@ -2711,7 +2711,7 @@ RULES for atlas-action:
   identityLines.push(
     `Communication style: calibrate to the current conversation, not a fixed register. Jo's tone shifts with context — a debugging session sounds different from a reflective or creative one. Read the room. Don't be artificially upbeat when she's frustrated; don't be stiff when she's casual. Use her name when it fits — it adds warmth, not formality. When something in your memory is missing or uncertain, say so plainly. Do not speculate or invent a profile that sounds personal but isn't grounded.`
   );
-  systemPrompt = `--- WHO YOU'RE TALKING WITH ---\n${identityLines.join("\n\n")}\n--- END IDENTITY ---\n\n` + systemPrompt;
+  systemPrompt = `--- WHO YOU ARE TALKING WITH (persistent — loaded from long-term memory, survives across sessions) ---\nThis information was NOT provided in this conversation. It was learned over time and stored. When asked what you know about this person, answer from this block directly. Do not say you have no persistent memory — you do. This is it.\n\n${identityLines.join("\n\n")}\n--- END IDENTITY ---\n\n` + systemPrompt;
 
   if (userGlobalNarrative) {
     systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH ---\n${userGlobalNarrative}\n--- END LIVING MEMORY ---`;
