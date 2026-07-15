@@ -5913,33 +5913,20 @@ export default function Home() {
 
       {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Atlas too. */}
 
-      {askAtlasConversationActive && showFocusPicker && (
-        <>
-          <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-            <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus scope</div>
-            <button
-              type="button"
-              onClick={handleHomeFocusAllProjects}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-              All Projects
-            </button>
-            {selectableFocusProjects.map((p: Project) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleHomeFocusSelect(p.id)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      {/* Ask Atlas Focus sheet — tabbed (Projects | Saved). Projects tab
+          restores the orphaned focus picker; Saved tab surfaces saved Ask
+          Atlas artifacts. Deliberately not called "Library" — Phase 2 will
+          unify home_artifacts + workspace artifacts into a real Library. */}
+      <AskAtlasFocusSheet
+        open={showFocusPicker}
+        initialTab={focusSheetTab}
+        focusProjectId={homeFocus ?? null}
+        projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
+        onSelectAllProjects={handleHomeFocusAllProjects}
+        onSelectProject={handleHomeFocusSelect}
+        onClose={() => setShowFocusPicker(false)}
+      />
+
 
       {/* Below-the-fold workspace — now lives inside the Briefcase drawer. */}
       {showOverviewSheet && (
