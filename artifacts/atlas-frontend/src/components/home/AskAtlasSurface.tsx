@@ -377,7 +377,7 @@ export function AskAtlasSurface({
           bottom: "var(--atlas-dock-height, 64px)",
         display: "flex",
         flexDirection: "column",
-        background: "transparent",
+        background: "var(--atlas-bg, #0a0a0f)",
         zIndex: 260,
         overscrollBehavior: "contain",
         touchAction: "pan-y",
@@ -420,7 +420,7 @@ export function AskAtlasSurface({
           }}
         >
 
-        <AskAtlasTier1Chip conversationId={conversationId} />
+        <AskAtlasTier1Chip conversationId={conversationId} paused={messages.length === 0} />
 
         {isRestoring && messages.length === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
