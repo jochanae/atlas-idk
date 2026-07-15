@@ -182,6 +182,16 @@ function UnifiedShellRoutes() {
   );
 }
 
+const LAST_SURFACE_KEY = "atlas-last-surface";
+
+function readLastSurface(): string | null {
+  try { return localStorage.getItem(LAST_SURFACE_KEY); } catch { return null; }
+}
+
+function writeLastSurface(path: string): void {
+  try { localStorage.setItem(LAST_SURFACE_KEY, path); } catch {}
+}
+
 function RootRouteGate() {
   const [, nav] = useLocation();
   const { user, isLoading } = useAuth();
@@ -192,8 +202,14 @@ function RootRouteGate() {
       nav("/landing", { replace: true });
       return;
     }
-    // Visiting Atlas should land on the ambient home surface. Project focus is
-    // explicit through project selection, not restored from stale localStorage.
+    // Restore last surface: if the user was in a workspace, return them there.
+    // Only restore /project/:id routes — /home is the default fallback.
+    // Ask Atlas auto-restores its own conversation via askAtlasSession in home.tsx.
+    const last = readLastSurface();
+    if (last && last.startsWith("/project/")) {
+      nav(last, { replace: true });
+      return;
+    }
     nav("/home", { replace: true });
   }, [isLoading, nav, user]);
 
@@ -204,8 +220,12 @@ function Router() {
   const [location] = useLocation();
 
   // Track navigation history so back buttons can return to the actual entry point.
+  // Also persist last unified-shell surface so RootRouteGate can restore it on app open.
   useEffect(() => {
     import("@/lib/nav-history").then(({ pushNav }) => pushNav(location));
+    if (isUnifiedShellPath(location)) {
+      writeLastSurface(location);
+    }
   }, [location]);
 
 
