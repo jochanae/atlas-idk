@@ -568,7 +568,7 @@ function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectI
 
 const TIMELINE_VERBS = new Set([
   "THOUGHT", "FILE_READ", "SEARCH", "INSPECT",
-  "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "SUMMARY",
+  "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "Writing", "Written", "Patching", "SUMMARY",
   "DNA_UPDATED", "DECISION_RECORDED", "PLAN_RECORDED",
   // Placeholder support — rendered only if backend emits real steps.
   "ARTIFACT_CREATED", "ERROR", "QUESTION_ASKED",
@@ -577,7 +577,7 @@ const TIMELINE_VERBS = new Set([
   "MILESTONE_DESIGN", "MILESTONE_PLAN", "ARTIFACT_GENERATED",
 ]);
 const EXPANDABLE_VERBS = new Set([
-  "THOUGHT", "FILE_EDIT", "SUMMARY", "ERROR", "QUESTION_ASKED",
+  "THOUGHT", "FILE_EDIT", "Writing", "Written", "Patching", "SUMMARY", "ERROR", "QUESTION_ASKED",
   "MILESTONE_REQUIREMENTS", "MILESTONE_DECISION",
   "MILESTONE_DESIGN", "MILESTONE_PLAN", "ARTIFACT_GENERATED",
 ]);
@@ -591,6 +591,9 @@ function stepColor(verb: string): string {
     INSPECT:            "rgba(180,160,100,0.85)",
     FILE_EDIT:          "rgba(var(--atlas-gold-rgb), 0.95)",
     LINE_PATCH:         "rgba(var(--atlas-gold-rgb), 0.75)",
+    Writing:            "rgba(var(--atlas-gold-rgb), 0.95)",
+    Written:            "rgba(var(--atlas-gold-rgb), 0.95)",
+    Patching:           "rgba(var(--atlas-gold-rgb), 0.75)",
     FILE_DELETE:        "rgba(220,80,80,0.85)",
     SUMMARY:            "rgba(100,200,120,0.95)",
     DNA_UPDATED:        "rgba(120,190,255,0.85)",
@@ -617,6 +620,7 @@ function stepLabel(verb: string, detail?: string | null): string {
   const MAP: Record<string, string> = {
     THOUGHT: "Thought", FILE_READ: "Read", SEARCH: "Search",
     INSPECT: "Inspect", FILE_EDIT: "Edited", LINE_PATCH: "Patched",
+    Writing: "Edited", Written: "Edited", Patching: "Patched",
     FILE_DELETE: "Deleted", SUMMARY: "Summary",
     DNA_UPDATED: "DNA updated", DECISION_RECORDED: "Decision",
     PLAN_RECORDED: "Plan recorded",
@@ -638,6 +642,9 @@ function StepIcon({ verb }: { verb: string }) {
   if (verb === "INSPECT")    return <Folder       {...p} />;
   if (verb === "FILE_EDIT")  return <FileCode2    {...p} />;
   if (verb === "LINE_PATCH") return <FileCode2    {...p} />;
+  if (verb === "Writing")    return <FileCode2    {...p} />;
+  if (verb === "Written")    return <FileCode2    {...p} />;
+  if (verb === "Patching")   return <FileCode2    {...p} />;
   if (verb === "FILE_DELETE")       return <Trash2       {...p} />;
   if (verb === "SUMMARY")           return <CheckCircle2 {...p} />;
   if (verb === "DNA_UPDATED")       return <Dna          {...p} />;
@@ -1099,20 +1106,25 @@ export function ViewChangesPanel({
       if (runId && run.id !== runId) continue;
       for (const step of run.steps) {
         if (
-          (step.verb === "FILE_EDIT" || step.verb === "LINE_PATCH" || step.verb === "FILE_DELETE") &&
+          (step.verb === "FILE_EDIT" || step.verb === "LINE_PATCH" || step.verb === "FILE_DELETE" || step.verb === "Writing" || step.verb === "Written" || step.verb === "Patching") &&
           step.target && !seenPaths.has(step.target)
         ) {
+          const normalizedVerb = step.verb === "Writing" || step.verb === "Written"
+            ? "FILE_EDIT"
+            : step.verb === "Patching"
+              ? "LINE_PATCH"
+              : step.verb;
           seenPaths.add(step.target);
           dbRows.push({
             path: step.target,
-            summary: step.verb === "FILE_DELETE" ? "deleted"
-              : step.verb === "LINE_PATCH" ? "patched lines"
+            summary: normalizedVerb === "FILE_DELETE" ? "deleted"
+              : normalizedVerb === "LINE_PATCH" ? "patched lines"
               : "rewrote file",
             messageId: run.id,
             projectId,
             content: step.content ?? null,
             beforeContent: step.beforeContent ?? null,
-            verb: step.verb,
+            verb: normalizedVerb,
           });
         }
       }
