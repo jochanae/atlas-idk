@@ -1,8 +1,8 @@
 /**
- * @workspace/run-contract — Version 1.2
+ * @workspace/run-contract — Version 1.3
  *
  * Canonical Run Lifecycle Contract types.
- * Generated from: docs/RUN_LIFECYCLE_CONTRACT.md (v1.2)
+ * Generated from: docs/RUN_LIFECYCLE_CONTRACT.md (v1.3)
  *
  * SOURCE OF TRUTH HIERARCHY:
  *   1. docs/RUN_LIFECYCLE_CONTRACT.md  — human-readable authority
@@ -12,6 +12,15 @@
  * Neither team may silently drift these types away from the contract document.
  * If these types and the document disagree, correct this file and bump the version.
  * If a type change is needed, update the document first and bump its version.
+ *
+ * v1.3 additions:
+ *   - RunMode (EXPLORE | INVESTIGATE | EXECUTE) — epistemic posture per run
+ *   - ExecutionState — granular investigation/execution states within "executing"
+ *   - IssueType + VerificationContract — per-run required verification level
+ *   - StateTransitionEvidence — evidence records for each state advance
+ *   - OpenQuestion — unresolved items carried across turns
+ *   - Run.mode, Run.executionState, Run.verificationContract, Run.stateHistory, Run.openQuestions
+ *   - SSE event: execution_state_update
  */
 
 // ---------------------------------------------------------------------------
@@ -44,6 +53,191 @@ export function isTerminal(status: RunStatus): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// RunMode — v1.3
+// ---------------------------------------------------------------------------
+
+/**
+ * Epistemic posture for the run. Set at run creation, immutable for that run.
+ *
+ * EXPLORE      — Tentative reasoning, brainstorming, or product strategy.
+ *                No mutations allowed. No verification state machine.
+ *                No run card in UI. Behaves like a CHAT turn.
+ *
+ * INVESTIGATE  — Atlas gathers evidence without altering the project.
+ *                File reads, search, log reads allowed. No writes, builds, or deploys.
+ *                Epistemic discipline required: states advance through
+ *                UNINVESTIGATED → INVESTIGATING → CAUSE_CONFIRMED | BLOCKED.
+ *                Run succeeds when CAUSE_CONFIRMED (or BLOCKED if stuck).
+ *
+ * EXECUTE      — Full lifecycle. Atlas may write files, run commands, build, restart, deploy.
+ *                Full ExecutionState machine enforced. VerificationContract required.
+ *                No "succeeded" unless verificationContract.requiredSteps are all reached.
+ */
+export type RunMode = "EXPLORE" | "INVESTIGATE" | "EXECUTE";
+
+// ---------------------------------------------------------------------------
+// ExecutionState — v1.3
+// ---------------------------------------------------------------------------
+
+/**
+ * Granular state within the "executing" phase of a run.
+ * Lives alongside RunStatus — null until RunStatus reaches "executing".
+ * The backend advances this; the model never promotes it directly.
+ *
+ * Valid transitions are defined in EXECUTION_STATE_TRANSITIONS below.
+ */
+export type ExecutionState =
+  | "UNINVESTIGATED"    // executing just started; no evidence gathered yet
+  | "INVESTIGATING"     // reading code, logs, search results — forming hypotheses
+  | "CAUSE_CONFIRMED"   // root cause located with direct evidence
+  | "CHANGE_PROPOSED"   // plan committed; no mutations yet
+  | "CHANGE_APPLIED"    // at least one file/shell mutation succeeded
+  | "BUILD_VERIFIED"    // successful build after the latest change
+  | "RUNTIME_VERIFIED"  // runtime health confirmed after build/restart
+  | "USER_FLOW_VERIFIED"// user-facing flow confirmed (browser automation or human sign-off)
+  | "BLOCKED"           // cannot advance; reason recorded in stateHistory
+  | "FAILED";           // non-recoverable failure during execution
+
+/**
+ * Valid ExecutionState transitions.
+ * Each transition requires evidence (see StateTransitionEvidence).
+ *
+ * UNINVESTIGATED   → INVESTIGATING
+ * INVESTIGATING    → CAUSE_CONFIRMED | BLOCKED
+ * CAUSE_CONFIRMED  → CHANGE_PROPOSED (EXECUTE mode) | terminal (INVESTIGATE mode)
+ * CHANGE_PROPOSED  → CHANGE_APPLIED
+ * CHANGE_APPLIED   → BUILD_VERIFIED | terminal (issueType: CONTENT_EDIT)
+ * BUILD_VERIFIED   → RUNTIME_VERIFIED | terminal (issueType: CODE_COMPILE | DEPLOYMENT)
+ * RUNTIME_VERIFIED → USER_FLOW_VERIFIED | terminal (issueType: SERVER_ROUTING)
+ * USER_FLOW_VERIFIED → terminal (issueType: UI_BEHAVIOR)
+ * BLOCKED          → terminal (run fails unless explicitly unblocked)
+ * FAILED           → terminal
+ */
+export const TERMINAL_EXECUTION_STATES: ReadonlySet<ExecutionState> = new Set([
+  "USER_FLOW_VERIFIED",
+  "BLOCKED",
+  "FAILED",
+]);
+
+export function isTerminalExecutionState(state: ExecutionState): boolean {
+  return TERMINAL_EXECUTION_STATES.has(state);
+}
+
+// ---------------------------------------------------------------------------
+// IssueType + VerificationContract — v1.3
+// ---------------------------------------------------------------------------
+
+/**
+ * The nature of the problem Atlas is solving.
+ * Determines which ExecutionState steps are required before a run may succeed.
+ *
+ * CONTENT_EDIT   — doc/copy/config change — min: CHANGE_APPLIED
+ * CODE_COMPILE   — build/type/lint error — min: BUILD_VERIFIED
+ * SERVER_ROUTING — API route, middleware, backend logic — min: RUNTIME_VERIFIED
+ * UI_BEHAVIOR    — user-facing interaction, navigation, rendering — min: USER_FLOW_VERIFIED
+ * DEPLOYMENT     — deploy pipeline, image, env config — min: RUNTIME_VERIFIED
+ * INVESTIGATION  — diagnosis only, no mutations — CAUSE_CONFIRMED is terminal
+ * UNKNOWN        — Atlas classifies at turn start; defaults to SERVER_ROUTING requirements
+ */
+export type IssueType =
+  | "CONTENT_EDIT"
+  | "CODE_COMPILE"
+  | "SERVER_ROUTING"
+  | "UI_BEHAVIOR"
+  | "DEPLOYMENT"
+  | "INVESTIGATION"
+  | "UNKNOWN";
+
+/**
+ * The verification steps Atlas must reach (in order) before this run may succeed.
+ * Created at run start based on IssueType.
+ * The backend owns derivation; the model never writes allowedOutcome directly.
+ */
+export interface VerificationContract {
+  issueType: IssueType;
+  /** Ordered execution states that must be reached in sequence. */
+  requiredSteps: ExecutionState[];
+  /**
+   * Human-readable outcome label derived by the backend from current executionState.
+   * This is what the UI renders as the run status — never extracted from model prose.
+   *
+   * Examples:
+   *   "Patch applied — build verification pending"
+   *   "Build verified — runtime verification pending"
+   *   "Runtime verified"
+   */
+  allowedOutcome: string;
+}
+
+/** Required steps per issue type — canonical mapping. */
+export const REQUIRED_STEPS_BY_ISSUE_TYPE: Record<IssueType, ExecutionState[]> = {
+  CONTENT_EDIT:  ["CAUSE_CONFIRMED", "CHANGE_APPLIED"],
+  CODE_COMPILE:  ["CAUSE_CONFIRMED", "CHANGE_APPLIED", "BUILD_VERIFIED"],
+  SERVER_ROUTING:["CAUSE_CONFIRMED", "CHANGE_APPLIED", "BUILD_VERIFIED", "RUNTIME_VERIFIED"],
+  UI_BEHAVIOR:   ["CAUSE_CONFIRMED", "CHANGE_APPLIED", "BUILD_VERIFIED", "RUNTIME_VERIFIED", "USER_FLOW_VERIFIED"],
+  DEPLOYMENT:    ["CAUSE_CONFIRMED", "CHANGE_APPLIED", "BUILD_VERIFIED", "RUNTIME_VERIFIED"],
+  INVESTIGATION: ["CAUSE_CONFIRMED"],
+  UNKNOWN:       ["CAUSE_CONFIRMED", "CHANGE_APPLIED", "BUILD_VERIFIED", "RUNTIME_VERIFIED"],
+};
+
+// ---------------------------------------------------------------------------
+// StateTransitionEvidence — v1.3
+// ---------------------------------------------------------------------------
+
+/**
+ * Evidence record attached to each ExecutionState transition.
+ * The backend validates that required evidence exists before accepting a transition.
+ * These records form the run's auditable claim history.
+ */
+export interface StateTransitionEvidence {
+  id: string;
+  runId: string;
+  fromState: ExecutionState;
+  toState: ExecutionState;
+  evidenceType:
+    | "file_change"       // FILE_EDIT/LINE_PATCH/FILE_CREATE/FILE_DELETE step
+    | "build_output"      // SHELL step running a build command, exit 0
+    | "runtime_check"     // SHELL step or health probe returning success
+    | "user_flow"         // TEST step with browser automation or human confirmation
+    | "log_read"          // file/log read that located the cause
+    | "search_result";    // search_codebase result that confirmed a hypothesis
+  stepId: string;         // RunStep that provided this evidence
+  timestamp: string;      // ISO 8601
+  summary: string;        // one sentence — what the evidence shows
+  confidence: "confirmed" | "inferred" | "assumed";
+}
+
+// ---------------------------------------------------------------------------
+// OpenQuestion — v1.3
+// ---------------------------------------------------------------------------
+
+/**
+ * An unresolved question attached to a run.
+ * Blocking questions prevent the run from claiming a fully verified outcome.
+ * Questions survive to the next session and surface at workspace open.
+ */
+export interface OpenQuestion {
+  id: string;
+  question: string;
+  importance: "blocking" | "informational";
+  openedByRunId: string;
+  openedAt: string;        // ISO 8601
+  /**
+   * The ExecutionState that, when reached, would answer this question.
+   * null means it requires explicit human confirmation.
+   */
+  requiredEvidence: ExecutionState | null;
+  status: "OPEN" | "ANSWERED" | "SUPERSEDED" | "NO_LONGER_RELEVANT";
+  answeredAt: string | null;
+  answeredByRunId: string | null;
+  /**
+   * Plain-language conditions under which this question auto-closes.
+   * e.g. ["new deployment begins", "deployment configuration changes"]
+   */
+  expiresWhen: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Run
 // ---------------------------------------------------------------------------
 
@@ -56,6 +250,9 @@ export interface Run {
   // Status — THE source of truth. No surface infers or guesses this.
   status: RunStatus;
   intent: RunIntent;
+
+  // v1.3: Epistemic posture — set at run creation, immutable
+  mode: RunMode;
 
   // Content
   prompt: string;                  // the exact user message that triggered this run
@@ -72,6 +269,20 @@ export interface Run {
 
   // Verification results (null until verifying stage or later)
   verification: RunVerification | null;
+
+  // v1.3: Granular execution state — null until RunStatus reaches "executing"
+  // Only EXECUTE and INVESTIGATE mode runs populate this.
+  executionState: ExecutionState | null;
+
+  // v1.3: Verification contract — null for EXPLORE turns
+  // Derived from issueType at run creation. Owns allowedOutcome.
+  verificationContract: VerificationContract | null;
+
+  // v1.3: Evidence log for each state transition — append-only
+  stateHistory: StateTransitionEvidence[];
+
+  // v1.3: Unresolved questions from this run
+  openQuestions: OpenQuestion[];
 
   // GitHub commit state — separate from run lifecycle, BUILD only
   commit: RunCommit | null;
@@ -292,21 +503,23 @@ export interface RunEvent<T = unknown> {
 }
 
 export type RunEventType =
-  | "run_created"           // payload: RunCreatedPayload
-  | "run_status"            // payload: RunStatusPayload
-  | "token"                 // payload: TokenPayload
-  | "plan_ready"            // payload: PlanReadyPayload
-  | "step_update"           // payload: StepUpdatePayload (metadata only, no diff content)
-  | "verification_update"   // payload: VerificationUpdatePayload
-  | "commit_update"         // payload: CommitUpdatePayload — fires after run is terminal
-  | "run_complete"          // payload: RunCompletePayload — Run WITHOUT step content
-  | "stream_error";         // payload: StreamErrorPayload
+  | "run_created"             // payload: RunCreatedPayload
+  | "run_status"              // payload: RunStatusPayload
+  | "token"                   // payload: TokenPayload
+  | "plan_ready"              // payload: PlanReadyPayload
+  | "step_update"             // payload: StepUpdatePayload (metadata only, no diff content)
+  | "verification_update"     // payload: VerificationUpdatePayload
+  | "execution_state_update"  // payload: ExecutionStateUpdatePayload — v1.3
+  | "commit_update"           // payload: CommitUpdatePayload — fires after run is terminal
+  | "run_complete"            // payload: RunCompletePayload — Run WITHOUT step content
+  | "stream_error";           // payload: StreamErrorPayload
 
 // Typed payload shapes — use these with RunEvent<T> for type-safe event handling
 
 export interface RunCreatedPayload {
   status: "received";
   intent: RunIntent;
+  mode: RunMode;                   // v1.3
 }
 
 export interface RunStatusPayload {
@@ -327,6 +540,18 @@ export interface StepUpdatePayload {
 
 export interface VerificationUpdatePayload {
   verification: RunVerification;
+}
+
+/**
+ * v1.3: Fires when Atlas advances the executionState.
+ * The backend emits this after recording the evidence and computing allowedOutcome.
+ * The UI renders allowedOutcome — never derives it from model prose.
+ */
+export interface ExecutionStateUpdatePayload {
+  executionState: ExecutionState;
+  allowedOutcome: string;          // human-readable outcome label from VerificationContract
+  evidence: StateTransitionEvidence;
+  openQuestions: OpenQuestion[];   // full current list for this run
 }
 
 /**
@@ -360,6 +585,7 @@ export type TypedRunEvent =
   | RunEvent<PlanReadyPayload> & { type: "plan_ready" }
   | RunEvent<StepUpdatePayload> & { type: "step_update" }
   | RunEvent<VerificationUpdatePayload> & { type: "verification_update" }
+  | RunEvent<ExecutionStateUpdatePayload> & { type: "execution_state_update" }
   | RunEvent<CommitUpdatePayload> & { type: "commit_update" }
   | RunEvent<RunCompletePayload> & { type: "run_complete" }
   | RunEvent<StreamErrorPayload> & { type: "stream_error" };
@@ -526,3 +752,29 @@ export type ValidTransitions = {
     verifying: "succeeded" | "failed" | "cancelled";
   };
 };
+
+// ---------------------------------------------------------------------------
+// Mode-gated action policy — v1.3
+// ---------------------------------------------------------------------------
+
+/**
+ * Which RunStepVerbs are permitted per RunMode.
+ * The backend rejects any tool call that would produce a forbidden verb.
+ * The model cannot circumvent this by rewording — the API validates on step creation.
+ *
+ * EXPLORE:      ACTIVITY, SUMMARY only — no reads, no writes, no builds
+ * INVESTIGATE:  ACTIVITY, FILE_READ, SHELL (read-only), SUMMARY, ERROR
+ * EXECUTE:      all verbs permitted
+ */
+export const PERMITTED_VERBS_BY_MODE: Record<RunMode, ReadonlySet<RunStepVerb>> = {
+  EXPLORE: new Set(["ACTIVITY", "SUMMARY", "ERROR"]),
+  INVESTIGATE: new Set(["ACTIVITY", "FILE_READ", "SHELL", "SUMMARY", "ERROR"]),
+  EXECUTE: new Set([
+    "ACTIVITY", "FILE_READ", "FILE_EDIT", "LINE_PATCH", "FILE_DELETE",
+    "FILE_CREATE", "SHELL", "TEST", "ARTIFACT_CREATED", "ERROR", "SUMMARY",
+  ]),
+};
+
+export function isVerbPermitted(mode: RunMode, verb: RunStepVerb): boolean {
+  return PERMITTED_VERBS_BY_MODE[mode].has(verb);
+}
