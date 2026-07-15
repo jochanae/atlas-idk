@@ -198,10 +198,10 @@ export function AskAtlasFocusSheet({
               {!loading && !selected && artifacts.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 0 20px" }}>
                   <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, letterSpacing: "0.1em", marginBottom: 8 }}>
-                    nothing saved yet
+                    nothing here yet
                   </div>
                   <div style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.35, fontFamily: "var(--app-font-sans)", lineHeight: 1.5 }}>
-                    Hit the bookmark icon on any Atlas response to save it here.
+                    Bookmark any Atlas response to keep it here — then bring it back into a future conversation.
                   </div>
                 </div>
               )}
