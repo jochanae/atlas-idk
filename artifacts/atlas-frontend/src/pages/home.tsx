@@ -59,6 +59,7 @@ import { useShellStore } from "../store/shellStore";
 import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { HomeArtifactLibrarySheet } from "@/components/HomeArtifactLibrarySheet";
+import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
