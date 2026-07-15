@@ -33,6 +33,8 @@ import type {
   ConversationMessage,
   ConversationPage,
   RunStatus,
+  RunMode,
+  ExecutionState,
 } from "@workspace/run-contract";
 import { isTerminal } from "@workspace/run-contract";
 
@@ -47,7 +49,7 @@ function getUserId(req: any): number | null {
 }
 
 // ---------------------------------------------------------------------------
-// DB row → Run (canonical shape from contract v1.2)
+// DB row → Run (canonical shape from contract v1.3)
 // ---------------------------------------------------------------------------
 
 function rowToRun(row: any): Run {
@@ -57,6 +59,12 @@ function rowToRun(row: any): Run {
     conversationId: row.conversation_id,
     status: row.status as RunStatus,
     intent: row.intent,
+    // v1.3 fields — default safely for rows written before the migration
+    mode: (row.run_mode ?? "EXPLORE") as RunMode,
+    executionState: (row.execution_state ?? null) as ExecutionState | null,
+    verificationContract: row.verification_contract ?? null,
+    stateHistory: row.state_history ?? [],
+    openQuestions: row.open_questions ?? [],
     prompt: row.prompt ?? "",
     response: row.response ?? null,
     summary: row.summary ?? null,
@@ -987,6 +995,8 @@ export interface CreateRunOptions {
   userId: number;
   projectId: number | null;
   intent: "CHAT" | "DECIDE" | "BUILD";
+  /** v1.3: epistemic posture for this run. Defaults to EXPLORE. */
+  mode?: RunMode;
   prompt: string;
   snapshotRef?: string;
   idempotencyKey?: string;
@@ -994,21 +1004,22 @@ export interface CreateRunOptions {
 
 export async function createRun(opts: CreateRunOptions): Promise<Run> {
   const id = randomUUID();
-  const now = new Date().toISOString();
+  const mode: RunMode = opts.mode ?? "EXPLORE";
 
   await db.execute(sql`
     INSERT INTO contract_runs
-      (id, project_id, conversation_id, user_id, status, intent,
+      (id, project_id, conversation_id, user_id, status, intent, run_mode,
        prompt, step_count, steps_done, idempotency_key, created_at, updated_at)
     VALUES
       (${id}, ${opts.projectId}, ${opts.conversationId}, ${opts.userId},
-       'received', ${opts.intent}, ${opts.prompt}, 0, 0,
+       'received', ${opts.intent}, ${mode}, ${opts.prompt}, 0, 0,
        ${opts.idempotencyKey ?? null}, now(), now())
   `);
 
   await bus.publish(opts.conversationId, id, "run_created", {
     status: "received",
     intent: opts.intent,
+    mode,
   });
 
   return fetchRun(id);

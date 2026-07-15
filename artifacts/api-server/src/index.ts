@@ -965,6 +965,21 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: contract_runs failed — server will start anyway");
   }
 
+  // ── v1.3: Run Contract new columns ──────────────────────────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE contract_runs
+        ADD COLUMN IF NOT EXISTS run_mode           text NOT NULL DEFAULT 'EXPLORE',
+        ADD COLUMN IF NOT EXISTS execution_state    text,
+        ADD COLUMN IF NOT EXISTS verification_contract jsonb,
+        ADD COLUMN IF NOT EXISTS state_history      jsonb NOT NULL DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS open_questions     jsonb NOT NULL DEFAULT '[]'::jsonb
+    `);
+    logger.info("ensureColumns: contract_runs v1.3 columns verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: contract_runs v1.3 columns failed — server will start anyway");
+  }
+
   try {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS contract_run_steps (
