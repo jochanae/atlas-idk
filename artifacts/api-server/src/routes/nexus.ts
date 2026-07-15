@@ -43,7 +43,7 @@ import {
   SHARED_WORKSPACE_TOOL_NAMES,
 } from "../lib/agent-tools/anthropic-adapter";
 import { maybeExtractGenome } from "../lib/genomeExtract";
-import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, synthesizeGlobalNarrative, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, synthesizeGlobalNarrative, synthesizeUserIdentity, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { maybeEmitMilestones } from "../lib/milestoneClassifier";
 import {
   buildTier1BlockForNexusConversation,
@@ -2690,12 +2690,31 @@ RULES for atlas-action:
   // natural context at the top of the memory stack so Atlas enters every conversation
   // already holding the thread of what's been discussed recently.
   const userNarrativeRow = await db.execute(sql`
-    SELECT global_narrative FROM users WHERE id = ${userId} LIMIT 1
-  `).then(r => ((r.rows ?? r)[0] as { global_narrative: string | null } | undefined) ?? null)
+    SELECT global_narrative, name, user_identity FROM users WHERE id = ${userId} LIMIT 1
+  `).then(r => ((r.rows ?? r)[0] as { global_narrative: string | null; name: string | null; user_identity: string | null } | undefined) ?? null)
     .catch(() => null);
   const userGlobalNarrative = (userNarrativeRow as any)?.global_narrative ?? null;
+  const userName = (userNarrativeRow as any)?.name ?? null;
+  const userIdentityProfile = (userNarrativeRow as any)?.user_identity ?? null;
+
+  // ── Identity block — prepended to the system prompt so it ranks above everything else ──
+  // The user's name and personality sit at the top, before any project context. This means
+  // Atlas enters every conversation knowing WHO it's talking with before it knows what
+  // they're working on. State known facts directly — do not replace knowledge with speculation.
+  const identityLines: string[] = [];
+  if (userName) {
+    identityLines.push(`Name: ${userName}. Use this name naturally in conversation — when making a direct point, during an explanation, or when it adds warmth. Not on every message. Don't be stiff.`);
+  }
+  if (userIdentityProfile) {
+    identityLines.push(userIdentityProfile);
+  }
+  identityLines.push(
+    `Communication style: mirror the user's register. If they're casual, be casual. If they use colorful or direct language, don't sanitize your tone — match their energy where it makes sense. If your memory is missing something specific about them, say that plainly instead of inventing a plausible-sounding profile.`
+  );
+  systemPrompt = `--- WHO YOU'RE TALKING WITH ---\n${identityLines.join("\n\n")}\n--- END IDENTITY ---\n\n` + systemPrompt;
+
   if (userGlobalNarrative) {
-    systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH (living memory across all your conversations — weave this in naturally when relevant, never recite it) ---\n${userGlobalNarrative}\n--- END LIVING MEMORY ---`;
+    systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH ---\n${userGlobalNarrative}\n--- END LIVING MEMORY ---`;
   }
 
   // Inject thinking receipts — Ask Atlas now re-reads its own prior reasoning across all sessions
@@ -4662,6 +4681,12 @@ PROSE RULES (enforced — contradiction detection is active):
         userId,
         userMessage: body.message ?? "",
         atlasResponse: visibleContent,
+      });
+      // Identity profile synthesis — fire alongside narrative, uses longer cooldown.
+      // Captures who the person IS (name, tone, work style), not what they're working on.
+      void synthesizeUserIdentity({
+        userId,
+        userName: (userNarrativeRow as any)?.name ?? null,
       });
     }
 

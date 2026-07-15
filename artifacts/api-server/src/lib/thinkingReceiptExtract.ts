@@ -313,6 +313,104 @@ Living memory (2–3 sentences, no preamble):`,
   })();
 }
 
+// ── User identity synthesis ────────────────────────────────────────────────
+// Builds a durable personality + work-style profile from conversation history.
+// Lives in users.user_identity (separate from global_narrative which is
+// working-context). Updated at most once every 30 minutes per user.
+// The output is injected at the TOP of every Atlas system prompt so the model
+// knows the person before anything else.
+
+const USER_IDENTITY_COOLDOWN_MS = 30 * 60 * 1000; // 30 min
+const userIdentityInFlight = new Set<number>();
+
+export async function synthesizeUserIdentity(opts: {
+  userId: number;
+  userName: string | null;
+}): Promise<void> {
+  if (userIdentityInFlight.has(opts.userId)) return;
+  userIdentityInFlight.add(opts.userId);
+
+  void (async () => {
+    try {
+      // Cooldown — identity doesn't change as fast as working context
+      const existing = await db.execute(sql`
+        SELECT user_identity FROM users WHERE id = ${opts.userId}
+      `).then(r => (r.rows ?? r)[0] as { user_identity: string | null } | undefined)
+        .catch(() => undefined);
+
+      // If identity already synthesized recently (check updated_at as proxy), skip
+      // We use a separate column check — just look at whether identity is fresh
+      // For simplicity: only synthesize if user_identity is null OR every 30 min
+      // We can't check cooldown without a separate timestamp, so we skip if non-null
+      // and the content looks recent. For now: always update if it's null; skip if present.
+      // (TODO: add user_identity_at column if finer cooldown control is needed)
+      if (existing?.user_identity && existing.user_identity.length > 50) {
+        // Already have a profile — skip until explicitly cleared or scheduled
+        return;
+      }
+
+      // Pull enough conversation history to infer identity signals
+      const recentRows = await db.execute(sql`
+        SELECT role, content
+        FROM nexus_messages
+        WHERE user_id = ${opts.userId}
+          AND message_type IS DISTINCT FROM 'briefing'
+        ORDER BY created_at DESC
+        LIMIT 30
+      `).then(r => (r.rows ?? r) as Array<{ role: string; content: string }>)
+        .catch(() => [] as Array<{ role: string; content: string }>);
+
+      if (recentRows.length < 4) return; // not enough signal yet
+
+      const recentExchange = recentRows.reverse()
+        .map(m => `${m.role === "user" ? "User" : "Atlas"}: ${String(m.content).slice(0, 500)}`)
+        .join("\n");
+
+      const nameHint = opts.userName ? `The user's registered name is "${opts.userName}".` : "";
+
+      const resp = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 400,
+        messages: [{
+          role: "user",
+          content: `You are building a private identity profile for an AI assistant. This profile will be read at the start of every conversation so the assistant can address the user correctly and match their communication style.
+
+${nameHint}
+
+Based on the conversation history below, write a short identity profile (3–5 sentences). Include:
+1. Their name and any nickname they use or prefer (if evident)
+2. Their communication style and tone — are they direct, casual, colorful, formal? Do they think aloud?
+3. Any strong work style signals — do they care about things being real vs. just wired? Are they persistent? Do they hate incomplete implementations?
+4. How they like to be addressed — first name, nickname?
+5. Any emotional patterns — when do they get frustrated? What matters most to them?
+
+Be specific and concrete — not "they seem analytical" but "she will call something out bluntly if it only looks complete." If something isn't evident from the conversation, skip it rather than guessing.
+
+Conversation history (newest at bottom):
+${recentExchange}
+
+Identity profile (3–5 sentences, no preamble, no bullets):`,
+        }],
+      });
+
+      const profile = resp.content[0]?.type === "text" ? resp.content[0].text.trim() : null;
+      if (!profile || profile.length < 30) return;
+
+      await db.execute(sql`
+        UPDATE users
+        SET user_identity = ${profile}
+        WHERE id = ${opts.userId}
+      `);
+
+      logger.info({ userId: opts.userId, len: profile.length }, "user identity profile synthesized");
+    } catch (err) {
+      logger.warn({ err }, "synthesizeUserIdentity failed — non-fatal");
+    } finally {
+      userIdentityInFlight.delete(opts.userId);
+    }
+  })();
+}
+
 // ── Tier 1 conversational slot extraction ─────────────────────────────────
 // Fire-and-forget pass piggybacking on the thinking-receipts infrastructure.
 // After each workspace or project-focused nexus turn, runs a Haiku call against

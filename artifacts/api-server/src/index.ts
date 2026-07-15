@@ -1395,6 +1395,15 @@ async function backgroundInit(): Promise<void> {
   }).catch((err) => {
     logger.warn({ err }, "ledger→AM backfill failed — non-fatal");
   });
+
+  // User identity profile — durable per-user personality, name, and work-style synthesis.
+  // Separate from global_narrative (working context) — this captures WHO the person is,
+  // not what they've been working on recently.
+  db.execute(sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS user_identity text
+  `).catch((err) => {
+    logger.warn({ err }, "ensureColumns: users.user_identity failed — non-fatal");
+  });
 }
 
 async function main() {

@@ -1,3 +1,4 @@
+- [User Identity Layer](user-identity-layer.md) — users.user_identity column; prepended to system prompt above all project context; pre-seeded for Jo (user 1); synthesizeUserIdentity fires after each Atlas turn
 - [V1.2 turn-entry endpoint](turn-entry-endpoint.md) — POST /api/conversations/:id/messages; idempotency key, ws-{n} routing, _contractRunId bridge to skip duplicate beginContractRun in chat.ts
 - [CHAT Contract Bridge integration pattern](chat-contract-bridge.md) — res.write-patch strategy wires all ~15 done-event branches of chat.ts into the contract layer with 4 surgical edits; conversationId = "ws-" + sessionId
 - [Phantom-work pattern root cause](phantom-work-pattern.md) — "let me look" with no result: WhisperGate misclassifies project questions as CHAT → no DNA injected → no tools → model promises but cannot deliver
