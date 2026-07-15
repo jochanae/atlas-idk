@@ -166,6 +166,8 @@ interface Props {
   attachedFiles?: File[];
   onRemoveFile?: (index: number) => void;
   focusChip?: ReactNode;
+  /** Focus lens chip rendered top-left INSIDE the composer rectangle (all modes). */
+  focusLensChip?: ReactNode;
   subheader?: ReactNode;
   /** When true, hides the surface's own composer so the home dock acts as the sole input. */
   hideComposer?: boolean;
