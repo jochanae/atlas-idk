@@ -14,6 +14,18 @@ export interface ApiRunStep {
   createdAt: string;
 }
 
+/** Minimal shape of the v1.3 VerificationContract as served by the API. */
+export interface ApiVerificationContract {
+  issueType: string;
+  requiredSteps: string[];
+  completedSteps: string[];
+  /**
+   * MERGE_READY | NEEDS_REVIEW | BLOCKED | INCONCLUSIVE
+   * Derived by the state machine — the UI renders this, never model prose.
+   */
+  allowedOutcome: string;
+}
+
 export interface ApiRun {
   id: string;
   projectId: number;
@@ -29,6 +41,10 @@ export interface ApiRun {
   completedAt: string | null;
   elapsedMs: number | null;
   steps: ApiRunStep[];
+  /** v1.3: present when a contract_run exists for this conversation. Null for older runs. */
+  verificationContract?: ApiVerificationContract | null;
+  /** v1.3: the current execution state at the time this run was retrieved. */
+  executionState?: string | null;
 }
 
 export function useProjectRuns(

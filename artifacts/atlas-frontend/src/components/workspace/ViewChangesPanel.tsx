@@ -66,6 +66,34 @@ interface FileRow {
   verb?: string;
 }
 
+// ── Outcome badge: state-machine allowedOutcome, never model prose ────────────
+//
+// Only rendered when a verificationContract is present (v1.3+ runs).
+// INCONCLUSIVE is suppressed — no badge is better than a misleading "UNVERIFIED".
+const OUTCOME_CONFIG: Record<string, { label: string; color: string }> = {
+  MERGE_READY:  { label: "✓ VERIFIED",    color: "rgba(74,222,128,0.9)" },
+  NEEDS_REVIEW: { label: "REVIEW NEEDED", color: "rgba(var(--atlas-gold-rgb), 0.9)" },
+  BLOCKED:      { label: "BLOCKED",       color: "rgba(220,80,80,0.9)" },
+};
+
+function OutcomeBadge({ contract }: { contract: { allowedOutcome: string } | null | undefined }) {
+  if (!contract) return null;
+  const cfg = OUTCOME_CONFIG[contract.allowedOutcome];
+  if (!cfg) return null;  // INCONCLUSIVE — nothing to show
+  return (
+    <span title={`State machine outcome: ${contract.allowedOutcome}`} style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      padding: "2px 7px", borderRadius: 3,
+      background: cfg.color.replace(/[\d.]+\)$/, "0.10)"),
+      border: `1px solid ${cfg.color.replace(/[\d.]+\)$/, "0.28)")}`,
+      color: cfg.color,
+      fontWeight: 500,
+    }}>
+      {cfg.label}
+    </span>
+  );
+}
+
 // ── Compact receipt pill (replaces the old expandable RunCard on this surface) ─
 function summarizeRun(run: ApiRun): { tag: string; line: string } {
   const filePaths = run.steps
@@ -818,6 +846,8 @@ function RunHeader({ run }: { run: ApiRun }) {
           }} />
           {status}
         </span>
+        {/* v1.3: outcome from the state machine — never derived from model prose */}
+        <OutcomeBadge contract={run.verificationContract} />
         {intent && (
           <span style={{
             padding: "2px 7px", borderRadius: 3,

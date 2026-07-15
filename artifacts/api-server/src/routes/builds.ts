@@ -251,24 +251,50 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
     // conversationId filter is provided we include NULL-conversation rows for
     // backward compatibility (they may legitimately belong to this thread) so
     // the Timeline is never emptier than it was before the column existed.
+    // LEFT JOIN LATERAL pulls the most recent contract_run for each execution_run's
+    // conversation, giving us the state-machine-derived verificationContract and
+    // executionState. The UI renders allowedOutcome from this — never from prose.
+    // Runs with no conversation_id (pre-v1.3) get NULL for both fields gracefully.
     const runsResult = conversationId
       ? await db.execute(sql`
         SELECT
-          id, project_id, thread_id, message_id, conversation_id, mode, status, summary,
-          prompt, intent, receipts, started_at, completed_at, elapsed_ms
-        FROM execution_runs
-        WHERE project_id = ${projectId}
-          AND (conversation_id = ${conversationId} OR conversation_id IS NULL)
-        ORDER BY started_at DESC, seq DESC
+          er.id, er.project_id, er.thread_id, er.message_id, er.conversation_id,
+          er.mode, er.status, er.summary, er.prompt, er.intent, er.receipts,
+          er.started_at, er.completed_at, er.elapsed_ms,
+          cr.verification_contract,
+          cr.execution_state AS contract_execution_state
+        FROM execution_runs er
+        LEFT JOIN LATERAL (
+          SELECT verification_contract, execution_state
+          FROM contract_runs
+          WHERE conversation_id = er.conversation_id
+            AND er.conversation_id IS NOT NULL
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) cr ON true
+        WHERE er.project_id = ${projectId}
+          AND (er.conversation_id = ${conversationId} OR er.conversation_id IS NULL)
+        ORDER BY er.started_at DESC, er.seq DESC
         LIMIT 50
       `)
       : await db.execute(sql`
         SELECT
-          id, project_id, thread_id, message_id, conversation_id, mode, status, summary,
-          prompt, intent, receipts, started_at, completed_at, elapsed_ms
-        FROM execution_runs
-        WHERE project_id = ${projectId}
-        ORDER BY started_at DESC, seq DESC
+          er.id, er.project_id, er.thread_id, er.message_id, er.conversation_id,
+          er.mode, er.status, er.summary, er.prompt, er.intent, er.receipts,
+          er.started_at, er.completed_at, er.elapsed_ms,
+          cr.verification_contract,
+          cr.execution_state AS contract_execution_state
+        FROM execution_runs er
+        LEFT JOIN LATERAL (
+          SELECT verification_contract, execution_state
+          FROM contract_runs
+          WHERE conversation_id = er.conversation_id
+            AND er.conversation_id IS NOT NULL
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) cr ON true
+        WHERE er.project_id = ${projectId}
+        ORDER BY er.started_at DESC, er.seq DESC
         LIMIT 50
       `);
 
@@ -313,6 +339,9 @@ router.get("/projects/:projectId/runs", async (req, res): Promise<void> => {
         startedAt: r.started_at,
         completedAt: r.completed_at,
         elapsedMs: r.elapsed_ms,
+        // v1.3 state-machine outcome — null for runs predating the contract system
+        verificationContract: (r.verification_contract as Record<string, unknown> | null) ?? null,
+        executionState: (r.contract_execution_state as string | null) ?? null,
         steps: rawSteps.map((s) => ({
           id: s.id,
           verb: s.verb,
