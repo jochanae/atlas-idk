@@ -27,6 +27,7 @@ export function useSmartAutoScroll(
   const enabled = options?.enabled ?? true;
   const behavior = options?.behavior ?? "smooth";
   const stickRef = useRef(true);
+  const primedRef = useRef(false);
 
   // Track user scroll position to maintain the stick flag.
   useEffect(() => {
@@ -42,14 +43,36 @@ export function useSmartAutoScroll(
   }, [ref, enabled, threshold]);
 
   // Auto-scroll on dep change if stuck to bottom.
+  // First time the container reports real content, force-jump to bottom
+  // (instant) so a returning reader sees the tail of the conversation
+  // instead of the top. This runs regardless of stickRef because on first
+  // paint scrollTop is 0 and we don't want the reader stranded at the top.
   useEffect(() => {
     if (!enabled) return;
     const el = ref.current;
     if (!el) return;
-    if (!stickRef.current) return;
-    el.scrollTo({ top: el.scrollHeight, behavior });
+    const jump = () => {
+      const node = ref.current;
+      if (!node) return;
+      if (!primedRef.current) {
+        if (node.scrollHeight > node.clientHeight + 4) {
+          node.scrollTop = node.scrollHeight - node.clientHeight;
+          primedRef.current = true;
+          stickRef.current = true;
+          return;
+        }
+      }
+      if (stickRef.current) {
+        node.scrollTo({ top: node.scrollHeight, behavior });
+      }
+    };
+    jump();
+    // Cover late-arriving layout (images, streamed markdown) with a rAF pass.
+    const raf = requestAnimationFrame(jump);
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
+
 
   // Force-scroll on user send / explicit triggers — bypasses the freeze.
   useEffect(() => {
