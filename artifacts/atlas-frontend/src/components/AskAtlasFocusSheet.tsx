@@ -34,7 +34,8 @@ interface Props {
   projects: ProjectOption[];
   onSelectAllProjects: () => void;
   onSelectProject: (id: number) => void;
-  initialTab?: "projects" | "saved";
+  onInjectReference?: (artifact: { title: string; content: string }) => void;
+  initialTab?: "projects" | "reference";
 }
 
 function formatDate(iso: string): string {
