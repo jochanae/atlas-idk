@@ -1,30 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
+import {
+  fetchLibraryItems,
+  deleteLibraryItem,
+  type LibraryItem,
+  type LibraryItemKind,
+} from "../lib/library";
 
 /**
  * AskAtlasFocusSheet — Phase 1 of the Focus + Library reintroduction.
  *
  * Two tabs:
- *   • Projects — restores the orphaned focus picker. Selecting scopes what
- *     Atlas is focused on (All Projects vs a specific project).
- *   • Saved    — surfaces the user's saved Ask Atlas items. Deliberately
- *     labeled "Saved" (not "Library") because it only contains
- *     home_artifacts today; workspace artifacts will fold in during Phase 2.
- *
- * Atlas is always the speaker. Focus describes what Atlas is focused on.
+ *   • Projects  — restores the orphaned focus picker.
+ *   • Reference — surfaces the user's saved Ask Atlas items via the
+ *     Library seam (`../lib/library`). The visible label stays
+ *     "Reference" until the canonical `/api/library` and persistent
+ *     context-attachment endpoints ship; do not rename to "Library"
+ *     in copy before that lands.
  */
 
 interface ProjectOption {
   id: number;
   name: string;
-}
-
-interface HomeArtifact {
-  id: number;
-  type: string;
-  title: string;
-  content: string;
-  conversation_id: string | null;
-  created_at: string;
 }
 
 interface Props {
@@ -34,7 +30,7 @@ interface Props {
   projects: ProjectOption[];
   onSelectAllProjects: () => void;
   onSelectProject: (id: number) => void;
-  onInjectReference?: (artifact: { title: string; content: string }) => void;
+  onInjectReference?: (item: { title: string; content: string }) => void;
   initialTab?: "projects" | "reference";
 }
 
@@ -44,12 +40,13 @@ function formatDate(iso: string): string {
   } catch { return ""; }
 }
 
-function typeLabel(type: string): string {
-  const map: Record<string, string> = {
+function kindLabel(kind: LibraryItemKind): string {
+  const map: Record<LibraryItemKind, string> = {
     document: "Doc", prd: "PRD", plan: "Plan", strategy: "Strategy",
     spec: "Spec", outline: "Outline", brief: "Brief",
+    bookmark: "Bookmark", sketch: "Sketch", other: "Item",
   };
-  return map[type] ?? type;
+  return map[kind] ?? "Item";
 }
 
 export function AskAtlasFocusSheet({
@@ -57,21 +54,17 @@ export function AskAtlasFocusSheet({
   onSelectAllProjects, onSelectProject, onInjectReference, initialTab = "projects",
 }: Props) {
   const [tab, setTab] = useState<"projects" | "reference">(initialTab);
-  const [artifacts, setArtifacts] = useState<HomeArtifact[]>([]);
+  const [items, setItems] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => { if (open) setTab(initialTab); }, [open, initialTab]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/home-artifacts", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json() as { artifacts: HomeArtifact[] };
-        setArtifacts(data.artifacts ?? []);
-      }
+      setItems(await fetchLibraryItems());
     } catch {}
     setLoading(false);
   }, []);
@@ -80,19 +73,21 @@ export function AskAtlasFocusSheet({
     if (open && tab === "reference") { load(); setSelectedId(null); }
   }, [open, tab, load]);
 
-  const handleDelete = useCallback(async (id: number) => {
-    setDeletingId(id);
+  const handleDelete = useCallback(async (item: LibraryItem) => {
+    setDeletingId(item.id);
     try {
-      await fetch(`/api/home-artifacts/${id}`, { method: "DELETE", credentials: "include" });
-      setArtifacts(prev => prev.filter(a => a.id !== id));
-      if (selectedId === id) setSelectedId(null);
+      const ok = await deleteLibraryItem(item);
+      if (ok) {
+        setItems(prev => prev.filter(a => a.id !== item.id));
+        if (selectedId === item.id) setSelectedId(null);
+      }
     } catch {}
     setDeletingId(null);
   }, [selectedId]);
 
   if (!open) return null;
 
-  const selected = artifacts.find(a => a.id === selectedId) ?? null;
+  const selected = items.find(a => a.id === selectedId) ?? null;
 
   return (
     <div
@@ -195,7 +190,7 @@ export function AskAtlasFocusSheet({
                 </div>
               )}
 
-              {!loading && !selected && artifacts.length === 0 && (
+              {!loading && !selected && items.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 0 20px" }}>
                   <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, letterSpacing: "0.1em", marginBottom: 8 }}>
                     nothing here yet
@@ -206,10 +201,10 @@ export function AskAtlasFocusSheet({
                 </div>
               )}
 
-              {!loading && !selected && artifacts.map(artifact => (
+              {!loading && !selected && items.map(item => (
                 <div
-                  key={artifact.id}
-                  onClick={() => setSelectedId(artifact.id)}
+                  key={item.id}
+                  onClick={() => setSelectedId(item.id)}
                   style={{
                     display: "flex", alignItems: "flex-start", gap: 12,
                     padding: "12px 14px", borderRadius: 10,
@@ -225,26 +220,26 @@ export function AskAtlasFocusSheet({
                         textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.7,
                         padding: "1px 5px", border: "1px solid rgba(201,162,76,0.25)", borderRadius: 3,
                       }}>
-                        {typeLabel(artifact.type)}
+                        {kindLabel(item.kind)}
                       </span>
                       <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4 }}>
-                        {formatDate(artifact.created_at)}
+                        {formatDate(item.createdAt)}
                       </span>
                     </div>
                     <div style={{ fontSize: 14, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", fontWeight: 500, lineHeight: 1.35, marginBottom: 5 }}>
-                      {artifact.title}
+                      {item.title}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.5, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {artifact.content.slice(0, 120)}
+                      {item.preview}
                     </div>
                   </div>
                   <button
-                    onClick={e => { e.stopPropagation(); handleDelete(artifact.id); }}
-                    disabled={deletingId === artifact.id}
+                    onClick={e => { e.stopPropagation(); handleDelete(item); }}
+                    disabled={deletingId === item.id}
                     aria-label="Delete"
                     style={{
                       background: "transparent", border: "none", padding: 4, cursor: "pointer",
-                      color: "var(--atlas-muted)", opacity: deletingId === artifact.id ? 0.2 : 0.35,
+                      color: "var(--atlas-muted)", opacity: deletingId === item.id ? 0.2 : 0.35,
                       flexShrink: 0, lineHeight: 1, marginTop: 2,
                     }}
                   >
@@ -268,23 +263,23 @@ export function AskAtlasFocusSheet({
                       textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.7,
                       padding: "1px 5px", border: "1px solid rgba(201,162,76,0.25)", borderRadius: 3,
                     }}>
-                      {typeLabel(selected.type)}
+                      {kindLabel(selected.kind)}
                     </span>
                     <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4 }}>
-                      {formatDate(selected.created_at)}
+                      {formatDate(selected.createdAt)}
                     </span>
                   </div>
                   <div style={{ fontSize: 17, fontWeight: 600, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", marginBottom: 12 }}>
                     {selected.title}
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.75, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", opacity: 0.88, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                    {selected.content}
+                    {selected.content ?? selected.preview}
                   </div>
                   <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
                     {onInjectReference && (
                       <button
                         onClick={() => {
-                          onInjectReference({ title: selected.title, content: selected.content });
+                          onInjectReference({ title: selected.title, content: selected.content ?? selected.preview });
                           onClose();
                         }}
                         style={{ background: "var(--atlas-gold, #c9a24c)", border: "1px solid var(--atlas-gold, #c9a24c)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "#000", fontSize: 12, fontFamily: "var(--app-font-sans)", fontWeight: 600 }}
@@ -293,13 +288,13 @@ export function AskAtlasFocusSheet({
                       </button>
                     )}
                     <button
-                      onClick={() => { navigator.clipboard.writeText(selected.content).catch(() => {}); }}
+                      onClick={() => { navigator.clipboard.writeText(selected.content ?? selected.preview).catch(() => {}); }}
                       style={{ background: "transparent", border: "1px solid var(--atlas-border, rgba(255,255,255,0.1))", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 12, fontFamily: "var(--app-font-sans)" }}
                     >
                       Copy
                     </button>
                     <button
-                      onClick={() => handleDelete(selected.id)}
+                      onClick={() => handleDelete(selected)}
                       style={{ background: "transparent", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "#ef4444", fontSize: 12, fontFamily: "var(--app-font-sans)", opacity: 0.7 }}
                     >
                       Delete
