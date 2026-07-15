@@ -35,8 +35,14 @@ import type {
   RunStatus,
   RunMode,
   ExecutionState,
+  IssueType,
+  StateTransitionEvidence,
 } from "@workspace/run-contract";
 import { isTerminal } from "@workspace/run-contract";
+import {
+  initializeRunContract,
+  advanceRunExecutionState,
+} from "../lib/executionStateMachine";
 
 const router = Router();
 
@@ -1089,5 +1095,82 @@ export async function updateRunStatus(
     await bus.publish(conversationId, runId, "run_complete", { run });
   }
 }
+
+// ---------------------------------------------------------------------------
+// POST /runs/:id/contract — initialize VerificationContract for a run
+// ---------------------------------------------------------------------------
+
+router.post("/runs/:id/contract", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const { issueType } = req.body as { issueType?: IssueType };
+  if (!issueType) return res.status(400).json({ error: "issueType is required" });
+
+  const runRows = await db.execute(sql`
+    SELECT id, user_id FROM contract_runs WHERE id = ${req.params.id}
+  `);
+  if (!runRows.rows.length) return res.status(404).json({ error: "Run not found" });
+  if (runRows.rows[0].user_id !== userId) return res.status(403).json({ error: "Forbidden" });
+
+  try {
+    const contract = await initializeRunContract({ runId: req.params.id, issueType });
+    return res.json({ ok: true, contract });
+  } catch (err) {
+    logger.error({ err }, "POST /runs/:id/contract failed");
+    return res.status(500).json({ error: "Failed to initialize contract" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /runs/:id/state — advance execution state with evidence
+// ---------------------------------------------------------------------------
+
+router.post("/runs/:id/state", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const body = req.body as {
+    toState?: string;
+    issueType?: string;
+    evidenceType?: string;
+    stepId?: string;
+    summary?: string;
+    confidence?: string;
+  };
+
+  if (!body.toState || !body.evidenceType || !body.stepId || !body.summary || !body.confidence) {
+    return res.status(400).json({
+      error: "toState, evidenceType, stepId, summary, confidence are all required",
+    });
+  }
+
+  const runRows = await db.execute(sql`
+    SELECT conversation_id FROM contract_runs WHERE id = ${req.params.id}
+  `);
+  if (!runRows.rows.length) return res.status(404).json({ error: "Run not found" });
+  const conversationId = String(runRows.rows[0].conversation_id);
+
+  const result = await advanceRunExecutionState({
+    runId: req.params.id,
+    conversationId,
+    userId,
+    toState: body.toState as ExecutionState,
+    issueType: body.issueType as IssueType | undefined,
+    evidenceType: body.evidenceType as StateTransitionEvidence["evidenceType"],
+    stepId: body.stepId,
+    summary: body.summary,
+    confidence: body.confidence as StateTransitionEvidence["confidence"],
+  });
+
+  if (!result.ok) {
+    const status =
+      result.error === "Run not found" ? 404 :
+      result.error === "Forbidden"    ? 403 : 400;
+    return res.status(status).json({ error: result.error });
+  }
+
+  return res.json(result);
+});
 
 export default router;

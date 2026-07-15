@@ -25,6 +25,7 @@ import { searchAllProjectsTool } from "./search-all-projects";
 import { architectureDiffTool } from "./architecture-diff";
 import { projectKnowledgeTool } from "./project-knowledge";
 import { componentRegistryTool } from "./component-registry";
+import { advanceExecutionStateTool } from "./advance-execution-state";
 
 export { createSideEffects, createPlanState } from "./context";
 export type {
@@ -64,6 +65,7 @@ export function buildAgentTools(ctx: AgentToolContext, options?: { includePlanTo
     architecture_diff: architectureDiffTool(ctx),
     project_knowledge: projectKnowledgeTool(ctx),
     component_registry: componentRegistryTool(ctx),
+    advance_execution_state: advanceExecutionStateTool(ctx),
   };
 
   if (!options?.includePlanTools) {
