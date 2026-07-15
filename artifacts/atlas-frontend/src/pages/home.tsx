@@ -4965,26 +4965,29 @@ export default function Home() {
                             fontFamily: "var(--app-font-sans)",
                           }}>
                             {(() => {
-                              const imgs = (msg as any).attachments && (msg as any).attachments.length > 0
-                                ? (msg as any).attachments as Array<{ base64: string; mediaType: string; name?: string }>
-                                : (msg.imageUrl
-                                    ? [{ base64: "", mediaType: "", name: undefined, _url: msg.imageUrl }] as any
-                                    : []);
-                              if (imgs.length === 0) return null;
+                              const allAtts: Array<{ base64: string; mediaType: string; name?: string; _url?: string }> =
+                                (msg as any).attachments && (msg as any).attachments.length > 0
+                                  ? (msg as any).attachments
+                                  : (msg.imageUrl
+                                      ? [{ base64: "", mediaType: "image/", name: undefined, _url: msg.imageUrl }]
+                                      : []);
+                              if (allAtts.length === 0) return null;
+                              const imgAtts = allAtts.filter(a => a.mediaType?.startsWith("image/") || a._url);
+                              const docAtts = allAtts.filter(a => !a.mediaType?.startsWith("image/") && !a._url);
                               return (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.content ? 8 : 0 }}>
-                                  {imgs.map((img: any, idx: number) => {
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: (msg.content ? 8 : 0) }}>
+                                  {imgAtts.map((img, idx) => {
                                     const url = img._url ?? `data:${img.mediaType};base64,${img.base64}`;
                                     return (
-                                      <div key={idx} style={{ position: "relative" }}>
+                                      <div key={`img-${idx}`} style={{ position: "relative" }}>
                                         <img
                                           src={url}
                                           alt={img.name || "Attached"}
                                           style={{
-                                            width: imgs.length === 1 ? "100%" : 110,
+                                            width: imgAtts.length === 1 && docAtts.length === 0 ? "100%" : 110,
                                             maxWidth: "100%",
-                                            height: imgs.length === 1 ? "auto" : 110,
-                                            maxHeight: imgs.length === 1 ? 320 : 110,
+                                            height: imgAtts.length === 1 && docAtts.length === 0 ? "auto" : 110,
+                                            maxHeight: imgAtts.length === 1 && docAtts.length === 0 ? 320 : 110,
                                             objectFit: "cover",
                                             borderRadius: 8,
                                             display: "block",
@@ -4994,23 +4997,59 @@ export default function Home() {
                                         <span
                                           aria-hidden
                                           style={{
-                                            position: "absolute",
-                                            top: 4,
-                                            right: 4,
-                                            width: 18,
-                                            height: 18,
-                                            borderRadius: 999,
-                                            background: "rgba(0,0,0,0.55)",
-                                            color: "var(--atlas-gold)",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
+                                            position: "absolute", top: 4, right: 4,
+                                            width: 18, height: 18, borderRadius: 999,
+                                            background: "rgba(0,0,0,0.55)", color: "var(--atlas-gold)",
+                                            display: "flex", alignItems: "center", justifyContent: "center",
                                           }}
                                         >
                                           <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M13 7.5l-5 5a3 3 0 01-4.24-4.24l6-6a2 2 0 012.83 2.83l-6 6a1 1 0 11-1.41-1.41L9.5 5" />
                                           </svg>
                                         </span>
+                                      </div>
+                                    );
+                                  })}
+                                  {docAtts.map((doc, idx) => {
+                                    const ext = doc.name ? doc.name.split(".").pop()?.toUpperCase() ?? "FILE" : "PDF";
+                                    const shortName = doc.name && doc.name.length > 22
+                                      ? doc.name.slice(0, 19) + "…"
+                                      : (doc.name ?? "Document");
+                                    return (
+                                      <div key={`doc-${idx}`} style={{
+                                        display: "flex", alignItems: "center", gap: 8,
+                                        padding: "7px 11px",
+                                        borderRadius: 8,
+                                        background: "rgba(212,175,55,0.06)",
+                                        border: "1px solid rgba(212,175,55,0.22)",
+                                        maxWidth: 220, minWidth: 140,
+                                      }}>
+                                        <div style={{
+                                          width: 28, height: 28, flexShrink: 0,
+                                          borderRadius: 5,
+                                          background: "rgba(212,175,55,0.1)",
+                                          border: "1px solid rgba(212,175,55,0.3)",
+                                          display: "flex", flexDirection: "column",
+                                          alignItems: "center", justifyContent: "center", gap: 1,
+                                        }}>
+                                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                                            <path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="rgba(212,175,55,0.8)" strokeWidth="1.2" strokeLinejoin="round"/>
+                                            <path d="M10 2v3h3" stroke="rgba(212,175,55,0.8)" strokeWidth="1.2" strokeLinejoin="round"/>
+                                            <path d="M5 9h6M5 11.5h4" stroke="rgba(212,175,55,0.5)" strokeWidth="1" strokeLinecap="round"/>
+                                          </svg>
+                                        </div>
+                                        <div style={{ minWidth: 0 }}>
+                                          <div style={{
+                                            fontSize: 11, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)",
+                                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                            lineHeight: 1.3,
+                                          }}>{shortName}</div>
+                                          <div style={{
+                                            fontSize: 9, color: "rgba(212,175,55,0.55)",
+                                            fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                                            textTransform: "uppercase", marginTop: 2,
+                                          }}>{ext}</div>
+                                        </div>
                                       </div>
                                     );
                                   })}

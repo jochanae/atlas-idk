@@ -422,10 +422,10 @@ export function useNexusChatStream(
       role: "user",
       content: text,
       createdAt: new Date().toISOString(),
-      ...(imgAttachments.length > 0
+      ...(allFileAttachments.length > 0
         ? {
-            attachments: imgAttachments,
-            imageUrl: `data:${firstImg!.mediaType};base64,${firstImg!.base64}`,
+            attachments: allFileAttachments,
+            ...(firstImg ? { imageUrl: `data:${firstImg.mediaType};base64,${firstImg.base64}` } : {}),
           }
         : {}),
     };
