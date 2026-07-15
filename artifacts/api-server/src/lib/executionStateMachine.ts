@@ -68,20 +68,36 @@ const PURPOSES_FOR_BROWSER: StepPurpose[] = ["BROWSER_FLOW"];
 export function derivePurposeFromVerb(verb: string, command?: string | null): StepPurpose {
   const v = verb.toUpperCase();
   switch (v) {
+    // PATCH — file creation/edit/delete via tool calls or text-stream markers
     case "FILE_EDIT":
     case "LINE_PATCH":
     case "FILE_CREATE":
-    case "FILE_DELETE": return "PATCH";
+    case "FILE_DELETE":
+    case "WRITING":
+    case "WRITE":
+    case "WRITTEN":
+    case "PATCHING":
+    case "PATCHED": return "PATCH";
+    // FILE_INSPECTION — file reads
     case "FILE_READ":
     case "READ":
     case "READING": return "FILE_INSPECTION";
-    case "SEARCH": return "CODE_SEARCH";
-    case "TEST": return "TEST";
+    // CODE_SEARCH — symbol/text search
+    case "SEARCH":
+    case "SEARCHING": return "CODE_SEARCH";
+    // TEST — automated tests
+    case "TEST":
+    case "TESTING": return "TEST";
+    // TYPECHECK — explicit typecheck verb from run_typecheck tool
+    case "TYPECHECK":
+    case "TYPECHECKING": return "TYPECHECK";
+    // OTHER — bookkeeping verbs that carry no evidence value
     case "ARTIFACT_CREATED":
     case "SUMMARY":
     case "ACTIVITY":
     case "PROMPT":
     case "ERROR": return "OTHER";
+    // SHELL — dispatch on command content
     case "SHELL": {
       if (!command) return "OTHER";
       const cmd = command.toLowerCase();
@@ -381,6 +397,13 @@ export interface AdvanceStateOptions {
   evidenceRefs: EvidenceRef[];
   /** Model's explanation of what the evidence shows — context only, not proof. */
   summary: string;
+  /**
+   * When true, skips DB-level evidence ref validation.
+   * Use ONLY for server-driven advances where the server directly observed
+   * the steps (e.g. detected LINE_PATCH in the text stream). This bypasses
+   * model-forgery guards — never accept this flag from model input.
+   */
+  isServerDriven?: boolean;
 }
 
 export type AdvanceStateResult =
@@ -396,11 +419,14 @@ export async function advanceRunExecutionState(
   opts: AdvanceStateOptions,
 ): Promise<AdvanceStateResult> {
   // ── 1. Load current run state ──────────────────────────────────────────────
+  // user_id is not a direct column on execution_runs — derive it from the
+  // owning project so ownership checks work without a schema migration.
   const rows = await db.execute(sql`
-    SELECT user_id, run_mode, execution_state, verification_contract,
-           state_history, open_questions
-    FROM execution_runs
-    WHERE id = ${opts.runId}
+    SELECT p.user_id, er.run_mode, er.execution_state, er.verification_contract,
+           er.state_history, er.open_questions
+    FROM execution_runs er
+    JOIN projects p ON p.id = er.project_id
+    WHERE er.id = ${opts.runId}
   `);
 
   if (!rows.rows.length) return { ok: false, error: "Run not found" };
@@ -445,8 +471,13 @@ export async function advanceRunExecutionState(
   }
 
   // ── 3. Validate evidence refs against execution_run_steps ─────────────────
-  const evidenceError = await validateEvidenceRefs(opts.runId, opts.toState, opts.evidenceRefs);
-  if (evidenceError) return { ok: false, error: evidenceError };
+  // Skip validation for server-driven advances — the server directly observed
+  // the steps (LINE_PATCH detected in stream). Validation guards against model
+  // forgery; it is redundant when the server is the author of the advance.
+  if (!opts.isServerDriven) {
+    const evidenceError = await validateEvidenceRefs(opts.runId, opts.toState, opts.evidenceRefs);
+    if (evidenceError) return { ok: false, error: evidenceError };
+  }
 
   // ── 4. Resolve VerificationContract ───────────────────────────────────────
   const existingContract = row.verification_contract as VerificationContract | null;

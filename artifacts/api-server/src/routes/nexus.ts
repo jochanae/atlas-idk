@@ -28,7 +28,12 @@ import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
-import { derivePurposeFromVerb, recordModeEscalation } from "../lib/executionStateMachine";
+import {
+  advanceRunExecutionState,
+  derivePurposeFromVerb,
+  initializeRunContract,
+  recordModeEscalation,
+} from "../lib/executionStateMachine";
 import { createSideEffects, createPlanState, type AgentToolContext } from "../lib/agent-tools";
 import {
   toAnthropicTools,
@@ -1684,6 +1689,27 @@ async function persistNexusExecutionRun(args: {
         detail: a.detail ?? null,
         content: null,
       });
+    }
+
+    // BUILD EVIDENCE steps — PATCH (file edits) and TYPECHECK/BUILD steps.
+    // These are the records the state machine validates at CHANGE_APPLIED and
+    // BUILD_VERIFIED. appendLiveStepAsync writes them during the turn, but
+    // persistNexusExecutionRun deletes all live rows at line 1623 (canonical
+    // rewrite). They must be re-inserted here so evidence survives the rewrite.
+    const BUILD_EVIDENCE_VERBS = new Set([
+      "Patching", "Writing", "Written",
+      "Typechecking", "Building", "Testing",
+    ]);
+    for (const a of args.runActions) {
+      if (BUILD_EVIDENCE_VERBS.has(a.verb)) {
+        steps.push({
+          verb: a.verb,
+          target: a.target ?? null,
+          status: a.status === "fail" ? "fail" : a.status === "warn" ? "warn" : "ok",
+          detail: a.detail ?? null,
+          content: null,
+        });
+      }
     }
 
     // NON-CODE steps — DNA field writes, decisions, plan signals, questions accumulated during the turn.
@@ -3353,12 +3379,24 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
     systemPrompt += `\n\n${NEXUS_BUILD_PROTOCOLS}`;
     systemPrompt += `\n\n${ATLAS_DESIGN_INTELLIGENCE}`;
     systemPrompt += `\n\n--- VERIFICATION ENFORCEMENT ---
-The execution state machine is the authority on what has been proven. You MUST NOT claim in prose that work is complete, fixed, working, or shipped unless advance_execution_state returned outcome.complete=true this turn.
-- After a file edit → acknowledge the patch was applied. Do NOT say "it works now."
-- After BUILD_VERIFIED → write: "Build verified — runtime testing is still pending." Do NOT say "the fix is live."
-- After RUNTIME_VERIFIED → you may confirm runtime is healthy.
-- If you did not call advance_execution_state → do not assert any completion state.
-The badge shown to the user reflects backend-derived state. A prose claim that contradicts it destroys trust.
+The execution state machine is the single authority on what has been proven.
+You MUST call advance_execution_state at each milestone. Skipping any call leaves the run unverified.
+
+MANDATORY SEQUENCE on BUILD turns that read and modify files:
+1. After reading file(s) and confirming the cause:
+   → call advance_execution_state(toState:"CAUSE_CONFIRMED", issueType:<type>, evidenceRefs:[], summary:"<one sentence>")
+   → Use issueType based on what broke: SERVER_ROUTING for API/route bugs, CODE_COMPILE for type errors, UI_BEHAVIOR for UI bugs, CONTENT_EDIT for text/copy changes.
+2. After applying a file edit or LINE_PATCH:
+   → call advance_execution_state(toState:"CHANGE_APPLIED", evidenceRefs:[], summary:"<what changed>")
+3. After running run_typecheck with 0 errors:
+   → call advance_execution_state(toState:"BUILD_VERIFIED", evidenceRefs:[], summary:"0 errors")
+
+Do NOT skip steps 1–3 when files are changed. They are not optional.
+
+PROSE RULES (enforced — contradiction detection is active):
+- After CHANGE_APPLIED only: write "Patch applied — running build now." Do NOT say "it works."
+- After BUILD_VERIFIED: write exactly the outcome label the tool returned. For SERVER_ROUTING issues this will be "Build verified — Runtime verification pending." Do NOT say "the fix is live" or "done."
+- Never assert completion in prose. The outcome badge shown to the user IS the completion signal.
 --- END VERIFICATION ENFORCEMENT ---`;
   }
 
@@ -4655,6 +4693,82 @@ The badge shown to the user reflects backend-derived state. A prose claim that c
     }
 
     await emitConversationTitle(visibleContent);
+
+    // ── v1.4 Server-driven execution state auto-advance ─────────────────────
+    // Anthropic streaming turns are TEXT-OR-TOOLS, never both in sequence.
+    // When the model emits LINE_PATCH via the text-stream protocol it cannot
+    // also call advance_execution_state as a tool call in the same turn.
+    // If the model skipped the tool but we have direct evidence in runActions,
+    // the server advances the state machine here so the done event carries a
+    // real RunOutcome (which the AssistantBubble renders as the outcome footer).
+    // This is a trusted server path — evidence validation is bypassed (isServerDriven).
+    if (!lastExecutionState && activeRunId && allowBuildSideEffects && focusProjectId && userId) {
+      try {
+        const hasFileRead = runActions.some(
+          a => (a.verb === "Read" || a.verb === "Reading") && a.target && !a.target.includes(" "),
+        );
+        const hasPatch = runActions.some(a => ["Patching", "Writing", "Written"].includes(a.verb));
+        const hasTypecheck = runActions.some(
+          a => a.verb === "Typechecking" && a.status !== "fail",
+        );
+
+        if (hasFileRead || hasPatch) {
+          // Initialize the contract (UNKNOWN → same required steps as SERVER_ROUTING).
+          await initializeRunContract({ runId: activeRunId, issueType: "UNKNOWN" });
+
+          // Drive through the state chain based on evidence observed in runActions.
+          const steps: Array<{ toState: Parameters<typeof advanceRunExecutionState>[0]["toState"]; summary: string }> = [];
+          if (hasFileRead) {
+            steps.push({ toState: "INVESTIGATING",   summary: "File inspection in progress" });
+            steps.push({ toState: "CAUSE_CONFIRMED", summary: "Cause identified from file inspection" });
+          }
+          if (hasPatch) {
+            if (!hasFileRead) {
+              // No investigation steps — still need to reach CAUSE_CONFIRMED first.
+              steps.push({ toState: "INVESTIGATING",   summary: "File inspection (inferred)" });
+              steps.push({ toState: "CAUSE_CONFIRMED", summary: "Cause identified (inferred)" });
+            }
+            // CAUSE_CONFIRMED → CHANGE_PROPOSED → CHANGE_APPLIED (topology requires intermediate)
+            steps.push({ toState: "CHANGE_PROPOSED", summary: "Patch plan identified" });
+            steps.push({ toState: "CHANGE_APPLIED",  summary: "Patch applied via LINE_PATCH" });
+          }
+          if (hasTypecheck) {
+            steps.push({ toState: "BUILD_VERIFIED", summary: "Build passed" });
+          }
+
+          let lastResult: Awaited<ReturnType<typeof advanceRunExecutionState>> | null = null;
+          const conversationIdForSM = effectiveConversationId ?? `run-${activeRunId}`;
+          for (const step of steps) {
+            const result = await advanceRunExecutionState({
+              runId: activeRunId,
+              conversationId: conversationIdForSM,
+              userId,
+              toState: step.toState,
+              issueType: "UNKNOWN",
+              evidenceRefs: [],
+              summary: step.summary,
+              isServerDriven: true,
+            });
+            if (result.ok) {
+              lastResult = result;
+            } else {
+              // State machine may reject duplicate/invalid transitions — stop the chain.
+              req.log.warn({ runId: activeRunId, step: step.toState, err: result.error },
+                "nexus: server auto-advance halted at step");
+              break;
+            }
+          }
+
+          if (lastResult?.ok) {
+            lastExecutionState = lastResult.executionState;
+            lastRunOutcome = lastResult.outcome ?? null;
+          }
+        }
+      } catch (autoAdvErr) {
+        req.log.warn({ err: autoAdvErr }, "nexus: server auto-advance failed — non-fatal");
+      }
+    }
+    // ── end server-driven auto-advance ───────────────────────────────────────
 
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.
