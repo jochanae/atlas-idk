@@ -4767,7 +4767,7 @@ PROSE RULES (enforced — contradiction detection is active):
         const hasFileRead = runActions.some(
           a => (a.verb === "Read" || a.verb === "Reading") && a.target && !a.target.includes(" "),
         );
-        const hasPatch = runActions.some(a => ["Patching", "Writing", "Written"].includes(a.verb));
+        const hasPatch = runActions.some(a => ["Patching", "Writing", "Written", "FILE_EDIT", "LINE_PATCH"].includes(a.verb));
         const hasTypecheck = runActions.some(
           a => a.verb === "Typechecking" && a.status !== "fail",
         );
