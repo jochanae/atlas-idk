@@ -247,6 +247,7 @@ export function AskAtlasSurface({
   const restingCompact = restingState === "compact";
   const restingDocked = restingState === "docked";
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [savedIdxSet, setSavedIdxSet] = useState<Set<number>>(new Set());
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
   
@@ -366,6 +367,20 @@ export function AskAtlasSurface({
       setCopiedIdx(idx);
       setTimeout(() => setCopiedIdx(null), 1800);
     });
+  };
+
+  const handleSaveToLibrary = async (content: string, idx: number) => {
+    if (savedIdxSet.has(idx)) return;
+    await createLibraryItem({
+      title: inferLibraryTitle(content),
+      content,
+      kind: inferLibraryKind(content),
+      origin: {
+        source: "ask-atlas",
+        conversationId: conversationId ?? undefined,
+      },
+    });
+    setSavedIdxSet((prev) => new Set([...prev, idx]));
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
