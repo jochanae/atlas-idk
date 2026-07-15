@@ -25,7 +25,8 @@ import type { BrowserContext, Page } from "playwright";
 import { Storage } from "@google-cloud/storage";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID, createHash, randomBytes } from "node:crypto";
+import { userSessionsTable } from "@workspace/db/schema";
 import { execSync } from "node:child_process";
 import { logger } from "./logger";
 import type {
@@ -511,14 +512,49 @@ export async function runBrowserFlow(opts: BrowserRunnerOptions): Promise<Browse
 
     const page = await context.newPage();
 
-    // ── Authenticate via browser-test-session endpoint ──────────────────────
+    // ── Authenticate via direct cookie injection ─────────────────────────────
+    // Navigating to the /api/auth/browser-test-session HTTP endpoint fails when
+    // Playwright is launched from inside the server process — the nginx proxy at
+    // localhost:80 is unreachable from the same container, causing an immediate
+    // request abort. Instead we replicate exactly what that endpoint does:
+    //   1. Insert a short-lived user_sessions row directly in the DB
+    //   2. Inject the session token as the atlas-session cookie via addCookies()
+    // This is functionally identical to the HTTP path but requires no network.
     try {
-      await page.goto(
-        `${target.baseUrl}/api/auth/browser-test-session?token=${sessionToken}`,
-        { waitUntil: "networkidle", timeout: 8000 },
-      );
+      const cookieToken = randomBytes(32).toString("hex");
+      const cookieExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+      await db.insert(userSessionsTable).values({
+        userId: opts.userId,
+        token: cookieToken,
+        expiresAt: cookieExpires,
+      });
+      await context.addCookies([{
+        name: "atlas-session",
+        value: cookieToken,
+        domain: "localhost",
+        path: "/",
+        httpOnly: true,
+        secure: false,
+        sameSite: "Lax",
+        expires: Math.floor(cookieExpires.getTime() / 1000),
+      }]);
+      logger.info({ userId: opts.userId }, "browserRunner: auth cookie injected directly");
     } catch (authErr) {
-      logger.warn({ authErr }, "browserRunner: auth session navigate failed — continuing unauthenticated");
+      logger.warn({ authErr }, "browserRunner: auth cookie injection failed — continuing unauthenticated");
+    }
+
+    // ── Initial navigation to startPath ──────────────────────────────────────
+    // startPath is not just a security guard — it's the landing page for the run.
+    // The browser starts on about:blank; without this goto all assertions fail
+    // against an empty page. This is the equivalent of "open the URL first."
+    try {
+      await page.goto(`${target.baseUrl}${opts.startPath}`, {
+        waitUntil: "load",
+        timeout: 20000,
+      });
+      await page.waitForTimeout(2500); // allow React hydration
+    } catch (navErr) {
+      logger.warn({ navErr, startPath: opts.startPath }, "browserRunner: initial navigation failed");
     }
 
     // ── Execute steps ────────────────────────────────────────────────────────

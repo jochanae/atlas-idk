@@ -72,6 +72,7 @@ export const SHARED_HOME_TOOL_NAMES = [
 export const SHARED_WORKSPACE_TOOL_NAMES = [
   "read_file",
   "generate_deliverable",
+  "run_browser_flow",
   "search_all_projects",
   "search_codebase",
   "list_reference_project_dir",
