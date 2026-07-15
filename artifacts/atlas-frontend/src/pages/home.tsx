@@ -5943,8 +5943,15 @@ export default function Home() {
         projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
         onSelectAllProjects={handleHomeFocusAllProjects}
         onSelectProject={handleHomeFocusSelect}
+        onInjectReference={({ title, content }) => {
+          const block = `> Reference — ${title}\n>\n${content.split("\n").map(l => `> ${l}`).join("\n")}\n\n`;
+          setInput(prev => (prev.trim() ? `${block}${prev}` : block));
+          setAskAtlasSurfaceOpen(true);
+          setTimeout(() => textareaRef.current?.focus(), 60);
+        }}
         onClose={() => setShowFocusPicker(false)}
       />
+
 
 
       {/* Below-the-fold workspace — now lives inside the Briefcase drawer. */}
