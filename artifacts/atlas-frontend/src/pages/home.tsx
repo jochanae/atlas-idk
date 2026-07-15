@@ -5913,7 +5913,13 @@ export default function Home() {
         }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-        subheader={null}
+        subheader={libraryAttachments.length > 0 ? (
+          <LibraryAttachmentsBar
+            items={libraryAttachments}
+            busyId={libraryDetachBusyId}
+            onDetach={handleLibraryDetach}
+          />
+        ) : null}
         focusLensChip={focusLensChipRef.current}
         focusChip={
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
