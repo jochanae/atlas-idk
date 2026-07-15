@@ -4617,21 +4617,27 @@ export default function Workspace() {
     if (!run) return "";
     return String(run.id ?? run.runId ?? run.finishedAt ?? run.updatedAt ?? run.startedAt ?? run.createdAt ?? "");
   }, []);
+  const isTerminalRunStatus = useCallback((status: unknown) => {
+    const s = String(status ?? "").toLowerCase();
+    return s === "completed" || s === "succeeded" || s === "success" || s === "failed" || s === "cancelled" || s === "awaiting_approval";
+  }, []);
   useEffect(() => {
     if (!Number.isFinite(id)) return;
     const poll = async () => {
       try {
-        const res = await fetch(`/api/projects/${id}/runs`);
+        const url = conversationId
+          ? `/api/projects/${id}/runs?conversationId=${encodeURIComponent(conversationId)}`
+          : `/api/projects/${id}/runs`;
+        const res = await fetch(url);
         if (!res.ok) return;
         const data = await res.json();
         // Normalise: API may return { runs: [...] } or a bare array.
         const runsArray: any[] = Array.isArray(data) ? data : (Array.isArray(data?.runs) ? data.runs : []);
         // Phase 3: write into the React Query cache so useProjectRuns in
         // ViewChangesPanel reads from here — eliminates its duplicate request.
-        if (runsArray.length > 0) {
-          queryClient.setQueryData(["project-runs", id], { runs: runsArray });
-        }
-        const completed = runsArray.find((r: any) => (r.runStatus ?? r.status) === "completed") ?? null;
+        queryClient.setQueryData(["project-runs", id, conversationId ?? null], { runs: runsArray });
+        if (!conversationId) queryClient.setQueryData(["project-runs", id], { runs: runsArray });
+        const completed = runsArray.find((r: any) => isTerminalRunStatus(r.runStatus ?? r.status)) ?? null;
         if (completed) {
           setLatestRun((prev: any) => prev && latestRunKey(prev) === latestRunKey(completed) ? prev : completed);
         }
@@ -4644,7 +4650,7 @@ export default function Workspace() {
     // Disable the flag (WORKSPACE_LAZY_PANELS=0) to restore the original 10 s.
     const iv = setInterval(poll, lazyPanels ? 30_000 : 10_000);
     return () => clearInterval(iv);
-  }, [id, latestRunKey, lazyPanels]);
+  }, [id, conversationId, isTerminalRunStatus, latestRunKey, lazyPanels, queryClient]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
   const [showModelPicker, setShowModelPicker] = useState(() => {
@@ -5073,20 +5079,20 @@ export default function Workspace() {
   // after this workspace instance mounted, and (c) when not viewing the flow map.
   useEffect(() => {
     if (!latestRun) return;
-    if ((latestRun.runStatus ?? latestRun.status) !== "completed") return;
+    if (!isTerminalRunStatus(latestRun.runStatus ?? latestRun.status)) return;
     const viewIsFlow = new URLSearchParams(window.location.search).get("view") === "flow";
     if (viewIsFlow) return;
-    const runSessionId = latestRun.sessionId ?? latestRun.session_id ?? null;
+    const runSessionId = latestRun.sessionId ?? latestRun.session_id ?? latestRun.threadId ?? latestRun.thread_id ?? null;
     if (runSessionId == null || sessionId == null) return;
     if (Number(runSessionId) !== Number(sessionId)) return;
-    const finishedAtRaw = latestRun.finishedAt ?? latestRun.finished_at ?? latestRun.updatedAt ?? latestRun.updated_at ?? latestRun.createdAt ?? latestRun.created_at;
+    const finishedAtRaw = latestRun.completedAt ?? latestRun.completed_at ?? latestRun.finishedAt ?? latestRun.finished_at ?? latestRun.updatedAt ?? latestRun.updated_at ?? latestRun.startedAt ?? latestRun.createdAt ?? latestRun.created_at;
     const finishedAt = finishedAtRaw ? new Date(finishedAtRaw).getTime() : 0;
     if (!finishedAt || finishedAt < workspaceMountedAtRef.current) return;
     const key = latestRunKey(latestRun);
     if (acknowledgedRunRef.current === key) return;
     acknowledgedRunRef.current = key;
     setPreviewReady(true);
-  }, [latestRun, sessionId, latestRunKey]);
+  }, [latestRun, sessionId, isTerminalRunStatus, latestRunKey]);
 
   // useSound / memoryChips / leftTab moved above (consumed by useChatStream).
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
