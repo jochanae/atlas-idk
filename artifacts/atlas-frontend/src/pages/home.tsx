@@ -5972,10 +5972,11 @@ export default function Home() {
 
       {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Atlas too. */}
 
-      {/* Ask Atlas Focus sheet — tabbed (Projects | Saved). Projects tab
-          restores the orphaned focus picker; Saved tab surfaces saved Ask
-          Atlas artifacts. Deliberately not called "Library" — Phase 2 will
-          unify home_artifacts + workspace artifacts into a real Library. */}
+      {/* Focus + Reference sheet. Reference tab reads the canonical
+          `/api/library` endpoint via `@/lib/library` and drives real
+          persistent attachments to the active Ask Atlas conversation.
+          Copy still reads "Reference" — the rename to "Library" ships
+          in the same release once end-to-end verification passes. */}
       <AskAtlasFocusSheet
         open={showFocusPicker}
         initialTab={focusSheetTab}
@@ -5983,14 +5984,12 @@ export default function Home() {
         projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
         onSelectAllProjects={handleHomeFocusAllProjects}
         onSelectProject={handleHomeFocusSelect}
-        onInjectReference={({ title, content }) => {
-          const block = `> Reference — ${title}\n>\n${content.split("\n").map(l => `> ${l}`).join("\n")}\n\n`;
-          setInput(prev => (prev.trim() ? `${block}${prev}` : block));
-          setAskAtlasSurfaceOpen(true);
-          setTimeout(() => textareaRef.current?.focus(), 60);
-        }}
+        conversationId={askAtlasConversationId}
+        attachedIds={libraryAttachedIds}
+        onAttachmentsChange={() => { void refreshLibraryAttachments(); }}
         onClose={() => setShowFocusPicker(false)}
       />
+
 
 
 
