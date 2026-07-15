@@ -1,63 +1,111 @@
 /**
- * Library data seam — canonical endpoint.
+ * Library data seam — canonical `/api/library` client.
  *
- * Reads from GET /api/library. The backend LibraryItemApi shape is
- * identical to the frontend LibraryItem type, so no adapter is needed.
+ * The frontend imports ONLY from this module. All wire shapes are
+ * validated here so UI code sees pure `LibraryItem` objects.
  *
- * The legacy homeArtifacts adapter is intentionally NOT imported here.
- * If /api/library fails, return [] and surface the error through the
- * calling component — do not silently fall back to /api/home-artifacts.
+ * There is no legacy fallback. If the API fails, callers surface the
+ * error — we do not silently re-inject items as quoted context.
  */
-export type { LibraryItem, LibraryItemKind, LibraryItemOrigin, LibraryItemProject } from "./types";
+export type {
+  LibraryItem,
+  LibraryItemKind,
+  LibraryItemOrigin,
+  LibraryItemProject,
+} from "./types";
 
 import type { LibraryItem } from "./types";
 
-export async function fetchLibraryItems(opts?: { projectId?: number | null }): Promise<LibraryItem[]> {
-  const url = new URL("/api/library", window.location.origin);
-  if (opts?.projectId != null) {
-    url.searchParams.set("projectId", String(opts.projectId));
+export class LibraryApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = "LibraryApiError";
   }
-  const res = await fetch(url.toString(), { credentials: "include" });
-  if (!res.ok) return [];
-  const data = (await res.json()) as { items?: LibraryItem[] };
+}
+
+async function jsonOrThrow<T>(res: Response, action: string): Promise<T> {
+  if (!res.ok) {
+    let msg = `${action} failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.error) msg = String(body.error);
+    } catch {}
+    throw new LibraryApiError(msg, res.status);
+  }
+  return (await res.json()) as T;
+}
+
+export interface FetchLibraryOptions {
+  /** number = that project only; 'null' = user-level only; undefined = all. */
+  projectId?: number | "null";
+  kind?: string | string[];
+  limit?: number;
+  cursor?: string;
+}
+
+export async function fetchLibraryItems(
+  opts: FetchLibraryOptions = {},
+): Promise<LibraryItem[]> {
+  const qs = new URLSearchParams();
+  if (opts.projectId === "null") qs.set("projectId", "null");
+  else if (typeof opts.projectId === "number") qs.set("projectId", String(opts.projectId));
+  if (opts.kind) {
+    const kinds = Array.isArray(opts.kind) ? opts.kind : [opts.kind];
+    kinds.forEach((k) => qs.append("kind", k));
+  }
+  if (opts.limit) qs.set("limit", String(opts.limit));
+  if (opts.cursor) qs.set("cursor", opts.cursor);
+  const suffix = qs.toString() ? `?${qs}` : "";
+
+  const res = await fetch(`/api/library${suffix}`, { credentials: "include" });
+  const data = await jsonOrThrow<{ items?: LibraryItem[] }>(res, "Fetch library");
   return data.items ?? [];
 }
 
-export async function deleteLibraryItem(item: LibraryItem): Promise<boolean> {
-  const res = await fetch(`/api/library/${item.id}`, {
+export async function deleteLibraryItem(item: LibraryItem): Promise<void> {
+  const res = await fetch(`/api/library/${encodeURIComponent(item.id)}`, {
     method: "DELETE",
     credentials: "include",
   });
-  return res.ok;
+  await jsonOrThrow<{ ok: true }>(res, "Delete library item");
 }
 
-/**
- * Attach a library item to a conversation as context.
- * Returns the updated context list on success, null on failure.
- */
-export async function attachLibraryItemToConversation(
+/** Attach a library item to a conversation. Idempotent server-side. */
+export async function attachLibraryItem(
   itemId: string,
   conversationId: string,
-): Promise<boolean> {
-  const res = await fetch(`/api/library/${itemId}/context`, {
+): Promise<void> {
+  const res = await fetch(`/api/library/${encodeURIComponent(itemId)}/context`, {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ conversationId }),
   });
-  return res.ok;
+  await jsonOrThrow<{ ok: true }>(res, "Attach library item");
 }
 
-/**
- * Remove a library item from a conversation's context.
- */
-export async function detachLibraryItemFromConversation(
+/** Detach (soft) a library item from a conversation. */
+export async function detachLibraryItem(
   itemId: string,
   conversationId: string,
-): Promise<boolean> {
-  const res = await fetch(`/api/library/${itemId}/context/${conversationId}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-  return res.ok;
+): Promise<void> {
+  const res = await fetch(
+    `/api/library/${encodeURIComponent(itemId)}/context/${encodeURIComponent(conversationId)}`,
+    { method: "DELETE", credentials: "include" },
+  );
+  await jsonOrThrow<{ ok: true }>(res, "Detach library item");
+}
+
+/** Fetch the library items currently attached to a conversation. */
+export async function fetchConversationContext(
+  conversationId: string,
+): Promise<LibraryItem[]> {
+  const res = await fetch(
+    `/api/conversations/${encodeURIComponent(conversationId)}/context`,
+    { credentials: "include" },
+  );
+  const data = await jsonOrThrow<{ items?: LibraryItem[] }>(res, "Fetch conversation context");
+  return data.items ?? [];
 }
