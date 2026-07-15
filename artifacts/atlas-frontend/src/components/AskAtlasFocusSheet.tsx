@@ -54,9 +54,9 @@ function typeLabel(type: string): string {
 
 export function AskAtlasFocusSheet({
   open, onClose, focusProjectId, projects,
-  onSelectAllProjects, onSelectProject, initialTab = "projects",
+  onSelectAllProjects, onSelectProject, onInjectReference, initialTab = "projects",
 }: Props) {
-  const [tab, setTab] = useState<"projects" | "saved">(initialTab);
+  const [tab, setTab] = useState<"projects" | "reference">(initialTab);
   const [artifacts, setArtifacts] = useState<HomeArtifact[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -77,7 +77,7 @@ export function AskAtlasFocusSheet({
   }, []);
 
   useEffect(() => {
-    if (open && tab === "saved") { load(); setSelectedId(null); }
+    if (open && tab === "reference") { load(); setSelectedId(null); }
   }, [open, tab, load]);
 
   const handleDelete = useCallback(async (id: number) => {
