@@ -2547,6 +2547,10 @@ export default function Home() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Latest Focus-lens chip node, populated on each render by the home
+  // composer JSX so <AskAtlasSurface> below can render the identical chip
+  // inside its own composer rectangle without duplicating the JSX.
+  const focusLensChipRef = useRef<React.ReactNode>(null);
   const recognitionRef = useRef<any>(null);
   const ptrContainerRef = useRef<HTMLDivElement>(null);
   const {
@@ -5180,6 +5184,63 @@ export default function Home() {
             )}
 
 
+            {(() => {
+              const _focusedName = homeFocus != null
+                ? (selectableFocusProjects.find((p: Project) => p.id === homeFocus)?.name ?? "Project")
+                : null;
+              const focusLensChipNode = (
+                <button
+                  type="button"
+                  title="Set Atlas focus"
+                  aria-label="Set Atlas focus"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFocusSheetTab("projects");
+                    setShowFocusPicker(true);
+                  }}
+                  style={{
+                    height: 22,
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    padding: "0 8px", borderRadius: 999,
+                    background: _focusedName
+                      ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"
+                      : "color-mix(in oklab, var(--atlas-gold) 4%, transparent)",
+                    border: _focusedName
+                      ? "1px solid color-mix(in oklab, var(--atlas-gold) 45%, transparent)"
+                      : "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
+                    color: _focusedName ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase",
+                    whiteSpace: "nowrap", maxWidth: 180,
+                    overflow: "hidden", textOverflow: "ellipsis",
+                    WebkitTapHighlightColor: "transparent",
+                    lineHeight: 1,
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <circle cx="12" cy="12" r="4" />
+                    <circle cx="12" cy="12" r="1" fill="currentColor" />
+                  </svg>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {_focusedName ? `Focus · ${_focusedName}` : "Focus · All"}
+                  </span>
+                  {_focusedName && (
+                    <span
+                      role="button"
+                      aria-label="Clear focus"
+                      onClick={(e) => { e.stopPropagation(); handleHomeFocusAllProjects(); }}
+                      style={{ opacity: 0.7, fontSize: 11, lineHeight: 1, padding: "0 1px", cursor: "pointer" }}
+                    >×</span>
+                  )}
+                </button>
+              );
+              // Stash on ref so the AskAtlasSurface render below can reuse
+              // the exact same chip node without duplicating the JSX.
+              focusLensChipRef.current = focusLensChipNode;
+              return (
             <div
               className="atlas-ambient-reveal-top"
               style={{
@@ -5200,6 +5261,15 @@ export default function Home() {
               backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
+              {/* Focus lens — top-left inside the composer rectangle. Only
+                  shows when the box is visually "open" (focused or has content)
+                  so the ambient homepage stays clean. */}
+              {(inputFocused || hasInput || attachedFiles.length > 0) && (
+                <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 6 }}>
+                  {focusLensChipNode}
+                </div>
+              )}
+
               {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceVisible) && !askAtlasConversationActive && (
                 <div
                   className="atlas-prompt-settle"
@@ -5263,6 +5333,9 @@ export default function Home() {
                 }}
               />
             </div>
+              );
+            })()}
+
 
             {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
             <div style={{
@@ -5314,66 +5387,10 @@ export default function Home() {
                 </svg>
               </button>
 
-              {/* Focus chip — Ask Atlas only. Describes what Atlas is focused on
-                  (All Projects vs a specific project) and opens the tabbed
-                  Focus sheet (Projects | Saved). Atlas is always the speaker. */}
-              {(askAtlasSurfaceOpen || askAtlasConversationActive) && (() => {
-                const focusedName = homeFocus != null
-                  ? (selectableFocusProjects.find((p: Project) => p.id === homeFocus)?.name ?? "Project")
-                  : null;
-                return (
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      title="Set Atlas focus"
-                      aria-label="Set Atlas focus"
-                      onPointerDown={(e) => e.preventDefault()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFocusSheetTab("projects");
-                        setShowFocusPicker(true);
-                      }}
-                      style={{
-                        height: isTiny ? 28 : 34,
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: isTiny ? "0 8px" : "0 10px", borderRadius: 999,
-                        background: focusedName
-                          ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
-                          : "transparent",
-                        border: focusedName
-                          ? "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)"
-                          : "1px solid var(--atlas-border, rgba(120,113,108,0.28))",
-                        color: focusedName ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                        cursor: "pointer",
-                        fontFamily: "var(--app-font-mono)",
-                        fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
-                        whiteSpace: "nowrap", maxWidth: isTiny ? 140 : 200,
-                        overflow: "hidden", textOverflow: "ellipsis",
-                        WebkitTapHighlightColor: "transparent",
-                      }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="9" />
-                        <circle cx="12" cy="12" r="4" />
-                        <circle cx="12" cy="12" r="1" fill="currentColor" />
-                      </svg>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {focusedName ? `Focus · ${focusedName}` : "Focus · All"}
-                      </span>
-                      {focusedName && (
-                        <span
-                          role="button"
-                          aria-label="Clear focus"
-                          onClick={(e) => { e.stopPropagation(); handleHomeFocusAllProjects(); }}
-                          style={{ opacity: 0.7, fontSize: 12, lineHeight: 1, padding: "0 2px", cursor: "pointer" }}
-                        >
-                          ×
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                );
-              })()}
+              {/* Focus chip moved OUT of this crowded action row and INTO the
+                  composer rectangle itself (top-left). See focusLensChip below. */}
+
+
 
 
 
@@ -5856,6 +5873,7 @@ export default function Home() {
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
+        focusLensChip={focusLensChipRef.current}
         focusChip={
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <button

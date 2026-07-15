@@ -166,6 +166,8 @@ interface Props {
   attachedFiles?: File[];
   onRemoveFile?: (index: number) => void;
   focusChip?: ReactNode;
+  /** Focus lens chip rendered top-left INSIDE the composer rectangle (all modes). */
+  focusLensChip?: ReactNode;
   subheader?: ReactNode;
   /** When true, hides the surface's own composer so the home dock acts as the sole input. */
   hideComposer?: boolean;
@@ -206,6 +208,7 @@ export function AskAtlasSurface({
   attachedFiles = [],
   onRemoveFile,
   focusChip,
+  focusLensChip,
   subheader,
   hideComposer = false,
   handoffSignal,
@@ -948,6 +951,13 @@ export function AskAtlasSurface({
             ...getAuraVars("axiom", isParchment),
           } as CSSProperties}
         >
+          {/* Focus lens chip — top-left inside the composer rectangle,
+              visible in every composer mode (full / compact / conversation). */}
+          {focusLensChip && (
+            <div style={{ display: "flex", alignItems: "center", minHeight: 0, marginBottom: -2 }}>
+              {focusLensChip}
+            </div>
+          )}
           {/* Dock toggle — inside the bordered composer box so it doesn't float outside */}
           {!focused && messages.length > 0 && (
             <button
