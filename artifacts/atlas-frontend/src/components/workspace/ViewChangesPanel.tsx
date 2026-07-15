@@ -108,7 +108,7 @@ function OutcomeBadge({
 // ── Compact receipt pill (replaces the old expandable RunCard on this surface) ─
 function summarizeRun(run: ApiRun): { tag: string; line: string } {
   const filePaths = run.steps
-    .filter((s) => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH")
+    .filter((s) => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH" || s.verb === "Writing" || s.verb === "Written" || s.verb === "Patching")
     .map((s) => s.target)
     .filter((t): t is string => !!t);
   const readCount = run.steps.filter((s) => s.verb === "FILE_READ").length;
@@ -911,7 +911,7 @@ function RunTimeline({ run }: { run: ApiRun }) {
           padding: "18px 16px", fontSize: 12,
           color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.65,
         }}>
-          {run.steps.some((s) => s.verb === "FILE_EDIT" || s.verb === "LINE_PATCH" || s.verb === "FILE_DELETE")
+          {run.steps.some((s) => s.verb === "FILE_EDIT" || s.verb === "LINE_PATCH" || s.verb === "FILE_DELETE" || s.verb === "Writing" || s.verb === "Written" || s.verb === "Patching")
             ? "Execution trace not available — this run predates step capture. See Changes for what was written."
             : "No execution steps recorded for this run."}
         </div>
