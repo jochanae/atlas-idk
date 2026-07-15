@@ -23,8 +23,8 @@
 import { chromium } from "playwright";
 import type { BrowserContext, Page } from "playwright";
 import { Storage } from "@google-cloud/storage";
-import { db } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { db, projectsTable } from "@workspace/db";
+import { sql, eq } from "drizzle-orm";
 import { randomUUID, createHash, randomBytes } from "node:crypto";
 import { userSessionsTable } from "@workspace/db/schema";
 import { execSync } from "node:child_process";
@@ -376,6 +376,27 @@ async function runAssertions(
           ok ? passed++ : failed++;
           break;
         }
+        case "js_eval": {
+          // Evaluate expression in page context. Result is JSON-stringified.
+          // If expectContains is set: passes when result string includes it.
+          // Otherwise: passes when the expression returns a truthy value.
+          let evalResult: unknown;
+          try {
+            evalResult = await page.evaluate(new Function(`return (async () => { ${a.expression} })()`) as () => unknown);
+          } catch (evalErr) {
+            results.push({ type: a.type, value: a.expression.slice(0, 80), passed: false,
+              actual: `eval error: ${evalErr instanceof Error ? evalErr.message : String(evalErr)}` });
+            failed++;
+            break;
+          }
+          const resultStr = JSON.stringify(evalResult);
+          const ok = a.expectContains
+            ? resultStr.includes(a.expectContains)
+            : !!evalResult;
+          results.push({ type: a.type, value: a.expectContains ?? "(truthy)", passed: ok, actual: resultStr.slice(0, 200) });
+          ok ? passed++ : failed++;
+          break;
+        }
       }
     } catch (err) {
       results.push({ type: (a as any).type, value: "", passed: false,
@@ -520,12 +541,25 @@ export async function runBrowserFlow(opts: BrowserRunnerOptions): Promise<Browse
     // request abort. Instead we replicate exactly what that endpoint does:
     //   1. Insert a short-lived user_sessions row directly in the DB
     //   2. Inject the session token as the atlas-session cookie via addCookies()
-    // This is functionally identical to the HTTP path but requires no network.
+    //
+    // We authenticate as the PROJECT OWNER (not the API caller). The API caller
+    // may be a fresh e2e test user with no projects, so their workspace shows a
+    // 404. The project owner always has access to the project being verified.
     try {
+      // Resolve the project owner; fall back to the API caller if unavailable.
+      let cookieUserId = opts.userId;
+      if (opts.projectId) {
+        const [proj] = await db
+          .select({ userId: projectsTable.userId })
+          .from(projectsTable)
+          .where(eq(projectsTable.id, opts.projectId))
+          .limit(1);
+        if (proj?.userId) cookieUserId = proj.userId;
+      }
       const cookieToken = randomBytes(32).toString("hex");
       const cookieExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
       await db.insert(userSessionsTable).values({
-        userId: opts.userId,
+        userId: cookieUserId,
         token: cookieToken,
         expiresAt: cookieExpires,
       });
@@ -539,7 +573,7 @@ export async function runBrowserFlow(opts: BrowserRunnerOptions): Promise<Browse
         sameSite: "Lax",
         expires: Math.floor(cookieExpires.getTime() / 1000),
       }]);
-      logger.info({ userId: opts.userId }, "browserRunner: auth cookie injected directly");
+      logger.info({ cookieUserId, apiCallerId: opts.userId }, "browserRunner: auth cookie injected (project owner)");
     } catch (authErr) {
       logger.warn({ authErr }, "browserRunner: auth cookie injection failed — continuing unauthenticated");
     }

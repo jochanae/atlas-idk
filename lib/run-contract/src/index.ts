@@ -910,7 +910,11 @@ export type BrowserAssertionInput =
   | { type: "element_visible"; selector: string }
   | { type: "element_absent"; selector: string }
   | { type: "no_console_errors" }
-  | { type: "no_network_errors"; pattern?: string };
+  | { type: "no_network_errors"; pattern?: string }
+  /** Evaluate a JS expression in page context. Result is JSON-stringified and
+   *  checked with expectContains (substring). Leave expectContains blank to
+   *  assert the expression returns a truthy value. */
+  | { type: "js_eval"; expression: string; expectContains?: string };
 
 /**
  * Per-viewport result stored in execution_run_steps.metadata.

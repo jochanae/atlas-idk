@@ -43,6 +43,7 @@ const BrowserAssertionSchema: z.ZodType<BrowserAssertionInput> = z.discriminated
   z.object({ type: z.literal("element_absent"),   selector: z.string() }),
   z.object({ type: z.literal("no_console_errors") }),
   z.object({ type: z.literal("no_network_errors"), pattern: z.string().optional() }),
+  z.object({ type: z.literal("js_eval"), expression: z.string(), expectContains: z.string().optional() }),
 ]);
 
 const ViewportSchema = z.enum(["DESKTOP", "MOBILE", "FOLD_CLOSED", "FOLD_OPEN"]);
