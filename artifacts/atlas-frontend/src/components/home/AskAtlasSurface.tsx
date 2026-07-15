@@ -1145,6 +1145,12 @@ export function AskAtlasSurface({
               <button
                 type="button"
                 onPointerDown={(e) => {
+                  // Prevent focus from moving off the textarea. If focus moves,
+                  // `focused` flips to false, the composer reflows from a fixed
+                  // 60vh sheet to inline compact between pointerdown and click,
+                  // and the click never lands on Send — the classic "first tap
+                  // collapses, second tap sends" regression.
+                  e.preventDefault();
                   // Capture the pointer so the release/click always fires on THIS
                   // button, even if the composer height shifts after send and the
                   // finger ends up over a different element (previously this could
