@@ -607,7 +607,7 @@ export async function runBrowserFlow(opts: BrowserRunnerOptions): Promise<Browse
 
     const ins = await db.execute(sql`
       INSERT INTO execution_run_steps
-        (run_id, step_index, verb, target, phase, step_purpose, status, evidence_ref, metadata)
+        (run_id, order_index, verb, target, phase, step_purpose, status, evidence_ref, metadata)
       VALUES (
         ${opts.executionRunId},
         ${stepIndex},

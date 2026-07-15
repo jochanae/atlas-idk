@@ -1165,6 +1165,19 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: execution_run_steps.step_purpose failed — server will start anyway");
   }
 
+  // v1.5: browser flow evidence columns on execution_run_steps
+  try {
+    await db.execute(sql`
+      ALTER TABLE execution_run_steps
+        ADD COLUMN IF NOT EXISTS phase         text,
+        ADD COLUMN IF NOT EXISTS evidence_ref  text,
+        ADD COLUMN IF NOT EXISTS metadata      jsonb
+    `);
+    logger.info("ensureColumns: execution_run_steps browser-flow columns (v1.5) verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: execution_run_steps browser-flow columns failed — server will start anyway");
+  }
+
   // v1.5: browser_test_sessions — scoped short-lived sessions for run_browser_flow
   try {
     await db.execute(sql`
