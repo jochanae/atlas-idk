@@ -2,20 +2,28 @@ import { useState, useEffect, useCallback } from "react";
 import {
   fetchLibraryItems,
   deleteLibraryItem,
+  attachLibraryItem,
+  detachLibraryItem,
+  LibraryApiError,
   type LibraryItem,
   type LibraryItemKind,
 } from "../lib/library";
 
 /**
- * AskAtlasFocusSheet — Phase 1 of the Focus + Library reintroduction.
+ * AskAtlasFocusSheet — Focus + Reference sheet.
  *
  * Two tabs:
- *   • Projects  — restores the orphaned focus picker.
- *   • Reference — surfaces the user's saved Ask Atlas items via the
- *     Library seam (`../lib/library`). The visible label stays
- *     "Reference" until the canonical `/api/library` and persistent
- *     context-attachment endpoints ship; do not rename to "Library"
- *     in copy before that lands.
+ *   • Projects  — the focus picker.
+ *   • Reference — the user's Library items. Reads via `../lib/library`,
+ *     which now points at the canonical `/api/library` endpoint.
+ *
+ * "Bring into conversation" is a REAL persistent attachment
+ * (`POST /api/library/:id/context`). There is no quoted-context
+ * fallback: if the attach call fails, the user sees an error, not a
+ * silent success.
+ *
+ * Copy still reads "Reference" — the rename to "Library" ships in the
+ * same release once end-to-end verification passes.
  */
 
 interface ProjectOption {
@@ -30,7 +38,12 @@ interface Props {
   projects: ProjectOption[];
   onSelectAllProjects: () => void;
   onSelectProject: (id: number) => void;
-  onInjectReference?: (item: { title: string; content: string }) => void;
+  /** Active Ask Atlas conversation id — required for attachment actions. */
+  conversationId: string | null;
+  /** Ids of library items currently attached to the active conversation. */
+  attachedIds: ReadonlySet<string>;
+  /** Called after a successful attach/detach so the parent can re-fetch. */
+  onAttachmentsChange: () => void;
   initialTab?: "projects" | "reference";
 }
 
@@ -51,39 +64,94 @@ function kindLabel(kind: LibraryItemKind): string {
 
 export function AskAtlasFocusSheet({
   open, onClose, focusProjectId, projects,
-  onSelectAllProjects, onSelectProject, onInjectReference, initialTab = "projects",
+  onSelectAllProjects, onSelectProject,
+  conversationId, attachedIds, onAttachmentsChange,
+  initialTab = "projects",
 }: Props) {
   const [tab, setTab] = useState<"projects" | "reference">(initialTab);
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [attachBusyId, setAttachBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => { if (open) setTab(initialTab); }, [open, initialTab]);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      setItems(await fetchLibraryItems());
-    } catch {}
-    setLoading(false);
-  }, []);
+      // If a project is focused, scope to that project's items; otherwise
+      // show everything the user has access to (mirrors "All Projects").
+      const opts = focusProjectId != null ? { projectId: focusProjectId } : {};
+      setItems(await fetchLibraryItems(opts));
+    } catch (err) {
+      setItems([]);
+      setLoadError(err instanceof Error ? err.message : "Failed to load Library");
+    } finally {
+      setLoading(false);
+    }
+  }, [focusProjectId]);
 
   useEffect(() => {
-    if (open && tab === "reference") { load(); setSelectedId(null); }
+    if (open && tab === "reference") {
+      setSelectedId(null);
+      setActionError(null);
+      load();
+    }
   }, [open, tab, load]);
 
   const handleDelete = useCallback(async (item: LibraryItem) => {
     setDeletingId(item.id);
+    setActionError(null);
     try {
-      const ok = await deleteLibraryItem(item);
-      if (ok) {
-        setItems(prev => prev.filter(a => a.id !== item.id));
-        if (selectedId === item.id) setSelectedId(null);
-      }
-    } catch {}
-    setDeletingId(null);
-  }, [selectedId]);
+      await deleteLibraryItem(item);
+      setItems(prev => prev.filter(a => a.id !== item.id));
+      if (selectedId === item.id) setSelectedId(null);
+      // A deleted item can't stay attached; refresh parent so any stale chip clears.
+      onAttachmentsChange();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to delete");
+    } finally {
+      setDeletingId(null);
+    }
+  }, [selectedId, onAttachmentsChange]);
+
+  const handleAttach = useCallback(async (item: LibraryItem) => {
+    setActionError(null);
+    if (!conversationId) {
+      setActionError("Start a conversation first, then attach references to it.");
+      return;
+    }
+    setAttachBusyId(item.id);
+    try {
+      await attachLibraryItem(item.id, conversationId);
+      onAttachmentsChange();
+      onClose();
+    } catch (err) {
+      const status = err instanceof LibraryApiError ? ` (${err.status})` : "";
+      setActionError((err instanceof Error ? err.message : "Attach failed") + status);
+    } finally {
+      setAttachBusyId(null);
+    }
+  }, [conversationId, onAttachmentsChange, onClose]);
+
+  const handleDetach = useCallback(async (item: LibraryItem) => {
+    setActionError(null);
+    if (!conversationId) return;
+    setAttachBusyId(item.id);
+    try {
+      await detachLibraryItem(item.id, conversationId);
+      onAttachmentsChange();
+    } catch (err) {
+      const status = err instanceof LibraryApiError ? ` (${err.status})` : "";
+      setActionError((err instanceof Error ? err.message : "Detach failed") + status);
+    } finally {
+      setAttachBusyId(null);
+    }
+  }, [conversationId, onAttachmentsChange]);
 
   if (!open) return null;
 
@@ -190,7 +258,25 @@ export function AskAtlasFocusSheet({
                 </div>
               )}
 
-              {!loading && !selected && items.length === 0 && (
+              {!loading && loadError && (
+                <div style={{ textAlign: "center", padding: "24px 12px", fontSize: 13, color: "#ef4444", fontFamily: "var(--app-font-sans)", opacity: 0.85 }}>
+                  {loadError}
+                  <div style={{ marginTop: 10 }}>
+                    <button
+                      onClick={() => load()}
+                      style={{ background: "transparent", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 6, padding: "5px 10px", color: "#ef4444", cursor: "pointer", fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em" }}
+                    >RETRY</button>
+                  </div>
+                </div>
+              )}
+
+              {actionError && (
+                <div style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444", fontSize: 12, fontFamily: "var(--app-font-sans)" }}>
+                  {actionError}
+                </div>
+              )}
+
+              {!loading && !loadError && !selected && items.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 0 20px" }}>
                   <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, letterSpacing: "0.1em", marginBottom: 8 }}>
                     nothing here yet
@@ -201,20 +287,23 @@ export function AskAtlasFocusSheet({
                 </div>
               )}
 
-              {!loading && !selected && items.map(item => (
+              {!loading && !loadError && !selected && items.map(item => {
+                const isAttached = attachedIds.has(item.id);
+                return (
                 <div
                   key={item.id}
                   onClick={() => setSelectedId(item.id)}
                   style={{
                     display: "flex", alignItems: "flex-start", gap: 12,
                     padding: "12px 14px", borderRadius: 10,
-                    border: "1px solid var(--atlas-border, rgba(255,255,255,0.07))",
+                    border: `1px solid ${isAttached ? "color-mix(in oklab, var(--atlas-gold) 40%, transparent)" : "var(--atlas-border, rgba(255,255,255,0.07))"}`,
+                    background: isAttached ? "color-mix(in oklab, var(--atlas-gold) 5%, transparent)" : "transparent",
                     marginBottom: 8, cursor: "pointer",
                     transition: "border-color 140ms, background 140ms",
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                       <span style={{
                         fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em",
                         textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.7,
@@ -225,6 +314,18 @@ export function AskAtlasFocusSheet({
                       <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4 }}>
                         {formatDate(item.createdAt)}
                       </span>
+                      {item.project?.name && (
+                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.5 }}>
+                          · {item.project.name}
+                        </span>
+                      )}
+                      {isAttached && (
+                        <span style={{
+                          fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em",
+                          textTransform: "uppercase", color: "var(--atlas-gold)",
+                          padding: "1px 5px", border: "1px solid rgba(201,162,76,0.5)", borderRadius: 3,
+                        }}>Attached</span>
+                      )}
                     </div>
                     <div style={{ fontSize: 14, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", fontWeight: 500, lineHeight: 1.35, marginBottom: 5 }}>
                       {item.title}
@@ -246,9 +347,13 @@ export function AskAtlasFocusSheet({
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><polyline points="2 4 14 4"/><path d="M5 4V2h6v2"/><path d="M6 7v5M10 7v5"/><rect x="3" y="4" width="10" height="10" rx="1.5"/></svg>
                   </button>
                 </div>
-              ))}
+                );
+              })}
 
-              {!loading && selected && (
+              {!loading && selected && (() => {
+                const isAttached = attachedIds.has(selected.id);
+                const busy = attachBusyId === selected.id;
+                return (
                 <div>
                   <button
                     onClick={() => setSelectedId(null)}
@@ -257,7 +362,7 @@ export function AskAtlasFocusSheet({
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10 12L6 8l4-4"/></svg>
                     BACK
                   </button>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{
                       fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em",
                       textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.7,
@@ -268,6 +373,18 @@ export function AskAtlasFocusSheet({
                     <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4 }}>
                       {formatDate(selected.createdAt)}
                     </span>
+                    {selected.project?.name && (
+                      <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.5 }}>
+                        · {selected.project.name}
+                      </span>
+                    )}
+                    {isAttached && (
+                      <span style={{
+                        fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em",
+                        textTransform: "uppercase", color: "var(--atlas-gold)",
+                        padding: "1px 5px", border: "1px solid rgba(201,162,76,0.5)", borderRadius: 3,
+                      }}>Attached</span>
+                    )}
                   </div>
                   <div style={{ fontSize: 17, fontWeight: 600, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", marginBottom: 12 }}>
                     {selected.title}
@@ -275,16 +392,27 @@ export function AskAtlasFocusSheet({
                   <div style={{ fontSize: 14, lineHeight: 1.75, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", opacity: 0.88, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                     {selected.content ?? selected.preview}
                   </div>
+                  {!conversationId && (
+                    <div style={{ marginTop: 14, fontSize: 12, color: "var(--atlas-muted)", opacity: 0.6, fontFamily: "var(--app-font-sans)" }}>
+                      Start a conversation first to attach references to it.
+                    </div>
+                  )}
                   <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {onInjectReference && (
+                    {isAttached ? (
                       <button
-                        onClick={() => {
-                          onInjectReference({ title: selected.title, content: selected.content ?? selected.preview });
-                          onClose();
-                        }}
-                        style={{ background: "var(--atlas-gold, #c9a24c)", border: "1px solid var(--atlas-gold, #c9a24c)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "#000", fontSize: 12, fontFamily: "var(--app-font-sans)", fontWeight: 600 }}
+                        onClick={() => handleDetach(selected)}
+                        disabled={busy || !conversationId}
+                        style={{ background: "transparent", border: "1px solid color-mix(in oklab, var(--atlas-gold) 50%, transparent)", borderRadius: 8, padding: "7px 14px", cursor: busy ? "wait" : "pointer", color: "var(--atlas-gold)", fontSize: 12, fontFamily: "var(--app-font-sans)", fontWeight: 600, opacity: busy ? 0.6 : 1 }}
                       >
-                        Bring into conversation
+                        {busy ? "Removing…" : "Remove from conversation"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleAttach(selected)}
+                        disabled={busy || !conversationId}
+                        style={{ background: "var(--atlas-gold, #c9a24c)", border: "1px solid var(--atlas-gold, #c9a24c)", borderRadius: 8, padding: "7px 14px", cursor: busy || !conversationId ? "not-allowed" : "pointer", color: "#000", fontSize: 12, fontFamily: "var(--app-font-sans)", fontWeight: 600, opacity: busy || !conversationId ? 0.55 : 1 }}
+                      >
+                        {busy ? "Attaching…" : "Bring into conversation"}
                       </button>
                     )}
                     <button
@@ -301,7 +429,8 @@ export function AskAtlasFocusSheet({
                     </button>
                   </div>
                 </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </div>

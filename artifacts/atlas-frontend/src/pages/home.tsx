@@ -60,6 +60,12 @@ import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { HomeArtifactLibrarySheet } from "@/components/HomeArtifactLibrarySheet";
 import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
+import { LibraryAttachmentsBar } from "@/components/LibraryAttachmentsBar";
+import {
+  fetchConversationContext as fetchLibraryConversationContext,
+  detachLibraryItem as detachLibraryContextItem,
+  type LibraryItem as LibraryContextItem,
+} from "@/lib/library";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
@@ -1959,6 +1965,40 @@ export default function Home() {
   const rememberAskAtlasConversationId = (conversationId: string) => {
     askAtlasSession.setConversationId(conversationId);
   };
+
+  // Library attachments for the active Ask Atlas conversation. Truth of record
+  // is server-side (`GET /api/conversations/:id/context`); we refetch whenever
+  // the conversation id changes or after an attach/detach so the composer
+  // subheader and the Reference sheet stay in sync across refresh + surface.
+  const [libraryAttachments, setLibraryAttachments] = useState<LibraryContextItem[]>([]);
+  const [libraryDetachBusyId, setLibraryDetachBusyId] = useState<string | null>(null);
+  const refreshLibraryAttachments = useCallback(async () => {
+    if (!askAtlasConversationId) { setLibraryAttachments([]); return; }
+    try {
+      setLibraryAttachments(await fetchLibraryConversationContext(askAtlasConversationId));
+    } catch {
+      // Non-fatal — leave existing chips in place so a transient failure
+      // does not silently claim the user has nothing attached.
+    }
+  }, [askAtlasConversationId]);
+  useEffect(() => { void refreshLibraryAttachments(); }, [refreshLibraryAttachments]);
+  const libraryAttachedIds = useMemo(
+    () => new Set(libraryAttachments.map(i => i.id)),
+    [libraryAttachments],
+  );
+  const handleLibraryDetach = useCallback(async (item: LibraryContextItem) => {
+    if (!askAtlasConversationId) return;
+    setLibraryDetachBusyId(item.id);
+    try {
+      await detachLibraryContextItem(item.id, askAtlasConversationId);
+      await refreshLibraryAttachments();
+    } catch {
+      // Keep chip visible; the next refresh will reconcile.
+    } finally {
+      setLibraryDetachBusyId(null);
+    }
+  }, [askAtlasConversationId, refreshLibraryAttachments]);
+
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
@@ -5873,7 +5913,13 @@ export default function Home() {
         }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-        subheader={null}
+        subheader={libraryAttachments.length > 0 ? (
+          <LibraryAttachmentsBar
+            items={libraryAttachments}
+            busyId={libraryDetachBusyId}
+            onDetach={handleLibraryDetach}
+          />
+        ) : null}
         focusLensChip={focusLensChipRef.current}
         focusChip={
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -5932,10 +5978,11 @@ export default function Home() {
 
       {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Atlas too. */}
 
-      {/* Ask Atlas Focus sheet — tabbed (Projects | Saved). Projects tab
-          restores the orphaned focus picker; Saved tab surfaces saved Ask
-          Atlas artifacts. Deliberately not called "Library" — Phase 2 will
-          unify home_artifacts + workspace artifacts into a real Library. */}
+      {/* Focus + Reference sheet. Reference tab reads the canonical
+          `/api/library` endpoint via `@/lib/library` and drives real
+          persistent attachments to the active Ask Atlas conversation.
+          Copy still reads "Reference" — the rename to "Library" ships
+          in the same release once end-to-end verification passes. */}
       <AskAtlasFocusSheet
         open={showFocusPicker}
         initialTab={focusSheetTab}
@@ -5943,14 +5990,12 @@ export default function Home() {
         projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
         onSelectAllProjects={handleHomeFocusAllProjects}
         onSelectProject={handleHomeFocusSelect}
-        onInjectReference={({ title, content }) => {
-          const block = `> Reference — ${title}\n>\n${content.split("\n").map(l => `> ${l}`).join("\n")}\n\n`;
-          setInput(prev => (prev.trim() ? `${block}${prev}` : block));
-          setAskAtlasSurfaceOpen(true);
-          setTimeout(() => textareaRef.current?.focus(), 60);
-        }}
+        conversationId={askAtlasConversationId}
+        attachedIds={libraryAttachedIds}
+        onAttachmentsChange={() => { void refreshLibraryAttachments(); }}
         onClose={() => setShowFocusPicker(false)}
       />
+
 
 
 
