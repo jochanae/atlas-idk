@@ -3556,7 +3556,10 @@ PROSE RULES (enforced — contradiction detection is active):
       // emitted IMAGE_GEN because the user explicitly asked for a visual.
       // If the user has actually opted into Just Talk / Conversation Mode,
       // still scrub it — that's an explicit no-tools request.
-      const keepImageGen = intent === "CHAT" && !justTalk && !conversationModeActive;
+      // IMAGE_GEN is never a mutation risk (no files/code changed) — don't gate it
+      // on a fallible intent classification. Only suppress when the user explicitly
+      // opted into a no-tools mode (Just Talk / Conversation Mode).
+      const keepImageGen = !justTalk && !conversationModeActive;
       const scrubbed = scrubOperationalMarkersForChat(rawContent, { keepImageGen });
       if (scrubbed.strippedMarkers.length > 0) {
         logger.info(

@@ -2141,10 +2141,14 @@ export default function Home() {
       }
     : null;
   const askAtlasChat = useNexusChatStream({
-    focusProjectId: null,
+    focusProjectId: homeFocus ?? null,
     model: "claude",
     conversationId: askAtlasConversationId,
-    projectContext: null,
+    projectContext: homeFocus != null ? {
+      projectId: homeFocus,
+      memorySummary: homeProjectState.memorySummary,
+      decisions: homeProjectState.decisions,
+    } : null,
     askAtlasInProject,
     onConversationId: (id) => {
       setAskAtlasConversationId(id);
