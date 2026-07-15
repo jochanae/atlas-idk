@@ -96,6 +96,8 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     ...(nm.generatedArtifacts?.length ? { generatedArtifacts: nm.generatedArtifacts as ChatMessage["generatedArtifacts"] } : {}),
     // Wire the message timestamp so UserBubble/AssistantBubble can display it.
     sentAt: nm.createdAt ?? undefined,
+    // v1.4: backend-derived execution outcome from advance_execution_state tool
+    ...(nm.executionOutcome ? { executionOutcome: nm.executionOutcome } : {}),
   };
 }
 

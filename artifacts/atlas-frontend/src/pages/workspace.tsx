@@ -346,6 +346,7 @@ export interface ChatMessage {
   inputTokens?: number | null;
   outputTokens?: number | null;
   costUsd?: number | null;
+  executionOutcome?: { code: string; label: string; complete: boolean; pendingVerification: string[] } | null;
   artifact?: { type: string; title: string; content: string } | null;
   imageGen?: { images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }> } | null;
   pendingSketch?: boolean;

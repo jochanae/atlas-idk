@@ -28,6 +28,7 @@ import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
+import { derivePurposeFromVerb, recordModeEscalation } from "../lib/executionStateMachine";
 import { createSideEffects, createPlanState, type AgentToolContext } from "../lib/agent-tools";
 import {
   toAnthropicTools,
@@ -1525,9 +1526,10 @@ async function insertRunningExecutionRun(args: {
  *  order_index so canonical rewrite in persistNexusExecutionRun (which uses 0+)
  *  can safely DELETE these before re-inserting the cleaned final set. */
 function appendLiveStepAsync(runId: string, verb: string, target: string | null, status: string, detail: string | null, orderIdx: number): void {
+  const purpose = derivePurposeFromVerb(verb, detail);
   void db.execute(sql`
-    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, order_index)
-    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${orderIdx})
+    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, step_purpose, order_index)
+    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${purpose}, ${orderIdx})
   `).catch((err) => {
     logger.debug({ err, runId, verb }, "nexus: incremental step insert failed — non-fatal");
   });
@@ -1702,9 +1704,10 @@ async function persistNexusExecutionRun(args: {
     }
 
     for (const [orderIdx, step] of steps.entries()) {
+      const stepPurpose = derivePurposeFromVerb(step.verb, step.detail);
       await db.execute(sql`
-        INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, order_index)
-        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${null}, ${step.artifactUrl ?? null}, ${orderIdx})
+        INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, step_purpose, order_index)
+        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${null}, ${step.artifactUrl ?? null}, ${stepPurpose}, ${orderIdx})
       `);
     }
 
@@ -3228,6 +3231,10 @@ WHAT YOU SHOULD NOT DO:
   let runPreInserted = false;
   let runTerminalized = false;
   let liveStepOrderIdx = 0;
+  // v1.4: track DECIDE-turn mode escalation and last advance_execution_state result
+  let escalatedToInvestigate = false;
+  let lastExecutionState: string | null = null;
+  let lastRunOutcome: unknown = null;
   if (activeRunId && focusProjectId) {
     // Fire pre-insert immediately (fire-and-forget) so Timeline can filter by
     // runId within ~1s of the tap. Errors are non-fatal — completion path
@@ -3345,6 +3352,14 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
 --- END WHISPERGATE ---`;
     systemPrompt += `\n\n${NEXUS_BUILD_PROTOCOLS}`;
     systemPrompt += `\n\n${ATLAS_DESIGN_INTELLIGENCE}`;
+    systemPrompt += `\n\n--- VERIFICATION ENFORCEMENT ---
+The execution state machine is the authority on what has been proven. You MUST NOT claim in prose that work is complete, fixed, working, or shipped unless advance_execution_state returned outcome.complete=true this turn.
+- After a file edit → acknowledge the patch was applied. Do NOT say "it works now."
+- After BUILD_VERIFIED → write: "Build verified — runtime testing is still pending." Do NOT say "the fix is live."
+- After RUNTIME_VERIFIED → you may confirm runtime is healthy.
+- If you did not call advance_execution_state → do not assert any completion state.
+The badge shown to the user reflects backend-derived state. A prose claim that contradicts it destroys trust.
+--- END VERIFICATION ENFORCEMENT ---`;
   }
 
   // MEMORY_CHIPS protocol — all intents (P0 gap independent of BUILD).
@@ -4651,6 +4666,7 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
     res.write(`event: done\ndata: ${JSON.stringify({
       content: visibleContent,
       runId: activeRunId,
+      ...(lastExecutionState ? { executionState: lastExecutionState, executionOutcome: lastRunOutcome } : {}),
       modelUsed,
       surface,
       memoryUpdated,
@@ -5388,8 +5404,29 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
 
   const SHARED_TOOL_NAME_SET = new Set([...SHARED_HOME_TOOL_NAMES, ...SHARED_WORKSPACE_TOOL_NAMES]);
 
+  // Investigation tools that justify EXPLORE→INVESTIGATE escalation on DECIDE turns.
+  const INVESTIGATION_TOOL_NAMES = new Set([
+    "search_codebase", "search_all_projects", "architecture_diff",
+    "read_file", "list_reference_project_dir", "read_reference_project_file",
+    "project_knowledge", "component_registry",
+  ]);
+
   const runNexusTool = async (toolUse: Anthropic.ToolUseBlock): Promise<Record<string, unknown>> => {
     const startedAt = performance.now();
+
+    // v1.4: escalate mode BEFORE executing investigation tools on DECIDE turns.
+    // Ordering: escalate → update tool context → execute tool.
+    if (
+      intent === "DECIDE" &&
+      activeRunId &&
+      !escalatedToInvestigate &&
+      INVESTIGATION_TOOL_NAMES.has(toolUse.name)
+    ) {
+      escalatedToInvestigate = true;
+      void recordModeEscalation(activeRunId, "EXPLORE", "INVESTIGATE").catch(() => { /* non-fatal */ });
+      req.log.info({ runId: activeRunId, tool: toolUse.name }, "nexus: escalated DECIDE run to INVESTIGATE before tool");
+    }
+
     const result = await (async (): Promise<Record<string, unknown>> => {
       switch (toolUse.name) {
         case "create_project":
@@ -5410,6 +5447,17 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
         }
       }
     })();
+
+    // v1.4: capture advance_execution_state results so the done event can
+    // surface the backend-derived outcome to the frontend.
+    if (toolUse.name === "advance_execution_state") {
+      const advResult = result as { ok?: boolean; executionState?: string; outcome?: unknown };
+      if (advResult.ok === true && typeof advResult.executionState === "string") {
+        lastExecutionState = advResult.executionState;
+        lastRunOutcome = advResult.outcome ?? null;
+      }
+    }
+
     // Permanent telemetry: this is the only place every tool call (shared
     // registry + nexus-local) funnels through. Without it there was no way
     // to distinguish "the model called the tool and got an empty result"

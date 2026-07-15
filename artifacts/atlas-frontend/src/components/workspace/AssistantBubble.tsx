@@ -2989,6 +2989,56 @@ function AssistantBubbleImpl({
           onPrCreated={onPrCreated}
         />
       )}
+
+      {/* v1.4 — system-owned outcome footer. Rendered from backend-derived RunOutcome,
+          never from model prose. Only visible on non-streaming turns that used the
+          execution state machine (executionOutcome present + code != NOT_STARTED). */}
+      {!message.streaming && message.executionOutcome && message.executionOutcome.code !== "NOT_STARTED" && (() => {
+        const oc = message.executionOutcome!;
+        const isComplete = oc.complete;
+        const isFailed = oc.code === "FAILED" || oc.code === "BLOCKED";
+        const dotColor = isComplete
+          ? "var(--atlas-green, #4caf50)"
+          : isFailed
+            ? "var(--atlas-red, #ef5350)"
+            : "var(--atlas-gold, #c8a96e)";
+        return (
+          <div style={{
+            marginTop: 10,
+            paddingTop: 8,
+            borderTop: "1px solid color-mix(in oklab, var(--atlas-muted) 18%, transparent)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}>
+            <span style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: dotColor,
+              flexShrink: 0,
+              display: "inline-block",
+            }} />
+            <span style={{
+              fontSize: 11,
+              color: "var(--atlas-muted)",
+              fontFamily: "var(--app-font-sans)",
+              letterSpacing: "0.01em",
+            }}>
+              {oc.label}
+            </span>
+            {oc.pendingVerification.length > 0 && (
+              <span style={{
+                fontSize: 10,
+                color: "color-mix(in oklab, var(--atlas-muted) 60%, transparent)",
+                fontFamily: "var(--app-font-sans)",
+              }}>
+                — {oc.pendingVerification[0].replace(/_/g, " ").toLowerCase()} pending
+              </span>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

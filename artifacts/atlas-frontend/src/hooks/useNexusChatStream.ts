@@ -100,6 +100,7 @@ export interface NexusMessage {
   inputTokens?: number | null;
   outputTokens?: number | null;
   costUsd?: number | null;
+  executionOutcome?: { code: string; label: string; complete: boolean; pendingVerification: string[] } | null;
   runStatus?: string;
   runSummary?: string | null;
   runActions?: unknown[] | null;
@@ -767,6 +768,7 @@ export function useNexusChatStream(
                     tradeoffMatrix: ((meta as any).tradeoff ?? null) as NexusMessage["tradeoffMatrix"],
                     generatedArtifacts: ((meta as any).generatedArtifacts ?? null) as NexusMessage["generatedArtifacts"],
                     runId: ((meta as any).runId as string | undefined) ?? null,
+                    executionOutcome: ((meta as any).executionOutcome ?? null) as NexusMessage["executionOutcome"],
                   }
                 : m
             ));
