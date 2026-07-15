@@ -64,6 +64,7 @@ import feedbackRouter from "./feedback";
 import shareRouter from "./share";
 import publishRouter from "./publish";
 import homeArtifactsRouter from "./homeArtifacts";
+import libraryRouter from "./library";
 import verifyRouter from "./verify";
 import capacityRouter from "./capacity";
 import accountRouter from "./account";
@@ -184,6 +185,9 @@ router.use(requireAuth, publishRouter);
 
 // Home artifacts — standalone docs/plans saved from Ask Atlas (no project required)
 router.use(requireAuth, homeArtifactsRouter);
+
+// Canonical Library — supersedes home_artifacts / project_bookmarks as the read path
+router.use(requireAuth, libraryRouter);
 
 // Self-repair routes — super_admin only, path-scoped to /self/*
 router.use("/self", requireAdmin, selfRouter);

@@ -422,3 +422,197 @@ export const GetPortfolioResumeResponse = zod.object({
 }).describe('A curated, Atlas-generated brief across the user\'s full portfolio. This is a first-class platform service — not a Home widget. Consumed by Home, future Mobile, Notifications, Daily Briefings, and any surface that needs to surface \"what matters right now.\"\n')
 
 
+/**
+ * Returns the authenticated user's canonical Library items. Filter with projectId (number, or the string "null" for user-level home items). Repeat kind to filter by one or more kinds. Cursor pagination via limit + cursor.
+
+ * @summary List library items
+ */
+export const listLibraryItemsQueryLimitDefault = 50;
+export const listLibraryItemsQueryLimitMax = 100;
+
+
+
+export const ListLibraryItemsQueryParams = zod.object({
+  "projectId": zod.union([zod.coerce.number(),zod.enum(['null'])]).optional().describe('Project scope. Omit for all items; pass a project id for project-scoped items; pass the string \"null\" for user-level (home) items only.\n'),
+  "kind": zod.array(zod.enum(['document', 'prd', 'plan', 'strategy', 'spec', 'outline', 'brief', 'bookmark', 'sketch', 'other'])).optional().describe('Repeatable kind filter.'),
+  "limit": zod.coerce.number().min(1).max(listLibraryItemsQueryLimitMax).default(listLibraryItemsQueryLimitDefault),
+  "cursor": zod.coerce.string().optional().describe('Opaque cursor from a previous nextCursor.')
+})
+
+export const ListLibraryItemsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['document', 'prd', 'plan', 'strategy', 'spec', 'outline', 'brief', 'bookmark', 'sketch', 'other']),
+  "title": zod.string(),
+  "content": zod.string().optional(),
+  "preview": zod.string(),
+  "project": zod.union([zod.object({
+  "id": zod.number(),
+  "name": zod.string().optional()
+}),zod.null()]),
+  "origin": zod.object({
+  "source": zod.enum(['ask-atlas', 'workspace', 'upload', 'unknown']),
+  "conversationId": zod.string().nullish(),
+  "messageId": zod.string().nullish()
+}),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}).describe('Canonical Library item shape consumed by the frontend.')),
+  "nextCursor": zod.string().nullish()
+})
+
+
+/**
+ * Creates a canonical Library item. Used by workspace "save as artifact" and future Ask Atlas save flows. Does not write to legacy tables.
+
+ * @summary Create a library item
+ */
+export const CreateLibraryItemBody = zod.object({
+  "kind": zod.enum(['document', 'prd', 'plan', 'strategy', 'spec', 'outline', 'brief', 'bookmark', 'sketch', 'other']).optional(),
+  "title": zod.string(),
+  "content": zod.string().nullish(),
+  "projectId": zod.number().nullish(),
+  "origin": zod.object({
+  "source": zod.enum(['ask-atlas', 'workspace', 'upload', 'unknown']),
+  "conversationId": zod.string().nullish(),
+  "messageId": zod.string().nullish()
+}).optional()
+})
+
+
+/**
+ * @summary Get a library item
+ */
+export const GetLibraryItemParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetLibraryItemResponse = zod.object({
+  "item": zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['document', 'prd', 'plan', 'strategy', 'spec', 'outline', 'brief', 'bookmark', 'sketch', 'other']),
+  "title": zod.string(),
+  "content": zod.string().optional(),
+  "preview": zod.string(),
+  "project": zod.union([zod.object({
+  "id": zod.number(),
+  "name": zod.string().optional()
+}),zod.null()]),
+  "origin": zod.object({
+  "source": zod.enum(['ask-atlas', 'workspace', 'upload', 'unknown']),
+  "conversationId": zod.string().nullish(),
+  "messageId": zod.string().nullish()
+}),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}).describe('Canonical Library item shape consumed by the frontend.')
+})
+
+
+/**
+ * @summary Update library item title or kind
+ */
+export const UpdateLibraryItemParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateLibraryItemBody = zod.object({
+  "title": zod.string().optional(),
+  "kind": zod.enum(['document', 'prd', 'plan', 'strategy', 'spec', 'outline', 'brief', 'bookmark', 'sketch', 'other']).optional()
+})
+
+export const UpdateLibraryItemResponse = zod.object({
+  "item": zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['document', 'prd', 'plan', 'strategy', 'spec', 'outline', 'brief', 'bookmark', 'sketch', 'other']),
+  "title": zod.string(),
+  "content": zod.string().optional(),
+  "preview": zod.string(),
+  "project": zod.union([zod.object({
+  "id": zod.number(),
+  "name": zod.string().optional()
+}),zod.null()]),
+  "origin": zod.object({
+  "source": zod.enum(['ask-atlas', 'workspace', 'upload', 'unknown']),
+  "conversationId": zod.string().nullish(),
+  "messageId": zod.string().nullish()
+}),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}).describe('Canonical Library item shape consumed by the frontend.')
+})
+
+
+/**
+ * @summary Delete a library item
+ */
+export const DeleteLibraryItemParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteLibraryItemResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * Attaches an existing library item to a conversation without duplicating the item. Soft-reattaches if previously detached.
+
+ * @summary Attach a library item to a conversation
+ */
+export const AttachLibraryItemContextParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const AttachLibraryItemContextBody = zod.object({
+  "conversationId": zod.string()
+})
+
+export const AttachLibraryItemContextResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Soft-detach a library item from a conversation
+ */
+export const DetachLibraryItemContextParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "conversationId": zod.coerce.string()
+})
+
+export const DetachLibraryItemContextResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary List library items attached to a conversation
+ */
+export const ListConversationContextParams = zod.object({
+  "id": zod.coerce.string().describe('Conversation id (nexus conversation UUID string)')
+})
+
+export const ListConversationContextResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['document', 'prd', 'plan', 'strategy', 'spec', 'outline', 'brief', 'bookmark', 'sketch', 'other']),
+  "title": zod.string(),
+  "content": zod.string().optional(),
+  "preview": zod.string(),
+  "project": zod.union([zod.object({
+  "id": zod.number(),
+  "name": zod.string().optional()
+}),zod.null()]),
+  "origin": zod.object({
+  "source": zod.enum(['ask-atlas', 'workspace', 'upload', 'unknown']),
+  "conversationId": zod.string().nullish(),
+  "messageId": zod.string().nullish()
+}),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}).describe('Canonical Library item shape consumed by the frontend.')),
+  "nextCursor": zod.string().nullish()
+})
+
+

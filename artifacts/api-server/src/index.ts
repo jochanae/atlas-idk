@@ -1196,6 +1196,123 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: browser_test_sessions table failed — server will start anyway");
   }
+
+  // Library Foundation — canonical saved items + conversation attachments
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS library_items (
+        id                      uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        user_id                 integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        project_id              integer REFERENCES projects(id) ON DELETE CASCADE,
+        kind                    text NOT NULL DEFAULT 'document',
+        title                   text NOT NULL,
+        content                 text,
+        preview                 text NOT NULL DEFAULT '',
+        origin_source           text NOT NULL DEFAULT 'unknown',
+        origin_conversation_id  text,
+        origin_message_id       text,
+        legacy_source           text,
+        legacy_id               text,
+        created_at              timestamptz NOT NULL DEFAULT now(),
+        updated_at              timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS library_items_user_created_idx
+        ON library_items (user_id, created_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS library_items_user_project_idx
+        ON library_items (user_id, project_id)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS library_items_user_kind_idx
+        ON library_items (user_id, kind)
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS library_items_legacy_uq
+        ON library_items (legacy_source, legacy_id)
+        WHERE legacy_source IS NOT NULL AND legacy_id IS NOT NULL
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS conversation_context_items (
+        id                    uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        conversation_id       text NOT NULL,
+        library_item_id       uuid NOT NULL REFERENCES library_items(id) ON DELETE CASCADE,
+        attached_by_user_id   integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        attached_at           timestamptz NOT NULL DEFAULT now(),
+        detached_at           timestamptz
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS conversation_context_items_active_uq
+        ON conversation_context_items (conversation_id, library_item_id)
+        WHERE detached_at IS NULL
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS conversation_context_items_conversation_idx
+        ON conversation_context_items (conversation_id)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS conversation_context_items_library_item_idx
+        ON conversation_context_items (library_item_id)
+    `);
+
+    // Idempotent backfill from legacy tables (if present)
+    await db.execute(sql`
+      DO $bf$
+      BEGIN
+        IF to_regclass('public.home_artifacts') IS NOT NULL THEN
+          INSERT INTO library_items (
+            user_id, project_id, kind, title, content, preview,
+            origin_source, origin_conversation_id, origin_message_id,
+            legacy_source, legacy_id, created_at, updated_at
+          )
+          SELECT
+            ha.user_id, NULL,
+            CASE lower(ha.type)
+              WHEN 'document' THEN 'document' WHEN 'prd' THEN 'prd'
+              WHEN 'plan' THEN 'plan' WHEN 'strategy' THEN 'strategy'
+              WHEN 'spec' THEN 'spec' WHEN 'outline' THEN 'outline'
+              WHEN 'brief' THEN 'brief' WHEN 'bookmark' THEN 'bookmark'
+              WHEN 'sketch' THEN 'sketch' ELSE 'other'
+            END,
+            ha.title, ha.content, left(coalesce(ha.content, ''), 200),
+            'ask-atlas', ha.conversation_id, NULL,
+            'home_artifacts', ha.id::text, ha.created_at, coalesce(ha.updated_at, ha.created_at)
+          FROM home_artifacts ha
+          WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ha.user_id)
+            AND NOT EXISTS (
+              SELECT 1 FROM library_items li
+              WHERE li.legacy_source = 'home_artifacts' AND li.legacy_id = ha.id::text
+            );
+        END IF;
+        IF to_regclass('public.project_bookmarks') IS NOT NULL THEN
+          INSERT INTO library_items (
+            user_id, project_id, kind, title, content, preview,
+            origin_source, origin_conversation_id, origin_message_id,
+            legacy_source, legacy_id, created_at, updated_at
+          )
+          SELECT
+            pb.user_id, pb.project_id, 'bookmark', pb.title, pb.payload_json,
+            left(coalesce(nullif(pb.payload_json, ''), pb.title, ''), 200),
+            'ask-atlas', NULL, pb.message_id::text,
+            'project_bookmarks', pb.id::text, pb.created_at, pb.created_at
+          FROM project_bookmarks pb
+          WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = pb.user_id)
+            AND EXISTS (SELECT 1 FROM projects p WHERE p.id = pb.project_id)
+            AND NOT EXISTS (
+              SELECT 1 FROM library_items li
+              WHERE li.legacy_source = 'project_bookmarks' AND li.legacy_id = pb.id::text
+            );
+        END IF;
+      END
+      $bf$
+    `);
+    logger.info("ensureColumns: library_items + conversation_context_items verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: library_items tables failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

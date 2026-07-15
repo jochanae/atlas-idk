@@ -14,6 +14,11 @@ tags:
     description: >
       Portfolio-level intelligence. Nexus endpoints operate across the full
       set of projects and produce curated insights — not raw activity logs.
+  - name: library
+    description: >
+      Canonical Library — saved Ask Atlas artifacts, workspace outputs,
+      bookmarks, and conversation-attached context. Supersedes home_artifacts
+      and project_bookmarks as the read path.
 paths:
   /healthz:
     get:
@@ -190,6 +195,281 @@ paths:
         "401":
           description: Not authenticated
 
+  /library:
+    get:
+      operationId: listLibraryItems
+      tags: [library]
+      summary: List library items
+      description: >
+        Returns the authenticated user's canonical Library items.
+        Filter with projectId (number, or the string "null" for user-level
+        home items). Repeat kind to filter by one or more kinds. Cursor
+        pagination via limit + cursor.
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+                enum: ["null"]
+          description: >
+            Project scope. Omit for all items; pass a project id for
+            project-scoped items; pass the string "null" for user-level
+            (home) items only.
+        - name: kind
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/LibraryItemKind"
+          style: form
+          explode: true
+          description: Repeatable kind filter.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor from a previous nextCursor.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Library items page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryListResponse"
+        "400":
+          description: Invalid query
+        "401":
+          description: Not authenticated
+    post:
+      operationId: createLibraryItem
+      tags: [library]
+      summary: Create a library item
+      description: >
+        Creates a canonical Library item. Used by workspace "save as artifact"
+        and future Ask Atlas save flows. Does not write to legacy tables.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLibraryItemRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryItemResponse"
+        "400":
+          description: Validation error
+        "401":
+          description: Not authenticated
+        "404":
+          description: Project not found
+
+  /library/{id}:
+    get:
+      operationId: getLibraryItem
+      tags: [library]
+      summary: Get a library item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Library item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryItemResponse"
+        "400":
+          description: Invalid id
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+    patch:
+      operationId: updateLibraryItem
+      tags: [library]
+      summary: Update library item title or kind
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLibraryItemRequest"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryItemResponse"
+        "400":
+          description: Validation error
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteLibraryItem
+      tags: [library]
+      summary: Delete a library item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Invalid id
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+
+  /library/{id}/context:
+    post:
+      operationId: attachLibraryItemContext
+      tags: [library]
+      summary: Attach a library item to a conversation
+      description: >
+        Attaches an existing library item to a conversation without
+        duplicating the item. Soft-reattaches if previously detached.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttachLibraryContextRequest"
+      responses:
+        "200":
+          description: Already attached or reattached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "201":
+          description: Newly attached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Validation error
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found
+
+  /library/{id}/context/{conversationId}:
+    delete:
+      operationId: detachLibraryItemContext
+      tags: [library]
+      summary: Soft-detach a library item from a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Detached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Validation error
+        "401":
+          description: Not authenticated
+        "404":
+          description: Not found or not attached
+
+  /conversations/{id}/context:
+    get:
+      operationId: listConversationContext
+      tags: [library]
+      summary: List library items attached to a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Conversation id (nexus conversation UUID string)
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Attached library items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryListResponse"
+        "401":
+          description: Not authenticated
+
 components:
   securitySchemes:
     cookieAuth:
@@ -205,6 +485,151 @@ components:
           type: string
       required:
         - status
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
+
+    LibraryItemKind:
+      type: string
+      enum:
+        - document
+        - prd
+        - plan
+        - strategy
+        - spec
+        - outline
+        - brief
+        - bookmark
+        - sketch
+        - other
+
+    LibraryOriginSource:
+      type: string
+      enum:
+        - ask-atlas
+        - workspace
+        - upload
+        - unknown
+
+    LibraryItemOrigin:
+      type: object
+      properties:
+        source:
+          $ref: "#/components/schemas/LibraryOriginSource"
+        conversationId:
+          type: string
+          nullable: true
+        messageId:
+          type: string
+          nullable: true
+      required:
+        - source
+
+    LibraryItemProject:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+        - id
+
+    LibraryItem:
+      type: object
+      description: Canonical Library item shape consumed by the frontend.
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/LibraryItemKind"
+        title:
+          type: string
+        content:
+          type: string
+        preview:
+          type: string
+        project:
+          oneOf:
+            - $ref: "#/components/schemas/LibraryItemProject"
+            - type: "null"
+        origin:
+          $ref: "#/components/schemas/LibraryItemOrigin"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - kind
+        - title
+        - preview
+        - project
+        - origin
+        - createdAt
+
+    LibraryListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryItem"
+        nextCursor:
+          type: string
+          nullable: true
+      required:
+        - items
+
+    LibraryItemResponse:
+      type: object
+      properties:
+        item:
+          $ref: "#/components/schemas/LibraryItem"
+      required:
+        - item
+
+    CreateLibraryItemRequest:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/LibraryItemKind"
+        title:
+          type: string
+        content:
+          type: string
+          nullable: true
+        projectId:
+          type: integer
+          nullable: true
+        origin:
+          $ref: "#/components/schemas/LibraryItemOrigin"
+      required:
+        - title
+
+    UpdateLibraryItemRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        kind:
+          $ref: "#/components/schemas/LibraryItemKind"
+
+    AttachLibraryContextRequest:
+      type: object
+      properties:
+        conversationId:
+          type: string
+      required:
+        - conversationId
 
     IntelligenceEntryItem:
       type: object
