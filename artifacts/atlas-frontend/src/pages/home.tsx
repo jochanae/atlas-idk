@@ -2010,6 +2010,7 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
+  const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "saved">("projects");
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showLibrarySheet, setShowLibrarySheet] = useState(false);
