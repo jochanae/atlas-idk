@@ -36,7 +36,6 @@ import type {
   RunMode,
   ExecutionState,
   IssueType,
-  StateTransitionEvidence,
 } from "@workspace/run-contract";
 import { isTerminal } from "@workspace/run-contract";
 import {
@@ -1130,26 +1129,25 @@ router.post("/runs/:id/state", async (req, res) => {
   const userId = getUserId(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+  // v1.4: evidenceType/stepId/confidence replaced by evidenceRefs[]
   const body = req.body as {
     toState?: string;
     issueType?: string;
-    evidenceType?: string;
-    stepId?: string;
+    evidenceRefs?: Array<{ id: number }>;
     summary?: string;
-    confidence?: string;
   };
 
-  if (!body.toState || !body.evidenceType || !body.stepId || !body.summary || !body.confidence) {
+  if (!body.toState || !body.summary) {
     return res.status(400).json({
-      error: "toState, evidenceType, stepId, summary, confidence are all required",
+      error: "toState and summary are required",
     });
   }
 
   const runRows = await db.execute(sql`
-    SELECT conversation_id FROM contract_runs WHERE id = ${req.params.id}
+    SELECT conversation_id FROM execution_runs WHERE id = ${req.params.id}
   `);
   if (!runRows.rows.length) return res.status(404).json({ error: "Run not found" });
-  const conversationId = String(runRows.rows[0].conversation_id);
+  const conversationId = String(runRows.rows[0].conversation_id ?? "");
 
   const result = await advanceRunExecutionState({
     runId: req.params.id,
@@ -1157,10 +1155,8 @@ router.post("/runs/:id/state", async (req, res) => {
     userId,
     toState: body.toState as ExecutionState,
     issueType: body.issueType as IssueType | undefined,
-    evidenceType: body.evidenceType as StateTransitionEvidence["evidenceType"],
-    stepId: body.stepId,
+    evidenceRefs: (body.evidenceRefs ?? []) as import("@workspace/run-contract").EvidenceRef[],
     summary: body.summary,
-    confidence: body.confidence as StateTransitionEvidence["confidence"],
   });
 
   if (!result.ok) {

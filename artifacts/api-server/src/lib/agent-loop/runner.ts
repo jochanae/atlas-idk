@@ -132,6 +132,9 @@ export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopRe
     },
     emitNamedEvent: (event, data) => emitNamedEvent(res, event, data),
     writeStep: (s) => writeStep(res, s),
+    // v1.4: truth-layer context — agent-loop runs are chat.ts turns (EXPLORE by default)
+    activeExecutionRunId: null,
+    runMode: "EXPLORE" as import("../agent-tools/context").AgentToolContext["runMode"],
   };
 
   const tools = buildAgentTools(ctx, { includePlanTools: structuredPlanEnabled });

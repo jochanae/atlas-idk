@@ -14,16 +14,27 @@ export interface ApiRunStep {
   createdAt: string;
 }
 
-/** Minimal shape of the v1.3 VerificationContract as served by the API. */
+/**
+ * v1.4: VerificationContract as served by the API.
+ * outcome replaces the old allowedOutcome string — it is backend-derived,
+ * structured, and never written by the model.
+ */
 export interface ApiVerificationContract {
   issueType: string;
   requiredSteps: string[];
   completedSteps: string[];
   /**
-   * MERGE_READY | NEEDS_REVIEW | BLOCKED | INCONCLUSIVE
-   * Derived by the state machine — the UI renders this, never model prose.
+   * Backend-derived structured outcome.
+   * code: NOT_STARTED | INVESTIGATING | CAUSE_CONFIRMED | CHANGE_APPLIED |
+   *       BUILD_VERIFIED | RUNTIME_VERIFIED | USER_FLOW_VERIFIED | BLOCKED | FAILED
+   * The UI renders outcome.code — never model prose.
    */
-  allowedOutcome: string;
+  outcome?: {
+    code: string;
+    label: string;
+    complete: boolean;
+    pendingVerification: string[];
+  } | null;
 }
 
 export interface ApiRun {

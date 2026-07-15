@@ -37,6 +37,8 @@ function makeCtx(overrides: Partial<AgentToolContext> = {}): AgentToolContext {
     emitToolResult: vi.fn(),
     emitNamedEvent: vi.fn(),
     writeStep: vi.fn(),
+    activeExecutionRunId: null,
+    runMode: "EXPLORE" as const,
     ...overrides,
   };
 }

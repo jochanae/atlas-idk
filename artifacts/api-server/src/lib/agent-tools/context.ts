@@ -1,4 +1,5 @@
 import type { Response } from "express";
+import type { RunMode } from "@workspace/run-contract";
 import type { ProposePlanPayload } from "./schemas/plan";
 
 export interface AgentFileEdit {
@@ -70,6 +71,18 @@ export interface AgentToolContext {
   emitToolResult: (name: string, ok: boolean, ms: number) => void;
   emitNamedEvent: (event: string, data: object) => void;
   writeStep: (s: { verb: string; target?: string; phase: string }) => void;
+  /**
+   * v1.4: The authoritative run ID for this turn — supplied by the server,
+   * never by the model. The advance_execution_state tool reads this instead
+   * of accepting a model-provided runId.
+   */
+  activeExecutionRunId: string | null;
+  /**
+   * v1.4: The epistemic posture for this turn (EXPLORE | INVESTIGATE | EXECUTE).
+   * Derived from WhisperGate intent at turn start; may escalate to INVESTIGATE
+   * on DECIDE turns when investigation tools fire.
+   */
+  runMode: RunMode;
 }
 
 export function createSideEffects(): AgentToolSideEffects {

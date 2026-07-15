@@ -1137,6 +1137,33 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: sessions atlas columns failed — server will start anyway");
   }
+
+  // v1.4: Truth-layer columns on execution_runs (consolidated from contract_runs)
+  try {
+    await db.execute(sql`
+      ALTER TABLE execution_runs
+        ADD COLUMN IF NOT EXISTS run_mode   text NOT NULL DEFAULT 'EXPLORE',
+        ADD COLUMN IF NOT EXISTS execution_state text,
+        ADD COLUMN IF NOT EXISTS verification_contract jsonb,
+        ADD COLUMN IF NOT EXISTS state_history jsonb NOT NULL DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS open_questions jsonb NOT NULL DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS mode_history jsonb NOT NULL DEFAULT '[]'::jsonb
+    `);
+    logger.info("ensureColumns: execution_runs truth-layer columns (v1.4) verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: execution_runs truth-layer columns failed — server will start anyway");
+  }
+
+  // v1.4: step_purpose on execution_run_steps for evidence validation
+  try {
+    await db.execute(sql`
+      ALTER TABLE execution_run_steps
+        ADD COLUMN IF NOT EXISTS step_purpose text
+    `);
+    logger.info("ensureColumns: execution_run_steps.step_purpose (v1.4) verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: execution_run_steps.step_purpose failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

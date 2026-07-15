@@ -702,6 +702,9 @@ const SCHEMA_CTX = {
   emitToolResult: () => {},
   emitNamedEvent: () => {},
   writeStep: () => {},
+  // v1.4: truth-layer context — null/EXPLORE for the schema placeholder
+  activeExecutionRunId: null,
+  runMode: "EXPLORE" as import("@workspace/run-contract").RunMode,
 } satisfies AgentToolContext;
 
 const [TIER1_UPSERT_FIELD_TOOL, TIER1_MARK_SKIPPED_TOOL, READ_FILE_TOOL] = toAnthropicTools(SCHEMA_CTX, [
@@ -1498,16 +1501,18 @@ async function insertRunningExecutionRun(args: {
   userMessage: string;
   intent?: string | null;
   mode?: string;
+  /** v1.4: epistemic posture — EXPLORE | INVESTIGATE | EXECUTE */
+  runMode?: import("@workspace/run-contract").RunMode;
   startedAt: Date;
 }): Promise<void> {
   try {
     const promptText = (args.userMessage ?? "").trim();
     await db.execute(sql`
       INSERT INTO execution_runs
-        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at)
+        (id, project_id, thread_id, message_id, conversation_id, mode, run_mode, status, summary, prompt, intent, started_at)
       VALUES
         (${args.runId}, ${args.projectId}, ${args.sessionId ?? null}, ${null}, ${args.conversationId ?? null},
-         ${args.mode ?? "conversation"}, ${"running"}, ${null}, ${promptText || null}, ${args.intent ?? null},
+         ${args.mode ?? "conversation"}, ${args.runMode ?? "EXPLORE"}, ${"running"}, ${null}, ${promptText || null}, ${args.intent ?? null},
          ${args.startedAt})
       ON CONFLICT (id) DO NOTHING
     `);
@@ -3235,6 +3240,9 @@ WHAT YOU SHOULD NOT DO:
       userMessage: body.message ?? "",
       intent,
       mode: allowBuildSideEffects ? "build" : intent === "DECIDE" ? "decide" : "conversation",
+      // v1.4: initial epistemic posture — BUILD→EXECUTE, all else→EXPLORE
+      // (DECIDE turns may escalate to INVESTIGATE lazily via recordModeEscalation)
+      runMode: allowBuildSideEffects ? "EXECUTE" : "EXPLORE",
       startedAt: turnStartedAt,
     });
     runPreInserted = true;
@@ -5330,7 +5338,12 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
         emitNamedEvent: (event, data) => {
           if (!res.writableEnded && !res.destroyed) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
         },
-        writeStep: (s) => {
+        // v1.4: truth-layer context — server-provided, never from model input
+      activeExecutionRunId: activeRunId,
+      runMode: allowBuildSideEffects
+        ? ("EXECUTE" as import("@workspace/run-contract").RunMode)
+        : ("EXPLORE" as import("@workspace/run-contract").RunMode),
+      writeStep: (s) => {
           // Promote ARTIFACT_CREATED into non-code timeline steps (not run-card
           // "Running/Completed" noise). Emit even on DECIDE — Outputs must be
           // openable from Timeline regardless of WhisperGate intent.

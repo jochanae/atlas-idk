@@ -66,22 +66,33 @@ interface FileRow {
   verb?: string;
 }
 
-// ── Outcome badge: state-machine allowedOutcome, never model prose ────────────
+// ── Outcome badge: state-machine outcome.code, never model prose ─────────────
 //
-// Only rendered when a verificationContract is present (v1.3+ runs).
-// INCONCLUSIVE is suppressed — no badge is better than a misleading "UNVERIFIED".
+// v1.4: reads outcome.code (RunOutcomeCode) from the verificationContract.
+// Only renders for meaningful terminal/progress states.
+// NOT_STARTED and INVESTIGATING are suppressed — no badge is better than noise.
 const OUTCOME_CONFIG: Record<string, { label: string; color: string }> = {
-  MERGE_READY:  { label: "✓ VERIFIED",    color: "rgba(74,222,128,0.9)" },
-  NEEDS_REVIEW: { label: "REVIEW NEEDED", color: "rgba(var(--atlas-gold-rgb), 0.9)" },
-  BLOCKED:      { label: "BLOCKED",       color: "rgba(220,80,80,0.9)" },
+  USER_FLOW_VERIFIED: { label: "✓ VERIFIED",       color: "rgba(74,222,128,0.9)" },
+  RUNTIME_VERIFIED:   { label: "✓ RUNTIME OK",     color: "rgba(74,222,128,0.9)" },
+  BUILD_VERIFIED:     { label: "✓ BUILD OK",        color: "rgba(74,222,128,0.9)" },
+  CHANGE_APPLIED:     { label: "PATCH APPLIED",     color: "rgba(var(--atlas-gold-rgb), 0.9)" },
+  CAUSE_CONFIRMED:    { label: "CAUSE CONFIRMED",   color: "rgba(var(--atlas-gold-rgb), 0.9)" },
+  BLOCKED:            { label: "BLOCKED",           color: "rgba(220,80,80,0.9)" },
+  FAILED:             { label: "FAILED",            color: "rgba(220,80,80,0.9)" },
 };
 
-function OutcomeBadge({ contract }: { contract: { allowedOutcome: string } | null | undefined }) {
+function OutcomeBadge({
+  contract,
+}: {
+  contract: { outcome?: { code: string } | null } | null | undefined;
+}) {
   if (!contract) return null;
-  const cfg = OUTCOME_CONFIG[contract.allowedOutcome];
-  if (!cfg) return null;  // INCONCLUSIVE — nothing to show
+  const code = contract.outcome?.code;
+  if (!code) return null;
+  const cfg = OUTCOME_CONFIG[code];
+  if (!cfg) return null;  // NOT_STARTED / INVESTIGATING — nothing to show
   return (
-    <span title={`State machine outcome: ${contract.allowedOutcome}`} style={{
+    <span title={`State machine outcome: ${code}`} style={{
       display: "inline-flex", alignItems: "center", gap: 4,
       padding: "2px 7px", borderRadius: 3,
       background: cfg.color.replace(/[\d.]+\)$/, "0.10)"),

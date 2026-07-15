@@ -1,26 +1,24 @@
 /**
- * @workspace/run-contract — Version 1.3
+ * @workspace/run-contract — Version 1.4
  *
  * Canonical Run Lifecycle Contract types.
- * Generated from: docs/RUN_LIFECYCLE_CONTRACT.md (v1.3)
  *
  * SOURCE OF TRUTH HIERARCHY:
- *   1. docs/RUN_LIFECYCLE_CONTRACT.md  — human-readable authority
- *   2. This file                       — executable types both teams compile against
- *   3. Mock fixtures / backend payloads — validated against these types
+ *   1. This file — executable types both teams compile against
+ *   2. Mock fixtures / backend payloads — validated against these types
  *
  * Neither team may silently drift these types away from the contract document.
- * If these types and the document disagree, correct this file and bump the version.
- * If a type change is needed, update the document first and bump its version.
+ * If a type change is needed, bump the version here and update all consumers.
  *
- * v1.3 additions:
- *   - RunMode (EXPLORE | INVESTIGATE | EXECUTE) — epistemic posture per run
- *   - ExecutionState — granular investigation/execution states within "executing"
- *   - IssueType + VerificationContract — per-run required verification level
- *   - StateTransitionEvidence — evidence records for each state advance
- *   - OpenQuestion — unresolved items carried across turns
- *   - Run.mode, Run.executionState, Run.verificationContract, Run.stateHistory, Run.openQuestions
- *   - SSE event: execution_state_update
+ * v1.4 changes (truth-layer wiring repair):
+ *   - StepPurpose — system-owned purpose classification for execution_run_steps
+ *   - EvidenceRef — typed reference to an immutable execution_run_steps record
+ *   - RunOutcome — structured backend-derived outcome (replaces allowedOutcome: string)
+ *   - VerificationContract: adds completedSteps[], replaces allowedOutcome with outcome: RunOutcome
+ *   - StateTransitionEvidence: evidenceRefs[] replaces self-reported evidenceType/stepId/confidence
+ *   - ModeHistoryEntry — separate from state_history; tracks EXPLORE→INVESTIGATE escalations
+ *   - ExecutionStateUpdatePayload: outcome: RunOutcome replaces allowedOutcome: string + evidence
+ *   - Truth-layer state consolidated onto execution_runs; contract_runs is deprecated
  */
 
 // ---------------------------------------------------------------------------
@@ -124,7 +122,78 @@ export function isTerminalExecutionState(state: ExecutionState): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// IssueType + VerificationContract — v1.3
+// StepPurpose — v1.4
+// ---------------------------------------------------------------------------
+
+/**
+ * System-owned classification of what an execution_run_steps record proves.
+ * Set by the server at step creation time — derived from the tool/verb that
+ * produced the step. The model never writes this field.
+ *
+ * Used by advanceRunExecutionState() to validate evidence references:
+ *   CHANGE_APPLIED   requires PATCH
+ *   BUILD_VERIFIED   requires BUILD | TYPECHECK (succeeded, after latest PATCH)
+ *   RUNTIME_VERIFIED requires STARTUP | HEALTH_CHECK | DEPLOY (after latest BUILD)
+ *   USER_FLOW_VERIFIED requires BROWSER_FLOW or human-verification event
+ */
+export type StepPurpose =
+  | "CODE_SEARCH"    // search_codebase, grep, symbol lookup
+  | "FILE_INSPECTION"// file reads, directory listings, config reads
+  | "PATCH"          // FILE_EDIT, LINE_PATCH, FILE_CREATE, FILE_DELETE
+  | "BUILD"          // build command (esbuild, webpack, cargo build, etc.)
+  | "TYPECHECK"      // tsc --noEmit, pnpm typecheck, flow check
+  | "TEST"           // test runner (vitest, jest, mocha, pytest, etc.)
+  | "STARTUP"        // process start / restart (node server.js, pnpm dev, etc.)
+  | "HEALTH_CHECK"   // HTTP probe, curl health endpoint, readiness check
+  | "DEPLOY"         // deployment command (docker push, fly deploy, etc.)
+  | "BROWSER_FLOW"   // browser automation result (Playwright, Puppeteer)
+  | "OTHER";         // catch-all — cannot prove any specific verification state
+
+// ---------------------------------------------------------------------------
+// EvidenceRef + RunOutcome — v1.4
+// ---------------------------------------------------------------------------
+
+/**
+ * A typed reference to an immutable execution_run_steps record.
+ * The backend validates: step exists, belongs to the run, has correct purpose,
+ * and is correctly ordered relative to prior steps.
+ */
+export interface EvidenceRef {
+  type: "EXECUTION_STEP";
+  id: number;  // execution_run_steps.id — server validates ownership + purpose
+}
+
+/**
+ * Stable code for the run's current outcome — safe for conditional logic and styling.
+ * Maps 1:1 with ExecutionState (plus NOT_STARTED for uninitialized runs).
+ */
+export type RunOutcomeCode =
+  | "NOT_STARTED"
+  | "INVESTIGATING"
+  | "CAUSE_CONFIRMED"
+  | "CHANGE_APPLIED"
+  | "BUILD_VERIFIED"
+  | "RUNTIME_VERIFIED"
+  | "USER_FLOW_VERIFIED"
+  | "BLOCKED"
+  | "FAILED";
+
+/**
+ * Structured backend-derived outcome. The model never writes any field here.
+ *
+ * complete = true only when every state in verificationContract.requiredSteps
+ * has been reached with validated evidence — not merely when the model claims
+ * it is done.
+ */
+export interface RunOutcome {
+  code: RunOutcomeCode;
+  label: string;                    // "Patch applied — build verification pending"
+  complete: boolean;                // true = all contract.requiredSteps satisfied
+  pendingVerification: ExecutionState[]; // required steps not yet reached
+}
+
+// ---------------------------------------------------------------------------
+// IssueType + VerificationContract — v1.4
 // ---------------------------------------------------------------------------
 
 /**
@@ -151,22 +220,19 @@ export type IssueType =
 /**
  * The verification steps Atlas must reach (in order) before this run may succeed.
  * Created at run start based on IssueType.
- * The backend owns derivation; the model never writes allowedOutcome directly.
+ * The backend owns derivation; the model never writes outcome directly.
+ *
+ * outcome.complete = true only when every requiredStep has been reached with
+ * validated backend evidence — not merely because the model claims it is done.
  */
 export interface VerificationContract {
   issueType: IssueType;
   /** Ordered execution states that must be reached in sequence. */
   requiredSteps: ExecutionState[];
-  /**
-   * Human-readable outcome label derived by the backend from current executionState.
-   * This is what the UI renders as the run status — never extracted from model prose.
-   *
-   * Examples:
-   *   "Patch applied — build verification pending"
-   *   "Build verified — runtime verification pending"
-   *   "Runtime verified"
-   */
-  allowedOutcome: string;
+  /** States already reached with validated evidence for this run. */
+  completedSteps: ExecutionState[];
+  /** Backend-derived structured outcome. The model never writes any field here. */
+  outcome: RunOutcome;
 }
 
 /** Required steps per issue type — canonical mapping. */
@@ -181,30 +247,29 @@ export const REQUIRED_STEPS_BY_ISSUE_TYPE: Record<IssueType, ExecutionState[]> =
 };
 
 // ---------------------------------------------------------------------------
-// StateTransitionEvidence — v1.3
+// StateTransitionEvidence — v1.4
 // ---------------------------------------------------------------------------
 
 /**
  * Evidence record attached to each ExecutionState transition.
- * The backend validates that required evidence exists before accepting a transition.
- * These records form the run's auditable claim history.
+ *
+ * v1.4: evidenceRefs replaces the old self-reported evidenceType/stepId/confidence.
+ * The backend validates each ref: step exists, belongs to the run, has the
+ * correct StepPurpose for the target state, and is correctly ordered.
+ *
+ * summary is the model's explanation of what the evidence shows — it is stored
+ * for context but never treated as proof.
  */
 export interface StateTransitionEvidence {
   id: string;
   runId: string;
   fromState: ExecutionState;
   toState: ExecutionState;
-  evidenceType:
-    | "file_change"       // FILE_EDIT/LINE_PATCH/FILE_CREATE/FILE_DELETE step
-    | "build_output"      // SHELL step running a build command, exit 0
-    | "runtime_check"     // SHELL step or health probe returning success
-    | "user_flow"         // TEST step with browser automation or human confirmation
-    | "log_read"          // file/log read that located the cause
-    | "search_result";    // search_codebase result that confirmed a hypothesis
-  stepId: string;         // RunStep that provided this evidence
-  timestamp: string;      // ISO 8601
-  summary: string;        // one sentence — what the evidence shows
-  confidence: "confirmed" | "inferred" | "assumed";
+  /** References to immutable execution_run_steps records that justify this transition. */
+  evidenceRefs: EvidenceRef[];
+  /** Model's explanation of what the evidence shows — context only, not proof. */
+  summary: string;
+  timestamp: string;  // ISO 8601
 }
 
 // ---------------------------------------------------------------------------
@@ -235,6 +300,25 @@ export interface OpenQuestion {
    * e.g. ["new deployment begins", "deployment configuration changes"]
    */
   expiresWhen: string[];
+}
+
+// ---------------------------------------------------------------------------
+// ModeHistoryEntry — v1.4
+// ---------------------------------------------------------------------------
+
+/**
+ * Records a mode selection or escalation event for a run.
+ * Kept separate from state_history (which tracks ExecutionState transitions).
+ *
+ * The only permitted escalation for live turns is EXPLORE → INVESTIGATE
+ * on a DECIDE-intent turn when investigation tools fire. INVESTIGATE → EXECUTE
+ * requires explicit user approval or a BUILD-intent turn.
+ */
+export interface ModeHistoryEntry {
+  mode: RunMode;
+  reason: "initial_classification" | "mode_escalation";
+  previousMode?: RunMode;
+  timestamp: string;  // ISO 8601
 }
 
 // ---------------------------------------------------------------------------
@@ -543,14 +627,16 @@ export interface VerificationUpdatePayload {
 }
 
 /**
- * v1.3: Fires when Atlas advances the executionState.
- * The backend emits this after recording the evidence and computing allowedOutcome.
- * The UI renders allowedOutcome — never derives it from model prose.
+ * v1.4: Fires when Atlas advances the executionState.
+ * The backend emits this after validating evidence and computing the RunOutcome.
+ * The UI renders outcome — never derives it from model prose.
+ *
+ * outcome.complete gates whether completion language is permitted.
+ * outcome.pendingVerification drives progress indicators.
  */
 export interface ExecutionStateUpdatePayload {
   executionState: ExecutionState;
-  allowedOutcome: string;          // human-readable outcome label from VerificationContract
-  evidence: StateTransitionEvidence;
+  outcome: RunOutcome;             // backend-derived structured outcome
   openQuestions: OpenQuestion[];   // full current list for this run
 }
 

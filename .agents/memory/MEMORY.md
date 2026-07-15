@@ -82,3 +82,4 @@
 - [Visual QA multi-format coverage](visualqa-format-coverage.md) — DOCX+PDF share one checker (same preview shape); XLSX is best-effort (pagination ≠ worksheets); UI must treat skipped/unavailable as no-badge, not error
 - [Plan Continuation Engine](plan-continuation-engine.md) — structured envelope auto-executes read-only investigations after DECIDE roadmaps; model proposes, server allowlist authorizes; hard cap 1 hop
 - [Run Lifecycle Contract](run-lifecycle-contract-decisions.md) — V1.2 frozen; @workspace/run-contract types at lib/run-contract/src/index.ts; three invariants: one system not two, activeBuildRun≠activeTurn, commit_update fires post-terminal
+- [Truth-Layer v1.4 consolidation](truth-layer-v1-4.md) — execution_runs is the single truth table; contract_runs deprecated; 6 new columns via ensureColumns; evidenceRefs[] replace self-reported evidence; runMode on AgentToolContext
