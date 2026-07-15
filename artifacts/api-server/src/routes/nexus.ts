@@ -5127,20 +5127,32 @@ PROSE RULES (enforced — contradiction detection is active):
     } as VaultBlock);
   }
 
-  // 3. User-attached images (attachments array — supports multiple)
+  // 3. User-attached files (images + documents like PDFs)
   for (const att of allAttachments) {
     if (att.base64.length > MAX_VAULT_B64_SIZE) {
       logger.warn({ size: att.base64.length }, "User attachment too large — skipped");
       continue;
     }
-    contentParts.push({
-      type: "image",
-      source: {
-        type: "base64",
-        media_type: att.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-        data: att.base64,
-      },
-    } as VaultBlock);
+    if (att.mediaType === "application/pdf") {
+      // Claude supports PDFs natively as document blocks.
+      contentParts.push({
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: "application/pdf",
+          data: att.base64,
+        },
+      } as unknown as VaultBlock);
+    } else {
+      contentParts.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: att.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+          data: att.base64,
+        },
+      } as VaultBlock);
+    }
   }
 
   // 3. User text

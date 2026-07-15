@@ -338,19 +338,27 @@ export function useNexusChatStream(
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
   }) => {
     // Unify legacy single-image inputs into the attachments array.
+    // imgAttachments = images only (used for imageUrl preview in optimistic message + legacy fields).
+    // docAttachments = PDFs and other non-image files Atlas can read as documents.
+    // allFileAttachments = everything sent to the backend.
     const imgAttachments: Array<{ base64: string; mediaType: string; name?: string }> =
       (attachments && attachments.length > 0)
         ? attachments.filter((a) => a.mediaType?.startsWith("image/"))
         : (imageBase64
             ? [{ base64: imageBase64, mediaType: imageMimeType || "image/png" }]
             : []);
-    if (sendInFlightRef.current || (!text.trim() && imgAttachments.length === 0) || isPending) return;
+    const docAttachments: Array<{ base64: string; mediaType: string; name?: string }> =
+      (attachments && attachments.length > 0)
+        ? attachments.filter((a) => !a.mediaType?.startsWith("image/"))
+        : [];
+    const allFileAttachments = [...imgAttachments, ...docAttachments];
+    if (sendInFlightRef.current || (!text.trim() && allFileAttachments.length === 0) || isPending) return;
     const firstImg = imgAttachments[0];
 
-    // Backend requires a non-empty `message` field even when only images are attached.
+    // Backend requires a non-empty `message` field even when only files are attached.
     const effectiveText = text.trim().length > 0
       ? text
-      : (imgAttachments.length > 0 ? "(image attached)" : text);
+      : (allFileAttachments.length > 0 ? "(file attached)" : text);
     // R6: [SKETCH:*] client-side short-circuit removed. Route through the LLM which
     // emits IMAGE_GEN tokens — handled server-side via Gemini/Imagen.
     // Transform [SKETCH:<preset>] prefix into natural language so the LLM has style context.
@@ -454,11 +462,10 @@ export function useNexusChatStream(
           focusProjectId: resolvedFocusProjectId ?? undefined,
           runId: turnRunId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
-          ...(imgAttachments.length > 0
+          ...(allFileAttachments.length > 0
             ? {
-                attachments: imgAttachments,
-                imageBase64: firstImg!.base64,
-                imageMimeType: firstImg!.mediaType,
+                attachments: allFileAttachments,
+                ...(firstImg ? { imageBase64: firstImg.base64, imageMimeType: firstImg.mediaType } : {}),
               }
             : {}),
           ...(askAtlasInProject

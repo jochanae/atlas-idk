@@ -3216,12 +3216,15 @@ export default function Home() {
     // When it's open, EVERY send goes through askAtlasChat regardless of how
     // the surface was opened (composer pill, resume, radial, history). This
     // eliminates the old split where entry point determined data source.
-    const hasAskAtlasContent = !!text || attachedFiles.some(f => f.type.startsWith("image/"));
+    // Any attached file (image OR document) counts as content — not just images.
+    // Previously PDFs were excluded here, causing the send to fall through the
+    // Ask Atlas gate into the project-creation path → hard navigation / "hard refresh".
+    const hasAskAtlasContent = !!text || attachedFiles.length > 0;
     if (askAtlasSurfaceOpen && hasAskAtlasContent) {
       if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
-      const filesToConvert = attachedFiles.filter(f => f.type.startsWith("image/"));
+      const filesToConvert = attachedFiles; // all files — fileToBase64Safe handles non-images
       setAttachedFiles([]);
       textareaRef.current?.blur();
       let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
