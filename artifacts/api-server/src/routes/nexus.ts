@@ -4665,7 +4665,12 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
       ...(pendingNavProjectId !== null
         ? {
             navigateTo: {
-              route: `/project/${pendingNavProjectId}`,
+              // Prefer /workspace/<conversationId> so the workspace mounts with
+              // the adopted Ask Atlas thread pre-selected — no race between
+              // navigation and the DB adoption UPDATE.
+              route: effectiveConversationId
+                ? `/workspace/${effectiveConversationId}`
+                : `/project/${pendingNavProjectId}`,
               projectId: pendingNavProjectId,
               projectName: pendingNavProjectName,
             },
