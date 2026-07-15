@@ -1972,10 +1972,11 @@ export default function Home() {
   // subheader and the Library sheet stay in sync across refresh + surface.
   const [libraryAttachments, setLibraryAttachments] = useState<LibraryContextItem[]>([]);
   const [libraryDetachBusyId, setLibraryDetachBusyId] = useState<string | null>(null);
-  const refreshLibraryAttachments = useCallback(async () => {
-    if (!askAtlasConversationId) { setLibraryAttachments([]); return; }
+  const refreshLibraryAttachments = useCallback(async (conversationIdOverride?: string | null) => {
+    const conversationId = conversationIdOverride ?? askAtlasConversationId;
+    if (!conversationId) { setLibraryAttachments([]); return; }
     try {
-      setLibraryAttachments(await fetchLibraryConversationContext(askAtlasConversationId));
+      setLibraryAttachments(await fetchLibraryConversationContext(conversationId));
     } catch {
       // Non-fatal — leave existing chips in place so a transient failure
       // does not silently claim the user has nothing attached.
@@ -4709,8 +4710,10 @@ export default function Home() {
                     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
                       <button
                         onClick={() => {
+                          const cid = activeConversationId ?? askAtlasConversationId ?? null;
                           setFocusSheetTab("library");
-                          setFocusSheetConversationId(activeConversationId ?? askAtlasConversationId ?? null);
+                          setFocusSheetConversationId(cid);
+                          void refreshLibraryAttachments(cid);
                           setShowFocusPicker(true);
                         }}
                         title="Saved documents"
@@ -4902,8 +4905,10 @@ export default function Home() {
                                   title={savedMsgIdxSet.has(i) ? "Saved to Library" : "Save to Library"}
                                   onClick={async () => {
                                     if (savedMsgIdxSet.has(i)) {
+                                      const cid = activeConversationId ?? askAtlasConversationId ?? null;
                                       setFocusSheetTab("library");
-                                      setFocusSheetConversationId(activeConversationId ?? askAtlasConversationId ?? null);
+                                      setFocusSheetConversationId(cid);
+                                      void refreshLibraryAttachments(cid);
                                       setShowFocusPicker(true);
                                       return;
                                     }
@@ -5289,8 +5294,10 @@ export default function Home() {
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={(e) => {
                     e.stopPropagation();
+                    const cid = askAtlasSurfaceVisible ? askAtlasConversationId : activeConversationId;
                     setFocusSheetTab("projects");
-                    setFocusSheetConversationId(askAtlasSurfaceVisible ? askAtlasConversationId : activeConversationId);
+                    setFocusSheetConversationId(cid);
+                    void refreshLibraryAttachments(cid);
                     setShowFocusPicker(true);
                   }}
                   style={{
@@ -6044,8 +6051,12 @@ export default function Home() {
         onSelectProject={handleHomeFocusSelect}
         conversationId={focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId}
         attachedIds={libraryAttachedIds}
-        onAttachmentsChange={() => { void refreshLibraryAttachments(); }}
-        onClose={() => setShowFocusPicker(false)}
+        onAttachmentsChange={() => { void refreshLibraryAttachments(focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId); }}
+        onClose={() => {
+          setShowFocusPicker(false);
+          setFocusSheetConversationId(null);
+          void refreshLibraryAttachments(askAtlasConversationId);
+        }}
       />
 
 
