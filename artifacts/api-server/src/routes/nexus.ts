@@ -3300,7 +3300,7 @@ WHAT YOU SHOULD NOT DO:
   // See handoff: identity spans user turn → thinking → live steps → Timeline
   // → Changes → completion → receipt → reload.
   const clientRunId = typeof body.runId === "string" && /^[0-9a-fA-F-]{8,}$/.test(body.runId) ? body.runId : null;
-  const willPersistRun = !!focusProjectId && !isChatTurn;
+  const willPersistRun = !!focusProjectId;
   const activeRunId: string | null = willPersistRun ? (clientRunId ?? randomUUID()) : null;
   // Hoisted above the pre-insert block so insertRunningExecutionRun and the
   // failure-record path in finishStream can both reference turnStartedAt.
@@ -4592,7 +4592,7 @@ PROSE RULES (enforced — contradiction detection is active):
     // turns. Receipt eligibility is a SEPARATE concern handled by the frontend
     // via a verb-based classifier in WorkspaceRunCard — not by whether we
     // persisted or by the `mode` field alone.
-    const shouldPersistRun = !!focusProjectId && !isChatTurn;
+    const shouldPersistRun = !!focusProjectId;
     if (shouldPersistRun && focusProjectId) {
       const RECEIPT_WORTHY_VERBS = new Set([
         "ARTIFACT_CREATED", "DNA_UPDATED", "GITHUB_PUSH",

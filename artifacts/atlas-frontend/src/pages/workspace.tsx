@@ -8847,7 +8847,7 @@ export default function Workspace() {
             <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} projectId={project?.id} entries={entries || []} />
           ) : leftTab === "blueprints" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <BlueprintsTab projectId={id} manifestDecision={manifestDecision} manifestLoading={manifestLoading} onBuild={handleManifest} />
+              <BlueprintPanel projectId={id} refreshTrigger={amRefreshTrigger} readinessScore={displayedReadinessScore} />
             </div>
           ) : leftTab === "artifacts" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
