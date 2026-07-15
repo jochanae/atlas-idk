@@ -1189,15 +1189,17 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
   // page refresh and gives the workspace AI full context on subsequent turns.
   // Only write if there are no existing nexus messages for this project yet
   // (idempotent — prevents duplicates if append-thread is called twice).
+  let adoptedConversationId: string | null = null;
   if (bodyMessages.length > 0) {
     const [existingMsg] = await db
-      .select({ id: nexusMessagesTable.id })
+      .select({ id: nexusMessagesTable.id, conversationId: nexusMessagesTable.conversationId })
       .from(nexusMessagesTable)
       .where(and(eq(nexusMessagesTable.projectId, id), eq(nexusMessagesTable.userId, userId)))
       .limit(1);
 
     if (!existingMsg) {
       const convId = randomUUID();
+      adoptedConversationId = convId;
       const validMessages = bodyMessages.filter(
         (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim().length > 0,
       );
@@ -1211,7 +1213,13 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
             content: m.content.trim(),
           })),
         );
+        await db.execute(sql`
+          UPDATE projects SET conversation_id = ${convId}
+          WHERE id = ${id} AND user_id = ${userId} AND conversation_id IS NULL
+        `);
       }
+    } else {
+      adoptedConversationId = existingMsg.conversationId ?? null;
     }
   }
 
@@ -1305,7 +1313,7 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
   // not the pre-append snapshot. Fixes: "still being defined" showing after append.
   bustResumeCache(userId);
 
-  res.json({ ok: true, artifact, brief });
+  res.json({ ok: true, artifact, brief, conversationId: adoptedConversationId });
 });
 
 // ── POST /api/projects/:id/editorial — Atlas editorial analysis ───────────────

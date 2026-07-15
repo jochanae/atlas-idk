@@ -3502,8 +3502,11 @@ export default function Home() {
           body: JSON.stringify({ messages: snapshotMessages }),
         });
         if (snapRes.ok) {
-          const snapData = await snapRes.json() as { brief?: { threadSummary?: string } };
+          const snapData = await snapRes.json() as { brief?: { threadSummary?: string }; conversationId?: string | null };
           resumeGreeting = snapData?.brief?.threadSummary ?? null;
+          if (snapData?.conversationId) {
+            try { sessionStorage.setItem(`atlas-adopted-conv-${projectId}`, snapData.conversationId); } catch {}
+          }
         }
       } catch {}
 
@@ -3515,7 +3518,12 @@ export default function Home() {
         );
       } catch {}
       pushHudEvent("DECISION", `Committed → ${name}`);
-      setLocation(`/project/${projectId}?from=home&source=commit-carryover`);
+      const adoptedConvId = (() => { try { return sessionStorage.getItem(`atlas-adopted-conv-${projectId}`); } catch { return null; } })();
+      if (adoptedConvId) {
+        setLocation(`/workspace/${adoptedConvId}?from=home&source=commit-carryover`);
+      } else {
+        setLocation(`/project/${projectId}?from=home&source=commit-carryover`);
+      }
     } catch (err) {
       const msg =
         extractApiErrorMessage(err) ??
