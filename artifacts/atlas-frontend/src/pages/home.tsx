@@ -60,6 +60,12 @@ import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { HomeArtifactLibrarySheet } from "@/components/HomeArtifactLibrarySheet";
 import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
+import { LibraryAttachmentsBar } from "@/components/LibraryAttachmentsBar";
+import {
+  fetchConversationContext as fetchLibraryConversationContext,
+  detachLibraryItem as detachLibraryContextItem,
+  type LibraryItem as LibraryContextItem,
+} from "@/lib/library";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
