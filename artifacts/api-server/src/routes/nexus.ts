@@ -1700,6 +1700,7 @@ async function persistNexusExecutionRun(args: {
     // rewrite). They must be re-inserted here so evidence survives the rewrite.
     const BUILD_EVIDENCE_VERBS = new Set([
       "Patching", "Writing", "Written",
+      "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "FILE_MOVE",
       "Typechecking", "Building", "Testing",
     ]);
     for (const a of args.runActions) {
@@ -3917,7 +3918,7 @@ PROSE RULES (enforced — contradiction detection is active):
         try {
           const wsDir = await ensureProjectWorkspaceDir(focusProjectId);
           for (const edit of responseFileEdits) {
-            writeStep({ verb: "Writing", target: edit.path, detail: "FILE_EDIT" });
+            writeStep({ verb: "FILE_EDIT", target: edit.path, detail: "applied" });
             const absPath = resolveWorkspacePath(wsDir, edit.path);
             await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
             await fsPromises.writeFile(absPath, edit.content, "utf-8");
@@ -3934,7 +3935,7 @@ PROSE RULES (enforced — contradiction detection is active):
       }
 
       for (const patch of responseLinePatches) {
-        writeStep({ verb: "Patching", target: patch.path, detail: "LINE_PATCH" });
+        writeStep({ verb: "LINE_PATCH", target: patch.path, detail: "applied" });
       }
 
       // Execute GITHUB_PUSH when token present + project focused
@@ -4767,7 +4768,7 @@ PROSE RULES (enforced — contradiction detection is active):
         const hasFileRead = runActions.some(
           a => (a.verb === "Read" || a.verb === "Reading") && a.target && !a.target.includes(" "),
         );
-        const hasPatch = runActions.some(a => ["Patching", "Writing", "Written"].includes(a.verb));
+        const hasPatch = runActions.some(a => ["Patching", "Writing", "Written", "FILE_EDIT", "LINE_PATCH"].includes(a.verb));
         const hasTypecheck = runActions.some(
           a => a.verb === "Typechecking" && a.status !== "fail",
         );

@@ -14,7 +14,7 @@ export type {
   LibraryItemProject,
 } from "./types";
 
-import type { LibraryItem } from "./types";
+import type { LibraryItem, LibraryItemKind, LibraryItemOrigin } from "./types";
 
 export class LibraryApiError extends Error {
   status: number;
@@ -62,6 +62,26 @@ export async function fetchLibraryItems(
   const res = await fetch(`/api/library${suffix}`, { credentials: "include" });
   const data = await jsonOrThrow<{ items?: LibraryItem[] }>(res, "Fetch library");
   return data.items ?? [];
+}
+
+export interface CreateLibraryItemInput {
+  kind?: LibraryItemKind;
+  title: string;
+  content?: string | null;
+  projectId?: number | null;
+  origin?: Partial<LibraryItemOrigin>;
+}
+
+export async function createLibraryItem(input: CreateLibraryItemInput): Promise<LibraryItem> {
+  const res = await fetch("/api/library", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
+  const data = await jsonOrThrow<{ item?: LibraryItem }>(res, "Create library item");
+  if (!data.item) throw new LibraryApiError("Create library item failed", res.status);
+  return data.item;
 }
 
 export async function deleteLibraryItem(item: LibraryItem): Promise<void> {

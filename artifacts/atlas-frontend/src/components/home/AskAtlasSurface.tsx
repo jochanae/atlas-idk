@@ -46,6 +46,22 @@ function sanitizeForStreaming(text: string): string {
 function fixMissingSentenceSpaces(text: string): string {
   return text.replace(/([a-z]{2}[.!?])([A-Z][a-z])/g, "$1 $2");
 }
+
+function inferLibraryKind(text: string): import("@/lib/library").LibraryItemKind {
+  if (/prd|product requirement/i.test(text)) return "prd";
+  if (/plan|roadmap/i.test(text)) return "plan";
+  if (/strateg/i.test(text)) return "strategy";
+  if (/spec/i.test(text)) return "spec";
+  if (/brief/i.test(text)) return "brief";
+  if (/outline/i.test(text)) return "outline";
+  return "document";
+}
+
+function inferLibraryTitle(text: string): string {
+  const headingMatch = text.match(/^#{1,3}\s+(.+)/m);
+  const raw = headingMatch ? headingMatch[1] : text.replace(/[#*_`]/g, "").trim();
+  return raw.slice(0, 80) || "Atlas note";
+}
 import { type NexusHandoffSignal } from "@/hooks/useNexusChatStream";
 import { useLocation } from "wouter";
 
@@ -94,6 +110,7 @@ import { useActiveProjectContext } from "@/lib/activeProjectContext";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
 import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
+import { createLibraryItem } from "@/lib/library";
 import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
 import {
   ASK_ATLAS_PLACEHOLDERS,
@@ -230,6 +247,7 @@ export function AskAtlasSurface({
   const restingCompact = restingState === "compact";
   const restingDocked = restingState === "docked";
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [savedIdxSet, setSavedIdxSet] = useState<Set<number>>(new Set());
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
   
@@ -349,6 +367,20 @@ export function AskAtlasSurface({
       setCopiedIdx(idx);
       setTimeout(() => setCopiedIdx(null), 1800);
     });
+  };
+
+  const handleSaveToLibrary = async (content: string, idx: number) => {
+    if (savedIdxSet.has(idx)) return;
+    await createLibraryItem({
+      title: inferLibraryTitle(content),
+      content,
+      kind: inferLibraryKind(content),
+      origin: {
+        source: "ask-atlas",
+        conversationId: conversationId ?? undefined,
+      },
+    });
+    setSavedIdxSet((prev) => new Set([...prev, idx]));
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -660,6 +692,36 @@ export function AskAtlasSurface({
                         </svg>
                       )}
                     </button>
+                    {displayContent.length > 350 && (
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveToLibrary(displayContent, i).catch(() => {})}
+                        aria-label={savedIdxSet.has(i) ? "Saved to Library" : "Save to Library"}
+                        title={savedIdxSet.has(i) ? "Saved to Library" : "Save to Library"}
+                        disabled={savedIdxSet.has(i)}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          padding: "4px 2px",
+                          cursor: savedIdxSet.has(i) ? "default" : "pointer",
+                          color: savedIdxSet.has(i) ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                          opacity: savedIdxSet.has(i) ? 0.9 : 0.45,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 11,
+                          fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.06em",
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >
+                        {savedIdxSet.has(i) ? "✓ saved" : (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 2h8a1 1 0 011 1v11l-4-2-4 2V3a1 1 0 011-1z" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
                     {!msg.imageUrl && onSketch && (
                       <InlineSketchOffer text={displayContent} onSend={onSketch} />
                     )}
