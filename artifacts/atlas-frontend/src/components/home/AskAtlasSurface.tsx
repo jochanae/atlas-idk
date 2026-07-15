@@ -692,6 +692,36 @@ export function AskAtlasSurface({
                         </svg>
                       )}
                     </button>
+                    {displayContent.length > 350 && (
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveToLibrary(displayContent, i).catch(() => {})}
+                        aria-label={savedIdxSet.has(i) ? "Saved to Library" : "Save to Library"}
+                        title={savedIdxSet.has(i) ? "Saved to Library" : "Save to Library"}
+                        disabled={savedIdxSet.has(i)}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          padding: "4px 2px",
+                          cursor: savedIdxSet.has(i) ? "default" : "pointer",
+                          color: savedIdxSet.has(i) ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                          opacity: savedIdxSet.has(i) ? 0.9 : 0.45,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 11,
+                          fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.06em",
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >
+                        {savedIdxSet.has(i) ? "✓ saved" : (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 2h8a1 1 0 011 1v11l-4-2-4 2V3a1 1 0 011-1z" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
                     {!msg.imageUrl && onSketch && (
                       <InlineSketchOffer text={displayContent} onSend={onSketch} />
                     )}
