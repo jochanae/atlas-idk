@@ -507,10 +507,11 @@ export async function runBrowserFlow(opts: BrowserRunnerOptions): Promise<Browse
     // Block dangerous schemes
     await context.route(/^(file:|data:|blob:|javascript:)/, route => route.abort("blockedbyclient"));
 
-    // Block new tabs / popups
-    context.on("page", p => { void p.close(); });
-
     const page = await context.newPage();
+
+    // Block new tabs / popups opened BY the page — must be registered AFTER
+    // newPage() or the handler fires on the main page itself and closes it.
+    context.on("page", p => { void p.close(); });
 
     // ── Authenticate via direct cookie injection ─────────────────────────────
     // Navigating to the /api/auth/browser-test-session HTTP endpoint fails when
