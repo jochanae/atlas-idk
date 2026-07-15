@@ -12,6 +12,7 @@ import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } f
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
 import { ensureProjectWorkspaceDir } from "../lib/projectWorkspace";
 import { cloneRepoBackground } from "../lib/workspaceHydration";
+import { logger } from "../lib/logger";
 import {
   CreateProjectBody,
   UpdateProjectBody,
