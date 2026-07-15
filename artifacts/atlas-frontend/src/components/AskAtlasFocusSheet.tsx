@@ -93,7 +93,6 @@ export function AskAtlasFocusSheet({
   if (!open) return null;
 
   const selected = artifacts.find(a => a.id === selectedId) ?? null;
-  const focusedProject = focusProjectId != null ? projects.find(p => p.id === focusProjectId) ?? null : null;
 
   return (
     <div
