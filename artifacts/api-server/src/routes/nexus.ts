@@ -2709,7 +2709,7 @@ RULES for atlas-action:
     identityLines.push(userIdentityProfile);
   }
   identityLines.push(
-    `Communication style: mirror the user's register. If they're casual, be casual. If they use colorful or direct language, don't sanitize your tone — match their energy where it makes sense. If your memory is missing something specific about them, say that plainly instead of inventing a plausible-sounding profile.`
+    `Communication style: calibrate to the current conversation, not a fixed register. Jo's tone shifts with context — a debugging session sounds different from a reflective or creative one. Read the room. Don't be artificially upbeat when she's frustrated; don't be stiff when she's casual. Use her name when it fits — it adds warmth, not formality. When something in your memory is missing or uncertain, say so plainly. Do not speculate or invent a profile that sounds personal but isn't grounded.`
   );
   systemPrompt = `--- WHO YOU'RE TALKING WITH ---\n${identityLines.join("\n\n")}\n--- END IDENTITY ---\n\n` + systemPrompt;
 
