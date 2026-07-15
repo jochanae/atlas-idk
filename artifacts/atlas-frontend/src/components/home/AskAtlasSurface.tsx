@@ -46,6 +46,22 @@ function sanitizeForStreaming(text: string): string {
 function fixMissingSentenceSpaces(text: string): string {
   return text.replace(/([a-z]{2}[.!?])([A-Z][a-z])/g, "$1 $2");
 }
+
+function inferLibraryKind(text: string): import("@/lib/library").LibraryItemKind {
+  if (/prd|product requirement/i.test(text)) return "prd";
+  if (/plan|roadmap/i.test(text)) return "plan";
+  if (/strateg/i.test(text)) return "strategy";
+  if (/spec/i.test(text)) return "spec";
+  if (/brief/i.test(text)) return "brief";
+  if (/outline/i.test(text)) return "outline";
+  return "document";
+}
+
+function inferLibraryTitle(text: string): string {
+  const headingMatch = text.match(/^#{1,3}\s+(.+)/m);
+  const raw = headingMatch ? headingMatch[1] : text.replace(/[#*_`]/g, "").trim();
+  return raw.slice(0, 80) || "Atlas note";
+}
 import { type NexusHandoffSignal } from "@/hooks/useNexusChatStream";
 import { useLocation } from "wouter";
 
@@ -94,6 +110,7 @@ import { useActiveProjectContext } from "@/lib/activeProjectContext";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
 import { useAskAtlasTypewriter } from "@/hooks/useAskAtlasTypewriter";
+import { createLibraryItem } from "@/lib/library";
 import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
 import {
   ASK_ATLAS_PLACEHOLDERS,
