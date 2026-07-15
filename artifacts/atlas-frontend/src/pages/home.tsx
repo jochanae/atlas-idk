@@ -59,6 +59,7 @@ import { useShellStore } from "../store/shellStore";
 import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { HomeArtifactLibrarySheet } from "@/components/HomeArtifactLibrarySheet";
+import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
@@ -2009,6 +2010,7 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
+  const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "saved">("projects");
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showLibrarySheet, setShowLibrarySheet] = useState(false);
@@ -5312,6 +5314,69 @@ export default function Home() {
                 </svg>
               </button>
 
+              {/* Focus chip — Ask Atlas only. Describes what Atlas is focused on
+                  (All Projects vs a specific project) and opens the tabbed
+                  Focus sheet (Projects | Saved). Atlas is always the speaker. */}
+              {(askAtlasSurfaceOpen || askAtlasConversationActive) && (() => {
+                const focusedName = homeFocus != null
+                  ? (selectableFocusProjects.find((p: Project) => p.id === homeFocus)?.name ?? "Project")
+                  : null;
+                return (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      title="Set Atlas focus"
+                      aria-label="Set Atlas focus"
+                      onPointerDown={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFocusSheetTab("projects");
+                        setShowFocusPicker(true);
+                      }}
+                      style={{
+                        height: isTiny ? 28 : 34,
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: isTiny ? "0 8px" : "0 10px", borderRadius: 999,
+                        background: focusedName
+                          ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
+                          : "transparent",
+                        border: focusedName
+                          ? "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)"
+                          : "1px solid var(--atlas-border, rgba(120,113,108,0.28))",
+                        color: focusedName ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                        cursor: "pointer",
+                        fontFamily: "var(--app-font-mono)",
+                        fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
+                        whiteSpace: "nowrap", maxWidth: isTiny ? 140 : 200,
+                        overflow: "hidden", textOverflow: "ellipsis",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="9" />
+                        <circle cx="12" cy="12" r="4" />
+                        <circle cx="12" cy="12" r="1" fill="currentColor" />
+                      </svg>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {focusedName ? `Focus · ${focusedName}` : "Focus · All"}
+                      </span>
+                      {focusedName && (
+                        <span
+                          role="button"
+                          aria-label="Clear focus"
+                          onClick={(e) => { e.stopPropagation(); handleHomeFocusAllProjects(); }}
+                          style={{ opacity: 0.7, fontSize: 12, lineHeight: 1, padding: "0 2px", cursor: "pointer" }}
+                        >
+                          ×
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                );
+              })()}
+
+
+
               <ComposerActions
                 scope="home"
                 hasProjectContext={false}
@@ -5848,33 +5913,20 @@ export default function Home() {
 
       {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Atlas too. */}
 
-      {askAtlasConversationActive && showFocusPicker && (
-        <>
-          <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-            <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus scope</div>
-            <button
-              type="button"
-              onClick={handleHomeFocusAllProjects}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-              All Projects
-            </button>
-            {selectableFocusProjects.map((p: Project) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleHomeFocusSelect(p.id)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      {/* Ask Atlas Focus sheet — tabbed (Projects | Saved). Projects tab
+          restores the orphaned focus picker; Saved tab surfaces saved Ask
+          Atlas artifacts. Deliberately not called "Library" — Phase 2 will
+          unify home_artifacts + workspace artifacts into a real Library. */}
+      <AskAtlasFocusSheet
+        open={showFocusPicker}
+        initialTab={focusSheetTab}
+        focusProjectId={homeFocus ?? null}
+        projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
+        onSelectAllProjects={handleHomeFocusAllProjects}
+        onSelectProject={handleHomeFocusSelect}
+        onClose={() => setShowFocusPicker(false)}
+      />
+
 
       {/* Below-the-fold workspace — now lives inside the Briefcase drawer. */}
       {showOverviewSheet && (
