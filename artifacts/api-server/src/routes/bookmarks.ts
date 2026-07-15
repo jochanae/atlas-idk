@@ -5,6 +5,8 @@
  * the client-side atlas-history localStorage store. Bookmarks survive
  * browser clears, new devices, and incognito sessions.
  *
+ * Dual-writes to library_items (kind=bookmark) until frontend cutover.
+ *
  * Routes:
  *   GET    /api/projects/:id/bookmarks         — list user's bookmarks
  *   POST   /api/projects/:id/bookmarks         — create bookmark
@@ -14,6 +16,7 @@ import { Router, type IRouter } from "express";
 import { db, projectsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { dualWriteBookmark, deleteLibraryByLegacy } from "../lib/library";
 
 const router: IRouter = Router();
 
@@ -92,6 +95,24 @@ router.post("/projects/:id/bookmarks", async (req, res): Promise<void> => {
             payload_json = EXCLUDED.payload_json
       RETURNING id, project_id, user_id, message_id, local_id, title, lens, payload_json, created_at
     `);
+    const bookmark = rows.rows[0] as {
+      id: number;
+      title: string;
+      payload_json: string | null;
+      message_id: number | null;
+    };
+
+    dualWriteBookmark({
+      userId,
+      projectId,
+      legacyId: bookmark.id,
+      title: bookmark.title,
+      content: bookmark.payload_json,
+      messageId: bookmark.message_id,
+    }).catch((err) => {
+      logger.warn({ err, legacyId: bookmark.id }, "bookmarks dual-write to library_items failed");
+    });
+
     res.status(201).json(rows.rows[0]);
   } catch (err) {
     logger.error({ err }, "POST /projects/:id/bookmarks failed");
@@ -109,10 +130,17 @@ router.delete("/projects/:id/bookmarks/:localId", async (req, res): Promise<void
   const localId = req.params.localId;
 
   try {
-    await db.execute(sql`
+    const deleted = await db.execute(sql`
       DELETE FROM project_bookmarks
       WHERE project_id = ${projectId} AND user_id = ${userId} AND local_id = ${localId}
+      RETURNING id
     `);
+    const row = deleted.rows[0] as { id?: number } | undefined;
+    if (row?.id != null) {
+      deleteLibraryByLegacy("project_bookmarks", row.id, userId).catch((err) => {
+        logger.warn({ err, legacyId: row.id }, "bookmarks dual-delete from library_items failed");
+      });
+    }
     res.status(204).end();
   } catch (err) {
     logger.error({ err }, "DELETE /projects/:id/bookmarks/:localId failed");

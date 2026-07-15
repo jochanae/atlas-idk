@@ -9,6 +9,88 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface OkResponse {
+  ok: boolean;
+}
+
+export type LibraryItemKind = typeof LibraryItemKind[keyof typeof LibraryItemKind];
+
+
+export const LibraryItemKind = {
+  document: 'document',
+  prd: 'prd',
+  plan: 'plan',
+  strategy: 'strategy',
+  spec: 'spec',
+  outline: 'outline',
+  brief: 'brief',
+  bookmark: 'bookmark',
+  sketch: 'sketch',
+  other: 'other',
+} as const;
+
+export type LibraryOriginSource = typeof LibraryOriginSource[keyof typeof LibraryOriginSource];
+
+
+export const LibraryOriginSource = {
+  'ask-atlas': 'ask-atlas',
+  workspace: 'workspace',
+  upload: 'upload',
+  unknown: 'unknown',
+} as const;
+
+export interface LibraryItemOrigin {
+  source: LibraryOriginSource;
+  conversationId?: string | null;
+  messageId?: string | null;
+}
+
+export interface LibraryItemProject {
+  id: number;
+  name?: string;
+}
+
+/**
+ * Canonical Library item shape consumed by the frontend.
+ */
+export interface LibraryItem {
+  id: string;
+  kind: LibraryItemKind;
+  title: string;
+  content?: string;
+  preview: string;
+  project: LibraryItemProject | null;
+  origin: LibraryItemOrigin;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface LibraryListResponse {
+  items: LibraryItem[];
+  nextCursor?: string | null;
+}
+
+export interface LibraryItemResponse {
+  item: LibraryItem;
+}
+
+export interface CreateLibraryItemRequest {
+  kind?: LibraryItemKind;
+  title: string;
+  content?: string | null;
+  projectId?: number | null;
+  origin?: LibraryItemOrigin;
+}
+
+export interface UpdateLibraryItemRequest {
+  title?: string;
+  kind?: LibraryItemKind;
+}
+
+export interface AttachLibraryContextRequest {
+  conversationId: string;
+}
+
 export interface IntelligenceEntryItem {
   id: number;
   title: string;
@@ -388,4 +470,25 @@ export type GetPortfolioResumeBust = typeof GetPortfolioResumeBust[keyof typeof 
 export const GetPortfolioResumeBust = {
   NUMBER_1: 1,
 } as const;
+
+export type ListLibraryItemsParams = {
+/**
+ * Project scope. Omit for all items; pass a project id for project-scoped items; pass the string "null" for user-level (home) items only.
+
+ */
+projectId?: number | 'null';
+/**
+ * Repeatable kind filter.
+ */
+kind?: LibraryItemKind[];
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * Opaque cursor from a previous nextCursor.
+ */
+cursor?: string;
+};
 

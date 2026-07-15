@@ -6,26 +6,37 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
+  AttachLibraryContextRequest,
+  CreateLibraryItemRequest,
   GetPortfolioResumeParams,
   HealthStatus,
+  LibraryItemResponse,
+  LibraryListResponse,
+  ListLibraryItemsParams,
+  OkResponse,
   PortfolioResume,
   ProjectIntelligence,
   ProjectManifest,
-  ProjectReadiness
+  ProjectReadiness,
+  UpdateLibraryItemRequest
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -506,6 +517,615 @@ export function useGetPortfolioResume<TData = Awaited<ReturnType<typeof getPortf
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPortfolioResumeQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListLibraryItemsUrl = (params?: ListLibraryItemsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["kind"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : v.toString());
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/library?${stringifiedParams}` : `/api/library`
+}
+
+/**
+ * Returns the authenticated user's canonical Library items. Filter with projectId (number, or the string "null" for user-level home items). Repeat kind to filter by one or more kinds. Cursor pagination via limit + cursor.
+
+ * @summary List library items
+ */
+export const listLibraryItems = async (params?: ListLibraryItemsParams, options?: RequestInit): Promise<LibraryListResponse> => {
+
+  return customFetch<LibraryListResponse>(getListLibraryItemsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLibraryItemsQueryKey = (params?: ListLibraryItemsParams,) => {
+    return [
+    `/api/library`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListLibraryItemsQueryOptions = <TData = Awaited<ReturnType<typeof listLibraryItems>>, TError = ErrorType<void>>(params?: ListLibraryItemsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLibraryItemsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLibraryItems>>> = ({ signal }) => listLibraryItems(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLibraryItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLibraryItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listLibraryItems>>>
+export type ListLibraryItemsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List library items
+ */
+
+export function useListLibraryItems<TData = Awaited<ReturnType<typeof listLibraryItems>>, TError = ErrorType<void>>(
+ params?: ListLibraryItemsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLibraryItemsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateLibraryItemUrl = () => {
+
+
+
+
+  return `/api/library`
+}
+
+/**
+ * Creates a canonical Library item. Used by workspace "save as artifact" and future Ask Atlas save flows. Does not write to legacy tables.
+
+ * @summary Create a library item
+ */
+export const createLibraryItem = async (createLibraryItemRequest: CreateLibraryItemRequest, options?: RequestInit): Promise<LibraryItemResponse> => {
+
+  return customFetch<LibraryItemResponse>(getCreateLibraryItemUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createLibraryItemRequest,)
+  }
+);}
+
+
+
+
+export const getCreateLibraryItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLibraryItem>>, TError,{data: BodyType<CreateLibraryItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLibraryItem>>, TError,{data: BodyType<CreateLibraryItemRequest>}, TContext> => {
+
+const mutationKey = ['createLibraryItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLibraryItem>>, {data: BodyType<CreateLibraryItemRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLibraryItem(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLibraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof createLibraryItem>>>
+    export type CreateLibraryItemMutationBody = BodyType<CreateLibraryItemRequest>
+    export type CreateLibraryItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a library item
+ */
+export const useCreateLibraryItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLibraryItem>>, TError,{data: BodyType<CreateLibraryItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLibraryItem>>,
+        TError,
+        {data: BodyType<CreateLibraryItemRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateLibraryItemMutationOptions(options));
+    }
+
+export const getGetLibraryItemUrl = (id: string,) => {
+
+
+
+
+  return `/api/library/${id}`
+}
+
+/**
+ * @summary Get a library item
+ */
+export const getLibraryItem = async (id: string, options?: RequestInit): Promise<LibraryItemResponse> => {
+
+  return customFetch<LibraryItemResponse>(getGetLibraryItemUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLibraryItemQueryKey = (id: string,) => {
+    return [
+    `/api/library/${id}`
+    ] as const;
+    }
+
+
+export const getGetLibraryItemQueryOptions = <TData = Awaited<ReturnType<typeof getLibraryItem>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLibraryItem>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLibraryItemQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLibraryItem>>> = ({ signal }) => getLibraryItem(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLibraryItem>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLibraryItemQueryResult = NonNullable<Awaited<ReturnType<typeof getLibraryItem>>>
+export type GetLibraryItemQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get a library item
+ */
+
+export function useGetLibraryItem<TData = Awaited<ReturnType<typeof getLibraryItem>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLibraryItem>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLibraryItemQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateLibraryItemUrl = (id: string,) => {
+
+
+
+
+  return `/api/library/${id}`
+}
+
+/**
+ * @summary Update library item title or kind
+ */
+export const updateLibraryItem = async (id: string,
+    updateLibraryItemRequest: UpdateLibraryItemRequest, options?: RequestInit): Promise<LibraryItemResponse> => {
+
+  return customFetch<LibraryItemResponse>(getUpdateLibraryItemUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateLibraryItemRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateLibraryItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLibraryItem>>, TError,{id: string;data: BodyType<UpdateLibraryItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLibraryItem>>, TError,{id: string;data: BodyType<UpdateLibraryItemRequest>}, TContext> => {
+
+const mutationKey = ['updateLibraryItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLibraryItem>>, {id: string;data: BodyType<UpdateLibraryItemRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateLibraryItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLibraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateLibraryItem>>>
+    export type UpdateLibraryItemMutationBody = BodyType<UpdateLibraryItemRequest>
+    export type UpdateLibraryItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Update library item title or kind
+ */
+export const useUpdateLibraryItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLibraryItem>>, TError,{id: string;data: BodyType<UpdateLibraryItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLibraryItem>>,
+        TError,
+        {id: string;data: BodyType<UpdateLibraryItemRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateLibraryItemMutationOptions(options));
+    }
+
+export const getDeleteLibraryItemUrl = (id: string,) => {
+
+
+
+
+  return `/api/library/${id}`
+}
+
+/**
+ * @summary Delete a library item
+ */
+export const deleteLibraryItem = async (id: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDeleteLibraryItemUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteLibraryItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLibraryItem>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLibraryItem>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteLibraryItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLibraryItem>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteLibraryItem(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLibraryItemMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLibraryItem>>>
+
+    export type DeleteLibraryItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a library item
+ */
+export const useDeleteLibraryItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLibraryItem>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLibraryItem>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteLibraryItemMutationOptions(options));
+    }
+
+export const getAttachLibraryItemContextUrl = (id: string,) => {
+
+
+
+
+  return `/api/library/${id}/context`
+}
+
+/**
+ * Attaches an existing library item to a conversation without duplicating the item. Soft-reattaches if previously detached.
+
+ * @summary Attach a library item to a conversation
+ */
+export const attachLibraryItemContext = async (id: string,
+    attachLibraryContextRequest: AttachLibraryContextRequest, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getAttachLibraryItemContextUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      attachLibraryContextRequest,)
+  }
+);}
+
+
+
+
+export const getAttachLibraryItemContextMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attachLibraryItemContext>>, TError,{id: string;data: BodyType<AttachLibraryContextRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof attachLibraryItemContext>>, TError,{id: string;data: BodyType<AttachLibraryContextRequest>}, TContext> => {
+
+const mutationKey = ['attachLibraryItemContext'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof attachLibraryItemContext>>, {id: string;data: BodyType<AttachLibraryContextRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  attachLibraryItemContext(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AttachLibraryItemContextMutationResult = NonNullable<Awaited<ReturnType<typeof attachLibraryItemContext>>>
+    export type AttachLibraryItemContextMutationBody = BodyType<AttachLibraryContextRequest>
+    export type AttachLibraryItemContextMutationError = ErrorType<void>
+
+    /**
+ * @summary Attach a library item to a conversation
+ */
+export const useAttachLibraryItemContext = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attachLibraryItemContext>>, TError,{id: string;data: BodyType<AttachLibraryContextRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof attachLibraryItemContext>>,
+        TError,
+        {id: string;data: BodyType<AttachLibraryContextRequest>},
+        TContext
+      > => {
+      return useMutation(getAttachLibraryItemContextMutationOptions(options));
+    }
+
+export const getDetachLibraryItemContextUrl = (id: string,
+    conversationId: string,) => {
+
+
+
+
+  return `/api/library/${id}/context/${conversationId}`
+}
+
+/**
+ * @summary Soft-detach a library item from a conversation
+ */
+export const detachLibraryItemContext = async (id: string,
+    conversationId: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDetachLibraryItemContextUrl(id,conversationId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDetachLibraryItemContextMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachLibraryItemContext>>, TError,{id: string;conversationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof detachLibraryItemContext>>, TError,{id: string;conversationId: string}, TContext> => {
+
+const mutationKey = ['detachLibraryItemContext'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof detachLibraryItemContext>>, {id: string;conversationId: string}> = (props) => {
+          const {id,conversationId} = props ?? {};
+
+          return  detachLibraryItemContext(id,conversationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DetachLibraryItemContextMutationResult = NonNullable<Awaited<ReturnType<typeof detachLibraryItemContext>>>
+
+    export type DetachLibraryItemContextMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-detach a library item from a conversation
+ */
+export const useDetachLibraryItemContext = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachLibraryItemContext>>, TError,{id: string;conversationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof detachLibraryItemContext>>,
+        TError,
+        {id: string;conversationId: string},
+        TContext
+      > => {
+      return useMutation(getDetachLibraryItemContextMutationOptions(options));
+    }
+
+export const getListConversationContextUrl = (id: string,) => {
+
+
+
+
+  return `/api/conversations/${id}/context`
+}
+
+/**
+ * @summary List library items attached to a conversation
+ */
+export const listConversationContext = async (id: string, options?: RequestInit): Promise<LibraryListResponse> => {
+
+  return customFetch<LibraryListResponse>(getListConversationContextUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListConversationContextQueryKey = (id: string,) => {
+    return [
+    `/api/conversations/${id}/context`
+    ] as const;
+    }
+
+
+export const getListConversationContextQueryOptions = <TData = Awaited<ReturnType<typeof listConversationContext>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listConversationContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListConversationContextQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listConversationContext>>> = ({ signal }) => listConversationContext(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listConversationContext>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListConversationContextQueryResult = NonNullable<Awaited<ReturnType<typeof listConversationContext>>>
+export type ListConversationContextQueryError = ErrorType<void>
+
+
+/**
+ * @summary List library items attached to a conversation
+ */
+
+export function useListConversationContext<TData = Awaited<ReturnType<typeof listConversationContext>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listConversationContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListConversationContextQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -6,13 +6,24 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './attachLibraryContextRequest';
 export * from './buildTarget';
+export * from './createLibraryItemRequest';
 export * from './dnaAnchor';
 export * from './dnaAnchorCompleteness';
 export * from './getPortfolioResumeBust';
 export * from './getPortfolioResumeParams';
 export * from './healthStatus';
 export * from './intelligenceEntryItem';
+export * from './libraryItem';
+export * from './libraryItemKind';
+export * from './libraryItemOrigin';
+export * from './libraryItemProject';
+export * from './libraryItemResponse';
+export * from './libraryListResponse';
+export * from './libraryOriginSource';
+export * from './listLibraryItemsParams';
+export * from './okResponse';
 export * from './portfolioResume';
 export * from './projectIntelligence';
 export * from './projectIntelligenceDna';
@@ -34,3 +45,4 @@ export * from './projectReadinessProjectKind';
 export * from './readinessDimension';
 export * from './readinessDimensionLabel';
 export * from './readinessSourceBreakdown';
+export * from './updateLibraryItemRequest';

@@ -24,6 +24,7 @@ import {
 import { findSemanticTensionsForProject } from "./tensions";
 import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
+import { loadConversationLibraryContext } from "../lib/library";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
@@ -3150,6 +3151,14 @@ WHAT YOU SHOULD NOT DO:
     : { imageBlocks: [], systemNote: "", hasImages: false };
   if (vault.hasImages) {
     systemPrompt += `\n\n--- VISUAL VAULT ---\n${vault.systemNote}\n--- END VISUAL VAULT ---`;
+  }
+
+  // Attached Library items (conversation_context_items) — include verbatim bodies, token-budgeted
+  if (effectiveConversationId) {
+    const libraryContext = await loadConversationLibraryContext(effectiveConversationId, userId);
+    if (libraryContext) {
+      systemPrompt += `\n\n${libraryContext}`;
+    }
   }
 
   systemPrompt += `\n\n--- DECISION ARTIFACTS ---\nWhen the conversation is weighing 3 or more competing options for a real decision, emit DECISION_ARTIFACT at the END of your response (after any other tokens) to save a structured artifact. Do NOT describe the artifact's contents in prose — the artifact renders itself as a card.\n\nDECISION_ARTIFACT:{"kind":"tradeoff_matrix"}\n- Use when comparing 3+ concrete options against criteria (cost, risk, speed, fit, etc.)\n\nDECISION_ARTIFACT:{"kind":"decision_tree"}\n- Use when the decision branches on conditions (if X then A, if Y then B)\n\nDECISION_ARTIFACT:{"kind":"deviation_log","recommended":"<what you recommended>","chosen":"<what the user chose instead>","reason":"<user's stated reason, or omit if not stated>"}\n- Use ONLY when the user explicitly overrides or goes against your recommendation\n\nRules:\n1. At most one short sentence before the token — never narrate the artifact's contents.\n2. Only emit when there is a real decision with real options actually discussed — never speculative or hypothetical.\n3. You may emit at most one tradeoff_matrix or decision_tree per response, plus one deviation_log if applicable.\n--- END DECISION ARTIFACTS ---`;

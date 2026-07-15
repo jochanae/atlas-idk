@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { dualWriteHomeArtifact, deleteLibraryByLegacy } from "../lib/library";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -23,7 +25,7 @@ router.get("/home-artifacts", async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/home-artifacts — save a new artifact
+// POST /api/home-artifacts — save a new artifact (dual-writes to library_items)
 router.post("/home-artifacts", async (req, res): Promise<void> => {
   const userId = (req as any).authUser?.id as number | undefined;
   if (!userId) { res.status(401).json({ error: "Authentication required" }); return; }
@@ -52,6 +54,26 @@ router.post("/home-artifacts", async (req, res): Promise<void> => {
       )
       RETURNING id, type, title, content, conversation_id, created_at, updated_at
     `);
+    const artifact = result.rows[0] as {
+      id: number;
+      type: string;
+      title: string;
+      content: string;
+      conversation_id: string | null;
+    };
+
+    // Dual-write to canonical library_items (best-effort; legacy row is source of truth until cutover)
+    dualWriteHomeArtifact({
+      userId,
+      legacyId: artifact.id,
+      kind: artifact.type,
+      title: artifact.title,
+      content: artifact.content,
+      conversationId: artifact.conversation_id,
+    }).catch((err) => {
+      logger.warn({ err, legacyId: artifact.id }, "home-artifacts dual-write to library_items failed");
+    });
+
     res.status(201).json({ artifact: result.rows[0] });
   } catch (err) {
     req.log?.error({ err }, "Failed to save home artifact");
@@ -74,6 +96,11 @@ router.delete("/home-artifacts/:id", async (req, res): Promise<void> => {
       RETURNING id
     `);
     if (!result.rows.length) { res.status(404).json({ error: "Not found" }); return; }
+
+    deleteLibraryByLegacy("home_artifacts", id, userId).catch((err) => {
+      logger.warn({ err, legacyId: id }, "home-artifacts dual-delete from library_items failed");
+    });
+
     res.json({ ok: true });
   } catch (err) {
     req.log?.error({ err }, "Failed to delete home artifact");
