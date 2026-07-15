@@ -208,6 +208,7 @@ export function AskAtlasSurface({
   attachedFiles = [],
   onRemoveFile,
   focusChip,
+  focusLensChip,
   subheader,
   hideComposer = false,
   handoffSignal,
