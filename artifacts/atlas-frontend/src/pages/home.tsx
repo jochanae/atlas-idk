@@ -1965,6 +1965,40 @@ export default function Home() {
   const rememberAskAtlasConversationId = (conversationId: string) => {
     askAtlasSession.setConversationId(conversationId);
   };
+
+  // Library attachments for the active Ask Atlas conversation. Truth of record
+  // is server-side (`GET /api/conversations/:id/context`); we refetch whenever
+  // the conversation id changes or after an attach/detach so the composer
+  // subheader and the Reference sheet stay in sync across refresh + surface.
+  const [libraryAttachments, setLibraryAttachments] = useState<LibraryContextItem[]>([]);
+  const [libraryDetachBusyId, setLibraryDetachBusyId] = useState<string | null>(null);
+  const refreshLibraryAttachments = useCallback(async () => {
+    if (!askAtlasConversationId) { setLibraryAttachments([]); return; }
+    try {
+      setLibraryAttachments(await fetchLibraryConversationContext(askAtlasConversationId));
+    } catch {
+      // Non-fatal — leave existing chips in place so a transient failure
+      // does not silently claim the user has nothing attached.
+    }
+  }, [askAtlasConversationId]);
+  useEffect(() => { void refreshLibraryAttachments(); }, [refreshLibraryAttachments]);
+  const libraryAttachedIds = useMemo(
+    () => new Set(libraryAttachments.map(i => i.id)),
+    [libraryAttachments],
+  );
+  const handleLibraryDetach = useCallback(async (item: LibraryContextItem) => {
+    if (!askAtlasConversationId) return;
+    setLibraryDetachBusyId(item.id);
+    try {
+      await detachLibraryContextItem(item.id, askAtlasConversationId);
+      await refreshLibraryAttachments();
+    } catch {
+      // Keep chip visible; the next refresh will reconcile.
+    } finally {
+      setLibraryDetachBusyId(null);
+    }
+  }, [askAtlasConversationId, refreshLibraryAttachments]);
+
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
