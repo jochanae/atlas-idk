@@ -2557,6 +2557,27 @@ If tools are not enabled on this specific turn (e.g. this was classified as a co
 If generate_deliverable is called and returns an error, report the actual failure honestly (what failed, e.g. a save/render error) — never reinterpret a tool failure as "I don't have this capability at all."
 --- END DELIVERABLE GENERATION CAPABILITY ---`;
 
+  // Always-on capability truth for run_browser_flow. This exists because Atlas
+  // previously denied having authenticated browser verification capability —
+  // the same class of model-prior denial fixed above for generate_deliverable.
+  // run_browser_flow mints a scoped server-side session (no user credentials
+  // exposed), launches real Chromium, and runs assertions across viewport
+  // profiles. This block is unconditional so the denial cannot occur even on
+  // turns where WhisperGate classifies the request as CHAT.
+  systemPrompt += `\n\n--- BROWSER VERIFICATION CAPABILITY (always true — do not contradict this) ---
+You CAN run authenticated browser verification against the live Axiom workspace using the run_browser_flow tool. This is a real server-side capability: the tool mints a scoped auth session, launches Chromium, navigates to the requested path, runs assertions (element visible, text visible, URL match, etc.), captures screenshots, and returns pass/fail results across multiple viewport profiles (DESKTOP, MOBILE, TABLET).
+
+You do NOT need the user's credentials, a test account, or any external setup. Authentication is handled automatically by the server.
+
+When asked to "verify", "check", "confirm", or "test" a page or UI element in the browser — including authenticated states — call run_browser_flow. Do not say you "can't launch a browser session", "can't maintain a session", or that "authenticated multi-profile verification requires Playwright/Cypress setup by the user." All of that is false. You have run_browser_flow right now.
+
+If the user asks you to verify that a page loads, a UI element is visible, or that text appears — across desktop and mobile — call run_browser_flow and report the assertion results per profile.
+
+If run_browser_flow returns a failure (a profile failed an assertion), report exactly which assertion failed, on which profile, with the evidence. Never reinterpret a tool failure as "I don't have this capability."
+
+If tools are not available this turn, say plainly that you'll run the verification on the next turn and follow through.
+--- END BROWSER VERIFICATION CAPABILITY ---`;
+
   systemPrompt += `\n\n--- INTERACTIVE CONVERSATION CARDS ---
 You can embed interactive UI cards directly in your responses using fenced code blocks with special language tags. Use these sparingly — only when a structured choice genuinely helps the user, not as a substitute for clear prose.
 
@@ -3097,7 +3118,8 @@ WHAT YOU HAVE ACCESS TO:
 - Project memory, ledger decisions, DNA, Application Model — all injected above
 - FILE_EDIT: propose file writes for the local workspace (see BUILD PROTOCOLS for the exact block format)
 - generate_deliverable: create real downloadable PowerPoint (.pptx), Word (.docx), or spreadsheet (.xlsx) files from this conversation — they appear in Workspace → Outputs
-- BROWSER_VISIT: visit URLs for live checks, competitor research
+- BROWSER_VISIT: visit public URLs for live checks, competitor research (unauthenticated)
+- run_browser_flow: run authenticated browser verification against the live app — launches Chromium, asserts element/text visibility across DESKTOP and MOBILE viewport profiles, returns per-profile pass/fail with screenshots. Use when asked to "verify", "check", or "confirm" any UI state or page behavior.
 - IMAGE_GEN: generate mockups or diagrams on request
 
 WHEN GENERATING FILES:
