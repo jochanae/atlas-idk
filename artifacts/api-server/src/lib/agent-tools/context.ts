@@ -59,6 +59,7 @@ export interface AgentPlanState {
 export interface AgentToolContext {
   projectId: number;
   userId: number;
+  conversationId?: string | null;
   messageId?: number;
   workspaceDir: string;
   res: Response;

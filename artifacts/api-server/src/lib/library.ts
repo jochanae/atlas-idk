@@ -326,3 +326,55 @@ export async function projectNameMap(
 export function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
+
+export type CaptureDeliverableArgs = {
+  userId: number;
+  projectId: number;
+  conversationId?: string | null;
+  artifactId: number;
+  type: string;
+  title: string;
+  summary?: string | null;
+};
+
+/**
+ * Auto-capture a file-backed deliverable (pptx/docx/xlsx) into library_items.
+ * Idempotent via legacy_source="project_artifacts" + legacy_id=artifactId.
+ * Fire-and-forget — never throws.
+ */
+export async function captureDeliverableToLibrary(args: CaptureDeliverableArgs): Promise<void> {
+  const kind = "document" satisfies LibraryItemKind;
+  const legacyId = String(args.artifactId);
+  const content = args.summary?.trim() || args.title;
+  const preview = truncatePreview(content);
+  try {
+    const existing = await db.execute(sql`
+      SELECT id FROM library_items
+      WHERE legacy_source = ${"project_artifacts"} AND legacy_id = ${legacyId}
+      LIMIT 1
+    `);
+    if (existing.rows.length > 0) {
+      await db.execute(sql`
+        UPDATE library_items SET
+          title = ${args.title},
+          content = ${content},
+          preview = ${preview},
+          updated_at = now()
+        WHERE id = ${(existing.rows[0] as { id: string }).id}::uuid
+      `);
+      return;
+    }
+    await db.execute(sql`
+      INSERT INTO library_items (
+        user_id, project_id, kind, title, content, preview,
+        origin_source, origin_conversation_id, legacy_source, legacy_id
+      )
+      VALUES (
+        ${args.userId}, ${args.projectId}, ${kind}, ${args.title}, ${content}, ${preview},
+        ${"workspace"}, ${args.conversationId ?? null}, ${"project_artifacts"}, ${legacyId}
+      )
+    `);
+  } catch {
+    // Fire-and-forget — never propagate, never block the tool result
+  }
+}

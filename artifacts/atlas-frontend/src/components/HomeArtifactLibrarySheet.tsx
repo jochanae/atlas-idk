@@ -1,13 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-
-interface HomeArtifact {
-  id: number;
-  type: string;
-  title: string;
-  content: string;
-  conversation_id: string | null;
-  created_at: string;
-}
+import {
+  fetchLibraryItems,
+  deleteLibraryItem,
+  type LibraryItem,
+} from "@/lib/library";
 
 interface Props {
   open: boolean;
@@ -23,7 +19,7 @@ function formatDate(iso: string): string {
   }
 }
 
-function typeLabel(type: string): string {
+function kindLabel(kind: string): string {
   const map: Record<string, string> = {
     document: "Doc",
     prd: "PRD",
@@ -32,24 +28,30 @@ function typeLabel(type: string): string {
     spec: "Spec",
     outline: "Outline",
     brief: "Brief",
+    bookmark: "Bookmark",
+    sketch: "Sketch",
+    other: "Item",
   };
-  return map[type] ?? type;
+  return map[kind] ?? kind;
+}
+
+function originLabel(item: LibraryItem): string {
+  if (item.origin.source === "workspace") return "Workspace";
+  if (item.origin.source === "ask-atlas") return "Ask Atlas";
+  return "";
 }
 
 export function HomeArtifactLibrarySheet({ open, onClose }: Props) {
-  const [artifacts, setArtifacts] = useState<HomeArtifact[]>([]);
+  const [items, setItems] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/home-artifacts", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json() as { artifacts: HomeArtifact[] };
-        setArtifacts(data.artifacts ?? []);
-      }
+      const fetched = await fetchLibraryItems({ limit: 100 });
+      setItems(fetched);
     } catch {}
     setLoading(false);
   }, []);
@@ -58,17 +60,17 @@ export function HomeArtifactLibrarySheet({ open, onClose }: Props) {
     if (open) { load(); setSelectedId(null); }
   }, [open, load]);
 
-  const handleDelete = useCallback(async (id: number) => {
-    setDeletingId(id);
+  const handleDelete = useCallback(async (item: LibraryItem) => {
+    setDeletingId(item.id);
     try {
-      await fetch(`/api/home-artifacts/${id}`, { method: "DELETE", credentials: "include" });
-      setArtifacts(prev => prev.filter(a => a.id !== id));
-      if (selectedId === id) setSelectedId(null);
+      await deleteLibraryItem(item);
+      setItems(prev => prev.filter(a => a.id !== item.id));
+      if (selectedId === item.id) setSelectedId(null);
     } catch {}
     setDeletingId(null);
   }, [selectedId]);
 
-  const selected = artifacts.find(a => a.id === selectedId) ?? null;
+  const selected = items.find(a => a.id === selectedId) ?? null;
 
   if (!open) return null;
 
@@ -112,9 +114,9 @@ export function HomeArtifactLibrarySheet({ open, onClose }: Props) {
             <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.7 }}>
               {selected ? "Saved Document" : "Library"}
             </span>
-            {!selected && artifacts.length > 0 && (
+            {!selected && items.length > 0 && (
               <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4 }}>
-                {artifacts.length}
+                {items.length}
               </span>
             )}
           </div>
@@ -134,21 +136,21 @@ export function HomeArtifactLibrarySheet({ open, onClose }: Props) {
             </div>
           )}
 
-          {!loading && !selected && artifacts.length === 0 && (
+          {!loading && !selected && items.length === 0 && (
             <div style={{ textAlign: "center", padding: "48px 0 24px" }}>
               <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, letterSpacing: "0.1em", marginBottom: 8 }}>
                 nothing saved yet
               </div>
               <div style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.35, fontFamily: "var(--app-font-sans)", lineHeight: 1.5 }}>
-                Hit the bookmark icon on any Atlas response to save it here.
+                Deliverables you generate and documents you save from Atlas appear here.
               </div>
             </div>
           )}
 
-          {!loading && !selected && artifacts.map(artifact => (
+          {!loading && !selected && items.map(item => (
             <div
-              key={artifact.id}
-              onClick={() => setSelectedId(artifact.id)}
+              key={item.id}
+              onClick={() => setSelectedId(item.id)}
               style={{
                 display: "flex", alignItems: "flex-start", gap: 12,
                 padding: "12px 14px",
@@ -174,25 +176,30 @@ export function HomeArtifactLibrarySheet({ open, onClose }: Props) {
                     textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.7,
                     padding: "1px 5px", border: "1px solid rgba(201,162,76,0.25)", borderRadius: 3,
                   }}>
-                    {typeLabel(artifact.type)}
+                    {kindLabel(item.kind)}
                   </span>
+                  {originLabel(item) && (
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", opacity: 0.35, letterSpacing: "0.08em" }}>
+                      {originLabel(item)}
+                    </span>
+                  )}
                   <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4 }}>
-                    {formatDate(artifact.created_at)}
+                    {formatDate(item.createdAt)}
                   </span>
                 </div>
                 <div style={{ fontSize: 14, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", fontWeight: 500, lineHeight: 1.35, marginBottom: 5 }}>
-                  {artifact.title}
+                  {item.title}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.5, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {artifact.content.slice(0, 120)}
+                  {(item.content ?? item.preview).slice(0, 120)}
                 </div>
               </div>
               <button
-                onClick={e => { e.stopPropagation(); handleDelete(artifact.id); }}
-                disabled={deletingId === artifact.id}
+                onClick={e => { e.stopPropagation(); void handleDelete(item); }}
+                disabled={deletingId === item.id}
                 style={{
                   background: "transparent", border: "none", padding: "4px", cursor: "pointer",
-                  color: "var(--atlas-muted)", opacity: deletingId === artifact.id ? 0.2 : 0.35,
+                  color: "var(--atlas-muted)", opacity: deletingId === item.id ? 0.2 : 0.35,
                   flexShrink: 0, lineHeight: 1, marginTop: 2,
                   transition: "opacity 140ms",
                 }}
@@ -213,25 +220,40 @@ export function HomeArtifactLibrarySheet({ open, onClose }: Props) {
                     textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.7,
                     padding: "1px 5px", border: "1px solid rgba(201,162,76,0.25)", borderRadius: 3,
                   }}>
-                    {typeLabel(selected.type)}
+                    {kindLabel(selected.kind)}
                   </span>
+                  {originLabel(selected) && (
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", opacity: 0.35, letterSpacing: "0.08em" }}>
+                      {originLabel(selected)}
+                    </span>
+                  )}
                   <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4 }}>
-                    {formatDate(selected.created_at)}
+                    {formatDate(selected.createdAt)}
                   </span>
                 </div>
                 <div style={{ fontSize: 17, fontWeight: 600, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", marginBottom: 4 }}>
                   {selected.title}
                 </div>
+                {selected.project && (
+                  <div style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.4, marginBottom: 8 }}>
+                    {selected.project.name ?? `Project #${selected.project.id}`}
+                  </div>
+                )}
+                {selected.origin.source === "workspace" && (
+                  <div style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.45, marginBottom: 12, lineHeight: 1.5 }}>
+                    Generated file — download from Workspace → Outputs.
+                  </div>
+                )}
               </div>
               <div style={{
                 fontSize: 14, lineHeight: 1.75, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)",
                 opacity: 0.88, whiteSpace: "pre-wrap", wordBreak: "break-word",
               }}>
-                {selected.content}
+                {selected.content ?? selected.preview}
               </div>
               <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
                 <button
-                  onClick={() => { navigator.clipboard.writeText(selected.content).catch(() => {}); }}
+                  onClick={() => { navigator.clipboard.writeText(selected.content ?? selected.preview).catch(() => {}); }}
                   style={{
                     background: "transparent", border: "1px solid var(--atlas-border, rgba(255,255,255,0.1))",
                     borderRadius: 8, padding: "7px 14px", cursor: "pointer",
@@ -243,7 +265,7 @@ export function HomeArtifactLibrarySheet({ open, onClose }: Props) {
                   Copy
                 </button>
                 <button
-                  onClick={() => handleDelete(selected.id)}
+                  onClick={() => void handleDelete(selected)}
                   style={{
                     background: "transparent", border: "1px solid rgba(239,68,68,0.2)",
                     borderRadius: 8, padding: "7px 14px", cursor: "pointer",

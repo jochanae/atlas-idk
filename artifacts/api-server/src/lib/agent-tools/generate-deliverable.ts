@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { generateArtifact, listArtifactRendererTypes } from "../artifactEngine";
+import { captureDeliverableToLibrary } from "../library";
 import type { AgentToolContext, GeneratedArtifactMeta } from "./context";
 // Side-effect imports: each renderer registers itself with the Artifact Engine on load.
 // The agent loop can run without ever hitting the projectArtifacts routes, so this
@@ -94,6 +95,18 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
         };
 
         ctx.sideEffects.generatedArtifacts.push(meta);
+
+        // Auto-capture into Library — fire-and-forget, never blocks tool result.
+        void captureDeliverableToLibrary({
+          userId: ctx.userId,
+          projectId: ctx.projectId,
+          conversationId: ctx.conversationId ?? null,
+          artifactId: artifact.id,
+          type: artifact.type,
+          title: artifact.title,
+          summary: artifact.summary ?? null,
+        });
+
         ctx.sideEffects.timelineSteps.push({
           verb: "ARTIFACT_CREATED",
           target: artifact.title,

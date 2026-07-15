@@ -698,6 +698,7 @@ const CREATE_PROJECT_TOOL: Anthropic.Tool = {
 const SCHEMA_CTX = {
   projectId: 0,
   userId: 0,
+  conversationId: null,
   workspaceDir: "",
   res: undefined as unknown as import("express").Response,
   sideEffects: createSideEffects(),
@@ -5527,6 +5528,7 @@ PROSE RULES (enforced — contradiction detection is active):
       sharedAgentCtxPromise = (async () => ({
         projectId: focusProjectId ?? 0,
         userId,
+        conversationId: effectiveConversationId ?? null,
         workspaceDir: focusProjectId ? await ensureProjectWorkspaceDir(focusProjectId) : "",
         res,
         sideEffects: sharedSideEffects,
