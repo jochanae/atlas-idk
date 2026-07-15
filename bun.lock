@@ -384,8 +384,12 @@
     "scripts": {
       "name": "@workspace/scripts",
       "version": "0.0.0",
+      "dependencies": {
+        "pg": "^8.20.0",
+      },
       "devDependencies": {
         "@types/node": "catalog:",
+        "@types/pg": "^8.20.0",
         "tsx": "catalog:",
       },
     },
