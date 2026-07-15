@@ -294,7 +294,9 @@ export function TimelineRail({
           cursor: "pointer",
           backdropFilter: "blur(6px)",
           boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
-          zIndex: 19,
+          // Must sit above AskAtlasSurface (z-index 260) so the magnifier is
+          // reachable on the Ask Atlas conversation surface too.
+          zIndex: 270,
           padding: 0,
           color: "var(--atlas-search-btn-fg, rgba(201,162,76,0.95))",
           transition: "transform 140ms ease, background 140ms ease",
@@ -330,7 +332,8 @@ export function TimelineRail({
             width: 14,
             // Elevate above surface overlays (e.g. AskAtlasSurface at z-index 260)
             // when the rail is pinned visible — this is what makes it show through.
-            zIndex: alwaysVisible ? 265 : 18,
+            // Rail dots must clear surface overlays too (AskAtlasSurface = 260).
+            zIndex: alwaysVisible ? 270 : 267,
             pointerEvents: railVisible ? "auto" : "none",
             opacity: railVisible ? 1 : 0,
             transition: "opacity 260ms ease",

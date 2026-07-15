@@ -5979,6 +5979,13 @@ export default function Home() {
             items={libraryAttachments}
             busyId={libraryDetachBusyId}
             onDetach={handleLibraryDetach}
+            onOpen={() => {
+              // Open the Library sheet on the currently-active Ask Atlas
+              // conversation so the user can view/download/preview the item.
+              setFocusSheetConversationId(askAtlasConversationId ?? activeConversationId);
+              setFocusSheetTab("library");
+              setShowFocusPicker(true);
+            }}
           />
         ) : null}
         focusLensChip={focusLensChipRef.current}
