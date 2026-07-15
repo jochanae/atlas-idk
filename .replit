@@ -42,7 +42,6 @@ timeoutMs = 20000
 
 [[ports]]
 localPort = 8080
-externalPort = 8080
 
 [[ports]]
 localPort = 8081
@@ -62,7 +61,6 @@ externalPort = 4200
 
 [[ports]]
 localPort = 22883
-externalPort = 3000
 
 [userenv]
 
