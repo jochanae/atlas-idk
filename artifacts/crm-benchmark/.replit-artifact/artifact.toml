@@ -17,15 +17,6 @@ localPort = 20234
 [services.development]
 run = "pnpm --filter @workspace/crm-benchmark run dev"
 
-[services.production]
-build = [ "pnpm", "--filter", "@workspace/crm-benchmark", "run", "build" ]
-publicDir = "artifacts/crm-benchmark/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
-
 [services.env]
 PORT = "20234"
 BASE_PATH = "/crm-benchmark/"
