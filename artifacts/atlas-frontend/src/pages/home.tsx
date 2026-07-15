@@ -5329,6 +5329,9 @@ export default function Home() {
                 }}
               />
             </div>
+              );
+            })()}
+
 
             {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
             <div style={{
