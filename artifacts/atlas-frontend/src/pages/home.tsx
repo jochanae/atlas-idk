@@ -58,10 +58,10 @@ import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
-import { HomeArtifactLibrarySheet } from "@/components/HomeArtifactLibrarySheet";
 import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
 import { LibraryAttachmentsBar } from "@/components/LibraryAttachmentsBar";
 import {
+  createLibraryItem,
   fetchConversationContext as fetchLibraryConversationContext,
   detachLibraryItem as detachLibraryContextItem,
   type LibraryItem as LibraryContextItem,
@@ -1969,7 +1969,7 @@ export default function Home() {
   // Library attachments for the active Ask Atlas conversation. Truth of record
   // is server-side (`GET /api/conversations/:id/context`); we refetch whenever
   // the conversation id changes or after an attach/detach so the composer
-  // subheader and the Reference sheet stay in sync across refresh + surface.
+  // subheader and the Library sheet stay in sync across refresh + surface.
   const [libraryAttachments, setLibraryAttachments] = useState<LibraryContextItem[]>([]);
   const [libraryDetachBusyId, setLibraryDetachBusyId] = useState<string | null>(null);
   const refreshLibraryAttachments = useCallback(async () => {
@@ -2053,7 +2053,6 @@ export default function Home() {
   const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "library">("projects");
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
-  const [showLibrarySheet, setShowLibrarySheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
   // Ask Atlas is a standalone surface — see AskAtlasSurface.
   // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
@@ -4708,7 +4707,10 @@ export default function Home() {
                   {nexusChat.messages.length > 0 && (
                     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
                       <button
-                        onClick={() => setShowLibrarySheet(true)}
+                        onClick={() => {
+                          setFocusSheetTab("library");
+                          setShowFocusPicker(true);
+                        }}
                         title="Saved documents"
                         style={{
                           background: "transparent", border: "none", padding: "3px 6px", cursor: "pointer",
@@ -4897,22 +4899,24 @@ export default function Home() {
                                 <button
                                   title={savedMsgIdxSet.has(i) ? "Saved to Library" : "Save to Library"}
                                   onClick={async () => {
-                                    if (savedMsgIdxSet.has(i)) { setShowLibrarySheet(true); return; }
+                                    if (savedMsgIdxSet.has(i)) {
+                                      setFocusSheetTab("library");
+                                      setShowFocusPicker(true);
+                                      return;
+                                    }
                                     const headingMatch = displayContent.match(/^#{1,3}\s+(.+)/m);
                                     const autoTitle = headingMatch
                                       ? headingMatch[1].trim().slice(0, 80)
                                       : displayContent.replace(/[#*_`]/g, "").trim().slice(0, 80);
                                     try {
-                                      await fetch("/api/home-artifacts", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        credentials: "include",
-                                        body: JSON.stringify({
-                                          title: autoTitle,
-                                          content: displayContent,
-                                          type: /prd|product requirement/i.test(displayContent) ? "prd" : /plan|roadmap/i.test(displayContent) ? "plan" : /strateg/i.test(displayContent) ? "strategy" : /spec/i.test(displayContent) ? "spec" : "document",
-                                          conversationId: activeConversationId ?? undefined,
-                                        }),
+                                      await createLibraryItem({
+                                        title: autoTitle,
+                                        content: displayContent,
+                                        kind: /prd|product requirement/i.test(displayContent) ? "prd" : /plan|roadmap/i.test(displayContent) ? "plan" : /strateg/i.test(displayContent) ? "strategy" : /spec/i.test(displayContent) ? "spec" : "document",
+                                        origin: {
+                                          source: "ask-atlas",
+                                          conversationId: activeConversationId ?? askAtlasConversationId ?? undefined,
+                                        },
                                       });
                                       setSavedMsgIdxSet(prev => new Set([...prev, i]));
                                     } catch {}
@@ -6024,11 +6028,9 @@ export default function Home() {
 
       {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Atlas too. */}
 
-      {/* Focus + Reference sheet. Reference tab reads the canonical
-          `/api/library` endpoint via `@/lib/library` and drives real
-          persistent attachments to the active Ask Atlas conversation.
-          Copy still reads "Reference" — the rename to "Library" ships
-          in the same release once end-to-end verification passes. */}
+      {/* Focus + Library sheet. Library reads the canonical `/api/library`
+          endpoint and drives persistent attachments to the active Ask Atlas
+          conversation. */}
       <AskAtlasFocusSheet
         open={showFocusPicker}
         initialTab={focusSheetTab}
@@ -6597,12 +6599,6 @@ export default function Home() {
       </div>
 
       <HandoffCinemaOverlay />
-
-      {/* Home Artifact Library — standalone docs/plans saved from Ask Atlas */}
-      <HomeArtifactLibrarySheet
-        open={showLibrarySheet}
-        onClose={() => setShowLibrarySheet(false)}
-      />
 
       {/* Quick-park sheet — opened from the composer Park icon. Mirrors workspace behavior. */}
       {showParkSheet && (
