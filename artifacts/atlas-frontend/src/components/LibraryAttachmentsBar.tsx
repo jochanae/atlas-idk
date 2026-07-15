@@ -1,10 +1,15 @@
+import { X } from "lucide-react";
 import type { LibraryItem } from "@/lib/library";
+import { metaFor } from "@/components/library/kindMeta";
 
 /**
- * LibraryAttachmentsBar — chips of library items currently attached
- * to a conversation. Renders in the composer subheader. Attachment
- * state is truth-of-record from `GET /api/conversations/:id/context`
- * (fetched by parent); this component just renders + emits detach.
+ * LibraryAttachmentsBar — chips of Library items currently attached to a
+ * conversation. Renders in the composer subheader. Attachment state is
+ * truth-of-record from `GET /api/conversations/:id/context` (fetched by
+ * parent); this component just renders + emits detach.
+ *
+ * Each chip carries the item's kind icon + specific type label so the two
+ * surfaces (Library list, attachments bar) read the same.
  */
 export interface LibraryAttachmentsBarProps {
   items: LibraryItem[];
@@ -16,20 +21,22 @@ export function LibraryAttachmentsBar({ items, busyId, onDetach }: LibraryAttach
   if (!items.length) return null;
   return (
     <div
-      aria-label="Attached references"
+      aria-label="Attached Library items"
       style={{
         display: "flex", flexWrap: "wrap", gap: 6, padding: "6px 12px 0",
       }}
     >
       {items.map((item) => {
         const busy = busyId === item.id;
+        const meta = metaFor(item.kind);
+        const Icon = meta.icon;
         return (
           <span
             key={item.id}
-            title={item.title}
+            title={`${meta.typeLabel} · ${item.title}`}
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              maxWidth: 200,
+              maxWidth: 220,
               padding: "3px 6px 3px 8px",
               borderRadius: 999,
               background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
@@ -40,8 +47,9 @@ export function LibraryAttachmentsBar({ items, busyId, onDetach }: LibraryAttach
               opacity: busy ? 0.5 : 1,
             }}
           >
+            <Icon size={11} strokeWidth={1.8} />
             <span style={{
-              maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              maxWidth: 170, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>{item.title}</span>
             <button
               type="button"
@@ -53,9 +61,7 @@ export function LibraryAttachmentsBar({ items, busyId, onDetach }: LibraryAttach
                 color: "var(--atlas-gold)", opacity: 0.7, lineHeight: 1, display: "inline-flex",
               }}
             >
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/>
-              </svg>
+              <X size={10} strokeWidth={2} />
             </button>
           </span>
         );
