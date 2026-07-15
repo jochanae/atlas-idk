@@ -18,7 +18,7 @@ localPort = 22883
 run = "pnpm --filter @workspace/atlas-frontend run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/atlas-frontend", "run", "build" ]
+build = [ "bash", "scripts/build-frontend-prod.sh" ]
 publicDir = "artifacts/atlas-frontend/dist/public"
 serve = "static"
 
