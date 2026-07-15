@@ -2010,7 +2010,7 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
-  const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "saved">("projects");
+  const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "reference">("projects");
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [showLibrarySheet, setShowLibrarySheet] = useState(false);
@@ -5200,26 +5200,27 @@ export default function Home() {
                     setShowFocusPicker(true);
                   }}
                   style={{
-                    height: 22,
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    padding: "0 8px", borderRadius: 999,
+                    height: 19,
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: "0 7px", borderRadius: 999,
                     background: _focusedName
-                      ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"
+                      ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)"
                       : "color-mix(in oklab, var(--atlas-gold) 4%, transparent)",
                     border: _focusedName
-                      ? "1px solid color-mix(in oklab, var(--atlas-gold) 45%, transparent)"
-                      : "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
+                      ? "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)"
+                      : "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
                     color: _focusedName ? "var(--atlas-gold)" : "var(--atlas-muted)",
                     cursor: "pointer",
                     fontFamily: "var(--app-font-mono)",
-                    fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase",
-                    whiteSpace: "nowrap", maxWidth: 180,
+                    fontSize: 8.5, letterSpacing: "0.08em", textTransform: "uppercase",
+                    whiteSpace: "nowrap", maxWidth: 160,
                     overflow: "hidden", textOverflow: "ellipsis",
                     WebkitTapHighlightColor: "transparent",
                     lineHeight: 1,
+                    opacity: _focusedName ? 1 : 0.75,
                   }}
                 >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="9" />
                     <circle cx="12" cy="12" r="4" />
                     <circle cx="12" cy="12" r="1" fill="currentColor" />
@@ -5942,8 +5943,15 @@ export default function Home() {
         projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
         onSelectAllProjects={handleHomeFocusAllProjects}
         onSelectProject={handleHomeFocusSelect}
+        onInjectReference={({ title, content }) => {
+          const block = `> Reference — ${title}\n>\n${content.split("\n").map(l => `> ${l}`).join("\n")}\n\n`;
+          setInput(prev => (prev.trim() ? `${block}${prev}` : block));
+          setAskAtlasSurfaceOpen(true);
+          setTimeout(() => textareaRef.current?.focus(), 60);
+        }}
         onClose={() => setShowFocusPicker(false)}
       />
+
 
 
       {/* Below-the-fold workspace — now lives inside the Briefcase drawer. */}

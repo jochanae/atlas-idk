@@ -34,7 +34,8 @@ interface Props {
   projects: ProjectOption[];
   onSelectAllProjects: () => void;
   onSelectProject: (id: number) => void;
-  initialTab?: "projects" | "saved";
+  onInjectReference?: (artifact: { title: string; content: string }) => void;
+  initialTab?: "projects" | "reference";
 }
 
 function formatDate(iso: string): string {
@@ -53,9 +54,9 @@ function typeLabel(type: string): string {
 
 export function AskAtlasFocusSheet({
   open, onClose, focusProjectId, projects,
-  onSelectAllProjects, onSelectProject, initialTab = "projects",
+  onSelectAllProjects, onSelectProject, onInjectReference, initialTab = "projects",
 }: Props) {
-  const [tab, setTab] = useState<"projects" | "saved">(initialTab);
+  const [tab, setTab] = useState<"projects" | "reference">(initialTab);
   const [artifacts, setArtifacts] = useState<HomeArtifact[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -76,7 +77,7 @@ export function AskAtlasFocusSheet({
   }, []);
 
   useEffect(() => {
-    if (open && tab === "saved") { load(); setSelectedId(null); }
+    if (open && tab === "reference") { load(); setSelectedId(null); }
   }, [open, tab, load]);
 
   const handleDelete = useCallback(async (id: number) => {
@@ -92,7 +93,6 @@ export function AskAtlasFocusSheet({
   if (!open) return null;
 
   const selected = artifacts.find(a => a.id === selectedId) ?? null;
-  const focusedProject = focusProjectId != null ? projects.find(p => p.id === focusProjectId) ?? null : null;
 
   return (
     <div
@@ -137,7 +137,7 @@ export function AskAtlasFocusSheet({
             </button>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-            {(["projects", "saved"] as const).map(t => (
+            {(["projects", "reference"] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -149,7 +149,7 @@ export function AskAtlasFocusSheet({
                   cursor: "pointer", marginBottom: -1,
                 }}
               >
-                {t === "projects" ? "Projects" : "Saved"}
+                {t === "projects" ? "Projects" : "Reference"}
               </button>
             ))}
           </div>
@@ -159,9 +159,6 @@ export function AskAtlasFocusSheet({
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 0 24px" }}>
           {tab === "projects" && (
             <>
-              <div style={{ padding: "4px 20px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>
-                What Atlas is focused on
-              </div>
               <button
                 type="button"
                 onClick={onSelectAllProjects}
@@ -190,13 +187,8 @@ export function AskAtlasFocusSheet({
             </>
           )}
 
-          {tab === "saved" && (
+          {tab === "reference" && (
             <div style={{ padding: "0 20px" }}>
-              {focusedProject && (
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.55, marginBottom: 10 }}>
-                  Saved · all conversations
-                </div>
-              )}
               {loading && (
                 <div style={{ textAlign: "center", padding: "40px 0", fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.1em" }}>
                   loading…
@@ -206,10 +198,10 @@ export function AskAtlasFocusSheet({
               {!loading && !selected && artifacts.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 0 20px" }}>
                   <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, letterSpacing: "0.1em", marginBottom: 8 }}>
-                    nothing saved yet
+                    nothing here yet
                   </div>
                   <div style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.35, fontFamily: "var(--app-font-sans)", lineHeight: 1.5 }}>
-                    Hit the bookmark icon on any Atlas response to save it here.
+                    Bookmark any Atlas response to keep it here — then bring it back into a future conversation.
                   </div>
                 </div>
               )}
@@ -288,7 +280,18 @@ export function AskAtlasFocusSheet({
                   <div style={{ fontSize: 14, lineHeight: 1.75, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", opacity: 0.88, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                     {selected.content}
                   </div>
-                  <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+                  <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {onInjectReference && (
+                      <button
+                        onClick={() => {
+                          onInjectReference({ title: selected.title, content: selected.content });
+                          onClose();
+                        }}
+                        style={{ background: "var(--atlas-gold, #c9a24c)", border: "1px solid var(--atlas-gold, #c9a24c)", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "#000", fontSize: 12, fontFamily: "var(--app-font-sans)", fontWeight: 600 }}
+                      >
+                        Bring into conversation
+                      </button>
+                    )}
                     <button
                       onClick={() => { navigator.clipboard.writeText(selected.content).catch(() => {}); }}
                       style={{ background: "transparent", border: "1px solid var(--atlas-border, rgba(255,255,255,0.1))", borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 12, fontFamily: "var(--app-font-sans)" }}
