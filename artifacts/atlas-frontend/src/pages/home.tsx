@@ -5873,6 +5873,7 @@ export default function Home() {
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={null}
+        focusLensChip={focusLensChipRef.current}
         focusChip={
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <button
