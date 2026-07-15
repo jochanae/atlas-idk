@@ -217,6 +217,7 @@ function Router() {
       ) : (
         <Switch>
           <Route path="/" component={RootRouteGate} />
+          <Route path="/index" component={RootRouteGate} />
           <Route path="/landing" component={Landing} />
           <Route path="/login" component={Login} />
           <Route path="/auth/callback" component={AuthCallback} />
