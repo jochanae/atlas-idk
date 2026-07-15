@@ -355,8 +355,10 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
 
   try {
     const runResult = await db.execute(sql`
-      SELECT id, project_id, thread_id, message_id, conversation_id, mode, status, summary,
-             prompt, intent, started_at, completed_at, elapsed_ms
+      SELECT id, project_id, thread_id, message_id, conversation_id,
+             mode, run_mode, status, summary, prompt, intent,
+             verification_contract, execution_state,
+             started_at, completed_at, elapsed_ms
       FROM execution_runs
       WHERE id = ${id}
       LIMIT 1
@@ -388,6 +390,8 @@ router.get("/runs/:id", async (req, res): Promise<void> => {
       startedAt: r.started_at,
       completedAt: r.completed_at,
       elapsedMs: r.elapsed_ms,
+      verificationContract: (r.verification_contract as Record<string, unknown> | null) ?? null,
+      executionState: (r.execution_state as string | null) ?? null,
       steps: stepsResult.rows.map((s) => ({
         id: s.id,
         verb: s.verb,
