@@ -1076,6 +1076,7 @@ export function ViewChangesPanel({
     if (runId) return dbRuns.find((r) => r.id === runId) ?? null;
     return dbRuns[0] ?? null;
   }, [dbRuns, runId]);
+  const activeRunId = runId ?? timelineRun?.id ?? null;
 
   // Auto-select "changes" only when there are truly no timeline-able steps at all.
   // FILE_EDIT, LINE_PATCH, etc. all render in the timeline — don't force "changes" just
@@ -1095,21 +1096,21 @@ export function ViewChangesPanel({
 
   // Changes lens: in-memory message fallback for paths not yet in the DB.
   const filteredMessages = useMemo(() => {
-    if (!runId) return messages;
+    if (!activeRunId) return messages;
     const hits = messages.filter((m) => {
       const tagged = (m as { runId?: string; run_id?: string }).runId
         ?? (m as { runId?: string; run_id?: string }).run_id;
-      return tagged === runId;
+      return tagged === activeRunId;
     });
     return hits;
-  }, [messages, runId]);
+  }, [messages, activeRunId]);
 
   // Changes lens: DB-backed file rows, supplemented by in-memory fallback.
   const changeRows = useMemo(() => {
     const dbRows: FileRow[] = [];
     const seenPaths = new Set<string>();
     for (const run of dbRuns) {
-      if (runId && run.id !== runId) continue;
+      if (activeRunId && run.id !== activeRunId) continue;
       for (const step of run.steps) {
         if (
           (step.verb === "FILE_EDIT" || step.verb === "LINE_PATCH" || step.verb === "FILE_DELETE" || step.verb === "Writing" || step.verb === "Written" || step.verb === "Patching") &&
@@ -1137,7 +1138,7 @@ export function ViewChangesPanel({
     }
     const msgRows = collectFileRows(filteredMessages).filter((r) => !seenPaths.has(r.path));
     return [...dbRows, ...msgRows];
-  }, [dbRuns, filteredMessages, runId, projectId]);
+  }, [dbRuns, filteredMessages, activeRunId, projectId]);
 
   const clearRunFilter = () => {
     try {
@@ -1260,7 +1261,7 @@ export function ViewChangesPanel({
           </div>
         )
       ) : (
-        <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} scopedToRun={!!runId} />
+        <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} scopedToRun={!!activeRunId} />
       )}
     </div>
   );
