@@ -2,15 +2,13 @@ import { useState } from "react";
 import { ArtifactsGallery } from "./ArtifactsGallery";
 import { OutputsGallery } from "./OutputsGallery";
 
-type SubTab = "outputs" | "artifacts";
-
-const SUB_TABS: Array<{ id: SubTab; label: string }> = [
+const SUB_TABS: Array<{ id: "outputs" | "artifacts"; label: string }> = [
   { id: "outputs", label: "All Outputs" },
   { id: "artifacts", label: "Artifacts" },
 ];
 
 export function OutputsPanel({ projectId }: { projectId: number }) {
-  const [subTab, setSubTab] = useState<SubTab>("outputs");
+  const [subTab, setSubTab] = useState<"outputs" | "artifacts">("outputs");
 
   const subTabBar = (
     <div style={{ display: "flex", gap: 0, padding: "0 14px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>

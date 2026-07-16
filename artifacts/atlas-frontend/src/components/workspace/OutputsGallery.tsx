@@ -312,6 +312,8 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
         setTimeout(() => setHighlighted((h) => (h === idStr ? null : h)), 2200);
       }
     };
+    // Reload the list when the Outputs panel is opened so freshly created
+    // artifacts (from the live artifact_created SSE event) appear immediately.
     const openHandler = () => { void load(); };
 
     window.addEventListener("axiom:focus-output", focusHandler);
@@ -537,6 +539,7 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
     win.document.close();
   }, []);
 
+  // ── Expanded detail renderer (reused for both list and grid modes) ──────────
   const renderExpandedDetail = (a: ArtifactRecord) => {
     const typeStr = (a.type ?? "").toLowerCase();
     const metadata = asRecord(a.metadata);
@@ -737,6 +740,7 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
     );
   };
 
+  // ── Item row (list mode) ────────────────────────────────────────────────────
   const renderListItem = (a: ArtifactRecord) => {
     const isOpen = String(expanded) === String(a.id);
     const isHighlighted = String(highlighted) === String(a.id);
@@ -794,6 +798,7 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
     );
   };
 
+  // ── Item card (grid mode) ───────────────────────────────────────────────────
   const renderGridItems = (gridItems: ArtifactRecord[]) => (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
       {gridItems.map((a) => {
@@ -884,6 +889,7 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
     </div>
   );
 
+  // ── Section label ───────────────────────────────────────────────────────────
   const SectionLabel = ({ label, count }: { label: string; count: number }) => (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, marginTop: 12 }}>
       <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.55 }}>{label}</span>
@@ -915,7 +921,7 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
               </button>
             ))}
           </div>
-          {/* Generate Draft */}
+          {/* Generate Draft — rendered via portal so it escapes any overflow/stacking context */}
           <div>
             <button
               ref={draftButtonRef}
