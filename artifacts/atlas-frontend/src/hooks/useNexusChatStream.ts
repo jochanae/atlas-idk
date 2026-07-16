@@ -78,6 +78,8 @@ export interface NexusMessage {
   kind?: "genesis";
   genesisData?: { projectName: string; timestamp: string };
   imageUrl?: string;
+  imageB64?: string;
+  imageMimeType?: string;
   pendingSketch?: boolean;
   sketchFailed?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
@@ -569,6 +571,7 @@ export function useNexusChatStream(
           },
           onImage: (imgPayload) => {
             // Async image delivery: patch the last assistant message and clear the Sketching step.
+            // Arrives AFTER `done` — keep pendingSketch until this fires (see onDone).
             const raw = imgPayload?.images?.[0]?.imageUrl;
             if (!raw) return;
             const match = raw.match(/^data:([^;]+);base64,(.+)$/);
@@ -583,6 +586,7 @@ export function useNexusChatStream(
                       imageGen: imgPayload as NexusMessage["imageGen"],
                       ...(match ? { imageB64: match[2], imageMimeType: match[1] } : {}),
                       pendingSketch: false,
+                      sketchFailed: false,
                     }
                   : m
               );
@@ -783,15 +787,21 @@ export function useNexusChatStream(
 
             setMessages(prev => prev.map(m => {
               if ((m as any).id !== streamingId) return m;
+              // Image gen runs AFTER done on the server. Keep the shimmer until
+              // `event: image` arrives (or the stream closes in `finally`).
               const wasPendingSketch = !!(m as any).pendingSketch;
-              const hasImage = !!(m as any).imageB64 || !!((m as any).imageGen?.images?.length);
+              const metaImageGen = ((meta as any).imageGen ?? null) as NexusMessage["imageGen"];
+              const hasImage = !!(m as any).imageB64
+                || !!((m as any).imageGen?.images?.length)
+                || !!(metaImageGen?.images?.length);
+              const stillAwaitingSketch = wasPendingSketch && !hasImage;
               return {
                     ...m,
                     content: displayText,
                     navigateTo: navigateTo,
-                    pendingSketch: false,
-                    sketchFailed: wasPendingSketch && !hasImage,
-                    imageGen: ((meta as any).imageGen ?? null) as NexusMessage["imageGen"],
+                    pendingSketch: stillAwaitingSketch,
+                    sketchFailed: false,
+                    imageGen: (metaImageGen ?? (m as any).imageGen ?? null) as NexusMessage["imageGen"],
                     decisionArtifacts: ((meta as any).decisionArtifacts ?? null) as NexusMessage["decisionArtifacts"],
                     streaming: false,
                     handoffSignal: handoff ?? null,
@@ -871,17 +881,32 @@ export function useNexusChatStream(
       // before the client parses it, or when the model returned only stripped tokens.
       // Convert the orphaned empty bubble to a visible error so the user is not
       // left looking at a silent blank message.
+      // Sketch-only turns may have empty prose but a pending/arrived image — do not
+      // treat those as failed empty responses.
       const capturedId = streamingId;
-      setMessages(prev => prev.map(m =>
-        (m as any).id === capturedId && m.role === "assistant" && !m.content?.trim()
-          ? {
-              ...m,
-              content: "No response was generated. Please try again.",
-              streaming: false,
-              runStatus: "failed" as const,
-            }
-          : m
-      ));
+      setMessages(prev => prev.map(m => {
+        if ((m as any).id !== capturedId || m.role !== "assistant") return m;
+        const hasImage = !!(m as any).imageB64
+          || !!((m as any).imageGen?.images?.length)
+          || !!(m as any).imageUrl;
+        if ((m as any).pendingSketch && !hasImage) {
+          return {
+            ...m,
+            pendingSketch: false,
+            sketchFailed: true,
+            streaming: false,
+          };
+        }
+        if (!m.content?.trim() && !hasImage && !(m as any).pendingSketch) {
+          return {
+            ...m,
+            content: "No response was generated. Please try again.",
+            streaming: false,
+            runStatus: "failed" as const,
+          };
+        }
+        return m;
+      }));
       resetStreamState();
     }
   }, [focusProjectId, isPending, model, mode, conversationMode, onData, onProjectReady, stream, abortStream, resetStreamState]);

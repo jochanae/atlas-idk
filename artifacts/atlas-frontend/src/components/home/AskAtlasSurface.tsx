@@ -114,10 +114,13 @@ import { createLibraryItem } from "@/lib/library";
 import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
 import {
   ASK_ATLAS_PLACEHOLDERS,
+  askAtlasMessageHasSketch,
   extractNavigateTo,
   findProjectOpenTarget,
   renderMessageImages,
+  resolveAskAtlasSketchSrc,
 } from "./askAtlasSurfaceUtils";
+import { formatSketchUserPromptDisplay, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
 
 export type AskAtlasMessage = {
@@ -128,7 +131,20 @@ export type AskAtlasMessage = {
   streaming?: boolean;
   createdAt?: string;
   imageUrl?: string;
+  /** Base64 payload from async `event: image` (preferred over imageUrl). */
+  imageB64?: string;
+  imageMimeType?: string;
   pendingSketch?: boolean;
+  sketchFailed?: boolean;
+  /** Async image-gen payload from nexus stream / persisted thread reload. */
+  imageGen?: {
+    images: Array<{
+      imageUrl: string;
+      prompt?: string;
+      model?: string;
+      mode?: "render" | "schematic" | string;
+    }>;
+  } | null;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
   projectChoices?: Array<{ id: number; name: string }> | null;
@@ -515,6 +531,8 @@ export function AskAtlasSurface({
           if (msg.role === "assistant") {
              const { target: tokenTarget, cleanContent } = extractNavigateTo(msg.content);
              const displayContent = fixMissingSentenceSpaces(cleanContent);
+             const sketchSrc = resolveAskAtlasSketchSrc(msg);
+             const showSketch = askAtlasMessageHasSketch(msg);
              return (
               <div key={i} data-msg-idx={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -542,13 +560,37 @@ export function AskAtlasSurface({
                     whiteSpace: "pre-wrap",
                   }}
                 >
-                  {(msg.imageUrl || msg.pendingSketch) && (
+                  {showSketch && (
                     <SketchReveal
-                      src={msg.imageUrl ?? null}
-                      loading={!!msg.pendingSketch && !msg.imageUrl}
+                      src={sketchSrc}
+                      loading={!!msg.pendingSketch && !sketchSrc}
                       alt="Atlas sketch"
                       style={{ marginTop: 0, marginBottom: displayContent ? 10 : 0 }}
                     />
+                  )}
+                  {msg.sketchFailed && !sketchSrc && !msg.pendingSketch && onSketch && (
+                    <div style={{ marginBottom: displayContent ? 10 : 0, display: "flex", alignItems: "center", gap: 8, opacity: 0.55 }}>
+                      <span style={{ fontSize: 12, letterSpacing: "0.02em", color: "var(--atlas-muted)" }}>
+                        Sketch unavailable
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onSketch("Sketch this again")}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--atlas-gold)",
+                          fontSize: 12,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          opacity: 0.85,
+                          fontFamily: "var(--app-font-mono)",
+                        }}
+                      >
+                        Retry
+                      </button>
+                    </div>
                   )}
                   {msg.role === "assistant" && msg.streaming ? (
                     <>
@@ -782,7 +824,7 @@ export function AskAtlasSurface({
                         )}
                       </button>
                     )}
-                    {!msg.imageUrl && onSketch && (
+                    {!askAtlasMessageHasSketch(msg) && !msg.sketchFailed && onSketch && (
                       <InlineSketchOffer text={displayContent} onSend={onSketch} />
                     )}
                   </div>
@@ -833,7 +875,9 @@ export function AskAtlasSurface({
                     wordBreak: "break-word",
                   }}
                 >
-                  {msg.content}
+                  {SKETCH_PROMPT_MARKER_RE.test(msg.content)
+                    ? formatSketchUserPromptDisplay(msg.content)
+                    : msg.content}
                 </CollapsibleMessageText>
               </div>
               {msg.content.length > 0 && (

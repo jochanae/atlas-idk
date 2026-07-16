@@ -18,6 +18,30 @@ export const NAVIGATE_TO_RE = /\bNAVIGATE_TO:\s*(\{[^\n]+\})/;
 
 export type NavigateTarget = { projectId: number; projectName: string } | null;
 
+/** Fields the nexus stream may set when delivering a sketch (async after `done`). */
+export type AskAtlasSketchFields = Pick<
+  AskAtlasMessage,
+  "imageUrl" | "imageB64" | "imageMimeType" | "imageGen" | "pendingSketch"
+>;
+
+/**
+ * Resolve the inline sketch src the same way workspace AssistantBubble does.
+ * Stream delivery writes `imageGen` / `imageB64` — not `imageUrl`.
+ */
+export function resolveAskAtlasSketchSrc(msg: AskAtlasSketchFields): string | null {
+  if (typeof msg.imageB64 === "string" && msg.imageB64) {
+    return `data:${msg.imageMimeType ?? "image/png"};base64,${msg.imageB64}`;
+  }
+  const fromGen = msg.imageGen?.images?.[0]?.imageUrl;
+  if (typeof fromGen === "string" && fromGen) return fromGen;
+  if (typeof msg.imageUrl === "string" && msg.imageUrl) return msg.imageUrl;
+  return null;
+}
+
+export function askAtlasMessageHasSketch(msg: AskAtlasSketchFields): boolean {
+  return !!resolveAskAtlasSketchSrc(msg) || !!msg.pendingSketch;
+}
+
 export function extractNavigateTo(content: string): { target: NavigateTarget; cleanContent: string } {
   const match = content.match(NAVIGATE_TO_RE);
   if (!match) return { target: null, cleanContent: content };

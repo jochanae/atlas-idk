@@ -65,6 +65,20 @@ export function buildSketchPrompt(preset: SketchStylePreset, excerpt: string): s
   return `[SKETCH:${preset}] Sketch this as a ${label} (thinking artifact, not a final deliverable).\n\nStyle: ${hint}\n\nSubject:\n${trimmed}`;
 }
 
+/**
+ * User-facing label for an optimistic chat bubble that still stores the
+ * full `[SKETCH:<preset>] …` prompt (needed for history / retry).
+ */
+export function formatSketchUserPromptDisplay(prompt: string): string {
+  const match = prompt.match(SKETCH_PROMPT_MARKER_RE);
+  if (!match) return prompt;
+  const preset = match[1]?.toLowerCase();
+  if (preset && isSketchStylePreset(preset)) {
+    return `Sketch as ${SKETCH_STYLE_LABEL[preset]}`;
+  }
+  return "Sketch";
+}
+
 export function extractSketchSubject(prompt: string): string {
   const stripped = prompt.replace(SKETCH_PROMPT_MARKER_RE, "").trim();
   const subjectMatch = stripped.match(/\nSubject:\n([\s\S]*)$/i);
@@ -103,24 +117,15 @@ export function routeDirectImageRequestToSketchPrompt(text: string): string {
 }
 
 /**
- * ─── BACKEND CONTRACT (Cloud Run /api/chat) ────────────────────────────
- * When an incoming `message` matches SKETCH_PROMPT_MARKER_RE, the handler
- * MUST:
- *   1. Capture the preset (capture group 1) and strip the marker from the
- *      prompt.
- *   2. Call the configured image model (e.g. Lovable AI Gateway
- *      `openai/gpt-image-2` via `https://ai.gateway.lovable.dev/v1/images/generations`).
- *      Use the preset as a style hint; the rest of the message is the
- *      subject.
- *   3. Return JSON containing EITHER:
- *        { imageB64: "<base64>", imageMimeType: "image/png", content: "" }
- *      OR:
- *        { imageGen: { images: [{ imageUrl: "data:image/png;base64,..." }] },
- *          content: "" }
- *      The frontend (`useChatStream`) already consumes both shapes and
- *      renders the image inline as an assistant message.
- *   4. Do NOT also stream an "I can't generate images" text reply — the
- *      branch is terminal.
+ * ─── SKETCH FLOW (R6) ──────────────────────────────────────────────────
+ * Clients no longer short-circuit on `[SKETCH:<preset>]`. They rewrite the
+ * marker into natural language (`Generate a <preset> style image: …`) and
+ * route through the normal LLM chat path. The model emits
+ * `IMAGE_GEN:{"prompt":…}` tokens; the nexus/chat handler extracts them,
+ * sends `event: image_pending`, then `event: done`, then generates the
+ * image and emits `event: image` with `{ images: [{ imageUrl: "data:…" }] }`.
+ * Frontend surfaces must render from `imageGen` / `imageB64` (not only
+ * `imageUrl`) — Ask Atlas historically missed that and showed no sketch.
  * ───────────────────────────────────────────────────────────────────────
  */
 
