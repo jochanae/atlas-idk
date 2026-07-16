@@ -3448,9 +3448,9 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Also check for Vercel connection so we know whether to defer BROWSER_VISIT until after deploy.
   const [projectRows, userRows, vercelRows, sessionRows, sessionSummaryRow, userNarrativeRow, zipImportRow] = await Promise.all([
     isFoundationMode
-      ? Promise.resolve([] as Array<{ memory: string | null; linkedRepo: string | null; githubToken: string | null; nodeState: Record<string, unknown> | null; name: string; previewUrl: string | null; description: string | null; convState: string | null }>)
+      ? Promise.resolve([] as Array<{ memory: string | null; linkedRepo: string | null; githubToken: string | null; nodeState: Record<string, unknown> | null; name: string; previewUrl: string | null; description: string | null; convState: string | null; repoIsPublic: boolean | null }>)
       : db
-          .select({ memory: projectsTable.memory, linkedRepo: projectsTable.linkedRepo, githubToken: projectsTable.githubToken, nodeState: projectsTable.nodeState, name: projectsTable.name, previewUrl: projectsTable.previewUrl, description: projectsTable.description, convState: projectsTable.convState })
+          .select({ memory: projectsTable.memory, linkedRepo: projectsTable.linkedRepo, githubToken: projectsTable.githubToken, nodeState: projectsTable.nodeState, name: projectsTable.name, previewUrl: projectsTable.previewUrl, description: projectsTable.description, convState: projectsTable.convState, repoIsPublic: projectsTable.repoIsPublic })
           .from(projectsTable)
           .where(userId ? and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)) : eq(projectsTable.id, projectId)),
     userId
@@ -4881,7 +4881,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   // result to the user message before Claude sees it. Atlas then acts on
   // [BUILD_VERIFY] immediately — fixing errors or announcing success.
   let buildVerifyAppend = "";
-  const isStackBlitzProject = !!(project?.previewUrl?.includes("stackblitz.com") && project?.linkedRepo);
+  const isStackBlitzProject = !!(project?.linkedRepo && project?.repoIsPublic);
 
   if (message.includes("[FILE_COMMITTED]") && isStackBlitzProject) {
     const priorAttempts = (history as Array<{ role: string; content: string }>).filter(

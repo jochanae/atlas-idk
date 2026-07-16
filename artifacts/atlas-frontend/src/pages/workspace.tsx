@@ -4656,6 +4656,12 @@ export default function Workspace() {
   }, [id, conversationId, isTerminalRunStatus, latestRunKey, lazyPanels, queryClient]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
+  // Slice B: PreviewPanel is the single owner of selected mode and content.
+  // It broadcasts axiom:preview-state-change; we store it so LaunchModal mirrors
+  // PreviewPanel instead of independently resolving content.
+  const [previewPanelActiveState, setPreviewPanelActiveState] = useState<{
+    mode: string; sandboxHtml: string | null; liveUrl: string | null; stackblitzUrl: string | null;
+  } | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(() => {
     try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
   });
@@ -6044,14 +6050,32 @@ export default function Workspace() {
       },
     ]);
   }, [setMessages]);
-  const launchPreviewUrl = project?.previewUrl ?? (() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return localStorage.getItem(`atlas-preview-${id}`);
-    } catch {
-      return null;
-    }
-  })();
+  // Slice B: subscribe to PreviewPanel's broadcast — PreviewPanel owns what's shown.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        mode: string; sandboxHtml: string | null; liveUrl: string | null; stackblitzUrl: string | null;
+      };
+      setPreviewPanelActiveState(detail);
+    };
+    window.addEventListener("axiom:preview-state-change", handler);
+    return () => window.removeEventListener("axiom:preview-state-change", handler);
+  }, []);
+
+  // Derive LaunchModal content from PreviewPanel's active state (Slice B).
+  // Fallback to project.previewUrl when PreviewPanel hasn't broadcast yet (e.g. panel is closed).
+  const launchPreviewUrl: string | null = previewPanelActiveState
+    ? (previewPanelActiveState.liveUrl ?? previewPanelActiveState.stackblitzUrl ?? null)
+    : (project?.previewUrl ?? (() => {
+        if (typeof window === "undefined") return null;
+        try { return localStorage.getItem(`atlas-preview-${id}`); } catch { return null; }
+      })());
+  const launchPreviewHtml: string | null = previewPanelActiveState
+    ? (previewPanelActiveState.sandboxHtml ?? null)
+    : (() => {
+        if (typeof window === "undefined" || !id) return null;
+        try { return localStorage.getItem(`atlas-sandbox-${id}`); } catch { return null; }
+      })();
   const projectLoading = projectState.loading && !project ? true : fallbackProjectLoading;
   const githubPushToken = useGithubPushToken(project?.githubToken);
   // True when forge has run this session OR when saved AxiomFlow nodes exist for this project
@@ -8409,10 +8433,7 @@ export default function Workspace() {
         onClose={() => setLaunchModal((s) => ({ ...s, open: false }))}
         linkedRepo={linkedRepo}
         previewUrl={launchPreviewUrl}
-        previewHtml={(() => {
-          if (typeof window === "undefined" || !id) return null;
-          try { return localStorage.getItem(`atlas-sandbox-${id}`); } catch { return null; }
-        })()}
+        previewHtml={launchPreviewHtml}
       />
 
       {/* ── Spec → Build handoff modal ── */}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { classify } from "@/lib/outputsClassification";
+import { resolveItemDestination } from "@/lib/resolveItemDestination";
 
 /**
  * ArtifactsGallery — the "Atlas Generated" artifact list.
@@ -208,12 +209,12 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
             const isDesignPlan = artifact.type === "design_plan";
             const isSketch = artifact.type === "visual_sketch";
             const metaExt = typeof artifact.metadata?.extension === "string" ? (artifact.metadata.extension as string).toLowerCase() : "";
-            const isHtmlPreview =
-              artifact.type === "html_preview" ||
-              artifact.type === "html" ||
-              artifact.type === "html-app" ||
-              artifact.type === "html_app" ||
-              metaExt === "html";
+            const resolution = resolveItemDestination({
+              type: artifact.type,
+              extension: metaExt || null,
+              metadata: artifact.metadata ?? null,
+            });
+            const isHtmlPreview = resolution.destination === "sandbox";
 
             const dp = artifact.payload as Record<string, unknown>;
             const bpIdentity = (artifact.payload.identity as Record<string, unknown>) ?? {};
@@ -266,31 +267,62 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
                     </span>
                   </div>
 
-                  {isHtmlPreview && (
+                  {resolution.available && (
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={async () => {
-                          const preview = artifact.payload.preview as { html?: string } | undefined;
-                          let html = (artifact.payload.html as string | undefined) ?? preview?.html;
-                          if (!html) {
-                            try {
-                              const res = await fetch(`/api/projects/${projectId}/artifacts/${artifact.id}/download`, { credentials: "include" });
-                              if (res.ok) html = await res.text();
-                            } catch { /* fall through */ }
-                          }
-                          if (!html) return;
-                          window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "sandbox", content: html } }));
-                        }}
-
-                        style={{
-                          fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
-                          color: "rgba(251,191,36,0.85)", background: "rgba(251,191,36,0.08)",
-                          border: "1px solid rgba(251,191,36,0.2)", borderRadius: 3,
-                          padding: "2px 7px", cursor: "pointer",
-                        }}
-                      >
-                        Open in Draft
-                      </button>
+                      {isHtmlPreview && (
+                        <button
+                          onClick={async () => {
+                            const preview = artifact.payload.preview as { html?: string } | undefined;
+                            let html = (artifact.payload.html as string | undefined) ?? preview?.html;
+                            if (!html) {
+                              try {
+                                const res = await fetch(`/api/projects/${projectId}/artifacts/${artifact.id}/download`, { credentials: "include" });
+                                if (res.ok) html = await res.text();
+                              } catch { /* fall through */ }
+                            }
+                            if (!html) return;
+                            window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "sandbox", content: html } }));
+                          }}
+                          style={{
+                            fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                            color: "rgba(251,191,36,0.85)", background: "rgba(251,191,36,0.08)",
+                            border: "1px solid rgba(251,191,36,0.2)", borderRadius: 3,
+                            padding: "2px 7px", cursor: "pointer",
+                          }}
+                        >
+                          {resolution.actionLabel}
+                        </button>
+                      )}
+                      {resolution.destination === "viewer" && (
+                        <button
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent("axiom:open-artifact-viewer", {
+                              detail: { id: artifact.id, type: artifact.type, projectId },
+                            }));
+                          }}
+                          style={{
+                            fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                            color: "rgba(167,139,250,0.85)", background: "rgba(167,139,250,0.08)",
+                            border: "1px solid rgba(167,139,250,0.2)", borderRadius: 3,
+                            padding: "2px 7px", cursor: "pointer",
+                          }}
+                        >
+                          {resolution.actionLabel}
+                        </button>
+                      )}
+                      {resolution.destination === "download" && (
+                        <button
+                          onClick={() => window.open(`/api/projects/${projectId}/artifacts/${artifact.id}/download`, "_blank")}
+                          style={{
+                            fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                            color: "rgba(201,162,76,0.85)", background: "rgba(201,162,76,0.08)",
+                            border: "1px solid rgba(201,162,76,0.2)", borderRadius: 3,
+                            padding: "2px 7px", cursor: "pointer",
+                          }}
+                        >
+                          {resolution.actionLabel}
+                        </button>
+                      )}
                     </div>
                   )}
 

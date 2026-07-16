@@ -1345,6 +1345,16 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: library_items.artifact_type failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS repo_is_public boolean
+    `);
+    logger.info("ensureColumns: projects.repo_is_public verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: projects.repo_is_public failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

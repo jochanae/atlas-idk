@@ -44,6 +44,8 @@ export interface Project {
   githubToken?: string | null;
   /** @nullable */
   linkedRepo?: string | null;
+  /** @nullable */
+  repoIsPublic?: boolean | null;
   nodeState?: ProjectNodeState;
   pushHistory?: unknown[] | null;
   /** @nullable */

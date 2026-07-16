@@ -447,7 +447,7 @@ createRoot(document.getElementById('root')!).render(
 }
 
 export type BootstrapResult =
-  | { ok: true; linkedRepo: string; htmlUrl: string; repoName: string; previewUrl: string; existingRepoLinked?: boolean; autoScaffolded?: boolean }
+  | { ok: true; linkedRepo: string; htmlUrl: string; repoName: string; existingRepoLinked?: boolean; autoScaffolded?: boolean }
   | { ok: false; error: string; noToken?: boolean };
 
 export async function bootstrapGitHubRepo(opts: {
@@ -470,7 +470,7 @@ export async function bootstrapGitHubRepo(opts: {
 
   // 2. Proactive existence check — avoid a wasted create+422 round-trip.
   //    GET the repo by name first; only create if it doesn't exist.
-  let repoData: { full_name: string; html_url: string; pushed_at: string | null; size: number };
+  let repoData: { full_name: string; html_url: string; pushed_at: string | null; size: number; private: boolean };
   let existingRepoLinked = false;
   let existingRepoIsEmpty = false;
 
@@ -483,7 +483,7 @@ export async function bootstrapGitHubRepo(opts: {
     // Repo already exists under this account — link it.
     // If it has never been pushed to (pushed_at === null, size === 0) we will
     // still scaffold it below so the user never needs to tap "Hydrate" manually.
-    repoData = await existingCheck.json() as { full_name: string; html_url: string; pushed_at: string | null; size: number };
+    repoData = await existingCheck.json() as { full_name: string; html_url: string; pushed_at: string | null; size: number; private: boolean };
     existingRepoLinked = true;
     existingRepoIsEmpty = !repoData.pushed_at || repoData.size === 0;
   } else {
@@ -507,7 +507,7 @@ export async function bootstrapGitHubRepo(opts: {
       return { ok: false, error: `Failed to create repo: ${msg}` };
     }
 
-    repoData = await createResp.json() as { full_name: string; html_url: string; pushed_at: string | null; size: number };
+    repoData = await createResp.json() as { full_name: string; html_url: string; pushed_at: string | null; size: number; private: boolean };
   }
   const fullName = repoData.full_name;
 
@@ -604,12 +604,14 @@ export async function bootstrapGitHubRepo(opts: {
     }
   }
 
-  // 8. Link the repo + set StackBlitz preview URL on the project
-  const stackblitzUrl = `https://stackblitz.com/github/${fullName}`;
+  // 8. Link the repo and persist visibility. Do NOT write a StackBlitz URL to
+  //    preview_url — StackBlitz is computed from linkedRepo on the client and
+  //    is only eligible when repoIsPublic=true. preview_url is reserved for
+  //    the deployed live URL written by the deploy route (Slice D).
   await db
     .update(projectsTable)
-    .set({ linkedRepo: fullName, previewUrl: stackblitzUrl })
+    .set({ linkedRepo: fullName, repoIsPublic: !repoData.private })
     .where(eq(projectsTable.id, projectId));
 
-  return { ok: true, linkedRepo: fullName, htmlUrl: repoData.html_url, repoName, previewUrl: stackblitzUrl, existingRepoLinked, autoScaffolded: existingRepoLinked && existingRepoIsEmpty };
+  return { ok: true, linkedRepo: fullName, htmlUrl: repoData.html_url, repoName, existingRepoLinked, autoScaffolded: existingRepoLinked && existingRepoIsEmpty };
 }

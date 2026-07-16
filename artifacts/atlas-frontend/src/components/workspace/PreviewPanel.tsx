@@ -597,14 +597,27 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
 
   const { data: previewProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const linkedRepo = parseLinkedRepo(previewProject?.linkedRepo);
-  // Auto-switch to StackBlitz when a repo is linked and no live URL is saved
-  useEffect(() => {
-    if (linkedRepo && !liveUrl) {
-      setPreviewMode("stackblitz");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linkedRepo?.fullName]);
+  const repoIsPublic = previewProject?.repoIsPublic === true;
+  // StackBlitz auto-switch removed (Slice C): StackBlitz is never a default.
+  // It appears only when repoIsPublic===true and the user explicitly selects it.
   const token = previewProject?.githubToken ?? null;
+
+  // Slice B: PreviewPanel is the single owner of selected mode and content.
+  // Broadcast active state so the header Play button can mirror it instead of
+  // independently resolving/fetching/rendering content.
+  useEffect(() => {
+    const stackblitzUrl = (repoIsPublic && linkedRepo?.fullName)
+      ? `https://stackblitz.com/github/${linkedRepo.fullName}`
+      : null;
+    window.dispatchEvent(new CustomEvent("axiom:preview-state-change", {
+      detail: {
+        mode: previewMode,
+        sandboxHtml: (previewMode === "sandbox" ? sandboxRendered : null) as string | null,
+        liveUrl: (previewMode === "url" ? liveUrl : null) as string | null,
+        stackblitzUrl: (previewMode === "stackblitz" ? stackblitzUrl : null) as string | null,
+      },
+    }));
+  }, [previewMode, liveUrl, sandboxRendered, repoIsPublic, linkedRepo?.fullName]);
 
 
   // ── Sandbox handoff from chat ────────────────────────────────────────────────
@@ -1062,7 +1075,7 @@ ${t}
         {/* right fade */}
         <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, var(--atlas-bg), transparent)" }} />
         <div style={{ display: "flex", overflowX: "auto", scrollbarWidth: "none" }}>
-        {(["url", "sandbox", "stackblitz", "local"] as const).map((m) => (
+        {(["url", "sandbox", ...(repoIsPublic ? ["stackblitz" as const] : []), "local"] as const).map((m) => (
           <button
             key={m}
             onClick={() => setPreviewMode(m)}

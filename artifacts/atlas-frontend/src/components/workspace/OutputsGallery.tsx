@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ChevronDown, Download, FileOutput, FileText, LayoutGrid, List, Search, Wand2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/api";
 import { classify } from "@/lib/outputsClassification";
+import { resolveItemDestination } from "@/lib/resolveItemDestination";
 
 const DRAFT_TYPES: Array<{ type: string; label: string }> = [
   { type: "draft_email", label: "Email Draft" },
@@ -566,10 +567,12 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
     const visualQA = fileBacked ? visualQAInfo(metadata) : null;
     const visualQAIssues = visualQA?.issues ?? [];
     const visualQAErrorCount = visualQAIssues.filter((i) => i.severity === "error").length;
-    const looksHtml =
-      typeStr.includes("html") ||
-      extension === "html" ||
-      /<\s*(html|body|div|section|main|!doctype)/i.test(content);
+    const resolution = resolveItemDestination({
+      type: a.type,
+      extension: extension || null,
+      metadata: metadata,
+    });
+    const looksHtml = resolution.destination === "sandbox";
     const sendToDraft = async (e: React.MouseEvent) => {
       e.stopPropagation();
       let html = content;

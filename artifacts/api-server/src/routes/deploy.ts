@@ -335,9 +335,29 @@ router.get("/deploy/after-push", async (req, res): Promise<void> => {
 
           if (!project) {
             logger.warn({ atlasProjectId, userId }, "Auto health check skipped — project not found or not owned by user");
-          } else if (!project.previewUrl) {
-            logger.info({ atlasProjectId }, "Auto health check skipped — project has no previewUrl");
           } else {
+            // Slice D: persist the live deployment URL to preview_url when safe.
+            // "Safe" means: null (never set), a legacy StackBlitz URL (stale from
+            // old bootstrap), or a previously-deployed URL we can update.
+            // A user-entered custom URL that is none of those is left untouched.
+            const currentPreview = project.previewUrl ?? null;
+            const isNullOrLegacyStackBlitz =
+              !currentPreview || currentPreview.startsWith("https://stackblitz.com/");
+            const isVercelUrl = currentPreview?.includes(".vercel.app") ?? false;
+            if (isNullOrLegacyStackBlitz || isVercelUrl) {
+              await db
+                .update(projectsTable)
+                .set({ previewUrl: liveUrl })
+                .where(eq(projectsTable.id, atlasProjectId));
+              project.previewUrl = liveUrl;
+              logger.info({ atlasProjectId, liveUrl }, "Slice D: preview_url updated to deployed URL");
+            } else {
+              logger.info({ atlasProjectId, currentPreview }, "Slice D: custom preview_url preserved — not overwriting with deploy URL");
+            }
+
+            if (!project.previewUrl) {
+              logger.info({ atlasProjectId }, "Auto health check skipped — project has no previewUrl");
+            } else {
             // Validate the URL is safe (SSRF guard, same as POST /api/browser/schedule)
             await assertSafeUrl(project.previewUrl);
 
@@ -377,7 +397,8 @@ router.get("/deploy/after-push", async (req, res): Promise<void> => {
               // Check already exists and is active — monitoring already running
               autoMonitoringSetUp = true;
             }
-          }
+            }   // end if (!project.previewUrl) ... else { health check }
+          }     // end if (!project) ... else { Slice D + health check }
         } catch (err) {
           logger.warn({ err: String(err), atlasProjectId }, "Auto-register health check failed — continuing without it");
         }

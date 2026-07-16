@@ -31,6 +31,7 @@ export const projectsTable = pgTable("projects", {
   projectType: text("project_type").notNull().default("general"),
   appSourceFileCount: integer("app_source_file_count"),
   appBuildSucceeded: boolean("app_build_succeeded"),
+  repoIsPublic: boolean("repo_is_public"),
   conversationId: text("conversation_id"),
   initialMessage: text("initial_message"),
 });
