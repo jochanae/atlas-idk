@@ -177,7 +177,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           type="button"
           onClick={goInternal(detailsHref)}
           disabled={!detailsHref}
-          title={detailsHref ? "Open run details in Atlas" : "Linking to run…"}
+          title={detailsHref ? "Open commit changes in Atlas" : "No commit reference"}
           style={{
             padding: "8px 10px",
             background: "transparent",
