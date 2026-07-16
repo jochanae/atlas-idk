@@ -61,6 +61,7 @@ import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
 import { LibraryAttachmentsBar } from "@/components/LibraryAttachmentsBar";
 import { LibraryBrowseSheet } from "@/components/library/LibraryBrowseSheet";
+import { SpeakButton } from "@/components/workspace/SpeakButton";
 import {
   createLibraryItem,
   fetchConversationContext as fetchLibraryConversationContext,
