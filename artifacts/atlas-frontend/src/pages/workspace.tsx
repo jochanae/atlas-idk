@@ -8993,9 +8993,11 @@ export default function Workspace() {
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 runId={focusedRunId}
+                commitSha={focusedCommitSha}
                 projectName={project?.name ?? null}
                 conversationId={conversationId ?? null}
               />
+
             </div>
           ) : leftTab === "terminal" ? (
             <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} projectId={project?.id} entries={entries || []} />
