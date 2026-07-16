@@ -626,7 +626,17 @@ export function AskAtlasSurface({
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                     <button
                       type="button"
-                      onClick={() => setLocation(msg.navigateTo!.route)}
+                      onClick={() => {
+                        try {
+                          const pid = msg.navigateTo!.projectId;
+                          if (pid) {
+                            sessionStorage.setItem("atlas-opening-message", "Build this — continue from what we planned.");
+                            sessionStorage.setItem("atlas-opening-message-project-id", String(pid));
+                            sessionStorage.setItem("atlas-handoff-continuation", "1");
+                          }
+                        } catch {}
+                        setLocation(msg.navigateTo!.route);
+                      }}
                       style={{
                         background: "transparent",
                         border: "1px solid var(--atlas-gold)",

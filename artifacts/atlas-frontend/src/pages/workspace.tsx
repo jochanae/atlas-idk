@@ -6683,7 +6683,20 @@ export default function Workspace() {
     // background first-turn task in POST /api/conversations. The bridge will
     // have the user message (and possibly the assistant response) from history
     // by the time this effect fires. Sending again would create a duplicate.
-    if (useNexusWorkspaceChat && nexusBridge.messages.length > 0) {
+    // Exception: handoff continuations (Ask Atlas → Workspace) set
+    // atlas-handoff-continuation=1 so the opening message fires even though
+    // the Ask Atlas conversation is already loaded into bridge messages.
+    const isHandoffContinuation = (() => {
+      try {
+        const v = sessionStorage.getItem("atlas-handoff-continuation");
+        if (v === "1") {
+          sessionStorage.removeItem("atlas-handoff-continuation");
+          return true;
+        }
+      } catch {}
+      return false;
+    })();
+    if (useNexusWorkspaceChat && nexusBridge.messages.length > 0 && !isHandoffContinuation) {
       try {
         sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
         sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
