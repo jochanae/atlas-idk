@@ -196,61 +196,10 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const { model: applicationModel } = useApplicationModel(projectId);
   const updateProject = useUpdateProject();
 
-  // Mode toggle
-  const [previewMode, setPreviewMode] = useState<"url" | "sandbox" | "stackblitz" | "local" | "generated">("url");
-  const [generatedPreviewUrl, setGeneratedPreviewUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!sessionId) {
-      setGeneratedPreviewUrl(null);
-      return;
-    }
-    setGeneratedPreviewUrl(`/api/preview/session/${sessionId}`);
-  }, [sessionId]);
-
-  useEffect(() => {
-    if (generatedPreviewUrl) {
-      setPreviewMode("generated");
-    }
-  }, [generatedPreviewUrl]);
-
-  // ── Artifact gallery ──────────────────────────────────────────────────────
-  type ProjectArtifact = {
-    id: number;
-    projectId: number;
-    type: string;
-    version: number;
-    title: string;
-    metadata: Record<string, unknown>;
-    payload: Record<string, unknown>;
-    createdAt: string;
-  };
-
-  const { data: artifactsData, isLoading: artifactsLoading, refetch: refetchArtifacts } = useQuery({
-    queryKey: ["project-artifacts", projectId],
-    queryFn: async () => {
-      const res = await fetch(`/api/projects/${projectId}/artifacts`);
-      if (!res.ok) throw new Error("Failed to load artifacts");
-      return res.json() as Promise<{ artifacts: ProjectArtifact[] }>;
-    },
-    enabled: previewMode === "generated",
-    staleTime: 20_000,
-    refetchInterval: previewMode === "generated" ? 15_000 : false,
-  });
-
-  const artifacts = artifactsData?.artifacts ?? [];
-  const [expandedArtifactId, setExpandedArtifactId] = useState<number | null>(null);
-  const [artifactBucket, setArtifactBucket] = useState<string>("all");
-
-  // Group each artifact type into a coarse bucket for the filter chips.
-  const bucketOf = (t: string): "history" | "sketch" | "build" | "design" | "preview" | "other" => {
-    if (t.startsWith("history") || t.includes("message") || t.includes("response") || t.includes("thought")) return "history";
-    if (t === "visual_sketch" || t === "pipeline_sketch" || t.includes("sketch")) return "sketch";
-    if (t === "build_output" || t.includes("build")) return "build";
-    if (t === "design_plan" || t === "blueprint_snapshot") return "design";
-    if (t === "html_preview" || t === "html" || t === "landing_draft" || t === "export_package") return "preview";
-    return "other";
-  };
+  // Mode toggle. NOTE: the "Artifacts" (generated) view was moved into the
+  // workspace Outputs panel as a sub-tab; the mode is retained internally
+  // only for legacy event compatibility but is no longer exposed as a tab.
+  const [previewMode, setPreviewMode] = useState<"url" | "sandbox" | "stackblitz" | "local">("url");
 
   // Device switcher
   type DeviceSize = "phone" | "tablet" | "desktop";
