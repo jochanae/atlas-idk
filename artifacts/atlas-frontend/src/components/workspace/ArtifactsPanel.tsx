@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChevronDown, Download, FileOutput, FileText, LayoutGrid, List, Search, Wand2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/api";
+import { ArtifactsGallery } from "./ArtifactsGallery";
 
 const DRAFT_TYPES: Array<{ type: string; label: string }> = [
   { type: "draft_email", label: "Email Draft" },
