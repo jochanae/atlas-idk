@@ -5321,7 +5321,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
           a => a.verb === "Typechecking" && a.status !== "fail",
         );
 
-        if (hasFileRead || hasPatch) {
+        if (hasPatch) {
           // Initialize the contract (UNKNOWN → same required steps as SERVER_ROUTING).
           await initializeRunContract({ runId: activeRunId, issueType: "UNKNOWN" });
 

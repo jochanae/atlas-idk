@@ -456,7 +456,7 @@ function getChangeLabel(row: FileRow): { label: string; color: string } {
   return { label: row.summary, color: "rgba(var(--atlas-muted), 0.55)" };
 }
 
-function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectId: number; runStatus?: string }) {
+function ChangesLens({ rows, projectId, runStatus, scopedToRun }: { rows: FileRow[]; projectId: number; runStatus?: string; scopedToRun?: boolean }) {
   // Auto-expand the first file when there are ≤3 files and viewable content exists.
   const firstKey = rows.length > 0 ? `${rows[0].messageId}-${rows[0].path}-0` : null;
   const autoExpand = rows.length <= 3 && (!!rows[0]?.content || !!rows[0]?.beforeContent);
@@ -469,7 +469,7 @@ function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectI
   if (rows.length === 0) {
     return (
       <div style={{ padding: "18px 14px", fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5 }}>
-        No file changes recorded for this run yet.
+        {scopedToRun ? "No changes in this run." : "No file changes recorded yet."}
       </div>
     );
   }
@@ -838,6 +838,12 @@ function RunHeader({ run }: { run: ApiRun }) {
     failed:             "rgba(220,80,80,0.9)",
   };
   const tone = statusTone[status] ?? "rgba(180,180,180,0.8)";
+  const hasMutation = run.steps.some((s) =>
+    s.verb === "FILE_EDIT" || s.verb === "LINE_PATCH" || s.verb === "FILE_DELETE" ||
+    s.verb === "Writing" || s.verb === "Written" || s.verb === "Patching"
+  );
+  const outcomeCode = run.verificationContract?.outcome?.code;
+  const showOutcomeBadge = hasMutation || outcomeCode === "BUILD_VERIFIED" || outcomeCode === "RUNTIME_VERIFIED" || outcomeCode === "USER_FLOW_VERIFIED" || outcomeCode === "FAILED" || outcomeCode === "BLOCKED";
 
   return (
     <div style={{
@@ -865,7 +871,7 @@ function RunHeader({ run }: { run: ApiRun }) {
           {status}
         </span>
         {/* v1.3: outcome from the state machine — never derived from model prose */}
-        <OutcomeBadge contract={run.verificationContract} />
+        {showOutcomeBadge && <OutcomeBadge contract={run.verificationContract} />}
         {intent && (
           <span style={{
             padding: "2px 7px", borderRadius: 3,
@@ -1095,7 +1101,7 @@ export function ViewChangesPanel({
         ?? (m as { runId?: string; run_id?: string }).run_id;
       return tagged === runId;
     });
-    return hits.length > 0 ? hits : messages;
+    return hits;
   }, [messages, runId]);
 
   // Changes lens: DB-backed file rows, supplemented by in-memory fallback.
@@ -1254,7 +1260,7 @@ export function ViewChangesPanel({
           </div>
         )
       ) : (
-        <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} />
+        <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} scopedToRun={!!runId} />
       )}
     </div>
   );

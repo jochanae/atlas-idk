@@ -85,6 +85,8 @@ interface DerivedRun {
   deliverable?: { name: string; downloadUrl: string };
   /** Semantic kicker for insight-only receipts (e.g. "Decision shaped"). Only set when status === "insight". */
   insightKicker?: string;
+  /** This run inspected files and completed without mutations. */
+  noChanges?: boolean;
 }
 
 // Insight-only step verbs that still warrant a durable receipt card (something
@@ -117,11 +119,21 @@ function adaptExecutionRun(
     "DNA_UPDATED",
     "COMMAND", "SHELL", "BUILD", "INSTALL", "TEST", "RUN",
   ]);
+  const hasMutationStep = run.steps.some(
+    s => s.verb === "FILE_EDIT" || s.verb === "FILE_DELETE" || s.verb === "LINE_PATCH",
+  );
+  const hasFileReadStep = run.steps.some(s => s.verb === "FILE_READ");
+  const hasNoChangeOutcome =
+    run.status === "succeeded" &&
+    hasFileReadStep &&
+    !hasMutationStep &&
+    !run.steps.some(s => s.verb === "GITHUB_PUSH" || s.verb === "IMAGE_GEN" || s.verb === "ARTIFACT_CREATED") &&
+    (run.mode === "build" || run.mode === "operational" || run.intent === "BUILD");
   // In-flight runs (pre-inserted `running` rows from the identity spine) never
   // render as a completed receipt — the live ActiveCard owns that surface until
   // the row terminalizes to succeeded/failed.
   if (run.status === "running") return null;
-  if (!run.steps.some(s => RECEIPT_WORTHY.has(s.verb))) return null;
+  if (!run.steps.some(s => RECEIPT_WORTHY.has(s.verb)) && !hasNoChangeOutcome) return null;
 
   // Anchor stability — once a receipt has a messageId, it stays anchored in
   // its historical position even as the conversation continues. Only hide
@@ -188,7 +200,13 @@ function adaptExecutionRun(
   const produced = files.filter(p => PRODUCED_EXT.test(p));
 
   let title: string;
-  if (deliverableStep) {
+  if (hasNoChangeOutcome) {
+    const readTargets = run.steps
+      .filter((s) => s.verb === "FILE_READ" && s.target)
+      .map((s) => s.target as string);
+    const first = readTargets[0]?.split("/").pop() ?? readTargets[0];
+    title = run.summary || (first ? `No changes — ${first} already matched` : "No changes in this run");
+  } else if (deliverableStep) {
     const name = deliverableStep.target ? deliverableStep.target.split("/").pop() ?? deliverableStep.target : "your file";
     title = `${name} is ready`;
   } else if (files.length > 0) {
@@ -283,6 +301,7 @@ function adaptExecutionRun(
     ...(sketchImageUrl ? { sketchImageUrl } : {}),
     ...(deliverable ? { deliverable } : {}),
     ...(insightKicker ? { insightKicker } : {}),
+    ...(hasNoChangeOutcome ? { noChanges: true } : {}),
   };
 }
 
@@ -916,6 +935,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   const fileCount = run.files.length;
   const kicker =
     run.status === "running" ? "Working"
+    : run.noChanges ? "Completed"
     : run.status === "applied" && executionRun?.status === "awaiting_approval" ? "Applied Locally"
     : run.status === "applied" ? "Run Complete"
     : run.status === "delivered" ? "Ready to Download"
@@ -1207,7 +1227,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
             >
               Details
             </button>
-            {run.status === "pushed" && run.githubPush?.url ? (
+            {run.noChanges ? null : run.status === "pushed" && run.githubPush?.url ? (
               <a
                 href={run.githubPush.url}
                 target="_blank"

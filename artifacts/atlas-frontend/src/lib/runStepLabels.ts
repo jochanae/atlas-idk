@@ -17,6 +17,10 @@ export const EXECUTION_VERBS = new Set([
   "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "COMMAND", "SHELL",
   "BUILD", "INSTALL", "TEST", "GITHUB_PUSH", "IMAGE_GEN", "RUN",
   "ARTIFACT_CREATED",
+  // Read-only file checks in Build mode still belong to the run lifecycle:
+  // active card → completed/no-change receipt → Details. Pure chat turns do
+  // not emit these steps because the backend suppresses build steps there.
+  "FILE_READ", "READ", "READING",
 ]);
 
 /** True when this verb represents a "Doing" (mutating/tool-use) step. */

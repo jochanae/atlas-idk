@@ -653,12 +653,15 @@ export function ChatStream(props: ChatStreamProps) {
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
   const composerVisibility = useComposerVisibility();
   const dockedExtraPad = composerVisibility === "docked" ? 72 : 0;
+  const bottomPadding = isMobile
+    ? `calc(var(--atlas-composer-clearance, 96px) + var(--atlas-dock-reserved, var(--atlas-dock-height, 64px)) + env(safe-area-inset-bottom, 0px) + 24px + ${dockedExtraPad}px)`
+    : `calc(var(--atlas-composer-clearance, 0px) + ${28 + dockedExtraPad}px)`;
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
     overscrollBehaviorY: "contain",
     padding: isMobile
-      ? `32px 14px ${20 + dockedExtraPad}px 14px`
-      : `56px 104px ${28 + dockedExtraPad}px 24px`,
+      ? `32px 14px ${bottomPadding} 14px`
+      : `56px 104px ${bottomPadding} 24px`,
     position: "relative", scrollbarWidth: "none",
     transition: "padding 240ms cubic-bezier(0.22, 1, 0.36, 1)",
   };

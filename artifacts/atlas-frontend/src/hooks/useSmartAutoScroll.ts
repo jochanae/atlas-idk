@@ -54,9 +54,14 @@ export function useSmartAutoScroll(
     const jump = () => {
       const node = ref.current;
       if (!node) return;
+      const scrollToEnd = () => {
+        const latest = ref.current;
+        if (!latest) return;
+        latest.scrollTop = Math.max(0, latest.scrollHeight - latest.clientHeight);
+      };
       if (!primedRef.current) {
         if (node.scrollHeight > node.clientHeight + 4) {
-          node.scrollTop = node.scrollHeight - node.clientHeight;
+          scrollToEnd();
           primedRef.current = true;
           stickRef.current = true;
           return;
@@ -64,6 +69,9 @@ export function useSmartAutoScroll(
       }
       if (stickRef.current) {
         node.scrollTo({ top: node.scrollHeight, behavior });
+        requestAnimationFrame(scrollToEnd);
+        window.setTimeout(scrollToEnd, 90);
+        window.setTimeout(scrollToEnd, 240);
       }
     };
     jump();
@@ -81,7 +89,14 @@ export function useSmartAutoScroll(
     const el = ref.current;
     if (!el) return;
     stickRef.current = true;
+    const scrollToEnd = () => {
+      const node = ref.current;
+      if (!node) return;
+      node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+    };
     el.scrollTo({ top: el.scrollHeight, behavior });
+    requestAnimationFrame(scrollToEnd);
+    window.setTimeout(scrollToEnd, 90);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, options?.forceDeps ?? []);
 
@@ -91,7 +106,15 @@ export function useSmartAutoScroll(
       const el = ref.current;
       if (!el) return;
       stickRef.current = true;
+      const scrollToEnd = () => {
+        const node = ref.current;
+        if (!node) return;
+        node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+      };
       el.scrollTo({ top: el.scrollHeight, behavior: b });
+      requestAnimationFrame(scrollToEnd);
+      window.setTimeout(scrollToEnd, 90);
+      window.setTimeout(scrollToEnd, 240);
     },
     isStuckRef: stickRef,
   };
