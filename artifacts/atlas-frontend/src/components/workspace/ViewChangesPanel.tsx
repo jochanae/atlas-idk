@@ -1383,7 +1383,19 @@ export function ViewChangesPanel({
       </div>
 
       {/* ── Body ── */}
-      {lens === "timeline" ? (
+      {commitSha ? (
+        commitLoading && commitRows.length === 0 ? (
+          <div style={{ padding: "18px 14px", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.6 }}>
+            Loading commit changes…
+          </div>
+        ) : commitError ? (
+          <div style={{ padding: "18px 14px", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.6 }}>
+            {commitError}
+          </div>
+        ) : (
+          <ChangesLens rows={commitRows} projectId={projectId} runStatus="succeeded" />
+        )
+      ) : lens === "timeline" ? (
         timelineRun ? (
           <RunTimeline run={timelineRun} />
         ) : (
@@ -1397,6 +1409,7 @@ export function ViewChangesPanel({
       ) : (
         <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} />
       )}
+
     </div>
   );
 }
