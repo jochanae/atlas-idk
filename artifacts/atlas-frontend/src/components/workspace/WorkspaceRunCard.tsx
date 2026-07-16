@@ -1205,26 +1205,53 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
                 letterSpacing: "0.01em",
               }}
             >
-              Changes
+              Details
             </button>
-            <button
-              type="button"
-              title={previewTitle}
-              onClick={(e) => { e.stopPropagation(); handlePreview(); }}
-              style={{
-                fontSize: 11.5,
-                fontWeight: 500,
-                padding: "5px 10px",
-                borderRadius: 6,
-                border: "1px solid transparent",
-                background: "transparent",
-                color: "hsl(var(--card-foreground) / 0.75)",
-                cursor: "pointer",
-                letterSpacing: "0.01em",
-              }}
-            >
-              Preview
-            </button>
+            {run.status === "pushed" && run.githubPush?.url ? (
+              <a
+                href={run.githubPush.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 500,
+                  padding: "5px 10px",
+                  borderRadius: 6,
+                  border: "1px solid hsl(var(--border))",
+                  background: "hsl(var(--card))",
+                  color: "hsl(var(--card-foreground))",
+                  cursor: "pointer",
+                  letterSpacing: "0.01em",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <Github size={11} strokeWidth={1.75} />
+                GitHub
+              </a>
+            ) : (
+              <button
+                type="button"
+                title={previewTitle}
+                onClick={(e) => { e.stopPropagation(); handlePreview(); }}
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 500,
+                  padding: "5px 10px",
+                  borderRadius: 6,
+                  border: "1px solid transparent",
+                  background: "transparent",
+                  color: "hsl(var(--card-foreground) / 0.75)",
+                  cursor: "pointer",
+                  letterSpacing: "0.01em",
+                }}
+              >
+                Preview
+              </button>
+            )}
           </>
         )}
         {expanded && (run.status === "applied" || run.status === "pushed") && (
