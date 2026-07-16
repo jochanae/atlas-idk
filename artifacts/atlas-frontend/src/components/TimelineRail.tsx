@@ -280,8 +280,10 @@ export function TimelineRail({
 
   return (
     <>
-      {/* Search magnifier — hidden on Ask Atlas surface, shown in workspace */}
-      {!hideSearch && <button
+      {/* Search magnifier — only when a chat scroll surface is visible.
+          Prevents the fixed button leaking onto workspace tabs (Ledger,
+          Insights, Preview, etc.) that overlay the still-mounted chat. */}
+      {!hideSearch && chatVisible && <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v); }}
         title="Search this thread"
