@@ -900,8 +900,44 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
     </div>
   );
 
+  const subTabBar = (
+    <div style={{ display: "flex", gap: 0, padding: "0 14px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
+      {(["outputs", "artifacts"] as const).map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => setSubTab(t)}
+          style={{
+            padding: "8px 14px",
+            background: "transparent",
+            border: "none",
+            borderBottom: subTab === t ? "2px solid var(--atlas-gold)" : "2px solid transparent",
+            color: subTab === t ? "var(--atlas-gold)" : "var(--atlas-muted)",
+            fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+            textTransform: "uppercase", cursor: "pointer",
+            opacity: subTab === t ? 1 : 0.5,
+            transition: "all 140ms ease",
+          }}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (subTab === "artifacts") {
+    return (
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        {subTabBar}
+        <ArtifactsGallery projectId={projectId} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 14px" }} className="scrollbar-none">
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      {subTabBar}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 14px" }} className="scrollbar-none">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 12 }} ref={draftMenuRef}>
