@@ -1291,6 +1291,43 @@ export function ViewChangesPanel({
         </div>
       )}
 
+      {/* ── Commit pill ── */}
+      {commitSha && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "10px 14px",
+          borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
+          background: "rgba(var(--atlas-gold-rgb), 0.04)",
+        }}>
+          <span style={{
+            fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            color: "var(--atlas-gold)", opacity: 0.75,
+          }}>Commit</span>
+          <span style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 11,
+            color: "var(--atlas-fg)", opacity: 0.9,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            flex: 1, minWidth: 0,
+          }}>
+            {commitMeta?.shortSha ?? commitSha.slice(0, 7)}
+            {commitMeta?.message ? ` · ${commitMeta.message}` : ""}
+          </span>
+          <button
+            type="button" onClick={clearCommitFilter} aria-label="Clear commit filter"
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              background: "transparent", border: "1px solid rgba(var(--atlas-gold-rgb), 0.25)",
+              color: "var(--atlas-muted)", cursor: "pointer",
+              padding: "3px 7px", borderRadius: 3,
+              fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+              letterSpacing: "0.08em", textTransform: "uppercase",
+            }}
+          ><X size={10} strokeWidth={1.8} /> Clear</button>
+        </div>
+      )}
+
+
       <WorkspaceRunReceipts
         projectId={projectId}
         projectName={projectName?.trim() || "Workspace"}
