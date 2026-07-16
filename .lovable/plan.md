@@ -1,94 +1,133 @@
-## Library IA rebuild — v2 (attach-chooser optimized)
 
-Frontend-only. Backend `/api/library` already returns `kind`, `origin`, `project`, `title`, `preview`, `content` — we're rendering what's there. No schema work.
+# Outputs is parent, Artifacts is inner view — revised, sliced
 
-### Governing intent
-This surface is a **retrieval chooser**, not a management center. The one job:
-> Find something and bring it into this conversation.
-Renaming, versioning, bulk ops, view toggles, and thumbnails belong to the future full Library route. Not here.
+## Product structure (locked)
 
-### What ships
+Three surfaces, three jobs:
+- **Outputs**: browse what Atlas produced.
+- **Artifacts**: inspect the interactive/technical subset, including revisions.
+- **Preview**: run or view the selected item.
 
-**1. Rename Reference → Library**
-- Tab label and any user-visible copy.
-- Empty state (kind-neutral):
-  > Nothing in your Library yet.
-  > Bookmarked responses and generated work will appear here.
+Inside the existing top-level `Outputs` tab:
 
-**2. Object-type identity on every row**
-New pure module `components/library/kindMeta.ts` maps each `LibraryItemKind` → `{ icon, typeLabel, group }`.
-
-Item type stays **specific** even when the group is broad:
-- `prd` → "Product Requirements Document" (group: Documents)
-- `strategy` → "Strategy" (group: Documents)
-- `spec` → "Specification" (group: Documents)
-- `plan` / `outline` / `brief` → own label, group Documents
-- `bookmark` → "Conversation Bookmark" (group: Bookmarks)
-- `sketch` → "Sketch" (group: Sketches)
-- `document` / `other` → "Document" / "Reference" (group: Documents / Other)
-
-Row layout:
 ```text
-[icon]  CONVERSATION BOOKMARK · Family Reunion Planning
-        Review existing files before implementation
-        Saved from Ask Atlas · Jul 15
-```
-Origin phrase built from `item.origin.source` + `item.project?.name`.
+OUTPUTS
+[ All Outputs ] [ Artifacts ]
 
-**3. Stable structure — no layout that reshapes as content grows**
-Always the same shape, top to bottom:
-1. Search input (client-side filter over `title` + `preview`)
-2. Compact type filter chips: `All · Bookmarks · Documents · Sketches` (+ `Other` only when items of that group exist)
-3. Item list, grouped by kind-group with count headers; groups render only when they contain items but the overall structure never toggles between "flat" and "grouped" modes.
-
-Above the list, a summary row:
-```text
-LIBRARY · 12 items
+Search this project…
 ```
 
-No list/grid view toggle. No thumbnails. Search + filter is the investment.
+`All Outputs` is default and includes every user-facing result.
 
-**4. Project-aware loading**
-- Focus = All Projects → `fetchLibraryItems({})` (everything accessible).
-- Focus = a specific project → `fetchLibraryItems({ projectId })`; show a subtle "Showing items in {projectName}" line with a `Show all Library items` link that re-fetches without the scope. Preserves current behavior but makes the scope visible.
+## Component architecture
 
-**5. Attached state = persisted, not local**
-- Gold border/chip and the `In conversation` label are driven by `attachedIds` (already fetched from `GET /api/conversations/:id/context` in `home.tsx`).
-- Primary action toggles:
-  - Not attached → `Bring into conversation` (calls `attachLibraryItem`, closes sheet).
-  - Attached → `Remove from conversation` (calls `detachLibraryItem`, keeps sheet open, updates chip).
-- `LibraryAttachmentsBar` chip swaps its generic tag for the kind icon + short type label so the two surfaces read the same.
-
-**6. Detail view — real hierarchy, no raw JSON**
-Consistent order:
 ```text
-[TYPE label chip]
-{Title (truncated, single line + tooltip if long)}
-Saved from {origin} · {project} · {date}
-{preview / content}
-[Bring into conversation | Remove from conversation]  [Copy]  [Delete]
+OutputsPanel.tsx              parent, owns inner-tab state
+├── OutputsGallery.tsx        ordinary deliverables
+└── ArtifactsGallery.tsx      technical/interactable subset
+
+artifactPresentationMap.ts    canonical kind → surface map
+outputsClassification.ts      pure row → { kind, tags, includedInOutputs, includedInArtifacts }
 ```
 
-Title rule: use `item.title` if present and ≤ 80 chars; otherwise derive a short heading from the first sentence of `preview` (max 80 chars, ellipsis). Never render a whole response paragraph as an `<h1>`.
+If current `ArtifactsPanel.tsx` already renders today's Outputs page, rename to `OutputsPanel.tsx` in Slice 1 rather than reusing the misleading name.
 
-Content rule (kills the `{}` leak, no raw JSON exposed):
-- Missing / empty string / `{}` / `[]` → render nothing.
-- String → render as prose with preserved whitespace (no code frame).
-- Parses as JSON → render only the `preview` snippet + `Preview unavailable for this item type`. No pretty-printed JSON, no monospace dump.
-- Recognized kinds can get bespoke renderers later; not in this shipment.
+## Taxonomy (kind-only)
 
-**7. Mount flicker fix**
-- Backdrop mounts at opacity 0 and fades in over 120ms with no `backdrop-filter` during the enter; blur re-applies on animation end.
-- Sheet slide-up starts at `60ms` delay so the backdrop is already opaque when the sheet moves.
-- `will-change: transform, opacity` on the sheet.
+Groups: Documents · Presentations · Spreadsheets · PDFs · Images · Prototypes · Snapshots · Other. Purpose lives in tags (`Document · Resume`, `Prototype · Mobile mockup`, etc.).
 
-### Files touched
-- `artifacts/atlas-frontend/src/components/library/kindMeta.ts` *(new)* — icons + labels + groups.
-- `artifacts/atlas-frontend/src/components/AskAtlasFocusSheet.tsx` — tab rename, search + filter chips, grouped list with counts, project-scope banner, action swap, sanitized detail view, backdrop/sheet enter sequence.
-- `artifacts/atlas-frontend/src/components/LibraryAttachmentsBar.tsx` — kind icon + type label on chips.
+"Prototype" is the user-facing Outputs label. "Artifact" is the internal model and inner-tab label.
 
-### Explicitly NOT in scope
-- Backend / `LibraryItemKind` additions (Decision, File, Image) — separate handoff.
-- Full Library route with management, versioning, bulk ops, thumbnail/gallery view.
-- Turn D dead-state cleanup in `home.tsx`.
-- Workspace Outputs surface — stays as-is; the two remain intentionally different (manage vs. recall).
+## Canonical kind→surface map
+
+```ts
+export const ARTIFACT_PRESENTATION_MAP = {
+  "html-app":        { label: "Interactive Prototype", surface: "draft",      actionLabel: "Open in Draft" },
+  "react-component": { label: "React Component",       surface: "stackblitz", actionLabel: "Open in StackBlitz" },
+  "project-app":     { label: "Project Application",   surface: "local-dev",  actionLabel: "Open in Local Dev" },
+  "deployed-app":    { label: "Live Application",      surface: "live-url",   actionLabel: "Open Live App" },
+  "mobile-mockup":   { label: "Mobile Prototype",      surface: "draft", viewport: "mobile", actionLabel: "Open Mobile Preview" },
+};
+```
+
+Both Outputs and Artifacts read label, icon, "Opens in" text, destination, and viewport from this map.
+
+## Canonical Output ↔ Artifact relationship (verify first)
+
+Durable pointer required — no title/timestamp matching.
+
+```ts
+// Option A: pointer on the output
+output.artifactId = "artifact-456"
+// Option B: canonical id on both
+{ outputId, artifactId, canonicalId, kind }
+```
+
+## Deep-link contract
+
+1. Resolve canonical artifact id → 2. Read mapped destination → 3. Open Preview → 4. Select tab → 5. Load content → 6. Render → 7. Persist selection in URL/workspace state → 8. Apply viewport.
+
+## Backend assumption — verify, do not assume
+
+Phase 1 is frontend-only ONLY IF the existing artifact endpoint already exposes: canonical artifact id, normalized `kind`, preview content or fetchable reference, associated output id, version info, restore-after-refresh metadata. Verification happens in Slice 1 before Slice 4 starts.
+
+## State ownership
+
+Use existing workspace/shell store. Add new store slice only if no appropriate owner exists. Local state acceptable if parent stays mounted across inner-tab switches.
+
+## Classification cleanup
+
+`outputsClassification.ts` applies these at query time:
+
+| Existing record                             | Destination                                       |
+|---------------------------------------------|---------------------------------------------------|
+| HTML-APP: Axiom Activity Ledger             | Artifact (`html-app`)                             |
+| Downloadable HTML of that ledger            | Output · Prototype, linked via `artifactId`       |
+| Timeout snapshot                            | Removed. Timeline only.                           |
+| Handoff narration                           | Removed. Conversation only.                       |
+| Resume recovery marker                      | Timeline / run details. Not Outputs.              |
+| Genuine resume document                     | Output · Document with `resume` tag               |
+
+---
+
+## Sequenced delivery — five small slices
+
+### Slice 1 — Parent navigation + verification
+Rename/introduce `OutputsPanel.tsx`; move gallery into `OutputsGallery.tsx`; add `[ All Outputs ] [ Artifacts ]`, All Outputs default; existing list/grid untouched; Artifacts placeholder; remove Artifacts tab from Preview menu; verify backend payload for deep-link needs and document findings.
+
+### Slice 2 — Classification only
+Add `outputsClassification.ts`. Prove on current records. No preview routing yet.
+
+### Slice 3 — Semantic presentation map
+Add `artifactPresentationMap.ts`. Render semantic label, file-type chip, icon, "Opens in" text, viewport label. No navigation behavior yet.
+
+### Slice 4 — Deep-link, html-app → Draft only
+Acceptance: Tap Axiom Activity Ledger from either tab → Preview opens → Draft selected → HTML loaded → rendered automatically → refresh restores the same artifact in Draft.
+
+### Slice 5 — Extend destinations + preserve state
+`react-component` → StackBlitz; `project-app` → Local Dev; `deployed-app` → Live URL; `mobile-mockup` → Draft + mobile viewport. Preserve search, filters, layout, scroll, expansion state across inner-tab switches.
+
+---
+
+## Product decisions
+
+1. **Latest version is the primary card.** All Outputs shows one card per item at its latest version. Previous versions are accessible from the card's details / version history, not as duplicate cards.
+
+2. **Prototypes stay project-scoped by default.** Interactive prototypes do not automatically enter the global Library. Users explicitly Save to Library or Publish to promote them.
+
+3. **Card body = open. Chevron/overflow = manage.** Tapping the card body opens the mapped Preview destination immediately. The chevron or overflow menu opens details, versions, download, rename, Save to Library, and delete.
+
+4. **Slices 1–3 make zero schema changes.** If Slice 1 finds that a durable Output–Artifact pointer or canonical artifact fetch is missing, STOP and report:
+   - the exact existing payload,
+   - the missing field,
+   - affected tables/endpoints,
+   - the smallest proposed backend correction.
+   
+   Do not continue to Slice 4 until that report is reviewed.
+
+5. **No text-phrase classification.** Never classify by matching visible strings like "Connection timed out." Use `source`, `kind`, `artifact.type`, or record metadata. If stored data cannot reliably distinguish records, report a data-contract gap — do not add brittle text filters.
+
+---
+
+## Out of scope
+Preview tab structure changes; chat/timeline surface changes; new artifact kinds beyond the five mapped; any DB schema change beyond (if unavoidable) an `output.artifactId` pointer surfaced in Slice 1 verification.

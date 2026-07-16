@@ -72,7 +72,7 @@ import { MenuBtn, AtlasLogo } from "@/components/workspace/atoms";
 import { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow } from "@/components/workspace/CommitHistory";
 export { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow };
 
-import { ArtifactsPanel } from "@/components/workspace/ArtifactsPanel";
+import { OutputsPanel } from "@/components/workspace/OutputsPanel";
 import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
@@ -2313,7 +2313,7 @@ function RightPanel({
           <LedgerPanel projectId={projectId} entries={entries} />
         </div>
       )}
-      {tab === "artifacts" && <ArtifactsPanel projectId={projectId} />}
+      {tab === "artifacts" && <OutputsPanel projectId={projectId} />}
       {tab === "blueprints" && <BlueprintPanel projectId={projectId} refreshTrigger={amRefreshTrigger} readinessScore={displayedReadinessScore} />}
       {tab === "files" && (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
@@ -6885,7 +6885,7 @@ export default function Workspace() {
   }, [isMobile]);
 
   // "axiom:open-output" — dispatched from Timeline artifact rows.
-  // Routes to the Outputs panel and asks ArtifactsPanel to expand the target item.
+  // Routes to the Outputs panel and asks OutputsPanel to expand the target item.
   useEffect(() => {
     const handler = (ev: Event) => {
       const detail = (ev as CustomEvent<{ artifactId?: number | string }>).detail ?? {};
@@ -8889,7 +8889,7 @@ export default function Workspace() {
             </div>
           ) : leftTab === "artifacts" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <ArtifactsPanel projectId={id} />
+              <OutputsPanel projectId={id} />
             </div>
           ) : null}
 
