@@ -656,7 +656,7 @@ function stepLabel(verb: string, detail?: string | null): string {
     THOUGHT: "Thought", FILE_READ: "Read", SEARCH: "Search",
     INSPECT: "Inspect", FILE_EDIT: "Edited", LINE_PATCH: "Patched",
     Writing: "Edited", Written: "Edited", Patching: "Patched",
-    FILE_DELETE: "Deleted", SUMMARY: "Summary",
+    FILE_DELETE: "Deleted", SUMMARY: "Response",
     DNA_UPDATED: "DNA updated", DECISION_RECORDED: "Decision",
     PLAN_RECORDED: "Plan recorded",
     ARTIFACT_CREATED: "Output", ERROR: "Error", QUESTION_ASKED: "Question",
@@ -697,6 +697,39 @@ function StepIcon({ verb }: { verb: string }) {
 }
 
 
+function SummaryProseBlock({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const CLAMP_HEIGHT = 88; // ~4 lines at 13px / 1.65 line-height
+  const isLong = content.length > 300;
+  return (
+    <div style={{ margin: "8px 0 2px" }}>
+      <div style={{
+        fontFamily: "var(--app-font-sans)", fontSize: 12.5,
+        color: "var(--atlas-fg)", opacity: 0.88, lineHeight: 1.65,
+        whiteSpace: "pre-wrap", wordBreak: "break-word",
+        overflow: "hidden",
+        maxHeight: isLong && !expanded ? CLAMP_HEIGHT : undefined,
+        maskImage: isLong && !expanded
+          ? "linear-gradient(to bottom, black 55%, transparent 100%)"
+          : undefined,
+      }}>{content}</div>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            marginTop: 4,
+            fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+            letterSpacing: "0.08em", textTransform: "uppercase",
+            color: "rgba(100,200,120,0.7)", background: "none",
+            border: "none", cursor: "pointer", padding: 0,
+          }}
+        >{expanded ? "↑ less" : "↓ more"}</button>
+      )}
+    </div>
+  );
+}
+
 function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }) {
   const color = stepColor(step.verb);
   const canExpand = EXPANDABLE_VERBS.has(step.verb) && !!step.content;
@@ -709,37 +742,7 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
   const showTarget = !isTextVerb && step.verb !== "INSPECT" && !!step.target;
   const isSummary = step.verb === "SUMMARY";
   const isError = step.verb === "ERROR";
-  const isReceipt = isSummary || isError;
-
-  // SUMMARY / ERROR render as a full receipt card, not a hairline row.
-  if (isReceipt) {
-    return (
-      <div style={{
-        marginTop: 14,
-        padding: "12px 14px",
-        borderRadius: 6,
-        background: isError ? "rgba(220,80,80,0.06)" : "rgba(100,200,120,0.05)",
-        border: `1px solid ${isError ? "rgba(220,80,80,0.28)" : "rgba(100,200,120,0.25)"}`,
-      }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6,
-          fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-          letterSpacing: "0.14em", textTransform: "uppercase",
-          color, opacity: 0.95, marginBottom: 8,
-        }}>
-          <StepIcon verb={step.verb} />
-          <span>{isError ? "Error" : "Outcome"}</span>
-        </div>
-        {step.content && (
-          <div style={{
-            fontFamily: "var(--app-font-sans)", fontSize: 12.5,
-            color: "var(--atlas-fg)", opacity: 0.92, lineHeight: 1.6,
-            whiteSpace: "pre-wrap", wordBreak: "break-word",
-          }}>{step.content}</div>
-        )}
-      </div>
-    );
-  }
+  const isReceipt = isError; // SUMMARY now renders inline in the step flow
 
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -825,18 +828,22 @@ function RunTimelineItem({ step, isLast }: { step: ApiRunStep; isLast: boolean }
         </div>
 
         {(open || alwaysOpen) && step.content && (
-          <pre style={{
-            margin: "6px 0 2px", padding: "10px 12px", borderRadius: 4,
-            background: "rgba(var(--atlas-fg-rgb), 0.05)",
-            border: `1px solid ${color.replace(/[\d.]+\)$/, "0.12)")}`,
-            fontFamily: isTextVerb ? "var(--app-font-sans)" : "var(--app-font-mono)",
-            fontSize: isTextVerb ? 11.5 : 10.5,
-            color: "var(--atlas-fg)", opacity: 0.85, lineHeight: 1.65,
-            overflowX: "auto", overflowY: "auto",
-            maxHeight: step.verb === "THOUGHT" ? 200 : 320,
-            whiteSpace: isTextVerb ? "pre-wrap" : "pre",
-            wordBreak: isTextVerb ? "break-word" : "normal",
-          }}>{step.content}</pre>
+          isSummary ? (
+            <SummaryProseBlock content={step.content} />
+          ) : (
+            <pre style={{
+              margin: "6px 0 2px", padding: "10px 12px", borderRadius: 4,
+              background: "rgba(var(--atlas-fg-rgb), 0.05)",
+              border: `1px solid ${color.replace(/[\d.]+\)$/, "0.12)")}`,
+              fontFamily: isTextVerb ? "var(--app-font-sans)" : "var(--app-font-mono)",
+              fontSize: isTextVerb ? 11.5 : 10.5,
+              color: "var(--atlas-fg)", opacity: 0.85, lineHeight: 1.65,
+              overflowX: "auto", overflowY: "auto",
+              maxHeight: step.verb === "THOUGHT" ? 200 : 320,
+              whiteSpace: isTextVerb ? "pre-wrap" : "pre",
+              wordBreak: isTextVerb ? "break-word" : "normal",
+            }}>{step.content}</pre>
+          )
         )}
       </div>
     </div>
