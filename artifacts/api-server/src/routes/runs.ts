@@ -892,6 +892,82 @@ router.post("/runs/:id/cancel", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// POST /api/runs/:id/authorize — authorize a pending plan → begin execution
+// ---------------------------------------------------------------------------
+
+router.post("/runs/:id/authorize", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { id } = req.params;
+    const { approvedPlanVersion } = req.body as { approvedPlanVersion?: string };
+
+    const runResult = await db.execute<any>(sql`
+      SELECT er.id, er.status, er.verification_contract, er.project_id,
+             p.user_id as owner_id
+      FROM execution_runs er
+      JOIN projects p ON p.id = er.project_id
+      WHERE er.id = ${id}
+      LIMIT 1
+    `);
+
+    const run = runResult.rows[0];
+    if (!run) {
+      res.status(404).json({ error: "NOT_FOUND" });
+      return;
+    }
+    if (run.owner_id !== userId) {
+      res.status(403).json({ error: "FORBIDDEN" });
+      return;
+    }
+
+    const status = run.status as string;
+
+    if (status === "executing" || status === "running") {
+      res.json({ ok: true, runId: id, alreadyAuthorized: true });
+      return;
+    }
+
+    if (status !== "awaiting_confirmation") {
+      res.status(409).json({
+        error: "WRONG_STATUS",
+        message: `Run is in "${status}" status — only awaiting_confirmation runs can be authorized.`,
+      });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const planVersion = approvedPlanVersion ?? null;
+
+    await db.execute(sql`
+      UPDATE execution_runs
+      SET status = 'executing',
+          run_mode = 'EXECUTE',
+          verification_contract = COALESCE(verification_contract, '{}'::jsonb) || jsonb_build_object(
+            'approvedPlanVersion', ${planVersion}::text,
+            'approvedBy', ${userId}::int,
+            'approvedAt', ${now}::text
+          )
+      WHERE id = ${id}
+    `);
+
+    logger.info(
+      { runId: id, userId, planVersion },
+      "nexus: run authorized — transitioning to executing",
+    );
+
+    res.json({ ok: true, runId: id, approvedPlanVersion: planVersion });
+  } catch (err) {
+    logger.error({ err }, "POST /runs/:id/authorize error");
+    res.status(500).json({ error: "INTERNAL", message: "authorize failed" });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // POST /api/runs/:id/commit — trigger GitHub commit (Gate 2)
 // ---------------------------------------------------------------------------
 

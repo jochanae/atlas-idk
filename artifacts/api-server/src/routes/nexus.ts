@@ -86,6 +86,16 @@ import {
   type MemoryChipRich,
 } from "../lib/builderProtocols";
 import { resolveGithubTokenForRequest } from "../lib/terminalSandbox";
+import {
+  parseBuildContractBlock,
+  stripBuildContractBlock,
+  validateBuildManifest,
+  buildInitialContract,
+  type BuildStateContract,
+  type AuthorizationPolicy as BuildAuthorizationPolicy,
+} from "../lib/buildStateContract";
+import { checkAtlasMutationSync } from "../lib/mutationGuard";
+import { resolveAuthorizationPolicy } from "../lib/authorizationPolicy";
 
 const router: IRouter = Router();
 
@@ -2100,6 +2110,11 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
      *  same id for the terminal update — giving Timeline/Changes a single
      *  identity across live → completed. Falls back to a server-minted id. */
     runId?: string;
+    /** Resume a run that is in awaiting_confirmation status. When present,
+     *  nexus forces BUILD intent and EXECUTE mode, skipping WhisperGate and
+     *  the planning phase — going straight to atomic step execution. */
+    _resumeRunId?: string;
+    _approvedPlanVersion?: string;
   };
 
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
@@ -2459,7 +2474,42 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // Only BUILD (and not Just Talk / Conversation Mode) may persist runs,
   // bootstrap GitHub, trigger Tier1 write side-effects, or emit file-edit
   // markers (FILE_EDIT_START / LINE_PATCH_START / GITHUB_PUSH / REPO_LINK).
-  const allowBuildSideEffects = intent === "BUILD" && !justTalk && !conversationModeActive;
+  // Resume path: _resumeRunId forces BUILD intent for post-authorization turns.
+  const _resumeRunId = body._resumeRunId ?? null;
+  const _approvedPlanVersion = body._approvedPlanVersion ?? null;
+  let isResuming = false;
+  if (_resumeRunId) {
+    try {
+      const resumeRows = await db.execute(sql`
+        SELECT er.status FROM execution_runs er
+        JOIN projects p ON p.id = er.project_id
+        WHERE er.id = ${_resumeRunId} AND p.user_id = ${userId}
+        LIMIT 1
+      `);
+      const resumeRow = resumeRows.rows[0] as { status: string } | undefined;
+      if (
+        resumeRow &&
+        (resumeRow.status === "executing" ||
+          resumeRow.status === "awaiting_confirmation" ||
+          resumeRow.status === "running")
+      ) {
+        isResuming = true;
+        if (resumeRow.status === "awaiting_confirmation") {
+          await db.execute(sql`
+            UPDATE execution_runs SET status = 'executing', run_mode = 'EXECUTE'
+            WHERE id = ${_resumeRunId}
+          `);
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        { err, _resumeRunId },
+        "nexus: resume run validation failed — treating as normal turn",
+      );
+    }
+  }
+  const allowBuildSideEffects =
+    (intent === "BUILD" || isResuming) && !justTalk && !conversationModeActive;
   // The shared agent-tools registry (search_all_projects, architecture_diff,
   // generate_deliverable, read_file, etc.) is read/generate-only — none of it
   // edits files, so it does not need the same guard as allowBuildSideEffects.
@@ -3473,6 +3523,42 @@ Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over nar
 --- END WHISPERGATE ---`;
     systemPrompt += `\n\n${NEXUS_BUILD_PROTOCOLS}`;
     systemPrompt += `\n\n${ATLAS_DESIGN_INTELLIGENCE}`;
+    systemPrompt += `\n\n--- BUILD_CONTRACT PROTOCOL ---
+When you are about to write code on a BUILD turn and the change is non-trivial (more than one file or more than ~50 lines total), you MUST emit a BUILD_CONTRACT_START/END block BEFORE any FILE_EDIT blocks. The server will validate the manifest, transition the run to awaiting_confirmation, and show the user an Authorize Build card. File writes are blocked until the user authorizes.
+
+FORMAT: emit this block at the top of your response, before any prose or FILE_EDIT blocks:
+
+BUILD_CONTRACT_START
+{
+  "buildType": "project-file",
+  "atomicPolicy": "step-by-step",
+  "steps": [
+    {
+      "id": "step-1",
+      "sequence": 1,
+      "title": "Brief human-readable description of this step",
+      "targetFiles": ["src/exact/path.tsx"],
+      "requiredEvidence": ["PATCH", "TYPECHECK"],
+      "maxFiles": 2,
+      "maxPatchLines": 150,
+      "allowNewDependencies": false
+    }
+  ],
+  "expectedSurfaces": ["chat", "timeline", "changes"],
+  "changesExpected": true,
+  "iterationStrategy": "modify-project-files",
+  "verificationCriteria": "One sentence: what constitutes success",
+  "authorizationPolicyProposal": "explicit-confirmation-required"
+}
+BUILD_CONTRACT_END
+
+RULES:
+- targetFiles must be exact relative paths from the project root — no globs.
+- requiredEvidence values: PATCH, BUILD, TYPECHECK, TEST, STARTUP, HEALTH_CHECK.
+- authorizationPolicyProposal is advisory — the server may override it.
+- Do NOT emit FILE_EDIT blocks in the same turn as BUILD_CONTRACT. The plan is captured, NOT executed.
+- For single-file trivial edits, skip the contract and write the FILE_EDIT directly.
+--- END BUILD_CONTRACT PROTOCOL ---`;
     systemPrompt += `\n\n--- VERIFICATION ENFORCEMENT ---
 The execution state machine is the single authority on what has been proven.
 You MUST call advance_execution_state at each milestone. Skipping any call leaves the run unverified.
@@ -3589,6 +3675,97 @@ PROSE RULES (enforced — contradiction detection is active):
       .replace(/\nPLAN_CONTINUATION_START[\s\S]*?PLAN_CONTINUATION_END(?:\n|$)/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
+
+    // ── BUILD_CONTRACT detection ─────────────────────────────────────────────
+    // When Atlas emits BUILD_CONTRACT_START/END on a BUILD turn, the server:
+    //   1. Validates the manifest schema
+    //   2. Resolves authorization policy (model proposal is advisory only)
+    //   3. Persists the contract to verification_contract
+    //   4. Transitions run to awaiting_confirmation
+    //   5. Strips the block from visible content
+    //   6. Blocks FILE_EDIT auto-apply for this turn
+    // Execution resumes when the client sends _resumeRunId on a new turn.
+    let awaitingConfirmation: {
+      runId: string;
+      contract: BuildStateContract;
+      planVersion: string;
+      authorizationPolicy: BuildAuthorizationPolicy;
+    } | null = null;
+
+    if (allowBuildSideEffects && activeRunId && !isResuming) {
+      const contractBlock = parseBuildContractBlock(rawContent);
+      if (contractBlock) {
+        const validation = validateBuildManifest(contractBlock.json);
+        if (!validation.ok) {
+          rawContent = stripBuildContractBlock(rawContent);
+          rawContent += `\n\n⚠️ **BUILD_CONTRACT validation failed**: ${validation.error}\n\nPlease resubmit a valid BUILD_CONTRACT_START / BUILD_CONTRACT_END block.`;
+          req.log.warn(
+            { error: validation.error, runId: activeRunId },
+            "nexus: invalid BUILD_CONTRACT manifest — rejected",
+          );
+        } else {
+          let rollbackTarget: string | null = null;
+          if (focusProjectId) {
+            try {
+              const { execSync } = await import("node:child_process");
+              const wsDir = projectWorkspaceDir(focusProjectId);
+              rollbackTarget = execSync("git rev-parse HEAD", {
+                cwd: wsDir,
+                timeout: 2000,
+              })
+                .toString()
+                .trim();
+            } catch { /* non-fatal — rollback SHA is best-effort */ }
+          }
+
+          const resolvedPolicy = resolveAuthorizationPolicy({
+            proposal:
+              (contractBlock.json as Record<string, unknown>)
+                .authorizationPolicyProposal as BuildAuthorizationPolicy | null ?? null,
+            manifest: validation.manifest,
+            isFirstProjectBuild: true,
+            hasExistingAuthorizedRun: false,
+          });
+          const contract = buildInitialContract(
+            validation.manifest,
+            resolvedPolicy,
+            validation.planVersion,
+            rollbackTarget,
+          );
+
+          try {
+            await db.execute(sql`
+              UPDATE execution_runs
+              SET status = 'awaiting_confirmation',
+                  verification_contract = ${JSON.stringify(contract)}::jsonb,
+                  run_mode = 'EXPLORE'
+              WHERE id = ${activeRunId}
+            `);
+            req.log.info(
+              {
+                runId: activeRunId,
+                policy: resolvedPolicy,
+                steps: validation.manifest.steps.length,
+              },
+              "nexus: BUILD_CONTRACT validated — run awaiting_confirmation",
+            );
+          } catch (dbErr) {
+            req.log.warn(
+              { err: dbErr, runId: activeRunId },
+              "nexus: failed to persist awaiting_confirmation — non-fatal",
+            );
+          }
+
+          rawContent = stripBuildContractBlock(rawContent);
+          awaitingConfirmation = {
+            runId: activeRunId,
+            contract,
+            planVersion: validation.planVersion,
+            authorizationPolicy: resolvedPolicy,
+          };
+        }
+      }
+    }
 
     // ── Output Guard (WhisperGate CHAT scrub) ────────────────────────────────
     // Ported from chat.ts. Must run BEFORE any FILE_EDIT / GITHUB_PUSH parsing
@@ -3955,6 +4132,37 @@ PROSE RULES (enforced — contradiction detection is active):
 
       responseFileEdits = fileChangesAllowed ? parsedFileEdits : [];
       responseLinePatches = fileChangesAllowed ? parsedLinePatches : [];
+
+      // ── Mutation guard ────────────────────────────────────────────────────
+      // If this turn emitted a BUILD_CONTRACT (awaitingConfirmation is set),
+      // clear all file writes for this turn — the plan is captured, not executed.
+      if (awaitingConfirmation !== null && responseFileEdits.length > 0) {
+        req.log.info(
+          { runId: activeRunId, fileCount: responseFileEdits.length },
+          "nexus: FILE_EDIT blocked — run awaiting_confirmation; writes deferred to authorized execution turn",
+        );
+        responseFileEdits = [];
+        responseLinePatches = [];
+      }
+
+      // Synchronous pre-check: block file writes in EXPLORE mode or planning status
+      if (responseFileEdits.length > 0 && activeRunId) {
+        const guardResult = checkAtlasMutationSync({
+          actor: "atlas",
+          verb: "FILE_EDIT",
+          runStatus: awaitingConfirmation ? "awaiting_confirmation" : "running",
+          runMode: allowBuildSideEffects ? "EXECUTE" : "EXPLORE",
+          runId: activeRunId,
+        });
+        if (!guardResult.allowed) {
+          req.log.warn(
+            { runId: activeRunId, reason: guardResult.reason, code: guardResult.code },
+            "nexus: mutationGuard blocked FILE_EDIT auto-apply",
+          );
+          responseFileEdits = [];
+          responseLinePatches = [];
+        }
+      }
 
       // Auto-apply FILE_EDIT blocks to the local workspace
       if (responseFileEdits.length > 0 && focusProjectId) {
@@ -4929,6 +5137,26 @@ PROSE RULES (enforced — contradiction detection is active):
       ...(githubPushResult ? { githubPushResult } : {}),
       ...(githubPushDone ? { githubPush: githubPushDone } : {}),
       ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}),
+      ...(awaitingConfirmation
+        ? {
+            awaitingConfirmation: {
+              runId: awaitingConfirmation.runId,
+              planVersion: awaitingConfirmation.planVersion,
+              authorizationPolicy: awaitingConfirmation.authorizationPolicy,
+              buildType: awaitingConfirmation.contract.buildType,
+              atomicPolicy: awaitingConfirmation.contract.atomicPolicy,
+              estimatedAtomicSteps: awaitingConfirmation.contract.estimatedAtomicSteps,
+              expectedSurfaces: awaitingConfirmation.contract.expectedSurfaces,
+              changesExpected: awaitingConfirmation.contract.changesExpected,
+              previewDestination: awaitingConfirmation.contract.previewDestination,
+              localDevExpected: awaitingConfirmation.contract.localDevExpected,
+              iterationStrategy: awaitingConfirmation.contract.iterationStrategy,
+              verificationCriteria: awaitingConfirmation.contract.verificationCriteria,
+              rollbackTarget: awaitingConfirmation.contract.rollbackTarget,
+              steps: awaitingConfirmation.contract.steps,
+            },
+          }
+        : {}),
       ...runMetadata,
     })}\n\n`);
 

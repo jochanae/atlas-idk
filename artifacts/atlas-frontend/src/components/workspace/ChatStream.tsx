@@ -22,6 +22,7 @@ import type { PlanState } from "@/components/workspace/chatShared";
 import type { ResumeBrief } from "@/hooks/useProjectResume";
 import { isDoingVerb } from "@/lib/runStepLabels";
 import { WorkspaceRunCard } from "@/components/workspace/WorkspaceRunCard";
+import { BuildContractCard } from "@/components/workspace/BuildContractCard";
 
 // Minimal structural types — avoid importing private types from workspace.tsx
 type ProjectLike = { name?: string } | null | undefined;
@@ -337,6 +338,10 @@ export interface ChatStreamProps {
    *  WorkspaceRunCard instead of using deriveRun(messages). */
   execLatestRun?: import("@/hooks/useProjectRuns").ApiRun | null;
 
+  /** Authorize a pending build plan and resume execution.
+   *  Passed from the nexus bridge → workspace.tsx → ChatStream. */
+  authorizeRun?: (runId: string, planVersion: string) => Promise<void>;
+
   /** Conversation Mode: clean chat only — no run cards, tool blocks, or
    *  execution journals. Same thread/session as Build Mode, just a quieter
    *  render of it (mirrors the old Ask Atlas posture). */
@@ -373,6 +378,7 @@ export function ChatStream(props: ChatStreamProps) {
     liveStep,
     execLatestRun,
     conversationMode,
+    authorizeRun,
   } = props;
 
   // Suppress the streaming prose bubble when live build steps are actively
@@ -854,6 +860,40 @@ export function ChatStream(props: ChatStreamProps) {
                 onBuildAnyway={onBuildAnyway}
                 buildGroupInfo={buildGroupMap.get(i)}
               />
+              {!conversationMode && (msg as any).awaitingAuthorization && !msg.streaming && (
+                <div style={{ maxWidth: "80%", marginTop: -4, marginBottom: 4, paddingLeft: 4 }}>
+                  <BuildContractCard
+                    contract={{
+                      runId: (msg as any).awaitingAuthorization.runId ?? "",
+                      planVersion: (msg as any).awaitingAuthorization.planVersion ?? "",
+                      authorizationPolicy: (msg as any).awaitingAuthorization.authorizationPolicy ?? "explicit-confirmation-required",
+                      buildType: (msg as any).awaitingAuthorization.buildType,
+                      atomicPolicy: (msg as any).awaitingAuthorization.atomicPolicy,
+                      estimatedAtomicSteps: (msg as any).awaitingAuthorization.estimatedAtomicSteps,
+                      expectedSurfaces: (msg as any).awaitingAuthorization.expectedSurfaces,
+                      changesExpected: (msg as any).awaitingAuthorization.changesExpected,
+                      previewDestination: (msg as any).awaitingAuthorization.previewDestination,
+                      localDevExpected: (msg as any).awaitingAuthorization.localDevExpected,
+                      iterationStrategy: (msg as any).awaitingAuthorization.iterationStrategy,
+                      verificationCriteria: (msg as any).awaitingAuthorization.verificationCriteria,
+                      rollbackTarget: (msg as any).awaitingAuthorization.rollbackTarget,
+                      steps: (msg as any).awaitingAuthorization.steps ?? [],
+                    }}
+                    onAuthorize={() => {
+                      const auth = (msg as any).awaitingAuthorization;
+                      if (auth?.runId) {
+                        authorizeRun?.(auth.runId, auth.planVersion ?? "").catch(() => {});
+                      }
+                    }}
+                    onRevise={() => {
+                      onSend?.("Please revise the build plan — I have some changes in mind.");
+                    }}
+                    onCancel={() => {
+                      onSend?.("Cancel the build plan.");
+                    }}
+                  />
+                </div>
+              )}
               {!conversationMode && Boolean(msg.terminalCmd || msg.terminalResult) && (
                 <div style={{ maxWidth: "80%", marginTop: -18, marginBottom: 24 }}>
                   <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={projectId} />

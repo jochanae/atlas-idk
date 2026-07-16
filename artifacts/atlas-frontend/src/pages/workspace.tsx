@@ -9026,6 +9026,7 @@ export default function Workspace() {
                 chatPending: nexusBridge.chatPending,
                 liveStep: nexusBridge.liveStep,
                 onSend: (msg: string) => nexusBridge.send(msg),
+                authorizeRun: nexusBridge.authorizeRun,
               } : {}),
             } : null}
 

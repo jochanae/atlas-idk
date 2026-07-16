@@ -110,6 +110,9 @@ export interface NexusMessage {
   modelUsed?: string | null;
   errorMessage?: string;
   plan?: unknown;
+  /** Build Contract awaiting authorization — set when the server transitions a run
+   *  to awaiting_confirmation after validating a BUILD_CONTRACT_START/END block. */
+  awaitingAuthorization?: Record<string, unknown> | null;
   visualImageBase64?: string | null;
   visualCaption?: string | null;
   visualLoading?: boolean;
@@ -247,9 +250,18 @@ export interface UseNexusChatStreamReturn {
     imageMimeType?: string;
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
+    /** Extra fields merged into the backend POST body — used for resume flags
+     *  such as _resumeRunId and _approvedPlanVersion. */
+    extraBody?: Record<string, unknown>;
   }) => Promise<void>;
   abort: () => void;
   clearMessages: () => void;
+  /** Build plan awaiting authorization. Set when the server emits awaitingConfirmation
+   *  in the done event after validating a BUILD_CONTRACT block. */
+  pendingAuthorization: Record<string, unknown> | null;
+  /** Authorize a pending build plan and immediately resume execution.
+   *  Calls POST /api/runs/:id/authorize then sends a resume message. */
+  authorizeRun: (runId: string, planVersion: string) => Promise<void>;
 }
 
 export function useNexusChatStream(
@@ -324,18 +336,22 @@ export function useNexusChatStream(
     setHandoffSignal(null);
   }, []);
 
+  const [pendingAuthorization, setPendingAuthorization] = useState<Record<string, unknown> | null>(null);
+
   const send = useCallback(async ({
     text,
     imageBase64,
     imageMimeType,
     attachments,
     overrideOptions,
+    extraBody,
   }: {
     text: string;
     imageBase64?: string;
     imageMimeType?: string;
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
+    extraBody?: Record<string, unknown>;
   }) => {
     // Unify legacy single-image inputs into the attachments array.
     // imgAttachments = images only (used for imageUrl preview in optimistic message + legacy fields).
@@ -482,6 +498,7 @@ export function useNexusChatStream(
                 };
               })()
             : {}),
+          ...(extraBody ?? {}),
         },
 
         callbacks: {
@@ -776,9 +793,15 @@ export function useNexusChatStream(
                     generatedArtifacts: ((meta as any).generatedArtifacts ?? null) as NexusMessage["generatedArtifacts"],
                     runId: ((meta as any).runId as string | undefined) ?? null,
                     executionOutcome: ((meta as any).executionOutcome ?? null) as NexusMessage["executionOutcome"],
+                    awaitingAuthorization: ((meta as any).awaitingConfirmation ?? null) as NexusMessage["awaitingAuthorization"],
                   }
                 : m
             ));
+
+            // Capture pending authorization so consumers can render the authorize card
+            if ((meta as any).awaitingConfirmation) {
+              setPendingAuthorization((meta as any).awaitingConfirmation as Record<string, unknown>);
+            }
 
             // If an html-app was generated, open the Preview panel automatically
             // so the user sees the running app without manually switching tabs.
@@ -838,6 +861,30 @@ export function useNexusChatStream(
     }
   }, [focusProjectId, isPending, model, mode, conversationMode, onData, onProjectReady, stream, abortStream, resetStreamState]);
 
+  const authorizeRun = async (runId: string, planVersion: string): Promise<void> => {
+    // Step 1: transition the run to executing
+    const res = await fetch(`/api/runs/${runId}/authorize`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approvedPlanVersion: planVersion }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "authorize failed" })) as { message?: string };
+      throw new Error(err.message ?? `authorize failed: ${res.status}`);
+    }
+    // Clear pending authorization state immediately
+    setPendingAuthorization(null);
+    // Step 2: send a resume turn that triggers execution
+    await send({
+      text: "(Authorized — proceeding with build plan)",
+      extraBody: {
+        _resumeRunId: runId,
+        _approvedPlanVersion: planVersion,
+      },
+    });
+  };
+
   return {
     messages,
     setMessages,
@@ -854,5 +901,7 @@ export function useNexusChatStream(
     send,
     abort,
     clearMessages,
+    pendingAuthorization,
+    authorizeRun,
   };
 }

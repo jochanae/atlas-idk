@@ -128,7 +128,7 @@ export function useNexusWorkspaceBridge(
   // Prevents double-firing if the effect re-runs during recovery.
   const recoveryAttemptedRef = useRef(false);
 
-  const { messages, isStreaming, isPending, liveStep, activeRunId, setMessages, send, abort, clearMessages } = useNexusChatStream({
+  const { messages, isStreaming, isPending, liveStep, activeRunId, setMessages, send, abort, clearMessages, authorizeRun } = useNexusChatStream({
     focusProjectId: pid || null,
     mode: "workspace",
     conversationId: conversationId || null,
@@ -369,5 +369,5 @@ export function useNexusWorkspaceBridge(
     [send]
   );
 
-  return { messages: chatMessages, chatPending, liveStep, activeRunId, send: sendText, abort };
+  return { messages: chatMessages, chatPending, liveStep, activeRunId, send: sendText, abort, authorizeRun };
 }
