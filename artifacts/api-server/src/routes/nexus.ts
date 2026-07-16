@@ -1668,6 +1668,7 @@ async function persistNexusExecutionRun(args: {
       status: string;
       detail: string | null;
       content: string | null;
+      beforeContent?: string | null;
       artifactUrl?: string | null;
     };
     const steps: Step[] = [];
