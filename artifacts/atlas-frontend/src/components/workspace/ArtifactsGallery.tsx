@@ -260,8 +260,15 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
                   {isHtmlPreview && (
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={e => e.stopPropagation()}>
                       <button
-                        onClick={() => {
-                          const html = artifact.payload.html as string | undefined;
+                        onClick={async () => {
+                          const preview = artifact.payload.preview as { html?: string } | undefined;
+                          let html = (artifact.payload.html as string | undefined) ?? preview?.html;
+                          if (!html) {
+                            try {
+                              const res = await fetch(`/api/projects/${projectId}/artifacts/${artifact.id}/download`, { credentials: "include" });
+                              if (res.ok) html = await res.text();
+                            } catch { /* fall through */ }
+                          }
                           if (!html) return;
                           window.dispatchEvent(new CustomEvent("axiom:preview-open-html", { detail: { html } }));
                         }}
