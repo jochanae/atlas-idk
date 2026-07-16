@@ -205,7 +205,7 @@ function adaptExecutionRun(
       .filter((s) => s.verb === "FILE_READ" && s.target)
       .map((s) => s.target as string);
     const first = readTargets[0]?.split("/").pop() ?? readTargets[0];
-    title = run.summary || (first ? `No changes — ${first} already matched` : "No changes in this run");
+    title = first ? `No changes — ${first} already matched` : "No changes in this run";
   } else if (deliverableStep) {
     const name = deliverableStep.target ? deliverableStep.target.split("/").pop() ?? deliverableStep.target : "your file";
     title = `${name} is ready`;
