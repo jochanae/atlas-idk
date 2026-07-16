@@ -1546,11 +1546,20 @@ async function insertRunningExecutionRun(args: {
 /** Fire-and-forget incremental step persist during streaming. Uses a negative
  *  order_index so canonical rewrite in persistNexusExecutionRun (which uses 0+)
  *  can safely DELETE these before re-inserting the cleaned final set. */
-function appendLiveStepAsync(runId: string, verb: string, target: string | null, status: string, detail: string | null, orderIdx: number): void {
+function appendLiveStepAsync(
+  runId: string,
+  verb: string,
+  target: string | null,
+  status: string,
+  detail: string | null,
+  orderIdx: number,
+  content: string | null = null,
+  beforeContent: string | null = null,
+): void {
   const purpose = derivePurposeFromVerb(verb, detail);
   void db.execute(sql`
-    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, step_purpose, order_index)
-    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${purpose}, ${orderIdx})
+    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, step_purpose, order_index)
+    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${content}, ${beforeContent}, ${purpose}, ${orderIdx})
   `).catch((err) => {
     logger.debug({ err, runId, verb }, "nexus: incremental step insert failed — non-fatal");
   });
