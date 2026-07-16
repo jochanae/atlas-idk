@@ -974,7 +974,7 @@ ${t}
   } as const;
   const orient = isLandscape ? "landscape" : "portrait";
   const [dW, dH] = DEVICE_CONFIG[deviceSize][orient];
-  const scale = dW && containerW > 0 && containerW < dW + 24 ? (containerW - 24) / dW : 1;
+  const scale = fitMode === "fit" && dW && containerW > 0 && containerW < dW + 24 ? (containerW - 24) / dW : 1;
 
   const deviceBtnStyle = (active: boolean): React.CSSProperties => ({
     display: "flex", alignItems: "center", justifyContent: "center",
