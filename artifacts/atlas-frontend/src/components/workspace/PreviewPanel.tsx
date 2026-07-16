@@ -1026,7 +1026,7 @@ ${t}
         {/* right fade */}
         <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, var(--atlas-bg), transparent)" }} />
         <div style={{ display: "flex", overflowX: "auto", scrollbarWidth: "none" }}>
-        {(["url", "sandbox", "stackblitz", "local", "generated"] as const).map((m) => (
+        {(["url", "sandbox", "stackblitz", "local"] as const).map((m) => (
           <button
             key={m}
             onClick={() => setPreviewMode(m)}
@@ -1043,7 +1043,7 @@ ${t}
               whiteSpace: "nowrap",
             }}
           >
-            {m === "url" ? "Live URL" : m === "sandbox" ? "Draft" : m === "stackblitz" ? "StackBlitz" : m === "local" ? "Local Dev" : "Artifacts"}
+            {m === "url" ? "Live URL" : m === "sandbox" ? "Draft" : m === "stackblitz" ? "StackBlitz" : "Local Dev"}
             {/* Dot indicator on Draft tab when it has content but isn't active */}
             {m === "sandbox" && sandboxRendered && previewMode !== "sandbox" && (
               <span style={{
