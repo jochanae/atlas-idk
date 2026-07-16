@@ -156,6 +156,12 @@ export function SpeakButton({
     cancelledRef.current = false;
     setSpeaking(true);
     speakChunk(0);
+    try {
+      if (!localStorage.getItem(HINT_STORAGE_KEY)) {
+        setShowHint(true);
+        window.setTimeout(() => setShowHint(false), 3200);
+      }
+    } catch {}
   }, [speaking, supported, text, speakChunk]);
 
   const pickVoice = (uri: string) => {
