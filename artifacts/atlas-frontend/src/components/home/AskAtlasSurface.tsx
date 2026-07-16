@@ -632,11 +632,7 @@ export function AskAtlasSurface({
                         try {
                           const pid = msg.navigateTo!.projectId;
                           if (pid) {
-                            const lastUserMsg = messages.slice(0, i).reverse().find(m => m.role === "user")?.content ?? "";
-                            const openingMsg = lastUserMsg
-                              ? `Build this — here is the full specification:\n\n${lastUserMsg}`
-                              : "Build this — continue from what we planned.";
-                            sessionStorage.setItem("atlas-opening-message", openingMsg);
+                            sessionStorage.setItem("atlas-opening-message", "Build this — continue from what we planned.");
                             sessionStorage.setItem("atlas-opening-message-project-id", String(pid));
                             sessionStorage.setItem("atlas-handoff-continuation", "1");
                           }
