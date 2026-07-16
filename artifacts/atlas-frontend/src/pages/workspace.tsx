@@ -5012,18 +5012,26 @@ export default function Workspace() {
   const thinkFreelyThreadLoadedRef = useRef(false);
   useEffect(() => {
     if (thinkFreelyThreadLoadedRef.current) return;
-    thinkFreelyThreadLoadedRef.current = true;
+    // `/workspace/:conversationId` resolves the numeric project id asynchronously.
+    // Do not consume handoff keys until we know which project we landed on —
+    // otherwise we wipe atlas-opening-message-project-id before the opening
+    // pipeline can claim the auto-continuation kickoff.
+    if (!id || !Number.isFinite(id) || id <= 0) return;
 
     let storedThread: string | null = null;
     try {
       const storedOpeningConversation = sessionStorage.getItem(OPENING_CONVERSATION_STORAGE_KEY);
       const storedOpeningProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
       if (storedOpeningConversation !== null) {
-        if (storedOpeningProjectId === String(id)) {
+        if (!storedOpeningProjectId || storedOpeningProjectId === String(id)) {
           storedThread = storedOpeningConversation;
+          sessionStorage.removeItem(OPENING_CONVERSATION_STORAGE_KEY);
+          // Keep OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY — the opening-message
+          // pipeline still needs it for handoff continuation auto-send.
+        } else {
+          // Stale snapshot for a different project — drop conversation only.
+          sessionStorage.removeItem(OPENING_CONVERSATION_STORAGE_KEY);
         }
-        sessionStorage.removeItem(OPENING_CONVERSATION_STORAGE_KEY);
-        sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
       } else {
         storedThread = sessionStorage.getItem(THINK_FREELY_THREAD_STORAGE_KEY);
       }
@@ -5033,6 +5041,8 @@ export default function Workspace() {
     } catch {
       storedThread = null;
     }
+
+    thinkFreelyThreadLoadedRef.current = true;
     if (!storedThread) return;
 
     let parsedThread: unknown = null;
@@ -5659,10 +5669,14 @@ export default function Workspace() {
   // automatically prompt Atlas to continue fulfilling the original request.
   // Key: use the conversationId URL param directly — it's available immediately,
   // unlike `id` (projectId) which is resolved asynchronously on the /workspace/:conversationId route.
+  // Prefer seedHandoffContinuation / opening-message pipeline when present — skip
+  // while an opening message is still queued (home.tsx clears atlas-conv-carryover
+  // when it seeds the unified kickoff to avoid a double send).
   const commitContinuationFiredRef = useRef(false);
   useEffect(() => {
     if (!useNexusWorkspaceChat) return;
     if (commitContinuationFiredRef.current) return;
+    if (openingMessage !== null) return;
     if (nexusBridge.messages.length === 0) return;
     // Check sessionStorage using conversationId param (available immediately on /workspace/:id route)
     const convKey = conversationId ? `atlas-conv-carryover-${conversationId}` : null;
@@ -5676,7 +5690,7 @@ export default function Workspace() {
     try { if (convKey) sessionStorage.removeItem(convKey); } catch {}
     nexusBridge.send("Please continue — I'm ready to see the initial build structure and your full plan.");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nexusBridge.messages, nexusBridge.send, useNexusWorkspaceChat, conversationId]);
+  }, [nexusBridge.messages, nexusBridge.send, useNexusWorkspaceChat, conversationId, openingMessage]);
 
   const [homeHandoffMeta, setHomeHandoffMeta] = useState<HomeHandoffMeta | null>(() => {
     try {
@@ -6680,7 +6694,6 @@ export default function Workspace() {
       setOpeningMessage(null);
       return;
     }
-    initialSent.current = true;
     setInput("");
     // Suppress auto-send if the server already handled this first turn via the
     // background first-turn task in POST /api/conversations. The bridge will
@@ -6689,6 +6702,8 @@ export default function Workspace() {
     // Exception: handoff continuations (Ask Atlas → Workspace) set
     // atlas-handoff-continuation=1 so the opening message fires even though
     // the Ask Atlas conversation is already loaded into bridge messages.
+    // Important: do NOT set initialSent before this check — a suppressed
+    // opening message must leave room for the homeHandoffPrimed backup.
     const isHandoffContinuation = (() => {
       try {
         const v = sessionStorage.getItem("atlas-handoff-continuation");
@@ -6707,6 +6722,10 @@ export default function Workspace() {
       } catch {}
       setOpeningMessage(null);
       return;
+    }
+    initialSent.current = true;
+    if (isHandoffContinuation) {
+      try { sessionStorage.setItem(`atlas-home-handoff-primed-${id}`, "1"); } catch {}
     }
     // Pass messagesRef.current so transferred thread messages are included as history context.
     // Pass attachments so images from the homepage (Ask Atlas) carry into the first workspace message.
@@ -6766,23 +6785,42 @@ export default function Workspace() {
     }, 200);
   }, [sessionId, messages.length, project?.memory, doSend]);
 
-  // Home-to-workspace handoff — fires when arriving via "Take to workspace" on home page
+  // Home-to-workspace handoff — fires when arriving via "Take to workspace" on home page.
+  // Primary kickoff is seedHandoffContinuation() → opening-message pipeline.
+  // This effect is the backup when that seed is missing (or was suppressed).
   const homeHandoffPrimed = useRef(false);
   useEffect(() => {
     if (!sessionId || homeHandoffPrimed.current || initialSent.current) return;
+    // Wait for the opening-message pipeline to claim the arrival first.
+    if (openingMessage !== null) return;
     const fromHome = (() => {
       try {
         const params = new URLSearchParams(window.location.search);
-        return params.get("from") === "home" || params.get("source") === "home-handoff";
+        return params.get("from") === "home"
+          || params.get("source") === "home-handoff"
+          || params.get("source") === "commit-carryover";
       } catch {
         return false;
       }
     })();
     if (!fromHome) return;
-    if (messages.length > 0) { homeHandoffPrimed.current = true; return; }
     if (!project) return;
+
+    // One-shot per project for this browser tab — prevents a refresh with
+    // ?source=home-handoff still in the URL from kicking Atlas again.
+    const primedKey = `atlas-home-handoff-primed-${id}`;
+    try {
+      if (sessionStorage.getItem(primedKey) === "1") {
+        homeHandoffPrimed.current = true;
+        return;
+      }
+    } catch {}
+
+    const threadLen = useNexusWorkspaceChat ? nexusBridge.messages.length : messages.length;
     const primeHomeHandoff = (prompt: string) => {
       homeHandoffPrimed.current = true;
+      initialSent.current = true;
+      try { sessionStorage.setItem(primedKey, "1"); } catch {}
       void fetch(`/api/sessions/${sessionId}/idea-mode`, {
         method: "POST",
         credentials: "include",
@@ -6790,9 +6828,24 @@ export default function Workspace() {
         body: JSON.stringify({ enabled: true }),
       }).catch(() => {});
       setTimeout(() => {
-        doSend(prompt, sessionId, []);
+        if (useNexusWorkspaceChat) {
+          nexusBridge.send(prompt);
+        } else {
+          doSend(prompt, sessionId, messagesRef.current);
+        }
       }, 300);
     };
+
+    // Successful handoffs always arrive with the transferred thread already
+    // loaded. That used to abort this prime entirely — which is why Atlas
+    // stayed silent until the user typed again. Kick a continuation instead.
+    if (threadLen > 0) {
+      primeHomeHandoff(
+        "Continue from where we left off — acknowledge the handoff and propose the next concrete step.",
+      );
+      return;
+    }
+
     const fallbackPrompt = `I've just arrived in the ${project.name} workspace. ${project.description ? `Here's what we're building: ${project.description}. ` : ""}Acknowledge we're starting and ask what's first.`;
     if (!project.memory) {
       primeHomeHandoff(fallbackPrompt);
@@ -6810,7 +6863,7 @@ export default function Workspace() {
       const briefText = (briefEntry.text as string).replace("Project brief from home conversation: ", "");
       primeHomeHandoff(`I've just arrived from our home conversation. You have my project brief in memory: "${briefText}". Acknowledge what we discussed and where we're starting — then ask what's first.`);
     } catch { primeHomeHandoff(fallbackPrompt); }
-  }, [sessionId, messages.length, project, doSend]);
+  }, [sessionId, messages.length, project, doSend, openingMessage, useNexusWorkspaceChat, nexusBridge.messages.length, nexusBridge.send, messagesRef, id]);
 
   // Auto-generate blueprint on handoff — ONLY when the source conversation
   // explicitly requested build/planning output (requestBuild flag on the

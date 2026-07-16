@@ -105,7 +105,7 @@ import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
-import { triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { seedHandoffContinuation, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { useActiveProjectContext } from "@/lib/activeProjectContext";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
@@ -629,14 +629,8 @@ export function AskAtlasSurface({
                     <button
                       type="button"
                       onClick={() => {
-                        try {
-                          const pid = msg.navigateTo!.projectId;
-                          if (pid) {
-                            sessionStorage.setItem("atlas-opening-message", "Build this — continue from what we planned.");
-                            sessionStorage.setItem("atlas-opening-message-project-id", String(pid));
-                            sessionStorage.setItem("atlas-handoff-continuation", "1");
-                          }
-                        } catch {}
+                        const pid = msg.navigateTo!.projectId;
+                        if (pid) seedHandoffContinuation(pid);
                         setLocation(msg.navigateTo!.route);
                       }}
                       style={{
