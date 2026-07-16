@@ -13,6 +13,7 @@ import "../renderers/pptxRenderer";
 import "../renderers/xlsxRenderer";
 import "../renderers/mermaidRenderer";
 import "../renderers/chartRenderer";
+import "../renderers/htmlAppRenderer";
 
 /**
  * Task #1 fix: a working PPTX (and docx/xlsx/etc) renderer + Artifact Engine
@@ -26,11 +27,11 @@ import "../renderers/chartRenderer";
 export function generateDeliverableTool(ctx: AgentToolContext) {
   return tool({
     description:
-      "Generate a downloadable file-backed deliverable (e.g. a PowerPoint deck, Word doc, or spreadsheet) from the current conversation and save it to the project's Outputs. Use this whenever the user asks for a presentation/deck, document, or spreadsheet to be created — never say you can't produce files. After success, tell the user it's in Outputs.",
+      "Generate a downloadable file-backed deliverable from the current conversation and save it to the project's Outputs. Use this whenever the user asks for a presentation/deck, document, spreadsheet, or web app/tool/widget to be created — never say you can't produce files. After success, tell the user it's in Outputs.",
     inputSchema: z.object({
       type: z
-        .enum(["pptx", "docx", "xlsx"])
-        .describe("Deliverable format: pptx for a slide deck/presentation, docx for a document, xlsx for a spreadsheet."),
+        .enum(["pptx", "docx", "xlsx", "html-app"])
+        .describe("Deliverable format: pptx for a slide deck/presentation, docx for a document, xlsx for a spreadsheet, html-app for a complete self-contained interactive web app or tool."),
       title: z.string().optional().describe("Optional title for the deliverable."),
       docType: z
         .string()
