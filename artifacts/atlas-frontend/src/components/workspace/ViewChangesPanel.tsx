@@ -1249,8 +1249,8 @@ export function ViewChangesPanel({
           display: "inline-flex",
           padding: 2,
           borderRadius: 999,
-          background: "rgba(0,0,0,0.32)",
-          border: "1px solid rgba(var(--atlas-gold-rgb), 0.18)",
+          background: "hsl(var(--muted))",
+          border: "1px solid rgba(var(--atlas-gold-rgb), 0.14)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
           gap: 2,
         }}>
@@ -1265,15 +1265,17 @@ export function ViewChangesPanel({
                   fontWeight: active ? 600 : 500,
                   letterSpacing: "0.02em",
                   padding: "5px 14px", borderRadius: 999,
-                  background: active
-                    ? "linear-gradient(180deg, rgba(var(--atlas-gold-rgb), 0.22), rgba(var(--atlas-gold-rgb), 0.14))"
-                    : "transparent",
+                  background: active ? "hsl(var(--background))" : "transparent",
                   border: active
-                    ? "1px solid rgba(var(--atlas-gold-rgb), 0.4)"
+                    ? "1px solid rgba(0,0,0,0.06)"
                     : "1px solid transparent",
-                  color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  boxShadow: active
+                    ? "0 1px 2px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04)"
+                    : "none",
+                  color: active ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
+                  opacity: active ? 1 : 0.7,
                   cursor: "pointer",
-                  transition: "background 180ms ease, color 180ms ease, border-color 180ms ease",
+                  transition: "background 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
                   textTransform: "capitalize",
                   WebkitTapHighlightColor: "transparent",
                 }}
