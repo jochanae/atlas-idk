@@ -8991,6 +8991,20 @@ export default function Workspace() {
             </div>
           ) : null}
 
+          {/* Slice 2 — canonical run-detail overlay. Opens on axiom:open-changes
+              regardless of leftTab, so Details buttons work from any surface. */}
+          <RunDetailsDrawer
+            projectId={id}
+            linkedRepo={linkedRepo}
+            messages={messages}
+            pushHistory={pushHistory}
+            onRollbackPush={handleRollbackPush}
+            projectName={project?.name ?? null}
+            conversationId={conversationId ?? null}
+          />
+
+
+
           <UnifiedConversationSurface
             mode="operational"
             projectId={id}
