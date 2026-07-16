@@ -20,8 +20,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ViewChangesPanel } from "@/components/workspace/ViewChangesPanel";
-import type { PushRecord, LinkedRepo } from "@/pages/workspace";
-import type { ChatMessage } from "@/types/chat";
+import type { PushRecord, LinkedRepo, ChatMessage } from "@/pages/workspace";
 
 interface Props {
   projectId: number;
