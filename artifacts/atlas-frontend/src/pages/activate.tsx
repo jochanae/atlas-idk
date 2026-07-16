@@ -53,6 +53,14 @@ export default function ActivatePage() {
       const t = setTimeout(finish, 450);
       return () => clearTimeout(t);
     }
+    if (mode === "welcome") {
+      // Compressed: dots settle, mark + "Welcome back" reveal, exit.
+      const t1 = setTimeout(() => setPhase(1), 300);
+      const t2 = setTimeout(() => setPhase(2), 600);
+      const t3 = setTimeout(() => setPhase(3), 900);
+      const t4 = setTimeout(finish, 1400);
+      return () => { [t1, t2, t3, t4].forEach(clearTimeout); };
+    }
     const t1 = setTimeout(() => setPhase(1), 800);
     const t2 = setTimeout(() => setPhase(2), 1600);
     const t3 = setTimeout(() => setPhase(3), 2400);
