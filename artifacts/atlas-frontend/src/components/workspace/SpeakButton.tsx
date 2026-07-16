@@ -16,6 +16,7 @@ import { Volume2, Square } from "lucide-react";
  */
 
 const VOICE_STORAGE_KEY = "atlas-tts-voice-uri";
+const HINT_STORAGE_KEY = "atlas-tts-hint-seen";
 const LONG_PRESS_MS = 450;
 
 function cleanForSpeech(input: string): string {
