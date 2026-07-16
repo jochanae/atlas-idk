@@ -1680,31 +1680,32 @@ async function persistNexusExecutionRun(args: {
         : args.pendingApproval
           ? "awaiting_approval"
           : "succeeded";
-    if (preInserted) {
-      // Update the row that was inserted at turn-start with terminal state.
-      await db.execute(sql`
-        UPDATE execution_runs SET
-          message_id = ${messageIdValue},
-          mode = ${derivedMode},
-          status = ${terminalStatus},
-          summary = ${summary},
-          intent = ${intentValue},
-          completed_at = ${completedAt},
-          elapsed_ms = ${elapsedMs}
-        WHERE id = ${runId}
-      `);
-      // Drop any incremental live steps so the canonical set below is authoritative.
-      await db.execute(sql`DELETE FROM execution_run_steps WHERE run_id = ${runId}`);
-    } else {
-      await db.execute(sql`
-        INSERT INTO execution_runs
-          (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
-        VALUES
-          (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
-           ${derivedMode}, ${terminalStatus}, ${summary}, ${promptText || null}, ${intentValue},
-           ${args.startedAt}, ${completedAt}, ${elapsedMs})
-      `);
-    }
+    // Completion is authoritative. The turn-start insert is intentionally
+    // fire-and-forget for live Timeline polling, so it can race this completion
+    // path. Use one upsert here instead of UPDATE-then-assume so the completed
+    // run row always exists before the SSE `done` event is flushed.
+    await db.execute(sql`
+      INSERT INTO execution_runs
+        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
+      VALUES
+        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
+         ${derivedMode}, ${terminalStatus}, ${summary}, ${promptText || null}, ${intentValue},
+         ${args.startedAt}, ${completedAt}, ${elapsedMs})
+      ON CONFLICT (id) DO UPDATE SET
+        project_id = EXCLUDED.project_id,
+        thread_id = EXCLUDED.thread_id,
+        message_id = EXCLUDED.message_id,
+        conversation_id = EXCLUDED.conversation_id,
+        mode = EXCLUDED.mode,
+        status = EXCLUDED.status,
+        summary = EXCLUDED.summary,
+        prompt = COALESCE(execution_runs.prompt, EXCLUDED.prompt),
+        intent = EXCLUDED.intent,
+        completed_at = EXCLUDED.completed_at,
+        elapsed_ms = EXCLUDED.elapsed_ms
+    `);
+    // Drop any incremental live steps so the canonical set below is authoritative.
+    await db.execute(sql`DELETE FROM execution_run_steps WHERE run_id = ${runId}`);
 
     type Step = {
       verb: string;
