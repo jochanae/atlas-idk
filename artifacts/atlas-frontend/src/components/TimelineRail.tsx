@@ -159,6 +159,12 @@ export function TimelineRail({
         document.querySelector<HTMLElement>(".atlas-chat-timeline") ||
         document.querySelector<HTMLElement>(".atlas-home-chat-messages-scroll");
       const cr = container?.getBoundingClientRect();
+      // Chat surface is only "visible" when the container is mounted, attached
+      // (offsetParent non-null unless it's the body), and has non-zero size.
+      const visibleChat = !!container && !!cr
+        && (container.offsetParent !== null || container === document.body)
+        && cr.width > 0 && cr.height > 0;
+      setChatVisible(visibleChat);
       const viewportTop = cr ? Math.max(0, cr.top) : 0;
       const viewportBottom = cr ? Math.min(window.innerHeight, cr.bottom) : window.innerHeight;
       const centerY = (viewportTop + viewportBottom) / 2;
