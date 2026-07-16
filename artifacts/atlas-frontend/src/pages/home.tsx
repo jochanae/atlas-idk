@@ -61,6 +61,7 @@ import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
 import { LibraryAttachmentsBar } from "@/components/LibraryAttachmentsBar";
 import { LibraryBrowseSheet } from "@/components/library/LibraryBrowseSheet";
+import { SpeakButton } from "@/components/workspace/SpeakButton";
 import {
   createLibraryItem,
   fetchConversationContext as fetchLibraryConversationContext,
@@ -4923,6 +4924,7 @@ export default function Home() {
                                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="10" height="13" rx="1.5"/><path d="M3 3H2a1 1 0 00-1 1v11a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
                                 )}
                               </button>
+                              <SpeakButton text={displayContent} />
                               {!msg.streaming && (
                                 <InlineSketchOffer
                                   text={displayContent}

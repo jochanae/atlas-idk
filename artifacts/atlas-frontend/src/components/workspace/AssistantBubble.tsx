@@ -28,6 +28,7 @@ import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import { DecisionCatchCard } from "./DecisionCatchCard";
 import { DecisionArtifactCard } from "./DecisionArtifactCard";
+import { SpeakButton } from "./SpeakButton";
 import { detectPlanFromText } from "../../lib/plan";
 import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../../lib/plan";
 import { DecisionGateCard } from "./DecisionGateCard";
@@ -2770,6 +2771,8 @@ function AssistantBubbleImpl({
               : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="8" rx="1.5" /><path d="M9 5V3a1 1 0 00-1-1H3a1 1 0 00-1 1v5a1 1 0 001 1h2" /></svg>
             }
           </button>
+
+          <SpeakButton text={message.content} style={ICON_TOUCH_TARGET_STYLE} />
 
           {/* Regenerate, Commit, and Sketch moved to ⋯ overflow — keeps the bar minimal */}
           </>
