@@ -2126,6 +2126,7 @@ export default function Home() {
     focusProjectId: homeFocus ?? null,
     model: homeModel,
     mode: homeMode,
+    surfaceContext: "home",
     conversationId: activeConversationId,
     onData: handleNexusDataEvent,
     onProjectReady: handleNexusProjectReady,
@@ -2147,6 +2148,7 @@ export default function Home() {
   const askAtlasChat = useNexusChatStream({
     focusProjectId: homeFocus ?? null,
     model: "claude",
+    surfaceContext: "ask-atlas",
     conversationId: askAtlasConversationId,
     projectContext: homeFocus != null ? {
       projectId: homeFocus,

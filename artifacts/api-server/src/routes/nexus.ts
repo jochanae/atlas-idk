@@ -2115,6 +2115,12 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
      *  the planning phase — going straight to atomic step execution. */
     _resumeRunId?: string;
     _approvedPlanVersion?: string;
+    /** Explicit surface context — governs which build capabilities are allowed.
+     *  "workspace" = full build execution authorized.
+     *  "ask-atlas" = conversation/planning only; complex builds must hand off.
+     *  "home" = same as ask-atlas for build gating purposes.
+     *  Omitting this field is treated as "home" (safest default). */
+    surfaceContext?: "workspace" | "ask-atlas" | "home";
   };
 
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
@@ -2508,8 +2514,15 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       );
     }
   }
+  // Surface context governs which build capabilities are unlocked.
+  // Only the Workspace surface may execute mutations. Ask Atlas and home are
+  // conversation/planning surfaces — they must hand off before any file write.
+  const surfaceContext: "workspace" | "ask-atlas" | "home" =
+    body.surfaceContext === "workspace" ? "workspace"
+    : body.surfaceContext === "ask-atlas" ? "ask-atlas"
+    : "home";
   const allowBuildSideEffects =
-    (intent === "BUILD" || isResuming) && !justTalk && !conversationModeActive;
+    surfaceContext === "workspace" && (intent === "BUILD" || isResuming) && !justTalk && !conversationModeActive;
   // The shared agent-tools registry (search_all_projects, architecture_diff,
   // generate_deliverable, read_file, etc.) is read/generate-only — none of it
   // edits files, so it does not need the same guard as allowBuildSideEffects.
@@ -3579,6 +3592,28 @@ PROSE RULES (enforced — contradiction detection is active):
 - After BUILD_VERIFIED: write exactly the outcome label the tool returned. For SERVER_ROUTING issues this will be "Build verified — Runtime verification pending." Do NOT say "the fix is live" or "done."
 - Never assert completion in prose. The outcome badge shown to the user IS the completion signal.
 --- END VERIFICATION ENFORCEMENT ---`;
+  } else if ((intent === "BUILD" || isResuming) && !justTalk && !conversationModeActive && surfaceContext !== "workspace") {
+    // Non-workspace BUILD turn (Ask Atlas or home surface).
+    // Atlas must NOT write files here. Route to the Workspace instead.
+    systemPrompt += `\n\n--- SURFACE CONTRACT: ASK ATLAS — HANDOFF REQUIRED ---
+You received a build request, but you are operating on the Ask Atlas surface — NOT the Workspace.
+
+On this surface you MUST NOT:
+- Emit FILE_EDIT_START, LINE_PATCH_START, or any code-writing block
+- Emit BUILD_CONTRACT_START / BUILD_CONTRACT_END blocks
+- Call GITHUB_PUSH or any tool that mutates project files
+- Begin any execution run or software build
+
+You MUST instead do ALL of the following in your response:
+1. Acknowledge the request in one sentence ("I can build this — let me route you to the Workspace.")
+2. Summarize the plan briefly in 2–4 plain-language sentences (no code, no file paths)
+3. Emit the correct routing signal at the END of your response:
+   - If a project already exists for this work: emit NAVIGATE_TO:{"route":"/project/<id>"} so the user lands in the Workspace immediately
+   - If this is a new idea with no project yet: emit PROJECT_READY:{"projectName":"<inferred name>","reason":"<one sentence>"} to create the project and open the Workspace
+4. Close with: "Opening the Workspace now — I'll continue building there."
+
+HARD RULE: You may describe and plan here. You may NEVER start building here. The Workspace owns all execution, run cards, stop controls, Timeline, Changes, Preview, and code mutations. Ask Atlas owns conversation, exploration, planning, project creation, and handoff.
+--- END SURFACE CONTRACT ---`;
   }
 
   // MEMORY_CHIPS protocol — all intents (P0 gap independent of BUILD).

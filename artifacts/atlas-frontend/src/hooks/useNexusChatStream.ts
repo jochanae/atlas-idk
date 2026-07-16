@@ -226,6 +226,10 @@ export interface UseNexusChatStreamOptions {
   } | null;
   /** Conversation Mode: same thread, pure-talk posture (no tools/build actions). */
   conversationMode?: boolean;
+  /** Explicit surface context sent to the backend. Governs which build
+   *  capabilities are allowed. Workspace = full execution. Ask Atlas / home =
+   *  conversation + handoff only. Defaults to "home" on the backend when omitted. */
+  surfaceContext?: "workspace" | "ask-atlas" | "home";
 }
 
 export interface UseNexusChatStreamReturn {
@@ -478,6 +482,7 @@ export function useNexusChatStream(
           focusProjectId: resolvedFocusProjectId ?? undefined,
           runId: turnRunId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
+          ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
           ...(allFileAttachments.length > 0
             ? {
                 attachments: allFileAttachments,

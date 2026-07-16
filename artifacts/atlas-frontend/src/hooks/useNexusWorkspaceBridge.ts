@@ -133,6 +133,7 @@ export function useNexusWorkspaceBridge(
     mode: "workspace",
     conversationId: conversationId || null,
     conversationMode: opts?.conversationMode,
+    surfaceContext: "workspace",
     onConversationId: (cid) => {
       // When the workspace is URL-routed, opts.initialConversationId is the
       // URL-param conversation and is the authority. Calling setConversationId
