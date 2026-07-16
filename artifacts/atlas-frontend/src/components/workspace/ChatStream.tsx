@@ -338,6 +338,10 @@ export interface ChatStreamProps {
    *  WorkspaceRunCard instead of using deriveRun(messages). */
   execLatestRun?: import("@/hooks/useProjectRuns").ApiRun | null;
 
+  /** Stable run id for the currently active Nexus turn. Lets the live card open
+   *  the same Timeline/Changes surface that the completed receipt later uses. */
+  activeRunId?: string | null;
+
   /** Authorize a pending build plan and resume execution.
    *  Passed from the nexus bridge → workspace.tsx → ChatStream. */
   authorizeRun?: (runId: string, planVersion: string) => Promise<void>;
@@ -377,6 +381,7 @@ export function ChatStream(props: ChatStreamProps) {
     onSuggestionPark,
     liveStep,
     execLatestRun,
+    activeRunId,
     conversationMode,
     authorizeRun,
   } = props;
@@ -1038,6 +1043,7 @@ export function ChatStream(props: ChatStreamProps) {
           projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
           chatPending={chatPending}
           liveStep={liveStep}
+          activeRunId={activeRunId}
           suppressGitHubReceipt
           suppressDeliverableReceipt={Boolean(execLatestRun != null && messages.find(m => m.role === "assistant" && (m.runId ? m.runId === execLatestRun.id : execLatestRun.messageId != null && m.id === execLatestRun.messageId))?.generatedArtifacts?.length)}
           executionRun={execLatestRun}

@@ -679,11 +679,6 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   // ── Step accumulation for active/live mode ─────────────────────────────
   const [liveSteps, setLiveSteps] = useState<LiveStepItem[]>([]);
   const prevPendingRef = useRef(false);
-  // Freshness gate: only surface trailing receipts for runs that started
-  // AFTER this workspace session mounted. Prevents stale runs from a prior
-  // session from floating into unrelated conversations.
-  const mountedAtRef = useRef<number>(Date.now());
-
   // Refresh the run list shown in the receipt immediately when a run completes.
   // Without this, WorkspaceRunCard waits 30 s for the stale-time window to
   // expire before showing the finished run's outputs.
@@ -771,9 +766,6 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       if (receiptMessage) return deriveGithubReceipt(receiptMessage);
       if (isActive) return null;
       if (executionRun) {
-        const startedAt = new Date(executionRun.startedAt).getTime();
-        // Suppress stale runs that predate this session's mount.
-        if (Number.isFinite(startedAt) && startedAt < mountedAtRef.current - 2000) return null;
         return adaptExecutionRun(executionRun, messages, projectPreviewUrl, suppressDeliverableReceipt);
       }
       return null;
