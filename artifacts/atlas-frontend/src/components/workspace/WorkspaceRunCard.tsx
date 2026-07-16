@@ -506,7 +506,7 @@ function InlineThinkingPulse({ steps }: { steps: LiveStepItem[] }) {
  *  Non-task (read/think) steps appear as a muted subtitle, not as list rows.
  *  Tapping the card (when a runId is available) opens Timeline/Changes for
  *  the in-flight run — the same identity that will later carry the receipt. */
-function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoal: string; runId?: string | null }) {
+function ActiveCard({ steps, taskGoal, runId, completing }: { steps: LiveStepItem[]; taskGoal: string; runId?: string | null; completing?: boolean }) {
   // Split steps into task-worthy rows (file writes, commands, pushes, etc.)
   // and ambient context steps (reads, thinks). Only task-worthy steps appear
   // as list rows; context steps become the muted subtitle.
@@ -545,7 +545,9 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
       style={{
         position: "relative",
         background: "hsl(var(--card))",
-        border: "1px solid rgba(139, 92, 246, 0.45)",
+        border: completing
+          ? "1px solid rgba(74, 222, 128, 0.35)"
+          : "1px solid rgba(139, 92, 246, 0.45)",
         borderRadius: 12,
         padding: "12px 14px",
         margin: "6px 0 4px",
@@ -554,24 +556,28 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
         boxSizing: "border-box",
         overflow: "hidden",
         cursor: clickable ? "pointer" : "default",
-        animation: "wrc-purple-pulse 2.5s ease-in-out infinite",
+        animation: completing
+          ? "wrc-active-fadeout 0.52s ease-out forwards"
+          : "wrc-purple-pulse 2.5s ease-in-out infinite",
       }}
       data-wrc-active="true"
       data-run-id={runId ?? undefined}
     >
-      {/* Shimmer sweep */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.04) 50%, transparent 100%)",
-          backgroundSize: "200% 100%",
-          animation: "wrc-shimmer 2.4s ease-in-out infinite",
-          pointerEvents: "none",
-          borderRadius: "inherit",
-        }}
-      />
+      {/* Shimmer sweep — hidden during completing fade-out */}
+      {!completing && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.04) 50%, transparent 100%)",
+            backgroundSize: "200% 100%",
+            animation: "wrc-shimmer 2.4s ease-in-out infinite",
+            pointerEvents: "none",
+            borderRadius: "inherit",
+          }}
+        />
+      )}
 
       {/* Title row: task goal + pulsing dot */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: subtitleText ? 3 : 8 }}>
@@ -591,18 +597,20 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
         >
           {taskGoal || "Working…"}
         </div>
-        <span
-          aria-hidden="true"
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: 999,
-            background: "rgba(139, 92, 246, 0.9)",
-            flexShrink: 0,
-            marginTop: 5,
+        {completing ? (
+          <span aria-hidden="true" style={{
+            width: 14, height: 14, borderRadius: 999, flexShrink: 0, marginTop: 2,
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(74, 222, 128, 0.18)", border: "1px solid rgba(74, 222, 128, 0.55)",
+            color: "rgba(74, 222, 128, 0.95)", fontSize: 9, lineHeight: 1,
+          }}>✓</span>
+        ) : (
+          <span aria-hidden="true" style={{
+            width: 7, height: 7, borderRadius: 999,
+            background: "rgba(139, 92, 246, 0.9)", flexShrink: 0, marginTop: 5,
             animation: "wrc-dot-pulse 1.4s ease-in-out infinite",
-          }}
-        />
+          }} />
+        )}
       </div>
 
       {/* Subtitle: last ambient/context step (muted) */}
@@ -660,7 +668,8 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
             </span>
           </div>
         ) : visibleSteps.map((step, i) => {
-          const isCurrentStep = i === visibleSteps.length - 1;
+          // During completing phase all steps show checkmarks — nothing is "in progress"
+          const isCurrentStep = !completing && i === visibleSteps.length - 1;
           const { headline } = liveStepMeta(step);
           return (
             <div key={`${step.verb}-${step.target ?? ""}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -735,6 +744,11 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
             border-color: rgba(139, 92, 246, 0.72);
           }
         }
+        @keyframes wrc-active-fadeout {
+          0%   { opacity: 1;   transform: translateY(0);    }
+          35%  { opacity: 0.9; transform: translateY(0);    }
+          100% { opacity: 0;   transform: translateY(-5px); }
+        }
       `}</style>
     </div>
   );
@@ -804,6 +818,23 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     () => liveSteps.some(s => isDoingVerb(s.verb)),
     [liveSteps],
   );
+
+  // ── Completion transition (ActiveCard → ReceiptCard crossfade) ─────────
+  // When isActive flips true→false on a build turn, hold a brief "completing"
+  // phase where ActiveCard stays visible (all steps → checkmarks, fade out)
+  // before the receipt card fades in. Purely cosmetic — no data change.
+  const [completing, setCompleting] = useState(false);
+  const wasActiveRef = useRef(false);
+  useEffect(() => {
+    const wasActive = wasActiveRef.current;
+    wasActiveRef.current = isActive;
+    if (wasActive && !isActive && hasBuildStep) {
+      setCompleting(true);
+      const t = setTimeout(() => setCompleting(false), 520);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [isActive, hasBuildStep]);
 
   // Task goal — derived from what Atlas is actually DOING, not what the user said.
   // The user message already appears in the chat bubble above; repeating it in
@@ -946,13 +977,12 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     return Array.from(vars);
   }, [isActive, messages]);
 
-  // ── Render: active (live execution) ───────────────────────────────────
-  if (isActive) {
-    if (hasBuildStep) {
+  // ── Render: active (live execution) or completing transition ─────────
+  if (isActive || completing) {
+    if (hasBuildStep || completing) {
       // Real tool-use turn (file reads/writes, builds, etc.) → full run card.
-      return <ActiveCard steps={liveSteps} taskGoal={taskGoal} runId={activeRunId ?? liveStep?.runId ?? null} />;
-      // Note: `activeRunId` prop is optional; when omitted the card falls back
-      // to liveStep.runId (Nexus transport attaches it to every step event).
+      // `completing` keeps the ActiveCard visible while it fades out.
+      return <ActiveCard steps={liveSteps} taskGoal={taskGoal} runId={activeRunId ?? liveStep?.runId ?? null} completing={completing} />;
     }
     // Conversational / thinking-only turn: "Thinking" = plain prose, no card.
     // ChatStream streams assistant prose unsuppressed during these steps, so
@@ -1008,6 +1038,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           : "Open saved live URL preview";
 
   return (
+    <div style={{ animation: "wrc-receipt-fadein 0.38s ease-out" }}>
     <div
       role="button"
       tabIndex={0}
@@ -1377,7 +1408,12 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           0%, 100% { opacity: 0.5; transform: scale(0.85); }
           50%       { opacity: 1;   transform: scale(1); }
         }
+        @keyframes wrc-receipt-fadein {
+          from { opacity: 0; transform: translateY(5px); }
+          to   { opacity: 1; transform: translateY(0);   }
+        }
       `}</style>
+    </div>
     </div>
   );
 }
