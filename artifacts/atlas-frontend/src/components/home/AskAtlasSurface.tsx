@@ -795,6 +795,7 @@ export function AskAtlasSurface({
                         </svg>
                       )}
                     </button>
+                    <SpeakButton text={displayContent} size={13} />
                     {displayContent.length > 350 && (
                       <button
                         type="button"
