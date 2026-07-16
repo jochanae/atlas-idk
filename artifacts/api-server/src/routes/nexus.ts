@@ -1618,9 +1618,15 @@ async function persistNexusExecutionRun(args: {
    * receipt eligibility is a separate, verb-based classifier on the frontend. */
   mode?: string;
   /**
-   * When true the run has FILE_EDIT blocks applied locally but not yet pushed to
-   * GitHub.  Status is set to "awaiting_approval" instead of "succeeded" so the
-   * Timeline correctly reflects that the user still needs to approve the push.
+   * When true the run is intentionally paused on a validated build contract.
+   * This must preserve `awaiting_confirmation` and must not be overwritten by
+   * the normal completion path.
+   */
+  pendingConfirmation?: boolean;
+  /**
+   * Reserved for an explicit user-approval pause. Local file edits alone are
+   * NOT pending approval; if the user says "do not push", the run is complete
+   * once the local write succeeds.
    */
   pendingApproval?: boolean;
 }): Promise<void> {
@@ -1666,7 +1672,14 @@ async function persistNexusExecutionRun(args: {
     const messageIdValue = args.messageId ?? null;
     const conversationIdValue = args.conversationId ?? null;
 
-    const terminalStatus = args.pendingApproval ? "awaiting_approval" : "succeeded";
+    const hasFailedAction = args.runActions.some((a) => a.status === "fail");
+    const terminalStatus = args.pendingConfirmation
+      ? "awaiting_confirmation"
+      : hasFailedAction
+        ? "failed"
+        : args.pendingApproval
+          ? "awaiting_approval"
+          : "succeeded";
     if (preInserted) {
       // Update the row that was inserted at turn-start with terminal state.
       await db.execute(sql`
@@ -5138,7 +5151,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         || _nexusNonCodeSteps.some((s) => RECEIPT_WORTHY_VERBS.has(s.verb));
       const hasDecision = _nexusNonCodeSteps.some((s) => DECISION_VERBS.has(s.verb));
       const runMode = hasBuildish ? "build" : hasDecision ? "decide" : "conversation";
-      void persistNexusExecutionRun({
+      await persistNexusExecutionRun({
         runId: activeRunId,
         projectId: focusProjectId,
         sessionId,
@@ -5151,11 +5164,11 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         intent,
         messageId: nexusMsgId ?? sourceChatMessageId,
         mode: runMode,
-        // Mark as awaiting_approval when the turn proposed file changes that still
-        // need a GitHub push.  The frontend sets the run to "succeeded" via
-        // PATCH /api/runs/:id once the push is confirmed.
-        pendingApproval:
-          (responseFileEdits.length > 0 || responseFileDeletes.length > 0) && !githubPushDone,
+        // Keep plan-only runs paused for authorization. Do not mark local-only
+        // file writes as awaiting approval; a "do not push" edit is complete
+        // when the file is written locally.
+        pendingConfirmation: awaitingConfirmation !== null,
+        pendingApproval: false,
       });
       runTerminalized = true;
     }
