@@ -1126,6 +1126,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
           })}
         </>
       )}
+      </div>
     </div>
   );
 }
