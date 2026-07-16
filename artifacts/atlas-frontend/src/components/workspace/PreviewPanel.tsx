@@ -201,15 +201,31 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   // only for legacy event compatibility but is no longer exposed as a tab.
   const [previewMode, setPreviewMode] = useState<"url" | "sandbox" | "stackblitz" | "local">("url");
 
-  // Device switcher
+  // Device switcher — persisted per-project so the preset survives reloads
+  // and navigating away/back to Preview.
   type DeviceSize = "phone" | "tablet" | "desktop";
+  type FitMode = "fit" | "actual";
+  const devicePrefsKey = `atlas-preview-device-${projectId}`;
+  const readDevicePrefs = (): { size: DeviceSize; landscape: boolean; fit: FitMode } | null => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(devicePrefsKey) : null;
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      if (p && (p.size === "phone" || p.size === "tablet" || p.size === "desktop")) return p;
+    } catch {}
+    return null;
+  };
   const [deviceSize, setDeviceSize] = useState<DeviceSize>(() => {
-    // Default to "phone" on small screens so the iframe renders at a real
-    // mobile viewport (390px) instead of a 1440px desktop layout scaled to ~36%.
+    const p = readDevicePrefs();
+    if (p) return p.size;
     if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 768px)").matches) return "phone";
     return "desktop";
   });
-  const [isLandscape, setIsLandscape] = useState(false);
+  const [isLandscape, setIsLandscape] = useState<boolean>(() => readDevicePrefs()?.landscape ?? false);
+  const [fitMode, setFitMode] = useState<FitMode>(() => readDevicePrefs()?.fit ?? "fit");
+  useEffect(() => {
+    try { localStorage.setItem(devicePrefsKey, JSON.stringify({ size: deviceSize, landscape: isLandscape, fit: fitMode })); } catch {}
+  }, [devicePrefsKey, deviceSize, isLandscape, fitMode]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(0);
   useEffect(() => {
