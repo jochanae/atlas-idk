@@ -67,6 +67,8 @@ export const libraryItemsTable = pgTable(
     originMessageId: text("origin_message_id"),
     legacySource: text("legacy_source"),
     legacyId: text("legacy_id"),
+    /** Raw deliverable type from project_artifacts (e.g. "html-app", "pptx", "docx"). Null for non-artifact items. */
+    artifactType: text("artifact_type"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

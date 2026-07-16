@@ -63,6 +63,7 @@ type DbLibraryRow = {
   origin_message_id: string | null;
   legacy_source: string | null;
   legacy_id: string | null;
+  artifact_type: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 };
@@ -141,7 +142,7 @@ router.get("/library", async (req, res): Promise<void> => {
       SELECT
         li.id, li.kind, li.title, li.content, li.preview,
         li.project_id, li.origin_source, li.origin_conversation_id,
-        li.origin_message_id, li.legacy_source, li.legacy_id,
+        li.origin_message_id, li.legacy_source, li.legacy_id, li.artifact_type,
         li.created_at, li.updated_at
       FROM library_items li
       WHERE ${whereSql}
@@ -260,7 +261,7 @@ router.get("/library/:id", async (req, res): Promise<void> => {
       SELECT
         id, kind, title, content, preview, project_id,
         origin_source, origin_conversation_id, origin_message_id,
-        legacy_source, legacy_id, created_at, updated_at
+        legacy_source, legacy_id, artifact_type, created_at, updated_at
       FROM library_items
       WHERE id = ${id}::uuid AND user_id = ${userId}
       LIMIT 1
@@ -313,7 +314,7 @@ router.patch("/library/:id", async (req, res): Promise<void> => {
       RETURNING
         id, kind, title, content, preview, project_id,
         origin_source, origin_conversation_id, origin_message_id,
-        legacy_source, legacy_id, created_at, updated_at
+        legacy_source, legacy_id, artifact_type, created_at, updated_at
     `);
     if (!result.rows.length) { res.status(404).json({ error: "Not found" }); return; }
     const [item] = await hydrateItems(userId, result.rows as DbLibraryRow[]);
@@ -340,28 +341,10 @@ router.delete("/library/:id", async (req, res): Promise<void> => {
     `);
     if (!result.rows.length) { res.status(404).json({ error: "Not found" }); return; }
 
-    const deleted = result.rows[0] as {
-      id: string;
-      legacy_source: string | null;
-      legacy_id: string | null;
-    };
-
-    // Keep legacy tables in sync while dual-write is active
-    if (deleted.legacy_source === "home_artifacts" && deleted.legacy_id) {
-      const legacyId = Number(deleted.legacy_id);
-      if (Number.isFinite(legacyId)) {
-        await db.execute(sql`
-          DELETE FROM home_artifacts WHERE id = ${legacyId} AND user_id = ${userId}
-        `).catch(() => undefined);
-      }
-    } else if (deleted.legacy_source === "project_bookmarks" && deleted.legacy_id) {
-      const legacyId = Number(deleted.legacy_id);
-      if (Number.isFinite(legacyId)) {
-        await db.execute(sql`
-          DELETE FROM project_bookmarks WHERE id = ${legacyId} AND user_id = ${userId}
-        `).catch(() => undefined);
-      }
-    }
+    // "Remove from Library" removes only the library_items row and its
+    // conversation_context_items (via FK cascade). It must not delete the
+    // originating artifact, bookmark, or home_artifacts row — those are
+    // canonical source records visible elsewhere in the product.
 
     res.json({ ok: true });
   } catch (err) {
@@ -477,7 +460,7 @@ router.get("/conversations/:id/context", async (req, res): Promise<void> => {
       SELECT
         li.id, li.kind, li.title, li.content, li.preview, li.project_id,
         li.origin_source, li.origin_conversation_id, li.origin_message_id,
-        li.legacy_source, li.legacy_id, li.created_at, li.updated_at
+        li.legacy_source, li.legacy_id, li.artifact_type, li.created_at, li.updated_at
       FROM conversation_context_items cci
       JOIN library_items li ON li.id = cci.library_item_id
       WHERE cci.conversation_id = ${conversationId}

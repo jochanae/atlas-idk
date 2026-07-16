@@ -1313,6 +1313,38 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: library_items tables failed — server will start anyway");
   }
+
+  // library_items.artifact_type — added post-initial-schema to preserve raw deliverable type
+  try {
+    await db.execute(sql`
+      ALTER TABLE library_items
+        ADD COLUMN IF NOT EXISTS artifact_type text
+    `);
+    // Backfill existing project_artifacts rows using the FK relationship (no title matching)
+    await db.execute(sql`
+      UPDATE library_items li
+      SET
+        artifact_type = pa.type,
+        kind = CASE
+          WHEN lower(pa.type) IN ('html-app', 'html', 'html_preview', 'mermaid', 'chart') THEN 'sketch'
+          WHEN lower(pa.type) IN ('prd') THEN 'prd'
+          WHEN lower(pa.type) IN ('plan') THEN 'plan'
+          WHEN lower(pa.type) IN ('spec') THEN 'spec'
+          WHEN lower(pa.type) IN ('strategy') THEN 'strategy'
+          WHEN lower(pa.type) IN ('brief') THEN 'brief'
+          WHEN lower(pa.type) IN ('outline') THEN 'outline'
+          WHEN lower(pa.type) = 'bookmark' THEN 'bookmark'
+          ELSE 'document'
+        END
+      FROM project_artifacts pa
+      WHERE li.legacy_source = 'project_artifacts'
+        AND li.legacy_id = pa.id::text
+        AND li.artifact_type IS NULL
+    `);
+    logger.info("ensureColumns: library_items.artifact_type verified + backfilled");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: library_items.artifact_type failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

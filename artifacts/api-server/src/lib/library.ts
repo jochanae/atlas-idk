@@ -12,6 +12,55 @@ import {
 } from "@workspace/db";
 
 export const PREVIEW_MAX_CHARS = 200;
+
+/**
+ * Maps a raw project_artifacts type to the closest LibraryItemKind.
+ * HTML prototypes → "sketch"; file-backed documents → "document"; pass-throughs for known kinds.
+ */
+export function deliverableTypeToKind(type: string): LibraryItemKind {
+  const t = (type ?? "").toLowerCase().trim();
+  if (t === "html" || t === "html-app" || t === "html_preview" || t === "mermaid" || t === "chart") return "sketch";
+  if (t === "bookmark") return "bookmark";
+  if (t === "prd") return "prd";
+  if (t === "plan") return "plan";
+  if (t === "spec") return "spec";
+  if (t === "strategy") return "strategy";
+  if (t === "brief") return "brief";
+  if (t === "outline") return "outline";
+  // docx, pptx, xlsx, pdf, draft_*, history_snapshot, etc.
+  return "document";
+}
+
+/**
+ * Normalized, frontend-safe reference to the original source of a library item.
+ * Never exposes raw DB column names.
+ */
+export type LibrarySourceRef =
+  | {
+      sourceKind: "project-artifact";
+      /** String form of project_artifacts.id */
+      sourceId: string;
+      /** Raw artifact type from project_artifacts.type (e.g. "html-app", "pptx") */
+      artifactType: string | null;
+      projectId: number | null;
+      conversationId: string | null;
+    }
+  | {
+      sourceKind: "home-artifact";
+      /** String form of home_artifacts.id */
+      sourceId: string;
+      artifactType: string | null;
+      conversationId: string | null;
+    }
+  | {
+      sourceKind: "conversation-bookmark";
+      /** String form of project_bookmarks.id */
+      sourceId: string;
+      messageId: string | null;
+      conversationId: string | null;
+      projectId: number | null;
+    }
+  | null;
 /** Soft budget for attached library bodies injected into chat prompts (~chars). */
 export const LIBRARY_CONTEXT_CHAR_BUDGET = 12_000;
 
@@ -27,6 +76,8 @@ export type LibraryItemApi = {
     conversationId?: string | null;
     messageId?: string | null;
   };
+  /** Normalized source reference for frontend navigation. Never null for project-artifact items. */
+  sourceRef: LibrarySourceRef;
   createdAt: string;
   updatedAt?: string;
 };
@@ -74,6 +125,12 @@ type RowLike = {
   originConversationId?: string | null;
   origin_message_id?: string | null;
   originMessageId?: string | null;
+  legacy_source?: string | null;
+  legacySource?: string | null;
+  legacy_id?: string | null;
+  legacyId?: string | null;
+  artifact_type?: string | null;
+  artifactType?: string | null;
   created_at?: Date | string;
   createdAt?: Date | string;
   updated_at?: Date | string | null;
@@ -88,6 +145,38 @@ export function rowToLibraryItem(row: RowLike, opts?: { includeContent?: boolean
   const createdAt = toIso(row.createdAt ?? row.created_at) ?? new Date(0).toISOString();
   const updatedAt = toIso(row.updatedAt ?? row.updated_at);
 
+  const legacySource = row.legacySource ?? row.legacy_source ?? null;
+  const legacyId = row.legacyId ?? row.legacy_id ?? null;
+  const artifactType = row.artifactType ?? row.artifact_type ?? null;
+  const conversationId = row.originConversationId ?? row.origin_conversation_id ?? null;
+  const messageId = row.originMessageId ?? row.origin_message_id ?? null;
+
+  let sourceRef: LibrarySourceRef = null;
+  if (legacySource === "project_artifacts" && legacyId) {
+    sourceRef = {
+      sourceKind: "project-artifact",
+      sourceId: legacyId,
+      artifactType,
+      projectId,
+      conversationId,
+    };
+  } else if (legacySource === "home_artifacts" && legacyId) {
+    sourceRef = {
+      sourceKind: "home-artifact",
+      sourceId: legacyId,
+      artifactType,
+      conversationId,
+    };
+  } else if (legacySource === "project_bookmarks" && legacyId) {
+    sourceRef = {
+      sourceKind: "conversation-bookmark",
+      sourceId: legacyId,
+      messageId,
+      conversationId,
+      projectId,
+    };
+  }
+
   return {
     id: String(row.id),
     kind: normalizeKind(row.kind),
@@ -99,9 +188,10 @@ export function rowToLibraryItem(row: RowLike, opts?: { includeContent?: boolean
       : null,
     origin: {
       source: normalizeOriginSource(row.originSource ?? row.origin_source),
-      conversationId: row.originConversationId ?? row.origin_conversation_id ?? null,
-      messageId: row.originMessageId ?? row.origin_message_id ?? null,
+      conversationId,
+      messageId,
     },
+    sourceRef,
     createdAt,
     ...(updatedAt ? { updatedAt } : {}),
   };
@@ -338,13 +428,15 @@ export type CaptureDeliverableArgs = {
 };
 
 /**
- * Auto-capture a file-backed deliverable (pptx/docx/xlsx) into library_items.
+ * Auto-capture a file-backed deliverable (html-app/pptx/docx/xlsx/pdf/etc.) into library_items.
  * Idempotent via legacy_source="project_artifacts" + legacy_id=artifactId.
+ * Preserves the raw artifact type in artifact_type; maps it to the closest LibraryItemKind.
  * Fire-and-forget — never throws.
  */
 export async function captureDeliverableToLibrary(args: CaptureDeliverableArgs): Promise<void> {
-  const kind = "document" satisfies LibraryItemKind;
+  const kind = deliverableTypeToKind(args.type);
   const legacyId = String(args.artifactId);
+  const artifactType = (args.type ?? "").trim() || null;
   const content = args.summary?.trim() || args.title;
   const preview = truncatePreview(content);
   try {
@@ -356,9 +448,11 @@ export async function captureDeliverableToLibrary(args: CaptureDeliverableArgs):
     if (existing.rows.length > 0) {
       await db.execute(sql`
         UPDATE library_items SET
+          kind = ${kind},
           title = ${args.title},
           content = ${content},
           preview = ${preview},
+          artifact_type = ${artifactType},
           updated_at = now()
         WHERE id = ${(existing.rows[0] as { id: string }).id}::uuid
       `);
@@ -367,11 +461,11 @@ export async function captureDeliverableToLibrary(args: CaptureDeliverableArgs):
     await db.execute(sql`
       INSERT INTO library_items (
         user_id, project_id, kind, title, content, preview,
-        origin_source, origin_conversation_id, legacy_source, legacy_id
+        origin_source, origin_conversation_id, legacy_source, legacy_id, artifact_type
       )
       VALUES (
         ${args.userId}, ${args.projectId}, ${kind}, ${args.title}, ${content}, ${preview},
-        ${"workspace"}, ${args.conversationId ?? null}, ${"project_artifacts"}, ${legacyId}
+        ${"workspace"}, ${args.conversationId ?? null}, ${"project_artifacts"}, ${legacyId}, ${artifactType}
       )
     `);
   } catch {
