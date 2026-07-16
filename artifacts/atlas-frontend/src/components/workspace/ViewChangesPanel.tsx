@@ -1062,6 +1062,7 @@ interface Props {
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
   runId?: string | null;
+  commitSha?: string | null;
   projectName?: string | null;
   /** Active conversation UUID — scopes Timeline/Changes to this thread. */
   conversationId?: string | null;
@@ -1074,9 +1075,11 @@ export function ViewChangesPanel({
   pushHistory: _pushHistory,
   onRollbackPush: _onRollbackPush,
   runId,
+  commitSha,
   projectName,
   conversationId,
 }: Props) {
+
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
   const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId, { conversationId });
