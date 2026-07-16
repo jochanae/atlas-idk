@@ -1960,23 +1960,48 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
       return;
     }
 
-    const runIdByMessageId = new Map<number, string>();
+    const runMetaByMessageId = new Map<number, {
+      id: string;
+      verificationContract: unknown | null;
+      steps: Array<{
+        verb: string;
+        target: string | null;
+        content: string | null;
+        beforeContent: string | null;
+      }>;
+    }>();
     try {
       const messageIds = messages
         .filter((m) => m.role === "assistant")
         .map((m) => m.id);
       if (messageIds.length > 0) {
         const runRows = await db.execute(sql`
-          SELECT id, message_id
+          SELECT id, message_id, verification_contract
           FROM execution_runs
           WHERE message_id IN (${sql.join(messageIds.map((id) => sql`${id}`), sql`, `)})
             ${Number.isInteger(focusProjectId) && focusProjectId > 0 ? sql`AND project_id = ${focusProjectId}` : sql``}
             ${conversationId && conversationId !== "__legacy__" ? sql`AND (conversation_id = ${conversationId} OR conversation_id IS NULL)` : sql``}
           ORDER BY started_at DESC, seq DESC
         `);
-        for (const row of runRows.rows as Array<{ id: string; message_id: number | null }>) {
-          if (row.message_id != null && !runIdByMessageId.has(row.message_id)) {
-            runIdByMessageId.set(row.message_id, row.id);
+        const selectedRunIds: string[] = [];
+        for (const row of runRows.rows as Array<{ id: string; message_id: number | null; verification_contract: unknown | null }>) {
+          if (row.message_id != null && !runMetaByMessageId.has(row.message_id)) {
+            runMetaByMessageId.set(row.message_id, { id: row.id, verificationContract: row.verification_contract ?? null, steps: [] });
+            selectedRunIds.push(row.id);
+          }
+        }
+        if (selectedRunIds.length > 0) {
+          const stepRows = await db.execute(sql`
+            SELECT run_id, verb, target, content, before_content
+            FROM execution_run_steps
+            WHERE run_id IN (${sql.join(selectedRunIds.map((id) => sql`${id}`), sql`, `)})
+            ORDER BY run_id, order_index ASC, id ASC
+          `);
+          const metaByRunId = new Map(Array.from(runMetaByMessageId.values()).map((meta) => [meta.id, meta]));
+          for (const step of stepRows.rows as Array<{ run_id: string; verb: string; target: string | null; content: string | null; before_content: string | null }>) {
+            const meta = metaByRunId.get(step.run_id);
+            if (!meta) continue;
+            meta.steps.push({ verb: step.verb, target: step.target, content: step.content, beforeContent: step.before_content });
           }
         }
       }
@@ -1984,36 +2009,59 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
       logger.warn({ err }, "nexus/thread: failed to hydrate run ids — continuing without receipt anchors");
     }
 
-    res.json(messages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      isBriefing: m.messageType === "briefing",
-      runId: runIdByMessageId.get(m.id) ?? null,
-      // Restore persisted imageGen payload so sketches survive reload (P3)
-      imageGen: (m.metadata as any)?.imageGen ?? null,
-      // Restore persisted decisionArtifacts so Decision Intelligence cards survive reload
-      decisionArtifacts: (m.metadata as any)?.decisionArtifacts ?? null,
-      // Restore generated artifact cards (ArtifactCreatedCard) so they survive reload
-      generatedArtifacts: (m.metadata as any)?.generatedArtifacts ?? null,
-      executionTimeMs: null,
-      inputTokens: null,
-      outputTokens: null,
-      costUsd: null,
-      runStatus: null,
-      runSummary: null,
-      runActions: null,
-      runArtifacts: null,
-      execution_time_ms: null,
-      input_tokens: null,
-      output_tokens: null,
-      cost_usd: null,
-      run_status: null,
-      run_summary: null,
-      run_actions: null,
-      run_artifacts: null,
-      createdAt: m.createdAt.toISOString(),
-    })));
+    res.json(messages.map((m) => {
+      const runMeta = runMetaByMessageId.get(m.id) ?? null;
+      const mutationSteps = runMeta?.steps.filter((s) =>
+        s.target && (s.verb === "FILE_EDIT" || s.verb === "LINE_PATCH" || s.verb === "FILE_DELETE" || s.verb === "Writing" || s.verb === "Written" || s.verb === "Patching")
+      ) ?? [];
+      const fileEdits = mutationSteps
+        .filter((s) => s.verb === "FILE_EDIT" || s.verb === "Writing" || s.verb === "Written")
+        .map((s) => ({ path: s.target!, language: "", content: s.content ?? "" }));
+      const linePatches = mutationSteps
+        .filter((s) => s.verb === "LINE_PATCH" || s.verb === "Patching")
+        .map((s) => ({ path: s.target!, find: s.beforeContent ?? "", replace: s.content ?? "" }));
+      const fileDeletes = mutationSteps
+        .filter((s) => s.verb === "FILE_DELETE")
+        .map((s) => ({ path: s.target! }));
+      const executionOutcome =
+        runMeta?.verificationContract && typeof runMeta.verificationContract === "object"
+          ? (runMeta.verificationContract as any).outcome ?? null
+          : null;
+      return {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        isBriefing: m.messageType === "briefing",
+        runId: runMeta?.id ?? null,
+        // Restore persisted imageGen payload so sketches survive reload (P3)
+        imageGen: (m.metadata as any)?.imageGen ?? null,
+        // Restore persisted decisionArtifacts so Decision Intelligence cards survive reload
+        decisionArtifacts: (m.metadata as any)?.decisionArtifacts ?? null,
+        // Restore generated artifact cards (ArtifactCreatedCard) so they survive reload
+        generatedArtifacts: (m.metadata as any)?.generatedArtifacts ?? null,
+        ...(executionOutcome ? { executionOutcome } : {}),
+        ...(fileEdits.length > 0 ? { fileEdits, fileEdit: fileEdits[0] } : {}),
+        ...(linePatches.length > 0 ? { linePatches } : {}),
+        ...(fileDeletes.length > 0 ? { fileDeletes } : {}),
+        executionTimeMs: null,
+        inputTokens: null,
+        outputTokens: null,
+        costUsd: null,
+        runStatus: null,
+        runSummary: null,
+        runActions: null,
+        runArtifacts: null,
+        execution_time_ms: null,
+        input_tokens: null,
+        output_tokens: null,
+        cost_usd: null,
+        run_status: null,
+        run_summary: null,
+        run_actions: null,
+        run_artifacts: null,
+        createdAt: m.createdAt.toISOString(),
+      };
+    }));
     return;
   } catch (err: any) {
     console.error("nexus/thread error:", err?.message, err?.stack);
@@ -5321,7 +5369,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
           a => a.verb === "Typechecking" && a.status !== "fail",
         );
 
-        if (hasFileRead || hasPatch) {
+        if (hasPatch) {
           // Initialize the contract (UNKNOWN → same required steps as SERVER_ROUTING).
           await initializeRunContract({ runId: activeRunId, issueType: "UNKNOWN" });
 

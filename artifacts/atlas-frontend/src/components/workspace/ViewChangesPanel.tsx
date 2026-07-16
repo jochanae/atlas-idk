@@ -456,7 +456,7 @@ function getChangeLabel(row: FileRow): { label: string; color: string } {
   return { label: row.summary, color: "rgba(var(--atlas-muted), 0.55)" };
 }
 
-function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectId: number; runStatus?: string }) {
+function ChangesLens({ rows, projectId, runStatus, scopedToRun }: { rows: FileRow[]; projectId: number; runStatus?: string; scopedToRun?: boolean }) {
   // Auto-expand the first file when there are ≤3 files and viewable content exists.
   const firstKey = rows.length > 0 ? `${rows[0].messageId}-${rows[0].path}-0` : null;
   const autoExpand = rows.length <= 3 && (!!rows[0]?.content || !!rows[0]?.beforeContent);
@@ -469,7 +469,7 @@ function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectI
   if (rows.length === 0) {
     return (
       <div style={{ padding: "18px 14px", fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5 }}>
-        No file changes recorded for this run yet.
+        {scopedToRun ? "No changes in this run." : "No file changes recorded yet."}
       </div>
     );
   }
@@ -838,6 +838,12 @@ function RunHeader({ run }: { run: ApiRun }) {
     failed:             "rgba(220,80,80,0.9)",
   };
   const tone = statusTone[status] ?? "rgba(180,180,180,0.8)";
+  const hasMutation = run.steps.some((s) =>
+    s.verb === "FILE_EDIT" || s.verb === "LINE_PATCH" || s.verb === "FILE_DELETE" ||
+    s.verb === "Writing" || s.verb === "Written" || s.verb === "Patching"
+  );
+  const outcomeCode = run.verificationContract?.outcome?.code;
+  const showOutcomeBadge = hasMutation || outcomeCode === "BUILD_VERIFIED" || outcomeCode === "RUNTIME_VERIFIED" || outcomeCode === "USER_FLOW_VERIFIED" || outcomeCode === "FAILED" || outcomeCode === "BLOCKED";
 
   return (
     <div style={{
@@ -865,7 +871,7 @@ function RunHeader({ run }: { run: ApiRun }) {
           {status}
         </span>
         {/* v1.3: outcome from the state machine — never derived from model prose */}
-        <OutcomeBadge contract={run.verificationContract} />
+        {showOutcomeBadge && <OutcomeBadge contract={run.verificationContract} />}
         {intent && (
           <span style={{
             padding: "2px 7px", borderRadius: 3,
@@ -1070,6 +1076,7 @@ export function ViewChangesPanel({
     if (runId) return dbRuns.find((r) => r.id === runId) ?? null;
     return dbRuns[0] ?? null;
   }, [dbRuns, runId]);
+  const activeRunId = runId ?? timelineRun?.id ?? null;
 
   // Auto-select "changes" only when there are truly no timeline-able steps at all.
   // FILE_EDIT, LINE_PATCH, etc. all render in the timeline — don't force "changes" just
@@ -1089,21 +1096,21 @@ export function ViewChangesPanel({
 
   // Changes lens: in-memory message fallback for paths not yet in the DB.
   const filteredMessages = useMemo(() => {
-    if (!runId) return messages;
+    if (!activeRunId) return messages;
     const hits = messages.filter((m) => {
       const tagged = (m as { runId?: string; run_id?: string }).runId
         ?? (m as { runId?: string; run_id?: string }).run_id;
-      return tagged === runId;
+      return tagged === activeRunId;
     });
-    return hits.length > 0 ? hits : messages;
-  }, [messages, runId]);
+    return hits;
+  }, [messages, activeRunId]);
 
   // Changes lens: DB-backed file rows, supplemented by in-memory fallback.
   const changeRows = useMemo(() => {
     const dbRows: FileRow[] = [];
     const seenPaths = new Set<string>();
     for (const run of dbRuns) {
-      if (runId && run.id !== runId) continue;
+      if (activeRunId && run.id !== activeRunId) continue;
       for (const step of run.steps) {
         if (
           (step.verb === "FILE_EDIT" || step.verb === "LINE_PATCH" || step.verb === "FILE_DELETE" || step.verb === "Writing" || step.verb === "Written" || step.verb === "Patching") &&
@@ -1131,7 +1138,7 @@ export function ViewChangesPanel({
     }
     const msgRows = collectFileRows(filteredMessages).filter((r) => !seenPaths.has(r.path));
     return [...dbRows, ...msgRows];
-  }, [dbRuns, filteredMessages, runId, projectId]);
+  }, [dbRuns, filteredMessages, activeRunId, projectId]);
 
   const clearRunFilter = () => {
     try {
@@ -1254,7 +1261,7 @@ export function ViewChangesPanel({
           </div>
         )
       ) : (
-        <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} />
+        <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} scopedToRun={!!activeRunId} />
       )}
     </div>
   );

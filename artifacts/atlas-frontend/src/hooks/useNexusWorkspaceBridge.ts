@@ -24,6 +24,12 @@ type ThreadMessage = {
   isBriefing?: boolean;
   createdAt?: string;
   runId?: string | null;
+  executionOutcome?: NexusMessage["executionOutcome"] | null;
+  fileEdit?: NexusMessage["fileEdit"] | null;
+  fileEdits?: NexusMessage["fileEdits"] | null;
+  linePatches?: NexusMessage["linePatches"] | null;
+  fileDeletes?: NexusMessage["fileDeletes"] | null;
+  githubPush?: NexusMessage["githubPush"] | null;
   imageGen?: NexusMessage["imageGen"] | null;
   decisionArtifacts?: NexusMessage["decisionArtifacts"] | null;
   generatedArtifacts?: NexusMessage["generatedArtifacts"] | null;
@@ -36,6 +42,12 @@ function threadMessageToNexus(m: ThreadMessage): NexusMessage {
     content: m.content,
     createdAt: m.createdAt ?? new Date().toISOString(),
     runId: m.runId ?? null,
+    executionOutcome: m.executionOutcome ?? null,
+    fileEdit: m.fileEdit ?? null,
+    fileEdits: m.fileEdits ?? null,
+    linePatches: m.linePatches ?? null,
+    fileDeletes: m.fileDeletes ?? null,
+    githubPush: m.githubPush ?? null,
     imageGen: m.imageGen ?? null,
     decisionArtifacts: m.decisionArtifacts ?? null,
     generatedArtifacts: m.generatedArtifacts ?? null,
@@ -135,6 +147,11 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     sentAt: nm.createdAt ?? undefined,
     // v1.4: backend-derived execution outcome from advance_execution_state tool
     ...(nm.executionOutcome ? { executionOutcome: nm.executionOutcome } : {}),
+    ...(nm.fileEdit ? { fileEdit: nm.fileEdit as ChatMessage["fileEdit"] } : {}),
+    ...(nm.fileEdits?.length ? { fileEdits: nm.fileEdits as ChatMessage["fileEdits"] } : {}),
+    ...(nm.linePatches?.length ? { linePatches: nm.linePatches as ChatMessage["linePatches"] } : {}),
+    ...(nm.fileDeletes?.length ? { fileDeletes: nm.fileDeletes as ChatMessage["fileDeletes"] } : {}),
+    ...(nm.githubPush ? { githubPush: nm.githubPush as ChatMessage["githubPush"] } : {}),
     // Stable run ID (execution_runs.id) — required so runCardAfterIdx anchors the
     // receipt card by matching msg.runId === execLatestRun.id (Nexus path uses UUIDs;
     // m.id is positional idx+1 which never matches execLatestRun.messageId).

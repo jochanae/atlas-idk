@@ -367,6 +367,26 @@ export function ChatComposer(props: ChatComposerProps) {
   const isCompact = composerVisibility === 'compact' && !sheetVisible;
   const isDocked = composerVisibility === 'docked' && !sheetVisible;
   const isParchment = useThemeMode() === "parchment";
+  const composerShellRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = () => {
+      const el = composerShellRef.current;
+      const height = composerActive && !isDocked && el ? Math.ceil(el.getBoundingClientRect().height) : 0;
+      root.style.setProperty("--atlas-composer-clearance", `${height}px`);
+    };
+    apply();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(apply) : null;
+    if (composerShellRef.current && ro) ro.observe(composerShellRef.current);
+    window.addEventListener("resize", apply);
+    const raf = requestAnimationFrame(apply);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener("resize", apply);
+    };
+  }, [composerActive, isDocked, sheetVisible, isCompact, attachedFiles.length, zipFiles.length, codeContextStatus, input.length]);
 
   // Publish held state to the footer anchor so its halo breathes when a
   // draft is being held or Atlas is mid-turn. Cleared when neither is true.
@@ -426,6 +446,7 @@ export function ChatComposer(props: ChatComposerProps) {
         };
         const auraVars = getAuraVars(wsLensContext[wsLens] ?? "axiom");
         return <div
+        ref={composerShellRef}
         className="atlas-composer-glass atlas-composer-live"
         data-atlas-composer
         data-composer-expanded={sheetVisible ? "true" : "false"}

@@ -408,7 +408,7 @@ export function ChatStream(props: ChatStreamProps) {
   // WorkspaceRunCard owns that surface). Pure "Thinking" steps (FILE_READ,
   // TREE, FETCH, etc.) must NOT suppress — Atlas's prose should stream
   // normally while thinking, per the Thinking/Doing/Receipt lifecycle.
-  const suppressStreamingText = isDoingVerb(liveStep?.verb) || (chatPending && inBuildChain);
+  const suppressStreamingText = isDoingVerb(liveStep?.verb, liveStep?.target) || (chatPending && inBuildChain);
 
   // Inline run-card anchor. The run card should sit with the turn that produced
   // it, not float below all messages. Rules:
@@ -653,12 +653,15 @@ export function ChatStream(props: ChatStreamProps) {
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
   const composerVisibility = useComposerVisibility();
   const dockedExtraPad = composerVisibility === "docked" ? 72 : 0;
+  const bottomPadding = isMobile
+    ? `calc(var(--atlas-composer-clearance, 96px) + var(--atlas-dock-reserved, var(--atlas-dock-height, 64px)) + env(safe-area-inset-bottom, 0px) + 24px + ${dockedExtraPad}px)`
+    : `calc(var(--atlas-composer-clearance, 0px) + ${28 + dockedExtraPad}px)`;
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
     overscrollBehaviorY: "contain",
     padding: isMobile
-      ? `32px 14px ${20 + dockedExtraPad}px 14px`
-      : `56px 104px ${28 + dockedExtraPad}px 24px`,
+      ? `32px 14px ${bottomPadding} 14px`
+      : `56px 104px ${bottomPadding} 24px`,
     position: "relative", scrollbarWidth: "none",
     transition: "padding 240ms cubic-bezier(0.22, 1, 0.36, 1)",
   };
@@ -843,6 +846,24 @@ export function ChatStream(props: ChatStreamProps) {
         return (
         <Fragment key={msg.stableKey ?? String(msg.id)}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
+          {!conversationMode && msg.role === "assistant" && runCardsByIdx.has(i) && (
+            <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
+              {runCardsByIdx.get(i)?.map((run) => (
+                <WorkspaceRunCard
+                  key={run.id}
+                  projectId={projectId}
+                  messages={messages.slice(0, i + 1)}
+                  projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+                  chatPending={false}
+                  liveStep={null}
+                  suppressGitHubReceipt
+                  suppressDeliverableReceipt={Boolean(messages.find(m => m.role === "assistant" && (m.runId ? m.runId === run.id : run.messageId != null && m.id === run.messageId))?.generatedArtifacts?.length)}
+                  executionRun={run}
+                  onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+                />
+              ))}
+            </div>
+          )}
           {msg.role === "user" ? (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
               {isAutoVerifyMessage(msg) ? (
@@ -969,24 +990,6 @@ export function ChatStream(props: ChatStreamProps) {
                   <StepProgress mode="stream" content={activityStream.content} lens={wsLens} />
                 )
               )}
-            </div>
-          )}
-          {!conversationMode && runCardsByIdx.has(i) && (
-            <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
-              {runCardsByIdx.get(i)?.map((run) => (
-                <WorkspaceRunCard
-                  key={run.id}
-                  projectId={projectId}
-                  messages={messages.slice(0, i + 1)}
-                  projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
-                  chatPending={false}
-                  liveStep={null}
-                  suppressGitHubReceipt
-                  suppressDeliverableReceipt={Boolean(messages.find(m => m.role === "assistant" && (m.runId ? m.runId === run.id : run.messageId != null && m.id === run.messageId))?.generatedArtifacts?.length)}
-                  executionRun={run}
-                  onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
-                />
-              ))}
             </div>
           )}
           {renderActivityForAnchor(i)}
