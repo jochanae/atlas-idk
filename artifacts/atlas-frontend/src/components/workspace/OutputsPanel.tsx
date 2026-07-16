@@ -232,7 +232,7 @@ function relativeDate(dateStr: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function ArtifactsPanel({ projectId }: { projectId: number }) {
+export function OutputsPanel({ projectId }: { projectId: number }) {
   const [items, setItems] = useState<ArtifactRecord[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -900,26 +900,30 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
     </div>
   );
 
+  const SUB_TABS: Array<{ id: "outputs" | "artifacts"; label: string }> = [
+    { id: "outputs", label: "All Outputs" },
+    { id: "artifacts", label: "Artifacts" },
+  ];
   const subTabBar = (
     <div style={{ display: "flex", gap: 0, padding: "0 14px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
-      {(["outputs", "artifacts"] as const).map((t) => (
+      {SUB_TABS.map((t) => (
         <button
-          key={t}
+          key={t.id}
           type="button"
-          onClick={() => setSubTab(t)}
+          onClick={() => setSubTab(t.id)}
           style={{
             padding: "8px 14px",
             background: "transparent",
             border: "none",
-            borderBottom: subTab === t ? "2px solid var(--atlas-gold)" : "2px solid transparent",
-            color: subTab === t ? "var(--atlas-gold)" : "var(--atlas-muted)",
+            borderBottom: subTab === t.id ? "2px solid var(--atlas-gold)" : "2px solid transparent",
+            color: subTab === t.id ? "var(--atlas-gold)" : "var(--atlas-muted)",
             fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
             textTransform: "uppercase", cursor: "pointer",
-            opacity: subTab === t ? 1 : 0.5,
+            opacity: subTab === t.id ? 1 : 0.5,
             transition: "all 140ms ease",
           }}
         >
-          {t}
+          {t.label}
         </button>
       ))}
     </div>
@@ -1007,7 +1011,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
           <Search size={12} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--atlas-muted)", opacity: 0.4, pointerEvents: "none" }} />
           <input
             type="text"
-            placeholder="Search outputs…"
+            placeholder="Search this project…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: "100%", paddingLeft: 28, paddingRight: 10, paddingTop: 7, paddingBottom: 7, borderRadius: 8, border: "1px solid var(--atlas-border)", background: "rgba(255,255,255,0.02)", color: "var(--atlas-fg)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-sans)", outline: "none", boxSizing: "border-box" }}
