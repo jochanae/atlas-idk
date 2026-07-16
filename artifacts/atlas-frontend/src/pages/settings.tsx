@@ -125,8 +125,65 @@ function PlanTab() {
           Billing lands in a later phase. Buttons are placeholders until Stripe is wired.
         </p>
       </Panel>
+
+      <ActivationReplayPanel />
     </div>
   );
+}
+
+function ActivationReplayPanel() {
+  const [status, setStatus] = useState<"idle" | "armed">(() => {
+    try {
+      return localStorage.getItem("atlas-activation-seen") === "1" ? "idle" : "armed";
+    } catch { return "idle"; }
+  });
+
+  const replay = () => {
+    try {
+      localStorage.removeItem("atlas-activation-seen");
+      localStorage.removeItem("atlas-last-sign-in");
+    } catch {}
+    setStatus("armed");
+  };
+
+  const preview = () => {
+    try { sessionStorage.setItem("atlas-activation-mode", "full"); } catch {}
+    window.location.assign("/activate");
+  };
+
+  return (
+    <Panel>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-[#F5ECDD]">Sign-in animation</div>
+          <p className="mt-1 max-w-md text-xs text-white/55">
+            The activation sequence plays on your first sign-in and returns as a short
+            welcome-back after 30 days away. You can replay it any time.
+          </p>
+          {status === "armed" && (
+            <p className="mt-2 text-[11px] text-[#C9A24C]">
+              Armed — the full sequence will play on your next sign-in.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={preview}
+            className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 transition-colors"
+          >
+            Preview now
+          </button>
+          <button
+            type="button"
+            onClick={replay}
+            className="rounded-md border border-[#C9A24C]/40 bg-[#C9A24C]/15 px-3 py-1.5 text-xs text-[#F5ECDD] hover:bg-[#C9A24C]/25 transition-colors"
+          >
+            Replay on next sign-in
+          </button>
+        </div>
+      </div>
+    </Panel>);
 }
 
 function PlanCard({ tier, current }: { tier: CapacityTier; current: boolean }) {

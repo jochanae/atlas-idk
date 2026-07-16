@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Mode = "full" | "warm";
+type Mode = "full" | "warm" | "welcome";
 
 const CONSTELLATION = [
   { x: 22, y: 30 }, { x: 78, y: 26 }, { x: 14, y: 62 },
@@ -52,6 +52,14 @@ export default function ActivatePage() {
     if (mode === "warm") {
       const t = setTimeout(finish, 450);
       return () => clearTimeout(t);
+    }
+    if (mode === "welcome") {
+      // Compressed: dots settle, mark + "Welcome back" reveal, exit.
+      const t1 = setTimeout(() => setPhase(1), 300);
+      const t2 = setTimeout(() => setPhase(2), 600);
+      const t3 = setTimeout(() => setPhase(3), 900);
+      const t4 = setTimeout(finish, 1400);
+      return () => { [t1, t2, t3, t4].forEach(clearTimeout); };
     }
     const t1 = setTimeout(() => setPhase(1), 800);
     const t2 = setTimeout(() => setPhase(2), 1600);
@@ -162,7 +170,7 @@ export default function ActivatePage() {
                 animate={{ opacity: phase >= 3 ? 0.7 : 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                Your workspace is coming online
+                {mode === "welcome" ? "Welcome back" : "Your workspace is coming online"}
               </motion.div>
             </motion.div>
           )}
