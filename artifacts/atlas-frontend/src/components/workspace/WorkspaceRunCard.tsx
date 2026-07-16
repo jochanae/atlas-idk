@@ -501,24 +501,31 @@ function InlineThinkingPulse({ steps }: { steps: LiveStepItem[] }) {
 }
 
 /** The live execution card shown while Atlas is working.
- *  One card. One current step. Fixed height. No growing list.
+ *  Shows a growing list of task-level steps (file writes, commands, pushes),
+ *  each with an individual spinner → checkmark as they complete in sequence.
+ *  Non-task (read/think) steps appear as a muted subtitle, not as list rows.
  *  Tapping the card (when a runId is available) opens Timeline/Changes for
  *  the in-flight run — the same identity that will later carry the receipt. */
 function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoal: string; runId?: string | null }) {
-  const current = steps[steps.length - 1];
-  const stepCount = steps.length;
+  // Split steps into task-worthy rows (file writes, commands, pushes, etc.)
+  // and ambient context steps (reads, thinks). Only task-worthy steps appear
+  // as list rows; context steps become the muted subtitle.
+  const taskSteps = steps.filter(s => isDoingVerb(s.verb));
 
-  // If no execution verbs have fired yet, this is a thinking/reading turn —
-  // never say "Running [project]". Switch to a thinking label instead.
-  const hasExecutionStep = steps.some(s => EXECUTION_VERBS.has((s.verb ?? "").toUpperCase()));
-  const { headline: stepHeadline } = liveStepMeta(current);
-  const currentHeadline = hasExecutionStep
-    ? stepHeadline
-    : current?.verb?.toUpperCase() === "FILE_READ" || current?.verb?.toUpperCase() === "TREE"
-      ? "Reviewing project context"
-      : stepHeadline === "Working…" || !stepHeadline
-        ? "Thinking with Atlas"
-        : stepHeadline;
+  // Last non-task step → subtitle. Gives context for what Atlas reviewed
+  // before / between task steps without adding noise to the list.
+  let subtitleText: string | null = null;
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (!isDoingVerb(steps[i].verb)) {
+      subtitleText = thinkingLabel(steps[i].verb, steps[i].target);
+      break;
+    }
+  }
+
+  // Cap list at 5 visible rows; summarise older steps with an overflow counter.
+  const MAX_VISIBLE = 5;
+  const hiddenCount = Math.max(0, taskSteps.length - MAX_VISIBLE);
+  const visibleSteps = taskSteps.slice(-MAX_VISIBLE);
 
   const clickable = !!runId;
   const openTimeline = () => {
@@ -567,7 +574,7 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
       />
 
       {/* Title row: task goal + pulsing dot */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: subtitleText ? 3 : 8 }}>
         <div
           style={{
             fontSize: 13.5,
@@ -598,55 +605,112 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
         />
       </div>
 
-      {/* Divider */}
-      <div aria-hidden="true" style={{ height: 1, background: "hsl(var(--border) / 0.45)", marginBottom: 10 }} />
-
-      {/* Single rotating current step */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {/* Spinning ring */}
-        <span
-          aria-label="running"
+      {/* Subtitle: last ambient/context step (muted) */}
+      {subtitleText && (
+        <div
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 18,
-            height: 18,
-            borderRadius: 999,
-            border: "1.5px solid hsl(var(--muted-foreground) / 0.15)",
-            borderTopColor: "rgba(139, 92, 246, 0.9)",
-            flexShrink: 0,
-            animation: "wrc-spin 0.8s linear infinite",
-          }}
-        />
-        <span
-          style={{
-            fontSize: 12.5,
-            fontWeight: 500,
-            color: "hsl(var(--card-foreground))",
+            fontSize: 11.5,
+            color: "hsl(var(--muted-foreground) / 0.65)",
+            marginBottom: 8,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            flex: 1,
-            minWidth: 0,
-            letterSpacing: "-0.005em",
+            letterSpacing: "0.005em",
           }}
         >
-          {currentHeadline || "Working…"}
-        </span>
-        {/* Step counter — subtle breadcrumb */}
-        {stepCount > 1 && (
-          <span
-            style={{
-              fontSize: 10.5,
-              color: "hsl(var(--muted-foreground) / 0.45)",
-              flexShrink: 0,
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {stepCount}
-          </span>
-        )}
+          {subtitleText}
+        </div>
+      )}
+
+      {/* Divider */}
+      <div aria-hidden="true" style={{ height: 1, background: "hsl(var(--border) / 0.45)", marginBottom: 8 }} />
+
+      {/* Overflow counter — when more than MAX_VISIBLE task steps have fired */}
+      {hiddenCount > 0 && (
+        <div
+          style={{
+            fontSize: 10.5,
+            color: "hsl(var(--muted-foreground) / 0.4)",
+            marginBottom: 6,
+            paddingLeft: 26,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          +{hiddenCount} earlier step{hiddenCount !== 1 ? "s" : ""}
+        </div>
+      )}
+
+      {/* Step list: completed rows (checkmark) + active row (spinner) */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {visibleSteps.length === 0 ? (
+          /* Fallback: no task steps surfaced yet — single ambient spinner */
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              aria-label="running"
+              style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                width: 16, height: 16, borderRadius: 999, flexShrink: 0,
+                border: "1.5px solid hsl(var(--muted-foreground) / 0.15)",
+                borderTopColor: "rgba(139, 92, 246, 0.9)",
+                animation: "wrc-spin 0.8s linear infinite",
+              }}
+            />
+            <span style={{ fontSize: 12.5, fontWeight: 500, color: "hsl(var(--card-foreground))", letterSpacing: "-0.005em" }}>
+              Working…
+            </span>
+          </div>
+        ) : visibleSteps.map((step, i) => {
+          const isCurrentStep = i === visibleSteps.length - 1;
+          const { headline } = liveStepMeta(step);
+          return (
+            <div key={`${step.verb}-${step.target ?? ""}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {isCurrentStep ? (
+                /* Active: spinning ring */
+                <span
+                  aria-label="running"
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    width: 16, height: 16, borderRadius: 999, flexShrink: 0,
+                    border: "1.5px solid hsl(var(--muted-foreground) / 0.15)",
+                    borderTopColor: "rgba(139, 92, 246, 0.9)",
+                    animation: "wrc-spin 0.8s linear infinite",
+                  }}
+                />
+              ) : (
+                /* Completed: circle checkmark */
+                <span
+                  aria-label="done"
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    width: 16, height: 16, borderRadius: 999, flexShrink: 0,
+                    border: "1.5px solid rgba(139, 92, 246, 0.3)",
+                  }}
+                >
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
+                    <path d="M1.5 4L3 5.5L6.5 2" stroke="rgba(139,92,246,0.75)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+              )}
+              <span
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: isCurrentStep ? 500 : 400,
+                  color: isCurrentStep
+                    ? "hsl(var(--card-foreground))"
+                    : "hsl(var(--card-foreground) / 0.45)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  minWidth: 0,
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                {headline}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       <style>{`
