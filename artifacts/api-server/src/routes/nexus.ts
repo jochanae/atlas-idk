@@ -1992,6 +1992,16 @@ router.get("/nexus/conversations", async (req, res): Promise<void> => {
       return;
     }
     const hasMessageType = await hasNexusMessageTypeColumn();
+
+    // Fetch projects that own a promoted conversation so we can:
+    //   1. Exclude those conversationIds from the active conversation list
+    //   2. Return them as stub entries pointing back to the workspace
+    const promotedProjects = await db
+      .select({ id: projectsTable.id, name: projectsTable.name, conversationId: projectsTable.conversationId, createdAt: projectsTable.createdAt })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.userId, userId), isNotNull(projectsTable.conversationId)));
+    const promotedConvIds = new Set(promotedProjects.map(p => p.conversationId).filter(Boolean));
+
     const rows = hasMessageType
       ? await db
           .select({
@@ -2005,6 +2015,7 @@ router.get("/nexus/conversations", async (req, res): Promise<void> => {
             eq(nexusMessagesTable.userId, userId),
             isNotNull(nexusMessagesTable.conversationId),
             sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'briefing'`,
+            sql`${nexusMessagesTable.projectId} IS NULL`,
           ))
           .groupBy(nexusMessagesTable.conversationId)
           .orderBy(desc(sql`MAX(${nexusMessagesTable.createdAt})`))
@@ -2017,17 +2028,36 @@ router.get("/nexus/conversations", async (req, res): Promise<void> => {
             messageCount: sql<number>`COUNT(*)`,
           })
           .from(nexusMessagesTable)
-          .where(and(eq(nexusMessagesTable.userId, userId), isNotNull(nexusMessagesTable.conversationId)))
+          .where(and(
+            eq(nexusMessagesTable.userId, userId),
+            isNotNull(nexusMessagesTable.conversationId),
+            sql`${nexusMessagesTable.projectId} IS NULL`,
+          ))
           .groupBy(nexusMessagesTable.conversationId)
           .orderBy(desc(sql`MAX(${nexusMessagesTable.createdAt})`))
           .limit(30);
-    const conversations = rows.map(r => ({
-      id: r.id,
-      title: r.title ? r.title.slice(0, 60) : "Conversation",
-      createdAt: r.createdAt,
-      messageCount: Number(r.messageCount),
+
+    const conversations = rows
+      .filter(r => !promotedConvIds.has(r.id))
+      .map(r => ({
+        id: r.id,
+        title: r.title ? r.title.slice(0, 60) : "Conversation",
+        createdAt: r.createdAt,
+        messageCount: Number(r.messageCount),
+        type: "conversation" as const,
+      }));
+
+    const stubs = promotedProjects.map(p => ({
+      id: p.conversationId as string,
+      title: p.name,
+      createdAt: p.createdAt,
+      messageCount: 0,
+      type: "promoted" as const,
+      projectId: p.id,
+      projectName: p.name,
     }));
-    res.json({ conversations });
+
+    res.json({ conversations: [...conversations, ...stubs].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()) });
   } catch (err: any) {
     console.error("nexus/conversations error:", err?.message, err?.stack);
     res.status(500).json({ error: "Failed to load conversations", detail: err?.message });

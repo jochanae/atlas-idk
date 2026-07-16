@@ -5653,20 +5653,26 @@ export default function Workspace() {
   // Auto-continuation: when workspace opens from a commit-carryover handoff and
   // Atlas's last message is only a short handoff acknowledgement (not a real answer),
   // automatically prompt Atlas to continue fulfilling the original request.
+  // Key: use the conversationId URL param directly — it's available immediately,
+  // unlike `id` (projectId) which is resolved asynchronously on the /workspace/:conversationId route.
   const commitContinuationFiredRef = useRef(false);
   useEffect(() => {
-    if (!commitCarryover) return;
     if (!useNexusWorkspaceChat) return;
     if (commitContinuationFiredRef.current) return;
     if (nexusBridge.messages.length === 0) return;
+    // Check sessionStorage using conversationId param (available immediately on /workspace/:id route)
+    const convKey = conversationId ? `atlas-conv-carryover-${conversationId}` : null;
+    const hasCarryover = convKey ? (() => { try { return sessionStorage.getItem(convKey) === "1"; } catch { return false; } })() : false;
+    if (!hasCarryover) return;
     const lastMsg = nexusBridge.messages[nexusBridge.messages.length - 1];
     if (!lastMsg || lastMsg.role !== "assistant") return;
     const lastContent = typeof lastMsg.content === "string" ? lastMsg.content.trim() : "";
     if (lastContent.length > 150) return;
     commitContinuationFiredRef.current = true;
+    try { if (convKey) sessionStorage.removeItem(convKey); } catch {}
     nexusBridge.send("Please continue — I'm ready to see the initial build structure and your full plan.");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commitCarryover, nexusBridge.messages, nexusBridge.send, useNexusWorkspaceChat]);
+  }, [nexusBridge.messages, nexusBridge.send, useNexusWorkspaceChat, conversationId]);
 
   const [homeHandoffMeta, setHomeHandoffMeta] = useState<HomeHandoffMeta | null>(() => {
     try {

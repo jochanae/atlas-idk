@@ -12,6 +12,9 @@ export type AtlasConversation = {
   messageCount?: number;
   updatedAt?: string | null;
   createdAt?: string | null;
+  type?: "conversation" | "promoted";
+  projectId?: number;
+  projectName?: string;
 };
 
 export type DrawerProject = {
@@ -231,6 +234,38 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               {atlasConversations && atlasConversations.length > 0 ? (
                 atlasConversations.slice(0, 8).map((conv) => {
                   const isActive = conv.id === activeAtlasSessionId;
+                  const isPromoted = conv.type === "promoted";
+                  if (isPromoted) {
+                    return (
+                      <button
+                        key={conv.id}
+                        type="button"
+                        onClick={() => { if (conv.projectId) { setLocation(`/project/${conv.projectId}`); onClose(); } }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          width: "100%", padding: "7px 10px",
+                          borderRadius: 8, border: "none",
+                          background: "transparent",
+                          cursor: "pointer", textAlign: "left",
+                          borderLeft: "2px solid rgba(201,162,76,0.2)",
+                          transition: "all 140ms ease", opacity: 0.7,
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.04)"; e.currentTarget.style.opacity = "1"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.opacity = "0.7"; }}
+                        title={`Promoted to Workspace — open ${conv.projectName}`}
+                      >
+                        <span style={{ color: "var(--atlas-gold)", opacity: 0.5, flexShrink: 0, display: "flex" }}><Briefcase size={11} strokeWidth={1.5} /></span>
+                        <span style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                          <span style={{ display: "block", fontSize: 11, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-sans)" }}>
+                            {conv.projectName || conv.title}
+                          </span>
+                          <span style={{ display: "block", fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.6 }}>
+                            Promoted to Workspace →
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  }
                   return (
                     <button
                       key={conv.id}

@@ -1905,7 +1905,7 @@ export default function Home() {
   const fetchAtlasConversations = useCallback(() => {
     fetch("/api/nexus/conversations", { credentials: "include" })
       .then(r => r.ok ? r.json() : { conversations: [] })
-      .then((data: { conversations?: Array<{ id: string; title?: string | null; messageCount?: number; createdAt?: string | null }> }) => {
+      .then((data: { conversations?: Array<{ id: string; title?: string | null; messageCount?: number; createdAt?: string | null; type?: "conversation" | "promoted"; projectId?: number; projectName?: string }> }) => {
         const list = data.conversations ?? [];
         setDrawerAtlasConversations(list.map(s => ({
           id: s.id,
@@ -1913,6 +1913,9 @@ export default function Home() {
           messageCount: s.messageCount ?? 0,
           updatedAt: s.createdAt ?? null,
           createdAt: s.createdAt ?? null,
+          type: s.type,
+          projectId: s.projectId,
+          projectName: s.projectName,
         })));
       })
       .catch(() => {});
@@ -3506,6 +3509,7 @@ export default function Home() {
           resumeGreeting = snapData?.brief?.threadSummary ?? null;
           if (snapData?.conversationId) {
             try { sessionStorage.setItem(`atlas-adopted-conv-${projectId}`, snapData.conversationId); } catch {}
+            try { sessionStorage.setItem(`atlas-conv-carryover-${snapData.conversationId}`, "1"); } catch {}
           }
         }
       } catch {}
