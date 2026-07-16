@@ -70,6 +70,7 @@ import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
 import { LinePatchReviewCard, ReviewPlanCard, ReviewTabPanel, PushDiffCard } from "@/components/workspace/ReviewCards";
 import { SessionTimeline } from "@/components/workspace/SessionTimeline";
 import { ViewChangesPanel } from "@/components/workspace/ViewChangesPanel";
+import { RunDetailsDrawer } from "@/components/workspace/RunDetailsDrawer";
 import { MenuBtn, AtlasLogo } from "@/components/workspace/atoms";
 import { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow } from "@/components/workspace/CommitHistory";
 export { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow };
@@ -8990,6 +8991,20 @@ export default function Workspace() {
               <OutputsPanel projectId={id} />
             </div>
           ) : null}
+
+          {/* Slice 2 — canonical run-detail overlay. Opens on axiom:open-changes
+              regardless of leftTab, so Details buttons work from any surface. */}
+          <RunDetailsDrawer
+            projectId={id}
+            linkedRepo={linkedRepo}
+            messages={messages}
+            pushHistory={pushHistory}
+            onRollbackPush={handleRollbackPush}
+            projectName={project?.name ?? null}
+            conversationId={conversationId ?? null}
+          />
+
+
 
           <UnifiedConversationSurface
             mode="operational"
