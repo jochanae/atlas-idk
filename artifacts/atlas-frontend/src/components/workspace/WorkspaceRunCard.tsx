@@ -19,6 +19,7 @@
  *   messages    — full ChatMessage[] for receipt derivation
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, Bookmark, Github, ImageIcon, Terminal, Eye, FilePenLine, Circle, FileCode } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -539,9 +540,9 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
         background: "hsl(var(--card))",
         border: "1px solid rgba(139, 92, 246, 0.45)",
         borderRadius: 12,
-        padding: "14px 16px",
+        padding: "12px 14px",
         margin: "6px 0 4px",
-        width: "min(100%, 440px)",
+        width: "min(100%, 360px)",
         maxWidth: "100%",
         boxSizing: "border-box",
         overflow: "hidden",
@@ -788,10 +789,11 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   }, [items, run?.associatedMessageId]);
   const isBookmarked = !!existingSnapshot?.isBookmarked;
 
+  const [, navigate] = useLocation();
   const handleDetails = useCallback(() => {
     if (!run) return;
-    window.dispatchEvent(new CustomEvent("axiom:open-changes", { detail: { runId: run.id } }));
-  }, [run]);
+    navigate(`/runs/${run.id}`);
+  }, [run, navigate]);
 
   const handlePreview = useCallback(() => {
     if (!run) return;
@@ -961,9 +963,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         border: `1px solid ${tone.border}`,
         boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
         borderRadius: 10,
-        padding: "10px 12px",
+        padding: "9px 11px",
         margin: "6px 0 4px",
-        width: "min(100%, 380px)",
+        width: "min(100%, 320px)",
         maxWidth: "100%",
         boxSizing: "border-box",
         alignSelf: "flex-start",
@@ -1203,26 +1205,53 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
                 letterSpacing: "0.01em",
               }}
             >
-              Changes
+              Details
             </button>
-            <button
-              type="button"
-              title={previewTitle}
-              onClick={(e) => { e.stopPropagation(); handlePreview(); }}
-              style={{
-                fontSize: 11.5,
-                fontWeight: 500,
-                padding: "5px 10px",
-                borderRadius: 6,
-                border: "1px solid transparent",
-                background: "transparent",
-                color: "hsl(var(--card-foreground) / 0.75)",
-                cursor: "pointer",
-                letterSpacing: "0.01em",
-              }}
-            >
-              Preview
-            </button>
+            {run.status === "pushed" && run.githubPush?.url ? (
+              <a
+                href={run.githubPush.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 500,
+                  padding: "5px 10px",
+                  borderRadius: 6,
+                  border: "1px solid hsl(var(--border))",
+                  background: "hsl(var(--card))",
+                  color: "hsl(var(--card-foreground))",
+                  cursor: "pointer",
+                  letterSpacing: "0.01em",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <Github size={11} strokeWidth={1.75} />
+                GitHub
+              </a>
+            ) : (
+              <button
+                type="button"
+                title={previewTitle}
+                onClick={(e) => { e.stopPropagation(); handlePreview(); }}
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 500,
+                  padding: "5px 10px",
+                  borderRadius: 6,
+                  border: "1px solid transparent",
+                  background: "transparent",
+                  color: "hsl(var(--card-foreground) / 0.75)",
+                  cursor: "pointer",
+                  letterSpacing: "0.01em",
+                }}
+              >
+                Preview
+              </button>
+            )}
           </>
         )}
         {expanded && (run.status === "applied" || run.status === "pushed") && (
