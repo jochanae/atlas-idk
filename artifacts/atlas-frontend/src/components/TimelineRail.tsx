@@ -143,6 +143,7 @@ export function TimelineRail({
   // it instead of hanging off the global header.
   const [visibleIdxs, setVisibleIdxs] = useState<Set<number>>(new Set());
   const [containerRect, setContainerRect] = useState<{ top: number; bottom: number; right: number } | null>(null);
+  const [chatVisible, setChatVisible] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const scrollIdleTimer = useRef<number | null>(null);
@@ -158,6 +159,12 @@ export function TimelineRail({
         document.querySelector<HTMLElement>(".atlas-chat-timeline") ||
         document.querySelector<HTMLElement>(".atlas-home-chat-messages-scroll");
       const cr = container?.getBoundingClientRect();
+      // Chat surface is only "visible" when the container is mounted, attached
+      // (offsetParent non-null unless it's the body), and has non-zero size.
+      const visibleChat = !!container && !!cr
+        && (container.offsetParent !== null || container === document.body)
+        && cr.width > 0 && cr.height > 0;
+      setChatVisible(visibleChat);
       const viewportTop = cr ? Math.max(0, cr.top) : 0;
       const viewportBottom = cr ? Math.min(window.innerHeight, cr.bottom) : window.innerHeight;
       const centerY = (viewportTop + viewportBottom) / 2;
@@ -273,8 +280,10 @@ export function TimelineRail({
 
   return (
     <>
-      {/* Search magnifier — hidden on Ask Atlas surface, shown in workspace */}
-      {!hideSearch && <button
+      {/* Search magnifier — only when a chat scroll surface is visible.
+          Prevents the fixed button leaking onto workspace tabs (Ledger,
+          Insights, Preview, etc.) that overlay the still-mounted chat. */}
+      {!hideSearch && chatVisible && <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v); }}
         title="Search this thread"
