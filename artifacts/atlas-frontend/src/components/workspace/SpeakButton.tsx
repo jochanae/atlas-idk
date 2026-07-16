@@ -1,18 +1,22 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { Volume2, Square, ChevronDown } from "lucide-react";
+import { Volume2, Square } from "lucide-react";
 
 /**
  * SpeakButton — read-aloud toggle for Atlas responses.
  *
  * Native Web Speech API (window.speechSynthesis) — free, offline, uses
- * whatever voices the device provides. Adds:
- *  - Sentence-level chunking so very long responses read seamlessly
- *    (works around the ~15s per-utterance cap in Chromium).
- *  - Voice picker (persists selection to localStorage).
- *  - "Now reading" highlight strip showing the current sentence.
+ * whatever voices the device provides.
+ *
+ * Interaction:
+ *  - Tap        → play / stop
+ *  - Long-press → open voice picker (saved to localStorage)
+ *
+ * Long responses are split into ~200-char sentence chunks and queued
+ * sequentially to work around Chromium's ~15s per-utterance cap.
  */
 
 const VOICE_STORAGE_KEY = "atlas-tts-voice-uri";
+const LONG_PRESS_MS = 450;
 
 function cleanForSpeech(input: string): string {
   return (input ?? "")
@@ -25,7 +29,6 @@ function cleanForSpeech(input: string): string {
     .trim();
 }
 
-/** Split into sentence-ish chunks, each comfortably under ~200 chars. */
 function chunkForSpeech(text: string, maxLen = 200): string[] {
   const parts = text.match(/[^.!?\n]+[.!?]+["')\]]*\s*|[^.!?\n]+$/g) ?? [text];
   const out: string[] = [];
@@ -66,7 +69,6 @@ export function SpeakButton({
     && typeof window.SpeechSynthesisUtterance !== "undefined";
 
   const [speaking, setSpeaking] = useState(false);
-  const [currentSentence, setCurrentSentence] = useState("");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceURI, setVoiceURI] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -75,8 +77,9 @@ export function SpeakButton({
   const idxRef = useRef(0);
   const cancelledRef = useRef(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressedRef = useRef(false);
 
-  // Load voices (lazy on some browsers).
   useEffect(() => {
     if (!supported) return;
     const synth = window.speechSynthesis;
@@ -89,7 +92,6 @@ export function SpeakButton({
     return () => { synth.removeEventListener?.("voiceschanged", load); };
   }, [supported]);
 
-  // Persisted preference.
   useEffect(() => {
     try {
       const saved = localStorage.getItem(VOICE_STORAGE_KEY);
@@ -97,14 +99,12 @@ export function SpeakButton({
     } catch {}
   }, []);
 
-  // Cancel on unmount.
   useEffect(() => () => {
     if (!supported) return;
     cancelledRef.current = true;
     try { window.speechSynthesis.cancel(); } catch {}
   }, [supported]);
 
-  // Close menu on outside click.
   useEffect(() => {
     if (!menuOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -125,7 +125,6 @@ export function SpeakButton({
     const chunks = queueRef.current;
     if (cancelledRef.current || i >= chunks.length) {
       setSpeaking(false);
-      setCurrentSentence("");
       return;
     }
     idxRef.current = i;
@@ -133,16 +132,9 @@ export function SpeakButton({
     if (selectedVoice) u.voice = selectedVoice;
     u.rate = 1.0;
     u.pitch = 1.0;
-    u.onstart = () => setCurrentSentence(chunks[i]);
     u.onend = () => { if (!cancelledRef.current) speakChunk(i + 1); };
-    u.onerror = () => {
-      // Chromium sometimes fires 'interrupted' between chunks — continue.
-      if (!cancelledRef.current) speakChunk(i + 1);
-    };
-    try { synth.speak(u); } catch {
-      setSpeaking(false);
-      setCurrentSentence("");
-    }
+    u.onerror = () => { if (!cancelledRef.current) speakChunk(i + 1); };
+    try { synth.speak(u); } catch { setSpeaking(false); }
   }, [selectedVoice, supported]);
 
   const toggle = useCallback(() => {
@@ -152,7 +144,6 @@ export function SpeakButton({
       cancelledRef.current = true;
       try { synth.cancel(); } catch {}
       setSpeaking(false);
-      setCurrentSentence("");
       return;
     }
     const clean = cleanForSpeech(text);
@@ -169,14 +160,28 @@ export function SpeakButton({
     setVoiceURI(uri);
     try { localStorage.setItem(VOICE_STORAGE_KEY, uri); } catch {}
     setMenuOpen(false);
-    // If mid-read, restart with the new voice from the current chunk.
     if (speaking) {
       cancelledRef.current = true;
       try { window.speechSynthesis.cancel(); } catch {}
       cancelledRef.current = false;
-      // Give the synth a tick to release.
       const resumeFrom = idxRef.current;
       setTimeout(() => { if (!cancelledRef.current) speakChunk(resumeFrom); }, 60);
+    }
+  };
+
+  const startLongPress = () => {
+    longPressedRef.current = false;
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    longPressTimer.current = window.setTimeout(() => {
+      longPressedRef.current = true;
+      if (voices.length > 0) setMenuOpen(true);
+      try { navigator.vibrate?.(20); } catch {}
+    }, LONG_PRESS_MS);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
   };
 
@@ -185,13 +190,21 @@ export function SpeakButton({
   const voiceLabel = selectedVoice?.name ?? "Default voice";
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 2, position: "relative" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", position: "relative" }}>
       <button
         type="button"
-        title={speaking ? "Stop reading" : "Read aloud"}
+        title={speaking ? "Stop (long-press for voice)" : `Read aloud (long-press for voice · ${voiceLabel})`}
         aria-label={speaking ? "Stop reading" : "Read aloud"}
         aria-pressed={speaking}
-        onClick={toggle}
+        onPointerDown={startLongPress}
+        onPointerUp={cancelLongPress}
+        onPointerLeave={cancelLongPress}
+        onPointerCancel={cancelLongPress}
+        onClick={(e) => {
+          if (longPressedRef.current) { e.preventDefault(); longPressedRef.current = false; return; }
+          toggle();
+        }}
+        onContextMenu={(e) => { e.preventDefault(); if (voices.length > 0) setMenuOpen(true); }}
         className={className}
         style={{
           background: "transparent",
@@ -202,6 +215,7 @@ export function SpeakButton({
           color: speaking ? "var(--atlas-gold)" : "var(--atlas-muted)",
           lineHeight: 1,
           transition: "opacity 140ms, color 140ms",
+          touchAction: "manipulation",
           ...style,
         }}
         onMouseEnter={e => { if (!speaking) e.currentTarget.style.opacity = "0.7"; }}
@@ -211,31 +225,6 @@ export function SpeakButton({
           ? <Square size={size} strokeWidth={1.8} fill="currentColor" />
           : <Volume2 size={size} strokeWidth={1.6} />}
       </button>
-
-      {voices.length > 0 && (
-        <button
-          type="button"
-          title={`Voice: ${voiceLabel}`}
-          aria-label="Choose voice"
-          aria-haspopup="listbox"
-          aria-expanded={menuOpen}
-          onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
-          style={{
-            background: "transparent",
-            border: "none",
-            padding: "3px 2px",
-            cursor: "pointer",
-            opacity: 0.35,
-            color: "var(--atlas-muted)",
-            lineHeight: 1,
-            transition: "opacity 140ms",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = "0.7")}
-          onMouseLeave={e => (e.currentTarget.style.opacity = "0.35")}
-        >
-          <ChevronDown size={Math.max(9, size - 3)} strokeWidth={1.6} />
-        </button>
-      )}
 
       {menuOpen && (
         <div
@@ -285,31 +274,6 @@ export function SpeakButton({
             </button>
           ))}
         </div>
-      )}
-
-      {speaking && currentSentence && (
-        <span
-          aria-live="polite"
-          style={{
-            display: "inline-block",
-            marginLeft: 8,
-            padding: "2px 8px",
-            borderRadius: 6,
-            background: "rgba(201,162,76,0.14)",
-            border: "0.5px solid rgba(201,162,76,0.35)",
-            color: "var(--atlas-fg)",
-            fontSize: 11,
-            lineHeight: 1.4,
-            fontFamily: "var(--app-font-sans)",
-            maxWidth: "min(360px, 70vw)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            verticalAlign: "middle",
-          }}
-        >
-          {currentSentence}
-        </span>
       )}
     </span>
   );
