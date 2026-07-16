@@ -4560,9 +4560,20 @@ export default function Workspace() {
     return "chat";
   });
   useEffect(() => { workspaceEventBus.emit("tab-change", { tab: leftTab }); }, [leftTab]);
+  const [urlTick, setUrlTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setUrlTick((t) => t + 1);
+    window.addEventListener("popstate", bump);
+    return () => window.removeEventListener("popstate", bump);
+  }, []);
   const focusedRunId = (() => {
     try { return new URLSearchParams(window.location.search).get("runId"); } catch { return null; }
   })();
+  const focusedCommitSha = (() => {
+    try { return new URLSearchParams(window.location.search).get("commitSha"); } catch { return null; }
+  })();
+  void urlTick;
+
   const [subheaderOpen, setSubheaderOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "insights" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
