@@ -1132,6 +1132,63 @@ export function ViewChangesPanel({
     setLens("timeline");
   }, [runId]);
 
+  // Commit-focused mode: fetch the GitHub commit's file diffs and force Changes lens.
+  const [commitRows, setCommitRows] = useState<FileRow[]>([]);
+  const [commitLoading, setCommitLoading] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
+  const [commitMeta, setCommitMeta] = useState<{ shortSha: string; message: string } | null>(null);
+  useEffect(() => {
+    if (!commitSha || !projectId) {
+      setCommitRows([]);
+      setCommitMeta(null);
+      setCommitError(null);
+      return;
+    }
+    setLens("changes");
+    setLensAutoSet(true);
+    let cancelled = false;
+    setCommitLoading(true);
+    fetch(`/api/projects/${projectId}/commits/${commitSha}`, { credentials: "include" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Commit fetch failed (${r.status})`);
+        return r.json() as Promise<{
+          shortSha: string; message: string;
+          files: { filename: string; status: string; additions: number; deletions: number; patch: string | null }[];
+        }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setCommitMeta({ shortSha: data.shortSha, message: data.message?.split("\n")[0] ?? "" });
+        setCommitRows(data.files.map((f) => ({
+          path: f.filename,
+          summary: f.status === "added" ? "added"
+            : f.status === "removed" ? "deleted"
+            : f.status === "renamed" ? "renamed"
+            : `+${f.additions} −${f.deletions}`,
+          messageId: `commit:${commitSha}:${f.filename}`,
+          projectId,
+          content: f.patch ?? null,
+          beforeContent: null,
+          verb: f.status === "removed" ? "FILE_DELETE" : "FILE_EDIT",
+        })));
+        setCommitError(null);
+      })
+      .catch((err) => { if (!cancelled) setCommitError(err instanceof Error ? err.message : "Failed to load commit"); })
+      .finally(() => { if (!cancelled) setCommitLoading(false); });
+    return () => { cancelled = true; };
+  }, [commitSha, projectId]);
+
+  const clearCommitFilter = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("commitSha");
+      window.history.replaceState({}, "", url.toString());
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } catch {}
+  };
+
+
+
   // Changes lens: in-memory message fallback for paths not yet in the DB.
   const filteredMessages = useMemo(() => {
     if (!runId) return messages;
