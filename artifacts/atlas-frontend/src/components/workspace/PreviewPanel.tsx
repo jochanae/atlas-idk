@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import { createPortal } from "react-dom";
 import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject } from "@workspace/api-client-react";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useIsMobile } from "@/hooks/useBreakpoints";
