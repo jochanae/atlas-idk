@@ -135,6 +135,11 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     sentAt: nm.createdAt ?? undefined,
     // v1.4: backend-derived execution outcome from advance_execution_state tool
     ...(nm.executionOutcome ? { executionOutcome: nm.executionOutcome } : {}),
+    ...(nm.fileEdit ? { fileEdit: nm.fileEdit as ChatMessage["fileEdit"] } : {}),
+    ...(nm.fileEdits?.length ? { fileEdits: nm.fileEdits as ChatMessage["fileEdits"] } : {}),
+    ...(nm.linePatches?.length ? { linePatches: nm.linePatches as ChatMessage["linePatches"] } : {}),
+    ...(nm.fileDeletes?.length ? { fileDeletes: nm.fileDeletes as ChatMessage["fileDeletes"] } : {}),
+    ...(nm.githubPush ? { githubPush: nm.githubPush as ChatMessage["githubPush"] } : {}),
     // Stable run ID (execution_runs.id) — required so runCardAfterIdx anchors the
     // receipt card by matching msg.runId === execLatestRun.id (Nexus path uses UUIDs;
     // m.id is positional idx+1 which never matches execLatestRun.messageId).

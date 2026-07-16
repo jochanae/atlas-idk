@@ -101,6 +101,11 @@ export interface NexusMessage {
   outputTokens?: number | null;
   costUsd?: number | null;
   executionOutcome?: { code: string; label: string; complete: boolean; pendingVerification: string[] } | null;
+  fileEdit?: { path: string; language?: string; content: string } | null;
+  fileEdits?: Array<{ path: string; language?: string; content: string }> | null;
+  linePatches?: Array<{ path: string; find: string; replace: string }> | null;
+  fileDeletes?: Array<{ path: string }> | null;
+  githubPush?: unknown;
   runStatus?: string;
   runSummary?: string | null;
   runActions?: unknown[] | null;
@@ -804,6 +809,11 @@ export function useNexusChatStream(
                     generatedArtifacts: ((meta as any).generatedArtifacts ?? null) as NexusMessage["generatedArtifacts"],
                     runId: ((meta as any).runId as string | undefined) ?? null,
                     executionOutcome: ((meta as any).executionOutcome ?? null) as NexusMessage["executionOutcome"],
+                    fileEdit: ((meta as any).fileEdit ?? null) as NexusMessage["fileEdit"],
+                    fileEdits: ((meta as any).fileEdits ?? null) as NexusMessage["fileEdits"],
+                    linePatches: ((meta as any).linePatches ?? null) as NexusMessage["linePatches"],
+                    fileDeletes: ((meta as any).fileDeletes ?? null) as NexusMessage["fileDeletes"],
+                    githubPush: ((meta as any).githubPush ?? null) as NexusMessage["githubPush"],
                     awaitingAuthorization: ((meta as any).awaitingConfirmation ?? null) as NexusMessage["awaitingAuthorization"],
                   }
                 : m
