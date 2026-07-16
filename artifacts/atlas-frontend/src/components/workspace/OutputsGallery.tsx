@@ -563,7 +563,7 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
     const sendToDraft = (e: React.MouseEvent) => {
       e.stopPropagation();
       window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "sandbox", content } }));
-      toast("Sent to Draft preview.");
+      toast("Opened in Draft Preview.");
     };
     const downloadFile = (e?: React.MouseEvent) => {
       e?.stopPropagation();
