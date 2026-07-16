@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal, MessageSquare } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal, MessageSquare, Library } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
 
@@ -46,9 +46,11 @@ type Props = {
   activeAtlasSessionId?: number | null;
   onNewAtlasConversation?: () => void;
   onOpenAtlasConversation?: (id: string | number) => void;
+  /** Open the shared global Library browse sheet. */
+  onOpenLibrary?: () => void;
 };
 
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, userLabel, atlasConversations, activeAtlasSessionId, onNewAtlasConversation, onOpenAtlasConversation }: Props) {
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, userLabel, atlasConversations, activeAtlasSessionId, onNewAtlasConversation, onOpenAtlasConversation, onOpenLibrary }: Props) {
   const [, setLocation] = useLocation();
   const [atlasExpanded, setAtlasExpanded] = useState(true);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
@@ -68,11 +70,6 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  // Conversation fetch removed with the Ask Atlas Conversations section.
-
-
-
 
   if (!open) return null;
 
@@ -150,6 +147,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
 
         {/* Body */}
         <div style={{ flex: 1, minHeight: 0, overflowY: "scroll", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y", padding: "10px 8px 16px" }}>
+
 
           {/* Nexus — gateway button */}
           <style>{`
@@ -436,6 +434,20 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             label="Parking Lot"
             sublabel="All projects"
             onClick={() => { navigate("/parking"); onClose(); }}
+          />
+
+          {/* LIBRARY — global saved items (same LibrarySurface as Atlas Focus) */}
+          <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
+          <NavRow
+            icon={<Library size={14} strokeWidth={1.6} />}
+            label="Library"
+            sublabel="Saved across Axiom"
+            onClick={() => {
+              if (onOpenLibrary) {
+                onOpenLibrary();
+                onClose();
+              }
+            }}
           />
 
           {/* WORKSPACE — collapsed by default */}

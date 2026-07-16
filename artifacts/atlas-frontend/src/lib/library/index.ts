@@ -12,6 +12,7 @@ export type {
   LibraryItemKind,
   LibraryItemOrigin,
   LibraryItemProject,
+  LibrarySourceRef,
 } from "./types";
 
 import type { LibraryItem, LibraryItemKind, LibraryItemOrigin } from "./types";

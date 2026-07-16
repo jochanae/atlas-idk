@@ -60,6 +60,7 @@ import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
 import { LibraryAttachmentsBar } from "@/components/LibraryAttachmentsBar";
+import { LibraryBrowseSheet } from "@/components/library/LibraryBrowseSheet";
 import {
   createLibraryItem,
   fetchConversationContext as fetchLibraryConversationContext,
@@ -2056,6 +2057,7 @@ export default function Home() {
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "library">("projects");
   const [focusSheetConversationId, setFocusSheetConversationId] = useState<string | null>(null);
+  const [showLibraryBrowse, setShowLibraryBrowse] = useState(false);
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
@@ -6073,6 +6075,22 @@ export default function Home() {
         conversationId={focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId}
         attachedIds={libraryAttachedIds}
         onAttachmentsChange={() => { void refreshLibraryAttachments(focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId); }}
+        onOpenConversation={(conversationId, meta) => {
+          setShowFocusPicker(false);
+          setFocusSheetConversationId(null);
+          // Exact conversationId restore — workspace origins use workspace route;
+          // Ask Atlas / bookmark origins resume on the home Ask Atlas surface.
+          if (meta.originSource === "workspace") {
+            setLocation(`/workspace/${encodeURIComponent(conversationId)}`);
+            return;
+          }
+          void handleSwitchConversation(conversationId);
+        }}
+        onOpenProject={(projectId) => {
+          setShowFocusPicker(false);
+          setFocusSheetConversationId(null);
+          navigateToProject(projectId);
+        }}
         onClose={() => {
           setShowFocusPicker(false);
           setFocusSheetConversationId(null);
@@ -6236,6 +6254,27 @@ export default function Home() {
           setShowDrawer(false);
           // Use the same resume path as the clock history sheet.
           void handleSwitchConversation(String(id));
+        }}
+        onOpenLibrary={() => {
+          setShowDrawer(false);
+          setShowLibraryBrowse(true);
+        }}
+      />
+
+      <LibraryBrowseSheet
+        open={showLibraryBrowse}
+        onClose={() => setShowLibraryBrowse(false)}
+        onOpenConversation={(conversationId, meta) => {
+          setShowLibraryBrowse(false);
+          if (meta.originSource === "workspace") {
+            setLocation(`/workspace/${encodeURIComponent(conversationId)}`);
+            return;
+          }
+          void handleSwitchConversation(conversationId);
+        }}
+        onOpenProject={(projectId) => {
+          setShowLibraryBrowse(false);
+          navigateToProject(projectId);
         }}
       />
 

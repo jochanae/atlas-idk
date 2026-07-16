@@ -40,6 +40,7 @@ import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/Unifie
 import { WorkspacePlayBridge } from "../components/WorkspacePlayBridge";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import type { AtlasConversation } from "../components/ProjectsDrawer";
+import { LibraryBrowseSheet } from "@/components/library/LibraryBrowseSheet";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { PreviewPanel, type ManifestDecision } from "../components/workspace/PreviewPanel";
@@ -5477,6 +5478,7 @@ export default function Workspace() {
     flow: false,
   });
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showLibraryBrowse, setShowLibraryBrowse] = useState(false);
   const [drawerAtlasConversations, setDrawerAtlasConversations] = useState<AtlasConversation[]>([]);
   const fetchWorkspaceAtlasConversations = useCallback(() => {
     fetch("/api/nexus/conversations", { credentials: "include" })
@@ -10309,6 +10311,30 @@ export default function Workspace() {
           askAtlasSession.clearClosed();
           setLocation("/home");
           setShowDrawer(false);
+        }}
+        onOpenLibrary={() => {
+          setShowDrawer(false);
+          setShowLibraryBrowse(true);
+        }}
+      />
+
+      <LibraryBrowseSheet
+        open={showLibraryBrowse}
+        onClose={() => setShowLibraryBrowse(false)}
+        onOpenConversation={(conversationId, meta) => {
+          setShowLibraryBrowse(false);
+          if (meta.originSource === "workspace") {
+            setLocation(`/workspace/${encodeURIComponent(conversationId)}`);
+            return;
+          }
+          askAtlasSession.setConversationId(conversationId);
+          askAtlasSession.clearClosed();
+          try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
+          setLocation("/home");
+        }}
+        onOpenProject={(projectId) => {
+          setShowLibraryBrowse(false);
+          setLocation(`/project/${projectId}`);
         }}
       />
 
