@@ -45,13 +45,8 @@ export async function ensureProjectSchema(): Promise<void> {
 export async function createProjectForUser(input: CreateProjectForUserInput) {
   await ensureProjectSchema();
 
-  if (input.authUser?.subscriptionTier === "free" && input.authUser?.role !== "super_admin") {
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(projectsTable)
-      .where(eq(projectsTable.userId, input.userId));
-    if (count >= 1) throw new ProjectLimitReachedError();
-  }
+  // Free-tier 1-project cap removed 2026-07-16 — no per-tier project limit today.
+  // ProjectLimitReachedError is retained as an export for legacy callers but is no longer thrown here.
 
   const [createdProject] = await db
     .insert(projectsTable)
