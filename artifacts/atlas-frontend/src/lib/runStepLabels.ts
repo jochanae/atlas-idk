@@ -49,6 +49,10 @@ export function doingLabel(verb?: string | null, target?: string | null): string
       return filename ? `Editing ${filename}` : "Editing project files";
     case "FILE_DELETE":
       return filename ? `Removing ${filename}` : "Removing file";
+    case "FILE_READ":
+    case "READ":
+    case "READING":
+      return filename ? `Reading ${filename}` : "Reading project files";
     case "GITHUB_PUSH":
       return target ? `Pushing to ${target}` : "Pushing to GitHub";
     case "BUILD":
