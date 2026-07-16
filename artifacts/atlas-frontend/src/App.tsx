@@ -28,6 +28,7 @@ import CodePage from "./pages/code";
 import ConnectorsPage from "./pages/connectors";
 import MasterMap from "./pages/master-map";
 import RunPage from "./pages/run";
+import CommitPage from "./pages/commit";
 
 import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
