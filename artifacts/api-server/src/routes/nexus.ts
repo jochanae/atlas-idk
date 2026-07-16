@@ -1618,9 +1618,15 @@ async function persistNexusExecutionRun(args: {
    * receipt eligibility is a separate, verb-based classifier on the frontend. */
   mode?: string;
   /**
-   * When true the run has FILE_EDIT blocks applied locally but not yet pushed to
-   * GitHub.  Status is set to "awaiting_approval" instead of "succeeded" so the
-   * Timeline correctly reflects that the user still needs to approve the push.
+   * When true the run is intentionally paused on a validated build contract.
+   * This must preserve `awaiting_confirmation` and must not be overwritten by
+   * the normal completion path.
+   */
+  pendingConfirmation?: boolean;
+  /**
+   * Reserved for an explicit user-approval pause. Local file edits alone are
+   * NOT pending approval; if the user says "do not push", the run is complete
+   * once the local write succeeds.
    */
   pendingApproval?: boolean;
 }): Promise<void> {
@@ -1630,7 +1636,6 @@ async function persistNexusExecutionRun(args: {
     // Reuse the pre-inserted `running` row when the handler minted a runId at
     // turn start; otherwise mint a fresh one for the completion insert path.
     const runId = args.runId ?? randomUUID();
-    const preInserted = !!args.runId;
 
     // A target looks like a file path if it has no spaces and contains "/" or a file extension
     const isFilePath = (t: string | null | undefined) =>
@@ -1666,32 +1671,40 @@ async function persistNexusExecutionRun(args: {
     const messageIdValue = args.messageId ?? null;
     const conversationIdValue = args.conversationId ?? null;
 
-    const terminalStatus = args.pendingApproval ? "awaiting_approval" : "succeeded";
-    if (preInserted) {
-      // Update the row that was inserted at turn-start with terminal state.
-      await db.execute(sql`
-        UPDATE execution_runs SET
-          message_id = ${messageIdValue},
-          mode = ${derivedMode},
-          status = ${terminalStatus},
-          summary = ${summary},
-          intent = ${intentValue},
-          completed_at = ${completedAt},
-          elapsed_ms = ${elapsedMs}
-        WHERE id = ${runId}
-      `);
-      // Drop any incremental live steps so the canonical set below is authoritative.
-      await db.execute(sql`DELETE FROM execution_run_steps WHERE run_id = ${runId}`);
-    } else {
-      await db.execute(sql`
-        INSERT INTO execution_runs
-          (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
-        VALUES
-          (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
-           ${derivedMode}, ${terminalStatus}, ${summary}, ${promptText || null}, ${intentValue},
-           ${args.startedAt}, ${completedAt}, ${elapsedMs})
-      `);
-    }
+    const hasFailedAction = args.runActions.some((a) => a.status === "fail");
+    const terminalStatus = args.pendingConfirmation
+      ? "awaiting_confirmation"
+      : hasFailedAction
+        ? "failed"
+        : args.pendingApproval
+          ? "awaiting_approval"
+          : "succeeded";
+    // Completion is authoritative. The turn-start insert is intentionally
+    // fire-and-forget for live Timeline polling, so it can race this completion
+    // path. Use one upsert here instead of UPDATE-then-assume so the completed
+    // run row always exists before the SSE `done` event is flushed.
+    await db.execute(sql`
+      INSERT INTO execution_runs
+        (id, project_id, thread_id, message_id, conversation_id, mode, status, summary, prompt, intent, started_at, completed_at, elapsed_ms)
+      VALUES
+        (${runId}, ${args.projectId}, ${args.sessionId ?? null}, ${messageIdValue}, ${conversationIdValue},
+         ${derivedMode}, ${terminalStatus}, ${summary}, ${promptText || null}, ${intentValue},
+         ${args.startedAt}, ${completedAt}, ${elapsedMs})
+      ON CONFLICT (id) DO UPDATE SET
+        project_id = EXCLUDED.project_id,
+        thread_id = EXCLUDED.thread_id,
+        message_id = EXCLUDED.message_id,
+        conversation_id = EXCLUDED.conversation_id,
+        mode = EXCLUDED.mode,
+        status = EXCLUDED.status,
+        summary = EXCLUDED.summary,
+        prompt = COALESCE(execution_runs.prompt, EXCLUDED.prompt),
+        intent = EXCLUDED.intent,
+        completed_at = EXCLUDED.completed_at,
+        elapsed_ms = EXCLUDED.elapsed_ms
+    `);
+    // Drop any incremental live steps so the canonical set below is authoritative.
+    await db.execute(sql`DELETE FROM execution_run_steps WHERE run_id = ${runId}`);
 
     type Step = {
       verb: string;
@@ -5138,7 +5151,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         || _nexusNonCodeSteps.some((s) => RECEIPT_WORTHY_VERBS.has(s.verb));
       const hasDecision = _nexusNonCodeSteps.some((s) => DECISION_VERBS.has(s.verb));
       const runMode = hasBuildish ? "build" : hasDecision ? "decide" : "conversation";
-      void persistNexusExecutionRun({
+      await persistNexusExecutionRun({
         runId: activeRunId,
         projectId: focusProjectId,
         sessionId,
@@ -5151,11 +5164,11 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         intent,
         messageId: nexusMsgId ?? sourceChatMessageId,
         mode: runMode,
-        // Mark as awaiting_approval when the turn proposed file changes that still
-        // need a GitHub push.  The frontend sets the run to "succeeded" via
-        // PATCH /api/runs/:id once the push is confirmed.
-        pendingApproval:
-          (responseFileEdits.length > 0 || responseFileDeletes.length > 0) && !githubPushDone,
+        // Keep plan-only runs paused for authorization. Do not mark local-only
+        // file writes as awaiting approval; a "do not push" edit is complete
+        // when the file is written locally.
+        pendingConfirmation: awaitingConfirmation !== null,
+        pendingApproval: false,
       });
       runTerminalized = true;
     }

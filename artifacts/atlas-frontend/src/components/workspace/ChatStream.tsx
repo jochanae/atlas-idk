@@ -23,6 +23,7 @@ import type { ResumeBrief } from "@/hooks/useProjectResume";
 import { isDoingVerb } from "@/lib/runStepLabels";
 import { WorkspaceRunCard } from "@/components/workspace/WorkspaceRunCard";
 import { BuildContractCard } from "@/components/workspace/BuildContractCard";
+import type { ApiRun } from "@/hooks/useProjectRuns";
 
 // Minimal structural types — avoid importing private types from workspace.tsx
 type ProjectLike = { name?: string } | null | undefined;
@@ -336,7 +337,10 @@ export interface ChatStreamProps {
 
   /** Phase 2B: latest execution_run from the API. Passed to the trailing
    *  WorkspaceRunCard instead of using deriveRun(messages). */
-  execLatestRun?: import("@/hooks/useProjectRuns").ApiRun | null;
+  execLatestRun?: ApiRun | null;
+  /** Durable execution runs for this conversation. Receipts are rendered per
+   *  originating message so older cards do not disappear when a newer turn runs. */
+  execRuns?: ApiRun[];
 
   /** Stable run id for the currently active Nexus turn. Lets the live card open
    *  the same Timeline/Changes surface that the completed receipt later uses. */
@@ -381,6 +385,7 @@ export function ChatStream(props: ChatStreamProps) {
     onSuggestionPark,
     liveStep,
     execLatestRun,
+    execRuns,
     activeRunId,
     conversationMode,
     authorizeRun,
@@ -414,24 +419,36 @@ export function ChatStream(props: ChatStreamProps) {
   //    renders immediately after that bubble (intent → CARD → summary).
   //  - During active runs (chatPending/streaming) we fall back to the trailing
   //    card — it's the live surface and there's no settled messageId yet.
-  const runCardAfterIdx = useMemo(() => {
-    if (!execLatestRun) return -1;
-    if (chatPending) return -1; // live: trailing card owns the surface
-    // Nexus path: m.id is positional (idx+1), NOT the DB row id.
-    // Match on m.runId === execLatestRun.id (both are the execution_runs UUID).
-    // Classic path fallback: m.id IS the DB message id, match on execLatestRun.messageId.
-    const idx = messages.findIndex(m =>
-      m.role === "assistant" &&
-      (m.runId
-        ? m.runId === execLatestRun.id
-        : execLatestRun.messageId != null && m.id === execLatestRun.messageId)
-    );
-    if (idx === -1) return -1;
-    // Anchor the receipt inline immediately after its originating assistant
-    // message, regardless of whether newer assistant/user turns exist. The
-    // receipt stays in its historical position as the conversation continues.
-    return idx;
-  }, [execLatestRun, chatPending, messages]);
+  const runCardsByIdx = useMemo(() => {
+    const runs = execRuns?.length ? execRuns : execLatestRun ? [execLatestRun] : [];
+    const byRunId = new Map(runs.map((run) => [run.id, run]));
+    const byMessageId = new Map<number, ApiRun>();
+    for (const run of runs) {
+      if (run.messageId != null && !byMessageId.has(run.messageId)) {
+        byMessageId.set(run.messageId, run);
+      }
+    }
+
+    const mapped = new Map<number, ApiRun[]>();
+    messages.forEach((m, idx) => {
+      if (m.role !== "assistant") return;
+      const run = m.runId ? byRunId.get(m.runId) : m.id != null ? byMessageId.get(m.id) : undefined;
+      if (!run) return;
+      const list = mapped.get(idx) ?? [];
+      if (!list.some((existing) => existing.id === run.id)) {
+        mapped.set(idx, [...list, run]);
+      }
+    });
+    return mapped;
+  }, [execRuns, execLatestRun, messages]);
+
+  const latestRunAnchored = useMemo(() => {
+    if (!execLatestRun) return false;
+    for (const runs of runCardsByIdx.values()) {
+      if (runs.some((run) => run.id === execLatestRun.id)) return true;
+    }
+    return false;
+  }, [execLatestRun, runCardsByIdx]);
 
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
@@ -954,19 +971,22 @@ export function ChatStream(props: ChatStreamProps) {
               )}
             </div>
           )}
-          {!conversationMode && i === runCardAfterIdx && (
+          {!conversationMode && runCardsByIdx.has(i) && (
             <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
-              <WorkspaceRunCard
-                projectId={projectId}
-                messages={messages.slice(0, i + 1)}
-                projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
-                chatPending={false}
-                liveStep={null}
-                suppressGitHubReceipt
-                suppressDeliverableReceipt={Boolean(execLatestRun != null && messages.find(m => m.role === "assistant" && (m.runId ? m.runId === execLatestRun.id : execLatestRun.messageId != null && m.id === execLatestRun.messageId))?.generatedArtifacts?.length)}
-                executionRun={execLatestRun}
-                onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
-              />
+              {runCardsByIdx.get(i)?.map((run) => (
+                <WorkspaceRunCard
+                  key={run.id}
+                  projectId={projectId}
+                  messages={messages.slice(0, i + 1)}
+                  projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+                  chatPending={false}
+                  liveStep={null}
+                  suppressGitHubReceipt
+                  suppressDeliverableReceipt={Boolean(messages.find(m => m.role === "assistant" && (m.runId ? m.runId === run.id : run.messageId != null && m.id === run.messageId))?.generatedArtifacts?.length)}
+                  executionRun={run}
+                  onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+                />
+              ))}
             </div>
           )}
           {renderActivityForAnchor(i)}
@@ -1032,11 +1052,11 @@ export function ChatStream(props: ChatStreamProps) {
       {thinkingBlock}
 
       {/* Trailing run card. Owns the LIVE surface (chatPending/streaming) and
-          is the fallback receipt slot. When runCardAfterIdx >= 0 the card renders
+          is the fallback receipt slot. When the latest run is already anchored
           inline with its turn (see loop above) and this trailing instance is
           suppressed so the receipt doesn't double-render. Fully suppressed in
           Conversation Mode. */}
-      {!conversationMode && runCardAfterIdx === -1 && (
+      {!conversationMode && (chatPending || !latestRunAnchored) && (
         <WorkspaceRunCard
           projectId={projectId}
           messages={messages}
