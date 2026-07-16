@@ -1734,7 +1734,8 @@ async function persistNexusExecutionRun(args: {
           target: a.target ?? null,
           status: a.status === "fail" ? "fail" : a.status === "warn" ? "warn" : "ok",
           detail: a.detail ?? null,
-          content: null,
+          content: a.content ?? null,
+          beforeContent: a.beforeContent ?? null,
         });
       }
     }
