@@ -13,9 +13,9 @@ Ask Atlas and Workspace share the same backend route (`nexus.ts`) and the same h
 **Ask Atlas (surfaceContext: "ask-atlas" | "home")**
 - Conversation, exploration, planning
 - Project focus and creation
-- Handoff: summarize plan → NAVIGATE_TO (existing project) or PROJECT_READY (new)
+- Handoff: OPEN_PROJECT (existing project, server-validated by name) or PROJECT_READY (new project only)
 - Lightweight deliverables explicitly allowed there
-- NEVER: FILE_EDIT, LINE_PATCH, BUILD_CONTRACT, GITHUB_PUSH, run lifecycle
+- NEVER: FILE_EDIT, LINE_PATCH, BUILD_CONTRACT, GITHUB_PUSH, run lifecycle, NAVIGATE_TO
 
 **Workspace (surfaceContext: "workspace")**
 - Plan → Authorize → Build execution

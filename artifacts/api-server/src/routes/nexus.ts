@@ -573,15 +573,15 @@ The correct posture for any off-topic-looking question:
 3. Let the user decide where this goes
 
 ## Navigating to Existing Projects
-NAVIGATE_TO is for explicit navigation requests ONLY — never for recognition.
+OPEN_PROJECT is for explicit navigation requests ONLY — never for recognition, surfacing an idea's natural home, or routing after building.
 
-Emit NAVIGATE_TO:{"route":"/project/<id>"} only when the user directly asks to go somewhere:
+Emit OPEN_PROJECT:{"projectName":"<project name>"} only when the user directly asks to open an existing project:
 ✓ "Take me to IntoIQ", "open that workspace", "let's go there", "switch to that project", "open it"
 ✗ You recognize that an idea belongs in an existing project
 ✗ You've told the user that IntoIQ is the right home for their idea
 ✗ You think continuing in a specific workspace would be better
 
-Recognition is not navigation consent. If an idea belongs in IntoIQ, say so in your response — but do NOT emit NAVIGATE_TO. Let the user decide when they're ready to go there. They may want to keep thinking here first.
+Emit the project name only — never an ID or route. The server validates the name against the user's real projects. Recognition is not navigation consent. If an idea belongs in IntoIQ, say so in your response — but do NOT emit OPEN_PROJECT. Let the user decide when they're ready to go there. They may want to keep thinking here first.
 
 ## Global Boundaries — Discovery Engine, Not Execution Engine
 Global is where thoughts become clear enough to deserve a workspace. The workspace is where they become real.
@@ -605,7 +605,7 @@ Before emitting any project signal, classify the user's intent:
 
 **THINK** — Exploring, questioning, analyzing, mapping, understanding
 Phrases: "let's explore", "what do you think", "help me map", "break this down", "walk me through", "let's map out a framework", "give me a breakdown"
-→ Stay in Global. Think with them. Never emit PROJECT_READY. Never emit NAVIGATE_TO for an existing project.
+→ Stay in Global. Think with them. Never emit PROJECT_READY. Never emit OPEN_PROJECT unless the user explicitly asks to navigate there.
 
 **SHAPE** — Structuring an idea, defining scope, building a framework
 Phrases: "let's flesh this out", "help me define the MVP", "structure this", "let's plan"
@@ -3619,7 +3619,8 @@ HARD RULES ON PROJECT ROUTING — violations break the user experience:
 - NEVER emit NAVIGATE_TO from Ask Atlas. Never write "/project/<id>" in any form. You do not have access to valid project IDs and any ID you emit will be wrong.
 - A focused project in your context is REFERENCE DATA ONLY — it is NOT the routing target. Never use a focused project as the build destination for a new request.
 - For every new named build request, emit PROJECT_READY with the name derived from the request. A new project will be created server-side.
-- Only if the user explicitly says "add this to [existing project name]" should you mention that project in your response text — still emit PROJECT_READY, never NAVIGATE_TO.
+- Only if the user explicitly says "add this to [existing project name]" should you mention that project in your response text — still emit PROJECT_READY, never OPEN_PROJECT.
+- If the user explicitly asks to open or navigate to an existing project (e.g. "take me to IntoIQ"), emit OPEN_PROJECT:{"projectName":"<project name>"} as the LAST LINE instead of PROJECT_READY.
 
 HARD RULE: You may describe and plan here. You may NEVER start building here. The Workspace owns all execution, run cards, stop controls, Timeline, Changes, Preview, and code mutations. Ask Atlas owns conversation, exploration, planning, project creation, and handoff.
 --- END SURFACE CONTRACT ---`;
@@ -3929,6 +3930,38 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     if (convState === "THINK") {
       projectReadyToken = null;
     }
+
+    // Extract OPEN_PROJECT — explicit user-requested navigation to an existing project.
+    // The model emits the project name only; server resolves to a validated ID + route.
+    // Gate: only fires if PROJECT_READY didn't already claim pendingNavProjectId (new project
+    // creation takes priority over explicit navigation to an existing one in the same turn).
+    const OPEN_PROJECT_RE = /^OPEN_PROJECT:\s*(\{[^\n]+\})\s*$/gm;
+    rawContent = rawContent.replace(OPEN_PROJECT_RE, (_match, json: string) => {
+      if (pendingNavProjectId === null) {
+        try {
+          const parsed = JSON.parse(json) as { projectName?: string };
+          const requestedName = (parsed.projectName ?? "").trim().toLowerCase();
+          if (requestedName) {
+            // Three-tier fuzzy match: exact → contains → reverse-contains
+            const resolved =
+              projects.find(p => p.name.trim().toLowerCase() === requestedName) ??
+              projects.find(p => p.name.trim().toLowerCase().includes(requestedName)) ??
+              projects.find(p => requestedName.includes(p.name.trim().toLowerCase()));
+            if (resolved) {
+              pendingNavProjectId = resolved.id;
+              pendingNavProjectName = resolved.name;
+              logger.info(
+                { requestedName, resolvedId: resolved.id, resolvedName: resolved.name },
+                "nexus: OPEN_PROJECT resolved to existing project",
+              );
+            } else {
+              logger.warn({ requestedName }, "nexus: OPEN_PROJECT — no matching project found for user");
+            }
+          }
+        } catch { /* ignore malformed */ }
+      }
+      return "";
+    }).trim();
 
     // Image generation runs AFTER the done event to avoid blocking the HUD.
     // Defined here for use below; executed after res.write(done).
