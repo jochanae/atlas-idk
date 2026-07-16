@@ -3690,6 +3690,8 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         step.status ?? "ok",
         step.detail ?? null,
         liveStepOrderIdx++,
+        step.content ?? null,
+        step.beforeContent ?? null,
       );
     }
   };
