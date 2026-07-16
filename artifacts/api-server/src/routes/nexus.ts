@@ -45,6 +45,7 @@ import {
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, synthesizeGlobalNarrative, synthesizeUserIdentity, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { maybeEmitMilestones } from "../lib/milestoneClassifier";
+import { appendAtlasRunTrailer, hasAtlasRunTrailer } from "../lib/atlasRunTrailer";
 import {
   buildTier1BlockForNexusConversation,
   buildTier1StatusBlock,
@@ -132,16 +133,45 @@ type HomeUserType = "idea" | "building" | "clients" | "portfolio";
 
 type RunStatus = "completed" | "warnings" | "failed" | "cancelled";
 
+/** Cap for step content / beforeContent persisted on FILE_* evidence rows. */
+const STEP_CONTENT_CAP_BYTES = 200_000;
+
 type RunAction = {
   verb: string;
   target?: string;
   detail?: string;
-  status?: "ok" | "warn" | "fail";
+  status?: "ok" | "warn" | "fail" | "applied";
   /** For FILE_EDIT: full new file body. For LINE_PATCH: replacement text. */
   content?: string | null;
-  /** For FILE_EDIT: prior file body from disk (null if new file). For LINE_PATCH: find text. */
+  /** For FILE_EDIT: prior file body from disk (null if new file). For LINE_PATCH: find text. For FILE_DELETE: prior body. */
   beforeContent?: string | null;
+  /** Commit / artifact URL for receipt steps (e.g. GITHUB_PUSH). */
+  artifactUrl?: string | null;
 };
+
+/**
+ * Read prior file body for a delete/edit step. Respects the 200KB cap used by
+ * FILE_EDIT. On missing/oversize/read failure returns null body + reason detail.
+ */
+async function readPriorBodyForStep(
+  absPath: string,
+): Promise<{ body: string | null; detail: string }> {
+  try {
+    const stat = await fsPromises.stat(absPath);
+    if (stat.size > STEP_CONTENT_CAP_BYTES) {
+      return { body: null, detail: `oversized (>${STEP_CONTENT_CAP_BYTES} bytes)` };
+    }
+    const body = await fsPromises.readFile(absPath, "utf-8");
+    if (Buffer.byteLength(body, "utf-8") > STEP_CONTENT_CAP_BYTES) {
+      return { body: null, detail: `oversized (>${STEP_CONTENT_CAP_BYTES} bytes)` };
+    }
+    return { body, detail: "applied" };
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "ENOENT") return { body: null, detail: "missing file" };
+    return { body: null, detail: `read failed: ${code ?? "unknown"}` };
+  }
+}
 
 type RunArtifact = {
   type: "commit" | "file" | "url" | "pr";
@@ -1555,11 +1585,12 @@ function appendLiveStepAsync(
   orderIdx: number,
   content: string | null = null,
   beforeContent: string | null = null,
+  artifactUrl: string | null = null,
 ): void {
   const purpose = derivePurposeFromVerb(verb, detail);
   void db.execute(sql`
-    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, step_purpose, order_index)
-    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${content}, ${beforeContent}, ${purpose}, ${orderIdx})
+    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, step_purpose, order_index)
+    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${content}, ${beforeContent}, ${artifactUrl}, ${purpose}, ${orderIdx})
   `).catch((err) => {
     logger.debug({ err, runId, verb }, "nexus: incremental step insert failed — non-fatal");
   });
@@ -1717,14 +1748,15 @@ async function persistNexusExecutionRun(args: {
       });
     }
 
-    // BUILD EVIDENCE steps — PATCH (file edits) and TYPECHECK/BUILD steps.
+    // BUILD EVIDENCE steps — PATCH (file edits), push receipts, and TYPECHECK/BUILD.
     // These are the records the state machine validates at CHANGE_APPLIED and
     // BUILD_VERIFIED. appendLiveStepAsync writes them during the turn, but
-    // persistNexusExecutionRun deletes all live rows at line 1623 (canonical
-    // rewrite). They must be re-inserted here so evidence survives the rewrite.
+    // persistNexusExecutionRun deletes all live rows (canonical rewrite). They
+    // must be re-inserted here so evidence survives the rewrite.
     const BUILD_EVIDENCE_VERBS = new Set([
       "Patching", "Writing", "Written",
       "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "FILE_MOVE",
+      "GITHUB_PUSH",
       "Typechecking", "Building", "Testing",
     ]);
     for (const a of args.runActions) {
@@ -1732,10 +1764,15 @@ async function persistNexusExecutionRun(args: {
         steps.push({
           verb: a.verb,
           target: a.target ?? null,
-          status: a.status === "fail" ? "fail" : a.status === "warn" ? "warn" : "ok",
+          status:
+            a.status === "fail" ? "fail"
+            : a.status === "warn" ? "warn"
+            : a.status === "applied" ? "applied"
+            : "ok",
           detail: a.detail ?? null,
           content: a.content ?? null,
           beforeContent: a.beforeContent ?? null,
+          artifactUrl: a.artifactUrl ?? null,
         });
       }
     }
@@ -3694,6 +3731,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         liveStepOrderIdx++,
         step.content ?? null,
         step.beforeContent ?? null,
+        step.artifactUrl ?? null,
       );
     }
   };
@@ -4190,7 +4228,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     const { visibleContent: afterPatches, linePatches: parsedLinePatches } = extractAllLinePatches(visibleContent);
     const { visibleContent: afterEdits, fileEdits: parsedFileEditsRaw } = extractAllFileEdits(afterPatches);
     const parsedFileEdits = [...parsedFileEditsRaw, ...writeFileMarkerEdits];
-    const { visibleContent: afterDeletes } = extractAllFileDeletes(afterEdits);
+    const { visibleContent: afterDeletes, fileDeletes: parsedFileDeletes } = extractAllFileDeletes(afterEdits);
     const { visibleContent: afterMoves } = extractAllFileMoves(afterDeletes);
     visibleContent = afterMoves;
 
@@ -4204,8 +4242,10 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     allChips = mergeMemoryChips(aiMemoryChips, entryChipStrings);
 
     // BUILD-gated file changes + Output Guard critical-path check
+    let responseFileDeletes: Array<{ path: string }> = [];
     if (allowBuildSideEffects) {
-      const hasProposedFileChanges = parsedFileEdits.length > 0 || parsedLinePatches.length > 0;
+      const hasProposedFileChanges =
+        parsedFileEdits.length > 0 || parsedLinePatches.length > 0 || parsedFileDeletes.length > 0;
       let repoFiles: Set<string> | null = null;
       if (focusProjectId && hasProposedFileChanges) {
         try {
@@ -4254,24 +4294,33 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
 
       responseFileEdits = fileChangesAllowed ? parsedFileEdits : [];
       responseLinePatches = fileChangesAllowed ? parsedLinePatches : [];
+      responseFileDeletes = fileChangesAllowed ? parsedFileDeletes : [];
 
       // ── Mutation guard ────────────────────────────────────────────────────
       // If this turn emitted a BUILD_CONTRACT (awaitingConfirmation is set),
       // clear all file writes for this turn — the plan is captured, not executed.
-      if (awaitingConfirmation !== null && responseFileEdits.length > 0) {
+      if (
+        awaitingConfirmation !== null &&
+        (responseFileEdits.length > 0 || responseFileDeletes.length > 0)
+      ) {
         req.log.info(
-          { runId: activeRunId, fileCount: responseFileEdits.length },
-          "nexus: FILE_EDIT blocked — run awaiting_confirmation; writes deferred to authorized execution turn",
+          {
+            runId: activeRunId,
+            fileCount: responseFileEdits.length,
+            deleteCount: responseFileDeletes.length,
+          },
+          "nexus: FILE_EDIT/FILE_DELETE blocked — run awaiting_confirmation; writes deferred to authorized execution turn",
         );
         responseFileEdits = [];
         responseLinePatches = [];
+        responseFileDeletes = [];
       }
 
       // Synchronous pre-check: block file writes in EXPLORE mode or planning status
-      if (responseFileEdits.length > 0 && activeRunId) {
+      if ((responseFileEdits.length > 0 || responseFileDeletes.length > 0) && activeRunId) {
         const guardResult = checkAtlasMutationSync({
           actor: "atlas",
-          verb: "FILE_EDIT",
+          verb: responseFileEdits.length > 0 ? "FILE_EDIT" : "FILE_DELETE",
           runStatus: awaitingConfirmation ? "awaiting_confirmation" : "running",
           runMode: allowBuildSideEffects ? "EXECUTE" : "EXPLORE",
           runId: activeRunId,
@@ -4279,10 +4328,11 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         if (!guardResult.allowed) {
           req.log.warn(
             { runId: activeRunId, reason: guardResult.reason, code: guardResult.code },
-            "nexus: mutationGuard blocked FILE_EDIT auto-apply",
+            "nexus: mutationGuard blocked FILE_EDIT/FILE_DELETE auto-apply",
           );
           responseFileEdits = [];
           responseLinePatches = [];
+          responseFileDeletes = [];
         }
       }
 
@@ -4303,8 +4353,8 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
               verb: "FILE_EDIT",
               target: edit.path,
               detail: "applied",
-              content: (edit.content ?? "").slice(0, 200000),
-              beforeContent: beforeBody !== null ? beforeBody.slice(0, 200000) : null,
+              content: (edit.content ?? "").slice(0, STEP_CONTENT_CAP_BYTES),
+              beforeContent: beforeBody !== null ? beforeBody.slice(0, STEP_CONTENT_CAP_BYTES) : null,
             });
             await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
             await fsPromises.writeFile(absPath, edit.content, "utf-8");
@@ -4328,6 +4378,44 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
           content: patch.replace ?? null,
           beforeContent: patch.find ?? null,
         });
+      }
+
+      // Auto-apply FILE_DELETE — capture prior body for Changes tab (red-only diff).
+      if (responseFileDeletes.length > 0 && focusProjectId) {
+        try {
+          const wsDir = await ensureProjectWorkspaceDir(focusProjectId);
+          for (const del of responseFileDeletes) {
+            const absPath = resolveWorkspacePath(wsDir, del.path);
+            const { body: priorBody, detail: readDetail } = await readPriorBodyForStep(absPath);
+            writeStep({
+              verb: "FILE_DELETE",
+              target: del.path,
+              status: "applied",
+              detail: readDetail,
+              content: null,
+              beforeContent: priorBody,
+            });
+            try {
+              await fsPromises.unlink(absPath);
+              autoAppliedPaths.push(del.path);
+            } catch (unlinkErr) {
+              const code = (unlinkErr as NodeJS.ErrnoException)?.code;
+              if (code !== "ENOENT") {
+                logger.warn(
+                  { err: unlinkErr, path: del.path, projectId: focusProjectId },
+                  "nexus: FILE_DELETE unlink failed",
+                );
+              }
+            }
+          }
+          autoApplied = true;
+          logger.info(
+            { projectId: focusProjectId, count: responseFileDeletes.length },
+            "nexus: auto-applied FILE_DELETE blocks to local workspace",
+          );
+        } catch (err) {
+          logger.warn({ err, projectId: focusProjectId }, "nexus: FILE_DELETE auto-apply failed");
+        }
       }
 
       // Execute GITHUB_PUSH when token present + project focused
@@ -4398,11 +4486,14 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
               }
 
               const committedFiles: GithubPushResult["files"] = [];
+              // Stamp Atlas-Run trailer so Quiet Updates skips this commit —
+              // the originating run already carries a GITHUB_PUSH receipt.
+              const commitMessage = appendAtlasRunTrailer(gpt.message, activeRunId);
 
               if (!baseSha) {
                 for (const edit of effectiveEdits) {
                   const putBody: Record<string, unknown> = {
-                    message: gpt.message,
+                    message: commitMessage,
                     content: Buffer.from(edit.content, "utf-8").toString("base64"),
                     branch: pushBranch,
                   };
@@ -4447,7 +4538,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
                   }
 
                   const putBody: Record<string, unknown> = {
-                    message: gpt.message,
+                    message: commitMessage,
                     content: Buffer.from(edit.content, "utf-8").toString("base64"),
                     branch: pushBranch,
                   };
@@ -4501,10 +4592,23 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
                 }
               }
 
-              // Ledger release entry for successful push
+              // Ledger release entry + run receipt for successful push
               const commitSha =
                 committedFiles.find((f) => f.commitSha)?.commitSha ?? null;
+              const commitUrl =
+                committedFiles.find((f) => f.commitUrl)?.commitUrl ?? null;
               if (commitSha && !committedFiles.some((f) => f.error)) {
+                const shortSha = commitSha.slice(0, 7);
+                const detailLine = (gpt.message.split("\n")[0] ?? gpt.message).slice(0, 200);
+                writeStep({
+                  verb: "GITHUB_PUSH",
+                  target: `${repoFull}@${shortSha}`,
+                  status: "applied",
+                  detail: detailLine,
+                  content: null,
+                  beforeContent: null,
+                  artifactUrl: commitUrl,
+                });
                 try {
                   const [ledgerRow] = await db
                     .insert(entriesTable)
@@ -4513,7 +4617,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
                       sessionId,
                       title: `Pushed to ${effectivePushBranch}`,
                       summary: gpt.message,
-                      details: `Commit ${commitSha.slice(0, 7)} — ${committedFiles.length} file(s)`,
+                      details: `Commit ${shortSha} — ${committedFiles.length} file(s)`,
                       status: "committed",
                       severity: "committed",
                       mode: "build",
@@ -4570,15 +4674,27 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
             visibleContent =
               visibleContent.trimEnd() +
               `\n\n✅ **Pushed ${gpr.files.length} file${gpr.files.length !== 1 ? "s" : ""} to** \`${gpr.branch}\`${prLine}\n${fileLines}`;
-            writeStep({
-              verb: "Pushed",
-              target: gpr.branch,
-              detail: `${gpr.files.length} file(s)`,
-            });
+            // GITHUB_PUSH receipt is written above when commitSha is known;
+            // only fall back here if the push reported success without a SHA.
+            if (!githubPushDone && !runActions.some((a) => a.verb === "GITHUB_PUSH")) {
+              writeStep({
+                verb: "GITHUB_PUSH",
+                target: gpr.branch,
+                status: "applied",
+                detail: (gpr.message.split("\n")[0] ?? gpr.message).slice(0, 200),
+                content: null,
+                beforeContent: null,
+              });
+            }
           }
         }
       }
-    } else if (githubPushToken || parsedFileEdits.length > 0 || parsedLinePatches.length > 0) {
+    } else if (
+      githubPushToken ||
+      parsedFileEdits.length > 0 ||
+      parsedLinePatches.length > 0 ||
+      parsedFileDeletes.length > 0
+    ) {
       // Non-BUILD: tokens already scrubbed on CHAT; on DECIDE strip silently if any leaked.
       logger.info(
         {
@@ -4586,6 +4702,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
           hadPush: !!githubPushToken,
           fileEditCount: parsedFileEdits.length,
           linePatchCount: parsedLinePatches.length,
+          fileDeleteCount: parsedFileDeletes.length,
         },
         "nexus outputGuard: ignored builder tokens on non-BUILD turn",
       );
@@ -5012,7 +5129,8 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         // Mark as awaiting_approval when the turn proposed file changes that still
         // need a GitHub push.  The frontend sets the run to "succeeded" via
         // PATCH /api/runs/:id once the push is confirmed.
-        pendingApproval: responseFileEdits.length > 0 && !githubPushDone,
+        pendingApproval:
+          (responseFileEdits.length > 0 || responseFileDeletes.length > 0) && !githubPushDone,
       });
       runTerminalized = true;
     }
@@ -5277,6 +5395,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         : {}),
       ...(fileEditSummaries ? { fileEditSummaries } : {}),
       ...(responseLinePatches.length > 0 ? { linePatches: responseLinePatches } : {}),
+      ...(responseFileDeletes.length > 0 ? { fileDeletes: responseFileDeletes } : {}),
       ...(githubPushResult ? { githubPushResult } : {}),
       ...(githubPushDone ? { githubPush: githubPushDone } : {}),
       ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}),
@@ -7076,15 +7195,19 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
         );
         if (!r.ok) return [];
         const data = await r.json() as any[];
-        return data.map((c: any): ActivityItem => ({
-          type: "commit",
-          projectId: p.id,
-          projectName: p.name,
-          title: ((c.commit?.message ?? "") as string).split("\n")[0].slice(0, 120),
-          sha: (c.sha as string)?.slice(0, 7),
-          url: c.html_url as string,
-          timestamp: c.commit?.author?.date ?? new Date().toISOString(),
-        }));
+        // Skip Atlas-owned run pushes — they already appear as GITHUB_PUSH
+        // receipts on the originating execution run.
+        return data
+          .filter((c: any) => !hasAtlasRunTrailer((c.commit?.message ?? "") as string))
+          .map((c: any): ActivityItem => ({
+            type: "commit",
+            projectId: p.id,
+            projectName: p.name,
+            title: ((c.commit?.message ?? "") as string).split("\n")[0].slice(0, 120),
+            sha: (c.sha as string)?.slice(0, 7),
+            url: c.html_url as string,
+            timestamp: c.commit?.author?.date ?? new Date().toISOString(),
+          }));
       })
     );
     for (const r of commitResults) {
