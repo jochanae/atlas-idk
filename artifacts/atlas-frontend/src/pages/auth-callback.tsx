@@ -23,13 +23,23 @@ export default function AuthCallback() {
       queryClient.removeQueries({ queryKey: ["auth", "me"] });
     }
 
-    // First ever sign-in → full activation sequence.
-    // Subsequent sign-ins → short warm-boot pulse.
-    let seen = false;
-    try { seen = localStorage.getItem("atlas-activation-seen") === "1"; } catch {}
+    // Sign-in choreography:
+    //  - First ever            → full activation (~3.6s)
+    //  - Away 30+ days         → welcome-back (~1.4s, "Welcome back")
+    //  - Recent return         → warm-boot pulse (~450ms)
+    // A Settings "Replay activation" toggle clears atlas-activation-seen so
+    // the next sign-in re-runs the full sequence.
+    let mode: "full" | "welcome" | "warm" = "full";
     try {
-      sessionStorage.setItem("atlas-activation-mode", seen ? "warm" : "full");
+      const seen = localStorage.getItem("atlas-activation-seen") === "1";
+      const last = localStorage.getItem("atlas-last-sign-in");
+      if (seen) {
+        const lastMs = last ? Date.parse(last) : NaN;
+        const away = Number.isFinite(lastMs) ? Date.now() - lastMs : 0;
+        mode = away >= 30 * 24 * 60 * 60 * 1000 ? "welcome" : "warm";
+      }
     } catch {}
+    try { sessionStorage.setItem("atlas-activation-mode", mode); } catch {}
     navigate("/activate", { replace: true });
   }, [navigate, queryClient]);
 
