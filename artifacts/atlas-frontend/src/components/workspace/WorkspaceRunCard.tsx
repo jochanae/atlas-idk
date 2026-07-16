@@ -789,10 +789,11 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   }, [items, run?.associatedMessageId]);
   const isBookmarked = !!existingSnapshot?.isBookmarked;
 
+  const [, navigate] = useLocation();
   const handleDetails = useCallback(() => {
     if (!run) return;
-    window.dispatchEvent(new CustomEvent("axiom:open-changes", { detail: { runId: run.id } }));
-  }, [run]);
+    navigate(`/runs/${run.id}`);
+  }, [run, navigate]);
 
   const handlePreview = useCallback(() => {
     if (!run) return;
