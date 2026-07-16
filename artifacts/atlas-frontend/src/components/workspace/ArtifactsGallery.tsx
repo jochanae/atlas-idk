@@ -198,7 +198,13 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
             const isBlueprint = artifact.type === "blueprint_snapshot";
             const isDesignPlan = artifact.type === "design_plan";
             const isSketch = artifact.type === "visual_sketch";
-            const isHtmlPreview = artifact.type === "html_preview";
+            const metaExt = typeof artifact.metadata?.extension === "string" ? (artifact.metadata.extension as string).toLowerCase() : "";
+            const isHtmlPreview =
+              artifact.type === "html_preview" ||
+              artifact.type === "html" ||
+              artifact.type === "html-app" ||
+              artifact.type === "html_app" ||
+              metaExt === "html";
 
             const dp = artifact.payload as Record<string, unknown>;
             const bpIdentity = (artifact.payload.identity as Record<string, unknown>) ?? {};
@@ -254,8 +260,15 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
                   {isHtmlPreview && (
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={e => e.stopPropagation()}>
                       <button
-                        onClick={() => {
-                          const html = artifact.payload.html as string | undefined;
+                        onClick={async () => {
+                          const preview = artifact.payload.preview as { html?: string } | undefined;
+                          let html = (artifact.payload.html as string | undefined) ?? preview?.html;
+                          if (!html) {
+                            try {
+                              const res = await fetch(`/api/projects/${projectId}/artifacts/${artifact.id}/download`, { credentials: "include" });
+                              if (res.ok) html = await res.text();
+                            } catch { /* fall through */ }
+                          }
                           if (!html) return;
                           window.dispatchEvent(new CustomEvent("axiom:preview-open-html", { detail: { html } }));
                         }}
