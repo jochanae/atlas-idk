@@ -198,7 +198,13 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
             const isBlueprint = artifact.type === "blueprint_snapshot";
             const isDesignPlan = artifact.type === "design_plan";
             const isSketch = artifact.type === "visual_sketch";
-            const isHtmlPreview = artifact.type === "html_preview";
+            const metaExt = typeof artifact.metadata?.extension === "string" ? (artifact.metadata.extension as string).toLowerCase() : "";
+            const isHtmlPreview =
+              artifact.type === "html_preview" ||
+              artifact.type === "html" ||
+              artifact.type === "html-app" ||
+              artifact.type === "html_app" ||
+              metaExt === "html";
 
             const dp = artifact.payload as Record<string, unknown>;
             const bpIdentity = (artifact.payload.identity as Record<string, unknown>) ?? {};
