@@ -1410,10 +1410,11 @@ mark.atlas-search-hit.atlas-search-hit--active {
   color: var(--atlas-icon) !important;
 }
 
-/* 5) Thinking dots — purple (Atlas intelligence), not gold, in parchment. */
+/* 5) Thinking dots — quiet ink/graphite in parchment (was purple, felt
+   disconnected from the gold/ink accent system on the home surface). */
 [data-theme="parchment"] .atlas-bloom-circle,
 [data-theme="parchment"] .atlas-bloom-blur {
-  background: var(--atlas-intel) !important;
+  background: color-mix(in oklab, var(--atlas-fg) 45%, transparent) !important;
 }
 
 /* 6) Composer glass border — neutral, not gold, in parchment. */
