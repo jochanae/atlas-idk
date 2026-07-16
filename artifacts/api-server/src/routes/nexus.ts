@@ -1761,7 +1761,7 @@ async function persistNexusExecutionRun(args: {
       const stepPurpose = derivePurposeFromVerb(step.verb, step.detail);
       await db.execute(sql`
         INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, step_purpose, order_index)
-        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${null}, ${step.artifactUrl ?? null}, ${stepPurpose}, ${orderIdx})
+        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${step.beforeContent ?? null}, ${step.artifactUrl ?? null}, ${stepPurpose}, ${orderIdx})
       `);
     }
 
