@@ -31,11 +31,22 @@ const LABEL: Record<ActivityItem["type"], string> = {
   session: "SESSION",
 };
 
-/** Single inline system event. Tap to expand subtitle / open link. */
-export function SystemActivityCard({ item }: { item: ActivityItem }) {
+/** GitHub mark used in the commit card header. */
+function GitHubMark({ size = 14, color }: { size?: number; color: string }) {
+  return (
+    <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path
+        fill={color}
+        d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+      />
+    </svg>
+  );
+}
+
+/** Compact receipt for non-commit events (decisions, sessions). */
+function InlineReceipt({ item }: { item: ActivityItem }) {
   const [open, setOpen] = useState(false);
   const dot = COLOR[item.type];
-
   return (
     <button
       type="button"
@@ -77,12 +88,6 @@ export function SystemActivityCard({ item }: { item: ActivityItem }) {
             {item.subtitle}
           </span>
         )}
-        {open && item.url && (
-          <a href={item.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-             style={{ display: "inline-block", marginTop: 4, fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)" }}>
-            open ↗
-          </a>
-        )}
       </span>
       <span style={{
         fontSize: 10, fontFamily: "var(--app-font-mono)",
@@ -92,6 +97,125 @@ export function SystemActivityCard({ item }: { item: ActivityItem }) {
       </span>
     </button>
   );
+}
+
+/** Commit / push receipt card — headline + Details / Preview buttons. */
+function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: boolean }) {
+  const commitUrl = item.url;
+  // GitHub "files changed" view for the diff preview.
+  const previewUrl = commitUrl ? `${commitUrl.replace(/\/$/, "")}` : undefined;
+  const filesUrl = commitUrl && /\/commit\//.test(commitUrl)
+    ? `${commitUrl}#files-bucket`
+    : previewUrl;
+
+  const accent = "var(--atlas-gold, rgba(201,162,76,0.9))";
+  const border = isLatest
+    ? `1px solid ${accent}`
+    : "1px solid rgba(var(--atlas-border-rgb,80,80,80),0.45)";
+  const shadow = isLatest
+    ? `0 0 0 1px rgba(201,162,76,0.18)`
+    : "none";
+
+  const openUrl = (url?: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex", flexDirection: "column",
+        width: "100%", maxWidth: 540,
+        margin: "8px 0 16px",
+        background: "rgba(var(--atlas-surface-rgb,30,30,30),0.55)",
+        border,
+        boxShadow: shadow,
+        borderRadius: 10,
+        overflow: "hidden",
+      }}
+    >
+      {/* Header row */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "12px 14px 10px",
+      }}>
+        <GitHubMark size={15} color="var(--atlas-fg)" />
+        <span style={{
+          flex: 1, minWidth: 0,
+          fontSize: 13, lineHeight: 1.4, color: "var(--atlas-fg)",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {item.title}
+        </span>
+        <span style={{
+          fontSize: 10, fontFamily: "var(--app-font-mono)",
+          color: "var(--atlas-muted)", opacity: 0.55, flexShrink: 0,
+        }}>
+          {relTime(item.timestamp)}
+        </span>
+      </div>
+
+      {/* Optional subtitle / body preview */}
+      {item.subtitle && (
+        <div style={{
+          padding: "0 14px 10px",
+          fontSize: 11, lineHeight: 1.5,
+          color: "var(--atlas-muted)", opacity: 0.75,
+          whiteSpace: "pre-wrap",
+          overflow: "hidden",
+          maxHeight: 60,
+        }}>
+          {item.subtitle}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8,
+        padding: "0 12px 12px",
+      }}>
+        <button
+          type="button"
+          onClick={openUrl(commitUrl)}
+          disabled={!commitUrl}
+          style={{
+            padding: "9px 12px",
+            background: "transparent",
+            border: "0.5px solid rgba(var(--atlas-border-rgb,80,80,80),0.6)",
+            borderRadius: 6,
+            color: commitUrl ? "var(--atlas-fg)" : "var(--atlas-muted)",
+            fontSize: 12, cursor: commitUrl ? "pointer" : "not-allowed",
+            fontFamily: "inherit",
+          }}
+        >
+          Details
+        </button>
+        <button
+          type="button"
+          onClick={openUrl(filesUrl)}
+          disabled={!filesUrl}
+          style={{
+            padding: "9px 12px",
+            background: "transparent",
+            border: "0.5px solid rgba(var(--atlas-border-rgb,80,80,80),0.6)",
+            borderRadius: 6,
+            color: filesUrl ? "var(--atlas-fg)" : "var(--atlas-muted)",
+            fontSize: 12, cursor: filesUrl ? "pointer" : "not-allowed",
+            fontFamily: "inherit",
+          }}
+        >
+          Preview
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Single inline system event. Commit → full card, other → inline receipt. */
+export function SystemActivityCard({ item, isLatest }: { item: ActivityItem; isLatest?: boolean }) {
+  if (item.type === "commit") return <CommitReceipt item={item} isLatest={isLatest} />;
+  return <InlineReceipt item={item} />;
 }
 
 /** Batched quiet events on mobile. Click to expand individual cards. */

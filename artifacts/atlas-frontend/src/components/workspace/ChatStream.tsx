@@ -571,12 +571,26 @@ export function ChatStream(props: ChatStreamProps) {
     return map;
   }, [activityEvents, messages]);
 
+  // Newest commit across all anchors gets an accent border on its card.
+  const latestCommitKey = useMemo(() => {
+    let best: { ts: number; key: string } | null = null;
+    for (const [anchor, evs] of activityByAnchor.entries()) {
+      evs.forEach((ev, k) => {
+        if (ev.type !== "commit") return;
+        const ts = new Date(ev.timestamp).getTime();
+        if (!best || ts > best.ts) best = { ts, key: `${anchor}:${k}` };
+      });
+    }
+    return best?.key ?? null;
+  }, [activityByAnchor]);
+
   const renderActivityForAnchor = (anchor: number) => {
     const evs = activityByAnchor.get(anchor);
     if (!evs || evs.length === 0) return null;
+    const latestFor = (k: number) => latestCommitKey === `${anchor}:${k}`;
     if (!isMobile) {
       return evs.map((ev, k) => (
-        <SystemActivityCard key={`act-${anchor}-${k}`} item={ev} />
+        <SystemActivityCard key={`act-${anchor}-${k}`} item={ev} isLatest={latestFor(k)} />
       ));
     }
     // Mobile: render important immediately, batch consecutive quiet.
@@ -591,7 +605,7 @@ export function ChatStream(props: ChatStreamProps) {
     evs.forEach((ev, k) => {
       if (classifyActivity(ev) === "important") {
         flush(`act-${anchor}-b-${k}`);
-        out.push(<SystemActivityCard key={`act-${anchor}-${k}`} item={ev} />);
+        out.push(<SystemActivityCard key={`act-${anchor}-${k}`} item={ev} isLatest={latestFor(k)} />);
       } else {
         buf.push(ev);
       }
@@ -599,6 +613,7 @@ export function ChatStream(props: ChatStreamProps) {
     flush(`act-${anchor}-tail`);
     return out;
   };
+
 
   // ---- Suggestion chips -----------------------------------------------------
   // Only when stream is idle AND the last message is a completed assistant msg.

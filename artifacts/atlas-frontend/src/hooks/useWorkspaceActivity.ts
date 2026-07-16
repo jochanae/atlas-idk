@@ -14,11 +14,10 @@ export type ActivityItem = {
 export type Importance = "important" | "quiet";
 
 export function classifyActivity(item: ActivityItem): Importance {
-  if (item.type === "decision") return "important";
-  // commits/sessions are quiet by default; flag deploy/release/merge as important
-  const hay = `${item.title} ${item.subtitle ?? ""}`.toLowerCase();
-  if (/\b(deploy|release|merge|publish|prod|main)\b/.test(hay)) return "important";
-  return "quiet";
+  // Commits and decisions are first-class receipts — render as full cards.
+  // Only sessions (opens, background pings) stay quiet/batched.
+  if (item.type === "session") return "quiet";
+  return "important";
 }
 
 const POLL_MS = 30_000;
