@@ -2877,7 +2877,10 @@ RULES for atlas-action:
           chatDnaLines.push(`Open questions: ${(chatGenomeRow!.openQuestions ?? []).slice(0, 3).join("; ")}`);
         }
 
-        systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nYou are inside the "${focusProject.name}" project workspace.`;
+        const focusedProjectSurfaceLabel = surfaceContext === "workspace"
+          ? `You are inside the "${focusProject.name}" project workspace.`
+          : `"${focusProject.name}" is loaded as reference context. IMPORTANT: You are currently on Ask Atlas — NOT inside this project's workspace. These are completely different surfaces. The user has not entered the Workspace. Never claim otherwise.`;
+        systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\n${focusedProjectSurfaceLabel}`;
         if (chatDnaLines.length > 0) {
           systemPrompt += `\n\nProject DNA:\n${chatDnaLines.join("\n")}`;
         }
@@ -3607,10 +3610,16 @@ On this surface you MUST NOT:
 You MUST instead do ALL of the following in your response:
 1. Acknowledge the request in one sentence ("I can build this — let me route you to the Workspace.")
 2. Summarize the plan briefly in 2–4 plain-language sentences (no code, no file paths)
-3. Emit the correct routing signal at the END of your response:
-   - If a project already exists for this work: emit NAVIGATE_TO:{"route":"/project/<id>"} so the user lands in the Workspace immediately
-   - If this is a new idea with no project yet: emit PROJECT_READY:{"projectName":"<inferred name>","reason":"<one sentence>"} to create the project and open the Workspace
-4. Close with: "Opening the Workspace now — I'll continue building there."
+3. Close with: "Opening the Workspace now — I'll continue building there."
+4. Emit this signal as the ABSOLUTE LAST LINE of your response — nothing after it:
+   PROJECT_READY:{"projectName":"<name inferred from the conversation>","reason":"<one sentence: what this is and why it matters>"}
+
+HARD RULES ON PROJECT ROUTING — violations break the user experience:
+- You MUST emit PROJECT_READY. The server creates the project and handles navigation. You do NOT choose IDs or routes.
+- NEVER emit NAVIGATE_TO from Ask Atlas. Never write "/project/<id>" in any form. You do not have access to valid project IDs and any ID you emit will be wrong.
+- A focused project in your context is REFERENCE DATA ONLY — it is NOT the routing target. Never use a focused project as the build destination for a new request.
+- For every new named build request, emit PROJECT_READY with the name derived from the request. A new project will be created server-side.
+- Only if the user explicitly says "add this to [existing project name]" should you mention that project in your response text — still emit PROJECT_READY, never NAVIGATE_TO.
 
 HARD RULE: You may describe and plan here. You may NEVER start building here. The Workspace owns all execution, run cards, stop controls, Timeline, Changes, Preview, and code mutations. Ask Atlas owns conversation, exploration, planning, project creation, and handoff.
 --- END SURFACE CONTRACT ---`;
