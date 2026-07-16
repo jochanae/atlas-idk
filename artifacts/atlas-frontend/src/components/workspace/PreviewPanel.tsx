@@ -1928,19 +1928,6 @@ ${t}
   );
 }
 
-// Small read-only label+value row used inside artifact detail panels
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-      <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, flexShrink: 0, minWidth: 80, paddingTop: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        {label}
-      </span>
-      <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.75, lineHeight: 1.5 }}>
-        {value}
-      </span>
-    </div>
-  );
-}
 
 // Suggestions dropdown — portaled to escape the overflow:hidden chrome wrapper
 // so the menu isn't clipped/stacked behind the iframe area.
