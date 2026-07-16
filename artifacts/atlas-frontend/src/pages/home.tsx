@@ -60,6 +60,7 @@ import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
 import { LibraryAttachmentsBar } from "@/components/LibraryAttachmentsBar";
+import { LibraryBrowseSheet } from "@/components/library/LibraryBrowseSheet";
 import {
   createLibraryItem,
   fetchConversationContext as fetchLibraryConversationContext,
@@ -2056,6 +2057,7 @@ export default function Home() {
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "library">("projects");
   const [focusSheetConversationId, setFocusSheetConversationId] = useState<string | null>(null);
+  const [showLibraryBrowse, setShowLibraryBrowse] = useState(false);
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
@@ -6253,16 +6255,25 @@ export default function Home() {
           // Use the same resume path as the clock history sheet.
           void handleSwitchConversation(String(id));
         }}
-        onOpenLibraryConversation={(conversationId, meta) => {
+        onOpenLibrary={() => {
           setShowDrawer(false);
+          setShowLibraryBrowse(true);
+        }}
+      />
+
+      <LibraryBrowseSheet
+        open={showLibraryBrowse}
+        onClose={() => setShowLibraryBrowse(false)}
+        onOpenConversation={(conversationId, meta) => {
+          setShowLibraryBrowse(false);
           if (meta.originSource === "workspace") {
             setLocation(`/workspace/${encodeURIComponent(conversationId)}`);
             return;
           }
           void handleSwitchConversation(conversationId);
         }}
-        onOpenLibraryProject={(projectId) => {
-          setShowDrawer(false);
+        onOpenProject={(projectId) => {
+          setShowLibraryBrowse(false);
           navigateToProject(projectId);
         }}
       />
