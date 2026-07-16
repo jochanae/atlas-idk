@@ -25,6 +25,17 @@ Rules:
 - Produce the most polished, complete version you can within one file
 - Begin with <!DOCTYPE html> and include a complete valid HTML document structure
 
+Responsiveness (REQUIRED — the preview frame may be as narrow as ~360px or as wide as 1440px+):
+- Include <meta name="viewport" content="width=device-width, initial-scale=1.0" /> in <head>
+- Mobile-first: layouts must render cleanly from ~360px up through desktop widths — never assume a fixed desktop canvas
+- Use fluid units (%, rem, clamp(), minmax, flex/grid) — avoid fixed pixel widths on top-level containers
+- Never set body/html to a fixed width; no horizontal overflow at any viewport
+- Media (img, video, svg, iframe): max-width: 100%; height: auto
+- Long text (URLs, code, tokens) must wrap — use overflow-wrap: anywhere / word-break where needed
+- Tables and wide content: wrap in an overflow-x: auto container so they scroll internally instead of blowing out the page
+- Use responsive breakpoints (Tailwind sm/md/lg or media queries) for multi-column layouts; collapse to a single column on small screens
+- Touch targets: min 40px tap height for interactive elements
+
 Output ONLY the raw HTML. No markdown fences, no explanations, no preamble.`;
 
 function wrapFragment(html: string, title: string): string {
