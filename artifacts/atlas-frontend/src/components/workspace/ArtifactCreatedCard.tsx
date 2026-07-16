@@ -199,7 +199,7 @@ function HtmlAppCard({ artifact, projectId, onOpen }: Props) {
 }
 
 export function ArtifactCreatedCard({ artifact, projectId, onOpen }: Props) {
-  const isHtmlApp = artifact.type === "html-app" || artifact.type === "html";
+  const isHtmlApp = artifact.type === "html-app" || artifact.type === "html" || artifact.type === "html_preview" || artifact.extension === "html";
 
   if (isHtmlApp) {
     return <HtmlAppCard artifact={artifact} projectId={projectId} onOpen={onOpen} />;
