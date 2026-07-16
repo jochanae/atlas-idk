@@ -18,6 +18,7 @@ import {
   X, FileCode2, Eye, Search, Folder,
   Lightbulb, Trash2, CheckCircle2, ChevronDown,
   Dna, BookMarked, ListChecks, AlertOctagon, FileOutput, HelpCircle,
+  Copy, Check,
 } from "lucide-react";
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
@@ -456,6 +457,39 @@ function getChangeLabel(row: FileRow): { label: string; color: string } {
   return { label: row.summary, color: "rgba(var(--atlas-muted), 0.55)" };
 }
 
+function CopyFileButton({ content }: { content: string | null }) {
+  const [copied, setCopied] = useState(false);
+  if (!content) return null;
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    void navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label="Copy file contents"
+      title="Copy file contents"
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 26, height: 26, flexShrink: 0,
+        background: copied ? "rgba(var(--atlas-gold-rgb), 0.14)" : "transparent",
+        border: `1px solid rgba(var(--atlas-gold-rgb), ${copied ? "0.35" : "0.2"})`,
+        borderRadius: 4, cursor: "pointer",
+        color: `rgba(var(--atlas-gold-rgb), ${copied ? "1" : "0.6"})`,
+        transition: "color 0.15s, background 0.15s, border-color 0.15s",
+      }}
+    >
+      {copied
+        ? <Check size={11} strokeWidth={2} />
+        : <Copy size={11} strokeWidth={1.6} />}
+    </button>
+  );
+}
+
 function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectId: number; runStatus?: string }) {
   // Auto-expand the first file when there are ≤3 files and viewable content exists.
   const firstKey = rows.length > 0 ? `${rows[0].messageId}-${rows[0].path}-0` : null;
@@ -534,6 +568,7 @@ function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectI
                 fontSize: 10, color, fontFamily: "var(--app-font-sans)",
                 flexShrink: 0, fontWeight: 500, letterSpacing: "0.03em",
               }}>{label}</span>
+              <CopyFileButton content={r.content ?? null} />
               {hasViewable && (
                 <button
                   type="button"
