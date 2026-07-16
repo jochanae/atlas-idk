@@ -19,6 +19,7 @@
  *   messages    — full ChatMessage[] for receipt derivation
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, Bookmark, Github, ImageIcon, Terminal, Eye, FilePenLine, Circle, FileCode } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
