@@ -137,6 +137,10 @@ type RunAction = {
   target?: string;
   detail?: string;
   status?: "ok" | "warn" | "fail";
+  /** For FILE_EDIT: full new file body. For LINE_PATCH: replacement text. */
+  content?: string | null;
+  /** For FILE_EDIT: prior file body from disk (null if new file). For LINE_PATCH: find text. */
+  beforeContent?: string | null;
 };
 
 type RunArtifact = {
@@ -1542,11 +1546,20 @@ async function insertRunningExecutionRun(args: {
 /** Fire-and-forget incremental step persist during streaming. Uses a negative
  *  order_index so canonical rewrite in persistNexusExecutionRun (which uses 0+)
  *  can safely DELETE these before re-inserting the cleaned final set. */
-function appendLiveStepAsync(runId: string, verb: string, target: string | null, status: string, detail: string | null, orderIdx: number): void {
+function appendLiveStepAsync(
+  runId: string,
+  verb: string,
+  target: string | null,
+  status: string,
+  detail: string | null,
+  orderIdx: number,
+  content: string | null = null,
+  beforeContent: string | null = null,
+): void {
   const purpose = derivePurposeFromVerb(verb, detail);
   void db.execute(sql`
-    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, step_purpose, order_index)
-    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${purpose}, ${orderIdx})
+    INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, step_purpose, order_index)
+    VALUES (${runId}, ${verb}, ${target}, ${status}, ${detail}, ${content}, ${beforeContent}, ${purpose}, ${orderIdx})
   `).catch((err) => {
     logger.debug({ err, runId, verb }, "nexus: incremental step insert failed — non-fatal");
   });
@@ -1655,6 +1668,7 @@ async function persistNexusExecutionRun(args: {
       status: string;
       detail: string | null;
       content: string | null;
+      beforeContent?: string | null;
       artifactUrl?: string | null;
     };
     const steps: Step[] = [];
@@ -1720,7 +1734,8 @@ async function persistNexusExecutionRun(args: {
           target: a.target ?? null,
           status: a.status === "fail" ? "fail" : a.status === "warn" ? "warn" : "ok",
           detail: a.detail ?? null,
-          content: null,
+          content: a.content ?? null,
+          beforeContent: a.beforeContent ?? null,
         });
       }
     }
@@ -1746,7 +1761,7 @@ async function persistNexusExecutionRun(args: {
       const stepPurpose = derivePurposeFromVerb(step.verb, step.detail);
       await db.execute(sql`
         INSERT INTO execution_run_steps (run_id, verb, target, status, detail, content, before_content, artifact_url, step_purpose, order_index)
-        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${null}, ${step.artifactUrl ?? null}, ${stepPurpose}, ${orderIdx})
+        VALUES (${runId}, ${step.verb}, ${step.target}, ${step.status}, ${step.detail}, ${step.content}, ${step.beforeContent ?? null}, ${step.artifactUrl ?? null}, ${stepPurpose}, ${orderIdx})
       `);
     }
 
@@ -3677,6 +3692,8 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         step.status ?? "ok",
         step.detail ?? null,
         liveStepOrderIdx++,
+        step.content ?? null,
+        step.beforeContent ?? null,
       );
     }
   };
@@ -4274,8 +4291,21 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         try {
           const wsDir = await ensureProjectWorkspaceDir(focusProjectId);
           for (const edit of responseFileEdits) {
-            writeStep({ verb: "FILE_EDIT", target: edit.path, detail: "applied" });
             const absPath = resolveWorkspacePath(wsDir, edit.path);
+            // Capture prior file body (null if new) so Changes tab can render a diff.
+            let beforeBody: string | null = null;
+            try {
+              beforeBody = await fsPromises.readFile(absPath, "utf-8");
+            } catch {
+              beforeBody = null;
+            }
+            writeStep({
+              verb: "FILE_EDIT",
+              target: edit.path,
+              detail: "applied",
+              content: (edit.content ?? "").slice(0, 200000),
+              beforeContent: beforeBody !== null ? beforeBody.slice(0, 200000) : null,
+            });
             await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
             await fsPromises.writeFile(absPath, edit.content, "utf-8");
             autoAppliedPaths.push(edit.path);
@@ -4291,7 +4321,13 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
       }
 
       for (const patch of responseLinePatches) {
-        writeStep({ verb: "LINE_PATCH", target: patch.path, detail: "applied" });
+        writeStep({
+          verb: "LINE_PATCH",
+          target: patch.path,
+          detail: "applied",
+          content: patch.replace ?? null,
+          beforeContent: patch.find ?? null,
+        });
       }
 
       // Execute GITHUB_PUSH when token present + project focused
