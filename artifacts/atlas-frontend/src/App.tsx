@@ -38,6 +38,7 @@ import Admin from "./pages/admin";
 
 import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
+import ActivatePage from "./pages/activate";
 import TokenBridge from "./pages/token-bridge";
 import { useAuth } from "@/hooks/useAuth";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
