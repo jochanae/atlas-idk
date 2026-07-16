@@ -6922,14 +6922,19 @@ export default function Workspace() {
       }>).detail ?? {};
       openPreviewPanel();
       // If a Draft HTML payload came along, reuse the existing artifact event.
+      // Delay so PreviewPanel is mounted and its listener is registered when
+      // Outputs → "Open in Draft" fires from a not-yet-opened preview panel.
       if (detail.source === "sandbox" && detail.content) {
-        window.dispatchEvent(new CustomEvent("axiom:preview-artifact", { detail: { content: detail.content } }));
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("axiom:preview-artifact", { detail: { content: detail.content } }));
+        }, 80);
       }
       if (detail.source) {
         // Small delay so the panel mounts before it switches mode.
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent("axiom:preview-set-mode", { detail: { source: detail.source } }));
         }, 40);
+
       } else {
         // No previewable source — surface an empty-state banner in the panel.
         setTimeout(() => {

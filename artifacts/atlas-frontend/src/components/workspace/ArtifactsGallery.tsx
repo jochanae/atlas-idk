@@ -279,8 +279,9 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
                             } catch { /* fall through */ }
                           }
                           if (!html) return;
-                          window.dispatchEvent(new CustomEvent("axiom:preview-open-html", { detail: { html } }));
+                          window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "sandbox", content: html } }));
                         }}
+
                         style={{
                           fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
                           color: "rgba(251,191,36,0.85)", background: "rgba(251,191,36,0.08)",
