@@ -1411,10 +1411,11 @@ mark.atlas-search-hit.atlas-search-hit--active {
 }
 
 /* 5) Thinking dots — quiet ink/graphite in parchment (was purple, felt
-   disconnected from the gold/ink accent system on the home surface). */
+   disconnected from the gold/ink accent system on the home surface).
+   Opacity bumped from 45% → 55% so they read clearly on light backgrounds. */
 [data-theme="parchment"] .atlas-bloom-circle,
 [data-theme="parchment"] .atlas-bloom-blur {
-  background: color-mix(in oklab, var(--atlas-fg) 45%, transparent) !important;
+  background: color-mix(in oklab, var(--atlas-fg) 55%, transparent) !important;
 }
 
 /* 6) Composer glass border — neutral, not gold, in parchment. */
