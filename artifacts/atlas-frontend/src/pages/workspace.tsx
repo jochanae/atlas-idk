@@ -41,6 +41,7 @@ import { WorkspacePlayBridge } from "../components/WorkspacePlayBridge";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import type { AtlasConversation } from "../components/ProjectsDrawer";
 import { LibraryBrowseSheet } from "@/components/library/LibraryBrowseSheet";
+import { consumePendingDraftPreview, dispatchOpenDraftPreview } from "@/lib/library/openDraftPreview";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { PreviewPanel, type ManifestDecision } from "../components/workspace/PreviewPanel";
@@ -6946,6 +6947,18 @@ export default function Workspace() {
     return () => window.removeEventListener("axiom:open-preview", handler);
   }, [openPreviewPanel]);
 
+  // Library → Draft Preview cross-route handoff: HTML was fetched + persisted
+  // before navigation; flush it into the Preview panel once this project mounts.
+  useEffect(() => {
+    if (!id || id <= 0) return;
+    const html = consumePendingDraftPreview(id);
+    if (!html) return;
+    openPreviewPanel();
+    // Delay so PreviewPanel listeners are mounted.
+    const t = window.setTimeout(() => dispatchOpenDraftPreview(html), 80);
+    return () => window.clearTimeout(t);
+  }, [id, openPreviewPanel]);
+
   // ARTIFACT protocol — intercept ARTIFACT: <json> lines in assistant responses.
   // Strips the line from display and POSTs the artifact to /api/artifacts.
   //
@@ -8338,6 +8351,10 @@ export default function Workspace() {
         onClose={() => setLaunchModal((s) => ({ ...s, open: false }))}
         linkedRepo={linkedRepo}
         previewUrl={launchPreviewUrl}
+        previewHtml={(() => {
+          if (typeof window === "undefined" || !id) return null;
+          try { return localStorage.getItem(`atlas-sandbox-${id}`); } catch { return null; }
+        })()}
       />
 
       {/* ── Spec → Build handoff modal ── */}
@@ -10321,6 +10338,7 @@ export default function Workspace() {
       <LibraryBrowseSheet
         open={showLibraryBrowse}
         onClose={() => setShowLibraryBrowse(false)}
+        currentProjectId={id > 0 ? id : null}
         onOpenConversation={(conversationId, meta) => {
           setShowLibraryBrowse(false);
           if (meta.originSource === "workspace") {
@@ -10333,6 +10351,10 @@ export default function Workspace() {
           setLocation("/home");
         }}
         onOpenProject={(projectId) => {
+          setShowLibraryBrowse(false);
+          setLocation(`/project/${projectId}`);
+        }}
+        onNavigateToProject={(projectId) => {
           setShowLibraryBrowse(false);
           setLocation(`/project/${projectId}`);
         }}

@@ -33,6 +33,8 @@ interface Props {
     meta: { projectId: number | null; originSource: string },
   ) => void;
   onOpenProject?: (projectId: number) => void;
+  onNavigateToProject?: (projectId: number) => void;
+  currentProjectId?: number | null;
 }
 
 export function AskAtlasFocusSheet({
@@ -42,6 +44,8 @@ export function AskAtlasFocusSheet({
   initialTab = "projects",
   onOpenConversation,
   onOpenProject,
+  onNavigateToProject,
+  currentProjectId = null,
 }: Props) {
   const [tab, setTab] = useState<"projects" | "library">(initialTab);
   /** Mount-flicker fix: enter state gates the sheet slide until backdrop is opaque. */
@@ -168,6 +172,8 @@ export function AskAtlasFocusSheet({
               onAttachmentsChange={onAttachmentsChange}
               onOpenConversation={onOpenConversation}
               onOpenProject={onOpenProject}
+              onNavigateToProject={onNavigateToProject}
+              currentProjectId={currentProjectId}
               onClose={onClose}
             />
           )}

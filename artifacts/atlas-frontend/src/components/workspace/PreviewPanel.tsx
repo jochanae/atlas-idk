@@ -682,6 +682,7 @@ ${t}
   }, [sandboxCode]);
 
   // Rehydrate sandbox on mount / project switch.
+  // Also restore Draft mode when a prior Library/Open-in-Draft selection was persisted.
   useEffect(() => {
     if (sandboxCode) return; // incoming prop wins
     try {
@@ -689,6 +690,8 @@ ${t}
       if (saved) {
         setSandboxInput(saved);
         setSandboxRendered(buildSrcdoc(saved));
+        const savedMode = localStorage.getItem(`atlas-preview-mode-${projectId}`);
+        if (savedMode === "sandbox") setPreviewMode("sandbox");
       }
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -713,12 +716,15 @@ ${t}
       }
       setSandboxExpanded(false);
       try { localStorage.setItem(sandboxStorageKey, content); } catch {}
-      if (!hasRealProject) setPreviewMode("sandbox");
+      if (!hasRealProject) {
+        setPreviewMode("sandbox");
+        try { localStorage.setItem(`atlas-preview-mode-${projectId}`, "sandbox"); } catch {}
+      }
     };
     window.addEventListener("axiom:preview-artifact", handler);
     return () => window.removeEventListener("axiom:preview-artifact", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wsDsStatus, liveUrl]);
+  }, [wsDsStatus, liveUrl, projectId]);
 
   // Bus-based subscriber for preview-code — parallel path to the DOM event so
   // components that emit via the bus (not window.dispatchEvent) also update the panel.
@@ -744,11 +750,12 @@ ${t}
       if (!detail.source) return;
       const target = detail.source === "generated" ? "sandbox" : detail.source;
       setPreviewMode(target);
+      try { localStorage.setItem(`atlas-preview-mode-${projectId}`, target); } catch {}
       setEmptyState(null); // clear banner if a real source was chosen
     };
     window.addEventListener("axiom:preview-set-mode", handler);
     return () => window.removeEventListener("axiom:preview-set-mode", handler);
-  }, []);
+  }, [projectId]);
 
   // "axiom:preview-open-html" — dispatched by ArtifactsGallery when the user
   // taps "Open in Draft" on an HTML artifact.
