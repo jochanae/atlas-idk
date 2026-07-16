@@ -732,25 +732,38 @@ ${t}
     if (!hasRealProject) setPreviewMode("sandbox");
   }, [wsDsStatus, liveUrl, sandboxStorageKey]);
 
-  // Refetch artifacts gallery when useChatStream persists a new html_preview.
-  useEffect(() => {
-    const handler = () => { void refetchArtifacts(); };
-    window.addEventListener("axiom:artifact-saved", handler);
-    return () => window.removeEventListener("axiom:artifact-saved", handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Artifact refetch is now owned by ArtifactsGallery inside the Outputs
+  // panel, so we no longer need to listen for axiom:artifact-saved here.
 
   // "axiom:preview-set-mode" — dispatched by the workspace when a Run Card
-  // requests a specific preview source (sandbox/url/local/generated).
+  // requests a specific preview source (sandbox/url/local). "generated" is
+  // remapped to "sandbox" for backward compatibility.
   useEffect(() => {
     const handler = (ev: Event) => {
       const detail = (ev as CustomEvent<{ source?: "sandbox" | "url" | "local" | "generated" }>).detail ?? {};
       if (!detail.source) return;
-      setPreviewMode(detail.source);
+      const target = detail.source === "generated" ? "sandbox" : detail.source;
+      setPreviewMode(target);
       setEmptyState(null); // clear banner if a real source was chosen
     };
     window.addEventListener("axiom:preview-set-mode", handler);
     return () => window.removeEventListener("axiom:preview-set-mode", handler);
+  }, []);
+
+  // "axiom:preview-open-html" — dispatched by ArtifactsGallery when the user
+  // taps "Open in Draft" on an HTML artifact.
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ html?: string }>).detail ?? {};
+      if (!detail.html) return;
+      setSandboxInput(detail.html);
+      setSandboxRendered(buildSrcdoc(detail.html));
+      setSandboxExpanded(false);
+      setPreviewMode("sandbox");
+    };
+    window.addEventListener("axiom:preview-open-html", handler);
+    return () => window.removeEventListener("axiom:preview-open-html", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // "axiom:preview-empty-state" — dispatched by the workspace when a Run Card's
