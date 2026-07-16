@@ -1947,11 +1947,36 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
       return;
     }
 
+    const runIdByMessageId = new Map<number, string>();
+    try {
+      const messageIds = messages
+        .filter((m) => m.role === "assistant")
+        .map((m) => m.id);
+      if (messageIds.length > 0) {
+        const runRows = await db.execute(sql`
+          SELECT id, message_id
+          FROM execution_runs
+          WHERE message_id IN (${sql.join(messageIds.map((id) => sql`${id}`), sql`, `)})
+            ${Number.isInteger(focusProjectId) && focusProjectId > 0 ? sql`AND project_id = ${focusProjectId}` : sql``}
+            ${conversationId && conversationId !== "__legacy__" ? sql`AND (conversation_id = ${conversationId} OR conversation_id IS NULL)` : sql``}
+          ORDER BY started_at DESC, seq DESC
+        `);
+        for (const row of runRows.rows as Array<{ id: string; message_id: number | null }>) {
+          if (row.message_id != null && !runIdByMessageId.has(row.message_id)) {
+            runIdByMessageId.set(row.message_id, row.id);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn({ err }, "nexus/thread: failed to hydrate run ids — continuing without receipt anchors");
+    }
+
     res.json(messages.map((m) => ({
       id: m.id,
       role: m.role,
       content: m.content,
       isBriefing: m.messageType === "briefing",
+      runId: runIdByMessageId.get(m.id) ?? null,
       // Restore persisted imageGen payload so sketches survive reload (P3)
       imageGen: (m.metadata as any)?.imageGen ?? null,
       // Restore persisted decisionArtifacts so Decision Intelligence cards survive reload

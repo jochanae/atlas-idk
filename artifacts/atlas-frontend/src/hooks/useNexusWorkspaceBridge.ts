@@ -17,6 +17,31 @@ import { useNexusChatStream, type NexusMessage, type NexusLiveStep } from "./use
 import type { ChatMessage } from "@/pages/workspace";
 import { workspaceEventBus } from "@/lib/workspaceEventBus";
 
+type ThreadMessage = {
+  id: number;
+  role: string;
+  content: string;
+  isBriefing?: boolean;
+  createdAt?: string;
+  runId?: string | null;
+  imageGen?: NexusMessage["imageGen"] | null;
+  decisionArtifacts?: NexusMessage["decisionArtifacts"] | null;
+  generatedArtifacts?: NexusMessage["generatedArtifacts"] | null;
+};
+
+function threadMessageToNexus(m: ThreadMessage): NexusMessage {
+  return {
+    id: String(m.id),
+    role: m.role as "user" | "assistant",
+    content: m.content,
+    createdAt: m.createdAt ?? new Date().toISOString(),
+    runId: m.runId ?? null,
+    imageGen: m.imageGen ?? null,
+    decisionArtifacts: m.decisionArtifacts ?? null,
+    generatedArtifacts: m.generatedArtifacts ?? null,
+  };
+}
+
 // Returns the stored conversationId from localStorage, or null if none exists.
 // Does NOT generate a new UUID — that happens either after server recovery
 // confirms no prior conversation exists, or immediately for URL-routed workspaces.
@@ -223,7 +248,7 @@ export function useNexusWorkspaceBridge(
     })
       .then((r) => {
         if (!r.ok) return null;
-        return r.json() as Promise<Array<{ id: number; role: string; content: string; isBriefing?: boolean; createdAt?: string }>>;
+        return r.json() as Promise<ThreadMessage[]>;
       })
       .then((msgs) => {
         if (!msgs || msgs.length === 0) {
@@ -250,12 +275,7 @@ export function useNexusWorkspaceBridge(
         }
         const real = msgs.filter((m) => !m.isBriefing && (m.role === "user" || m.role === "assistant"));
         if (real.length === 0) return;
-        const nexusMsgs: NexusMessage[] = real.map((m) => ({
-          id: String(m.id),
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          createdAt: m.createdAt ?? new Date().toISOString(),
-        }));
+        const nexusMsgs: NexusMessage[] = real.map(threadMessageToNexus);
         setMessages(nexusMsgs);
 
         // For URL-routed new-project handoffs, if only the user message exists
@@ -275,17 +295,12 @@ export function useNexusWorkspaceBridge(
                 `/api/nexus/thread?conversationId=${encodeURIComponent(convIdSnapshot)}&focusProjectId=${pidSnapshot}`,
                 { credentials: "include" },
               )
-                .then((r) => (r.ok ? (r.json() as Promise<Array<{ id: number; role: string; content: string; isBriefing?: boolean; createdAt?: string }>>) : null))
+                .then((r) => (r.ok ? (r.json() as Promise<ThreadMessage[]>) : null))
                 .then((newMsgs) => {
                   if (!newMsgs) { poll(); return; }
                   const newReal = newMsgs.filter((m) => !m.isBriefing && (m.role === "user" || m.role === "assistant"));
                   if (newReal.length > 1) {
-                    setMessages(newReal.map((m) => ({
-                      id: String(m.id),
-                      role: m.role as "user" | "assistant",
-                      content: m.content,
-                      createdAt: m.createdAt ?? new Date().toISOString(),
-                    })));
+                    setMessages(newReal.map(threadMessageToNexus));
                   } else {
                     poll();
                   }
