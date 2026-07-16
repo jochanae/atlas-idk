@@ -6,9 +6,6 @@ import type { AgentToolContext, GeneratedArtifactMeta } from "./context";
 import { db, projectArtifactsTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 // Side-effect imports: each renderer registers itself with the Artifact Engine on load.
-// The agent loop can run without ever hitting the projectArtifacts routes, so this
-// tool must trigger renderer registration itself instead of relying on route-file
-// import order.
 import "../renderers/docxRenderer";
 import "../renderers/pdfRenderer";
 import "../renderers/pptxRenderer";
@@ -17,15 +14,9 @@ import "../renderers/mermaidRenderer";
 import "../renderers/chartRenderer";
 import "../renderers/htmlAppRenderer";
 
-/**
- * Task #1 fix: a working PPTX (and docx/xlsx/etc) renderer + Artifact Engine
- * already existed, but was only reachable via a dedicated REST endpoint
- * (POST /api/projects/:id/deliverables/:type/generate). Nothing in the agent
- * loop's toolset could call it, so Atlas had no way to actually produce a
- * presentation from conversation — she could only say she couldn't. This tool
- * closes that gap by wiring the same Artifact Engine call into the agent loop,
- * using the turn's own conversation history as context instead of re-querying it.
- */
+const HTML_STAGES = ["Preparing", "Building", "Styling", "Checking", "Ready"] as const;
+type HtmlStage = typeof HTML_STAGES[number];
+
 export function generateDeliverableTool(ctx: AgentToolContext) {
   return tool({
     description:
@@ -42,21 +33,28 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
       focus: z
         .string()
         .optional()
-        .describe("Optional short instruction narrowing what the deliverable should focus on, if the user asked for something specific."),
+        .describe("Optional short instruction narrowing what the deliverable should focus on."),
       style: z
         .string()
         .optional()
-        .describe("Optional explicit visual style instruction, e.g. 'make it look playful and colorful' or 'match our fintech branding'. Only pass this if the user asked for a specific look — otherwise the project's own theme is inferred automatically."),
+        .describe("Optional explicit visual style instruction. Only pass if the user asked for a specific look."),
     }),
     execute: async ({ type, title, docType, focus, style }) => {
       const started = performance.now();
       ctx.emitToolCall("generate_deliverable", { type, title, docType });
 
-      // ── Workstream 1: Build visibility ────────────────────────────────────
-      // Emit immediately so the workspace shows a live "Building..." card before
-      // the 30–60 s renderer call begins. This fires on the open SSE connection.
+      const emitStage = (stage: HtmlStage) => {
+        ctx.emitNamedEvent("build_progress", {
+          type,
+          title: title || "Web App",
+          status: "building",
+          stage,
+        });
+      };
+
+      // ── Preparing — emit immediately so the card appears before any model call ──
       ctx.writeStep({ verb: "Building", target: title || "Web App", phase: "output" });
-      ctx.emitNamedEvent("build_progress", { type, title: title || "Web App", status: "building" });
+      emitStage("Preparing");
 
       try {
         const available = listArtifactRendererTypes();
@@ -72,10 +70,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           return { ok: false, error: "No active project — open a project workspace before generating Outputs." };
         }
 
-        // ── Workstream 2: Design contract injection ───────────────────────────
-        // For html-app builds: look up the project's saved design contract (extracted
-        // from inspiration sketches) and inject it as styleOverride so the renderer
-        // enforces the approved visual direction automatically.
+        // ── Design contract lookup (html-app only) ────────────────────────────
         let resolvedStyle = style;
         if (type === "html-app" && !resolvedStyle && ctx.projectId > 0) {
           try {
@@ -113,16 +108,44 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           return { ok: false, error: "No conversation context available to generate from yet." };
         }
 
+        // ── Stage callback wired into renderer ────────────────────────────────
+        // For html-app, the renderer calls onStage at Building/Styling/Checking.
+        // We translate these into build_progress SSE events so the workspace
+        // stage stepper advances in real time during the renderer call.
+        const onStage = type === "html-app"
+          ? (rendererStage: "building" | "styling" | "checking") => {
+              const stageMap: Record<string, HtmlStage> = {
+                building: "Building",
+                styling: "Styling",
+                checking: "Checking",
+              };
+              emitStage(stageMap[rendererStage] ?? "Building");
+            }
+          : undefined;
+
         const artifact = await generateArtifact({
           projectId: ctx.projectId,
           sessionId: null,
           type,
           sourceMessageId: ctx.messageId ?? null,
-          input: { context, title, docType, projectId: ctx.projectId, styleOverride: resolvedStyle },
+          input: { context, title, docType, projectId: ctx.projectId, styleOverride: resolvedStyle, onStage },
         });
 
-        // Build complete — notify frontend to update the card
-        ctx.emitNamedEvent("build_progress", { type, title: artifact.title, status: "complete" });
+        // ── Ready ─────────────────────────────────────────────────────────────
+        const validation = (artifact.preview as Record<string, unknown>)?.validation as {
+          issues?: string[];
+          tileCount?: number;
+          duplicateTitles?: string[];
+        } | undefined;
+
+        ctx.emitNamedEvent("build_progress", {
+          type,
+          title: artifact.title,
+          status: "complete",
+          stage: "Ready",
+          needsReview: artifact.status === "needs_review",
+          validationIssues: validation?.issues ?? [],
+        });
 
         const downloadUrl = `/api/projects/${artifact.projectId}/artifacts/${artifact.id}/download`;
         const meta: GeneratedArtifactMeta = {
@@ -139,7 +162,6 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
 
         ctx.sideEffects.generatedArtifacts.push(meta);
 
-        // Auto-capture into Library — fire-and-forget, never blocks tool result.
         void captureDeliverableToLibrary({
           userId: ctx.userId,
           projectId: ctx.projectId,
@@ -158,17 +180,13 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           artifactUrl: `artifact://${artifact.id}`,
         });
 
-        // Live timeline / SSE signal for the client (Workspace → Changes → Timeline).
-        // phase is required by AgentToolContext's writeStep signature (chat agent loop).
-        ctx.writeStep({
-          verb: "ARTIFACT_CREATED",
-          target: artifact.title,
-          phase: "output",
-        });
+        ctx.writeStep({ verb: "ARTIFACT_CREATED", target: artifact.title, phase: "output" });
         ctx.emitNamedEvent("artifact_created", {
           ...meta,
           artifactUrl: `artifact://${artifact.id}`,
           detail: `${artifact.type.toUpperCase()} · ${artifact.extension}`,
+          needsReview: artifact.status === "needs_review",
+          validationIssues: validation?.issues ?? [],
         });
 
         const ms = Math.round(performance.now() - started);
@@ -181,7 +199,13 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
       } catch (err) {
         const ms = Math.round(performance.now() - started);
         ctx.emitToolResult("generate_deliverable", false, ms);
-        ctx.emitNamedEvent("build_progress", { type, title: title || "Web App", status: "failed" });
+        ctx.emitNamedEvent("build_progress", {
+          type,
+          title: title || "Web App",
+          status: "failed",
+          stage: "Ready",
+          validationIssues: [],
+        });
         return { ok: false, error: String(err) };
       }
     },

@@ -157,9 +157,15 @@ export interface NexusMessage {
     downloadUrl: string;
     summary?: string | null;
   }> | null;
-  /** Live build state: set when generate_deliverable fires build_progress "building",
-   *  cleared on "complete" or "failed". Renders a BuildProgressCard in AssistantBubble. */
-  activeBuild?: { type: string; title: string } | null;
+  /** Live build state: set when generate_deliverable fires build_progress events.
+   *  Carries current lifecycle stage; cleared when generatedArtifacts arrives in onDone. */
+  activeBuild?: {
+    type: string;
+    title: string;
+    stage?: string;
+    needsReview?: boolean;
+    validationIssues?: string[];
+  } | null;
 }
 
 export interface NexusDecisionArtifact {
@@ -573,16 +579,22 @@ export function useNexusChatStream(
             ));
           },
           onBuildProgress: (data) => {
-            // Workstream 1: Build visibility — show/hide a live BuildProgressCard
-            // on the streaming assistant message so the workspace never goes silent
-            // during the 30–60 s generate_deliverable renderer call.
+            // Build lifecycle stages: Preparing → Building → Styling → Checking → Ready.
+            // "failed" clears the card immediately. "complete" keeps the card (stage="Ready")
+            // so validation issues can be shown — cleared when generatedArtifacts arrives.
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? {
                     ...m,
-                    activeBuild: data.status === "building"
-                      ? { type: data.type, title: data.title }
-                      : null,
+                    activeBuild: data.status === "failed"
+                      ? null
+                      : {
+                          type: data.type,
+                          title: data.title,
+                          stage: data.stage,
+                          needsReview: data.needsReview ?? false,
+                          validationIssues: data.validationIssues ?? [],
+                        },
                   }
                 : m
             ));
@@ -840,6 +852,7 @@ export function useNexusChatStream(
                     projectChoices: ((meta as any).projectChoices ?? null) as NexusMessage["projectChoices"],
                     projectNotFound: ((meta as any).projectNotFound ?? null) as NexusMessage["projectNotFound"],
                     generatedArtifacts: ((meta as any).generatedArtifacts ?? null) as NexusMessage["generatedArtifacts"],
+                    activeBuild: null, // clear stage stepper once the artifact card takes over
                     runId: ((meta as any).runId as string | undefined) ?? null,
                     executionOutcome: ((meta as any).executionOutcome ?? null) as NexusMessage["executionOutcome"],
                     fileEdit: ((meta as any).fileEdit ?? null) as NexusMessage["fileEdit"],

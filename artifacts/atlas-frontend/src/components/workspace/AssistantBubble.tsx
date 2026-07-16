@@ -2485,34 +2485,108 @@ function AssistantBubbleImpl({
           <TradeoffMatrixCard matrix={message.tradeoffMatrix} />
         )}
 
-        {/* Build visibility — live card during generate_deliverable's 30-60 s render call */}
-        {message.activeBuild && !message.generatedArtifacts?.length && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 10,
-            marginTop: 8, padding: "10px 14px",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.09)",
-            borderRadius: 10,
-          }}>
-            <style>{`@keyframes ab-build-spin { to { transform: rotate(360deg); } }`}</style>
-            <svg
-              width="14" height="14" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="1.8"
-              strokeLinecap="round" strokeLinejoin="round"
-              style={{ opacity: 0.7, flexShrink: 0, animation: "ab-build-spin 1.4s linear infinite" }}
-            >
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 500, opacity: 0.9, letterSpacing: "0.01em" }}>
-                Building {message.activeBuild.title || message.activeBuild.type.toUpperCase()}…
+        {/* Build lifecycle card — Preparing → Building → Styling → Checking → Ready */}
+        {message.activeBuild && !message.generatedArtifacts?.length && (() => {
+          const BUILD_STAGES = ["Preparing", "Building", "Styling", "Checking", "Ready"] as const;
+          const currentStage = message.activeBuild.stage ?? "Preparing";
+          const currentIdx = BUILD_STAGES.indexOf(currentStage as typeof BUILD_STAGES[number]);
+          const isReady = currentStage === "Ready";
+          const hasIssues = isReady && (message.activeBuild.validationIssues?.length ?? 0) > 0;
+          const isDone = isReady && !hasIssues;
+
+          return (
+            <div style={{
+              marginTop: 8,
+              padding: "12px 14px",
+              background: "rgba(255,255,255,0.04)",
+              border: `1px solid ${hasIssues ? "rgba(251,191,36,0.25)" : "rgba(255,255,255,0.09)"}`,
+              borderRadius: 10,
+            }}>
+              <style>{`
+                @keyframes ab-build-spin { to { transform: rotate(360deg); } }
+                @keyframes ab-build-pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
+              `}</style>
+
+              {/* Header row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                {isDone ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : hasIssues ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ opacity: 0.65, flexShrink: 0, animation: "ab-build-spin 1.4s linear infinite" }}>
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                )}
+                <span style={{ fontSize: 12, fontWeight: 500, opacity: isDone ? 0.7 : 0.9, letterSpacing: "0.01em", color: isDone ? "#22c55e" : hasIssues ? "#fbbf24" : "inherit" }}>
+                  {isDone ? `${message.activeBuild.title || message.activeBuild.type.toUpperCase()} — Ready` :
+                   hasIssues ? `${message.activeBuild.title || message.activeBuild.type.toUpperCase()} — Review needed` :
+                   `Building ${message.activeBuild.title || message.activeBuild.type.toUpperCase()}…`}
+                </span>
               </div>
-              <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>
-                Generating your {message.activeBuild.type === "pptx" ? "slide deck" : message.activeBuild.type === "docx" ? "document" : message.activeBuild.type === "xlsx" ? "spreadsheet" : "web app"} — this takes ~30 s
+
+              {/* Stage stepper */}
+              <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                {BUILD_STAGES.map((stage, i) => {
+                  const done = i < currentIdx || isReady;
+                  const active = i === currentIdx && !isReady;
+                  return (
+                    <div key={stage} style={{ display: "flex", alignItems: "center", flex: i < BUILD_STAGES.length - 1 ? 1 : "none" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                        <div style={{
+                          width: 6, height: 6, borderRadius: "50%",
+                          background: done || (isReady && isDone) ? "#22c55e"
+                            : hasIssues && isReady && i === currentIdx ? "#fbbf24"
+                            : active ? "var(--atlas-gold, #c9aa71)"
+                            : "rgba(255,255,255,0.18)",
+                          animation: active ? "ab-build-pulse 1.2s ease-in-out infinite" : "none",
+                          transition: "background 0.3s ease",
+                          flexShrink: 0,
+                        }} />
+                        <span style={{
+                          fontSize: 9, letterSpacing: "0.03em", whiteSpace: "nowrap",
+                          opacity: done || active ? 0.7 : 0.3,
+                          color: done && isDone ? "#22c55e" : hasIssues && i === currentIdx ? "#fbbf24" : "inherit",
+                          fontWeight: active ? 600 : 400,
+                        }}>
+                          {stage}
+                        </span>
+                      </div>
+                      {i < BUILD_STAGES.length - 1 && (
+                        <div style={{
+                          flex: 1, height: 1,
+                          background: i < currentIdx ? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.1)",
+                          margin: "0 3px",
+                          marginBottom: 12,
+                          transition: "background 0.3s ease",
+                        }} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Validation issues (shown when stage=Ready and issues exist) */}
+              {hasIssues && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: 10, opacity: 0.5, marginBottom: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Validation notes</div>
+                  {(message.activeBuild.validationIssues ?? []).map((issue, i) => (
+                    <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", fontSize: 11, opacity: 0.75, marginTop: 3 }}>
+                      <span style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }}>⚠</span>
+                      <span>{issue}</span>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 10, opacity: 0.4, marginTop: 6 }}>Atlas attempted a correction pass — check the output in Draft.</div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {!message.streaming && message.decisionArtifacts?.map((artifact) => (
           <DecisionArtifactCard key={`${artifact.type}-${artifact.id}`} artifact={artifact} />

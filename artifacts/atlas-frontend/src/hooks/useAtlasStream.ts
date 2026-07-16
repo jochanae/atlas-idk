@@ -25,7 +25,14 @@ export interface AtlasStreamCallbacks {
    * (status: "complete" | "failed"). Lets the workspace show a live build card
    * during the 30–60 s renderer call instead of going silent.
    */
-  onBuildProgress?: (data: { type: string; title: string; status: "building" | "complete" | "failed" }) => void;
+  onBuildProgress?: (data: {
+    type: string;
+    title: string;
+    status: "building" | "complete" | "failed";
+    stage?: string;
+    needsReview?: boolean;
+    validationIssues?: string[];
+  }) => void;
   /**
    * Called when an async image event arrives AFTER done.
    * Server sends this once image generation completes so the HUD can update.

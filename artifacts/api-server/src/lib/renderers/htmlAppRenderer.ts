@@ -23,6 +23,15 @@ export interface HtmlAppInput {
   docType?: string;
   projectId?: number;
   styleOverride?: string;
+  /** Optional stage reporter called as the renderer progresses through phases. */
+  onStage?: (stage: "building" | "styling" | "checking") => void;
+}
+
+export interface ValidationResult {
+  issues: string[];
+  tileCount: number;
+  duplicateTitles: string[];
+  checkedAt: string;
 }
 
 const BASE_SYSTEM_PROMPT = `You are an expert frontend developer. Generate a complete, self-contained, production-quality HTML web application based on the conversation context.
@@ -83,7 +92,7 @@ function buildSystemPrompt(contract: DesignContract | null): string {
       lines.push(`- EXACTLY ${r.activityCount} distinct tiles/sections — no more, no fewer, no duplicates`);
     }
     if (r.activities?.length) {
-      lines.push(`- Required activities/sections: ${r.activities.join(", ")}`);
+      lines.push(`- Required activities/sections (must each appear exactly once): ${r.activities.join(", ")}`);
     }
     if (r.notes) lines.push(`- Content rules: ${r.notes}`);
   }
@@ -110,29 +119,94 @@ function parseDesignContract(styleOverride?: string): DesignContract | null {
   }
 }
 
-function validateOutput(html: string, contract: DesignContract | null): string[] {
-  const issues: string[] = [];
+/** Extract heading text from an HTML string (h2 and h3 elements). */
+function extractHeadings(html: string): string[] {
+  const matches = [...html.matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)];
+  return matches.map(m => m[1].replace(/<[^>]+>/g, "").trim().toLowerCase()).filter(Boolean);
+}
 
-  // Plain white background check
-  if (contract?.theme?.mode === "dark") {
-    if (/bg-white\b|background:\s*white\b|background:\s*#fff\b|background:\s*#ffffff\b/i.test(html)) {
-      issues.push("Plain white background detected — contract requires dark mode");
+/** Count tile/card elements — looks for repeated structural card patterns. */
+function countTiles(html: string): number {
+  // Heuristic: count divs with card/tile/activity/item/section class patterns that appear in a grid
+  const cardClass = (html.match(/<div[^>]+class="[^"]*(?:card|tile|activity-card|grid-item|list-item)[^"]*"/gi) ?? []).length;
+  const liItems = (html.match(/<li\b[^>]*>/gi) ?? []).length;
+  // Prefer card count if it's nonzero, otherwise fall back to li count
+  return cardClass > 0 ? cardClass : liItems;
+}
+
+/** Check for duplicate section headings (case-insensitive, normalized). */
+function findDuplicates(headings: string[]): string[] {
+  const seen = new Set<string>();
+  const dupes = new Set<string>();
+  for (const h of headings) {
+    if (seen.has(h)) dupes.add(h);
+    seen.add(h);
+  }
+  return [...dupes];
+}
+
+/** Full structural + contract validation of the generated HTML. */
+function validateOutput(html: string, contract: DesignContract | null): ValidationResult {
+  const issues: string[] = [];
+  const headings = extractHeadings(html);
+  const duplicateTitles = findDuplicates(headings);
+  const tileCount = countTiles(html);
+
+  // Duplicate headings are always a defect
+  if (duplicateTitles.length > 0) {
+    issues.push(`Duplicate section titles detected: ${duplicateTitles.slice(0, 3).join(", ")}`);
+  }
+
+  if (!contract) {
+    return { issues, tileCount, duplicateTitles, checkedAt: new Date().toISOString() };
+  }
+
+  // Dark mode: reject plain white backgrounds
+  if (contract.theme?.mode === "dark") {
+    const whitePattern = /(?:background|background-color)\s*:\s*(?:white|#fff(?:fff)?)\b/i;
+    const bodyStyle = html.match(/<body[^>]+style="([^"]+)"/i)?.[1] ?? "";
+    if (whitePattern.test(bodyStyle) || /class="[^"]*bg-white[^"]*"/.test(html.slice(0, 2000))) {
+      issues.push("Plain white background on body — contract requires dark mode");
     }
   }
 
-  // Exact activity count check
-  if (contract?.contentRules?.activityCount && contract.contentRules.activities?.length) {
-    const activities = contract.contentRules.activities;
-    activities.forEach(activity => {
-      const pattern = new RegExp(activity, "gi");
-      const matches = html.match(pattern) ?? [];
-      if (matches.length > 2) {
-        issues.push(`Activity "${activity}" appears ${matches.length} times — possible duplication`);
+  // Exact tile count
+  if (contract.contentRules?.activityCount != null) {
+    const expected = contract.contentRules.activityCount;
+    if (tileCount > 0 && Math.abs(tileCount - expected) > 1) {
+      issues.push(`Expected ~${expected} tiles, found ~${tileCount}`);
+    }
+  }
+
+  // Required activities must each appear exactly once
+  if (contract.contentRules?.activities?.length) {
+    contract.contentRules.activities.forEach(activity => {
+      const pattern = new RegExp(`\\b${activity.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
+      const count = (html.match(pattern) ?? []).length;
+      if (count === 0) {
+        issues.push(`Required section "${activity}" is missing`);
+      } else if (count > 4) {
+        issues.push(`Section "${activity}" appears ${count} times — possible duplication`);
       }
     });
   }
 
-  return issues;
+  // Prohibited patterns
+  if (contract.prohibited?.length) {
+    contract.prohibited.forEach(item => {
+      const lower = item.toLowerCase();
+      if (lower.includes("white background") || lower.includes("plain white")) return; // covered above
+      if (lower.includes("system emoji") || lower.includes("emoji as icon")) {
+        // Check for common emoji in heading/button contexts — rough heuristic
+        const emojiPattern = /[\u{1F300}-\u{1F9FF}]/u;
+        if (emojiPattern.test(html.slice(0, 5000))) {
+          issues.push(`Prohibited pattern detected: ${item}`);
+        }
+      }
+    });
+  }
+
+  return { issues, tileCount, duplicateTitles, checkedAt: new Date().toISOString() };
 }
 
 function wrapFragment(html: string, title: string): string {
@@ -157,15 +231,11 @@ registerArtifactRenderer({
   render: async (input: HtmlAppInput): Promise<ArtifactRenderOutput> => {
     const title = input.title?.trim() || "Web App";
     const contract = parseDesignContract(input.styleOverride);
+    const onStage = input.onStage;
 
-    const styleNote = contract
-      ? "" // already in system prompt
-      : input.styleOverride
-        ? `\n\nVisual style notes: ${input.styleOverride}`
-        : "";
-
+    const styleNote = contract ? "" : input.styleOverride ? `\n\nVisual style notes: ${input.styleOverride}` : "";
     const contractNote = contract
-      ? "\n\n[CRITICAL: A Design Contract has been provided in the system prompt. It defines the exact visual direction that was approved. You MUST follow every rule in it — especially the prohibited items list and exact tile/activity count.]"
+      ? "\n\n[CRITICAL: A Design Contract has been provided in the system prompt. Follow every rule — especially the prohibited items and exact tile count.]"
       : "";
 
     const userPrompt = `${input.context}${styleNote}${contractNote}
@@ -178,6 +248,9 @@ Include every feature, interaction, and visual detail discussed. Ship the full w
 
     logger.info({ projectId: input.projectId, title, hasContract: !!contract }, "htmlAppRenderer: generating web app");
 
+    // ── Stage: Building ──────────────────────────────────────────────────────
+    onStage?.("building");
+
     const response = await anthropic.messages.create({
       model: "claude-opus-4-5",
       max_tokens: 12000,
@@ -186,17 +259,15 @@ Include every feature, interaction, and visual detail discussed. Ship the full w
     });
 
     const raw = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
-    if (!raw) {
-      throw new Error("htmlAppRenderer: generation produced no output");
-    }
+    if (!raw) throw new Error("htmlAppRenderer: generation produced no output");
 
-    const html = raw
-      .replace(/^```html?\n?/i, "")
-      .replace(/\n?```$/, "")
-      .trim();
-
+    const html = raw.replace(/^```html?\n?/i, "").replace(/\n?```$/, "").trim();
     const truncated = response.stop_reason === "max_tokens";
     const finalHtml = wrapFragment(html, title);
+
+    // ── Stage: Styling ───────────────────────────────────────────────────────
+    // Post-process: wrap fragment, detect structural completeness
+    onStage?.("styling");
 
     const hasBalancedTags = (() => {
       const open = (finalHtml.match(/<(html|body)\b/gi) ?? []).length;
@@ -208,14 +279,17 @@ Include every feature, interaction, and visual detail discussed. Ship the full w
     if (truncated) reviewReasons.push("Generation may have been cut off before completing.");
     if (!hasBalancedTags) reviewReasons.push("HTML structure looks unbalanced — may need a check.");
 
-    // Structural validation against design contract
-    const contractViolations = validateOutput(finalHtml, contract);
-    if (contractViolations.length > 0) {
-      logger.warn({ projectId: input.projectId, contractViolations }, "htmlAppRenderer: contract violations detected");
+    // ── Stage: Checking ──────────────────────────────────────────────────────
+    onStage?.("checking");
 
-      // Retry once with explicit correction instructions
+    const validation = validateOutput(finalHtml, contract);
+
+    if (validation.issues.length > 0) {
+      logger.warn({ projectId: input.projectId, issues: validation.issues }, "htmlAppRenderer: contract violations detected");
+
+      // Retry once with explicit correction prompt
       try {
-        const correctionPrompt = `The generated HTML has these issues that violate the approved Design Contract:\n${contractViolations.map(v => `- ${v}`).join("\n")}\n\nPlease fix ONLY these specific issues and regenerate the complete HTML file. Keep all other content and functionality identical.`;
+        const correctionPrompt = `The generated HTML has these issues that violate the approved Design Contract:\n${validation.issues.map(v => `- ${v}`).join("\n")}\n\nFix ONLY these specific issues and regenerate the complete HTML file. Keep all other content and functionality identical.`;
 
         const retryResponse = await anthropic.messages.create({
           model: "claude-opus-4-5",
@@ -230,44 +304,46 @@ Include every feature, interaction, and visual detail discussed. Ship the full w
 
         const retryRaw = retryResponse.content[0]?.type === "text" ? retryResponse.content[0].text.trim() : "";
         if (retryRaw) {
-          const retryHtml = wrapFragment(
-            retryRaw.replace(/^```html?\n?/i, "").replace(/\n?```$/, "").trim(),
-            title
-          );
-          const stillViolating = validateOutput(retryHtml, contract);
-          if (stillViolating.length === 0) {
-            logger.info({ projectId: input.projectId }, "htmlAppRenderer: retry fixed contract violations");
+          const retryHtml = wrapFragment(retryRaw.replace(/^```html?\n?/i, "").replace(/\n?```$/, "").trim(), title);
+          const retryValidation = validateOutput(retryHtml, contract);
+          if (retryValidation.issues.length === 0) {
+            logger.info({ projectId: input.projectId }, "htmlAppRenderer: retry fixed all violations");
             return {
               buffer: Buffer.from(retryHtml, "utf-8"),
               title,
               mimeType: "text/html",
               extension: "html",
               status: "generated",
-              preview: { safe: true, reasons: [], html: retryHtml },
+              preview: { safe: true, reasons: [], html: retryHtml, validation: retryValidation },
               summary: `Self-contained web app generated: ${title}.`,
             };
           }
+          // Still has issues after retry — surface them but don't block
+          validation.issues = retryValidation.issues;
         }
-        reviewReasons.push(`Design contract violations remain: ${contractViolations[0]}`);
       } catch (retryErr) {
         logger.warn({ retryErr }, "htmlAppRenderer: retry attempt failed");
-        reviewReasons.push(`Design contract violations detected: ${contractViolations[0]}`);
       }
+
+      reviewReasons.push(...validation.issues.slice(0, 2));
     }
+
+    const status = reviewReasons.length === 0 ? "generated" : "needs_review";
 
     return {
       buffer: Buffer.from(finalHtml, "utf-8"),
       title,
       mimeType: "text/html",
       extension: "html",
-      status: reviewReasons.length === 0 ? "generated" : "needs_review",
+      status,
       preview: {
-        safe: reviewReasons.length === 0,
+        safe: status === "generated",
         reasons: reviewReasons,
         html: finalHtml,
+        validation,
       },
       summary:
-        reviewReasons.length === 0
+        status === "generated"
           ? `Self-contained web app generated: ${title}.`
           : `Generated (review recommended): ${reviewReasons[0]}`,
     };
