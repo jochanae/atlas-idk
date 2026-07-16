@@ -28,6 +28,7 @@ import CodePage from "./pages/code";
 import ConnectorsPage from "./pages/connectors";
 import MasterMap from "./pages/master-map";
 import RunPage from "./pages/run";
+import CommitPage from "./pages/commit";
 
 import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
@@ -273,6 +274,7 @@ function Router() {
           <Route path="/master-map" component={MasterMap} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/runs/:id" component={RunPage} />
+          <Route path="/commits/:projectId/:sha" component={CommitPage} />
           <Route path="/showcase" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route component={NotFound} />
         </Switch>

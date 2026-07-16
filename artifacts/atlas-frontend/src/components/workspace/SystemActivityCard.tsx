@@ -122,11 +122,11 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
     if (url) window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  // Details stays inside Atlas. Until the backend SHA→runId mapping ships
-  // (handoff: 2026-07-16-run-receipts-slice1-backend), we can't resolve a
-  // commit's runId from the client alone, so Details is disabled with a
-  // "Linking to run…" tooltip instead of routing to a broken page.
-  const detailsHref: string | undefined = undefined;
+  // Details stays inside Atlas. Route to /commits/:projectId/:sha which renders
+  // the commit's files + diffs scoped to this exact commit via GitHub API.
+  const detailsHref: string | undefined = item.sha && item.projectId
+    ? `/commits/${item.projectId}/${item.sha}`
+    : undefined;
   const goInternal = (href?: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -177,7 +177,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           type="button"
           onClick={goInternal(detailsHref)}
           disabled={!detailsHref}
-          title={detailsHref ? "Open run details in Atlas" : "Linking to run…"}
+          title={detailsHref ? "Open commit changes in Atlas" : "No commit reference"}
           style={{
             padding: "8px 10px",
             background: "transparent",
