@@ -122,11 +122,23 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
     if (url) window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  // Details stays inside Atlas. Until the backend SHA→runId mapping ships
+  // (handoff: 2026-07-16-run-receipts-slice1-backend), we can't resolve a
+  // commit's runId from the client alone, so Details is disabled with a
+  // "Linking to run…" tooltip instead of routing to a broken page.
+  const detailsHref: string | undefined = undefined;
+  const goInternal = (href?: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (href) window.location.assign(href);
+  };
+
   return (
     <div
       style={{
         display: "flex", flexDirection: "column",
-        width: "100%", maxWidth: 540,
+        width: "min(100%, 340px)",
+        alignSelf: "flex-start",
         margin: "8px 0 16px",
         background: "rgba(var(--atlas-surface-rgb,30,30,30),0.55)",
         border,
@@ -137,55 +149,42 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
     >
       {/* Header row */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "12px 14px 10px",
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "10px 12px 8px",
       }}>
-        <GitHubMark size={15} color="var(--atlas-fg)" />
+        <GitHubMark size={13} color="var(--atlas-fg)" />
         <span style={{
           flex: 1, minWidth: 0,
-          fontSize: 13, lineHeight: 1.4, color: "var(--atlas-fg)",
+          fontSize: 12, lineHeight: 1.35, color: "var(--atlas-fg)",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {item.title}
         </span>
         <span style={{
-          fontSize: 10, fontFamily: "var(--app-font-mono)",
+          fontSize: 9, fontFamily: "var(--app-font-mono)",
           color: "var(--atlas-muted)", opacity: 0.55, flexShrink: 0,
         }}>
           {relTime(item.timestamp)}
         </span>
       </div>
 
-      {/* Optional subtitle / body preview */}
-      {item.subtitle && (
-        <div style={{
-          padding: "0 14px 10px",
-          fontSize: 11, lineHeight: 1.5,
-          color: "var(--atlas-muted)", opacity: 0.75,
-          whiteSpace: "pre-wrap",
-          overflow: "hidden",
-          maxHeight: 60,
-        }}>
-          {item.subtitle}
-        </div>
-      )}
-
       {/* Actions */}
       <div style={{
-        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8,
-        padding: "0 12px 12px",
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6,
+        padding: "0 10px 10px",
       }}>
         <button
           type="button"
-          onClick={openUrl(commitUrl)}
-          disabled={!commitUrl}
+          onClick={goInternal(detailsHref)}
+          disabled={!detailsHref}
+          title={detailsHref ? "Open run details in Atlas" : "Linking to run…"}
           style={{
-            padding: "9px 12px",
+            padding: "8px 10px",
             background: "transparent",
             border: "0.5px solid rgba(var(--atlas-border-rgb,80,80,80),0.6)",
             borderRadius: 6,
-            color: commitUrl ? "var(--atlas-fg)" : "var(--atlas-muted)",
-            fontSize: 12, cursor: commitUrl ? "pointer" : "not-allowed",
+            color: detailsHref ? "var(--atlas-fg)" : "var(--atlas-muted)",
+            fontSize: 11, cursor: detailsHref ? "pointer" : "not-allowed",
             fontFamily: "inherit",
           }}
         >
@@ -193,19 +192,22 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
         </button>
         <button
           type="button"
-          onClick={openUrl(filesUrl)}
-          disabled={!filesUrl}
+          onClick={openUrl(commitUrl)}
+          disabled={!commitUrl}
+          title={commitUrl ? "Open commit on GitHub" : ""}
           style={{
-            padding: "9px 12px",
+            padding: "8px 10px",
             background: "transparent",
             border: "0.5px solid rgba(var(--atlas-border-rgb,80,80,80),0.6)",
             borderRadius: 6,
-            color: filesUrl ? "var(--atlas-fg)" : "var(--atlas-muted)",
-            fontSize: 12, cursor: filesUrl ? "pointer" : "not-allowed",
+            color: commitUrl ? "var(--atlas-fg)" : "var(--atlas-muted)",
+            fontSize: 11, cursor: commitUrl ? "pointer" : "not-allowed",
             fontFamily: "inherit",
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
           }}
         >
-          Preview
+          <GitHubMark size={11} color="currentColor" />
+          GitHub
         </button>
       </div>
     </div>
