@@ -237,6 +237,7 @@ export function ArtifactsPanel({ projectId }: { projectId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | number | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [subTab, setSubTab] = useState<"outputs" | "artifacts">("outputs");
   const [searchQuery, setSearchQuery] = useState("");
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [draftMenuOpen, setDraftMenuOpen] = useState(false);
