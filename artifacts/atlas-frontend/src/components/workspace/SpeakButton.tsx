@@ -73,6 +73,7 @@ export function SpeakButton({
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceURI, setVoiceURI] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
   const queueRef = useRef<string[]>([]);
   const idxRef = useRef(0);
