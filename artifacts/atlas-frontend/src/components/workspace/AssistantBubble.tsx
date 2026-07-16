@@ -28,6 +28,7 @@ import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import { DecisionCatchCard } from "./DecisionCatchCard";
 import { DecisionArtifactCard } from "./DecisionArtifactCard";
+import { SpeakButton } from "./SpeakButton";
 import { detectPlanFromText } from "../../lib/plan";
 import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../../lib/plan";
 import { DecisionGateCard } from "./DecisionGateCard";
