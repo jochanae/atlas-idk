@@ -1,7 +1,8 @@
 /**
  * WorkspaceReceiptsBar — surfaces thinking receipts from the Ask Atlas
- * conversation that spawned this project. Shown at the top of the workspace
- * chat, collapsed by default after first view.
+ * conversation that spawned this project. Anchored at the bottom-left of the
+ * conversation column (above the composer / mobile footer), collapsed by
+ * default after first view.
  *
  * Phase 6: each card has a "→ Ledger" action that promotes the receipt to
  * a committed Decision entry via POST /api/projects/:id/entries.
@@ -330,13 +331,18 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
   return (
     <div
       style={{
-        padding: "10px 16px 0",
+        padding: "6px 16px 8px",
         display: "flex",
         flexDirection: "column",
         gap: 8,
+        flexShrink: 0,
+        alignItems: "stretch",
       }}
     >
-      {/* Header row */}
+      {/* Divider — separates stream/content above from the bottom-anchored thread */}
+      <div style={{ height: 1, background: "rgba(255,255,255,0.05)", marginBottom: 2 }} />
+
+      {/* Header row — bottom-left, above composer / mobile footer */}
       <button
         onClick={toggleCollapsed}
         style={{
@@ -348,6 +354,7 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
           alignItems: "center",
           gap: 7,
           color: "inherit",
+          alignSelf: "flex-start",
         }}
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ opacity: hasStable ? 0.9 : 0.55 }}>
@@ -385,14 +392,14 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
         </svg>
       </button>
 
-      {/* Receipt cards — horizontal scroll row */}
+      {/* Receipt cards — horizontal scroll row, expands upward from the footer rail */}
       {!collapsed && (
         <div
           style={{
             display: "flex",
             gap: 8,
             overflowX: "auto",
-            paddingBottom: 6,
+            paddingBottom: 2,
           }}
           className="scrollbar-none"
         >
@@ -406,9 +413,6 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
           ))}
         </div>
       )}
-
-      {/* Divider */}
-      <div style={{ height: 1, background: "rgba(255,255,255,0.05)", marginTop: 2 }} />
     </div>
   );
 }
