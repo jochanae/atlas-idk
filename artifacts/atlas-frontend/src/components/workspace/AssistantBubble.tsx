@@ -2995,6 +2995,16 @@ function AssistantBubbleImpl({
           execution state machine (executionOutcome present + code != NOT_STARTED). */}
       {!message.streaming && message.executionOutcome && message.executionOutcome.code !== "NOT_STARTED" && (() => {
         const oc = message.executionOutcome!;
+        const hasMutationEvidence = Boolean(
+          (message.fileEdits && message.fileEdits.length > 0) ||
+          message.fileEdit ||
+          (message.linePatches && message.linePatches.length > 0) ||
+          (message.fileDeletes && message.fileDeletes.length > 0) ||
+          message.githubPush,
+        );
+        if ((oc.code === "CAUSE_CONFIRMED" || oc.code === "CHANGE_PROPOSED" || oc.code === "CHANGE_APPLIED") && !hasMutationEvidence) {
+          return null;
+        }
         const isComplete = oc.complete;
         const isFailed = oc.code === "FAILED" || oc.code === "BLOCKED";
         const dotColor = isComplete
