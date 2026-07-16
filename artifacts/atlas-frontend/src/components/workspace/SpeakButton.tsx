@@ -183,6 +183,8 @@ export function SpeakButton({
     longPressTimer.current = window.setTimeout(() => {
       longPressedRef.current = true;
       if (voices.length > 0) setMenuOpen(true);
+      setShowHint(false);
+      try { localStorage.setItem(HINT_STORAGE_KEY, "1"); } catch {}
       try { navigator.vibrate?.(20); } catch {}
     }, LONG_PRESS_MS);
   };
