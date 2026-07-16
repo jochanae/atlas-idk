@@ -1,35 +1,46 @@
 /**
  * Slice 2 — Outputs classification (pure, table-driven).
  *
- * NOT WIRED YET. This module classifies a raw output/artifact row into a
- * canonical `kind`, human-readable `tags`, and inclusion flags for the
- * All Outputs and Artifacts galleries. Slice 3 will consume it; today it
- * exists only so we can prove the taxonomy against real data via tests.
+ * NOT WIRED YET. Slice 3 consumes this in the galleries.
  *
- * Input domain (from production inventory, 2026-07-16, 242 rows):
+ * ── Input domain ─────────────────────────────────────────────────────
  *
- *   source          | type              | extension | count | notes
- *   ----------------|-------------------|-----------|-------|------
- *   null            | history_snapshot  | null      | 226   | pre-artifact-engine
- *   artifact-engine | pptx              | pptx      | 7     |
- *   null            | visual_sketch     | null      | 3     | pre-artifact-engine
- *   artifact-engine | draft_email       | md        | 2     | type discriminates from draft_pr
- *   artifact-engine | draft_pr          | md        | 1     | type discriminates from draft_email
- *   artifact-engine | mermaid           | mmd       | 1     |
- *   artifact-engine | pdf               | pdf       | 1     |
- *   artifact-engine | xlsx              | xlsx      | 1     |
+ * Production inventory (2026-07-16, 242 rows):
  *
- * Not in production yet, expected post-deploy — rules included so the table
- * is exhaustive on the day the deploy lands:
+ *   source          | type              | extension | count
+ *   ----------------|-------------------|-----------|------
+ *   null            | history_snapshot  | null      | 226
+ *   artifact-engine | pptx              | pptx      | 7
+ *   null            | visual_sketch     | null      | 3
+ *   artifact-engine | draft_email       | md        | 2
+ *   artifact-engine | draft_pr          | md        | 1
+ *   artifact-engine | mermaid           | mmd       | 1
+ *   artifact-engine | pdf               | pdf       | 1
+ *   artifact-engine | xlsx              | xlsx      | 1
  *
- *   artifact-engine | html-app          | html      | dev only (Axiom Activity Ledger)
- *   artifact-engine | html_preview      | html      | dev alias
- *   artifact-engine | docx              | docx      | dev only (IntoIQ)
+ * Dev-only (will hit production after next deploy) — cross-referenced
+ * against backend types in artifacts/api-server/src/lib/library.ts and
+ * artifacts/api-server/src/index.ts:1329, which whitelist:
+ *   'html-app', 'html', 'html_preview', 'mermaid', 'chart'
  *
- * Rules are strictly matched against (source, type, extension). No content
- * or title string sniffing. If a row does not match any rule it falls to
- * `other` and is excluded from Artifacts by default so unknown data never
- * surfaces in a technical surface it wasn't designed for.
+ *   artifact-engine | html-app          | html      | Axiom Activity Ledger
+ *   artifact-engine | html_preview      | html      | alias
+ *   artifact-engine | html              | html      | raw HTML renderer (htmlRenderer.ts)
+ *   artifact-engine | docx              | docx      | IntoIQ items
+ *   artifact-engine | chart             | *         | chart renderer (post-deploy)
+ *
+ * ── Source-column caveat ─────────────────────────────────────────────
+ *
+ * The frontend ArtifactRecord does not carry the DB `source` column
+ * (it repurposes the field name for "project" | "legacy" routing).
+ * Therefore the artifact-engine family uses source="*" — type and
+ * extension are unique enough to discriminate safely. The two
+ * pre-artifact-engine types (history_snapshot, visual_sketch) keep
+ * strict null-source matching because their type names could in
+ * theory collide with future artifact-engine variants.
+ *
+ * No content/title string sniffing. Unknown rows → `other`, excluded
+ * from both surfaces, with a traceable `reason`.
  */
 
 export type OutputKind =
@@ -44,6 +55,7 @@ export type OutputKind =
   | "pdf"
   | "image"
   | "diagram"
+  | "chart"
   | "snapshot"
   | "sketch"
   | "other";
@@ -52,9 +64,6 @@ export interface ClassifyInput {
   source?: string | null;
   type?: string | null;
   extension?: string | null;
-  // Optional metadata bag; today only `extension` is consulted, but callers
-  // often have the whole `metadata` object handy. If `extension` is empty
-  // we fall back to `metadata.extension`.
   metadata?: { extension?: string | null; [k: string]: unknown } | null;
 }
 
@@ -63,27 +72,23 @@ export interface Classification {
   tags: string[];
   includedInOutputs: boolean;
   includedInArtifacts: boolean;
-  /** Which rule matched, for debugging and Slice-3 wiring verification. */
   reason: string;
 }
 
 interface Rule {
   id: string;
-  source?: string | null | "*";
+  /** `"*"` = any (including null). Explicit null = must be null/empty. */
+  source: string | null | "*";
   type: string;
-  extension?: string | null | "*";
+  extension: string | null | "*";
   result: Omit<Classification, "reason">;
 }
 
 const norm = (v: string | null | undefined): string =>
   (v ?? "").trim().toLowerCase();
 
-/**
- * Rule table — ordered. First match wins. `*` means "any value including
- * null". Explicit null means "must be null/empty".
- */
 const RULES: Rule[] = [
-  // ── Pre-artifact-engine rows (source is null) ─────────────────────────
+  // ── Pre-artifact-engine rows (strict null source) ─────────────────────
   {
     id: "history_snapshot",
     source: null,
@@ -92,8 +97,7 @@ const RULES: Rule[] = [
     result: {
       kind: "snapshot",
       tags: ["Snapshot"],
-      // 226/242 rows — bulk of the table. Per plan.md classification
-      // cleanup: timeline-only, not an Output.
+      // 226/242 rows — timeline-only per plan.md.
       includedInOutputs: false,
       includedInArtifacts: false,
     },
@@ -105,16 +109,17 @@ const RULES: Rule[] = [
     extension: null,
     result: {
       kind: "sketch",
-      tags: ["Sketch"],
+      tags: ["Visual sketch"],
+      // Amended 2026-07-16: generated visual artifact — belongs in both.
       includedInOutputs: true,
-      includedInArtifacts: false,
+      includedInArtifacts: true,
     },
   },
 
-  // ── Artifact-engine rows ──────────────────────────────────────────────
+  // ── Artifact-engine family (source wildcard; type+ext discriminate) ──
   {
     id: "html-app",
-    source: "artifact-engine",
+    source: "*",
     type: "html-app",
     extension: "html",
     result: {
@@ -126,7 +131,7 @@ const RULES: Rule[] = [
   },
   {
     id: "html_preview_alias",
-    source: "artifact-engine",
+    source: "*",
     type: "html_preview",
     extension: "html",
     result: {
@@ -137,8 +142,47 @@ const RULES: Rule[] = [
     },
   },
   {
+    // Amended 2026-07-16: raw type="html" (backend htmlRenderer emits this)
+    // classifies as html-app so Slice-4 Draft deep-link works uniformly.
+    id: "html_raw",
+    source: "*",
+    type: "html",
+    extension: "html",
+    result: {
+      kind: "html-app",
+      tags: ["Prototype · Interactive"],
+      includedInOutputs: true,
+      includedInArtifacts: true,
+    },
+  },
+  {
+    id: "mermaid",
+    source: "*",
+    type: "mermaid",
+    extension: "mmd",
+    result: {
+      kind: "diagram",
+      tags: ["Diagram · Mermaid"],
+      // Amended 2026-07-16: renderable technical diagram — belongs in both.
+      includedInOutputs: true,
+      includedInArtifacts: true,
+    },
+  },
+  {
+    id: "chart",
+    source: "*",
+    type: "chart",
+    extension: "*",
+    result: {
+      kind: "chart",
+      tags: ["Chart"],
+      includedInOutputs: true,
+      includedInArtifacts: true,
+    },
+  },
+  {
     id: "pptx",
-    source: "artifact-engine",
+    source: "*",
     type: "pptx",
     extension: "pptx",
     result: {
@@ -150,7 +194,7 @@ const RULES: Rule[] = [
   },
   {
     id: "xlsx",
-    source: "artifact-engine",
+    source: "*",
     type: "xlsx",
     extension: "xlsx",
     result: {
@@ -162,7 +206,7 @@ const RULES: Rule[] = [
   },
   {
     id: "pdf",
-    source: "artifact-engine",
+    source: "*",
     type: "pdf",
     extension: "pdf",
     result: {
@@ -174,7 +218,7 @@ const RULES: Rule[] = [
   },
   {
     id: "docx",
-    source: "artifact-engine",
+    source: "*",
     type: "docx",
     extension: "docx",
     result: {
@@ -185,21 +229,8 @@ const RULES: Rule[] = [
     },
   },
   {
-    id: "mermaid",
-    source: "artifact-engine",
-    type: "mermaid",
-    extension: "mmd",
-    result: {
-      kind: "diagram",
-      tags: ["Diagram · Mermaid"],
-      includedInOutputs: true,
-      includedInArtifacts: false,
-    },
-  },
-  // draft_email and draft_pr both have extension="md" — type discriminates.
-  {
     id: "draft_email",
-    source: "artifact-engine",
+    source: "*",
     type: "draft_email",
     extension: "md",
     result: {
@@ -211,7 +242,7 @@ const RULES: Rule[] = [
   },
   {
     id: "draft_pr",
-    source: "artifact-engine",
+    source: "*",
     type: "draft_pr",
     extension: "md",
     result: {
@@ -235,7 +266,7 @@ function matches(rule: Rule, src: string, type: string, ext: string): boolean {
   const extOk =
     rule.extension === "*"
       ? true
-      : rule.extension === null || rule.extension === undefined
+      : rule.extension === null
         ? ext === ""
         : norm(rule.extension) === ext;
   return extOk;
@@ -261,5 +292,4 @@ export function classify(input: ClassifyInput): Classification {
   };
 }
 
-/** Exposed for tests + Slice-3 debugging. */
 export const __RULES__ = RULES;
