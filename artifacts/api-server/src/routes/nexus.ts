@@ -1636,7 +1636,6 @@ async function persistNexusExecutionRun(args: {
     // Reuse the pre-inserted `running` row when the handler minted a runId at
     // turn start; otherwise mint a fresh one for the completion insert path.
     const runId = args.runId ?? randomUUID();
-    const preInserted = !!args.runId;
 
     // A target looks like a file path if it has no spaces and contains "/" or a file extension
     const isFilePath = (t: string | null | undefined) =>
