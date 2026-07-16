@@ -4560,9 +4560,20 @@ export default function Workspace() {
     return "chat";
   });
   useEffect(() => { workspaceEventBus.emit("tab-change", { tab: leftTab }); }, [leftTab]);
+  const [urlTick, setUrlTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setUrlTick((t) => t + 1);
+    window.addEventListener("popstate", bump);
+    return () => window.removeEventListener("popstate", bump);
+  }, []);
   const focusedRunId = (() => {
     try { return new URLSearchParams(window.location.search).get("runId"); } catch { return null; }
   })();
+  const focusedCommitSha = (() => {
+    try { return new URLSearchParams(window.location.search).get("commitSha"); } catch { return null; }
+  })();
+  void urlTick;
+
   const [subheaderOpen, setSubheaderOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "manifest" | "insights" | "memory" | "connections" | "artifacts" | "mcp" | "write">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
@@ -6947,23 +6958,29 @@ export default function Workspace() {
   // Routes the workspace to the Changes/Diff panel (which hosts Timeline | Changes).
   useEffect(() => {
     const handler = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ runId?: string }>).detail ?? {};
+      const detail = (ev as CustomEvent<{ runId?: string; commitSha?: string; lens?: string }>).detail ?? {};
       setLeftTab("diff");
       if (isMobile) {
         setMobileTab("chat");
         setRightOpen(false);
       }
-      if (detail.runId) {
-        try {
-          const url = new URL(window.location.href);
-          url.searchParams.set("runId", detail.runId);
-          window.history.replaceState({}, "", url.toString());
-        } catch {}
-      }
+      try {
+        const url = new URL(window.location.href);
+        if (detail.runId) url.searchParams.set("runId", detail.runId);
+        if (detail.commitSha) {
+          url.searchParams.set("commitSha", detail.commitSha);
+          url.searchParams.delete("runId");
+        } else if (detail.runId) {
+          url.searchParams.delete("commitSha");
+        }
+        window.history.replaceState({}, "", url.toString());
+        setUrlTick((t) => t + 1);
+      } catch {}
     };
     window.addEventListener("axiom:open-changes", handler);
     return () => window.removeEventListener("axiom:open-changes", handler);
   }, [isMobile]);
+
 
   // "axiom:open-output" — dispatched from Timeline artifact rows.
   // Routes to the Outputs panel and asks OutputsPanel to expand the target item.
@@ -8976,9 +8993,11 @@ export default function Workspace() {
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 runId={focusedRunId}
+                commitSha={focusedCommitSha}
                 projectName={project?.name ?? null}
                 conversationId={conversationId ?? null}
               />
+
             </div>
           ) : leftTab === "terminal" ? (
             <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} projectId={project?.id} entries={entries || []} />

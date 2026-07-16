@@ -122,15 +122,16 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
     if (url) window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  // Details stays inside Atlas. Route to /commits/:projectId/:sha which renders
-  // the commit's files + diffs scoped to this exact commit via GitHub API.
-  const detailsHref: string | undefined = item.sha && item.projectId
-    ? `/commits/${item.projectId}/${item.sha}`
-    : undefined;
-  const goInternal = (href?: string) => (e: React.MouseEvent) => {
+  // Details stays inside Atlas. Opens the workspace Changes tab scoped to this
+  // commit SHA via the axiom:open-changes event (same channel as run cards).
+  const canOpenDetails = !!item.sha;
+  const openDetails = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (href) window.location.assign(href);
+    if (!item.sha) return;
+    window.dispatchEvent(new CustomEvent("axiom:open-changes", {
+      detail: { commitSha: item.sha, lens: "changes" },
+    }));
   };
 
   return (
@@ -150,7 +151,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
       {/* Header row */}
       <div style={{
         display: "flex", alignItems: "center", gap: 8,
-        padding: "10px 12px 8px",
+        padding: "14px 14px 10px",
       }}>
         <GitHubMark size={13} color="var(--atlas-fg)" />
         <span style={{
@@ -171,20 +172,20 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
       {/* Actions */}
       <div style={{
         display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6,
-        padding: "0 10px 10px",
+        padding: "2px 12px 14px",
       }}>
         <button
           type="button"
-          onClick={goInternal(detailsHref)}
-          disabled={!detailsHref}
-          title={detailsHref ? "Open commit changes in Atlas" : "No commit reference"}
+          onClick={openDetails}
+          disabled={!canOpenDetails}
+          title={canOpenDetails ? "Open changes for this commit" : "No commit reference"}
           style={{
-            padding: "8px 10px",
+            padding: "10px 10px",
             background: "transparent",
             border: "0.5px solid rgba(var(--atlas-border-rgb,80,80,80),0.6)",
             borderRadius: 6,
-            color: detailsHref ? "var(--atlas-fg)" : "var(--atlas-muted)",
-            fontSize: 11, cursor: detailsHref ? "pointer" : "not-allowed",
+            color: canOpenDetails ? "var(--atlas-fg)" : "var(--atlas-muted)",
+            fontSize: 11, cursor: canOpenDetails ? "pointer" : "not-allowed",
             fontFamily: "inherit",
           }}
         >
@@ -196,7 +197,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           disabled={!commitUrl}
           title={commitUrl ? "Open commit on GitHub" : ""}
           style={{
-            padding: "8px 10px",
+            padding: "10px 10px",
             background: "transparent",
             border: "0.5px solid rgba(var(--atlas-border-rgb,80,80,80),0.6)",
             borderRadius: 6,
@@ -213,6 +214,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
     </div>
   );
 }
+
 
 /** Single inline system event. Commit → full card, other → inline receipt. */
 export function SystemActivityCard({ item, isLatest }: { item: ActivityItem; isLatest?: boolean }) {

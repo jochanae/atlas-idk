@@ -1062,6 +1062,7 @@ interface Props {
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
   runId?: string | null;
+  commitSha?: string | null;
   projectName?: string | null;
   /** Active conversation UUID — scopes Timeline/Changes to this thread. */
   conversationId?: string | null;
@@ -1074,9 +1075,11 @@ export function ViewChangesPanel({
   pushHistory: _pushHistory,
   onRollbackPush: _onRollbackPush,
   runId,
+  commitSha,
   projectName,
   conversationId,
 }: Props) {
+
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
   const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId, { conversationId });
@@ -1128,6 +1131,63 @@ export function ViewChangesPanel({
     setLensAutoSet(false);
     setLens("timeline");
   }, [runId]);
+
+  // Commit-focused mode: fetch the GitHub commit's file diffs and force Changes lens.
+  const [commitRows, setCommitRows] = useState<FileRow[]>([]);
+  const [commitLoading, setCommitLoading] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
+  const [commitMeta, setCommitMeta] = useState<{ shortSha: string; message: string } | null>(null);
+  useEffect(() => {
+    if (!commitSha || !projectId) {
+      setCommitRows([]);
+      setCommitMeta(null);
+      setCommitError(null);
+      return;
+    }
+    setLens("changes");
+    setLensAutoSet(true);
+    let cancelled = false;
+    setCommitLoading(true);
+    fetch(`/api/projects/${projectId}/commits/${commitSha}`, { credentials: "include" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Commit fetch failed (${r.status})`);
+        return r.json() as Promise<{
+          shortSha: string; message: string;
+          files: { filename: string; status: string; additions: number; deletions: number; patch: string | null }[];
+        }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setCommitMeta({ shortSha: data.shortSha, message: data.message?.split("\n")[0] ?? "" });
+        setCommitRows(data.files.map((f) => ({
+          path: f.filename,
+          summary: f.status === "added" ? "added"
+            : f.status === "removed" ? "deleted"
+            : f.status === "renamed" ? "renamed"
+            : `+${f.additions} −${f.deletions}`,
+          messageId: `commit:${commitSha}:${f.filename}`,
+          projectId,
+          content: f.patch ?? null,
+          beforeContent: null,
+          verb: f.status === "removed" ? "FILE_DELETE" : "FILE_EDIT",
+        })));
+        setCommitError(null);
+      })
+      .catch((err) => { if (!cancelled) setCommitError(err instanceof Error ? err.message : "Failed to load commit"); })
+      .finally(() => { if (!cancelled) setCommitLoading(false); });
+    return () => { cancelled = true; };
+  }, [commitSha, projectId]);
+
+  const clearCommitFilter = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("commitSha");
+      window.history.replaceState({}, "", url.toString());
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } catch {}
+  };
+
+
 
   // Changes lens: in-memory message fallback for paths not yet in the DB.
   const filteredMessages = useMemo(() => {
@@ -1231,6 +1291,43 @@ export function ViewChangesPanel({
         </div>
       )}
 
+      {/* ── Commit pill ── */}
+      {commitSha && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "10px 14px",
+          borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
+          background: "rgba(var(--atlas-gold-rgb), 0.04)",
+        }}>
+          <span style={{
+            fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            color: "var(--atlas-gold)", opacity: 0.75,
+          }}>Commit</span>
+          <span style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 11,
+            color: "var(--atlas-fg)", opacity: 0.9,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            flex: 1, minWidth: 0,
+          }}>
+            {commitMeta?.shortSha ?? commitSha.slice(0, 7)}
+            {commitMeta?.message ? ` · ${commitMeta.message}` : ""}
+          </span>
+          <button
+            type="button" onClick={clearCommitFilter} aria-label="Clear commit filter"
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              background: "transparent", border: "1px solid rgba(var(--atlas-gold-rgb), 0.25)",
+              color: "var(--atlas-muted)", cursor: "pointer",
+              padding: "3px 7px", borderRadius: 3,
+              fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+              letterSpacing: "0.08em", textTransform: "uppercase",
+            }}
+          ><X size={10} strokeWidth={1.8} /> Clear</button>
+        </div>
+      )}
+
+
       <WorkspaceRunReceipts
         projectId={projectId}
         projectName={projectName?.trim() || "Workspace"}
@@ -1286,7 +1383,19 @@ export function ViewChangesPanel({
       </div>
 
       {/* ── Body ── */}
-      {lens === "timeline" ? (
+      {commitSha ? (
+        commitLoading && commitRows.length === 0 ? (
+          <div style={{ padding: "18px 14px", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.6 }}>
+            Loading commit changes…
+          </div>
+        ) : commitError ? (
+          <div style={{ padding: "18px 14px", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.6 }}>
+            {commitError}
+          </div>
+        ) : (
+          <ChangesLens rows={commitRows} projectId={projectId} runStatus="succeeded" />
+        )
+      ) : lens === "timeline" ? (
         timelineRun ? (
           <RunTimeline run={timelineRun} />
         ) : (
@@ -1300,6 +1409,7 @@ export function ViewChangesPanel({
       ) : (
         <ChangesLens rows={changeRows} projectId={projectId} runStatus={timelineRun?.status} />
       )}
+
     </div>
   );
 }
