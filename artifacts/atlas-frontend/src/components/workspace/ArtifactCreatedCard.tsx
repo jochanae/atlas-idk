@@ -136,7 +136,7 @@ function HtmlAppCard({ artifact, projectId, onOpen }: Props) {
             <Download size={12} strokeWidth={1.8} />
           </a>
           <button type="button" onClick={handleOpen} style={btnPrimary}>
-            Open Draft
+            Open in Draft
           </button>
         </div>
       </div>
