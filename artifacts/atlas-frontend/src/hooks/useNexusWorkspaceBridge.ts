@@ -85,14 +85,26 @@ function parseWriteFile(content: string): Array<{ path: string; fileContent: str
 function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
   // Strip WRITE_FILE signal tokens from displayed content — the same cleanup
   // WorkspaceConversationSurface did before rendering.
-  const cleaned = nm.content.replace(/WRITE_FILE:\s*\{[^}]+\}/g, "").trim();
+  // Defensive: content should be a string, but the DB / API can occasionally
+  // return null, an object (metadata leak), or a numeric — coerce so
+  // .replace() never explodes and blanks the entire workspace.
+  const rawContent = nm.content;
+  const safeContent =
+    typeof rawContent === "string"
+      ? rawContent
+      : rawContent == null
+        ? ""
+        : typeof rawContent === "object"
+          ? (() => { try { return JSON.stringify(rawContent); } catch { return ""; } })()
+          : String(rawContent);
+  const cleaned = safeContent.replace(/WRITE_FILE:\s*\{[^}]+\}/g, "").trim();
   // stableKey: derived once from the message's own identity, never from its
   // array index.  nm.id is the DB row id (string) for persisted messages, or a
   // client-generated uuid for optimistic sends — so this fallback fires only
   // defensively (e.g. a future code path that omits id).  role+createdAt alone
   // could theoretically collide at the same millisecond; appending content.length
   // makes it collision-proof without touching array position.
-  const stableKey = nm.id ?? `${nm.role[0]}-${nm.createdAt}-${nm.content.length}`;
+  const stableKey = nm.id ?? `${nm.role[0]}-${nm.createdAt}-${safeContent.length}`;
   return {
     // Keep numeric id for backward compat (planStates maps, per-message refs).
     id: idx + 1,
