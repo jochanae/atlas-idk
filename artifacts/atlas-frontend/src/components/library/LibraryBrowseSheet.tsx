@@ -15,6 +15,8 @@ export interface LibraryBrowseSheetProps {
     meta: { projectId: number | null; originSource: string },
   ) => void;
   onOpenProject?: (projectId: number) => void;
+  onNavigateToProject?: (projectId: number) => void;
+  currentProjectId?: number | null;
 }
 
 export function LibraryBrowseSheet({
@@ -22,6 +24,8 @@ export function LibraryBrowseSheet({
   onClose,
   onOpenConversation,
   onOpenProject,
+  onNavigateToProject,
+  currentProjectId = null,
 }: LibraryBrowseSheetProps) {
   const [entered, setEntered] = useState(false);
 
@@ -105,6 +109,8 @@ export function LibraryBrowseSheet({
             active={open}
             onOpenConversation={onOpenConversation}
             onOpenProject={onOpenProject}
+            onNavigateToProject={onNavigateToProject}
+            currentProjectId={currentProjectId}
             onClose={onClose}
           />
         </div>

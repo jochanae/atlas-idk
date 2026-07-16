@@ -12,6 +12,8 @@ export interface LaunchModalProps {
   onClose: () => void;
   linkedRepo: LinkedRepo | null;
   previewUrl: string | null;
+  /** Draft Preview HTML (atlas-sandbox) — preferred over previewUrl when present. */
+  previewHtml?: string | null;
   /** Optional currently-active code file ({ path, content }) for "code" mode. */
   activeFile?: { path: string; content: string } | null;
   /** Activity log node for "activity" mode. */
@@ -25,7 +27,7 @@ const MODE_META: Record<LaunchMode, { label: string; icon: typeof Folder }> = {
   activity: { label: "ACTIVITY LEDGER", icon: Activity },
 };
 
-export function LaunchModal({ open, mode, onClose, linkedRepo, previewUrl, activeFile, activityNode }: LaunchModalProps) {
+export function LaunchModal({ open, mode, onClose, linkedRepo, previewUrl, previewHtml, activeFile, activityNode }: LaunchModalProps) {
   const [openedFile, setOpenedFile] = useState<{ path: string; content: string } | null>(activeFile ?? null);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function LaunchModal({ open, mode, onClose, linkedRepo, previewUrl, activ
   // Preview mode = totally immersive — no chrome, just the iframe + tiny close button
   if (mode === "preview") {
     return createPortal(
-      <PreviewLaunchOverlay previewUrl={previewUrl} onClose={onClose} />,
+      <PreviewLaunchOverlay previewUrl={previewUrl} previewHtml={previewHtml} onClose={onClose} />,
       document.body,
     );
   }
@@ -174,21 +176,23 @@ export function LaunchModal({ open, mode, onClose, linkedRepo, previewUrl, activ
   );
 }
 
-function PreviewLaunchOverlay({ previewUrl, onClose }: { previewUrl: string | null; onClose: () => void }) {
+function PreviewLaunchOverlay({ previewUrl, previewHtml, onClose }: { previewUrl: string | null; previewHtml?: string | null; onClose: () => void }) {
   const [visible, setVisible] = useState(true);
+  const hasDraft = !!(previewHtml && previewHtml.trim());
+  const hasContent = hasDraft || !!previewUrl;
 
   // Auto-dismiss the "no preview" alert after 3.5s; iframe stays open until X.
   useEffect(() => {
-    if (previewUrl) return;
+    if (hasContent) return;
     const t = window.setTimeout(() => {
       setVisible(false);
       window.setTimeout(onClose, 260);
     }, 3500);
     return () => window.clearTimeout(t);
-  }, [previewUrl, onClose]);
+  }, [hasContent, onClose]);
 
   const handleBackdropClick = () => {
-    if (previewUrl) return; // don't dismiss when iframe is loaded
+    if (hasContent) return; // don't dismiss when iframe is loaded
     setVisible(false);
     window.setTimeout(onClose, 200);
   };
@@ -200,11 +204,11 @@ function PreviewLaunchOverlay({ previewUrl, onClose }: { previewUrl: string | nu
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: previewUrl
+        background: hasContent
           ? "#000"
           : "color-mix(in oklab, var(--atlas-bg) 70%, transparent)",
-        backdropFilter: previewUrl ? undefined : "blur(18px)",
-        WebkitBackdropFilter: previewUrl ? undefined : "blur(18px)",
+        backdropFilter: hasContent ? undefined : "blur(18px)",
+        WebkitBackdropFilter: hasContent ? undefined : "blur(18px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -212,7 +216,14 @@ function PreviewLaunchOverlay({ previewUrl, onClose }: { previewUrl: string | nu
         opacity: visible ? 1 : 0,
       }}
     >
-      {previewUrl ? (
+      {hasDraft ? (
+        <iframe
+          srcDoc={previewHtml!}
+          title="Draft Preview"
+          style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+        />
+      ) : previewUrl ? (
         <iframe
           src={previewUrl}
           title="Sandbox"

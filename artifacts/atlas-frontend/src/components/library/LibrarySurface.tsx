@@ -22,6 +22,7 @@ import {
   resolveDownloadTarget,
   isHtmlPrototype,
 } from "./semanticMeta";
+import { openLibraryDraftPreview } from "@/lib/library/openDraftPreview";
 
 /**
  * Shared Library list + detail surface.
@@ -44,6 +45,10 @@ export interface LibrarySurfaceProps {
     meta: { projectId: number | null; originSource: string },
   ) => void;
   onOpenProject?: (projectId: number) => void;
+  /** Navigate to a project workspace (used by Draft Preview open). */
+  onNavigateToProject?: (projectId: number) => void;
+  /** Current workspace project id when already inside a project. */
+  currentProjectId?: number | null;
   /** Called after a successful attach in attach mode (closes Focus sheet). */
   onClose?: () => void;
 }
@@ -103,6 +108,8 @@ export function LibrarySurface({
   onAttachmentsChange,
   onOpenConversation,
   onOpenProject,
+  onNavigateToProject,
+  currentProjectId = null,
   onClose,
 }: LibrarySurfaceProps) {
   const attached = attachedIds ?? new Set<string>();
@@ -265,6 +272,10 @@ export function LibrarySurface({
         onDelete={handleDelete}
         onOpenConversation={onOpenConversation}
         onOpenProject={onOpenProject}
+        onNavigateToProject={onNavigateToProject}
+        currentProjectId={currentProjectId}
+        onClose={onClose}
+        setActionError={setActionError}
       />
     );
   }
@@ -513,6 +524,10 @@ function LibraryDetail({
   onDelete,
   onOpenConversation,
   onOpenProject,
+  onNavigateToProject,
+  currentProjectId,
+  onClose,
+  setActionError,
 }: {
   item: LibraryItem;
   mode: LibrarySurfaceMode;
@@ -530,6 +545,10 @@ function LibraryDetail({
   onDelete: (item: LibraryItem) => void;
   onOpenConversation?: LibrarySurfaceProps["onOpenConversation"];
   onOpenProject?: LibrarySurfaceProps["onOpenProject"];
+  onNavigateToProject?: LibrarySurfaceProps["onNavigateToProject"];
+  currentProjectId: number | null;
+  onClose?: () => void;
+  setActionError: (msg: string | null) => void;
 }) {
   const isAttached = attachedIds.has(item.id);
   const busy = attachBusyId === item.id;
@@ -540,6 +559,7 @@ function LibraryDetail({
   const download = resolveDownloadTarget(item);
   const htmlPrototype = isHtmlPrototype(item);
   const showAttach = mode === "attach";
+  const [draftBusy, setDraftBusy] = useState(false);
 
   type ActionDef = {
     key: string;
@@ -553,14 +573,45 @@ function LibraryDetail({
   const actions: ActionDef[] = [];
 
   // Primary action — one clear CTA
-  if (htmlPrototype) {
+  if (htmlPrototype && download) {
     actions.push({
       key: "draft-preview",
-      label: "Open in Draft Preview",
-      onClick: () => {},
+      label: draftBusy ? "Opening…" : "Open in Draft Preview",
+      onClick: () => {
+        void (async () => {
+          setDraftBusy(true);
+          setActionError(null);
+          try {
+            const probe = await openLibraryDraftPreview(
+              {
+                sourceKind: "project-artifact",
+                sourceId: download.artifactId,
+                projectId: download.projectId,
+                artifactType: item.sourceRef?.sourceKind === "project-artifact"
+                  ? item.sourceRef.artifactType
+                  : null,
+              },
+              {
+                navigateToProject: onNavigateToProject,
+                currentProjectId,
+              },
+            );
+            if (!probe.usable) {
+              setActionError(
+                `Could not open Draft Preview (${probe.status}${probe.contentType ? ` · ${probe.contentType}` : ""}).`,
+              );
+              return;
+            }
+            onClose?.();
+          } catch (err) {
+            setActionError(err instanceof Error ? err.message : "Failed to open Draft Preview");
+          } finally {
+            setDraftBusy(false);
+          }
+        })();
+      },
       variant: "primary",
-      disabled: true,
-      title: "Draft Preview wiring pending HTML retrieval verification",
+      disabled: draftBusy,
     });
   } else if (meta.primaryAction === "open-conversation" && conversationIdResolved && onOpenConversation) {
     actions.push({

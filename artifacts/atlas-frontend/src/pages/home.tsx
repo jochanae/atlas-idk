@@ -6091,6 +6091,11 @@ export default function Home() {
           setFocusSheetConversationId(null);
           navigateToProject(projectId);
         }}
+        onNavigateToProject={(projectId) => {
+          setShowFocusPicker(false);
+          setFocusSheetConversationId(null);
+          setLocation(`/project/${projectId}`);
+        }}
         onClose={() => {
           setShowFocusPicker(false);
           setFocusSheetConversationId(null);
@@ -6275,6 +6280,10 @@ export default function Home() {
         onOpenProject={(projectId) => {
           setShowLibraryBrowse(false);
           navigateToProject(projectId);
+        }}
+        onNavigateToProject={(projectId) => {
+          setShowLibraryBrowse(false);
+          setLocation(`/project/${projectId}`);
         }}
       />
 
