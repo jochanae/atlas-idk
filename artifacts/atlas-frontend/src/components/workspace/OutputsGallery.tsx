@@ -559,10 +559,21 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
     const visualQA = fileBacked ? visualQAInfo(metadata) : null;
     const visualQAIssues = visualQA?.issues ?? [];
     const visualQAErrorCount = visualQAIssues.filter((i) => i.severity === "error").length;
-    const looksHtml = !fileBacked && (typeStr.includes("html") || /<\s*(html|body|div|section|main|!doctype)/i.test(content));
-    const sendToDraft = (e: React.MouseEvent) => {
+    const looksHtml =
+      typeStr.includes("html") ||
+      extension === "html" ||
+      /<\s*(html|body|div|section|main|!doctype)/i.test(content);
+    const sendToDraft = async (e: React.MouseEvent) => {
       e.stopPropagation();
-      window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "sandbox", content } }));
+      let html = content;
+      if ((!html || html.trim().length < 20) && fileBacked) {
+        try {
+          const res = await fetch(`/api/projects/${projectId}/artifacts/${a.id}/download`, { credentials: "include" });
+          if (res.ok) html = await res.text();
+        } catch { /* fall through */ }
+      }
+      if (!html) { toast.error("No HTML content available."); return; }
+      window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "sandbox", content: html } }));
       toast("Opened in Draft Preview.");
     };
     const downloadFile = (e?: React.MouseEvent) => {
