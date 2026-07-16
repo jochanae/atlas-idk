@@ -2485,6 +2485,35 @@ function AssistantBubbleImpl({
           <TradeoffMatrixCard matrix={message.tradeoffMatrix} />
         )}
 
+        {/* Build visibility — live card during generate_deliverable's 30-60 s render call */}
+        {message.activeBuild && !message.generatedArtifacts?.length && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            marginTop: 8, padding: "10px 14px",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.09)",
+            borderRadius: 10,
+          }}>
+            <style>{`@keyframes ab-build-spin { to { transform: rotate(360deg); } }`}</style>
+            <svg
+              width="14" height="14" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="1.8"
+              strokeLinecap="round" strokeLinejoin="round"
+              style={{ opacity: 0.7, flexShrink: 0, animation: "ab-build-spin 1.4s linear infinite" }}
+            >
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 500, opacity: 0.9, letterSpacing: "0.01em" }}>
+                Building {message.activeBuild.title || message.activeBuild.type.toUpperCase()}…
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>
+                Generating your {message.activeBuild.type === "pptx" ? "slide deck" : message.activeBuild.type === "docx" ? "document" : message.activeBuild.type === "xlsx" ? "spreadsheet" : "web app"} — this takes ~30 s
+              </div>
+            </div>
+          </div>
+        )}
+
         {!message.streaming && message.decisionArtifacts?.map((artifact) => (
           <DecisionArtifactCard key={`${artifact.type}-${artifact.id}`} artifact={artifact} />
         ))}

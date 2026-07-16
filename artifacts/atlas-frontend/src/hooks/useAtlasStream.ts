@@ -21,6 +21,12 @@ export interface AtlasStreamCallbacks {
    */
   onArtifactCreated?: (data: Record<string, unknown>) => void;
   /**
+   * Called when generate_deliverable starts (status: "building") or finishes
+   * (status: "complete" | "failed"). Lets the workspace show a live build card
+   * during the 30–60 s renderer call instead of going silent.
+   */
+  onBuildProgress?: (data: { type: string; title: string; status: "building" | "complete" | "failed" }) => void;
+  /**
    * Called when an async image event arrives AFTER done.
    * Server sends this once image generation completes so the HUD can update.
    */
@@ -210,6 +216,8 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                 callbacks.onDone(finalText, doneData);
               } else if (evtName === "artifact_created") {
                 callbacks.onArtifactCreated?.(JSON.parse(evtData) as Record<string, unknown>);
+              } else if (evtName === "build_progress") {
+                callbacks.onBuildProgress?.(JSON.parse(evtData) as { type: string; title: string; status: "building" | "complete" | "failed" });
               } else if (evtName === "image") {
                 const imgPayload = JSON.parse(evtData) as {
                   images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }>;

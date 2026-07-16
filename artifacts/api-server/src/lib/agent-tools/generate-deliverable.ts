@@ -3,6 +3,8 @@ import { z } from "zod";
 import { generateArtifact, listArtifactRendererTypes } from "../artifactEngine";
 import { captureDeliverableToLibrary } from "../library";
 import type { AgentToolContext, GeneratedArtifactMeta } from "./context";
+import { db, projectArtifactsTable } from "@workspace/db";
+import { eq, desc, and } from "drizzle-orm";
 // Side-effect imports: each renderer registers itself with the Artifact Engine on load.
 // The agent loop can run without ever hitting the projectArtifacts routes, so this
 // tool must trigger renderer registration itself instead of relying on route-file
@@ -49,6 +51,13 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
     execute: async ({ type, title, docType, focus, style }) => {
       const started = performance.now();
       ctx.emitToolCall("generate_deliverable", { type, title, docType });
+
+      // ── Workstream 1: Build visibility ────────────────────────────────────
+      // Emit immediately so the workspace shows a live "Building..." card before
+      // the 30–60 s renderer call begins. This fires on the open SSE connection.
+      ctx.writeStep({ verb: "Building", target: title || "Web App", phase: "output" });
+      ctx.emitNamedEvent("build_progress", { type, title: title || "Web App", status: "building" });
+
       try {
         const available = listArtifactRendererTypes();
         if (!available.includes(type)) {
@@ -61,6 +70,36 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           const ms = Math.round(performance.now() - started);
           ctx.emitToolResult("generate_deliverable", false, ms);
           return { ok: false, error: "No active project — open a project workspace before generating Outputs." };
+        }
+
+        // ── Workstream 2: Design contract injection ───────────────────────────
+        // For html-app builds: look up the project's saved design contract (extracted
+        // from inspiration sketches) and inject it as styleOverride so the renderer
+        // enforces the approved visual direction automatically.
+        let resolvedStyle = style;
+        if (type === "html-app" && !resolvedStyle && ctx.projectId > 0) {
+          try {
+            const [contractRow] = await db
+              .select({ payload: projectArtifactsTable.payload })
+              .from(projectArtifactsTable)
+              .where(
+                and(
+                  eq(projectArtifactsTable.projectId, ctx.projectId),
+                  eq(projectArtifactsTable.type, "design-contract"),
+                )
+              )
+              .orderBy(desc(projectArtifactsTable.createdAt))
+              .limit(1);
+
+            if (contractRow?.payload) {
+              const contractData = (contractRow.payload as Record<string, unknown>).contract;
+              if (contractData && typeof contractData === "object") {
+                resolvedStyle = JSON.stringify(contractData);
+              }
+            }
+          } catch {
+            // Non-fatal — proceed without contract if lookup fails
+          }
         }
 
         const context = ctx.messages
@@ -79,8 +118,11 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           sessionId: null,
           type,
           sourceMessageId: ctx.messageId ?? null,
-          input: { context, title, docType, projectId: ctx.projectId, styleOverride: style },
+          input: { context, title, docType, projectId: ctx.projectId, styleOverride: resolvedStyle },
         });
+
+        // Build complete — notify frontend to update the card
+        ctx.emitNamedEvent("build_progress", { type, title: artifact.title, status: "complete" });
 
         const downloadUrl = `/api/projects/${artifact.projectId}/artifacts/${artifact.id}/download`;
         const meta: GeneratedArtifactMeta = {
@@ -139,6 +181,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
       } catch (err) {
         const ms = Math.round(performance.now() - started);
         ctx.emitToolResult("generate_deliverable", false, ms);
+        ctx.emitNamedEvent("build_progress", { type, title: title || "Web App", status: "failed" });
         return { ok: false, error: String(err) };
       }
     },

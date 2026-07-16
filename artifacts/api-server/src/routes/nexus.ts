@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
+import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, projectArtifactsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
@@ -5541,6 +5541,81 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
       if (nexusImageGenResult && !res.writableEnded && !res.destroyed) {
         res.write(`event: image\ndata: ${JSON.stringify(nexusImageGenResult)}\n\n`);
       }
+
+      // ── Workstream 2: Design contract extraction ──────────────────────────
+      // After a successful image generation, run a Haiku call fire-and-forget to
+      // extract a structured design contract from the prompt + conversation context.
+      // Saved to project_artifacts (type "design-contract") so the next html-app
+      // build can inject it automatically without the user re-prompting style.
+      if (nexusImageGenResult && focusProjectId && imageGenTokens.length > 0) {
+        void (async () => {
+          try {
+            const prompts = imageGenTokens.map((t) => t.prompt).join("\n");
+            const recentTurns = (rawContent ? [{ role: "assistant" as const, text: rawContent.slice(0, 600) }] : []);
+            const contextBlock = recentTurns.map((t) => `${t.role === "assistant" ? "Atlas" : "User"}: ${t.text}`).join("\n\n");
+
+            const contractRes = await anthropic.messages.create({
+              model: "claude-haiku-4-5",
+              max_tokens: 1024,
+              messages: [{
+                role: "user",
+                content: `You are a design analyst. Extract a structured project design contract as JSON from this inspiration image request.
+
+Image prompt(s) that were generated:
+${prompts}
+
+Context:
+${contextBlock}
+
+Return ONLY a valid JSON object with these exact fields (no explanation, no markdown fences):
+{
+  "tone": ["2-4 descriptors, e.g. playful, cosmic, professional, warm"],
+  "theme": { "mode": "dark or light", "background": "describe the background style in one sentence", "style": "overall aesthetic label" },
+  "components": { "cards": "card/tile style in one sentence", "icons": "icon style: SVG vector outline, illustrated, emoji — pick one" },
+  "palette": { "primary": "primary accent color or description", "bg": "background color description" },
+  "prohibited": ["list of 3-5 things that must NOT appear, e.g. plain white background, system emoji as primary icons"],
+  "contentRules": { "notes": "any structural rules inferred from the request" },
+  "sourcePrompt": "${imageGenTokens[0]?.prompt?.slice(0, 200) ?? ""}"
+}`,
+              }],
+            });
+
+            const rawJson = contractRes.content[0]?.type === "text" ? contractRes.content[0].text.trim() : "";
+            if (!rawJson) return;
+
+            const cleanJson = rawJson.replace(/^```json?\n?/i, "").replace(/\n?```$/, "").trim();
+            const parsed = JSON.parse(cleanJson);
+
+            // Upsert: if a design-contract already exists for this project, replace it (version bump)
+            const [existing] = await db
+              .select({ id: projectArtifactsTable.id, version: projectArtifactsTable.version })
+              .from(projectArtifactsTable)
+              .where(and(eq(projectArtifactsTable.projectId, focusProjectId), eq(projectArtifactsTable.type, "design-contract")))
+              .orderBy(desc(projectArtifactsTable.createdAt))
+              .limit(1);
+
+            if (existing) {
+              await db
+                .update(projectArtifactsTable)
+                .set({ payload: { contract: parsed, extractedAt: new Date().toISOString() }, version: (existing.version ?? 1) + 1 })
+                .where(eq(projectArtifactsTable.id, existing.id));
+            } else {
+              await db.insert(projectArtifactsTable).values({
+                projectId: focusProjectId,
+                type: "design-contract",
+                title: "Design Contract",
+                version: 1,
+                payload: { contract: parsed, extractedAt: new Date().toISOString() },
+              });
+            }
+
+            logger.info({ projectId: focusProjectId }, "nexus: design contract extracted and saved");
+          } catch (err) {
+            logger.warn({ err }, "nexus: design contract extraction failed — non-fatal");
+          }
+        })();
+      }
+
       // Persist nexus AI images as project assets — fire-and-forget.
       // Also inserts into gallery_images so Visual Vault can display them.
       if (nexusImageGenResult && focusProjectId && sessionId) {

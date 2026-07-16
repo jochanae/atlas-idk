@@ -157,6 +157,9 @@ export interface NexusMessage {
     downloadUrl: string;
     summary?: string | null;
   }> | null;
+  /** Live build state: set when generate_deliverable fires build_progress "building",
+   *  cleared on "complete" or "failed". Renders a BuildProgressCard in AssistantBubble. */
+  activeBuild?: { type: string; title: string } | null;
 }
 
 export interface NexusDecisionArtifact {
@@ -566,6 +569,21 @@ export function useNexusChatStream(
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, pendingSketch: true }
+                : m
+            ));
+          },
+          onBuildProgress: (data) => {
+            // Workstream 1: Build visibility — show/hide a live BuildProgressCard
+            // on the streaming assistant message so the workspace never goes silent
+            // during the 30–60 s generate_deliverable renderer call.
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? {
+                    ...m,
+                    activeBuild: data.status === "building"
+                      ? { type: data.type, title: data.title }
+                      : null,
+                  }
                 : m
             ));
           },
