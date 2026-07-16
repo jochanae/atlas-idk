@@ -241,10 +241,10 @@ export function SpeakButton({
           role="status"
           style={{
             position: "absolute",
-            bottom: "calc(100% + 4px)",
-            right: 0,
+            bottom: "calc(100% + 6px)",
+            left: 0,
             zIndex: 300,
-            padding: "3px 7px",
+            padding: "4px 8px",
             background: "var(--atlas-surface)",
             border: "1px solid var(--atlas-border)",
             borderRadius: 6,
@@ -254,7 +254,8 @@ export function SpeakButton({
             letterSpacing: "0.04em",
             whiteSpace: "nowrap",
             pointerEvents: "none",
-            opacity: 0.92,
+            opacity: 0.96,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
           }}
         >
           long-press for voices
