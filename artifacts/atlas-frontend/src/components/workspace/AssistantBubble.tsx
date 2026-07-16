@@ -2771,6 +2771,8 @@ function AssistantBubbleImpl({
             }
           </button>
 
+          <SpeakButton text={message.content} style={ICON_TOUCH_TARGET_STYLE} />
+
           {/* Regenerate, Commit, and Sketch moved to ⋯ overflow — keeps the bar minimal */}
           </>
           )}
