@@ -7342,6 +7342,77 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
   res.json({ items: items.slice(0, 40) });
 });
 
+// GET /api/projects/:projectId/commits/:sha — external commit detail (files + patches)
+// Used by SystemActivityCard "Details" to render an in-app scoped Changes view.
+router.get("/projects/:projectId/commits/:sha", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const projectId = Number(req.params.projectId);
+  const sha = String(req.params.sha ?? "").trim();
+  if (!Number.isInteger(projectId) || projectId <= 0 || !sha) {
+    res.status(400).json({ error: "Invalid projectId or sha" });
+    return;
+  }
+
+  const rows = await db
+    .select({ id: projectsTable.id, name: projectsTable.name, linkedRepo: projectsTable.linkedRepo })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+  const project = rows[0];
+  if (!project) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const repoFull = parseRepo(project.linkedRepo ?? null);
+  if (!repoFull) { res.status(400).json({ error: "Project not linked to a repository" }); return; }
+
+  const ghToken = process.env.GITHUB_TOKEN ?? null;
+  if (!ghToken) { res.status(500).json({ error: "GitHub not configured" }); return; }
+
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repoFull}/commits/${encodeURIComponent(sha)}`, {
+      headers: {
+        Authorization: `Bearer ${ghToken}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "Atlas-Commit-Detail/1.0",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!r.ok) {
+      const body = await r.text();
+      res.status(r.status).json({ error: "GitHub request failed", details: body.slice(0, 500) });
+      return;
+    }
+    const data = await r.json() as any;
+    const files = Array.isArray(data.files) ? data.files.map((f: any) => ({
+      filename: String(f.filename ?? ""),
+      status: String(f.status ?? ""),
+      additions: Number(f.additions ?? 0),
+      deletions: Number(f.deletions ?? 0),
+      changes: Number(f.changes ?? 0),
+      patch: typeof f.patch === "string" ? f.patch : null,
+      blobUrl: typeof f.blob_url === "string" ? f.blob_url : null,
+    })) : [];
+    res.json({
+      sha: data.sha as string,
+      shortSha: (data.sha as string ?? "").slice(0, 7),
+      htmlUrl: data.html_url as string,
+      repo: repoFull,
+      message: (data.commit?.message ?? "") as string,
+      author: {
+        name: data.commit?.author?.name ?? null,
+        date: data.commit?.author?.date ?? null,
+      },
+      stats: data.stats ?? null,
+      files,
+    });
+    return;
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch commit", details: err?.message ?? String(err) });
+  }
+});
+
 // POST /api/nexus/visualize — generate an image from a prompt (called by useNexusChatStream)
 router.post("/nexus/visualize", async (req, res): Promise<void> => {
   const userId = (req as any).authUser?.id as number | undefined;
