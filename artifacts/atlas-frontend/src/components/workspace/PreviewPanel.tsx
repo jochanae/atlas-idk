@@ -1483,14 +1483,16 @@ ${t}
                 >Render</button>
               </div>
             ) : sandboxRendered ? (
-              <div style={{ flex: 1, overflow: "hidden", background: "#fff" }}>
-                <iframe
-                  key={sandboxRendered.slice(0, 80)}
-                  srcDoc={sandboxRendered}
-                  title="Draft Preview"
-                  sandbox="allow-scripts allow-same-origin"
-                  style={{ border: "none", width: "100%", height: "100%", display: "block", background: "#fff" }}
-                />
+              <div style={deviceWrapperStyle}>
+                <div style={deviceInnerStyle}>
+                  <iframe
+                    key={sandboxRendered.slice(0, 80)}
+                    srcDoc={sandboxRendered}
+                    title="Draft Preview"
+                    sandbox="allow-scripts allow-same-origin"
+                    style={{ border: "none", width: "100%", height: "100%", display: "block", background: "#fff" }}
+                  />
+                </div>
               </div>
             ) : (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", gap: 12 }}>
