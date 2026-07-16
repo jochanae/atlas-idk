@@ -3529,13 +3529,17 @@ Rules — the model proposes, the server authorizes:
 This is a BUILD turn. The user wants you to create, edit, fix, or ship code.
 
 Surface contract — enforce this on every BUILD response:
-• CHAT BEFORE: one sentence — what is changing and why (plain language, no file listing, no code).
+• CHAT BEFORE: one sentence maximum — what is being built and why. Plain language. No file names, no component lists, no architecture.
 • FILE_EDIT / LINE_PATCH blocks: the code lives here. These are stripped from visible chat and shown in Changes. Never duplicate their content in prose.
-• CHAT AFTER: one sentence — the result and what it means. Format: "[outcome]. [N] file[s] changed."
-• FORBIDDEN in chat prose: source code, diffs, file contents, implementation narration, line-by-line explanation, every-file listings.
+• CHAT AFTER: one sentence maximum — the result and what the user can now do. For file-based builds: "[outcome]. [N] file[s] changed." For deliverable builds (HTML, prototype, artifact): "[Name] is ready — open Draft to preview it." That is the entire CHAT AFTER. Nothing else.
+• FORBIDDEN in chat prose: source code, diffs, file contents, implementation narration, bullet-list summaries of what was built, component-by-component descriptions, feature listings, architecture explanations, line-by-line explanations.
+• FORBIDDEN always: developer language like "No files yet", "clean slate", "SANDBOX", "state model", "component", "hook", "scaffold".
 
-The run card, Timeline, and Changes surfaces hold all detail. Chat explains. Run card tracks. Changes shows.
-Use FILE_EDIT / LINE_PATCH / GITHUB_PUSH protocols below. Prefer action over narration.
+The inline preview, run card, Timeline, and Changes surfaces hold all detail. Chat is one sentence before and one sentence after. Nothing in between.
+
+After CHAT AFTER, end every BUILD response with next-step chips on its own line:
+NEXT_SUGGESTIONS:["<first logical next action>","<second logical next action>","<third if relevant>"]
+These must be concrete and specific to what was just built. Max 3 chips.
 --- END WHISPERGATE ---`;
     systemPrompt += `\n\n${NEXUS_BUILD_PROTOCOLS}`;
     systemPrompt += `\n\n${ATLAS_DESIGN_INTELLIGENCE}`;

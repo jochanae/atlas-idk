@@ -62,11 +62,19 @@ function HtmlAppCard({ artifact, projectId, onOpen }: Props) {
   }, [html]);
 
   const handleOpen = () => {
-    window.dispatchEvent(
-      new CustomEvent("axiom:open-output", {
-        detail: { artifactId: artifact.artifactId, projectId },
-      }),
-    );
+    if (html) {
+      window.dispatchEvent(
+        new CustomEvent("axiom:open-preview", {
+          detail: { source: "sandbox", content: html },
+        }),
+      );
+    } else {
+      window.dispatchEvent(
+        new CustomEvent("axiom:open-output", {
+          detail: { artifactId: artifact.artifactId, projectId },
+        }),
+      );
+    }
     onOpen?.(artifact);
   };
 
@@ -128,7 +136,7 @@ function HtmlAppCard({ artifact, projectId, onOpen }: Props) {
             <Download size={12} strokeWidth={1.8} />
           </a>
           <button type="button" onClick={handleOpen} style={btnPrimary}>
-            Outputs
+            Open Draft
           </button>
         </div>
       </div>
