@@ -91,6 +91,7 @@ import { ComposerActions, type ComposerMenuAction } from "@/components/composer/
 // ComposerDock removed — footer center "A" is the single composer anchor.
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
+import { SpeakButton } from "@/components/workspace/SpeakButton";
 import { type LiveStep, StepProgress } from "@/components/workspace/StepProgress";
 import { ArtifactCreatedCard } from "@/components/workspace/ArtifactCreatedCard";
 import SketchReveal from "@/components/chat/SketchReveal";
@@ -794,6 +795,7 @@ export function AskAtlasSurface({
                         </svg>
                       )}
                     </button>
+                    <SpeakButton text={displayContent} size={13} />
                     {displayContent.length > 350 && (
                       <button
                         type="button"

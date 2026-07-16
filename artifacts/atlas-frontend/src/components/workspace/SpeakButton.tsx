@@ -16,6 +16,7 @@ import { Volume2, Square } from "lucide-react";
  */
 
 const VOICE_STORAGE_KEY = "atlas-tts-voice-uri";
+const HINT_STORAGE_KEY = "atlas-tts-hint-seen";
 const LONG_PRESS_MS = 450;
 
 function cleanForSpeech(input: string): string {
@@ -72,6 +73,7 @@ export function SpeakButton({
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceURI, setVoiceURI] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
   const queueRef = useRef<string[]>([]);
   const idxRef = useRef(0);
@@ -154,6 +156,12 @@ export function SpeakButton({
     cancelledRef.current = false;
     setSpeaking(true);
     speakChunk(0);
+    try {
+      if (!localStorage.getItem(HINT_STORAGE_KEY)) {
+        setShowHint(true);
+        window.setTimeout(() => setShowHint(false), 3200);
+      }
+    } catch {}
   }, [speaking, supported, text, speakChunk]);
 
   const pickVoice = (uri: string) => {
@@ -175,6 +183,8 @@ export function SpeakButton({
     longPressTimer.current = window.setTimeout(() => {
       longPressedRef.current = true;
       if (voices.length > 0) setMenuOpen(true);
+      setShowHint(false);
+      try { localStorage.setItem(HINT_STORAGE_KEY, "1"); } catch {}
       try { navigator.vibrate?.(20); } catch {}
     }, LONG_PRESS_MS);
   };
@@ -225,6 +235,31 @@ export function SpeakButton({
           ? <Square size={size} strokeWidth={1.8} fill="currentColor" />
           : <Volume2 size={size} strokeWidth={1.6} />}
       </button>
+
+      {showHint && !menuOpen && (
+        <span
+          role="status"
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 4px)",
+            right: 0,
+            zIndex: 300,
+            padding: "3px 7px",
+            background: "var(--atlas-surface)",
+            border: "1px solid var(--atlas-border)",
+            borderRadius: 6,
+            color: "var(--atlas-muted)",
+            fontSize: 10,
+            fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.04em",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            opacity: 0.92,
+          }}
+        >
+          long-press for voices
+        </span>
+      )}
 
       {menuOpen && (
         <div
