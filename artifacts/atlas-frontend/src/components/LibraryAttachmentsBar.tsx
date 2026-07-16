@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { LibraryItem } from "@/lib/library";
-import { metaFor } from "@/components/library/kindMeta";
+import { semanticMetaFor } from "@/components/library/semanticMeta";
 
 /**
  * LibraryAttachmentsBar — chips of Library items currently attached to a
@@ -30,13 +30,13 @@ export function LibraryAttachmentsBar({ items, busyId, onDetach, onOpen }: Libra
     >
       {items.map((item) => {
         const busy = busyId === item.id;
-        const meta = metaFor(item.kind);
+        const meta = semanticMetaFor(item);
         const Icon = meta.icon;
         const clickable = !!onOpen;
         return (
           <span
             key={item.id}
-            title={clickable ? `Open · ${meta.typeLabel} · ${item.title}` : `${meta.typeLabel} · ${item.title}`}
+            title={clickable ? `Open · ${meta.label} · ${item.title}` : `${meta.label} · ${item.title}`}
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               maxWidth: 220,

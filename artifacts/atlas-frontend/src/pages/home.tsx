@@ -6073,6 +6073,22 @@ export default function Home() {
         conversationId={focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId}
         attachedIds={libraryAttachedIds}
         onAttachmentsChange={() => { void refreshLibraryAttachments(focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId); }}
+        onOpenConversation={(conversationId, meta) => {
+          setShowFocusPicker(false);
+          setFocusSheetConversationId(null);
+          // Exact conversationId restore — workspace origins use workspace route;
+          // Ask Atlas / bookmark origins resume on the home Ask Atlas surface.
+          if (meta.originSource === "workspace") {
+            setLocation(`/workspace/${encodeURIComponent(conversationId)}`);
+            return;
+          }
+          void handleSwitchConversation(conversationId);
+        }}
+        onOpenProject={(projectId) => {
+          setShowFocusPicker(false);
+          setFocusSheetConversationId(null);
+          navigateToProject(projectId);
+        }}
         onClose={() => {
           setShowFocusPicker(false);
           setFocusSheetConversationId(null);
@@ -6236,6 +6252,18 @@ export default function Home() {
           setShowDrawer(false);
           // Use the same resume path as the clock history sheet.
           void handleSwitchConversation(String(id));
+        }}
+        onOpenLibraryConversation={(conversationId, meta) => {
+          setShowDrawer(false);
+          if (meta.originSource === "workspace") {
+            setLocation(`/workspace/${encodeURIComponent(conversationId)}`);
+            return;
+          }
+          void handleSwitchConversation(conversationId);
+        }}
+        onOpenLibraryProject={(projectId) => {
+          setShowDrawer(false);
+          navigateToProject(projectId);
         }}
       />
 

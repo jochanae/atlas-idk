@@ -1,13 +1,8 @@
 /**
  * Canonical frontend shape for a Library item.
  *
- * This type is intentionally shaped for the future `GET /api/library`
- * endpoint (see docs/handoffs/2026-07-15-library-foundation-backend.md),
- * NOT for any current legacy response. All legacy shapes MUST be
- * converted through an adapter in `./adapters/*` before reaching UI code.
- *
- * DO NOT add legacy fields (e.g. home_artifacts.type) to this type.
- * DO NOT let UI components import legacy response types directly.
+ * Consumes GET /api/library. Includes optional sourceRef from the
+ * source-integrity backend contract for reopening canonical origins.
  */
 export type LibraryItemKind =
   | "document"
@@ -35,6 +30,29 @@ export interface LibraryItemProject {
   name?: string;
 }
 
+/** Durable pointer back to the originating record (source-integrity contract). */
+export type LibrarySourceRef =
+  | {
+      sourceKind: "project-artifact";
+      sourceId: string;
+      artifactType: string | null;
+      projectId: number | null;
+      conversationId: string | null;
+    }
+  | {
+      sourceKind: "home-artifact";
+      sourceId: string;
+      artifactType: string | null;
+      conversationId: string | null;
+    }
+  | {
+      sourceKind: "conversation-bookmark";
+      sourceId: string;
+      messageId: string | null;
+      conversationId: string | null;
+      projectId: number | null;
+    };
+
 export interface LibraryItem {
   /** Stable, canonical id. String so it can hold future non-numeric ids. */
   id: string;
@@ -48,6 +66,8 @@ export interface LibraryItem {
   /** Project scope, if any. `null` = user-level. */
   project: LibraryItemProject | null;
   origin: LibraryItemOrigin;
+  /** Canonical reopen pointer when the backend provides one. */
+  sourceRef?: LibrarySourceRef | null;
   createdAt: string;
   updatedAt?: string;
 }

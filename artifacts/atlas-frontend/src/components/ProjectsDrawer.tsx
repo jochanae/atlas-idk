@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal, MessageSquare } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal, MessageSquare, Library, ChevronLeft } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
+import { LibrarySurface } from "./library/LibrarySurface";
 
 export type AtlasConversation = {
   id: string | number;
@@ -46,15 +47,23 @@ type Props = {
   activeAtlasSessionId?: number | null;
   onNewAtlasConversation?: () => void;
   onOpenAtlasConversation?: (id: string | number) => void;
+  /** Open a Library-sourced conversation by exact conversationId. */
+  onOpenLibraryConversation?: (
+    conversationId: string,
+    meta: { projectId: number | null; originSource: string },
+  ) => void;
+  /** Open a Library-sourced project by numeric id. */
+  onOpenLibraryProject?: (projectId: number) => void;
 };
 
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, userLabel, atlasConversations, activeAtlasSessionId, onNewAtlasConversation, onOpenAtlasConversation }: Props) {
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenShell, userLabel, atlasConversations, activeAtlasSessionId, onNewAtlasConversation, onOpenAtlasConversation, onOpenLibraryConversation, onOpenLibraryProject }: Props) {
   const [, setLocation] = useLocation();
   const [atlasExpanded, setAtlasExpanded] = useState(true);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [filter, setFilter] = useState<ProjectFilter>("recent");
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const userPhoto: string = (() => {
     try { const r = localStorage.getItem("atlas-user-profile"); return r ? (JSON.parse(r).photoUrl ?? "") : ""; } catch { return ""; }
@@ -63,16 +72,19 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   const navigate = (path: string) => { setLocation(path); onClose(); };
 
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (!open) {
+      setLibraryOpen(false);
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (libraryOpen) setLibraryOpen(false);
+        else onClose();
+      }
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  // Conversation fetch removed with the Ask Atlas Conversations section.
-
-
-
+  }, [open, onClose, libraryOpen]);
 
   if (!open) return null;
 
@@ -133,15 +145,33 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
         }}>
 
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <circle cx="10" cy="10" r="8" stroke="var(--atlas-gold)" strokeWidth="1.2" opacity="0.8" />
-              <circle cx="10" cy="10" r="3" stroke="var(--atlas-gold)" strokeWidth="0.9" opacity="0.8" />
-              <line x1="10" y1="2" x2="10" y2="18" stroke="var(--atlas-gold)" strokeWidth="0.7" strokeDasharray="1.8 2.4" opacity="0.6" />
-              <line x1="2" y1="10" x2="18" y2="10" stroke="var(--atlas-gold)" strokeWidth="0.7" strokeDasharray="1.8 2.4" opacity="0.6" />
-            </svg>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.85 }}>
-              Axiom
-            </span>
+            {libraryOpen ? (
+              <button
+                type="button"
+                onClick={() => setLibraryOpen(false)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  background: "transparent", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)",
+                  fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase",
+                }}
+              >
+                <ChevronLeft size={14} strokeWidth={1.8} />
+                Menu
+              </button>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <circle cx="10" cy="10" r="8" stroke="var(--atlas-gold)" strokeWidth="1.2" opacity="0.8" />
+                  <circle cx="10" cy="10" r="3" stroke="var(--atlas-gold)" strokeWidth="0.9" opacity="0.8" />
+                  <line x1="10" y1="2" x2="10" y2="18" stroke="var(--atlas-gold)" strokeWidth="0.7" strokeDasharray="1.8 2.4" opacity="0.6" />
+                  <line x1="2" y1="10" x2="18" y2="10" stroke="var(--atlas-gold)" strokeWidth="0.7" strokeDasharray="1.8 2.4" opacity="0.6" />
+                </svg>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.85 }}>
+                  Axiom
+                </span>
+              </>
+            )}
           </div>
           <button type="button" onClick={onClose} style={iconBtn}>
             <X size={15} strokeWidth={1.6} />
@@ -149,7 +179,25 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
         </header>
 
         {/* Body */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: "scroll", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y", padding: "10px 8px 16px" }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "scroll", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y", padding: libraryOpen ? "12px 0 16px" : "10px 8px 16px" }}>
+
+          {libraryOpen ? (
+            <LibrarySurface
+              mode="browse"
+              active={open && libraryOpen}
+              onOpenConversation={(conversationId, meta) => {
+                onOpenLibraryConversation?.(conversationId, meta);
+                onClose();
+              }}
+              onOpenProject={(projectId) => {
+                if (onOpenLibraryProject) onOpenLibraryProject(projectId);
+                else onOpenProject(projectId);
+                onClose();
+              }}
+              onClose={onClose}
+            />
+          ) : (
+          <>
 
           {/* Nexus — gateway button */}
           <style>{`
@@ -438,6 +486,15 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             onClick={() => { navigate("/parking"); onClose(); }}
           />
 
+          {/* LIBRARY — global saved items (same LibrarySurface as Atlas Focus) */}
+          <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
+          <NavRow
+            icon={<Library size={14} strokeWidth={1.6} />}
+            label="Library"
+            sublabel="Saved across Axiom"
+            onClick={() => setLibraryOpen(true)}
+          />
+
           {/* WORKSPACE — collapsed by default */}
           <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
           <CollapsibleHeader
@@ -478,11 +535,13 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               )}
             </>
           )}
+          </>
+          )}
 
         </div>
 
         {/* User footer */}
-        {userLabel && (
+        {userLabel && !libraryOpen && (
           <footer style={{
             flexShrink: 0,
             padding: "10px 14px calc(env(safe-area-inset-bottom, 0px) + 10px)",

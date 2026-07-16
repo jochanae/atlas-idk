@@ -10310,6 +10310,21 @@ export default function Workspace() {
           setLocation("/home");
           setShowDrawer(false);
         }}
+        onOpenLibraryConversation={(conversationId, meta) => {
+          setShowDrawer(false);
+          if (meta.originSource === "workspace") {
+            setLocation(`/workspace/${encodeURIComponent(conversationId)}`);
+            return;
+          }
+          askAtlasSession.setConversationId(conversationId);
+          askAtlasSession.clearClosed();
+          try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
+          setLocation("/home");
+        }}
+        onOpenLibraryProject={(projectId) => {
+          setShowDrawer(false);
+          setLocation(`/project/${projectId}`);
+        }}
       />
 
 
