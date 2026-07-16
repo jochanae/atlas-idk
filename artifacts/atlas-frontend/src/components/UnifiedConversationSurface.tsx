@@ -155,10 +155,10 @@ export function UnifiedConversationSurface({
 
   const conversation = (
     <>
-      {/* Thought carry-in — receipts from the Ask Atlas conversation that created this project */}
-      {projectId ? <WorkspaceReceiptsBar projectId={projectId} /> : null}
       {chatStreamProps ? <ChatStream {...chatStreamProps} /> : null}
       {betweenSlot}
+      {/* Thought carry-in — pinned above the composer / mobile footer on every surface */}
+      {projectId ? <WorkspaceReceiptsBar projectId={projectId} /> : null}
       {composerProps ? <ChatComposer {...composerProps} /> : null}
     </>
   );
