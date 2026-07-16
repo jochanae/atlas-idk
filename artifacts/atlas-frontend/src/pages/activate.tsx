@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Mode = "full" | "warm";
+type Mode = "full" | "warm" | "welcome";
 
 const CONSTELLATION = [
   { x: 22, y: 30 }, { x: 78, y: 26 }, { x: 14, y: 62 },
