@@ -408,7 +408,7 @@ export function ChatStream(props: ChatStreamProps) {
   // WorkspaceRunCard owns that surface). Pure "Thinking" steps (FILE_READ,
   // TREE, FETCH, etc.) must NOT suppress — Atlas's prose should stream
   // normally while thinking, per the Thinking/Doing/Receipt lifecycle.
-  const suppressStreamingText = isDoingVerb(liveStep?.verb) || (chatPending && inBuildChain);
+  const suppressStreamingText = isDoingVerb(liveStep?.verb, liveStep?.target) || (chatPending && inBuildChain);
 
   // Inline run-card anchor. The run card should sit with the turn that produced
   // it, not float below all messages. Rules:

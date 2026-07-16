@@ -23,10 +23,17 @@ export const EXECUTION_VERBS = new Set([
   "FILE_READ",
 ]);
 
+function looksLikeFilePath(target?: string | null): boolean {
+  if (!target || /\s/.test(target)) return false;
+  return target.includes("/") || /\.[a-zA-Z0-9]{1,8}$/.test(target);
+}
+
 /** True when this verb represents a "Doing" (mutating/tool-use) step. */
-export function isDoingVerb(verb?: string | null): boolean {
+export function isDoingVerb(verb?: string | null, target?: string | null): boolean {
   if (!verb) return false;
-  return EXECUTION_VERBS.has(verb.toUpperCase());
+  const v = verb.toUpperCase();
+  if (EXECUTION_VERBS.has(v)) return true;
+  return (v === "READ" || v === "READING") && looksLikeFilePath(target);
 }
 
 /** Plain-language label for a "Thinking" step — never raw verbs like FILE_READ/TREE. */
@@ -50,6 +57,8 @@ export function doingLabel(verb?: string | null, target?: string | null): string
     case "FILE_DELETE":
       return filename ? `Removing ${filename}` : "Removing file";
     case "FILE_READ":
+    case "READ":
+    case "READING":
       return filename ? `Reading ${filename}` : "Reading project files";
     case "GITHUB_PUSH":
       return target ? `Pushing to ${target}` : "Pushing to GitHub";

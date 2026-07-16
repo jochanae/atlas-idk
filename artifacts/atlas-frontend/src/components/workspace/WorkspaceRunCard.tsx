@@ -529,7 +529,7 @@ function ActiveCard({ steps, taskGoal, runId }: { steps: LiveStepItem[]; taskGoa
 
   // If no execution verbs have fired yet, this is a thinking/reading turn —
   // never say "Running [project]". Switch to a thinking label instead.
-  const hasExecutionStep = steps.some(s => EXECUTION_VERBS.has((s.verb ?? "").toUpperCase()));
+  const hasExecutionStep = steps.some(s => isDoingVerb(s.verb, s.target));
   const { headline: stepHeadline } = liveStepMeta(current);
   const currentHeadline = hasExecutionStep
     ? stepHeadline
@@ -756,7 +756,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   // (isDoingVerb) so a turn is never simultaneously "showing prose" and
   // "showing a live card" for the same step.
   const hasBuildStep = useMemo(
-    () => liveSteps.some(s => isDoingVerb(s.verb)),
+    () => liveSteps.some(s => isDoingVerb(s.verb, s.target)),
     [liveSteps],
   );
 
@@ -767,7 +767,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     if (liveSteps.length === 0) return "";
 
     // Highest priority: execution steps — describe the active write/build action.
-    const execStep = liveSteps.find(s => EXECUTION_VERBS.has((s.verb ?? "").toUpperCase()));
+    const execStep = liveSteps.find(s => isDoingVerb(s.verb, s.target));
     if (execStep) return doingLabel(execStep.verb, execStep.target);
 
     // Read-only steps — describe what Atlas is reviewing (plain language, no card).
