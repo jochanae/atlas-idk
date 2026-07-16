@@ -77,7 +77,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { hasBuildIntent, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
@@ -3525,6 +3525,15 @@ export default function Home() {
           JSON.stringify({ committedAt: createdAt.toISOString(), greeting: resumeGreeting }),
         );
       } catch {}
+      // Seed the unified handoff kickoff. The commit-carryover auto-continue
+      // effect only fires when the last assistant reply is a short ack (≤150
+      // chars); full Ask Atlas threads need this path. Clear the short-ack
+      // carryover key so we don't double-send when both would apply.
+      seedHandoffContinuation(projectId);
+      try {
+        const adoptedForClear = sessionStorage.getItem(`atlas-adopted-conv-${projectId}`);
+        if (adoptedForClear) sessionStorage.removeItem(`atlas-conv-carryover-${adoptedForClear}`);
+      } catch {}
       pushHudEvent("DECISION", `Committed → ${name}`);
       const adoptedConvId = (() => { try { return sessionStorage.getItem(`atlas-adopted-conv-${projectId}`); } catch { return null; } })();
       if (adoptedConvId) {
@@ -3736,6 +3745,10 @@ export default function Home() {
         const conversationSnapshot = (nexusChat.messages as HomeMessage[]).map(({ role, content }) => ({ role, content }));
         sessionStorage.setItem(OPENING_CONVERSATION_STORAGE_KEY, JSON.stringify(conversationSnapshot));
         sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
+        // Kick Atlas on arrival: transcript transfer alone leaves the workspace
+        // quiet because the bridge already has messages and suppresses auto-send
+        // unless atlas-handoff-continuation=1 is set (see workspace opening pipeline).
+        seedHandoffContinuation(projectId);
       } catch {}
 
       // Fire-and-forget Resume brief generation (persistence layer + AI context)

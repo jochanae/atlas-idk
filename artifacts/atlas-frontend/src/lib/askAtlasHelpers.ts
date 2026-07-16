@@ -115,3 +115,30 @@ export function redirectAfterHandoff(
   const params = new URLSearchParams({ source: "home-handoff", ...(extraParams ?? {}) });
   setLocation(`/project/${projectId}?${params.toString()}`);
 }
+
+/** Default kickoff Atlas receives on workspace arrival after a home/Ask Atlas handoff. */
+export const HANDOFF_CONTINUATION_MESSAGE =
+  "Continue from where we left off — acknowledge the handoff and propose the next concrete step.";
+
+/**
+ * Seed the workspace opening-message pipeline so Atlas auto-responds after
+ * a homepage / Ask Atlas → workspace handoff.
+ *
+ * Why this exists: transferring the transcript alone leaves the workspace
+ * quiet (thread shows up, but no new turn starts). The workspace suppresses
+ * auto-send when bridge messages already exist — unless
+ * `atlas-handoff-continuation=1` is set. Every handoff entry must call this
+ * before navigating; the navigateTo button path used to be the only one that did.
+ */
+export function seedHandoffContinuation(
+  projectId: number | string,
+  message: string = HANDOFF_CONTINUATION_MESSAGE,
+): void {
+  try {
+    sessionStorage.setItem("atlas-opening-message", message);
+    sessionStorage.setItem("atlas-opening-message-project-id", String(projectId));
+    sessionStorage.setItem("atlas-handoff-continuation", "1");
+  } catch {
+    // sessionStorage may be unavailable; handoff still navigates, user can speak first.
+  }
+}
