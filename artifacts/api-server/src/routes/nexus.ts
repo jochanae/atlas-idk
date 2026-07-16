@@ -137,6 +137,10 @@ type RunAction = {
   target?: string;
   detail?: string;
   status?: "ok" | "warn" | "fail";
+  /** For FILE_EDIT: full new file body. For LINE_PATCH: replacement text. */
+  content?: string | null;
+  /** For FILE_EDIT: prior file body from disk (null if new file). For LINE_PATCH: find text. */
+  beforeContent?: string | null;
 };
 
 type RunArtifact = {
