@@ -1945,6 +1945,10 @@ ${t}
               style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: "transparent", border: "none", borderRadius: 4, color: "var(--atlas-muted)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textAlign: "left" }}>
               {isLandscape ? "→ Portrait" : "→ Landscape"}
             </button>
+            <button onClick={() => { setFitMode((m) => m === "fit" ? "actual" : "fit"); setDeviceMenuOpen(false); }}
+              style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: "transparent", border: "none", borderRadius: 4, color: "var(--atlas-muted)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textAlign: "left" }}>
+              {fitMode === "fit" ? "→ 100% (actual size)" : "→ Fit to screen"}
+            </button>
           </div>
         </>,
         document.body
