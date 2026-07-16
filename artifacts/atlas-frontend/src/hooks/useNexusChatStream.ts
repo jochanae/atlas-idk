@@ -117,6 +117,10 @@ export interface NexusMessage {
   visualCaption?: string | null;
   visualLoading?: boolean;
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
+  /** Multiple candidate projects found for an OPEN_PROJECT signal — user must pick one. */
+  projectChoices?: Array<{ id: number; name: string }> | null;
+  /** Requested project name that had no match — surface a visible not-found message. */
+  projectNotFound?: string | null;
   /** Suggestion chips — passed through from backend `nextSuggestions`. */
   nextSuggestions?: string[] | null;
   /** True when the backend queued background decision extraction after this turn. */
@@ -795,6 +799,8 @@ export function useNexusChatStream(
                     extractionQueued: !!(meta.extractionQueued),
                     clarify: ((meta as any).clarify ?? null) as NexusMessage["clarify"],
                     tradeoffMatrix: ((meta as any).tradeoff ?? null) as NexusMessage["tradeoffMatrix"],
+                    projectChoices: ((meta as any).projectChoices ?? null) as NexusMessage["projectChoices"],
+                    projectNotFound: ((meta as any).projectNotFound ?? null) as NexusMessage["projectNotFound"],
                     generatedArtifacts: ((meta as any).generatedArtifacts ?? null) as NexusMessage["generatedArtifacts"],
                     runId: ((meta as any).runId as string | undefined) ?? null,
                     executionOutcome: ((meta as any).executionOutcome ?? null) as NexusMessage["executionOutcome"],

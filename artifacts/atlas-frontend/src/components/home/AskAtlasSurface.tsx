@@ -131,6 +131,8 @@ export type AskAtlasMessage = {
   pendingSketch?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
+  projectChoices?: Array<{ id: number; name: string }> | null;
+  projectNotFound?: string | null;
   generatedArtifacts?: Array<{
     artifactId: number | string;
     projectId?: number;
@@ -671,6 +673,60 @@ export function AskAtlasSurface({
                     >
                       stay here
                     </button>
+                  </div>
+                )}
+                {!msg.streaming && msg.projectChoices && msg.projectChoices.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{
+                      fontSize: 11,
+                      fontFamily: "var(--app-font-mono)",
+                      color: "var(--atlas-muted)",
+                      letterSpacing: "0.08em",
+                      marginBottom: 6,
+                      opacity: 0.7,
+                    }}>
+                      WHICH PROJECT?
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {msg.projectChoices.map(choice => (
+                        <button
+                          key={choice.id}
+                          type="button"
+                          onClick={() => setLocation(`/project/${choice.id}`)}
+                          style={{
+                            background: "transparent",
+                            border: "1px solid var(--atlas-gold)",
+                            borderRadius: 6,
+                            padding: "4px 12px",
+                            cursor: "pointer",
+                            color: "var(--atlas-gold)",
+                            fontSize: 12,
+                            fontFamily: "var(--app-font-mono)",
+                            letterSpacing: "0.08em",
+                            fontWeight: 500,
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                        >
+                          {choice.name} →
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!msg.streaming && msg.projectNotFound && (
+                  <div style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    fontFamily: "var(--app-font-mono)",
+                    color: "var(--atlas-muted)",
+                    letterSpacing: "0.06em",
+                    opacity: 0.75,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}>
+                    <span style={{ opacity: 0.5 }}>⚠</span>
+                    No project named &ldquo;{msg.projectNotFound}&rdquo; found in your workspace.
                   </div>
                 )}
                 {!msg.streaming && displayContent.length > 0 && (

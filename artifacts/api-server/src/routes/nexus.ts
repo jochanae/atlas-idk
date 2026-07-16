@@ -3935,27 +3935,43 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     // The model emits the project name only; server resolves to a validated ID + route.
     // Gate: only fires if PROJECT_READY didn't already claim pendingNavProjectId (new project
     // creation takes priority over explicit navigation to an existing one in the same turn).
+    // No preference for the focused project — all user projects are matched equally.
     const OPEN_PROJECT_RE = /^OPEN_PROJECT:\s*(\{[^\n]+\})\s*$/gm;
     rawContent = rawContent.replace(OPEN_PROJECT_RE, (_match, json: string) => {
-      if (pendingNavProjectId === null) {
+      if (pendingNavProjectId === null && openProjectChoices === null && openProjectNotFound === null) {
         try {
           const parsed = JSON.parse(json) as { projectName?: string };
-          const requestedName = (parsed.projectName ?? "").trim().toLowerCase();
+          const rawName = (parsed.projectName ?? "").trim();
+          const requestedName = rawName.toLowerCase();
           if (requestedName) {
-            // Three-tier fuzzy match: exact → contains → reverse-contains
-            const resolved =
-              projects.find(p => p.name.trim().toLowerCase() === requestedName) ??
-              projects.find(p => p.name.trim().toLowerCase().includes(requestedName)) ??
-              projects.find(p => requestedName.includes(p.name.trim().toLowerCase()));
-            if (resolved) {
-              pendingNavProjectId = resolved.id;
-              pendingNavProjectName = resolved.name;
-              logger.info(
-                { requestedName, resolvedId: resolved.id, resolvedName: resolved.name },
-                "nexus: OPEN_PROJECT resolved to existing project",
-              );
+            // Tier 1: exact case-insensitive match across ALL user projects (no focusProject bias)
+            const exactMatches = projects.filter(p => p.name.trim().toLowerCase() === requestedName);
+            if (exactMatches.length === 1) {
+              // Single exact match → confident auto-navigate
+              pendingNavProjectId = exactMatches[0].id;
+              pendingNavProjectName = exactMatches[0].name;
+              logger.info({ requestedName, resolvedId: exactMatches[0].id }, "nexus: OPEN_PROJECT single exact match");
+            } else if (exactMatches.length > 1) {
+              // Multiple exact matches (duplicate project names) → surface choices
+              openProjectChoices = exactMatches.map(p => ({ id: p.id, name: p.name }));
+              logger.info({ requestedName, count: exactMatches.length }, "nexus: OPEN_PROJECT multiple exact matches → choices");
             } else {
-              logger.warn({ requestedName }, "nexus: OPEN_PROJECT — no matching project found for user");
+              // Tier 2: substring match (project name contains the requested string)
+              const containsMatches = projects.filter(p => p.name.trim().toLowerCase().includes(requestedName));
+              if (containsMatches.length === 1) {
+                // Uniquely resolved → confident auto-navigate
+                pendingNavProjectId = containsMatches[0].id;
+                pendingNavProjectName = containsMatches[0].name;
+                logger.info({ requestedName, resolvedId: containsMatches[0].id }, "nexus: OPEN_PROJECT unique contains match");
+              } else if (containsMatches.length > 1) {
+                // Multiple partial matches → surface choices rather than guess
+                openProjectChoices = containsMatches.map(p => ({ id: p.id, name: p.name }));
+                logger.info({ requestedName, count: containsMatches.length }, "nexus: OPEN_PROJECT multiple contains matches → choices");
+              } else {
+                // No match at all → surface not-found; preserve the original casing for the UI
+                openProjectNotFound = rawName;
+                logger.warn({ requestedName }, "nexus: OPEN_PROJECT — no matching project found");
+              }
             }
           }
         } catch { /* ignore malformed */ }
@@ -5203,6 +5219,8 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
             },
           }
         : {}),
+      ...(openProjectChoices !== null ? { projectChoices: openProjectChoices } : {}),
+      ...(openProjectNotFound !== null ? { projectNotFound: openProjectNotFound } : {}),
       ...(projectReadyToken ? { projectReady: projectReadyToken } : {}),
       // Builder emitters — same field names as /api/chat
       ...(allChips.length > 0 ? { memoryChips: allChips } : {}),
@@ -5557,6 +5575,11 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
   let fullText = "";
   let pendingNavProjectId: number | null = null;
   let pendingNavProjectName: string | null = null;
+  // OPEN_PROJECT resolution state — set by the post-stream callback, read by the done event.
+  // null means the signal was not emitted; array means multiple candidates were found;
+  // string means no project matched the requested name.
+  let openProjectChoices: Array<{ id: number; name: string }> | null = null;
+  let openProjectNotFound: string | null = null;
 
   // Presentation-layer fix (task #162): IMAGE_GEN is emitted by the model as raw
   // JSON at the end of its response ("\nIMAGE_GEN:{...}"). Streaming that text
