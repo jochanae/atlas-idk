@@ -24,6 +24,12 @@ type ThreadMessage = {
   isBriefing?: boolean;
   createdAt?: string;
   runId?: string | null;
+  executionOutcome?: NexusMessage["executionOutcome"] | null;
+  fileEdit?: NexusMessage["fileEdit"] | null;
+  fileEdits?: NexusMessage["fileEdits"] | null;
+  linePatches?: NexusMessage["linePatches"] | null;
+  fileDeletes?: NexusMessage["fileDeletes"] | null;
+  githubPush?: NexusMessage["githubPush"] | null;
   imageGen?: NexusMessage["imageGen"] | null;
   decisionArtifacts?: NexusMessage["decisionArtifacts"] | null;
   generatedArtifacts?: NexusMessage["generatedArtifacts"] | null;
@@ -36,6 +42,12 @@ function threadMessageToNexus(m: ThreadMessage): NexusMessage {
     content: m.content,
     createdAt: m.createdAt ?? new Date().toISOString(),
     runId: m.runId ?? null,
+    executionOutcome: m.executionOutcome ?? null,
+    fileEdit: m.fileEdit ?? null,
+    fileEdits: m.fileEdits ?? null,
+    linePatches: m.linePatches ?? null,
+    fileDeletes: m.fileDeletes ?? null,
+    githubPush: m.githubPush ?? null,
     imageGen: m.imageGen ?? null,
     decisionArtifacts: m.decisionArtifacts ?? null,
     generatedArtifacts: m.generatedArtifacts ?? null,
