@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { classify } from "@/lib/outputsClassification";
 
 /**
  * ArtifactsGallery — the "Atlas Generated" artifact list.
@@ -59,7 +60,15 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
     refetchInterval: enabled ? 15_000 : false,
   });
 
-  const artifacts = artifactsData?.artifacts ?? [];
+  // Slice 3: shared classifier is the sole inclusion authority for Artifacts.
+  const artifacts = useMemo(
+    () => (artifactsData?.artifacts ?? []).filter((a) => classify({
+      type: a.type,
+      extension: typeof a.metadata?.extension === "string" ? (a.metadata.extension as string) : null,
+      metadata: a.metadata ?? null,
+    }).includedInArtifacts),
+    [artifactsData],
+  );
   const [expandedArtifactId, setExpandedArtifactId] = useState<number | null>(null);
   const [artifactBucket, setArtifactBucket] = useState<string>("all");
 

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChevronDown, Download, FileOutput, FileText, LayoutGrid, List, Search, Wand2 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/api";
+import { classify } from "@/lib/outputsClassification";
 
 const DRAFT_TYPES: Array<{ type: string; label: string }> = [
   { type: "draft_email", label: "Email Draft" },
@@ -279,7 +280,13 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
         throw new Error(`HTTP ${projectRes.value.status}`);
       }
 
+      // Slice 3: shared classifier is the sole inclusion authority for All Outputs.
       const merged = [...projectItems, ...legacyItems]
+        .filter((a) => classify({
+          type: a.type,
+          extension: typeof a.metadata?.extension === "string" ? (a.metadata.extension as string) : null,
+          metadata: a.metadata ?? null,
+        }).includedInOutputs)
         .sort((a, b) => new Date(artifactDate(b)).getTime() - new Date(artifactDate(a)).getTime());
       setItems(merged);
     } catch (e) {
