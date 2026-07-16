@@ -236,6 +236,31 @@ export function SpeakButton({
           : <Volume2 size={size} strokeWidth={1.6} />}
       </button>
 
+      {showHint && !menuOpen && (
+        <span
+          role="status"
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 4px)",
+            right: 0,
+            zIndex: 300,
+            padding: "3px 7px",
+            background: "var(--atlas-surface)",
+            border: "1px solid var(--atlas-border)",
+            borderRadius: 6,
+            color: "var(--atlas-muted)",
+            fontSize: 10,
+            fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.04em",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            opacity: 0.92,
+          }}
+        >
+          long-press for voices
+        </span>
+      )}
+
       {menuOpen && (
         <div
           ref={menuRef}
