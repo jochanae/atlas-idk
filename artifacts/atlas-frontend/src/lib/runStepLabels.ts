@@ -20,7 +20,7 @@ export const EXECUTION_VERBS = new Set([
   // Read-only file checks in Build mode still belong to the run lifecycle:
   // active card → completed/no-change receipt → Details. Pure chat turns do
   // not emit these steps because the backend suppresses build steps there.
-  "FILE_READ", "READ", "READING",
+  "FILE_READ",
 ]);
 
 /** True when this verb represents a "Doing" (mutating/tool-use) step. */
@@ -50,8 +50,6 @@ export function doingLabel(verb?: string | null, target?: string | null): string
     case "FILE_DELETE":
       return filename ? `Removing ${filename}` : "Removing file";
     case "FILE_READ":
-    case "READ":
-    case "READING":
       return filename ? `Reading ${filename}` : "Reading project files";
     case "GITHUB_PUSH":
       return target ? `Pushing to ${target}` : "Pushing to GitHub";
