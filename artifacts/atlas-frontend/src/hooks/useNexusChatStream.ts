@@ -79,6 +79,7 @@ export interface NexusMessage {
   genesisData?: { projectName: string; timestamp: string };
   imageUrl?: string;
   pendingSketch?: boolean;
+  sketchFailed?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   imageGen?: {
     images: Array<{
@@ -780,12 +781,16 @@ export function useNexusChatStream(
             if (handoff) setHandoffSignal(handoff);
             const focusSuggestion = meta.focusSuggestion as NexusFocusSuggestion | undefined;
 
-            setMessages(prev => prev.map(m =>
-              (m as any).id === streamingId
-                ? {
+            setMessages(prev => prev.map(m => {
+              if ((m as any).id !== streamingId) return m;
+              const wasPendingSketch = !!(m as any).pendingSketch;
+              const hasImage = !!(m as any).imageB64 || !!((m as any).imageGen?.images?.length);
+              return {
                     ...m,
                     content: displayText,
                     navigateTo: navigateTo,
+                    pendingSketch: false,
+                    sketchFailed: wasPendingSketch && !hasImage,
                     imageGen: ((meta as any).imageGen ?? null) as NexusMessage["imageGen"],
                     decisionArtifacts: ((meta as any).decisionArtifacts ?? null) as NexusMessage["decisionArtifacts"],
                     streaming: false,
@@ -815,9 +820,8 @@ export function useNexusChatStream(
                     fileDeletes: ((meta as any).fileDeletes ?? null) as NexusMessage["fileDeletes"],
                     githubPush: ((meta as any).githubPush ?? null) as NexusMessage["githubPush"],
                     awaitingAuthorization: ((meta as any).awaitingConfirmation ?? null) as NexusMessage["awaitingAuthorization"],
-                  }
-                : m
-            ));
+                  };
+            }));
 
             // Capture pending authorization so consumers can render the authorize card
             if ((meta as any).awaitingConfirmation) {

@@ -9,6 +9,8 @@ import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useA
 import { CommitCard } from "../CommitCard";
 import { PlanCard } from "../PlanCard";
 import { MarkdownProse } from "../MessageRenderer";
+import { AtlasActionRow } from "../home/AtlasActionRow";
+import { parseAtlasAction } from "../home/AtlasActionParser";
 import { ResearchCard } from "../ResearchCard";
 import { ThoughtForBadge } from "../ThoughtForBadge";
 
@@ -1777,6 +1779,17 @@ function AssistantBubbleImpl({
     .replace(/\s*NAVIGATE_TO:\s*\{[^\n]+\}\s*$/gm, "")
     .trim();
 
+  const { actionCleanedContent, actionBlocks } = useMemo(() => {
+    const ATLAS_ACTION_RE = /```atlas-action\n([\s\S]*?)```/g;
+    const blocks: ReturnType<typeof parseAtlasAction>[] = [];
+    const text = cleanedContent.replace(ATLAS_ACTION_RE, (_match, raw: string) => {
+      const block = parseAtlasAction(raw.trim());
+      if (block) blocks.push(block);
+      return "";
+    }).trim();
+    return { actionCleanedContent: text, actionBlocks: blocks.filter(Boolean) };
+  }, [cleanedContent]);
+
   // Detect previewable code block (html, jsx, tsx, css, or untagged with HTML tags)
   const previewableCode = useMemo(() => {
     const regex = /```(\w*)\n([\s\S]+?)```/g;
@@ -2280,13 +2293,41 @@ function AssistantBubbleImpl({
         <div className="atlas-prose" style={{ fontSize: 16.5, lineHeight: 1.75, letterSpacing: "0.015em", color: "var(--atlas-fg)", opacity: 0.94, fontFamily: "var(--app-font-sans)", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" as const }}>
           {message.streaming ? (
             <span className="atlas-live-stream-text" style={{ opacity: 0.92, whiteSpace: "pre-wrap" }}>
-              {cleanedContent}
+              {actionCleanedContent}
               <span className="atlas-cursor" aria-hidden />
             </span>
           ) : (
-            <MarkdownProse content={cleanedContent} />
+            <MarkdownProse content={actionCleanedContent} />
+          )}
+          {/* atlas-action quick-action pills — rendered after prose, not inside the markdown renderer */}
+          {!message.streaming && actionBlocks.map((block, i) =>
+            block ? (
+              <AtlasActionRow
+                key={i}
+                block={block}
+                onAction={(id, payload) => {
+                  window.dispatchEvent(new CustomEvent("axiom:atlas-action", { detail: { id, payload } }));
+                }}
+              />
+            ) : null
           )}
         </div>
+        )}
+        {/* Sketch failed — image generation did not produce a result */}
+        {message.sketchFailed && !message.imageB64 && !imageGenDataUrl && !(message.imageGen?.images?.length) && (
+          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, opacity: 0.55 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style={{ fontSize: 12, letterSpacing: "0.02em" }}>Sketch unavailable — tap to retry</span>
+            {onSend && (
+              <button
+                type="button"
+                onClick={() => onSend("Sketch this again")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--atlas-gold)", fontSize: 12, padding: "2px 6px", borderRadius: 4, opacity: 0.8 }}
+              >
+                Retry
+              </button>
+            )}
+          </div>
         )}
 
         {message.researchResult && (

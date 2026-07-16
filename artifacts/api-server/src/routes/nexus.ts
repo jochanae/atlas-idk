@@ -4142,31 +4142,37 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         const enginePrompt = token.mode === "render"
           ? `${token.prompt} Ultra-premium, cinematic quality. Sleek dark-mode aesthetic with obsidian depth, luxury glassmorphism elements, subtle amber/gold accent glows. Sophisticated editorial lighting, presentation-ready professional finish. 8K resolution quality.`
           : `${token.prompt} Clean flat 2D technical diagram. High-contrast dark background, crisp connector lines, strict geometric layout, precise spatial placement, sharp labels. Pure structural accuracy.`;
-        try {
-          const timeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("image gen timeout")), 20_000)
-          );
-          const r = await Promise.race([
-            genai.models.generateContent({
-              model: "gemini-2.5-flash-image",
-              contents: enginePrompt,
-              config: { responseModalities: ["IMAGE", "TEXT"] },
-            }),
-            timeout,
-          ]);
-          const parts = r.candidates?.[0]?.content?.parts ?? [];
-          const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith("image/"));
-          const textPart = parts.find((p: any) => p.text);
-          if (imagePart?.inlineData?.data) {
-            nexusImages.push({
-              imageUrl: `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`,
-              prompt: textPart?.text ?? enginePrompt,
-              model: "gemini-2.5-flash-image",
-              mode: token.mode,
-            });
+        const IMAGE_MODELS = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
+        let generated = false;
+        for (const imgModel of IMAGE_MODELS) {
+          if (generated) break;
+          try {
+            const timeout = new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("image gen timeout")), 20_000)
+            );
+            const r = await Promise.race([
+              genai.models.generateContent({
+                model: imgModel,
+                contents: enginePrompt,
+                config: { responseModalities: ["IMAGE", "TEXT"] },
+              }),
+              timeout,
+            ]);
+            const parts = r.candidates?.[0]?.content?.parts ?? [];
+            const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith("image/"));
+            const textPart = parts.find((p: any) => p.text);
+            if (imagePart?.inlineData?.data) {
+              nexusImages.push({
+                imageUrl: `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`,
+                prompt: textPart?.text ?? enginePrompt,
+                model: imgModel,
+                mode: token.mode,
+              });
+              generated = true;
+            }
+          } catch (err) {
+            logger.warn({ err, imgModel }, "Nexus image generation failed — trying next model");
           }
-        } catch (err) {
-          logger.warn({ err }, "Nexus image generation failed or timed out");
         }
       }
       return nexusImages.length > 0 ? { images: nexusImages } : undefined;

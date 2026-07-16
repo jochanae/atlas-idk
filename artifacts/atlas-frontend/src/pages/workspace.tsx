@@ -353,6 +353,7 @@ export interface ChatMessage {
   artifact?: { type: string; title: string; content: string } | null;
   imageGen?: { images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }> } | null;
   pendingSketch?: boolean;
+  sketchFailed?: boolean;
   /** Time-travel: snapshot id linking this message to a workspace state. */
   snapshotId?: string;
   /** Time-travel: messages bypassed by a rollback. Kept in-array but filtered
@@ -5886,6 +5887,18 @@ export default function Workspace() {
       },
     );
   }, [createProjectMutation, queryClient, setLocation]);
+
+  useEffect(() => {
+    const onAtlasAction = (e: Event) => {
+      const { id, payload } = (e as CustomEvent).detail as { id: string; payload?: Record<string, string | number> };
+      if (id === "create-project") {
+        const name = typeof payload?.name === "string" ? payload.name : "New Project";
+        handleCreateProjectFromWorkspace(name);
+      }
+    };
+    window.addEventListener("axiom:atlas-action", onAtlasAction);
+    return () => window.removeEventListener("axiom:atlas-action", onAtlasAction);
+  }, [handleCreateProjectFromWorkspace]);
 
   // fileContext moved above (consumed by useChatStream).
   // chatPending owned by useChatStream.
