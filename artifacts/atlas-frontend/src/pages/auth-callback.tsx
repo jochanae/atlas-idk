@@ -22,7 +22,15 @@ export default function AuthCallback() {
       }
       queryClient.removeQueries({ queryKey: ["auth", "me"] });
     }
-    navigate("/home", { replace: true });
+
+    // First ever sign-in → full activation sequence.
+    // Subsequent sign-ins → short warm-boot pulse.
+    let seen = false;
+    try { seen = localStorage.getItem("atlas-activation-seen") === "1"; } catch {}
+    try {
+      sessionStorage.setItem("atlas-activation-mode", seen ? "warm" : "full");
+    } catch {}
+    navigate("/activate", { replace: true });
   }, [navigate, queryClient]);
 
   return (

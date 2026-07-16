@@ -38,6 +38,7 @@ import Admin from "./pages/admin";
 
 import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
+import ActivatePage from "./pages/activate";
 import TokenBridge from "./pages/token-bridge";
 import { useAuth } from "@/hooks/useAuth";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
@@ -241,6 +242,7 @@ function Router() {
           <Route path="/landing" component={Landing} />
           <Route path="/login" component={Login} />
           <Route path="/auth/callback" component={AuthCallback} />
+          <Route path="/activate" component={ActivatePage} />
           <Route path="/auth/token-bridge" component={TokenBridge} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/onboarding" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
