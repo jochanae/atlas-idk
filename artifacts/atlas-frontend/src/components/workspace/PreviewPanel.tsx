@@ -1464,7 +1464,7 @@ ${t}
                 <iframe
                   key={sandboxRendered.slice(0, 80)}
                   srcDoc={sandboxRendered}
-                  title="Sandbox Preview"
+                  title="Draft Preview"
                   sandbox="allow-scripts allow-same-origin"
                   style={{ border: "none", width: "100%", height: "100%", display: "block", background: "#fff" }}
                 />

@@ -136,7 +136,7 @@ function HtmlAppCard({ artifact, projectId, onOpen }: Props) {
             <Download size={12} strokeWidth={1.8} />
           </a>
           <button type="button" onClick={handleOpen} style={btnPrimary}>
-            Open Draft
+            Open in Draft
           </button>
         </div>
       </div>
@@ -199,7 +199,7 @@ function HtmlAppCard({ artifact, projectId, onOpen }: Props) {
 }
 
 export function ArtifactCreatedCard({ artifact, projectId, onOpen }: Props) {
-  const isHtmlApp = artifact.type === "html-app" || artifact.type === "html";
+  const isHtmlApp = artifact.type === "html-app" || artifact.type === "html" || artifact.type === "html_preview" || artifact.extension === "html";
 
   if (isHtmlApp) {
     return <HtmlAppCard artifact={artifact} projectId={projectId} onOpen={onOpen} />;

@@ -563,7 +563,7 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
     const sendToDraft = (e: React.MouseEvent) => {
       e.stopPropagation();
       window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "sandbox", content } }));
-      toast("Sent to Draft preview.");
+      toast("Opened in Draft Preview.");
     };
     const downloadFile = (e?: React.MouseEvent) => {
       e?.stopPropagation();
@@ -722,7 +722,7 @@ export function OutputsGallery({ projectId }: { projectId: number }) {
         )}
         <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
           {looksHtml && (
-            <button type="button" onClick={sendToDraft} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Send to Draft</button>
+            <button type="button" onClick={sendToDraft} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Open in Draft</button>
           )}
           {fileBacked ? (
             <button type="button" onClick={downloadFile} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-gold)", background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Download .{extension || a.type}</button>

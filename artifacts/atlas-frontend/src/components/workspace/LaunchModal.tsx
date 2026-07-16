@@ -21,7 +21,7 @@ export interface LaunchModalProps {
 const MODE_META: Record<LaunchMode, { label: string; icon: typeof Folder }> = {
   files:    { label: "FILE BROWSER",    icon: Folder },
   code:     { label: "CODE EDITOR",     icon: Code2 },
-  preview:  { label: "IMMERSIVE SANDBOX", icon: Monitor },
+  preview:  { label: "DRAFT PREVIEW", icon: Monitor },
   activity: { label: "ACTIVITY LEDGER", icon: Activity },
 };
 
