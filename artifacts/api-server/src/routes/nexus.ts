@@ -4291,8 +4291,21 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         try {
           const wsDir = await ensureProjectWorkspaceDir(focusProjectId);
           for (const edit of responseFileEdits) {
-            writeStep({ verb: "FILE_EDIT", target: edit.path, detail: "applied" });
             const absPath = resolveWorkspacePath(wsDir, edit.path);
+            // Capture prior file body (null if new) so Changes tab can render a diff.
+            let beforeBody: string | null = null;
+            try {
+              beforeBody = await fsPromises.readFile(absPath, "utf-8");
+            } catch {
+              beforeBody = null;
+            }
+            writeStep({
+              verb: "FILE_EDIT",
+              target: edit.path,
+              detail: "applied",
+              content: (edit.content ?? "").slice(0, 200000),
+              beforeContent: beforeBody !== null ? beforeBody.slice(0, 200000) : null,
+            });
             await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
             await fsPromises.writeFile(absPath, edit.content, "utf-8");
             autoAppliedPaths.push(edit.path);
@@ -4308,7 +4321,13 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
       }
 
       for (const patch of responseLinePatches) {
-        writeStep({ verb: "LINE_PATCH", target: patch.path, detail: "applied" });
+        writeStep({
+          verb: "LINE_PATCH",
+          target: patch.path,
+          detail: "applied",
+          content: patch.replace ?? null,
+          beforeContent: patch.find ?? null,
+        });
       }
 
       // Execute GITHUB_PUSH when token present + project focused
