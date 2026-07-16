@@ -20,25 +20,13 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ViewChangesPanel } from "@/components/workspace/ViewChangesPanel";
-import type { PushRecord } from "@/hooks/usePushHistory";
-
-interface LinkedRepo {
-  owner: string;
-  repo: string;
-  branch?: string | null;
-}
-
-interface TimelineMessage {
-  id: string | number;
-  role: string;
-  content: string;
-  sentAt?: string;
-}
+import type { PushRecord, LinkedRepo } from "@/pages/workspace";
+import type { ChatMessage } from "@/types/chat";
 
 interface Props {
   projectId: number;
   linkedRepo: LinkedRepo | null;
-  messages: TimelineMessage[];
+  messages: ChatMessage[];
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
   projectName?: string | null;
