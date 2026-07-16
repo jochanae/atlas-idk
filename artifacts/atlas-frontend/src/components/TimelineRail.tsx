@@ -143,6 +143,7 @@ export function TimelineRail({
   // it instead of hanging off the global header.
   const [visibleIdxs, setVisibleIdxs] = useState<Set<number>>(new Set());
   const [containerRect, setContainerRect] = useState<{ top: number; bottom: number; right: number } | null>(null);
+  const [chatVisible, setChatVisible] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const scrollIdleTimer = useRef<number | null>(null);
