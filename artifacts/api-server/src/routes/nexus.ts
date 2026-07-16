@@ -1894,6 +1894,8 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
       imageGen: (m.metadata as any)?.imageGen ?? null,
       // Restore persisted decisionArtifacts so Decision Intelligence cards survive reload
       decisionArtifacts: (m.metadata as any)?.decisionArtifacts ?? null,
+      // Restore generated artifact cards (ArtifactCreatedCard) so they survive reload
+      generatedArtifacts: (m.metadata as any)?.generatedArtifacts ?? null,
       executionTimeMs: null,
       inputTokens: null,
       outputTokens: null,
@@ -5045,6 +5047,34 @@ PROSE RULES (enforced — contradiction detection is active):
           }
         } catch (err: unknown) {
           logger.warn({ err }, "decisionArtifacts metadata persist failed — non-fatal");
+        }
+      })();
+    }
+
+    // Persist generatedArtifacts to the message so ArtifactCreatedCards survive thread reload.
+    if (sharedSideEffects.generatedArtifacts.length > 0 && effectiveConversationId) {
+      (async () => {
+        try {
+          const [latest] = await db
+            .select({ id: nexusMessagesTable.id, metadata: nexusMessagesTable.metadata })
+            .from(nexusMessagesTable)
+            .where(
+              and(
+                eq(nexusMessagesTable.conversationId, effectiveConversationId),
+                eq(nexusMessagesTable.role, "assistant"),
+                eq(nexusMessagesTable.userId, userId),
+              )
+            )
+            .orderBy(desc(nexusMessagesTable.createdAt))
+            .limit(1);
+          if (latest) {
+            await db
+              .update(nexusMessagesTable)
+              .set({ metadata: { ...(latest.metadata ?? {}), generatedArtifacts: sharedSideEffects.generatedArtifacts } })
+              .where(eq(nexusMessagesTable.id, latest.id));
+          }
+        } catch (err: unknown) {
+          logger.warn({ err }, "generatedArtifacts metadata persist failed — non-fatal");
         }
       })();
     }

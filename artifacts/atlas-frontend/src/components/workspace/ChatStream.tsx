@@ -404,15 +404,23 @@ export function ChatStream(props: ChatStreamProps) {
   //  - During active runs (chatPending/streaming) we fall back to the trailing
   //    card — it's the live surface and there's no settled messageId yet.
   const runCardAfterIdx = useMemo(() => {
-    if (!execLatestRun?.messageId) return -1;
+    if (!execLatestRun) return -1;
     if (chatPending) return -1; // live: trailing card owns the surface
-    const idx = messages.findIndex(m => m.id === execLatestRun.messageId && m.role === "assistant");
+    // Nexus path: m.id is positional (idx+1), NOT the DB row id.
+    // Match on m.runId === execLatestRun.id (both are the execution_runs UUID).
+    // Classic path fallback: m.id IS the DB message id, match on execLatestRun.messageId.
+    const idx = messages.findIndex(m =>
+      m.role === "assistant" &&
+      (m.runId
+        ? m.runId === execLatestRun.id
+        : execLatestRun.messageId != null && m.id === execLatestRun.messageId)
+    );
     if (idx === -1) return -1;
     // Anchor the receipt inline immediately after its originating assistant
     // message, regardless of whether newer assistant/user turns exist. The
     // receipt stays in its historical position as the conversation continues.
     return idx;
-  }, [execLatestRun?.messageId, chatPending, messages]);
+  }, [execLatestRun, chatPending, messages]);
 
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
@@ -895,7 +903,7 @@ export function ChatStream(props: ChatStreamProps) {
                 chatPending={false}
                 liveStep={null}
                 suppressGitHubReceipt
-                suppressDeliverableReceipt={Boolean(execLatestRun?.messageId != null && messages.find(m => m.id === execLatestRun.messageId)?.generatedArtifacts?.length)}
+                suppressDeliverableReceipt={Boolean(execLatestRun != null && messages.find(m => m.role === "assistant" && (m.runId ? m.runId === execLatestRun.id : execLatestRun.messageId != null && m.id === execLatestRun.messageId))?.generatedArtifacts?.length)}
                 executionRun={execLatestRun}
                 onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
               />
@@ -976,7 +984,7 @@ export function ChatStream(props: ChatStreamProps) {
           chatPending={chatPending}
           liveStep={liveStep}
           suppressGitHubReceipt
-          suppressDeliverableReceipt={Boolean(execLatestRun?.messageId != null && messages.find(m => m.id === execLatestRun.messageId)?.generatedArtifacts?.length)}
+          suppressDeliverableReceipt={Boolean(execLatestRun != null && messages.find(m => m.role === "assistant" && (m.runId ? m.runId === execLatestRun.id : execLatestRun.messageId != null && m.id === execLatestRun.messageId))?.generatedArtifacts?.length)}
           executionRun={execLatestRun}
           onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
         />

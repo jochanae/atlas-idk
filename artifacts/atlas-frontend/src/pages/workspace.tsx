@@ -375,7 +375,7 @@ export interface ChatMessage {
   /** Durable receipt of a completed GitHub push. Source of truth after reload
    *  (liveStep.verb === "github_push" only covers the in-flight window). */
   githubPush?: GithubPushPayload;
-  /** File-backed deliverables (pptx/docx/xlsx/pdf/mermaid/chart/draft) generated
+  /** File-backed deliverables (pptx/docx/xlsx/pdf/mermaid/chart/draft/html-app) generated
    *  this turn via generate-deliverable.ts. Rendered as an inline
    *  ArtifactCreatedCard anchored to this message (task #171). */
   generatedArtifacts?: Array<{
@@ -386,6 +386,7 @@ export interface ChatMessage {
     extension?: string;
     downloadUrl: string;
     summary?: string | null;
+    preview?: { safe?: boolean; reasons?: string[]; html?: string } | null;
   }>;
 }
 

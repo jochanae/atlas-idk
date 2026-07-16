@@ -98,6 +98,10 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     sentAt: nm.createdAt ?? undefined,
     // v1.4: backend-derived execution outcome from advance_execution_state tool
     ...(nm.executionOutcome ? { executionOutcome: nm.executionOutcome } : {}),
+    // Stable run ID (execution_runs.id) — required so runCardAfterIdx anchors the
+    // receipt card by matching msg.runId === execLatestRun.id (Nexus path uses UUIDs;
+    // m.id is positional idx+1 which never matches execLatestRun.messageId).
+    ...(nm.runId ? { runId: nm.runId } : {}),
   };
 }
 

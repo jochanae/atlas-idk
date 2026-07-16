@@ -780,6 +780,24 @@ export function useNexusChatStream(
                 : m
             ));
 
+            // If an html-app was generated, open the Preview panel automatically
+            // so the user sees the running app without manually switching tabs.
+            const _htmlApp = ((meta as any).generatedArtifacts as Array<{ type: string; downloadUrl?: string }> | null)
+              ?.find(a => a.type === "html-app" || a.type === "html");
+            if (_htmlApp?.downloadUrl) {
+              const _dlUrl = _htmlApp.downloadUrl;
+              setTimeout(() => {
+                fetch(_dlUrl, { credentials: "include" })
+                  .then(r => r.ok ? r.text() : Promise.reject(new Error(`${r.status}`)))
+                  .then(html => {
+                    window.dispatchEvent(new CustomEvent("axiom:open-preview", {
+                      detail: { source: "sandbox", content: html },
+                    }));
+                  })
+                  .catch(() => { /* non-critical: preview auto-open failed */ });
+              }, 350);
+            }
+
             resetStreamState();
           },
           onError: (errMsg) => {
