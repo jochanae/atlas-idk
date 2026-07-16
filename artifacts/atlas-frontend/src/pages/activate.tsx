@@ -170,7 +170,7 @@ export default function ActivatePage() {
                 animate={{ opacity: phase >= 3 ? 0.7 : 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                Your workspace is coming online
+                {mode === "welcome" ? "Welcome back" : "Your workspace is coming online"}
               </motion.div>
             </motion.div>
           )}
