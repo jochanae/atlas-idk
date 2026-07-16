@@ -5013,7 +5013,7 @@ export default function Workspace() {
 
   // Phase 2B: execution_runs data layer — provides durable run receipts to the
   // trailing WorkspaceRunCard instead of relying on message scanning (deriveRun).
-  const { execLatestRun } = useProjectRuns(id, { conversationId: conversationId ?? null });
+  const { runs: execRuns, execLatestRun } = useProjectRuns(id, { conversationId: conversationId ?? null });
 
 
   const thinkFreelyThreadLoadedRef = useRef(false);
@@ -9145,6 +9145,7 @@ export default function Workspace() {
               },
               onSuggestionPark: (text: string) => handlePark(text),
               execLatestRun,
+              execRuns,
               // Option 2: Nexus is the transport, ChatStream stays the shell.
               // These overrides must come LAST so they win over the fields above.
               ...(useNexusWorkspaceChat ? {
