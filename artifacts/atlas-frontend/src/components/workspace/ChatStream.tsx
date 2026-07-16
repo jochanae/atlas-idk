@@ -846,6 +846,24 @@ export function ChatStream(props: ChatStreamProps) {
         return (
         <Fragment key={msg.stableKey ?? String(msg.id)}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
+          {!conversationMode && msg.role === "assistant" && runCardsByIdx.has(i) && (
+            <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
+              {runCardsByIdx.get(i)?.map((run) => (
+                <WorkspaceRunCard
+                  key={run.id}
+                  projectId={projectId}
+                  messages={messages.slice(0, i + 1)}
+                  projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
+                  chatPending={false}
+                  liveStep={null}
+                  suppressGitHubReceipt
+                  suppressDeliverableReceipt={Boolean(messages.find(m => m.role === "assistant" && (m.runId ? m.runId === run.id : run.messageId != null && m.id === run.messageId))?.generatedArtifacts?.length)}
+                  executionRun={run}
+                  onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
+                />
+              ))}
+            </div>
+          )}
           {msg.role === "user" ? (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
               {isAutoVerifyMessage(msg) ? (
@@ -972,24 +990,6 @@ export function ChatStream(props: ChatStreamProps) {
                   <StepProgress mode="stream" content={activityStream.content} lens={wsLens} />
                 )
               )}
-            </div>
-          )}
-          {!conversationMode && runCardsByIdx.has(i) && (
-            <div data-atlas-run-anchor="inline" style={{ marginBottom: 8 }}>
-              {runCardsByIdx.get(i)?.map((run) => (
-                <WorkspaceRunCard
-                  key={run.id}
-                  projectId={projectId}
-                  messages={messages.slice(0, i + 1)}
-                  projectPreviewUrl={(project as ProjectWithPreview)?.previewUrl ?? null}
-                  chatPending={false}
-                  liveStep={null}
-                  suppressGitHubReceipt
-                  suppressDeliverableReceipt={Boolean(messages.find(m => m.role === "assistant" && (m.runId ? m.runId === run.id : run.messageId != null && m.id === run.messageId))?.generatedArtifacts?.length)}
-                  executionRun={run}
-                  onTryToFix={() => onSend?.("The last run failed. Please review the error and fix it.")}
-                />
-              ))}
             </div>
           )}
           {renderActivityForAnchor(i)}
