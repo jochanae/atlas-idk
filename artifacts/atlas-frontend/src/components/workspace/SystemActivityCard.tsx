@@ -137,7 +137,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
     <div
       style={{
         display: "flex", flexDirection: "column",
-        width: "min(100%, 340px)",
+        width: "min(100%, 400px)",
         alignSelf: "flex-start",
         margin: "8px 0 16px",
         background: "rgba(var(--atlas-surface-rgb,30,30,30),0.55)",
