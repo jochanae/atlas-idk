@@ -6145,6 +6145,9 @@ export default function Home() {
             msgCount: c.messageCount ?? 0,
             timestamp: c.createdAt ?? null,
             active: c.id === activeConversationId,
+            kind: c.type,
+            projectId: c.projectId ?? null,
+            projectName: c.projectName ?? null,
           }))}
         onNew={() => {
           setShowHistory(false);
@@ -6153,7 +6156,21 @@ export default function Home() {
           setAskAtlasSurfaceOpen(true);
           setDepth("active");
         }}
-        onSelect={(id) => handleSwitchConversation(String(id))}
+        onSelect={(id) => {
+          const conv = conversations.find((c) => c.id === String(id));
+          const dest = resolveConversationDestination({
+            id: String(id),
+            type: conv?.type,
+            projectId: conv?.projectId ?? null,
+            projectName: conv?.projectName ?? null,
+          });
+          if (dest.kind === "workspace") {
+            setShowHistory(false);
+            navigateToProject(dest.projectId);
+            return;
+          }
+          void handleSwitchConversation(dest.conversationId);
+        }}
         onDelete={(id) => handleDeleteConversation(String(id))}
       />
 
