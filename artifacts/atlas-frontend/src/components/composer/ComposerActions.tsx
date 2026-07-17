@@ -20,7 +20,14 @@ import {
 } from "lucide-react";
 import SketchComposerSheet from "./SketchComposerSheet";
 import { attachAuditLog } from "@/lib/attachAuditLog";
-import { installGhostClickShield } from "@/lib/ghostClickShield";
+import {
+  clearPickerPending,
+  installGhostClickShield,
+  markPickerPending,
+  shieldMsForFiles,
+  GHOST_SHIELD_DEFAULT_MS,
+  GHOST_SHIELD_DOCUMENT_MS,
+} from "@/lib/ghostClickShield";
 import { toast } from "sonner";
 
 // Per-file upload cap. Bigger files are rejected with a toast instead of
@@ -205,10 +212,14 @@ export function ComposerActions({
   function openNativePicker(kind: "attach" | "camera", input: HTMLInputElement | null) {
     const surface = scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared";
     attachAuditLog("picker_opened", { kind }, surface);
-    // Arm the ghost-click shield BEFORE the native picker steals focus. When
-    // the picker returns on mobile, Android synthesizes a tap at the original
-    // coordinates — often landing on Exit Ask Atlas / Send under the sheet.
-    installGhostClickShield(`picker_open:${kind}`);
+    // Document pickers (pptx via Files app) background the tab for a long time
+    // and return a delayed synthetic tap. Mark pending so visibility-return
+    // re-arms the shield even after the initial timer expires.
+    markPickerPending(`picker_open:${kind}`);
+    installGhostClickShield(
+      `picker_open:${kind}`,
+      kind === "attach" ? GHOST_SHIELD_DOCUMENT_MS : GHOST_SHIELD_DEFAULT_MS,
+    );
     // Keep the Plus sheet mounted for one frame so it can absorb any immediate
     // synthetic click, then dismiss it after the OS picker has taken over.
     requestAnimationFrame(() => {
@@ -217,6 +228,7 @@ export function ComposerActions({
     try {
       input?.click();
     } catch (err) {
+      clearPickerPending();
       try { console.error("[composer] native picker open failed", err); } catch { /* ignore */ }
     }
   }
@@ -224,12 +236,23 @@ export function ComposerActions({
   function pickFiles(files: FileList | null) {
     const surface = scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared";
     // Swallow the post-picker synthetic tap whether the user confirmed or cancelled.
-    installGhostClickShield(files && files.length > 0 ? "file_selected" : "file_cancelled");
+    // PowerPoint / Office files get a longer shield — Documents app ghost taps
+    // routinely arrive 500–1500ms after the change event on Android.
+    const listPreview = files ? Array.from(files) : [];
+    const shieldMs =
+      listPreview.length > 0 ? shieldMsForFiles(listPreview) : GHOST_SHIELD_DOCUMENT_MS;
+    installGhostClickShield(
+      files && files.length > 0 ? "file_selected" : "file_cancelled",
+      shieldMs,
+    );
+    // Keep pending through the shield window so Exit/toggle refuse late ghost
+    // taps even if the overlay is somehow bypassed (common with pptx/Documents).
+    window.setTimeout(() => clearPickerPending(), shieldMs);
     if (!files || files.length === 0) {
       attachAuditLog("file_selected", { count: 0, cancelled: true }, surface);
       return;
     }
-    const list = Array.from(files);
+    const list = listPreview;
 
     // Filter oversized files up-front and toast the user rather than letting
     // downstream base64 conversion throw and crash the composer.
@@ -254,6 +277,11 @@ export function ComposerActions({
         names: accepted.map((f) => f.name),
         types: accepted.map((f) => f.type),
         sizes: accepted.map((f) => f.size),
+        documentLike: accepted.some((f) =>
+          /\.(pptx?|docx?|xlsx?|pdf)$/i.test(f.name) ||
+          /officedocument|ms-powerpoint|msword|ms-excel|pdf/i.test(f.type),
+        ),
+        shieldMs,
       },
       surface,
     );

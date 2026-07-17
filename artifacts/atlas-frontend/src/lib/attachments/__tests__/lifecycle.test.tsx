@@ -64,6 +64,13 @@ describe("classifyKind", () => {
     expect(classifyKind("", "notes.md")).toBe("text");
     expect(classifyKind("application/octet-stream", "server.ts")).toBe("code");
     expect(classifyKind("", "sheet.xlsx")).toBe("spreadsheet");
+    expect(classifyKind("", "pitch.pptx")).toBe("doc");
+    expect(
+      classifyKind(
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "pitch.pptx",
+      ),
+    ).toBe("doc");
   });
   it("returns 'other' for unknown", () => {
     expect(classifyKind("application/x-weird", "thing.zzz")).toBe("other");

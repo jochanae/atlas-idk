@@ -3,33 +3,29 @@ import path from "node:path";
 import fs from "node:fs";
 
 /**
- * Z Fold / mobile: selecting a file must not wipe the Ask Atlas surface.
- * Root cause was a post-picker ghost tap landing on "Exit Ask Atlas".
+ * PowerPoint / Documents-app path: selecting a .pptx must not wipe Ask Atlas.
+ * Document pickers return later ghost taps than the photo gallery — cover the
+ * longer shield + Exit refusal window.
  */
-test.describe("Ask Atlas attach ghost-click", () => {
+test.describe("Ask Atlas PowerPoint attach ghost-click", () => {
   test.use({
     viewport: { width: 280, height: 653 },
     isMobile: true,
     hasTouch: true,
   });
 
-  test("file select stages attachment; ghost tap on Exit does not clear surface", async ({
+  test("pptx select stages attachment; delayed Exit ghost tap does not clear surface", async ({
     page,
   }) => {
-    const pngPath = path.join("/tmp", "atlas-e2e-attach.png");
-    fs.writeFileSync(
-      pngPath,
-      Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-        "base64",
-      ),
-    );
+    const pptxPath = path.join("/tmp", "atlas-e2e-deck.pptx");
+    // Minimal ZIP-shaped bytes so MIME/extension look like a real deck.
+    fs.writeFileSync(pptxPath, Buffer.from("PK\u0003\u0004fake-pptx-for-e2e"));
 
     await page.addInitScript(() => {
       localStorage.setItem("atlas-auth-token", "e2e-token");
       localStorage.setItem("atlas-attach-audit", "1");
-      localStorage.setItem("atlas-ask-atlas-conversation-id", "conv-e2e-attach");
-      sessionStorage.setItem("atlas-ask-atlas-conversation-id", "conv-e2e-attach");
+      localStorage.setItem("atlas-ask-atlas-conversation-id", "conv-e2e-pptx");
+      sessionStorage.setItem("atlas-ask-atlas-conversation-id", "conv-e2e-pptx");
       localStorage.setItem("atlas-ask-atlas-surface-open", "1");
       sessionStorage.removeItem("atlas-ask-atlas-closed");
     });
@@ -58,8 +54,8 @@ test.describe("Ask Atlas attach ghost-click", () => {
       if (p === "/api/nexus/thread") {
         return route.fulfill({
           json: [
-            { role: "user", content: "Keep this thread." },
-            { role: "assistant", content: "Ready for attachments." },
+            { role: "user", content: "Keep this thread for the deck." },
+            { role: "assistant", content: "Ready for the PowerPoint." },
           ],
         });
       }
@@ -73,30 +69,38 @@ test.describe("Ask Atlas attach ghost-click", () => {
     await expect(page.locator(".atlas-ask-atlas-scroll")).toBeVisible({ timeout: 15_000 });
     await expect(page.locator("[data-msg-idx]")).toHaveCount(2);
 
-    await page.setInputFiles("#ask-atlas-attach-input", pngPath);
+    await page.setInputFiles("#ask-atlas-attach-input", {
+      name: "pitch.pptx",
+      mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      buffer: fs.readFileSync(pptxPath),
+    });
 
     // Home + Ask Atlas composers can both render the chip; shield may cover them.
     await expect
       .poll(async () => page.locator('[aria-label="Remove attachment"]').count())
+      .toBeGreaterThanOrEqual(1);
+    await expect
+      .poll(async () => page.getByText("PPTX", { exact: true }).count())
       .toBeGreaterThanOrEqual(1);
     await expect(page.locator("[data-atlas-ghost-shield]")).toHaveCount(1);
 
     const exit = page.locator('button[aria-label="Exit Ask Atlas"]');
     const box = await exit.boundingBox();
     expect(box).toBeTruthy();
+
+    // Simulate the delayed Documents-app ghost tap (~1s after select).
+    await page.waitForTimeout(900);
     await page.touchscreen.tap(box!.x + box!.width / 2, box!.y + box!.height / 2);
 
-    // Surface + thread must survive the ghost tap.
     await expect(page.locator(".atlas-ask-atlas-scroll")).toBeVisible();
     await expect(page.locator("[data-msg-idx]")).toHaveCount(2);
     await expect
       .poll(async () => page.locator('[aria-label="Remove attachment"]').count())
       .toBeGreaterThanOrEqual(1);
 
-    // Intentional exit still works after the shield expires.
-    await page.waitForTimeout(500);
+    // After the document shield window, intentional Exit still works.
+    await page.waitForTimeout(1500);
     await expect(page.locator("[data-atlas-ghost-shield]")).toHaveCount(0);
-    // Prefer the visible Ask Atlas chip (home composer may keep a covered duplicate).
     await expect(
       page.locator('[aria-label="Remove attachment"]').filter({ visible: true }).first(),
     ).toBeVisible();

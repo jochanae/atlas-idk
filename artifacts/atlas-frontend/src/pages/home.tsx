@@ -78,8 +78,10 @@ import { attachAuditLog } from "@/lib/attachAuditLog";
 import {
   clearAskAtlasComposerDraft,
   getAskAtlasComposerDraft,
+  hydrateAskAtlasComposerDraft,
   setAskAtlasComposerDraft,
 } from "@/lib/composerDraftStore";
+import { isPickerPending } from "@/lib/ghostClickShield";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
@@ -1828,7 +1830,26 @@ export default function Home() {
       },
       "ask-atlas",
     );
+    // Restore staged files (e.g. PowerPoint) after Android Documents hard-reload.
+    let cancelled = false;
+    void hydrateAskAtlasComposerDraft().then((restored) => {
+      if (cancelled) return;
+      if (restored.input && !input) setInput(restored.input);
+      if (restored.files.length > 0) {
+        setAttachedFiles((prev) => (prev.length > 0 ? prev : restored.files));
+        attachAuditLog(
+          "draft_hydrated",
+          {
+            inputLen: restored.input.length,
+            fileCount: restored.files.length,
+            names: restored.files.map((f) => f.name),
+          },
+          "ask-atlas",
+        );
+      }
+    });
     return () => {
+      cancelled = true;
       attachAuditLog(
         "draft_cleanup",
         { inputLen: input.length, fileCount: attachedFiles.length },
@@ -5615,9 +5636,22 @@ export default function Home() {
                 type="button"
                 title="Open Ask Atlas"
                 aria-label="Open Ask Atlas"
+                // Close/open on click only — never onPointerDown. Document pickers
+                // (pptx) return a delayed ghost tap that used to hit this toggle
+                // and wipe the thread (looked like a refresh).
                 onPointerDown={(e) => {
                   e.preventDefault();
+                }}
+                onClick={(e) => {
                   e.stopPropagation();
+                  if (isPickerPending()) {
+                    attachAuditLog(
+                      "surface_exit_blocked",
+                      { reason: "picker_pending", control: "ask_atlas_toggle" },
+                      "ask-atlas",
+                    );
+                    return;
+                  }
                   if (askAtlasSurfaceOpen) {
                     // Full ambient reset — mirrors handleLockTap's close path so
                     // toggling off always lands back on the empty homepage, not a
@@ -5644,9 +5678,6 @@ export default function Home() {
                   const seed = input.trim();
                   if (seed) setInput(seed);
                   window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
                 }}
                 style={{
                   height: isTiny ? 28 : 34,
@@ -6095,6 +6126,16 @@ export default function Home() {
               }}
               onClick={(e) => {
                 e.stopPropagation();
+                // Documents/PPTX picker return can outlive the overlay shield;
+                // refuse Exit while a native picker is still settling.
+                if (isPickerPending()) {
+                  attachAuditLog(
+                    "surface_exit_blocked",
+                    { reason: "picker_pending", control: "exit_chip" },
+                    "ask-atlas",
+                  );
+                  return;
+                }
                 attachAuditLog(
                   "surface_exit",
                   { reason: "exit_chip_click", msgCount: askAtlasChat.messages.length },
