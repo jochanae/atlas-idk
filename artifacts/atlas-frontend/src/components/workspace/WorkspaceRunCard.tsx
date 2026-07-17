@@ -887,6 +887,15 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   const [, navigate] = useLocation();
   const handleDetails = useCallback(() => {
     if (!run) return;
+    // GitHub commit receipts route to the Changes tab scoped to the commit
+    // SHA — no drawer. The Changes tab renders the same ViewChangesPanel,
+    // so a separate overlay would be redundant.
+    if (run.status === "pushed" && run.githubPush?.sha) {
+      window.dispatchEvent(new CustomEvent("axiom:open-changes", {
+        detail: { commitSha: run.githubPush.sha },
+      }));
+      return;
+    }
     navigate(`/runs/${run.id}`);
   }, [run, navigate]);
 
