@@ -275,7 +275,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                     <button
                       key={conv.id}
                       type="button"
-                      onClick={() => { onOpenAtlasConversation?.(conv.id); onClose(); }}
+                      onClick={() => { onOpenAtlasConversation?.(dest.conversationId); onClose(); }}
                       style={{
                         display: "flex", alignItems: "center", gap: 10,
                         width: "100%", padding: "7px 10px",
