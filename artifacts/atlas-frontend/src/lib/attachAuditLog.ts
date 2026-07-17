@@ -39,7 +39,14 @@ export type AttachAuditEvent =
   | "window_blur"
   | "send_started"
   | "send_attachments_included"
-  | "send_attachments_dropped";
+  | "send_attachments_dropped"
+  | "ghost_click_shield"
+  | "ghost_click_blocked"
+  | "draft_init"
+  | "draft_cleanup"
+  | "surface_exit"
+  | "capabilities_loaded"
+  | "request_upload";
 
 export interface AttachAuditEntry {
   t: number;
@@ -82,6 +89,11 @@ function readEnabledFromEnv(): boolean {
 }
 
 function isEnabled(): boolean {
+  // Allow enabling mid-session via localStorage / ?attachAudit=1 without a reload.
+  if (!runtimeEnabled && readEnabledFromEnv()) {
+    runtimeEnabled = true;
+    if (window.__atlasAttachAudit) window.__atlasAttachAudit.enabled = true;
+  }
   return runtimeEnabled;
 }
 

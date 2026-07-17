@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import SketchComposerSheet from "./SketchComposerSheet";
 import { attachAuditLog } from "@/lib/attachAuditLog";
+import { installGhostClickShield } from "@/lib/ghostClickShield";
 import { toast } from "sonner";
 
 // Per-file upload cap. Bigger files are rejected with a toast instead of
@@ -201,8 +202,29 @@ export function ComposerActions({
     };
   }, [showPlus, showMore]);
 
+  function openNativePicker(kind: "attach" | "camera", input: HTMLInputElement | null) {
+    const surface = scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared";
+    attachAuditLog("picker_opened", { kind }, surface);
+    // Arm the ghost-click shield BEFORE the native picker steals focus. When
+    // the picker returns on mobile, Android synthesizes a tap at the original
+    // coordinates — often landing on Exit Ask Atlas / Send under the sheet.
+    installGhostClickShield(`picker_open:${kind}`);
+    // Keep the Plus sheet mounted for one frame so it can absorb any immediate
+    // synthetic click, then dismiss it after the OS picker has taken over.
+    requestAnimationFrame(() => {
+      setShowPlus(false);
+    });
+    try {
+      input?.click();
+    } catch (err) {
+      try { console.error("[composer] native picker open failed", err); } catch { /* ignore */ }
+    }
+  }
+
   function pickFiles(files: FileList | null) {
     const surface = scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared";
+    // Swallow the post-picker synthetic tap whether the user confirmed or cancelled.
+    installGhostClickShield(files && files.length > 0 ? "file_selected" : "file_cancelled");
     if (!files || files.length === 0) {
       attachAuditLog("file_selected", { count: 0, cancelled: true }, surface);
       return;
@@ -260,9 +282,11 @@ export function ComposerActions({
         multiple
         style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
         onChange={(e) => {
+          e.stopPropagation();
           pickFiles(e.target.files);
           e.target.value = "";
         }}
+        onClick={(e) => e.stopPropagation()}
       />
       {/* Native camera capture */}
       <input
@@ -273,9 +297,11 @@ export function ComposerActions({
         capture="environment"
         style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
         onChange={(e) => {
+          e.stopPropagation();
           pickFiles(e.target.files);
           e.target.value = "";
         }}
+        onClick={(e) => e.stopPropagation()}
       />
 
       <button
@@ -361,28 +387,12 @@ export function ComposerActions({
                 <BigNode
                   label="Camera"
                   icon={<Camera size={36} strokeWidth={1.4} />}
-                  onClick={() => {
-                    setShowPlus(false);
-                    attachAuditLog(
-                      "picker_opened",
-                      { kind: "camera" },
-                      scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared",
-                    );
-                    cameraRef.current?.click();
-                  }}
+                  onClick={() => openNativePicker("camera", cameraRef.current)}
                 />
                 <BigNode
                   label="Attach"
                   icon={<Paperclip size={36} strokeWidth={1.4} />}
-                  onClick={() => {
-                    setShowPlus(false);
-                    attachAuditLog(
-                      "picker_opened",
-                      { kind: "attach" },
-                      scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared",
-                    );
-                    attachRef.current?.click();
-                  }}
+                  onClick={() => openNativePicker("attach", attachRef.current)}
                 />
               </div>
 

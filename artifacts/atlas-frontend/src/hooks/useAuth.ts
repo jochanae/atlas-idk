@@ -64,7 +64,9 @@ export function useAuth() {
   const { data: user, isLoading } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: fetchMe,
-    retry: false,
+    // A single transient failure must not null-out the session and bounce to
+    // /login mid-compose (file-picker blur races were clearing the composer).
+    retry: 1,
     staleTime: 5 * 60 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,

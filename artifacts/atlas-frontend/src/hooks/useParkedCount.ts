@@ -20,7 +20,9 @@ export function useParkedCount(): number {
     queryKey: PARKED_COUNT_QUERY_KEY,
     queryFn: fetchParkedCount,
     staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    // Native file pickers blur/focus the tab; a parked-count refetch on return
+    // is unnecessary and can race 401 → login mid-attach on mobile.
+    refetchOnWindowFocus: false,
   });
 
   // Subscribe to the event bus so the badge refreshes immediately after any

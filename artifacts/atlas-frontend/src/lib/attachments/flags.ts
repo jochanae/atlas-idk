@@ -60,10 +60,32 @@ export async function loadServerCapabilities(): Promise<void> {
       _serverCaps = {
         attachmentPersistence: data.attachmentPersistence === true,
       };
+      try {
+        void import("@/lib/attachAuditLog").then(({ attachAuditLog }) => {
+          attachAuditLog(
+            "capabilities_loaded",
+            { attachmentPersistence: _serverCaps!.attachmentPersistence, ok: true },
+            "global",
+          );
+        });
+      } catch {
+        /* ignore */
+      }
     })
     .catch(() => {
       // Network error or server unavailable — default all capabilities off.
       _serverCaps = { attachmentPersistence: false };
+      try {
+        void import("@/lib/attachAuditLog").then(({ attachAuditLog }) => {
+          attachAuditLog(
+            "capabilities_loaded",
+            { attachmentPersistence: false, ok: false },
+            "global",
+          );
+        });
+      } catch {
+        /* ignore */
+      }
     });
   return _capsFetchPromise;
 }

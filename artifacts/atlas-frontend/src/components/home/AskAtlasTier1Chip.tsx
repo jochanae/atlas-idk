@@ -69,13 +69,12 @@ export function AskAtlasTier1Chip({ conversationId, paused = false }: Props) {
     };
 
     void load();
-    const onFocus = () => void load();
-    window.addEventListener("focus", onFocus);
+    // Do NOT reload on window focus — native file pickers blur/focus the tab
+    // and a focus refetch here races the attach interaction on mobile.
     const id = window.setInterval(load, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(id);
-      window.removeEventListener("focus", onFocus);
     };
   }, [conversationId, paused]);
 
