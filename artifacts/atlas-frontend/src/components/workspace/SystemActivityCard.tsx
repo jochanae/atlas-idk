@@ -102,11 +102,19 @@ function InlineReceipt({ item }: { item: ActivityItem }) {
 /** Commit / push receipt card — headline + Details / Preview buttons. */
 function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: boolean }) {
   const commitUrl = item.url;
-  // GitHub "files changed" view for the diff preview.
-  const previewUrl = commitUrl ? `${commitUrl.replace(/\/$/, "")}` : undefined;
-  const filesUrl = commitUrl && /\/commit\//.test(commitUrl)
-    ? `${commitUrl}#files-bucket`
-    : previewUrl;
+  const commitSha = commitUrl?.match(/\/commit\/([a-f0-9]{7,40})/i)?.[1];
+  const canOpenDetails = Boolean(commitSha ?? item.id);
+  const openDetails = () => {
+    if (!canOpenDetails) return;
+    window.dispatchEvent(new CustomEvent("axiom:open-changes", {
+      detail: { commitSha, activityId: item.id },
+    }));
+  };
+  const openUrl = (url?: string) => () => {
+    if (!url) return;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
 
   const accent = "var(--atlas-gold, rgba(201,162,76,0.9))";
   // Softer border so the card reads as a light timeline event, not a framed
