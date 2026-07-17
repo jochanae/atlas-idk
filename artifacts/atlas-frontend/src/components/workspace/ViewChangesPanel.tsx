@@ -1110,8 +1110,9 @@ export function ViewChangesPanel({
             : `+${f.additions} −${f.deletions}`,
           messageId: `commit:${commitSha}:${f.filename}`,
           projectId,
-          content: f.patch ?? null,
+          content: null,
           beforeContent: null,
+          patch: f.patch ?? null,
           verb: f.status === "removed" ? "FILE_DELETE" : "FILE_EDIT",
         })));
         setCommitError(null);
