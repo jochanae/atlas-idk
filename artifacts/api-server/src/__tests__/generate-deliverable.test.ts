@@ -8,6 +8,7 @@ const listArtifactRendererTypes = vi.fn(() => ["pptx", "docx", "xlsx"]);
 vi.mock("../lib/artifactEngine", () => ({
   generateArtifact: (...args: unknown[]) => generateArtifact(...args),
   listArtifactRendererTypes: () => listArtifactRendererTypes(),
+  registerArtifactRenderer: vi.fn(),
 }));
 
 vi.mock("../lib/renderers/docxRenderer", () => ({}));
@@ -16,6 +17,7 @@ vi.mock("../lib/renderers/pptxRenderer", () => ({}));
 vi.mock("../lib/renderers/xlsxRenderer", () => ({}));
 vi.mock("../lib/renderers/mermaidRenderer", () => ({}));
 vi.mock("../lib/renderers/chartRenderer", () => ({}));
+vi.mock("../lib/renderers/htmlAppRenderer", () => ({}));
 
 import { generateDeliverableTool } from "../lib/agent-tools/generate-deliverable";
 
