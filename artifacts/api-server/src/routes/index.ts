@@ -65,6 +65,7 @@ import shareRouter from "./share";
 import publishRouter from "./publish";
 import homeArtifactsRouter from "./homeArtifacts";
 import libraryRouter from "./library";
+import attachmentsRouter from "./attachments";
 import verifyRouter from "./verify";
 import capacityRouter from "./capacity";
 import accountRouter from "./account";
@@ -188,6 +189,9 @@ router.use(requireAuth, homeArtifactsRouter);
 
 // Canonical Library — supersedes home_artifacts / project_bookmarks as the read path
 router.use(requireAuth, libraryRouter);
+
+// Chat attachment lifecycle — persistent objects + signed URLs (see attachments.ts)
+router.use(requireAuth, attachmentsRouter);
 
 // Self-repair routes — super_admin only, path-scoped to /self/*
 router.use("/self", requireAdmin, selfRouter);

@@ -39,3 +39,4 @@ export * from "./project_tier1_memory";
 export * from "./project_sources";
 export * from "./deliveries";
 export * from "./library_items";
+export * from "./message_attachments";

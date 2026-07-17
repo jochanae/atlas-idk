@@ -25,6 +25,10 @@ import { findSemanticTensionsForProject } from "./tensions";
 import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
 import { loadConversationLibraryContext } from "../lib/library";
+import {
+  resolveAttachmentIdsForModel,
+  linkAttachmentsToMessage,
+} from "../lib/attachmentResolve";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
@@ -2226,7 +2230,9 @@ router.get("/nexus/conversation/:id", async (req, res): Promise<void> => {
 // POST /api/nexus/chat — send a message in Nexus Mode
 router.post("/nexus/chat", async (req, res): Promise<void> => {
   const body = req.body as {
-    message: string;
+    message?: string;
+    /** Alias for message — attachment persistence contract uses { text, attachmentIds }. */
+    text?: string;
     history?: Array<{ role: "user" | "assistant"; content: string }>;
     userProfile?: string;
     focusProjectId?: number | null;
@@ -2236,7 +2242,10 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     imageBase64?: string;
     imageData?: string;
     imageMimeType?: string;
-    attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
+    /** Legacy inline-base64 path. Rejected when ATTACHMENTS_PERSISTENCE=true. */
+    attachments?: Array<{ base64?: string; mediaType?: string; name?: string; url?: string }>;
+    /** Server-resolved attachment IDs (preferred). Never pass client-minted URLs. */
+    attachmentIds?: string[];
     conversationId?: string;
     sessionId?: number;
     askAtlasContextSeed?: string;
@@ -2261,13 +2270,34 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     surfaceContext?: "workspace" | "ask-atlas" | "home";
   };
 
+  const userId = (req as any).authUser.id as number;
+  const attachmentIds = Array.isArray(body.attachmentIds)
+    ? [...new Set(body.attachmentIds.filter((id): id is string => typeof id === "string" && id.length > 0))]
+    : [];
+  const legacyAttachments = Array.isArray(body.attachments) ? body.attachments : [];
+
+  // Never accept client-supplied signed URLs as trusted input.
+  if (legacyAttachments.some((a) => a && typeof a.url === "string" && a.url.length > 0)) {
+    res.status(400).json({
+      error: "Client-supplied attachment URLs are not accepted. Use attachmentIds.",
+    });
+    return;
+  }
+  // When persistence flag is on in prod/staging, reject the legacy inline payload.
+  if (process.env.ATTACHMENTS_PERSISTENCE === "true" && legacyAttachments.length > 0) {
+    res.status(400).json({
+      error: "Legacy attachments payload disabled. Use attachmentIds.",
+    });
+    return;
+  }
+
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
-  if (!body.message?.trim() && !hasImage) {
+  const textInput = (body.message ?? body.text)?.trim() ?? "";
+  if (!textInput && !hasImage && attachmentIds.length === 0) {
     res.status(400).json({ error: "message is required" });
     return;
   }
 
-  const userId = (req as any).authUser.id as number;
   const authUser = (req as any).authUser;
   const resolvedGhToken = await getGithubTokenForUser(userId) ?? process.env.GITHUB_TOKEN ?? null;
   // history from the client body is accepted in the schema for API compatibility.
@@ -2284,9 +2314,43 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   const shouldAutoGenerateConversationTitle = !hasWorkingTitle && requestHistory.length >= 2;
   const imageBase64 = body.imageBase64 ?? body.imageData ?? undefined;
   const imageMimeType = body.imageMimeType ?? undefined;
-  // Normalise: merge legacy imageBase64/imageMimeType + new attachments array into one list
-  const allAttachments: Array<{ base64: string; mediaType: string; name?: string }> = [
-    ...(body.attachments ?? []),
+
+  type ModelAttachment = {
+    base64: string;
+    mediaType: string;
+    name?: string;
+    asText?: boolean;
+    textContent?: string;
+  };
+
+  // Resolve attachmentIds → bytes server-side (ownership-checked). Never trust client URLs.
+  let resolvedIdAttachments: ModelAttachment[] = [];
+  if (attachmentIds.length > 0) {
+    const { resolved, skipped } = await resolveAttachmentIdsForModel({
+      userId,
+      attachmentIds,
+    });
+    logger.info(
+      { userId, attachmentIds, resolved: resolved.length, skipped },
+      "nexus: resolved attachmentIds for model",
+    );
+    resolvedIdAttachments = resolved.map((r) => ({
+      base64: r.base64,
+      mediaType: r.mediaType,
+      name: r.name,
+      asText: r.asText,
+      textContent: r.textContent,
+    }));
+  }
+
+  // Normalise: id-resolved first, then legacy base64, then single-image fields.
+  const allAttachments: ModelAttachment[] = [
+    ...resolvedIdAttachments,
+    ...legacyAttachments
+      .filter((a): a is { base64: string; mediaType: string; name?: string } =>
+        typeof a?.base64 === "string" && typeof a?.mediaType === "string",
+      )
+      .map((a) => ({ base64: a.base64, mediaType: a.mediaType, name: a.name })),
     ...(imageBase64 && imageMimeType ? [{ base64: imageBase64, mediaType: imageMimeType }] : []),
   ];
   // Always store messages under a conversation ID so they appear in the
@@ -2304,8 +2368,8 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     ? (conversationId ?? null)
     : (conversationId ?? randomUUID());
   const userType = parseHomeUserType(body.userType);
-  // Use a sensible fallback when the user sends an image with no text
-  const message = body.message?.trim() || (hasImage ? "[image]" : "");
+  // Use a sensible fallback when the user sends an attachment with no text
+  const message = textInput || (hasImage || allAttachments.length > 0 ? "[attachment]" : "");
 
   try {
   const sessionContext = sessionId
@@ -3511,15 +3575,23 @@ WHAT YOU SHOULD NOT DO:
 
   // Persist the user turn — workspace session thread for in-project Ask Atlas,
   // otherwise the Nexus Living Thread.
+  // Sequencing (attachment lifecycle option a): attachment rows already exist
+  // from request-upload; we patch chat_message_id / nexus_message_id here.
+  let linkedChatMessageId: number | null = null;
+  let linkedNexusMessageId: number | null = null;
   if (isInProjectAskAtlas && sessionId) {
-    await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message });
+    const [chatRow] = await db
+      .insert(chatMessagesTable)
+      .values({ sessionId, role: "user", content: message })
+      .returning({ id: chatMessagesTable.id });
+    linkedChatMessageId = chatRow?.id ?? null;
     await db
       .update(sessionsTable)
       .set({ messageCount: sql`${sessionsTable.messageCount} + 1` })
       .where(eq(sessionsTable.id, sessionId));
   } else {
   try {
-    await db.insert(nexusMessagesTable).values({
+    const [nexusRow] = await db.insert(nexusMessagesTable).values({
       userId,
       role: "user",
       content: message,
@@ -3527,24 +3599,52 @@ WHAT YOU SHOULD NOT DO:
       sessionId,
       conversationId: effectiveConversationId,
       ...(hasMessageType ? { messageType: "message" } : {}),
-    });
+    }).returning({ id: nexusMessagesTable.id });
+    linkedNexusMessageId = nexusRow?.id ?? null;
   } catch (dbErr: any) {
     const errMsg = dbErr?.message ?? "";
     const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
     if (isMissingColumn) {
       logger.warn({ dbErr: errMsg }, "DB schema behind on nexus user insert — falling back to core insert");
-      await db.insert(nexusMessagesTable).values({
+      const [nexusRow] = await db.insert(nexusMessagesTable).values({
         userId,
         role: "user",
         content: message,
         projectId: focusProjectId ?? null,
         sessionId,
         conversationId: effectiveConversationId,
-      });
+      }).returning({ id: nexusMessagesTable.id });
+      linkedNexusMessageId = nexusRow?.id ?? null;
     } else {
       throw dbErr;
     }
   }
+  }
+
+  if (attachmentIds.length > 0) {
+    try {
+      await linkAttachmentsToMessage({
+        userId,
+        attachmentIds,
+        conversationId: effectiveConversationId,
+        surface: isInProjectAskAtlas ? "ask_atlas" : "nexus",
+        projectId: focusProjectId ?? null,
+        chatMessageId: linkedChatMessageId,
+        nexusMessageId: linkedNexusMessageId,
+      });
+      logger.info(
+        {
+          userId,
+          attachmentIds,
+          chatMessageId: linkedChatMessageId,
+          nexusMessageId: linkedNexusMessageId,
+          conversationId: effectiveConversationId,
+        },
+        "nexus: linked attachments to user message",
+      );
+    } catch (linkErr) {
+      logger.warn({ err: linkErr, attachmentIds }, "nexus: attachment linkage failed — non-fatal");
+    }
   }
 
   // Set SSE headers
@@ -5801,8 +5901,22 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     const geminiAtlasTarget = focusProjectId ? focusLabel : "your portfolio";
     writeStep({ verb: geminiAtlasVerb, target: geminiAtlasTarget });
     modelStartedAt = performance.now();
+    const geminiParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+      { text: combinedText },
+    ];
+    for (const att of allAttachments) {
+      if (att.asText && att.textContent != null) {
+        geminiParts.push({
+          text: `\n\nAttached file: ${att.name ?? "file"}\n\n${att.textContent}`,
+        });
+      } else if (att.mediaType.startsWith("image/") || att.mediaType === "application/pdf") {
+        geminiParts.push({
+          inlineData: { mimeType: att.mediaType, data: att.base64 },
+        });
+      }
+    }
     const geminiContents = allAttachments.length > 0
-      ? [{ role: "user" as const, parts: [{ text: combinedText }, { inlineData: { mimeType: allAttachments[0].mediaType, data: allAttachments[0].base64 } }] }]
+      ? [{ role: "user" as const, parts: geminiParts }]
       : combinedText;
     try {
       const stream = await genai.models.generateContentStream({
@@ -5876,8 +5990,16 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     } as VaultBlock);
   }
 
-  // 3. User-attached files (images + documents like PDFs)
+  // 3. User-attached files (images + PDFs + text/code). Unsupported kinds are
+  // filtered out earlier in resolveAttachmentIdsForModel.
   for (const att of allAttachments) {
+    if (att.asText && att.textContent != null) {
+      contentParts.push({
+        type: "text",
+        text: `Attached file: ${att.name ?? "file"}\n\n${att.textContent}`,
+      });
+      continue;
+    }
     if (att.base64.length > MAX_VAULT_B64_SIZE) {
       logger.warn({ size: att.base64.length }, "User attachment too large — skipped");
       continue;
@@ -5892,7 +6014,7 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
           data: att.base64,
         },
       } as unknown as VaultBlock);
-    } else {
+    } else if (att.mediaType.startsWith("image/")) {
       contentParts.push({
         type: "image",
         source: {
@@ -5901,6 +6023,12 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
           data: att.base64,
         },
       } as VaultBlock);
+    } else {
+      // Fallback: treat remaining understood binaries as document blocks when possible.
+      contentParts.push({
+        type: "text",
+        text: `Attached file: ${att.name ?? "file"} (${att.mediaType}) — binary content attached as base64 length ${att.base64.length}.`,
+      });
     }
   }
 
