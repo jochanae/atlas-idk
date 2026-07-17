@@ -17,6 +17,10 @@ export interface SessionHistoryItem {
   /** ISO string or epoch ms. */
   timestamp?: string | number | null;
   active?: boolean;
+  /** "promoted" rows resolve to a workspace, not the Ask Atlas surface. */
+  kind?: "conversation" | "promoted";
+  projectId?: number | null;
+  projectName?: string | null;
 }
 
 export interface SessionHistorySheetProps {
