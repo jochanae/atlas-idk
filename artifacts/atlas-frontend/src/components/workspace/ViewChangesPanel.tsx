@@ -554,7 +554,7 @@ function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectI
       {rows.map((r, i) => {
         const key = `${r.messageId}-${r.path}-${i}`;
         const isExpanded = expandedPaths.has(key);
-        const hasViewable = !!r.content || !!r.beforeContent;
+        const hasViewable = !!r.content || !!r.beforeContent || !!r.patch;
         const { label, color } = getChangeLabel(r);
         const toggle = () => {
           if (!hasViewable) return;
