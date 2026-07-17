@@ -140,30 +140,34 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
         display: "flex", flexDirection: "column",
         width: "min(100%, 400px)",
         alignSelf: "flex-start",
-        margin: "8px 0 16px",
-        background: "rgba(var(--atlas-surface-rgb,30,30,30),0.55)",
+        // Shared spacing tokens — match WorkspaceRunCard rhythm so GitHub
+        // cards no longer feel like a grouped pair from legacy quiet updates.
+        margin: "var(--card-gap-half) 0",
+        minHeight: "var(--card-min-h)",
+        background: "hsl(var(--card))",
         border,
         boxShadow: shadow,
-        borderRadius: 10,
+        borderRadius: "var(--card-radius)",
         overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       {/* Header row */}
       <div style={{
         display: "flex", alignItems: "center", gap: 8,
-        padding: "14px 14px 10px",
+        padding: "var(--card-pad-y) var(--card-pad-x) 0",
       }}>
-        <GitHubMark size={13} color="var(--atlas-fg)" />
+        <GitHubMark size={13} color="hsl(var(--card-foreground))" />
         <span style={{
           flex: 1, minWidth: 0,
-          fontSize: 12, lineHeight: 1.35, color: "var(--atlas-fg)",
+          fontSize: 12, lineHeight: 1.35, color: "hsl(var(--card-foreground))",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {item.title}
         </span>
         <span style={{
           fontSize: 9, fontFamily: "var(--app-font-mono)",
-          color: "var(--atlas-muted)", opacity: 0.55, flexShrink: 0,
+          color: "hsl(var(--muted-foreground))", opacity: 0.7, flexShrink: 0,
         }}>
           {relTime(item.timestamp)}
         </span>
@@ -171,8 +175,9 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
 
       {/* Actions */}
       <div style={{
-        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6,
-        padding: "2px 12px 14px",
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8,
+        padding: "var(--card-title-gap) var(--card-pad-x) var(--card-pad-y)",
+        marginTop: "auto",
       }}>
         <button
           type="button"
@@ -182,9 +187,9 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           style={{
             padding: "10px 10px",
             background: "transparent",
-            border: "0.5px solid rgba(var(--atlas-border-rgb,80,80,80),0.6)",
+            border: "1px solid hsl(var(--border))",
             borderRadius: 6,
-            color: canOpenDetails ? "var(--atlas-fg)" : "var(--atlas-muted)",
+            color: canOpenDetails ? "hsl(var(--card-foreground))" : "hsl(var(--muted-foreground))",
             fontSize: 11, cursor: canOpenDetails ? "pointer" : "not-allowed",
             fontFamily: "inherit",
           }}
@@ -199,9 +204,9 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           style={{
             padding: "10px 10px",
             background: "transparent",
-            border: "0.5px solid rgba(var(--atlas-border-rgb,80,80,80),0.6)",
+            border: "1px solid hsl(var(--border))",
             borderRadius: 6,
-            color: commitUrl ? "var(--atlas-fg)" : "var(--atlas-muted)",
+            color: commitUrl ? "hsl(var(--card-foreground))" : "hsl(var(--muted-foreground))",
             fontSize: 11, cursor: commitUrl ? "pointer" : "not-allowed",
             fontFamily: "inherit",
             display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,

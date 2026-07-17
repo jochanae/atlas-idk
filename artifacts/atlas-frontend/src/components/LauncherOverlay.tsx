@@ -33,7 +33,7 @@ export function LauncherOverlay({
         onClick={onClose}
         style={{
           position: "fixed", inset: 0, zIndex: 2400,
-          background: "rgba(4,3,6,0.78)",
+          background: "hsl(var(--background) / 0.78)",
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
         }}
@@ -49,23 +49,24 @@ export function LauncherOverlay({
           width: "min(560px, calc(100vw - 32px))",
           maxHeight: "min(640px, calc(100vh - 80px - env(safe-area-inset-bottom, 0px)))",
           display: "flex", flexDirection: "column",
-          background: "rgba(18,16,22,0.96)",
-          border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
+          background: "hsl(var(--popover))",
+          color: "hsl(var(--popover-foreground))",
+          border: "1px solid hsl(var(--border))",
           borderRadius: 16,
-          boxShadow: "0 28px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+          boxShadow: "0 28px 80px hsl(var(--background) / 0.55), 0 0 0 1px hsl(var(--border) / 0.4)",
           overflow: "hidden",
           fontFamily: "var(--app-font-sans)",
         }}
       >
         <header style={{
           padding: "18px 20px 14px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: "1px solid hsl(var(--border))",
         }}>
           {eyebrow && (
             <div style={{
               fontFamily: "var(--app-font-mono)", fontSize: 9.5,
               letterSpacing: "0.22em", textTransform: "uppercase",
-              color: "rgba(var(--atlas-gold-rgb),0.7)", marginBottom: 6,
+              color: "hsl(var(--muted-foreground))", marginBottom: 6,
             }}>
               {eyebrow}
             </div>
@@ -75,16 +76,16 @@ export function LauncherOverlay({
           }}>
             <h2 style={{
               margin: 0, fontSize: 17, fontWeight: 500,
-              color: "var(--atlas-fg)", letterSpacing: "0.01em",
+              color: "hsl(var(--popover-foreground))", letterSpacing: "0.01em",
             }}>{title}</h2>
             <button
               onClick={onClose}
               aria-label="Close"
               style={{
-                background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
+                background: "transparent", border: "1px solid hsl(var(--border))",
                 borderRadius: 6, padding: "4px 10px", cursor: "pointer",
                 fontFamily: "var(--app-font-mono)", fontSize: 10,
-                color: "rgba(255,255,255,0.55)", letterSpacing: "0.08em",
+                color: "hsl(var(--muted-foreground))", letterSpacing: "0.08em",
               }}
             >
               ESC
