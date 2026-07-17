@@ -1,12 +1,19 @@
 /**
  * Attachment persistence feature flags.
  *
- * All default OFF so today's inline-base64 send path is untouched until the
- * backend endpoints in .lovable/plan.md Section B are live.
+ * Source-of-truth priority for `attachments.persistence`:
+ *   1. Build-time kill switch  — VITE_FLAG_ATTACHMENTS_PERSISTENCE=false/0/off
+ *      → always off, regardless of server. Emergency disable only.
+ *   2. Server capability       — GET /api/capabilities → { attachmentPersistence }
+ *      → authoritative once loaded. Server false = off; server true = consult steps 3-4.
+ *   3. localStorage override   — atlas.flag.attachments.persistence = "1"/"0"
+ *      → QA / dev override after server says true.
+ *   4. Build-time opt-in       — VITE_FLAG_ATTACHMENTS_PERSISTENCE=true
+ *      → fallback when server hasn't responded yet.
  *
- * Resolution order: localStorage override → import.meta.env → default.
- * Reads are pure functions (no React state) so hooks and non-hook call sites
- * agree.
+ * Call `loadServerCapabilities()` once at app startup (fire-and-forget).
+ * `isAttachmentFlagOn` is synchronous and safe to call before the fetch completes;
+ * it falls back to the build-time value until the server response arrives.
  */
 
 export type AttachmentFlag =
@@ -28,8 +35,64 @@ function parseBool(v: unknown): boolean | undefined {
   return undefined;
 }
 
+// ─── Server capabilities cache ────────────────────────────────────────────────
+
+export interface ServerCapabilities {
+  attachmentPersistence: boolean;
+}
+
+let _serverCaps: ServerCapabilities | null = null;
+let _capsFetchPromise: Promise<void> | null = null;
+
+/**
+ * Fetch /api/capabilities once and cache the result.
+ * Call at app startup (fire-and-forget). Safe to call multiple times.
+ */
+export async function loadServerCapabilities(): Promise<void> {
+  if (_serverCaps !== null) return;
+  if (_capsFetchPromise) return _capsFetchPromise;
+  _capsFetchPromise = fetch("/api/capabilities", { credentials: "include" })
+    .then((r) => {
+      if (!r.ok) throw new Error(`capabilities ${r.status}`);
+      return r.json() as Promise<Partial<ServerCapabilities>>;
+    })
+    .then((data) => {
+      _serverCaps = {
+        attachmentPersistence: data.attachmentPersistence === true,
+      };
+    })
+    .catch(() => {
+      // Network error or server unavailable — default all capabilities off.
+      _serverCaps = { attachmentPersistence: false };
+    });
+  return _capsFetchPromise;
+}
+
+/** Returns the cached server capabilities, or null if not yet loaded. */
+export function getServerCapabilities(): ServerCapabilities | null {
+  return _serverCaps;
+}
+
+// ─── Flag resolution ──────────────────────────────────────────────────────────
+
 export function isAttachmentFlagOn(flag: AttachmentFlag): boolean {
-  // localStorage override (dev + QA)
+  // 1. Build-time kill switch — if explicitly false, always off.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const env: any = (import.meta as any)?.env ?? {};
+    const buildVal = parseBool(env[ENV_KEY[flag]]);
+    if (buildVal === false) return false;
+  } catch {
+    /* ignore */
+  }
+
+  // 2. Server capability is authoritative once loaded.
+  if (_serverCaps !== null && flag === "attachments.persistence") {
+    if (!_serverCaps.attachmentPersistence) return false;
+    // Server says true — continue to localStorage override then confirm on.
+  }
+
+  // 3. localStorage override (dev + QA).
   if (typeof window !== "undefined") {
     try {
       const ls = window.localStorage.getItem(LS_PREFIX + flag);
@@ -39,16 +102,20 @@ export function isAttachmentFlagOn(flag: AttachmentFlag): boolean {
       /* ignore quota / privacy errors */
     }
   }
-  // Build-time env
+
+  // 4. Server confirmed true for persistence — enable.
+  if (_serverCaps !== null && flag === "attachments.persistence") {
+    return _serverCaps.attachmentPersistence === true;
+  }
+
+  // 5. Server not yet loaded — fall back to build-time opt-in.
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const env: any = (import.meta as any)?.env ?? {};
-    const parsed = parseBool(env[ENV_KEY[flag]]);
-    if (parsed !== undefined) return parsed;
+    return parseBool(env[ENV_KEY[flag]]) === true;
   } catch {
-    /* ignore */
+    return false;
   }
-  return false;
 }
 
 /** Test / QA helper — sets the localStorage override. */

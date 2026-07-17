@@ -66,6 +66,7 @@ import publishRouter from "./publish";
 import homeArtifactsRouter from "./homeArtifacts";
 import libraryRouter from "./library";
 import attachmentsRouter from "./attachments";
+import capabilitiesRouter from "./capabilities";
 import verifyRouter from "./verify";
 import capacityRouter from "./capacity";
 import accountRouter from "./account";
@@ -189,6 +190,9 @@ router.use(requireAuth, homeArtifactsRouter);
 
 // Canonical Library — supersedes home_artifacts / project_bookmarks as the read path
 router.use(requireAuth, libraryRouter);
+
+// Runtime feature capabilities — no auth required (no user data).
+router.use(capabilitiesRouter);
 
 // Chat attachment lifecycle — persistent objects + signed URLs (see attachments.ts)
 router.use(requireAuth, attachmentsRouter);

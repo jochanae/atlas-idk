@@ -7389,8 +7389,17 @@ export default function Workspace() {
 
     if (isAttachmentFlagOn("attachments.persistence") && files.length > 0) {
       const upload = await uploadPersistentAttachments(files);
+      const realFailures = upload.rejected.filter((x) => !x.reason.startsWith("Only "));
+      if (realFailures.length > 0) {
+        toast.error(
+          `Could not upload ${realFailures.map((x) => x.fileName).join(", ")}. Check your connection and try again.`,
+        );
+        return;
+      }
       if (upload.rejected.length > 0) {
-        console.warn("Some attachments were not uploaded", upload.rejected);
+        toast.warning(
+          `${upload.rejected.length} file(s) skipped: ${upload.rejected.map((x) => x.reason).join("; ")}`,
+        );
       }
       doSend(fullText, sid, current, combinedCtx, undefined, { ...sendOpts, attachmentIds: upload.attachmentIds });
     } else if (imageFiles.length > 0) {

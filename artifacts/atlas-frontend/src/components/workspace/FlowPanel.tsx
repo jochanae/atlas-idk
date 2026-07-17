@@ -11,6 +11,7 @@ import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../../lib/errorReporter";
 import { useStageArtifact } from "@/hooks/useComposerVisibility";
 import { exportFlowSurfacePng, exportFlowJson, exportFlowPdf } from "@/lib/flowExport";
+import { toast } from "sonner";
 import { isAttachmentFlagOn } from "@/lib/attachments/flags";
 import { uploadPersistentAttachments } from "@/lib/composerAttachments";
 
@@ -378,7 +379,17 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
         ? await uploadPersistentAttachments(files)
         : null;
       if (persistentUpload?.rejected.length) {
-        console.warn("Some attachments were not uploaded", persistentUpload.rejected);
+        const realFailures = persistentUpload.rejected.filter((x) => !x.reason.startsWith("Only "));
+        if (realFailures.length > 0) {
+          toast.error(
+            `Could not upload ${realFailures.map((x) => x.fileName).join(", ")}. Check your connection and try again.`,
+          );
+          setFlowLoading(false);
+          return;
+        }
+        toast.warning(
+          `${persistentUpload.rejected.length} file(s) skipped: ${persistentUpload.rejected.map((x) => x.reason).join("; ")}`,
+        );
       }
       const res = await fetch("/api/chat", {
         method: "POST",

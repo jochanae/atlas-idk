@@ -151,6 +151,10 @@ export function WorkspaceConversationSurface({
     }
   }, [messages.length]);
 
+  // Note: this surface is text-only. It does not render a file picker and has
+  // no attachment state. There is no path by which staged files can reach this
+  // handler. If attachment support is ever added here, migrate to
+  // uploadPersistentAttachments() + attachmentIds[] before shipping.
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || isPending || isStreaming) return;

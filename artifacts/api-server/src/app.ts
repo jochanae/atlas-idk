@@ -246,6 +246,15 @@ app.use("/p/:token", async (req, res) => {
 });
 
 app.use("/api/shell", shellRouter);
+
+// Public capability flags — no auth required. Must be registered before the
+// authenticated /api router so requireAuth middleware cannot intercept it.
+app.get("/api/capabilities", (_req, res) => {
+  res.json({
+    attachmentPersistence: process.env.ATTACHMENTS_PERSISTENCE === "true",
+  });
+});
+
 app.use("/api", router);
 
 export default app;
