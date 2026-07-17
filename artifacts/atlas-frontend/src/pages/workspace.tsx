@@ -9082,6 +9082,7 @@ export default function Workspace() {
               messages,
               chatPending,
               conversationMode,
+              floatingControlsEnabled: !isMobile || (mobileTab === "chat" && !rightOpen && !launchModal.open),
               // In Thinking Mode (pure conversation, no file edits), suppress all
               // engineering telemetry so the workspace feels as calm as Ask Atlas.
               // activityStream drives the step-by-step FILE_READ/TREE visualization;
