@@ -594,7 +594,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
       setTimeout(() => setExportFlash(null), 1600);
       setExportMenuOpen(false);
     } catch (err) {
-      reportError(err, { where: "FlowPanel.export", kind });
+      reportError(err);
     } finally {
       setExportBusy(null);
     }
