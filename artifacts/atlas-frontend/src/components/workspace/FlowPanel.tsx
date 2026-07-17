@@ -1144,29 +1144,71 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
               </svg>
             )}
           </button>
-          {/* Download blueprint */}
-          <button
-            onClick={handleExportDownload}
-            title="Download blueprint"
-            aria-label="Download blueprint"
-            style={{
-              minWidth: 26, height: 22, padding: "0 5px", borderRadius: 4,
-              background: exportFlash === "downloaded" ? "rgba(var(--atlas-gold-rgb),0.14)" : "transparent",
-              border: "none", cursor: "pointer",
-              color: "rgba(var(--atlas-gold-rgb),0.55)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            {exportFlash === "downloaded" ? (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-            ) : (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+          {/* Download / Export menu */}
+          <div ref={exportMenuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setExportMenuOpen(v => !v)}
+              title="Export Flow Map"
+              aria-label="Export Flow Map"
+              aria-haspopup="menu"
+              aria-expanded={exportMenuOpen}
+              style={{
+                minWidth: 26, height: 22, padding: "0 5px", borderRadius: 4,
+                background: exportMenuOpen || exportFlash === "downloaded" ? "rgba(var(--atlas-gold-rgb),0.14)" : "transparent",
+                border: "none", cursor: "pointer",
+                color: "rgba(var(--atlas-gold-rgb),0.55)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              {exportFlash === "downloaded" ? (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              )}
+            </button>
+            {exportMenuOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: "absolute", right: 0, bottom: "calc(100% + 6px)",
+                  minWidth: 232, padding: 6,
+                  background: "rgba(var(--atlas-bg-rgb),0.96)",
+                  backdropFilter: "blur(18px) saturate(140%)",
+                  border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
+                  borderRadius: 10,
+                  boxShadow: "0 12px 32px rgba(0,0,0,0.32)",
+                  zIndex: 40,
+                  fontFamily: "var(--app-font-mono)",
+                }}
+              >
+                <div style={{ padding: "6px 10px 4px", fontSize: 8.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(var(--atlas-gold-rgb),0.55)" }}>This surface</div>
+                <ExportMenuItem
+                  label="PNG image"
+                  sub="Snapshot of the visible canvas"
+                  onClick={() => runExport("png")}
+                  busy={exportBusy === "png"}
+                />
+                <div style={{ height: 1, background: "rgba(var(--atlas-gold-rgb),0.1)", margin: "6px 4px" }} />
+                <div style={{ padding: "6px 10px 4px", fontSize: 8.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(var(--atlas-gold-rgb),0.55)" }}>All data</div>
+                <ExportMenuItem
+                  label="PDF report"
+                  sub="Formatted map + node details"
+                  onClick={() => runExport("pdf")}
+                  busy={exportBusy === "pdf"}
+                />
+                <ExportMenuItem
+                  label="JSON export"
+                  sub="Full model for backup / import"
+                  onClick={() => runExport("json")}
+                  busy={exportBusy === "json"}
+                />
+              </div>
             )}
-          </button>
+          </div>
         </div>
       </div>
 
