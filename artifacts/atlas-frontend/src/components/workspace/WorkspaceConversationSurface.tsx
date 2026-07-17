@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from "react";
+import { useRef, useEffect, useState, useCallback, type KeyboardEvent, type ChangeEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { renderChildrenWithCitations } from "@/features/codebase";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
@@ -67,6 +67,26 @@ function parseWriteFile(content: string): Array<{ path: string; fileContent: str
   return results;
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function PaperclipIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
 export function WorkspaceConversationSurface({
   projectId,
 }: WorkspaceConversationSurfaceProps) {
@@ -74,7 +94,9 @@ export function WorkspaceConversationSurface({
     deriveConversationId(projectId)
   );
   const [input, setInput] = useState("");
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const prevStreamingRef = useRef(false);
@@ -151,19 +173,40 @@ export function WorkspaceConversationSurface({
     }
   }, [messages.length]);
 
-  // Note: this surface is text-only. It does not render a file picker and has
-  // no attachment state. There is no path by which staged files can reach this
-  // handler. If attachment support is ever added here, migrate to
-  // uploadPersistentAttachments() + attachmentIds[] before shipping.
+  const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setStagedFiles((prev) => {
+      const existing = new Set(prev.map((f) => f.name + f.size));
+      return [...prev, ...files.filter((f) => !existing.has(f.name + f.size))];
+    });
+    e.target.value = "";
+  }, []);
+
+  const removeFile = useCallback((idx: number) => {
+    setStagedFiles((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
   const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text || isPending || isStreaming) return;
+    if ((!text && stagedFiles.length === 0) || isPending || isStreaming) return;
     setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    const filesToSend = stagedFiles;
+    setStagedFiles([]);
+    if (filesToSend.length > 0) {
+      const attachments = await Promise.all(
+        filesToSend.map(async (f) => ({
+          base64: await fileToBase64(f),
+          mediaType: f.type || "application/octet-stream",
+          name: f.name,
+        }))
+      );
+      await send({ text: text || " ", attachments });
+    } else {
+      await send({ text });
     }
-    await send({ text });
-  }, [input, isPending, isStreaming, send]);
+  }, [input, stagedFiles, isPending, isStreaming, send]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -175,7 +218,7 @@ export function WorkspaceConversationSurface({
     [handleSend]
   );
 
-  const canSend = input.trim().length > 0 && !isPending && !isStreaming;
+  const canSend = (input.trim().length > 0 || stagedFiles.length > 0) && !isPending && !isStreaming;
 
   return (
     <div
@@ -240,6 +283,8 @@ export function WorkspaceConversationSurface({
         .wcs-scroll::-webkit-scrollbar { width: 4px; }
         .wcs-scroll::-webkit-scrollbar-track { background: transparent; }
         .wcs-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .wcs-attach-btn:hover { color: var(--atlas-gold, #c9a24c) !important; }
+        .wcs-chip-remove:hover { opacity: 1 !important; }
       `}</style>
 
       <div
@@ -353,10 +398,6 @@ export function WorkspaceConversationSurface({
           </div>
         )}
 
-        {/* Tier 1 gap surfacing — one inline card when Atlas can't reasonably
-            infer a slot from conversation. Tap → opens Project DNA sheet
-            focused on the missing field. See docs/handoffs/2026-07-08-tier1-
-            conversational-extraction-backend.md. */}
         <Tier1GapCard
           projectId={projectId}
           isStreaming={isStreaming}
@@ -372,6 +413,66 @@ export function WorkspaceConversationSurface({
           flexShrink: 0,
         }}
       >
+        {/* Staged file chips */}
+        {stagedFiles.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              marginBottom: 8,
+            }}
+          >
+            {stagedFiles.map((f, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  background: "rgba(201,162,76,0.1)",
+                  border: "0.5px solid rgba(201,162,76,0.25)",
+                  borderRadius: 6,
+                  padding: "3px 8px 3px 7px",
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.75)",
+                  maxWidth: 200,
+                }}
+              >
+                <PaperclipIcon />
+                <span
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: 140,
+                  }}
+                  title={f.name}
+                >
+                  {f.name}
+                </span>
+                <button
+                  className="wcs-chip-remove"
+                  onClick={() => removeFile(idx)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    color: "rgba(255,255,255,0.4)",
+                    lineHeight: 1,
+                    fontSize: 13,
+                    opacity: 0.7,
+                  }}
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div
           style={{
             display: "flex",
@@ -380,9 +481,42 @@ export function WorkspaceConversationSurface({
             background: "rgba(255,255,255,0.04)",
             border: "0.5px solid rgba(255,255,255,0.1)",
             borderRadius: 12,
-            padding: "8px 10px 8px 14px",
+            padding: "8px 10px 8px 10px",
           }}
         >
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+
+          {/* Paperclip button */}
+          <button
+            className="wcs-attach-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isPending || isStreaming}
+            title="Attach file"
+            style={{
+              flexShrink: 0,
+              background: "none",
+              border: "none",
+              padding: "4px 2px",
+              cursor: isPending || isStreaming ? "default" : "pointer",
+              color: stagedFiles.length > 0
+                ? "var(--atlas-gold, #c9a24c)"
+                : "rgba(255,255,255,0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "color 0.15s",
+            }}
+          >
+            <PaperclipIcon />
+          </button>
+
           <textarea
             ref={textareaRef}
             className="wcs-textarea"
