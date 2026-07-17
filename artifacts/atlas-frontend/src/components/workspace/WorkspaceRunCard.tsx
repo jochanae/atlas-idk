@@ -1057,9 +1057,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         color: "hsl(var(--card-foreground))",
         border: `1px solid ${tone.border}`,
         boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
-        borderRadius: 10,
-        padding: "9px 11px",
-        margin: "6px 0 4px",
+        borderRadius: 12,
+        padding: "20px 16px",
+        margin: "12px 0",
         width: "min(100%, 320px)",
         maxWidth: "100%",
         boxSizing: "border-box",
@@ -1234,9 +1234,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       <div
         style={{
           display: "flex",
-          gap: 6,
-          marginTop: 8,
-          paddingTop: 8,
+          gap: 8,
+          marginTop: 18,
+          paddingTop: 16,
           borderTop: "1px solid hsl(var(--border) / 0.4)",
           justifyContent: "flex-end",
         }}
