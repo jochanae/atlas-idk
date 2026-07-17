@@ -110,6 +110,10 @@ const anthropic = new Anthropic({
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
+// User-uploaded attachments go through the persistence pipeline (20 MB upload cap).
+// Use a higher base64 limit here so real files are never silently dropped.
+// 26_700_000 ≈ 20 MB binary (matches ATTACHMENT_MAX_BYTES in attachmentStorage.ts).
+const MAX_USER_ATT_B64_SIZE = 26_700_000;
 
 // ── Resume cache (per-user, 5-minute TTL) ─────────────────────────────────
 type ResumeData = {
@@ -6000,7 +6004,7 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
       });
       continue;
     }
-    if (att.base64.length > MAX_VAULT_B64_SIZE) {
+    if (att.base64.length > MAX_USER_ATT_B64_SIZE) {
       logger.warn({ size: att.base64.length }, "User attachment too large — skipped");
       continue;
     }
