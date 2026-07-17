@@ -257,6 +257,19 @@ body {
   --atlas-shadow-lg: rgba(0, 0, 0, 0.55);
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* ── Workspace card spacing tokens ─────────────────────────────────────
+     Single source of truth for every card that appears on the workspace
+     surface (chat run cards, artifact cards, decision cards, GitHub cards,
+     etc). Any card that renders in the chat stream or a workspace panel
+     should read from these — never hardcode padding/margin values. */
+  --card-pad-y: 20px;         /* internal vertical padding */
+  --card-pad-x: 18px;         /* internal horizontal padding */
+  --card-gap: 24px;           /* space between adjacent cards (full gap) */
+  --card-gap-half: 12px;      /* apply as margin: var(--card-gap-half) 0 */
+  --card-title-gap: 20px;     /* title/content → action row */
+  --card-radius: 12px;        /* shared corner radius */
+  --card-min-h: 148px;        /* visual minimum card height */
+
   /* Theme-aware tokens for home page */
   --atlas-home-atmosphere: radial-gradient(
     circle,

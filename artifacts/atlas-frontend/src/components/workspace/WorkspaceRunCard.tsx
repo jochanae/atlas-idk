@@ -887,6 +887,15 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
   const [, navigate] = useLocation();
   const handleDetails = useCallback(() => {
     if (!run) return;
+    // GitHub commit receipts route to the Changes tab scoped to the commit
+    // SHA — no drawer. The Changes tab renders the same ViewChangesPanel,
+    // so a separate overlay would be redundant.
+    if (run.status === "pushed" && run.githubPush?.sha) {
+      window.dispatchEvent(new CustomEvent("axiom:open-changes", {
+        detail: { commitSha: run.githubPush.sha },
+      }));
+      return;
+    }
     navigate(`/runs/${run.id}`);
   }, [run, navigate]);
 
@@ -1057,9 +1066,10 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         color: "hsl(var(--card-foreground))",
         border: `1px solid ${tone.border}`,
         boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
-        borderRadius: 12,
-        padding: "20px 16px",
-        margin: "12px 0",
+        borderRadius: "var(--card-radius)",
+        padding: "var(--card-pad-y) var(--card-pad-x)",
+        margin: "var(--card-gap-half) 0",
+        minHeight: "var(--card-min-h)",
         width: "min(100%, 320px)",
         maxWidth: "100%",
         boxSizing: "border-box",
@@ -1235,8 +1245,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         style={{
           display: "flex",
           gap: 8,
-          marginTop: 18,
-          paddingTop: 16,
+          marginTop: "var(--card-title-gap)",
+          paddingTop: "var(--card-title-gap)",
           borderTop: "1px solid hsl(var(--border) / 0.4)",
           justifyContent: "flex-end",
         }}

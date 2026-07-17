@@ -12,7 +12,7 @@
 // rows — Timeline shows process steps (THOUGHT/READ/SEARCH/INSPECT/SUMMARY),
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   X, FileCode2, Eye, Search, Folder,
@@ -1029,6 +1029,20 @@ export function ViewChangesPanel({
 
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
+
+  // Compact diff legend — persists dismissed state per-user so it doesn't
+  // consume space on every visit. Shown only in the Changes lens or when a
+  // commit is focused (the only surfaces where +/− rows are rendered).
+  const [legendDismissed, setLegendDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem("atlas-changes-legend-dismissed") === "1"; }
+    catch { return false; }
+  });
+  const dismissLegend = useCallback(() => {
+    setLegendDismissed(true);
+    try { window.localStorage.setItem("atlas-changes-legend-dismissed", "1"); } catch {}
+  }, []);
+  const showLegend = !legendDismissed && (!!commitSha || lens === "changes");
   const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId, { conversationId });
 
   // Refresh run list immediately when a run completes — eliminates the 30s lag
@@ -1333,6 +1347,30 @@ export function ViewChangesPanel({
           })}
         </div>
       </div>
+
+      {/* ── Compact diff legend ── shown once, dismissible, persists per-user */}
+      {showLegend && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "6px 14px 8px",
+          borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.06)",
+          fontFamily: "var(--app-font-mono)", fontSize: 10,
+          color: "var(--atlas-muted)",
+        }}>
+          <span style={{ opacity: 0.7, letterSpacing: "0.06em", textTransform: "uppercase" }}>Legend</span>
+          <span style={{ color: "rgb(46,160,67)" }}>+ Added</span>
+          <span style={{ color: "rgb(207,63,63)" }}>− Removed</span>
+          <span style={{ flex: 1 }} />
+          <button
+            type="button" onClick={dismissLegend} aria-label="Dismiss legend"
+            style={{
+              background: "transparent", border: "none",
+              color: "var(--atlas-muted)", opacity: 0.55, cursor: "pointer",
+              fontSize: 10, padding: "2px 4px",
+            }}
+          >Got it</button>
+        </div>
+      )}
 
       {/* ── Body ── */}
       {commitSha ? (
