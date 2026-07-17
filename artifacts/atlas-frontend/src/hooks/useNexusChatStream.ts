@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
+import { isAttachmentFlagOn } from "@/lib/attachments/flags";
+import { uploadInlineAttachments } from "@/lib/attachments/adapter";
 
 import { pushHudEvent } from "@/lib/hudBus";
 
@@ -490,6 +492,12 @@ export function useNexusChatStream(
       onProjectReady?.(doneData);
     };
 
+    // If attachment persistence is on, upload inline files now and use IDs.
+    let resolvedAttachmentIds: string[] = [];
+    if (isAttachmentFlagOn("attachments.persistence") && allFileAttachments.length > 0) {
+      resolvedAttachmentIds = await uploadInlineAttachments(allFileAttachments);
+    }
+
     try {
       await stream({
         endpoint: "/api/nexus/chat",
@@ -504,7 +512,9 @@ export function useNexusChatStream(
           runId: turnRunId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
           ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
-          ...(allFileAttachments.length > 0
+          ...(resolvedAttachmentIds.length > 0
+            ? { attachmentIds: resolvedAttachmentIds }
+            : allFileAttachments.length > 0
             ? {
                 attachments: allFileAttachments,
                 ...(firstImg ? { imageBase64: firstImg.base64, imageMimeType: firstImg.mediaType } : {}),

@@ -20,6 +20,7 @@ import { workspaceEventBus } from "@/lib/workspaceEventBus";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 import { cacheRoutesFromBuildFiles } from "@/lib/scanRoutes";
 import { isAttachmentFlagOn } from "@/lib/attachments/flags";
+import { uploadInlineAttachments } from "@/lib/attachments/adapter";
 
 type PriorMessage = Message;
 
@@ -316,6 +317,7 @@ export function useChatStream(
       options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean; conversationMode?: boolean; attachmentIds?: string[] },
     ) => {
       const imgAttachments = (attachments ?? []).filter((a) => a.mediaType?.startsWith("image/"));
+      const docAttachments = (attachments ?? []).filter((a) => !a.mediaType?.startsWith("image/"));
       const firstImg = imgAttachments[0];
       const persistentAttachmentsOn = isAttachmentFlagOn("attachments.persistence");
       const attachmentIds = persistentAttachmentsOn && Array.isArray(options?.attachmentIds)
@@ -437,6 +439,24 @@ export function useChatStream(
         let streamingFinished = false;
         let pacer: TextPacer | null = null;
         try {
+          // When persistence is on and the caller gave inline files (no pre-uploaded IDs),
+          // upload them first and swap the body to use attachmentIds instead.
+          if (persistentAttachmentsOn && !("attachmentIds" in body) && (imgAttachments.length + docAttachments.length) > 0) {
+            try {
+              const allInline = [...imgAttachments, ...docAttachments];
+              const uploadedIds = await uploadInlineAttachments(allInline);
+              if (uploadedIds.length > 0) {
+                const b = body as Record<string, unknown>;
+                delete b.attachments;
+                delete b.imageData;
+                delete b.imageMimeType;
+                b.attachmentIds = uploadedIds;
+              }
+            } catch (uploadErr) {
+              throw new Error(`File upload failed: ${uploadErr instanceof Error ? uploadErr.message : "unknown error"}`);
+            }
+          }
+
           const ghToken = (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
 
           const r = await fetch(endpoint, {

@@ -270,3 +270,42 @@ export function createHttpAdapter(
 }
 
 export const httpAttachmentAdapter = createHttpAdapter();
+
+/**
+ * Upload an array of inline (base64-encoded) attachments through the HTTP
+ * adapter and return their server-assigned attachment IDs.
+ *
+ * Used by send hooks when `attachments.persistence` is on and the caller
+ * passed raw base64 files instead of pre-uploaded IDs.  Throws on the first
+ * upload failure so the hook can surface the error rather than silently
+ * dropping the file.
+ */
+export async function uploadInlineAttachments(
+  attachments: Array<{ base64: string; mediaType: string; name?: string }>,
+  adapter: AttachmentAdapter = httpAttachmentAdapter,
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const att of attachments) {
+    const binary = atob(att.base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: att.mediaType });
+    const ext = att.mediaType.split("/")[1]?.split(";")[0] ?? "bin";
+    const file = new File(
+      [blob],
+      att.name ?? `attachment.${ext}`,
+      { type: att.mediaType },
+    );
+
+    const { attachmentId, uploadUrl, headers } = await adapter.requestUpload(file);
+    const putRes = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": att.mediaType, ...(headers ?? {}) },
+      body: blob,
+    });
+    if (!putRes.ok) throw new Error(`Storage upload failed: ${putRes.status}`);
+    await adapter.finalizeUpload(attachmentId);
+    ids.push(attachmentId);
+  }
+  return ids;
+}
