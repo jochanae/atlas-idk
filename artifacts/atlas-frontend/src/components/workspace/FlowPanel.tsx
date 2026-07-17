@@ -19,6 +19,35 @@ const FLOW_MESSAGES_LIMIT = 50;
 
 type FlowMessage = { role: "user" | "assistant"; content: string };
 
+function ExportMenuItem({ label, sub, onClick, busy }: { label: string; sub: string; onClick: () => void; busy?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      disabled={busy}
+      style={{
+        display: "flex", flexDirection: "column", alignItems: "flex-start",
+        width: "100%", padding: "8px 10px", gap: 2,
+        background: "transparent", border: "none", borderRadius: 6,
+        cursor: busy ? "wait" : "pointer",
+        textAlign: "left", opacity: busy ? 0.55 : 1,
+        color: "var(--atlas-fg)",
+        transition: "background 140ms ease",
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(var(--atlas-gold-rgb),0.10)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+    >
+      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>
+        {label}{busy ? "…" : ""}
+      </span>
+      <span style={{ fontSize: 9.5, color: "rgba(var(--atlas-muted-rgb),0.7)", letterSpacing: "0.02em" }}>
+        {sub}
+      </span>
+    </button>
+  );
+}
+
 function toAsciiExportText(text: string): string {
   return text
     .normalize("NFKD")
