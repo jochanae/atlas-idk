@@ -358,7 +358,7 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
               d.type === "remove" ? removePrefix :
               mutedText;
             const lineColor =
-              d.type === "keep" ? mutedText : textColor;
+              d.type === "equal" ? mutedText : textColor;
             return (
               <tr key={idx} style={{ background: bg }}>
                 <td style={{
