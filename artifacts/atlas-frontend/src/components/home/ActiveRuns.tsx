@@ -12,6 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { X, ChevronDown, Paperclip, ArrowRight, Loader, GitPullRequest, ChevronUp, FileCode, Terminal } from "lucide-react";
 import type { QuickEditProjectOption } from "./QuickEditRow";
+import { isAttachmentFlagOn } from "@/lib/attachments/flags";
+import { uploadPersistentAttachments } from "@/lib/composerAttachments";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -283,7 +285,10 @@ async function fileToBase64(
 
 async function _startRun(
   run: Omit<ActiveRun, "status" | "sessionId" | "completedAt">,
-  attachments: Array<{ base64: string; mediaType: string; name: string }>
+  attachmentPayload: {
+    attachments?: Array<{ base64: string; mediaType: string; name: string }>;
+    attachmentIds?: string[];
+  }
 ): Promise<void> {
   const initial: ActiveRun = {
     ...run,
@@ -321,7 +326,11 @@ async function _startRun(
         message: run.prompt,
         history: [],
         entries: [],
-        attachments: attachments.length > 0 ? attachments : undefined,
+        ...(attachmentPayload.attachmentIds?.length
+          ? { attachmentIds: attachmentPayload.attachmentIds }
+          : attachmentPayload.attachments?.length
+            ? { attachments: attachmentPayload.attachments }
+            : {}),
         ...modeFlags,
       }),
     });
@@ -678,9 +687,16 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
 
     try {
       // BUILD → background run with live streaming + automatic file apply
-      const encodedAttachments = attachments.length > 0
-        ? await Promise.all(attachments.map(fileToBase64))
-        : [];
+      const attachmentPayload = isAttachmentFlagOn("attachments.persistence") && attachments.length > 0
+        ? await uploadPersistentAttachments(attachments).then((r) => {
+            if (r.rejected.length > 0) console.warn("Some attachments were not uploaded", r.rejected);
+            return { attachmentIds: r.attachmentIds };
+          })
+        : {
+            attachments: attachments.length > 0
+              ? await Promise.all(attachments.map(fileToBase64))
+              : [],
+          };
 
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const project = projects.find((p) => p.id === projectId);
@@ -695,7 +711,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
           attachmentNames: attachments.map((f) => f.name),
           createdAt: Date.now(),
         },
-        encodedAttachments
+        attachmentPayload
       );
 
       setPrompt("");

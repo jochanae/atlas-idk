@@ -44,6 +44,7 @@ import {
   updateContractRunIntent,
   type ContractRunCtx,
 } from "../lib/chatContractBridge";
+import { linkAttachmentsToMessage, resolveAttachmentIdsForModel } from "../lib/attachmentResolve";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3116,7 +3117,9 @@ router.post("/chat", async (req, res): Promise<void> => {
     userProfile?: string;
     imageData?: string | { base64: string; mediaType: string };
     imageMimeType?: string;
-    attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
+    attachments?: Array<{ base64?: string; mediaType?: string; name?: string; url?: string }>;
+    /** Server-resolved attachment IDs. Preferred when ATTACHMENTS_PERSISTENCE=true. */
+    attachmentIds?: string[];
     flowMode?: boolean;
     flowNodes?: Array<{ type: string; label: string; question?: string; strategicAnswer?: string }>;
     forgeContext?: string;
@@ -3130,7 +3133,20 @@ router.post("/chat", async (req, res): Promise<void> => {
   const buildMode = Boolean(body.buildMode);
 
   const isFoundationMode = !body.projectId;
-  if ((!body.sessionId && !isFlowMode && !isFoundationMode) || (!body.message && !body.attachments?.length)) {
+  const attachmentIds = Array.isArray(body.attachmentIds)
+    ? [...new Set(body.attachmentIds.filter((id): id is string => typeof id === "string" && id.length > 0))]
+    : [];
+  const legacyAttachments = Array.isArray(body.attachments) ? body.attachments : [];
+  if (legacyAttachments.some((a) => a && typeof a.url === "string" && a.url.length > 0)) {
+    res.status(400).json({ error: "Client-supplied attachment URLs are not accepted. Use attachmentIds." });
+    return;
+  }
+  if (process.env.ATTACHMENTS_PERSISTENCE === "true" && legacyAttachments.length > 0) {
+    res.status(400).json({ error: "Legacy attachments payload disabled. Use attachmentIds." });
+    return;
+  }
+
+  if ((!body.sessionId && !isFlowMode && !isFoundationMode) || (!body.message && !legacyAttachments.length && attachmentIds.length === 0)) {
     res.status(400).json({ error: "Missing required fields: sessionId (or foundation mode), message" });
     return;
   }
@@ -3161,14 +3177,61 @@ router.post("/chat", async (req, res): Promise<void> => {
   const rawImageData = body.imageData ?? undefined;
   const legacyBase64 = typeof rawImageData === "string" ? rawImageData : rawImageData?.base64 ?? undefined;
   const legacyMimeType = body.imageMimeType ?? (typeof rawImageData === "object" ? rawImageData?.mediaType : undefined);
-  // Normalise: merge legacy imageData/imageMimeType + new attachments array into one list
-  const allAttachments: Array<{ base64: string; mediaType: string; name?: string }> = [
-    ...(body.attachments ?? []),
-    ...(legacyBase64 && legacyMimeType ? [{ base64: legacyBase64, mediaType: legacyMimeType }] : []),
-  ];
   const activeModel = selectChatModelForMessage(message, (body.workspaceLens ?? "").toLowerCase());
   const now = new Date();
   const userId = (req as any).authUser?.id as number | undefined;
+  type ModelAttachment = {
+    base64: string;
+    mediaType: string;
+    name?: string;
+    asText?: boolean;
+    textContent?: string;
+  };
+  let resolvedIdAttachments: ModelAttachment[] = [];
+  if (attachmentIds.length > 0) {
+    if (!userId) {
+      res.write(`data: ${JSON.stringify({ type: "done", content: "Please sign in to use persisted attachments.", error: true })}\n\n`);
+      res.end();
+      return;
+    }
+    const { resolved, skipped } = await resolveAttachmentIdsForModel({ userId, attachmentIds });
+    logger.info({ userId, attachmentIds, resolved: resolved.length, skipped }, "chat: resolved attachmentIds for model");
+    resolvedIdAttachments = resolved.map((r) => ({
+      base64: r.base64,
+      mediaType: r.mediaType,
+      name: r.name,
+      asText: r.asText,
+      textContent: r.textContent,
+    }));
+  }
+  // Normalise: id-resolved first, then legacy imageData/imageMimeType + attachments.
+  const allAttachments: ModelAttachment[] = [
+    ...resolvedIdAttachments,
+    ...legacyAttachments
+      .filter((a): a is { base64: string; mediaType: string; name?: string } =>
+        typeof a?.base64 === "string" && typeof a?.mediaType === "string",
+      )
+      .map((a) => ({ base64: a.base64, mediaType: a.mediaType, name: a.name })),
+    ...(legacyBase64 && legacyMimeType ? [{ base64: legacyBase64, mediaType: legacyMimeType }] : []),
+  ];
+  let savedUserMessageId: number | null = null;
+  const attachmentConversationId = sessionId ? `ws-${sessionId}` : null;
+  const linkChatAttachments = async (chatMessageId: number | null) => {
+    if (!userId || attachmentIds.length === 0 || !chatMessageId) return;
+    try {
+      await linkAttachmentsToMessage({
+        userId,
+        attachmentIds,
+        conversationId: attachmentConversationId,
+        surface: "ask_atlas",
+        projectId: projectId || null,
+        chatMessageId,
+      });
+      logger.info({ userId, attachmentIds, chatMessageId, conversationId: attachmentConversationId }, "chat: linked attachments to user message");
+    } catch (linkErr) {
+      logger.warn({ err: linkErr, attachmentIds, chatMessageId }, "chat: attachment linkage failed — non-fatal");
+    }
+  };
 
   // ── V1.2 Contract bridge — CHAT run lifecycle ────────────────────────────────
   // Best-effort: errors are caught inside beginContractRun and never propagate.
@@ -4790,7 +4853,11 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   const isDive = isDiveCmd || activeMode === "deep" || activeMode === "deepdive";
   const effectiveDiveTopic = isDiveCmd ? diveTopic : message;
   if (isDive) {
-    try { await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message, intentType: body.mode ?? null }); }
+    try {
+      const [savedUser] = await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message, intentType: body.mode ?? null }).returning({ id: chatMessagesTable.id });
+      savedUserMessageId = savedUser?.id ?? null;
+      await linkChatAttachments(savedUserMessageId);
+    }
     catch (e: any) { logger.warn({ sessionId, err: e?.message }, "chat_messages deep-dive user insert failed — non-fatal"); }
     const diveResult = await runDeepDive(effectiveDiveTopic, systemPrompt);
     const surface = detectSurfaceSignal({
@@ -4994,8 +5061,20 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     } as ImageBlock);
   }
 
-  // 3. User-attached images (attachments array — supports multiple)
+  // 3. User-attached files (server-resolved IDs + legacy images)
   for (const att of allAttachments) {
+    if (att.asText && att.textContent != null) {
+      contentParts.push({ type: "text", text: `Attached file: ${att.name ?? "file"}\n\n${att.textContent}` });
+      continue;
+    }
+    if (!att.mediaType.startsWith("image/")) {
+      contentParts.push({ type: "text", text: `Attached file: ${att.name ?? "file"} (${att.mediaType}) — binary content attached as base64 length ${att.base64.length}.` });
+      continue;
+    }
+    if (att.base64.length > MAX_VAULT_B64_SIZE) {
+      logger.warn({ size: att.base64.length }, "User attachment too large — skipped");
+      continue;
+    }
     contentParts.push({
       type: "image",
       source: { type: "base64", media_type: att.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: att.base64 },
@@ -5032,12 +5111,14 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   // have a sessionId to attach to, regardless of lens.
   if (sessionId && !isTelemetryEvent) {
     try {
-      await db.insert(chatMessagesTable).values({
+      const [savedUser] = await db.insert(chatMessagesTable).values({
         sessionId,
         role: "user",
         content: message,
         intentType: body.mode ?? null,
-      });
+      }).returning({ id: chatMessagesTable.id });
+      savedUserMessageId = savedUser?.id ?? null;
+      await linkChatAttachments(savedUserMessageId);
     } catch (dbErr: any) {
       const errMsg = dbErr?.message ?? "";
       const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
@@ -5045,12 +5126,14 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
       if (isMissingColumn) {
         logger.warn({ dbErr: errMsg }, "DB schema behind on user message insert — falling back to core insert");
         try {
-          await db.insert(chatMessagesTable).values({
+          const [savedUser] = await db.insert(chatMessagesTable).values({
             sessionId,
             role: "user",
             content: message,
             intentType: null,
-          });
+          }).returning({ id: chatMessagesTable.id });
+          savedUserMessageId = savedUser?.id ?? null;
+          await linkChatAttachments(savedUserMessageId);
         } catch { /* non-fatal — conversation_messages has the record */ }
       } else if (isFkViolation) {
         logger.warn({ sessionId }, "chat_messages user insert: session FK not found — skipping legacy write (conversation_messages is authoritative)");

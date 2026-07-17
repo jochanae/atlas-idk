@@ -11,6 +11,8 @@ import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../../lib/errorReporter";
 import { useStageArtifact } from "@/hooks/useComposerVisibility";
 import { exportFlowSurfacePng, exportFlowJson, exportFlowPdf } from "@/lib/flowExport";
+import { isAttachmentFlagOn } from "@/lib/attachments/flags";
+import { uploadPersistentAttachments } from "@/lib/composerAttachments";
 
 const FLOW_NODE_TYPES = new Set<ArchNode["type"]>(["goal", "requirement", "blocker", "priority", "decision", "sprint", "wont"]);
 const FLOW_NODE_META = new Set(["must", "should", "could", "wont"]);
@@ -372,6 +374,12 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
       const nodeContext = nodes.length > 0
         ? `Current canvas nodes:\n${nodes.map(n => `- [${n.type}] ${n.label}${n.strategicAnswer ? " (answered)" : " (unanswered)"}`).join("\n")}`
         : "Canvas is empty — no nodes yet.";
+      const persistentUpload = isAttachmentFlagOn("attachments.persistence") && files.length > 0
+        ? await uploadPersistentAttachments(files)
+        : null;
+      if (persistentUpload?.rejected.length) {
+        console.warn("Some attachments were not uploaded", persistentUpload.rejected);
+      }
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -384,7 +392,11 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           history: flowMessages.map(m => ({ role: m.role, content: m.content })),
           projectMap: nodeContext,
           mode: "plan",
-          ...(imageFile ? await fileToBase64Safe(imageFile).then(r => ({ imageBase64: r.base64, imageMediaType: r.mediaType })).catch(() => ({ imageBase64: "", imageMediaType: "" })) : {}),
+          ...(persistentUpload?.attachmentIds.length
+            ? { attachmentIds: persistentUpload.attachmentIds }
+            : imageFile
+              ? await fileToBase64Safe(imageFile).then(r => ({ imageData: r.base64, imageMimeType: r.mediaType })).catch(() => ({ imageData: "", imageMimeType: "" }))
+              : {}),
         }),
       }).then(async (r) => {
         if (!r.ok) return Promise.reject(r.status);

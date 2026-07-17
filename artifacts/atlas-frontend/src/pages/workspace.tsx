@@ -89,9 +89,9 @@ import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
-import { fileToBase64Safe } from "@/lib/image-resize";
 import { attachAuditLog } from "@/lib/attachAuditLog";
-import { filesToNexusAttachments } from "@/lib/composerAttachments";
+import { filesToNexusAttachments, uploadPersistentAttachments } from "@/lib/composerAttachments";
+import { isAttachmentFlagOn } from "@/lib/attachments/flags";
 import { reportError } from "../lib/errorReporter";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
@@ -7387,10 +7387,14 @@ export default function Workspace() {
     // Reset the URL preview after send so it doesn't persist to the next message
     if (urlData) dismissUrl();
 
-    if (imageFiles.length > 0) {
-      Promise.all(imageFiles.map(f =>
-        fileToBase64Safe(f).then(({ base64, mediaType }) => ({ base64, mediaType, name: f.name }))
-      ))
+    if (isAttachmentFlagOn("attachments.persistence") && files.length > 0) {
+      const upload = await uploadPersistentAttachments(files);
+      if (upload.rejected.length > 0) {
+        console.warn("Some attachments were not uploaded", upload.rejected);
+      }
+      doSend(fullText, sid, current, combinedCtx, undefined, { ...sendOpts, attachmentIds: upload.attachmentIds });
+    } else if (imageFiles.length > 0) {
+      filesToNexusAttachments(imageFiles)
         .then((attachments) => doSend(fullText, sid, current, combinedCtx, [...(urlAttachment ? [urlAttachment] : []), ...attachments], sendOpts))
         .catch(() => {
           const fallbackText = fullText || `[Attached: ${imageFiles.map(f => f.name).join(", ")}]`;

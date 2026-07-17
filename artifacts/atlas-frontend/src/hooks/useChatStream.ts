@@ -19,6 +19,7 @@ import { createTextPacer, type TextPacer } from "@/lib/textPacer";
 import { workspaceEventBus } from "@/lib/workspaceEventBus";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 import { cacheRoutesFromBuildFiles } from "@/lib/scanRoutes";
+import { isAttachmentFlagOn } from "@/lib/attachments/flags";
 
 type PriorMessage = Message;
 
@@ -121,7 +122,7 @@ export interface UseChatStreamReturn {
     currentMessages: ChatMessage[],
     ctx?: string | null,
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
-    options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean; conversationMode?: boolean },
+    options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean; conversationMode?: boolean; attachmentIds?: string[] },
   ) => void;
   handleRegenerate: (assistantMsgIndex: number) => void;
 }
@@ -312,10 +313,14 @@ export function useChatStream(
       currentMessages: ChatMessage[],
       ctx?: string | null,
       attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
-      options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean; conversationMode?: boolean },
+      options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean; skipReadiness?: boolean; conversationMode?: boolean; attachmentIds?: string[] },
     ) => {
       const imgAttachments = (attachments ?? []).filter((a) => a.mediaType?.startsWith("image/"));
       const firstImg = imgAttachments[0];
+      const persistentAttachmentsOn = isAttachmentFlagOn("attachments.persistence");
+      const attachmentIds = persistentAttachmentsOn && Array.isArray(options?.attachmentIds)
+        ? [...new Set(options.attachmentIds.filter(Boolean))]
+        : [];
       const userMsg: ChatMessage = {
         role: "user",
         content: text,
@@ -406,7 +411,9 @@ export function useChatStream(
         ...(activeCtx ? { fileContext: activeCtx } : {}),
         ...(userProfileStr ? { userProfile: userProfileStr } : {}),
         ...(projectMap ? { projectMap } : {}),
-        ...(imgAttachments.length > 0
+        ...(attachmentIds.length > 0
+          ? { attachmentIds }
+          : imgAttachments.length > 0
           ? {
               attachments: imgAttachments,
               // Legacy fields for backend compat with the pre-multi-image contract.
