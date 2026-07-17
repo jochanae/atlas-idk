@@ -78,11 +78,19 @@ function ensureVisibilityHook() {
     if (!pickerPending && !readPendingStorage()) return;
     pickerPending = true;
     installGhostClickShield("picker_visibility_return", GHOST_SHIELD_VISIBILITY_MS);
+    // Cancelled Documents pickers often skip the change event — expire pending
+    // after the visibility shield so Exit is not stuck forever.
+    window.setTimeout(() => {
+      if (pickerPending) clearPickerPending();
+    }, GHOST_SHIELD_VISIBILITY_MS);
   });
   // Cold start after Android Documents killed the WebView mid-picker.
   if (readPendingStorage()) {
     pickerPending = true;
     installGhostClickShield("picker_pending_restore", GHOST_SHIELD_VISIBILITY_MS);
+    window.setTimeout(() => {
+      if (pickerPending) clearPickerPending();
+    }, GHOST_SHIELD_VISIBILITY_MS);
   }
 }
 
