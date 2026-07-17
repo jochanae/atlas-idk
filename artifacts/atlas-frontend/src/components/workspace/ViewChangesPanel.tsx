@@ -387,6 +387,85 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   );
 }
 
+// Render a GitHub-style unified diff patch (as returned by the commits API).
+// Each line already carries a +/-/space prefix; we colorize by prefix and
+// collapse hunk headers into muted separators.
+function UnifiedPatchBlock({ patch }: { patch: string }) {
+  const addBg       = "rgba(46,160,67,0.14)";
+  const addPrefix   = "rgba(46,160,67,0.95)";
+  const removeBg    = "rgba(207,63,63,0.14)";
+  const removePrefix = "rgba(207,63,63,0.95)";
+  const hunkBg      = "rgba(var(--atlas-gold-rgb), 0.06)";
+  const neutralBg   = "hsl(var(--muted) / 0.4)";
+  const neutralBorder = "rgba(var(--atlas-gold-rgb), 0.18)";
+  const textColor   = "var(--atlas-fg)";
+  const mutedText   = "hsl(var(--muted-foreground))";
+
+  const lines = patch.split("\n");
+
+  return (
+    <div style={{
+      margin: "4px 0 0", borderRadius: 4, overflow: "hidden",
+      border: `1px solid ${neutralBorder}`,
+      background: neutralBg,
+      maxHeight: 360, overflowY: "auto",
+    }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: 20 }} />
+          <col />
+        </colgroup>
+        <tbody>
+          {lines.map((raw, idx) => {
+            if (raw.startsWith("@@")) {
+              return (
+                <tr key={idx}>
+                  <td colSpan={2} style={{
+                    padding: "2px 8px",
+                    background: hunkBg,
+                    color: mutedText,
+                    fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+                    userSelect: "none",
+                  }}>{raw}</td>
+                </tr>
+              );
+            }
+            const isAdd = raw.startsWith("+") && !raw.startsWith("+++");
+            const isRem = raw.startsWith("-") && !raw.startsWith("---");
+            if (raw.startsWith("+++") || raw.startsWith("---") || raw.startsWith("diff ") || raw.startsWith("index ")) {
+              // File-header lines from the patch — skip; we already show the path above.
+              return null;
+            }
+            const bg = isAdd ? addBg : isRem ? removeBg : "transparent";
+            const prefix = isAdd ? "+" : isRem ? "−" : " ";
+            const prefixColor = isAdd ? addPrefix : isRem ? removePrefix : mutedText;
+            const lineColor = isAdd || isRem ? textColor : mutedText;
+            const body = raw.length > 0 ? raw.slice(1) : "";
+            return (
+              <tr key={idx} style={{ background: bg }}>
+                <td style={{
+                  padding: "0 4px",
+                  fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+                  color: prefixColor, textAlign: "center",
+                  userSelect: "none", lineHeight: 1.6,
+                  borderRight: "1px solid rgba(127,127,127,0.12)",
+                  verticalAlign: "top",
+                }}>{prefix}</td>
+                <td style={{
+                  padding: "0 8px",
+                  fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+                  color: lineColor, lineHeight: 1.6,
+                  whiteSpace: "pre", overflowX: "hidden",
+                }}>{body}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // Derive the human-facing change label + accent colour from FileRow fields.
 function getChangeLabel(row: FileRow): { label: string; color: string } {
   const verb = row.verb ?? "";
