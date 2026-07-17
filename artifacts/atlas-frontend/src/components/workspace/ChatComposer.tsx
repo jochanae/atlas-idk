@@ -550,7 +550,7 @@ export function ChatComposer(props: ChatComposerProps) {
           id="ws-file-input"
           type="file"
           accept="*/*"
-          style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, overflow: "hidden" }}
+          style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
           multiple
           onChange={async (e) => {
             const files = Array.from(e.target.files ?? []);
@@ -567,7 +567,7 @@ export function ChatComposer(props: ChatComposerProps) {
           id="ws-code-context-input"
           type="file"
           accept=".zip,application/zip"
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
+          style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
           onChange={async (e) => {
             const f = e.target.files?.[0];
             if (f) await uploadCodeContextZip(f);

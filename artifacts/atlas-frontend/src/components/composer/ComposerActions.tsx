@@ -212,7 +212,7 @@ export function ComposerActions({
         type="file"
         accept="*/*"
         multiple
-        style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }}
+        style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
         onChange={(e) => {
           pickFiles(e.target.files);
           e.target.value = "";
@@ -225,7 +225,7 @@ export function ComposerActions({
         type="file"
         accept="image/*,video/*"
         capture="environment"
-        style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }}
+        style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
         onChange={(e) => {
           pickFiles(e.target.files);
           e.target.value = "";

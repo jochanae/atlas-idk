@@ -58,7 +58,10 @@ export function useAuth() {
     queryKey: ["auth", "me"],
     queryFn: fetchMe,
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
   return { user: user ?? null, isLoading };
 }
