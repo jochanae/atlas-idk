@@ -1038,10 +1038,10 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
 
         {/* ── Save footer ───────────────────────────────────────────────── */}
         <div style={{
-          padding: "12px 18px",
+          padding: "16px 18px",
           paddingBottom: isMobile
-            ? "calc(84px + env(safe-area-inset-bottom, 0px))"
-            : "max(12px, env(safe-area-inset-bottom))",
+            ? "calc(96px + env(safe-area-inset-bottom, 0px))"
+            : "calc(32px + env(safe-area-inset-bottom, 0px))",
           borderTop: "1px solid rgba(201,162,76,0.08)", flexShrink: 0,
         }}>
           <button
