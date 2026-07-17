@@ -51,6 +51,26 @@ export function TimelineRail({
   const [focusIdx, setFocusIdx] = useState<number>(-1);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Overlay awareness — when a full-surface overlay (LaunchModal preview,
+  // Files launcher, project sheet, etc.) is active, the rail + search FAB
+  // must fully unmount rather than float over the covering surface.
+  // Workspace/host pages dispatch axiom:overlay-state { active } when their
+  // modals open/close. We also check body[data-axiom-overlay] on mount so a
+  // late-mounted rail respects an overlay that opened before it existed.
+  const [overlayActive, setOverlayActive] = useState<boolean>(() => {
+    if (typeof document === "undefined") return false;
+    return document.body?.dataset?.axiomOverlay === "1";
+  });
+  useEffect(() => {
+    const onState = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ active?: boolean }>).detail;
+      setOverlayActive(Boolean(detail?.active));
+    };
+    window.addEventListener("axiom:overlay-state", onState);
+    return () => window.removeEventListener("axiom:overlay-state", onState);
+  }, []);
+
+
   const matchList = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [] as number[];
@@ -278,7 +298,11 @@ export function TimelineRail({
     return null;
   })();
 
+  // Any full-surface overlay (LaunchModal, etc.) wins: rail + FAB unmount.
+  if (overlayActive) return null;
+
   return (
+
     <>
       {/* Search magnifier — only when a chat scroll surface is visible.
           Prevents the fixed button leaking onto workspace tabs (Ledger,
