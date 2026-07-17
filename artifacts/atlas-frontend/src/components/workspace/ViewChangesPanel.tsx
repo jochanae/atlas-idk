@@ -12,11 +12,11 @@
 // rows — Timeline shows process steps (THOUGHT/READ/SEARCH/INSPECT/SUMMARY),
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   X, FileCode2, Eye, Search, Folder,
-  Lightbulb, Trash2, CheckCircle2, ChevronDown,
+  Lightbulb, Trash2, CheckCircle2,
   Dna, BookMarked, ListChecks, AlertOctagon, FileOutput, HelpCircle,
   Copy, Check,
 } from "lucide-react";
@@ -24,6 +24,8 @@ import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
+import { useShellStore } from "@/store/shellStore";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 // ── Relative time (seconds → minutes → hours → days → date) ───────────────────
@@ -167,75 +169,8 @@ function tagTone(tag: string): { fg: string; bg: string; border: string } {
   }
 }
 
-function RunReceiptPill({
-  run, projectName, onClick, selected,
-}: {
-  run: ApiRun; projectName: string; onClick?: () => void; selected?: boolean;
-}) {
-  const { tag, line } = summarizeRun(run);
-  const failed = run.status === "failed";
-  const running = run.status === "running";
-  const dotColor = failed
-    ? "rgba(220,80,80,0.9)"
-    : running
-    ? "rgba(var(--atlas-gold-rgb), 0.9)"
-    : "rgba(100,200,120,0.9)";
-  const started = new Date(run.startedAt).getTime();
-  const anchor = run.completedAt ? new Date(run.completedAt).getTime() : started;
-  return (
-    <div
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
-      style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "8px 12px",
-        borderRadius: 6,
-        background: selected ? "rgba(var(--atlas-gold-rgb), 0.07)" : "rgba(255,255,255,0.02)",
-        border: `1px solid ${selected ? "rgba(var(--atlas-gold-rgb), 0.3)" : "rgba(var(--atlas-gold-rgb), 0.12)"}`,
-        borderLeft: `2px solid ${dotColor}`,
-        cursor: onClick ? "pointer" : "default",
-        WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      <span
-        aria-hidden
-        style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }}
-      />
-      {(() => {
-        const tone = tagTone(tag);
-        return (
-          <span
-            style={{
-              fontFamily: "var(--app-font-mono)", fontSize: 9.5,
-              letterSpacing: "0.14em", textTransform: "uppercase",
-              padding: "2px 6px", borderRadius: 3,
-              background: tone.bg, color: tone.fg,
-              border: `1px solid ${tone.border}`, flexShrink: 0,
-            }}
-          >{tag}</span>
-        );
-      })()}
-      <span style={{
-        fontSize: 12, color: "var(--atlas-fg)", opacity: 0.9,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        flex: 1, minWidth: 0,
-      }}>
-        <span style={{ opacity: 0.65 }}>{projectName}</span>
-        <span style={{ opacity: 0.4, margin: "0 6px" }}>·</span>
-        <span>{line}</span>
-      </span>
-      <span style={{
-        fontSize: 10.5, fontFamily: "var(--app-font-mono)",
-        color: "var(--atlas-muted)", opacity: 0.6, flexShrink: 0,
-      }}>{formatAgo(Date.now() - anchor)}</span>
-      {onClick && (
-        <span style={{ fontSize: 9, color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0, fontFamily: "var(--app-font-mono)" }}>›</span>
-      )}
-    </div>
-  );
-}
+// (RunReceiptPill removed with WorkspaceRunReceipts — Timeline lists runs
+// chronologically and RunDetailsDrawer opens on a specific run.)
 
 function collectFileRows(messages: TimelineMessage[]): FileRow[] {
   const rows: FileRow[] = [];
@@ -317,16 +252,34 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   const isDeleted  = !!before && !after;
   const hasDiff    = !!before && !!after;
 
+  // Theme-neutral diff palette — reads on both dark and light backgrounds.
+  const addBg      = "rgba(46,160,67,0.14)";
+  const addBorder  = "rgba(46,160,67,0.35)";
+  const removeBg   = "rgba(207,63,63,0.14)";
+  const removeBorder = "rgba(207,63,63,0.35)";
+  const addPrefix  = "rgba(46,160,67,0.95)";
+  const removePrefix = "rgba(207,63,63,0.95)";
+  const hunkBg     = "rgba(var(--atlas-gold-rgb), 0.06)";
+  const neutralBg  = "hsl(var(--muted) / 0.4)";
+  const neutralBorder = "rgba(var(--atlas-gold-rgb), 0.18)";
+  const textColor  = "var(--atlas-fg)";
+  const mutedText  = "hsl(var(--muted-foreground))";
+
+  const preBase = {
+    margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
+    fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+    lineHeight: 1.6,
+    overflowX: "auto" as const, overflowY: "auto" as const, maxHeight: 320,
+    whiteSpace: "pre" as const, wordBreak: "normal" as const,
+    color: textColor,
+  };
+
   if (isCreated) {
     return (
       <pre style={{
-        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
-        background: "rgba(40,90,55,0.30)",
-        border: "1px solid rgba(80,160,100,0.18)",
-        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-        color: "rgba(160,220,170,0.9)", lineHeight: 1.6,
-        overflowX: "auto", overflowY: "auto", maxHeight: 320,
-        whiteSpace: "pre", wordBreak: "normal",
+        ...preBase,
+        background: addBg,
+        border: `1px solid ${addBorder}`,
       }}>{after}</pre>
     );
   }
@@ -334,13 +287,9 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   if (isDeleted) {
     return (
       <pre style={{
-        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
-        background: "rgba(90,30,30,0.30)",
-        border: "1px solid rgba(180,70,70,0.18)",
-        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-        color: "rgba(220,140,140,0.9)", lineHeight: 1.6,
-        overflowX: "auto", overflowY: "auto", maxHeight: 320,
-        whiteSpace: "pre", wordBreak: "normal",
+        ...preBase,
+        background: removeBg,
+        border: `1px solid ${removeBorder}`,
         textDecoration: "line-through",
       }}>{before}</pre>
     );
@@ -349,13 +298,9 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   if (!hasDiff) {
     return (
       <pre style={{
-        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
-        background: "rgba(0,0,0,0.35)",
-        border: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
-        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-        color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
-        overflowX: "auto", overflowY: "auto", maxHeight: 320,
-        whiteSpace: "pre", wordBreak: "normal",
+        ...preBase,
+        background: neutralBg,
+        border: `1px solid ${neutralBorder}`,
       }}>{after ?? before ?? ""}</pre>
     );
   }
@@ -366,13 +311,9 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   if (!hasChanges) {
     return (
       <pre style={{
-        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
-        background: "rgba(0,0,0,0.35)",
-        border: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
-        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-        color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
-        overflowX: "auto", overflowY: "auto", maxHeight: 320,
-        whiteSpace: "pre", wordBreak: "normal",
+        ...preBase,
+        background: neutralBg,
+        border: `1px solid ${neutralBorder}`,
       }}>{after}</pre>
     );
   }
@@ -380,8 +321,8 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   return (
     <div style={{
       margin: "4px 0 0", borderRadius: 4, overflow: "hidden",
-      border: "1px solid rgba(var(--atlas-gold-rgb), 0.12)",
-      background: "rgba(0,0,0,0.28)",
+      border: `1px solid ${neutralBorder}`,
+      background: neutralBg,
       maxHeight: 320, overflowY: "auto",
     }}>
       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -396,8 +337,8 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
                 <tr key={idx}>
                   <td colSpan={2} style={{
                     padding: "1px 8px",
-                    background: "rgba(100,120,160,0.1)",
-                    color: "rgba(160,180,210,0.55)",
+                    background: hunkBg,
+                    color: mutedText,
                     fontFamily: "var(--app-font-mono)", fontSize: 9.5,
                     userSelect: "none",
                   }}>⋯ {d.count} unchanged lines</td>
@@ -405,21 +346,19 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
               );
             }
             const bg =
-              d.type === "add"    ? "rgba(40,90,55,0.32)" :
-              d.type === "remove" ? "rgba(90,30,30,0.32)" :
+              d.type === "add"    ? addBg :
+              d.type === "remove" ? removeBg :
               "transparent";
             const prefix =
               d.type === "add"    ? "+" :
               d.type === "remove" ? "−" :
               " ";
             const prefixColor =
-              d.type === "add"    ? "rgba(100,200,120,0.85)" :
-              d.type === "remove" ? "rgba(220,100,100,0.85)" :
-              "rgba(180,180,160,0.3)";
+              d.type === "add"    ? addPrefix :
+              d.type === "remove" ? removePrefix :
+              mutedText;
             const lineColor =
-              d.type === "add"    ? "rgba(160,225,175,0.9)" :
-              d.type === "remove" ? "rgba(225,145,145,0.9)" :
-              "rgba(210,210,190,0.7)";
+              d.type === "equal" ? mutedText : textColor;
             return (
               <tr key={idx} style={{ background: bg }}>
                 <td style={{
@@ -427,7 +366,7 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
                   fontFamily: "var(--app-font-mono)", fontSize: 10.5,
                   color: prefixColor, textAlign: "center",
                   userSelect: "none", lineHeight: 1.6,
-                  borderRight: "1px solid rgba(255,255,255,0.05)",
+                  borderRight: "1px solid rgba(127,127,127,0.12)",
                   verticalAlign: "top",
                 }}>{prefix}</td>
                 <td style={{
@@ -969,87 +908,9 @@ function RunTimeline({ run }: { run: ApiRun }) {
 }
 
 
-// ── Run receipt list: collapsible section (collapsed by default) ──────────────
-
-function WorkspaceRunReceipts({
-  projectId,
-  projectName,
-  runId,
-  onSelectRun,
-  conversationId,
-}: {
-  projectId: number;
-  projectName: string;
-  runId?: string | null;
-  onSelectRun?: (id: string) => void;
-  conversationId?: string | null;
-}) {
-  const { runs: apiRuns, invalidate: invalidateApiRuns } = useProjectRuns(projectId, { conversationId });
-  const [expanded, setExpanded] = useState(false);
-
-  // Refresh run list immediately when a run completes — no more 30s stale window.
-  useWorkspaceEvent("run-completed", ({ projectId: changedPid }) => {
-    if (changedPid === projectId) invalidateApiRuns();
-  }, [projectId, invalidateApiRuns]);
-
-  const visibleRuns = useMemo((): ApiRun[] => {
-    if (runId) return apiRuns.filter((r) => r.id === runId);
-    return apiRuns.slice(0, 5);
-  }, [apiRuns, runId]);
-
-  if (visibleRuns.length === 0) return null;
-
-  return (
-    <div style={{ borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.08)" }}>
-      {/* Section header — tap to expand/collapse */}
-      <button
-        type="button"
-        onClick={() => setExpanded((e) => !e)}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          width: "100%", padding: "8px 14px",
-          background: "transparent", border: "none", cursor: "pointer",
-          textAlign: "left", WebkitTapHighlightColor: "transparent",
-        }}
-      >
-        <span style={{
-          fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-          letterSpacing: "0.14em", textTransform: "uppercase",
-          color: "var(--atlas-gold)", opacity: 0.7,
-        }}>Activity</span>
-        <span style={{
-          fontSize: 9, background: "rgba(var(--atlas-gold-rgb), 0.12)",
-          color: "rgba(var(--atlas-gold-rgb), 0.8)", border: "1px solid rgba(var(--atlas-gold-rgb), 0.2)",
-          borderRadius: 3, padding: "1px 5px",
-          fontFamily: "var(--app-font-mono)",
-        }}>{visibleRuns.length}</span>
-        <ChevronDown
-          size={11} strokeWidth={1.6}
-          style={{
-            color: "var(--atlas-muted)", opacity: 0.45, marginLeft: "auto",
-            transform: expanded ? "rotate(180deg)" : "none",
-            transition: "transform 150ms ease",
-          }}
-          aria-hidden
-        />
-      </button>
-
-      {expanded && (
-        <div style={{ padding: "0 14px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-          {visibleRuns.map((run) => (
-            <RunReceiptPill
-              key={run.id}
-              run={run}
-              projectName={projectName}
-              selected={!!runId && run.id === runId}
-              onClick={onSelectRun ? () => onSelectRun(run.id) : undefined}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// (WorkspaceRunReceipts removed — Timeline lists runs chronologically and the
+// RunDetailsDrawer opens on a specific run; the top "Activity" strip was
+// redundant and stole vertical space above the Timeline/Changes toggle.)
 
 // (DecisionsLens removed — DECISION_RECORDED steps render chronologically in the Timeline.)
 
@@ -1244,14 +1105,22 @@ export function ViewChangesPanel({
     } catch {}
   };
 
-  const setRunFilter = (id: string) => {
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set("runId", id);
-      window.history.replaceState({}, "", url.toString());
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    } catch {}
-  };
+  // Collapse the composer while this surface is visible — the changes/timeline
+  // view is a stage artifact, not a place to start typing.
+  const claimId = useId();
+  const registerClaim = useShellStore((s) => s.registerComposerClaim);
+  const releaseClaim = useShellStore((s) => s.releaseComposerClaim);
+  const isMobile = useIsMobile();
+  useEffect(() => {
+    registerClaim(claimId, {
+      source: "stage",
+      kind: "view-changes",
+      visibility: isMobile ? "hidden" : "compact",
+    });
+    return () => releaseClaim(claimId);
+  }, [claimId, isMobile, registerClaim, releaseClaim]);
+
+
 
   return (
     <div style={{
@@ -1328,13 +1197,6 @@ export function ViewChangesPanel({
       )}
 
 
-      <WorkspaceRunReceipts
-        projectId={projectId}
-        projectName={projectName?.trim() || "Workspace"}
-        runId={runId}
-        onSelectRun={setRunFilter}
-        conversationId={conversationId}
-      />
 
       {/* ── Centered segmented toggle: Timeline · Changes ── */}
       <div style={{

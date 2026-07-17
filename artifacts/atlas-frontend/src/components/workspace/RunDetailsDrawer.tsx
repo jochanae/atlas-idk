@@ -1,17 +1,11 @@
-// RunDetailsDrawer — Slice 2 canonical run-detail surface.
-// Wraps ViewChangesPanel inside a right-side Sheet so that Details buttons
-// (from WorkspaceRunCard, ActiveCard, WorkspaceRunReceipts pills, and future
-// commit receipts) open ONE consistent detail surface on both mobile and
-// desktop, instead of only switching the workspace leftTab.
+// RunDetailsDrawer — canonical run/commit detail overlay.
 //
-// Contract:
-// - Opens on `axiom:open-changes` window events (see workspace.tsx handler).
-// - Reads runId from `?runId=` in the URL, kept in sync by the same handler.
-// - On close, strips `?runId` so subsequent opens start clean.
-// - Inside, ViewChangesPanel handles its own tab (Timeline / Changes / Decisions)
-//   and its own run-picker pills; the drawer is a shell, not a re-implementation.
+// Opens on `axiom:open-changes` events. Supports either a runId (execution
+// run) or a commitSha (GitHub commit) — the inner ViewChangesPanel renders
+// the appropriate lens for each. While open, the composer collapses to
+// hidden on mobile and compact on desktop so the drawer owns the screen.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -20,6 +14,8 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ViewChangesPanel } from "@/components/workspace/ViewChangesPanel";
+import { useShellStore } from "@/store/shellStore";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { PushRecord, LinkedRepo, ChatMessage } from "@/pages/workspace";
 
 interface Props {
@@ -32,17 +28,19 @@ interface Props {
   conversationId?: string | null;
 }
 
-function readRunIdFromUrl(): string | null {
-  if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get("runId");
+function readParamsFromUrl(): { runId: string | null; commitSha: string | null } {
+  if (typeof window === "undefined") return { runId: null, commitSha: null };
+  const p = new URLSearchParams(window.location.search);
+  return { runId: p.get("runId"), commitSha: p.get("commitSha") };
 }
 
-function clearRunIdFromUrl() {
+function clearRunAndCommitFromUrl() {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  if (!url.searchParams.has("runId")) return;
-  url.searchParams.delete("runId");
-  window.history.replaceState({}, "", url.toString());
+  let changed = false;
+  if (url.searchParams.has("runId"))     { url.searchParams.delete("runId");     changed = true; }
+  if (url.searchParams.has("commitSha")) { url.searchParams.delete("commitSha"); changed = true; }
+  if (changed) window.history.replaceState({}, "", url.toString());
 }
 
 export function RunDetailsDrawer({
@@ -55,14 +53,22 @@ export function RunDetailsDrawer({
   conversationId,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [runId, setRunId] = useState<string | null>(() => readRunIdFromUrl());
+  const [{ runId, commitSha }, setParams] = useState(() => readParamsFromUrl());
+  const isMobile = useIsMobile();
 
-  // Open on axiom:open-changes; sync runId from event detail or URL.
+  const claimId = useId();
+  const registerClaim = useShellStore((s) => s.registerComposerClaim);
+  const releaseClaim = useShellStore((s) => s.releaseComposerClaim);
+
+  // Open on axiom:open-changes; sync params from event detail or URL.
   useEffect(() => {
     const handler = (evt: Event) => {
-      const detail = (evt as CustomEvent<{ runId?: string }>).detail;
-      const next = detail?.runId ?? readRunIdFromUrl();
-      setRunId(next ?? null);
+      const detail = (evt as CustomEvent<{ runId?: string; commitSha?: string }>).detail ?? {};
+      const url = readParamsFromUrl();
+      setParams({
+        runId: detail.runId ?? url.runId,
+        commitSha: detail.commitSha ?? url.commitSha,
+      });
       setOpen(true);
     };
     window.addEventListener("axiom:open-changes", handler as EventListener);
@@ -70,19 +76,35 @@ export function RunDetailsDrawer({
       window.removeEventListener("axiom:open-changes", handler as EventListener);
   }, []);
 
-  // If URL changes (back/forward, or receipt pill click inside the panel that
-  // updates the URL), keep the drawer's runId in sync while it's open.
+  // If URL changes while open, keep params in sync.
   useEffect(() => {
     if (!open) return;
-    const sync = () => setRunId(readRunIdFromUrl());
+    const sync = () => setParams(readParamsFromUrl());
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
   }, [open]);
 
+  // Collapse the composer while the drawer owns the screen.
+  useEffect(() => {
+    if (!open) return;
+    registerClaim(claimId, {
+      source: "stage",
+      kind: "run-details",
+      visibility: isMobile ? "hidden" : "compact",
+    });
+    return () => releaseClaim(claimId);
+  }, [open, isMobile, claimId, registerClaim, releaseClaim]);
+
   const handleOpenChange = useCallback((next: boolean) => {
     setOpen(next);
-    if (!next) clearRunIdFromUrl();
+    if (!next) clearRunAndCommitFromUrl();
   }, []);
+
+  const { title, subtitle } = useMemo(() => {
+    if (commitSha) return { title: "Commit changes", subtitle: commitSha.slice(0, 7) };
+    if (runId)     return { title: "Run details",    subtitle: runId.slice(0, 8) };
+    return { title: "Details", subtitle: "Select a run" };
+  }, [runId, commitSha]);
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -92,10 +114,10 @@ export function RunDetailsDrawer({
       >
         <SheetHeader className="px-4 pt-4 pb-3 border-b border-border/40">
           <SheetTitle className="text-sm font-medium tracking-wide">
-            Run details
+            {title}
           </SheetTitle>
           <SheetDescription className="text-xs opacity-60 font-mono">
-            {runId ? runId.slice(0, 8) : "Select a run"}
+            {subtitle}
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
@@ -106,6 +128,7 @@ export function RunDetailsDrawer({
             pushHistory={pushHistory}
             onRollbackPush={onRollbackPush}
             runId={runId}
+            commitSha={commitSha}
             projectName={projectName ?? null}
             conversationId={conversationId ?? null}
           />
