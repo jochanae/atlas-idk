@@ -169,75 +169,8 @@ function tagTone(tag: string): { fg: string; bg: string; border: string } {
   }
 }
 
-function RunReceiptPill({
-  run, projectName, onClick, selected,
-}: {
-  run: ApiRun; projectName: string; onClick?: () => void; selected?: boolean;
-}) {
-  const { tag, line } = summarizeRun(run);
-  const failed = run.status === "failed";
-  const running = run.status === "running";
-  const dotColor = failed
-    ? "rgba(220,80,80,0.9)"
-    : running
-    ? "rgba(var(--atlas-gold-rgb), 0.9)"
-    : "rgba(100,200,120,0.9)";
-  const started = new Date(run.startedAt).getTime();
-  const anchor = run.completedAt ? new Date(run.completedAt).getTime() : started;
-  return (
-    <div
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
-      style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "8px 12px",
-        borderRadius: 6,
-        background: selected ? "rgba(var(--atlas-gold-rgb), 0.07)" : "rgba(255,255,255,0.02)",
-        border: `1px solid ${selected ? "rgba(var(--atlas-gold-rgb), 0.3)" : "rgba(var(--atlas-gold-rgb), 0.12)"}`,
-        borderLeft: `2px solid ${dotColor}`,
-        cursor: onClick ? "pointer" : "default",
-        WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      <span
-        aria-hidden
-        style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }}
-      />
-      {(() => {
-        const tone = tagTone(tag);
-        return (
-          <span
-            style={{
-              fontFamily: "var(--app-font-mono)", fontSize: 9.5,
-              letterSpacing: "0.14em", textTransform: "uppercase",
-              padding: "2px 6px", borderRadius: 3,
-              background: tone.bg, color: tone.fg,
-              border: `1px solid ${tone.border}`, flexShrink: 0,
-            }}
-          >{tag}</span>
-        );
-      })()}
-      <span style={{
-        fontSize: 12, color: "var(--atlas-fg)", opacity: 0.9,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        flex: 1, minWidth: 0,
-      }}>
-        <span style={{ opacity: 0.65 }}>{projectName}</span>
-        <span style={{ opacity: 0.4, margin: "0 6px" }}>·</span>
-        <span>{line}</span>
-      </span>
-      <span style={{
-        fontSize: 10.5, fontFamily: "var(--app-font-mono)",
-        color: "var(--atlas-muted)", opacity: 0.6, flexShrink: 0,
-      }}>{formatAgo(Date.now() - anchor)}</span>
-      {onClick && (
-        <span style={{ fontSize: 9, color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0, fontFamily: "var(--app-font-mono)" }}>›</span>
-      )}
-    </div>
-  );
-}
+// (RunReceiptPill removed with WorkspaceRunReceipts — Timeline lists runs
+// chronologically and RunDetailsDrawer opens on a specific run.)
 
 function collectFileRows(messages: TimelineMessage[]): FileRow[] {
   const rows: FileRow[] = [];
