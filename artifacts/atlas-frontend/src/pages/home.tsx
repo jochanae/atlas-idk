@@ -75,6 +75,11 @@ import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { attachAuditLog } from "@/lib/attachAuditLog";
+import {
+  clearAskAtlasComposerDraft,
+  getAskAtlasComposerDraft,
+  setAskAtlasComposerDraft,
+} from "@/lib/composerDraftStore";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
@@ -1803,12 +1808,40 @@ function FirstRunOverlay({
 
 // ── Home ─────────────────────────────────────────────────────────────────────
 export default function Home() {
-  const [input, setInput] = useState("");
+  // Restore in-memory draft across soft remounts (ErrorBoundary / surface flip).
+  const [input, setInput] = useState(() => getAskAtlasComposerDraft().input);
   const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
   const backendReady = true;
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>(
+    () => getAskAtlasComposerDraft().files,
+  );
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
+
+  useEffect(() => {
+    attachAuditLog(
+      "draft_init",
+      {
+        inputLen: input.length,
+        fileCount: attachedFiles.length,
+        fromStore: getAskAtlasComposerDraft().files.length > 0 || getAskAtlasComposerDraft().input.length > 0,
+      },
+      "ask-atlas",
+    );
+    return () => {
+      attachAuditLog(
+        "draft_cleanup",
+        { inputLen: input.length, fileCount: attachedFiles.length },
+        "ask-atlas",
+      );
+    };
+    // Mount/unmount only — intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    setAskAtlasComposerDraft({ input, files: attachedFiles });
+  }, [input, attachedFiles]);
 
   // Create/revoke Object URLs exactly once per file — never inside JSX
   useEffect(() => {
@@ -3241,6 +3274,7 @@ export default function Home() {
       setInput("");
       const filesToConvert = attachedFiles; // all files — fileToBase64Safe handles non-images
       setAttachedFiles([]);
+      clearAskAtlasComposerDraft();
       textareaRef.current?.blur();
       let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
       if (filesToConvert.length > 0) {
@@ -5283,14 +5317,21 @@ export default function Home() {
               style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, pointerEvents: "none", overflow: "hidden" }}
               multiple
               onChange={(e) => {
+                e.stopPropagation();
                 const incoming = Array.from(e.target.files ?? []);
                 const combined = [...attachedFiles, ...incoming].slice(0, 10);
                 if (incoming.length + attachedFiles.length > 10) {
                   toast("Max 10 items at a time");
                 }
                 setAttachedFiles(combined);
+                attachAuditLog(
+                  "attachment_state_updated",
+                  { count: combined.length, names: combined.map((f) => f.name), source: "home-file-input" },
+                  "ask-atlas",
+                );
                 e.target.value = "";
               }}
+              onClick={(e) => e.stopPropagation()}
             />
 
 
@@ -5315,6 +5356,7 @@ export default function Home() {
                       </div>
                     )}
                     <button
+                      type="button"
                       onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
                       aria-label="Remove attachment"
                       style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(201,162,76,0.32)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
@@ -6043,16 +6085,27 @@ export default function Home() {
               type="button"
               title="Exit Ask Atlas"
               aria-label="Exit Ask Atlas"
+              // IMPORTANT: close on click only — never onPointerDown.
+              // Mobile file-picker return synthesizes a tap at the Attach tile
+              // coordinates; on Z Fold that lands on this centered chip and used
+              // to wipe the active Ask Atlas thread (looked like a refresh).
               onPointerDown={(e) => {
+                // Prevent the button from stealing composer focus; do not exit.
                 e.preventDefault();
+              }}
+              onClick={(e) => {
                 e.stopPropagation();
+                attachAuditLog(
+                  "surface_exit",
+                  { reason: "exit_chip_click", msgCount: askAtlasChat.messages.length },
+                  "ask-atlas",
+                );
                 askAtlasSession.markClosed();
                 askAtlasSession.setSurfaceOpen(false);
                 setAskAtlasSurfaceOpen(false);
                 askAtlasChat.abort();
                 askAtlasChat.clearMessages();
               }}
-              onClick={(e) => { e.stopPropagation(); }}
               style={{
                 height: isTiny ? 28 : 34,
                 display: "inline-flex", alignItems: "center", gap: isTiny ? 3 : 6,

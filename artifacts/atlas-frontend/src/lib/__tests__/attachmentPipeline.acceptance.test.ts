@@ -78,10 +78,12 @@ describe("Auth query policy (attachment-pipeline)", () => {
       refetchOnMount: true,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
+      retry: 1,
     };
     expect(policy.staleTime).toBeLessThan(Number.POSITIVE_INFINITY);
     expect(policy.refetchOnMount).toBe(true);
     expect(policy.refetchOnWindowFocus).toBe(false);
+    expect(policy.retry).toBeGreaterThanOrEqual(1);
   });
 });
 

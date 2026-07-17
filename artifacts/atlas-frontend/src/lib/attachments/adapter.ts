@@ -205,6 +205,17 @@ export function createHttpAdapter(
 
   return {
     async requestUpload(file) {
+      try {
+        void import("@/lib/attachAuditLog").then(({ attachAuditLog }) => {
+          attachAuditLog(
+            "request_upload",
+            { name: file.name, type: file.type, size: file.size },
+            "shared",
+          );
+        });
+      } catch {
+        /* ignore */
+      }
       return json(
         await fetchImpl(`${baseUrl}/request-upload`, {
           method: "POST",
