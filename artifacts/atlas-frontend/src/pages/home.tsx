@@ -78,7 +78,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff, resolveConversationDestination } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
@@ -2374,7 +2374,7 @@ export default function Home() {
 
   const [threadLoading, setThreadLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
-  const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number }>>([]);
+  const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number; type?: "conversation" | "promoted"; projectId?: number; projectName?: string }>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showTimeTravel, setShowTimeTravel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -6145,6 +6145,9 @@ export default function Home() {
             msgCount: c.messageCount ?? 0,
             timestamp: c.createdAt ?? null,
             active: c.id === activeConversationId,
+            kind: c.type,
+            projectId: c.projectId ?? null,
+            projectName: c.projectName ?? null,
           }))}
         onNew={() => {
           setShowHistory(false);
@@ -6153,7 +6156,21 @@ export default function Home() {
           setAskAtlasSurfaceOpen(true);
           setDepth("active");
         }}
-        onSelect={(id) => handleSwitchConversation(String(id))}
+        onSelect={(id) => {
+          const conv = conversations.find((c) => c.id === String(id));
+          const dest = resolveConversationDestination({
+            id: String(id),
+            type: conv?.type,
+            projectId: conv?.projectId ?? null,
+            projectName: conv?.projectName ?? null,
+          });
+          if (dest.kind === "workspace") {
+            setShowHistory(false);
+            navigateToProject(dest.projectId);
+            return;
+          }
+          void handleSwitchConversation(dest.conversationId);
+        }}
         onDelete={(id) => handleDeleteConversation(String(id))}
       />
 
