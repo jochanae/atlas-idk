@@ -68,6 +68,7 @@ const MAX_ENTRIES = 500;
 let seq = 0;
 const entries: AttachAuditEntry[] = [];
 let installed = false;
+let runtimeEnabled = false;
 
 function isEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -77,7 +78,9 @@ function isEnabled(): boolean {
   } catch {
     /* ignore */
   }
-  return Boolean(window.__atlasAttachAudit?.enabled);
+  // NOTE: read the internal flag directly — do NOT read window.__atlasAttachAudit.enabled
+  // because that is a getter that calls back into isEnabled() → infinite recursion.
+  return runtimeEnabled;
 }
 
 export function attachAuditLog(
@@ -86,7 +89,6 @@ export function attachAuditLog(
   surface?: AttachAuditEntry["surface"],
 ): void {
   if (typeof window === "undefined") return;
-  if (!isEnabled() && !window.__atlasAttachAudit) return;
   if (!isEnabled()) return;
 
   const entry: AttachAuditEntry = {
