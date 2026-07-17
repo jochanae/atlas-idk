@@ -12,11 +12,11 @@
 // rows — Timeline shows process steps (THOUGHT/READ/SEARCH/INSPECT/SUMMARY),
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   X, FileCode2, Eye, Search, Folder,
-  Lightbulb, Trash2, CheckCircle2, ChevronDown,
+  Lightbulb, Trash2, CheckCircle2,
   Dna, BookMarked, ListChecks, AlertOctagon, FileOutput, HelpCircle,
   Copy, Check,
 } from "lucide-react";
@@ -24,6 +24,8 @@ import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
+import { useShellStore } from "@/store/shellStore";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 // ── Relative time (seconds → minutes → hours → days → date) ───────────────────
