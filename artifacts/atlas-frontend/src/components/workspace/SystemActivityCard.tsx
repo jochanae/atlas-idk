@@ -191,7 +191,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
             border: "1px solid hsl(var(--border) / 0.6)",
             borderRadius: 10,
             color: commitUrl ? "hsl(var(--card-foreground))" : "hsl(var(--muted-foreground))",
-            fontSize: 11, cursor: commitUrl ? "pointer" : "not-allowed",
+            fontSize: 12, cursor: commitUrl ? "pointer" : "not-allowed",
             fontFamily: "inherit",
             display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
           }}
