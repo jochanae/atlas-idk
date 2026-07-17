@@ -1105,20 +1105,23 @@ export function ViewChangesPanel({
     } catch {}
   };
 
-  // Collapse the composer while this surface is visible — the changes/timeline
-  // view is a stage artifact, not a place to start typing.
-  const claimId = useId();
-  const registerClaim = useShellStore((s) => s.registerComposerClaim);
-  const releaseClaim = useShellStore((s) => s.releaseComposerClaim);
-  const isMobile = useIsMobile();
+  // Default the composer to docked (floating "A") while this surface is open —
+  // there's no reason to type on Timeline/Changes. The user can tap the "A" to
+  // restore. We set userComposerPreference (not a claim) so the chevron / A
+  // toggle still works while the panel is mounted.
   useEffect(() => {
-    registerClaim(claimId, {
-      source: "stage",
-      kind: "view-changes",
-      visibility: isMobile ? "hidden" : "compact",
-    });
-    return () => releaseClaim(claimId);
-  }, [claimId, isMobile, registerClaim, releaseClaim]);
+    const store = useShellStore.getState();
+    const prior = store.userComposerPreference;
+    store.setUserComposerPreference("docked");
+    return () => {
+      // Only restore if user hasn't already popped back to something else.
+      const current = useShellStore.getState().userComposerPreference;
+      if (current === "docked") {
+        useShellStore.getState().setUserComposerPreference(prior);
+      }
+    };
+  }, []);
+
 
 
 
