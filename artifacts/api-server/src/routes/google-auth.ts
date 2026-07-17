@@ -13,27 +13,33 @@ const SESSION_DAYS = 90;
 // Super-admin email from env only — no hardcoded fallback
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL?.toLowerCase() ?? "";
 
-function getRedirectUri(req?: import("express").Request) {
-  // Use the actual host from the incoming request so dev and prod both work
-  // without needing separate Google Console entries per environment
-  const forwardedProto = req?.headers["x-forwarded-proto"];
-  const protocol =
-    (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0]?.trim().replace(/:$/, "") ||
-    req?.protocol ||
-    "https";
+/** Extract the public-facing base URL from the incoming request.
+ *  Priority: x-forwarded-host header → host header → APP_URL env → fallback.
+ *  This ensures dev (Replit preview) and prod (axiomsystem.app) both produce
+ *  the correct host without separate Google Console entries. */
+function getPublicBaseUrl(req?: import("express").Request): string {
   if (req) {
+    const forwardedProto = req.headers["x-forwarded-proto"];
+    const protocol =
+      (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0]?.trim().replace(/:$/, "") ||
+      req?.protocol ||
+      "https";
     const forwarded = req.headers["x-forwarded-host"];
     const forwardedHost = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
-    if (forwardedHost) return `${protocol}://${forwardedHost}/api/auth/google/callback`;
+    if (forwardedHost) return `${protocol}://${forwardedHost}`;
     const host = req.headers.host;
-    if (host) return `${protocol}://${host}/api/auth/google/callback`;
+    if (host) return `${protocol}://${host}`;
   }
   const appUrl = process.env.APP_URL?.trim();
   if (appUrl) {
     const url = new URL(appUrl);
-    return `${url.protocol.replace(/:$/, "")}://${url.host}/api/auth/google/callback`;
+    return `${url.protocol.replace(/:$/, "")}://${url.host}`;
   }
-  return `${protocol}://localhost:80/api/auth/google/callback`;
+  return "https://axiomsystem.app";
+}
+
+function getRedirectUri(req?: import("express").Request) {
+  return `${getPublicBaseUrl(req)}/api/auth/google/callback`;
 }
 
 // GET /api/auth/google/redirect-uri — diagnostic: returns the exact URI to register in Google Console
@@ -202,7 +208,9 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
     await db.insert(userSessionsTable).values({ userId: user.id, token, expiresAt });
 
     createSessionCookie(token, res);
-    const callbackUrl = new URL("https://axiomsystem.app/auth/callback");
+    // Use the same dynamic host as getRedirectUri so dev and prod both land on
+    // the right frontend — never hardcode the production domain here.
+    const callbackUrl = new URL(`${getPublicBaseUrl(req)}/auth/callback`);
     callbackUrl.searchParams.set("token", token);
     res.redirect(callbackUrl.toString());
   } catch (err) {

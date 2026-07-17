@@ -88,6 +88,28 @@ export default function Login() {
 
   const googleEmailConflict = false;
 
+  // Surface Google OAuth errors that arrive as ?auth_error=... on the login page.
+  // Without this the user just sees a blank login form with no explanation.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get("auth_error");
+    if (!authError) return;
+    const messages: Record<string, string> = {
+      state_mismatch: "Sign-in was interrupted or the link expired. Please try again.",
+      no_code: "Google didn't return an authorization code. Please try again.",
+      token_exchange_failed: "Couldn't complete sign-in with Google. Check that your OAuth credentials are correct.",
+      missing_profile: "Google didn't return your profile. Please try again.",
+      user_create_failed: "Couldn't create your account. Please contact support.",
+      server_error: "A server error occurred during sign-in. Please try again.",
+      google_used_by_another_account: "This Google account is already linked to a different Axiom account.",
+    };
+    setError(messages[authError] ?? `Sign-in failed: ${authError}`);
+    // Strip the param so a refresh doesn't re-show a stale error
+    const clean = window.location.pathname;
+    window.history.replaceState({}, "", clean);
+  }, []);
+
   // Handle OAuth token from Google sign-in callback
   useEffect(() => {
     if (typeof window === "undefined") return;
