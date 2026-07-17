@@ -19,6 +19,7 @@ import {
   Wand2,
 } from "lucide-react";
 import SketchComposerSheet from "./SketchComposerSheet";
+import { attachAuditLog } from "@/lib/attachAuditLog";
 
 
 export type ComposerMenuAction =
@@ -196,8 +197,22 @@ export function ComposerActions({
   }, [showPlus, showMore]);
 
   function pickFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    onFiles(Array.from(files));
+    if (!files || files.length === 0) {
+      attachAuditLog("file_selected", { count: 0, cancelled: true }, scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared");
+      return;
+    }
+    const list = Array.from(files);
+    attachAuditLog(
+      "file_selected",
+      {
+        count: list.length,
+        names: list.map((f) => f.name),
+        types: list.map((f) => f.type),
+        sizes: list.map((f) => f.size),
+      },
+      scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared",
+    );
+    onFiles(list);
   }
 
   const visiblePrimary = PRIMARY_ITEMS.filter((i) => hasProjectContext || !i.projectOnly);
@@ -317,6 +332,11 @@ export function ComposerActions({
                   icon={<Camera size={36} strokeWidth={1.4} />}
                   onClick={() => {
                     setShowPlus(false);
+                    attachAuditLog(
+                      "picker_opened",
+                      { kind: "camera" },
+                      scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared",
+                    );
                     cameraRef.current?.click();
                   }}
                 />
@@ -325,6 +345,11 @@ export function ComposerActions({
                   icon={<Paperclip size={36} strokeWidth={1.4} />}
                   onClick={() => {
                     setShowPlus(false);
+                    attachAuditLog(
+                      "picker_opened",
+                      { kind: "attach" },
+                      scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared",
+                    );
                     attachRef.current?.click();
                   }}
                 />

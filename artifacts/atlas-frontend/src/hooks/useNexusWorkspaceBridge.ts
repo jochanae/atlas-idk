@@ -410,7 +410,9 @@ export function useNexusWorkspaceBridge(
   const sendText = useCallback(
     (text: string, attachments?: Array<{ base64: string; mediaType: string; name?: string }>) => {
       const trimmed = text.trim();
-      if (!trimmed) return;
+      const hasAttachments = (attachments?.length ?? 0) > 0;
+      // Allow attachment-only sends — useNexusChatStream substitutes "(file attached)".
+      if (!trimmed && !hasAttachments) return;
       void send({ text: trimmed, attachments });
     },
     [send]

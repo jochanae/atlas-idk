@@ -74,6 +74,7 @@ import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
+import { attachAuditLog } from "@/lib/attachAuditLog";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
@@ -1850,8 +1851,10 @@ export default function Home() {
   const { data: projectsRaw, isLoading } = useListProjects({
     query: {
       queryKey: getListProjectsQueryKey(),
-      refetchOnMount: "always",
-      refetchOnWindowFocus: true,
+      // Avoid refetch-on-focus: native file pickers blur/focus the tab and a
+      // projects refetch can flash loading UI or trip 401 → login mid-compose.
+      refetchOnMount: true,
+      refetchOnWindowFocus: false,
       enabled: !!authUser,
     },
   });
@@ -3219,8 +3222,11 @@ export default function Home() {
     const liveText = messageOverride ?? textareaRef.current?.value ?? input;
     const text = liveText.trim();
     const files = messageOverride ? [] : attachedFiles;
-    const hasImages = files.some((f) => f.type.startsWith("image/"));
-    if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
+    // Any staged file counts as content (images, PDFs, docs) — not images only.
+    // Image-only gate previously blocked PDF attach+send and could fall through
+    // into project-creation navigation when Ask Atlas surface state raced.
+    const hasFiles = files.length > 0;
+    if (submitInFlightRef.current || (!text && !hasFiles) || isSending) return;
     // Ask Atlas surface routing — the surface is the sole owner of askAtlasChat.
     // When it's open, EVERY send goes through askAtlasChat regardless of how
     // the surface was opened (composer pill, resume, radial, history). This
@@ -3229,7 +3235,7 @@ export default function Home() {
     // Previously PDFs were excluded here, causing the send to fall through the
     // Ask Atlas gate into the project-creation path → hard navigation / "hard refresh".
     const hasAskAtlasContent = !!text || attachedFiles.length > 0;
-    if (askAtlasSurfaceOpen && hasAskAtlasContent) {
+      if (askAtlasSurfaceOpen && hasAskAtlasContent) {
       if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
@@ -3239,14 +3245,20 @@ export default function Home() {
       let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
       if (filesToConvert.length > 0) {
         try {
+          attachAuditLog("file_read_started", { count: filesToConvert.length }, "ask-atlas");
           askAtlasAttachments = await Promise.all(
             filesToConvert.slice(0, 10).map(async (f) => {
               const safe = await fileToBase64Safe(f);
               return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
             })
           );
-        } catch {}
+          attachAuditLog("file_read_completed", { count: askAtlasAttachments.length }, "ask-atlas");
+          attachAuditLog("send_attachments_included", { count: askAtlasAttachments.length }, "ask-atlas");
+        } catch (err) {
+          attachAuditLog("file_read_failed", { error: String(err) }, "ask-atlas");
+        }
       }
+      attachAuditLog("send_started", { textLen: text.length, fileCount: filesToConvert.length }, "ask-atlas");
       void askAtlasChat.send({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
         submitInFlightRef.current = false;
       });
@@ -5991,6 +6003,11 @@ export default function Home() {
           const combined = [...attachedFiles, ...files].slice(0, 10);
           if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
           setAttachedFiles(combined);
+          attachAuditLog(
+            "attachment_state_updated",
+            { count: combined.length, names: combined.map((f) => f.name) },
+            "ask-atlas",
+          );
         }}
         onSketch={(prompt) => { void askAtlasChat.send({ text: prompt }); }}
         onSend={(text) => { void askAtlasChat.send({ text }); }}
