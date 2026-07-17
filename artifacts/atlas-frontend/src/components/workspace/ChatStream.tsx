@@ -354,6 +354,10 @@ export interface ChatStreamProps {
    *  execution journals. Same thread/session as Build Mode, just a quieter
    *  render of it (mirrors the old Ask Atlas posture). */
   conversationMode?: boolean;
+
+  /** Chat surface lifecycle: fixed chat controls only mount while chat is the
+   *  active foreground surface. */
+  floatingControlsEnabled?: boolean;
 }
 
 
@@ -389,6 +393,7 @@ export function ChatStream(props: ChatStreamProps) {
     activeRunId,
     conversationMode,
     authorizeRun,
+    floatingControlsEnabled = true,
   } = props;
 
   // Suppress the streaming prose bubble when live build steps are actively
@@ -1129,7 +1134,9 @@ export function ChatStream(props: ChatStreamProps) {
           </svg>
         </button>
       )}
-      <TimelineRail bottomOffset={isMobile ? 228 : 110} messages={timelineRailMessages} />
+      {floatingControlsEnabled && (
+        <TimelineRail bottomOffset={isMobile ? 228 : 110} messages={timelineRailMessages} />
+      )}
     </div>
   );
 }
