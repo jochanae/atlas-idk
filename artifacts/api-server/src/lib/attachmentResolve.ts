@@ -4,8 +4,8 @@
  */
 
 import { db, messageAttachmentsTable, type MessageAttachment } from "@workspace/db";
-import { and, eq, inArray } from "drizzle-orm";
-import { downloadAttachmentBytes } from "./attachmentStorage";
+import { and, eq, inArray, ne } from "drizzle-orm";
+import { ATTACHMENT_RETENTION_DAYS, downloadAttachmentBytes } from "./attachmentStorage";
 import { logger } from "./logger";
 
 export type ResolvedModelAttachment = {
@@ -108,7 +108,14 @@ export async function resolveAttachmentIdsForModel(params: {
   return { resolved, skipped };
 }
 
-/** Link attachment rows to the message created on the send turn. */
+/** Link attachment rows to the message created on the send turn.
+ *
+ * Also promotes expiresAt to the full chat-retention window for any row that
+ * is not already in the library (library rows keep expiresAt=null forever).
+ * This converts the 24-hour pending TTL that was set at request-upload /
+ * finalize into the normal 60-day retention so a successfully sent attachment
+ * is never swept by the orphan-cleanup worker.
+ */
 export async function linkAttachmentsToMessage(params: {
   userId: number;
   attachmentIds: string[];
@@ -121,6 +128,10 @@ export async function linkAttachmentsToMessage(params: {
   const ids = [...new Set(params.attachmentIds.filter(Boolean))];
   if (ids.length === 0) return;
 
+  const fullRetentionExpiry = new Date(
+    Date.now() + ATTACHMENT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  );
+
   await db
     .update(messageAttachmentsTable)
     .set({
@@ -129,12 +140,16 @@ export async function linkAttachmentsToMessage(params: {
       projectId: params.projectId ?? null,
       chatMessageId: params.chatMessageId ?? null,
       nexusMessageId: params.nexusMessageId ?? null,
+      // Promote to full retention; library rows (availabilityStatus='library')
+      // are excluded by the ne() filter below so their null expiry is preserved.
+      expiresAt: fullRetentionExpiry,
       updatedAt: new Date(),
     })
     .where(
       and(
         eq(messageAttachmentsTable.userId, params.userId),
         inArray(messageAttachmentsTable.id, ids),
+        ne(messageAttachmentsTable.availabilityStatus, "library"),
       ),
     );
 }

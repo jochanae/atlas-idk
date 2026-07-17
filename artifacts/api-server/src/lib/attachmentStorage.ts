@@ -20,6 +20,13 @@ export const ATTACHMENT_SIGNED_GET_TTL_SEC = 10 * 60; // ≤10 min
 export const ATTACHMENT_SIGNED_PUT_TTL_SEC = 15 * 60;
 export const ATTACHMENT_RETENTION_DAYS = 60;
 export const ATTACHMENT_EXPIRING_SOON_DAYS = 7;
+/**
+ * Server-controlled TTL for pending (not-yet-linked) uploads.
+ * Applied at request-upload AND finalize so that any abandoned file
+ * (browser close, send failure, draft discarded) is swept by the
+ * retention worker.  Promoted to ATTACHMENT_RETENTION_DAYS on send.
+ */
+export const ATTACHMENT_PENDING_TTL_DAYS = 1;
 
 const LOGICAL_BUCKET = "chat-attachments";
 

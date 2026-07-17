@@ -31,6 +31,7 @@ import {
 } from "../lib/attachmentClassify";
 import {
   ATTACHMENT_MAX_BYTES,
+  ATTACHMENT_PENDING_TTL_DAYS,
   ATTACHMENT_RETENTION_DAYS,
   attachmentObjectExists,
   downloadAttachmentBytes,
@@ -165,9 +166,13 @@ router.post("/attachments/request-upload", async (req, res): Promise<void> => {
       filename,
     });
 
-    const expiresAtHint = new Date(
-      Date.now() + ATTACHMENT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    // Pending TTL: ensures any abandoned upload (browser close, send failure,
+    // draft discarded) is swept by the retention worker.  Promoted to the full
+    // ATTACHMENT_RETENTION_DAYS when the attachment is linked to a sent message.
+    const pendingExpiresAt = new Date(
+      Date.now() + ATTACHMENT_PENDING_TTL_DAYS * 24 * 60 * 60 * 1000,
+    );
+    const expiresAtHint = pendingExpiresAt.toISOString();
 
     await db.insert(messageAttachmentsTable).values({
       id: attachmentId,
@@ -184,7 +189,7 @@ router.post("/attachments/request-upload", async (req, res): Promise<void> => {
       uploadStatus: "pending_upload",
       availabilityStatus: "active",
       processingStatus: "pending",
-      expiresAt: null,
+      expiresAt: pendingExpiresAt,
     });
 
     auditLog({
@@ -255,8 +260,9 @@ router.post("/attachments/:id/finalize", async (req, res): Promise<void> => {
       row.mimeType,
       row.filename,
     );
+    // Keep pending TTL — promoted to full ATTACHMENT_RETENTION_DAYS on send.
     const expiresAt = new Date(
-      Date.now() + ATTACHMENT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+      Date.now() + ATTACHMENT_PENDING_TTL_DAYS * 24 * 60 * 60 * 1000,
     );
 
     const [updated] = await db
@@ -294,8 +300,9 @@ router.post("/attachments/:id/finalize", async (req, res): Promise<void> => {
           processingStatus: "failed",
           uploadStatus: "uploaded",
           availabilityStatus: "active",
+          // Still pending TTL — not linked to a message yet.
           expiresAt: new Date(
-            Date.now() + ATTACHMENT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+            Date.now() + ATTACHMENT_PENDING_TTL_DAYS * 24 * 60 * 60 * 1000,
           ),
           updatedAt: new Date(),
         })
