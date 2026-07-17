@@ -252,16 +252,34 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   const isDeleted  = !!before && !after;
   const hasDiff    = !!before && !!after;
 
+  // Theme-neutral diff palette — reads on both dark and light backgrounds.
+  const addBg      = "rgba(46,160,67,0.14)";
+  const addBorder  = "rgba(46,160,67,0.35)";
+  const removeBg   = "rgba(207,63,63,0.14)";
+  const removeBorder = "rgba(207,63,63,0.35)";
+  const addPrefix  = "rgba(46,160,67,0.95)";
+  const removePrefix = "rgba(207,63,63,0.95)";
+  const hunkBg     = "rgba(var(--atlas-gold-rgb), 0.06)";
+  const neutralBg  = "hsl(var(--muted) / 0.4)";
+  const neutralBorder = "rgba(var(--atlas-gold-rgb), 0.18)";
+  const textColor  = "var(--atlas-fg)";
+  const mutedText  = "hsl(var(--muted-foreground))";
+
+  const preBase = {
+    margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
+    fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+    lineHeight: 1.6,
+    overflowX: "auto" as const, overflowY: "auto" as const, maxHeight: 320,
+    whiteSpace: "pre" as const, wordBreak: "normal" as const,
+    color: textColor,
+  };
+
   if (isCreated) {
     return (
       <pre style={{
-        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
-        background: "rgba(40,90,55,0.30)",
-        border: "1px solid rgba(80,160,100,0.18)",
-        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-        color: "rgba(160,220,170,0.9)", lineHeight: 1.6,
-        overflowX: "auto", overflowY: "auto", maxHeight: 320,
-        whiteSpace: "pre", wordBreak: "normal",
+        ...preBase,
+        background: addBg,
+        border: `1px solid ${addBorder}`,
       }}>{after}</pre>
     );
   }
@@ -269,13 +287,9 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   if (isDeleted) {
     return (
       <pre style={{
-        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
-        background: "rgba(90,30,30,0.30)",
-        border: "1px solid rgba(180,70,70,0.18)",
-        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-        color: "rgba(220,140,140,0.9)", lineHeight: 1.6,
-        overflowX: "auto", overflowY: "auto", maxHeight: 320,
-        whiteSpace: "pre", wordBreak: "normal",
+        ...preBase,
+        background: removeBg,
+        border: `1px solid ${removeBorder}`,
         textDecoration: "line-through",
       }}>{before}</pre>
     );
@@ -284,13 +298,9 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   if (!hasDiff) {
     return (
       <pre style={{
-        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
-        background: "rgba(0,0,0,0.35)",
-        border: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
-        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-        color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
-        overflowX: "auto", overflowY: "auto", maxHeight: 320,
-        whiteSpace: "pre", wordBreak: "normal",
+        ...preBase,
+        background: neutralBg,
+        border: `1px solid ${neutralBorder}`,
       }}>{after ?? before ?? ""}</pre>
     );
   }
@@ -301,13 +311,9 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   if (!hasChanges) {
     return (
       <pre style={{
-        margin: "4px 0 0", padding: "10px 12px", borderRadius: 4,
-        background: "rgba(0,0,0,0.35)",
-        border: "1px solid rgba(var(--atlas-gold-rgb), 0.1)",
-        fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-        color: "rgba(220,220,200,0.82)", lineHeight: 1.6,
-        overflowX: "auto", overflowY: "auto", maxHeight: 320,
-        whiteSpace: "pre", wordBreak: "normal",
+        ...preBase,
+        background: neutralBg,
+        border: `1px solid ${neutralBorder}`,
       }}>{after}</pre>
     );
   }
@@ -315,8 +321,8 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
   return (
     <div style={{
       margin: "4px 0 0", borderRadius: 4, overflow: "hidden",
-      border: "1px solid rgba(var(--atlas-gold-rgb), 0.12)",
-      background: "rgba(0,0,0,0.28)",
+      border: `1px solid ${neutralBorder}`,
+      background: neutralBg,
       maxHeight: 320, overflowY: "auto",
     }}>
       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -331,8 +337,8 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
                 <tr key={idx}>
                   <td colSpan={2} style={{
                     padding: "1px 8px",
-                    background: "rgba(100,120,160,0.1)",
-                    color: "rgba(160,180,210,0.55)",
+                    background: hunkBg,
+                    color: mutedText,
                     fontFamily: "var(--app-font-mono)", fontSize: 9.5,
                     userSelect: "none",
                   }}>⋯ {d.count} unchanged lines</td>
@@ -340,21 +346,19 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
               );
             }
             const bg =
-              d.type === "add"    ? "rgba(40,90,55,0.32)" :
-              d.type === "remove" ? "rgba(90,30,30,0.32)" :
+              d.type === "add"    ? addBg :
+              d.type === "remove" ? removeBg :
               "transparent";
             const prefix =
               d.type === "add"    ? "+" :
               d.type === "remove" ? "−" :
               " ";
             const prefixColor =
-              d.type === "add"    ? "rgba(100,200,120,0.85)" :
-              d.type === "remove" ? "rgba(220,100,100,0.85)" :
-              "rgba(180,180,160,0.3)";
+              d.type === "add"    ? addPrefix :
+              d.type === "remove" ? removePrefix :
+              mutedText;
             const lineColor =
-              d.type === "add"    ? "rgba(160,225,175,0.9)" :
-              d.type === "remove" ? "rgba(225,145,145,0.9)" :
-              "rgba(210,210,190,0.7)";
+              d.type === "keep" ? mutedText : textColor;
             return (
               <tr key={idx} style={{ background: bg }}>
                 <td style={{
@@ -362,7 +366,7 @@ function InlineDiffBlock({ before, after }: { before: string | null; after: stri
                   fontFamily: "var(--app-font-mono)", fontSize: 10.5,
                   color: prefixColor, textAlign: "center",
                   userSelect: "none", lineHeight: 1.6,
-                  borderRight: "1px solid rgba(255,255,255,0.05)",
+                  borderRight: "1px solid rgba(127,127,127,0.12)",
                   verticalAlign: "top",
                 }}>{prefix}</td>
                 <td style={{
