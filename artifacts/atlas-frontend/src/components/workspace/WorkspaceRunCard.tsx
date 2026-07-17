@@ -1234,9 +1234,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
       <div
         style={{
           display: "flex",
-          gap: 6,
-          marginTop: 8,
-          paddingTop: 8,
+          gap: 8,
+          marginTop: 18,
+          paddingTop: 16,
           borderTop: "1px solid hsl(var(--border) / 0.4)",
           justifyContent: "flex-end",
         }}
