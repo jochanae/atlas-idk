@@ -1,6 +1,40 @@
 const BUILD_INTENT_RE =
   /\b(let'?s build|i'?ll build|let me build|implement(?:ing|ed)?|scaffold(?:ing|ed)?|create the (?:project|workspace|file|component)|spin up|kick off the build|start building|wire (?:this )?up|generate the (?:project|code|files))\b/i;
 
+/**
+ * Canonical destination resolver for a conversation row.
+ *
+ * Both the Projects drawer (ATLAS section) and the Ask Atlas clock/history
+ * sheet render the same underlying conversation list. Route every tap through
+ * this resolver so promoted threads always land in their workspace and
+ * non-promoted threads always reopen inside Ask Atlas — no surface-specific
+ * click logic, no detached copies of a thread that already belongs to a
+ * workspace.
+ */
+export type ConversationLike = {
+  id: string | number;
+  type?: "conversation" | "promoted" | null;
+  projectId?: number | null;
+  projectName?: string | null;
+};
+
+export type ConversationDestination =
+  | { kind: "workspace"; projectId: number; projectName: string | null; conversationId: string }
+  | { kind: "ask-atlas"; conversationId: string };
+
+export function resolveConversationDestination(conv: ConversationLike): ConversationDestination {
+  const cid = String(conv.id);
+  if (conv.type === "promoted" && typeof conv.projectId === "number") {
+    return {
+      kind: "workspace",
+      projectId: conv.projectId,
+      projectName: conv.projectName ?? null,
+      conversationId: cid,
+    };
+  }
+  return { kind: "ask-atlas", conversationId: cid };
+}
+
 export function hasBuildIntent(text: string): boolean {
   return BUILD_INTENT_RE.test(text);
 }
