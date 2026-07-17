@@ -343,7 +343,7 @@ body {
   color-scheme: light;
   /* Platinum Frost — cool alabaster luxury, slate-blue accent. Replaces the
      prior warm-ivory/parchment sepia base. Dark mode is untouched. */
-  --atlas-gold-rgb: 59, 82, 115;
+  --atlas-gold-rgb: 184, 148, 42;
 
   /* Semantic cool-neutral tokens (light mode only) */
   --bg-primary: #f8f9fa;
@@ -353,8 +353,8 @@ body {
   --text-secondary: #334155;
   --text-muted: #4d5a6e;
   --border-soft: rgba(15, 23, 42, 0.08);
-  --accent-gold: #3b5273;
-  --accent-gold-soft: rgba(59, 82, 115, 0.12);
+  --accent-gold: #b8942a;
+  --accent-gold-soft: rgba(184, 148, 42, 0.14);
   --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.08);
   --atlas-bg-rgb: 248, 249, 250;
   --atlas-surface-rgb: 255, 255, 255;
@@ -379,15 +379,17 @@ body {
   --atlas-fg: #05070f;
   --atlas-muted: #4d5a6e;
 
-  /* Slate-blue accent — replaces bronze in light mode. Reserved for
-     priority/interactive fills. Structural borders/dividers stay neutral. */
-  --atlas-ember: #3b5273;
-  --atlas-ember-glow: rgba(59, 82, 115, 0.2);
-  --atlas-gold: #3b5273; /* fills — priority only */
-  --atlas-gold-dim: rgba(59, 82, 115, 0.1); /* selected/armed fill */
+  /* Bronze/gold accent — primary action color in light mode. Reserved for
+     "do the thing" fills (Save, Start, Open Workspace, Play, Build).
+     Structural borders/dividers stay neutral slate. Secondary/nav
+     controls use slate via --secondary. */
+  --atlas-ember: #b8942a;
+  --atlas-ember-glow: rgba(184, 148, 42, 0.28);
+  --atlas-gold: #b8942a; /* fills — priority only */
+  --atlas-gold-dim: rgba(184, 148, 42, 0.14); /* selected/armed fill */
   /* Structural borders remain neutral slate */
   --atlas-gold-border: rgba(15, 23, 42, 0.14);
-  --atlas-gold-glow: rgba(15, 23, 42, 0.06);
+  --atlas-gold-glow: rgba(184, 148, 42, 0.18);
   /* Intelligence status accent — purple, reserved for Ask Atlas idle dot,
      streaming pulse, live AI signals. Never a theme fill. */
   --atlas-intel: #6d5ef5;
@@ -395,7 +397,7 @@ body {
   --atlas-intel-dim: rgba(109, 94, 245, 0.1);
   --atlas-phosphor: #0284c7;
 
-  /* Search rail trigger — slate on frost */
+  /* Search rail trigger — slate on frost (utility, not primary action) */
   --atlas-search-btn-bg: rgba(255, 255, 255, 0.85);
   --atlas-search-btn-border: rgba(59, 82, 115, 0.45);
   --atlas-search-btn-fg: #3b5273;
@@ -423,19 +425,19 @@ body {
   --foreground: 222 47% 11%; /* #0F172A */
   --border: 220 13% 91%;
   --input: 220 13% 91%;
-  --ring: 215 32% 34%; /* slate blue */
+  --ring: 42 63% 44%; /* bronze focus ring */
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
-  --primary: 215 32% 34%; /* slate blue — locked */
-  --primary-foreground: 0 0% 100%;
-  --secondary: 210 20% 96%;
-  --secondary-foreground: 222 47% 11%;
+  --primary: 42 63% 44%; /* bronze — primary action */
+  --primary-foreground: 20 30% 8%;
+  --secondary: 215 32% 34%; /* slate — secondary/utility action */
+  --secondary-foreground: 0 0% 100%;
   --muted: 210 20% 96%;
   --muted-foreground: 215 19% 38%;
-  --accent: 215 32% 34%;
-  --accent-foreground: 0 0% 100%;
+  --accent: 42 63% 44%;
+  --accent-foreground: 20 30% 8%;
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 222 47% 11%;
   --sidebar-border: 220 13% 91%;
