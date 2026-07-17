@@ -140,9 +140,11 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
         display: "flex", flexDirection: "column",
         width: "min(100%, 400px)",
         alignSelf: "flex-start",
-        // GitHub pushes are compact, chronological receipts — separated from
-        // surrounding messages, but not enlarged like workspace run cards.
-        margin: "10px 0 18px",
+        // Each commit is an independent timeline event — not a sibling in a
+        // grouped GitHub block. Use conversation-level vertical rhythm so
+        // consecutive commits read as separate events, matching the gap
+        // between user/assistant messages.
+        margin: "20px 0 24px",
         background: "hsl(var(--card))",
         border,
         boxShadow: shadow,
