@@ -78,7 +78,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff, resolveConversationDestination } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
