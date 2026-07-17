@@ -31,7 +31,9 @@ export default function ActivatePage() {
   const [, navigate] = useLocation();
   const mode: Mode = useMemo(() => {
     try {
-      return sessionStorage.getItem("atlas-activation-mode") === "warm" ? "warm" : "full";
+      const m = sessionStorage.getItem("atlas-activation-mode");
+      if (m === "warm" || m === "welcome") return m;
+      return "full";
     } catch { return "full"; }
   }, []);
   const [phase, setPhase] = useState<0 | 1 | 2 | 3>(0);

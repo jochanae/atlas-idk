@@ -167,6 +167,8 @@ export interface NexusWorkspaceBridge {
   activeRunId: string | null;
   send: (text: string, attachments?: Array<{ base64: string; mediaType: string; name?: string }>) => void;
   abort: () => void;
+  /** Authorize a pending run gate — passes through from useNexusChatStream. */
+  authorizeRun: (runId: string, decision: "approve" | "reject") => void;
 }
 
 export function useNexusWorkspaceBridge(

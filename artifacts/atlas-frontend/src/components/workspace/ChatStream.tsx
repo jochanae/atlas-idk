@@ -608,7 +608,7 @@ export function ChatStream(props: ChatStreamProps) {
         if (!best || ts > best.ts) best = { ts, key: `${anchor}:${k}` };
       });
     }
-    return best?.key ?? null;
+    return (best as { ts: number; key: string } | null)?.key ?? null;
   }, [activityByAnchor]);
 
   const renderActivityForAnchor = (anchor: number) => {

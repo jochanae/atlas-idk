@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 export type ActivityItem = {
+  id?: number;
   type: "commit" | "decision" | "session";
   projectId: number;
   projectName: string;

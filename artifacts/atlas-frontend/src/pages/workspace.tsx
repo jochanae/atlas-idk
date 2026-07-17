@@ -379,6 +379,16 @@ export interface ChatMessage {
   /** Durable receipt of a completed GitHub push. Source of truth after reload
    *  (liveStep.verb === "github_push" only covers the in-flight window). */
   githubPush?: GithubPushPayload;
+  /** Live build-lifecycle card shown during generate_deliverable's render call.
+   *  Advances through Preparing → Building → Styling → Checking → Ready stages.
+   *  Cleared when generatedArtifacts arrives (artifact card takes over). */
+  activeBuild?: {
+    type: string;
+    title: string;
+    stage?: string;
+    needsReview?: boolean;
+    validationIssues?: string[];
+  } | null;
   /** File-backed deliverables (pptx/docx/xlsx/pdf/mermaid/chart/draft/html-app) generated
    *  this turn via generate-deliverable.ts. Rendered as an inline
    *  ArtifactCreatedCard anchored to this message (task #171). */
@@ -9204,7 +9214,6 @@ export default function Workspace() {
                 liveStep: nexusBridge.liveStep,
                 activeRunId: nexusBridge.activeRunId,
                 onSend: (msg: string) => nexusBridge.send(msg),
-                authorizeRun: nexusBridge.authorizeRun,
               } : {}),
             } : null}
 

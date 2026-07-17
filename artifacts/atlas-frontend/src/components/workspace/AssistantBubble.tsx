@@ -2575,7 +2575,7 @@ function AssistantBubbleImpl({
               {hasIssues && (
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ fontSize: 10, opacity: 0.5, marginBottom: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Validation notes</div>
-                  {(message.activeBuild.validationIssues ?? []).map((issue, i) => (
+                  {(message.activeBuild.validationIssues ?? []).map((issue: string, i: number) => (
                     <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", fontSize: 11, opacity: 0.75, marginTop: 3 }}>
                       <span style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }}>⚠</span>
                       <span>{issue}</span>
