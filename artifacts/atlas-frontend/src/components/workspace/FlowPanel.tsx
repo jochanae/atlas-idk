@@ -557,7 +557,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           has enough room on every phone size. */}
       <div style={{ position: "relative", flex: chatFullscreen ? "0 0 0" : showChat ? "0 0 auto" : 1, height: chatFullscreen ? 0 : showChat ? "min(54%, calc(100% - 316px))" : undefined, minHeight: chatFullscreen ? 0 : showChat ? 200 : 0, overflow: "hidden", display: "flex", flexDirection: "column", transition: "flex 350ms ease" }}>
         {/* Axiom Flow canvas */}
-        <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
+        <div ref={flowSurfaceRef} style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
           <div
             style={{
               position: "absolute",
