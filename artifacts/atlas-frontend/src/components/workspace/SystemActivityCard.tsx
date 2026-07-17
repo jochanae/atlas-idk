@@ -140,14 +140,13 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
         display: "flex", flexDirection: "column",
         width: "min(100%, 400px)",
         alignSelf: "flex-start",
-        // Shared spacing tokens — match WorkspaceRunCard rhythm so GitHub
-        // cards no longer feel like a grouped pair from legacy quiet updates.
-        margin: "var(--card-gap-half) 0",
-        minHeight: "var(--card-min-h)",
+        // GitHub pushes are compact, chronological receipts — separated from
+        // surrounding messages, but not enlarged like workspace run cards.
+        margin: "10px 0 18px",
         background: "hsl(var(--card))",
         border,
         boxShadow: shadow,
-        borderRadius: "var(--card-radius)",
+        borderRadius: 8,
         overflow: "hidden",
         boxSizing: "border-box",
       }}
@@ -155,7 +154,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
       {/* Header row */}
       <div style={{
         display: "flex", alignItems: "center", gap: 8,
-        padding: "var(--card-pad-y) var(--card-pad-x) 0",
+        padding: "12px 12px 0",
       }}>
         <GitHubMark size={13} color="hsl(var(--card-foreground))" />
         <span style={{
@@ -176,7 +175,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
       {/* Actions */}
       <div style={{
         display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8,
-        padding: "var(--card-title-gap) var(--card-pad-x) var(--card-pad-y)",
+        padding: "12px",
         marginTop: "auto",
       }}>
         <button
@@ -185,7 +184,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           disabled={!canOpenDetails}
           title={canOpenDetails ? "Open changes for this commit" : "No commit reference"}
           style={{
-            padding: "10px 10px",
+            padding: "8px 10px",
             background: "transparent",
             border: "1px solid hsl(var(--border))",
             borderRadius: 6,
@@ -202,7 +201,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           disabled={!commitUrl}
           title={commitUrl ? "Open commit on GitHub" : ""}
           style={{
-            padding: "10px 10px",
+            padding: "8px 10px",
             background: "transparent",
             border: "1px solid hsl(var(--border))",
             borderRadius: 6,
