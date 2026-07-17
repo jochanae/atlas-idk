@@ -10,6 +10,10 @@ function jsonResponse(body: unknown, init: ResponseInit = {}) {
   });
 }
 
+function findNexusCall(fetchSpy: ReturnType<typeof vi.spyOn>) {
+  return fetchSpy.mock.calls.find(([url]) => String(url).includes("/api/nexus/chat"));
+}
+
 describe("useNexusChatStream — attachments regression", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
@@ -23,7 +27,7 @@ describe("useNexusChatStream — attachments regression", () => {
     fetchSpy.mockRestore();
   });
 
-  it("POSTs /api/chat with Foundation-mode body fields", async () => {
+  it("POSTs /api/nexus/chat with attachments[] and legacy image fields", async () => {
     const { result } = renderHook(() => useNexusChatStream({
       focusProjectId: 123,
       conversationId: "conv-123",
@@ -41,8 +45,8 @@ describe("useNexusChatStream — attachments regression", () => {
       });
     });
 
-    const chatCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith("/api/chat"));
-    expect(chatCall, "expected POST /api/chat").toBeTruthy();
+    const chatCall = findNexusCall(fetchSpy);
+    expect(chatCall, "expected POST /api/nexus/chat").toBeTruthy();
     const init = chatCall![1] as RequestInit;
     expect(init.method).toBe("POST");
     const body = JSON.parse(String(init.body));
@@ -51,17 +55,15 @@ describe("useNexusChatStream — attachments regression", () => {
       model: "gemini",
       mode: "audit",
       history: [],
+      conversationId: "conv-123",
+      focusProjectId: 123,
     });
-    expect(body).not.toHaveProperty("sessionId");
-    expect(body).not.toHaveProperty("projectId");
-    expect(body).not.toHaveProperty("conversationId");
-    expect(body).not.toHaveProperty("global");
     expect(Array.isArray(body.attachments)).toBe(true);
     expect(body.attachments).toHaveLength(2);
     expect(body.attachments[0]).toMatchObject({ base64: "AAA", mediaType: "image/png" });
     expect(body.attachments[1]).toMatchObject({ base64: "BBB", mediaType: "image/jpeg" });
-    // Legacy fields preserved for back-compat.
-    expect(body.imageData).toBe("AAA");
+    // Legacy first-image fields (imageBase64 / imageMimeType — not imageData).
+    expect(body.imageBase64).toBe("AAA");
     expect(body.imageMimeType).toBe("image/png");
   });
 
@@ -76,14 +78,15 @@ describe("useNexusChatStream — attachments regression", () => {
       });
     });
 
-    const chatCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith("/api/chat"));
+    const chatCall = findNexusCall(fetchSpy);
     const body = JSON.parse(String((chatCall![1] as RequestInit).body));
     expect(body.attachments).toEqual([
       expect.objectContaining({ base64: "ZZZ", mediaType: "image/png" }),
     ]);
+    expect(body.imageBase64).toBe("ZZZ");
   });
 
-  it("filters non-image attachments out before sending", async () => {
+  it("includes PDF document attachments (does not filter them out)", async () => {
     const { result } = renderHook(() => useNexusChatStream({}));
 
     await act(async () => {
@@ -91,18 +94,21 @@ describe("useNexusChatStream — attachments regression", () => {
         text: "mixed",
         attachments: [
           { base64: "IMG", mediaType: "image/png" },
-          { base64: "PDF", mediaType: "application/pdf" },
+          { base64: "PDF", mediaType: "application/pdf", name: "doc.pdf" },
         ],
       });
     });
 
-    const chatCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith("/api/chat"));
+    const chatCall = findNexusCall(fetchSpy);
     const body = JSON.parse(String((chatCall![1] as RequestInit).body));
-    expect(body.attachments).toHaveLength(1);
-    expect(body.attachments[0].mediaType).toBe("image/png");
+    expect(body.attachments).toHaveLength(2);
+    expect(body.attachments.map((a: { mediaType: string }) => a.mediaType)).toEqual([
+      "image/png",
+      "application/pdf",
+    ]);
   });
 
-  it("allows attachment-only sends to reach /api/chat", async () => {
+  it("allows attachment-only sends to reach /api/nexus/chat", async () => {
     const { result } = renderHook(() => useNexusChatStream({}));
 
     await act(async () => {
@@ -114,9 +120,10 @@ describe("useNexusChatStream — attachments regression", () => {
       });
     });
 
-    const chatCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith("/api/chat"));
-    expect(chatCall, "expected POST /api/chat for attachment-only send").toBeTruthy();
+    const chatCall = findNexusCall(fetchSpy);
+    expect(chatCall, "expected POST /api/nexus/chat for attachment-only send").toBeTruthy();
     const body = JSON.parse(String((chatCall![1] as RequestInit).body));
+    expect(body.message).toBe("(file attached)");
     expect(body.attachments).toEqual([
       expect.objectContaining({ base64: "AAA", mediaType: "image/png", name: "only.png" }),
     ]);

@@ -54,12 +54,19 @@ async function fetchMe(): Promise<AuthUser | null> {
 }
 
 export function useAuth() {
+  // Session freshness policy (attachment-pipeline audit):
+  // - Do NOT refetch on window focus / reconnect: native file pickers blur the
+  //   tab and would otherwise race auth/me → false "session expired" redirects.
+  // - Do NOT use staleTime: Infinity + refetchOnMount: false: that permanently
+  //   masks expired/revoked sessions until a hard reload.
+  // - Keep a finite staleTime so remounts / route changes can revalidate.
+  // - install-api-fetch still hard-redirects on confirmed API 401 + /auth/me 401.
   const { data: user, isLoading } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: fetchMe,
     retry: false,
-    staleTime: Infinity,
-    refetchOnMount: false,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -70,7 +77,21 @@ export function useRequireAuth() {
   const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
   useEffect(() => {
-    if (!isLoading && !user) navigate("/login");
+    if (!isLoading && !user) {
+      try {
+        // Dynamic import avoids circular deps with attachAudit at module init.
+        void import("@/lib/attachAuditLog").then(({ attachAuditLog }) => {
+          attachAuditLog(
+            "router_navigation",
+            { method: "useRequireAuth", to: "/login", reason: "no_user" },
+            "global",
+          );
+        });
+      } catch {
+        /* ignore */
+      }
+      navigate("/login");
+    }
   }, [user, isLoading, navigate]);
   return { user, isLoading };
 }

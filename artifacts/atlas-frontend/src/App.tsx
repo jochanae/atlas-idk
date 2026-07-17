@@ -43,6 +43,7 @@ import ActivatePage from "./pages/activate";
 import TokenBridge from "./pages/token-bridge";
 import { useAuth } from "@/hooks/useAuth";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { attachAuditLog } from "@/lib/attachAuditLog";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +64,13 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   }
   static getDerivedStateFromError(err: unknown): ErrorBoundaryState {
     return { hasError: true, message: err instanceof Error ? err.message : String(err) };
+  }
+  componentDidCatch(err: unknown) {
+    attachAuditLog(
+      "error_boundary",
+      { message: err instanceof Error ? err.message : String(err) },
+      "global",
+    );
   }
   render() {
     if (!this.state.hasError) return this.props.children;

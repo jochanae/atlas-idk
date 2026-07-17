@@ -90,6 +90,8 @@ import { Switch } from "@/components/ui/switch";
 import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
+import { attachAuditLog } from "@/lib/attachAuditLog";
+import { filesToNexusAttachments } from "@/lib/composerAttachments";
 import { reportError } from "../lib/errorReporter";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
@@ -9342,20 +9344,56 @@ export default function Workspace() {
                 }
               },
               // Option 2 overrides — route composer sends through Nexus.
+              // CRITICAL: must convert attachedFiles → base64 and pass them through.
+              // Prior bug: text-only send dropped staged images/PDFs entirely.
               ...(useNexusWorkspaceChat ? {
                 chatPending: nexusBridge.chatPending,
                 liveStep: nexusBridge.liveStep,
                 messages: nexusBridge.messages,
                 doSend: ((text: string) => {
-                  nexusBridge.send(text);
-                  try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
+                  void (async () => {
+                    const files = attachedFiles;
+                    attachAuditLog("send_started", { textLen: text.length, fileCount: files.length }, "workspace");
+                    let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
+                    if (files.length > 0) {
+                      attachAuditLog("file_read_started", { count: files.length }, "workspace");
+                      try {
+                        attachments = await filesToNexusAttachments(files);
+                        attachAuditLog("file_read_completed", { count: attachments.length }, "workspace");
+                        attachAuditLog("send_attachments_included", { count: attachments.length }, "workspace");
+                      } catch (err) {
+                        attachAuditLog("file_read_failed", { error: String(err) }, "workspace");
+                        attachAuditLog("send_attachments_dropped", { reason: "convert_failed" }, "workspace");
+                      }
+                      setAttachedFiles([]);
+                    }
+                    nexusBridge.send(text, attachments);
+                    try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
+                  })();
                 }) as ChatComposerProps["doSend"],
                 handleSend: (() => {
-                  const text = (input ?? "").trim();
-                  if (!text) return;
-                  nexusBridge.send(text);
-                  setInput("");
-                  try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
+                  void (async () => {
+                    const text = (input ?? "").trim();
+                    const files = attachedFiles;
+                    if (!text && files.length === 0) return;
+                    attachAuditLog("send_started", { textLen: text.length, fileCount: files.length }, "workspace");
+                    let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
+                    if (files.length > 0) {
+                      attachAuditLog("file_read_started", { count: files.length }, "workspace");
+                      try {
+                        attachments = await filesToNexusAttachments(files);
+                        attachAuditLog("file_read_completed", { count: attachments.length }, "workspace");
+                        attachAuditLog("send_attachments_included", { count: attachments.length }, "workspace");
+                      } catch (err) {
+                        attachAuditLog("file_read_failed", { error: String(err) }, "workspace");
+                        attachAuditLog("send_attachments_dropped", { reason: "convert_failed" }, "workspace");
+                      }
+                    }
+                    setInput("");
+                    setAttachedFiles([]);
+                    nexusBridge.send(text, attachments);
+                    try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
+                  })();
                 }) as ChatComposerProps["handleSend"],
                 onAbort: () => nexusBridge.abort(),
               } : {}),
