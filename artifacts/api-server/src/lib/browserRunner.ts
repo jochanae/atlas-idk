@@ -20,7 +20,10 @@
  *   - Cross-origin navigation is aborted mid-flow
  */
 
-import { chromium } from "playwright";
+// playwright is NOT imported at the top level — it is not installed in the
+// production deployment container. The dynamic import below ensures the server
+// starts cleanly even without playwright; the browser runner simply fails at
+// call-time (not at boot) when the package is missing.
 import type { BrowserContext, Page } from "playwright";
 import { Storage } from "@google-cloud/storage";
 import { db, projectsTable } from "@workspace/db";
@@ -487,6 +490,7 @@ export async function runBrowserFlow(opts: BrowserRunnerOptions): Promise<Browse
   for (const viewport of viewports) {
     const vpDims = VIEWPORT_DIMS[viewport] ?? VIEWPORT_DIMS["DESKTOP"]!;
 
+    const { chromium } = await import("playwright");
     const browser = await chromium.launch({
       executablePath: chromiumPath,
       headless: true,
