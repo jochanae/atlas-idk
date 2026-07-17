@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench, Terminal, MessageSquare, Library } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
+import { resolveConversationDestination } from "@/lib/askAtlasHelpers";
 
 export type AtlasConversation = {
   id: string | number;
