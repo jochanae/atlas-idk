@@ -969,87 +969,9 @@ function RunTimeline({ run }: { run: ApiRun }) {
 }
 
 
-// ── Run receipt list: collapsible section (collapsed by default) ──────────────
-
-function WorkspaceRunReceipts({
-  projectId,
-  projectName,
-  runId,
-  onSelectRun,
-  conversationId,
-}: {
-  projectId: number;
-  projectName: string;
-  runId?: string | null;
-  onSelectRun?: (id: string) => void;
-  conversationId?: string | null;
-}) {
-  const { runs: apiRuns, invalidate: invalidateApiRuns } = useProjectRuns(projectId, { conversationId });
-  const [expanded, setExpanded] = useState(false);
-
-  // Refresh run list immediately when a run completes — no more 30s stale window.
-  useWorkspaceEvent("run-completed", ({ projectId: changedPid }) => {
-    if (changedPid === projectId) invalidateApiRuns();
-  }, [projectId, invalidateApiRuns]);
-
-  const visibleRuns = useMemo((): ApiRun[] => {
-    if (runId) return apiRuns.filter((r) => r.id === runId);
-    return apiRuns.slice(0, 5);
-  }, [apiRuns, runId]);
-
-  if (visibleRuns.length === 0) return null;
-
-  return (
-    <div style={{ borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.08)" }}>
-      {/* Section header — tap to expand/collapse */}
-      <button
-        type="button"
-        onClick={() => setExpanded((e) => !e)}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          width: "100%", padding: "8px 14px",
-          background: "transparent", border: "none", cursor: "pointer",
-          textAlign: "left", WebkitTapHighlightColor: "transparent",
-        }}
-      >
-        <span style={{
-          fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-          letterSpacing: "0.14em", textTransform: "uppercase",
-          color: "var(--atlas-gold)", opacity: 0.7,
-        }}>Activity</span>
-        <span style={{
-          fontSize: 9, background: "rgba(var(--atlas-gold-rgb), 0.12)",
-          color: "rgba(var(--atlas-gold-rgb), 0.8)", border: "1px solid rgba(var(--atlas-gold-rgb), 0.2)",
-          borderRadius: 3, padding: "1px 5px",
-          fontFamily: "var(--app-font-mono)",
-        }}>{visibleRuns.length}</span>
-        <ChevronDown
-          size={11} strokeWidth={1.6}
-          style={{
-            color: "var(--atlas-muted)", opacity: 0.45, marginLeft: "auto",
-            transform: expanded ? "rotate(180deg)" : "none",
-            transition: "transform 150ms ease",
-          }}
-          aria-hidden
-        />
-      </button>
-
-      {expanded && (
-        <div style={{ padding: "0 14px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-          {visibleRuns.map((run) => (
-            <RunReceiptPill
-              key={run.id}
-              run={run}
-              projectName={projectName}
-              selected={!!runId && run.id === runId}
-              onClick={onSelectRun ? () => onSelectRun(run.id) : undefined}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// (WorkspaceRunReceipts removed — Timeline lists runs chronologically and the
+// RunDetailsDrawer opens on a specific run; the top "Activity" strip was
+// redundant and stole vertical space above the Timeline/Changes toggle.)
 
 // (DecisionsLens removed — DECISION_RECORDED steps render chronologically in the Timeline.)
 
