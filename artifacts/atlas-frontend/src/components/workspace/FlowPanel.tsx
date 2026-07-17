@@ -505,6 +505,21 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
 
   // Export Blueprint — copy / download the current map
   const [exportFlash, setExportFlash] = useState<null | "copied" | "downloaded">(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState<null | "png" | "json" | "pdf">(null);
+  const flowSurfaceRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!exportMenuRef.current) return;
+      if (!exportMenuRef.current.contains(e.target as Node)) setExportMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setExportMenuOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [exportMenuOpen]);
   const buildBlueprintExport = useCallback((): any => {
     const score = displayedReadinessScore ?? readinessScore;
     return {
@@ -530,21 +545,31 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
     setExportFlash("copied");
     setTimeout(() => setExportFlash(null), 1600);
   }, [buildBlueprintExport]);
-  const handleExportDownload = useCallback(() => {
-    const blueprint = buildBlueprintExport();
-    const text = formatBlueprintForExport(blueprint);
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(blueprint.content?.title ?? blueprint.title ?? "blueprint").toLowerCase().replace(/\s+/g, "-")}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setExportFlash("downloaded");
-    setTimeout(() => setExportFlash(null), 1600);
-  }, [buildBlueprintExport]);
+  const exportMeta = useCallback(() => ({
+    projectName: activeProjectName || undefined,
+    readinessScore: displayedReadinessScore ?? readinessScore ?? null,
+    platform: platform || undefined,
+  }), [activeProjectName, displayedReadinessScore, readinessScore, platform]);
+  const runExport = useCallback(async (kind: "png" | "json" | "pdf") => {
+    setExportBusy(kind);
+    try {
+      if (kind === "png") {
+        if (!flowSurfaceRef.current) throw new Error("Surface not ready");
+        await exportFlowSurfacePng(flowSurfaceRef.current, exportMeta());
+      } else if (kind === "json") {
+        exportFlowJson(nodes, exportMeta());
+      } else {
+        exportFlowPdf(nodes, exportMeta());
+      }
+      setExportFlash("downloaded");
+      setTimeout(() => setExportFlash(null), 1600);
+      setExportMenuOpen(false);
+    } catch (err) {
+      reportError(err, { where: "FlowPanel.export", kind });
+    } finally {
+      setExportBusy(null);
+    }
+  }, [nodes, exportMeta]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
