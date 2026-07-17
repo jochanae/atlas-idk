@@ -68,8 +68,9 @@ const MAX_ENTRIES = 500;
 let seq = 0;
 const entries: AttachAuditEntry[] = [];
 let installed = false;
+let runtimeEnabled = false;
 
-function isEnabled(): boolean {
+function readEnabledFromEnv(): boolean {
   if (typeof window === "undefined") return false;
   try {
     if (window.localStorage.getItem("atlas-attach-audit") === "1") return true;
@@ -80,13 +81,16 @@ function isEnabled(): boolean {
   return false;
 }
 
+function isEnabled(): boolean {
+  return runtimeEnabled;
+}
+
 export function attachAuditLog(
   event: AttachAuditEvent | string,
   detail?: Record<string, unknown>,
   surface?: AttachAuditEntry["surface"],
 ): void {
   if (typeof window === "undefined") return;
-  if (!isEnabled() && !window.__atlasAttachAudit) return;
   if (!isEnabled()) return;
 
   const entry: AttachAuditEntry = {
@@ -102,7 +106,6 @@ export function attachAuditLog(
   if (entries.length > MAX_ENTRIES) entries.shift();
 
   try {
-    // Structured console trail for DevTools filtering: `[attach-audit]`
     console.info("[attach-audit]", entry.seq, event, surface ?? "", detail ?? {}, {
       href: entry.href,
       visibility: entry.visibility,
@@ -126,17 +129,10 @@ export function installAttachAudit(): void {
   if (typeof window === "undefined" || installed) return;
   installed = true;
 
+  runtimeEnabled = readEnabledFromEnv();
+
   window.__atlasAttachAudit = {
-    get enabled() {
-      return isEnabled();
-    },
-    set enabled(v: boolean) {
-      try {
-        window.localStorage.setItem("atlas-attach-audit", v ? "1" : "0");
-      } catch {
-        /* ignore */
-      }
-    },
+    enabled: runtimeEnabled,
     entries,
     log: attachAuditLog,
     dump: () => [...entries],
@@ -146,6 +142,11 @@ export function installAttachAudit(): void {
     },
     summary,
   };
+
+  // If audit isn't enabled, skip installing global listeners entirely — they
+  // are pure instrumentation and their absence must never affect UX.
+  if (!runtimeEnabled) return;
+
 
   // Always install listeners; attachAuditLog no-ops unless enabled.
   let lastHref = window.location.href;
