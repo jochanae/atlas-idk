@@ -233,13 +233,19 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               {atlasConversations && atlasConversations.length > 0 ? (
                 atlasConversations.slice(0, 8).map((conv) => {
                   const isActive = conv.id === activeAtlasSessionId;
-                  const isPromoted = conv.type === "promoted";
+                  const dest = resolveConversationDestination({
+                    id: conv.id,
+                    type: conv.type,
+                    projectId: conv.projectId ?? null,
+                    projectName: conv.projectName ?? null,
+                  });
+                  const isPromoted = dest.kind === "workspace";
                   if (isPromoted) {
                     return (
                       <button
                         key={conv.id}
                         type="button"
-                        onClick={() => { if (conv.projectId) { setLocation(`/project/${conv.projectId}`); onClose(); } }}
+                        onClick={() => { setLocation(`/project/${dest.projectId}`); onClose(); }}
                         style={{
                           display: "flex", alignItems: "center", gap: 8,
                           width: "100%", padding: "7px 10px",
