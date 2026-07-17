@@ -12,7 +12,7 @@
 // rows — Timeline shows process steps (THOUGHT/READ/SEARCH/INSPECT/SUMMARY),
 // Changes shows outcome steps (FILE_EDIT/LINE_PATCH/FILE_DELETE).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   X, FileCode2, Eye, Search, Folder,
