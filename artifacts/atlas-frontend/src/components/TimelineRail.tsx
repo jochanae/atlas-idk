@@ -298,7 +298,11 @@ export function TimelineRail({
     return null;
   })();
 
+  // Any full-surface overlay (LaunchModal, etc.) wins: rail + FAB unmount.
+  if (overlayActive) return null;
+
   return (
+
     <>
       {/* Search magnifier — only when a chat scroll surface is visible.
           Prevents the fixed button leaking onto workspace tabs (Ledger,
