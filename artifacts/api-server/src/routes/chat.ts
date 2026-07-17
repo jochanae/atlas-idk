@@ -4853,7 +4853,11 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   const isDive = isDiveCmd || activeMode === "deep" || activeMode === "deepdive";
   const effectiveDiveTopic = isDiveCmd ? diveTopic : message;
   if (isDive) {
-    try { await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message, intentType: body.mode ?? null }); }
+    try {
+      const [savedUser] = await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message, intentType: body.mode ?? null }).returning({ id: chatMessagesTable.id });
+      savedUserMessageId = savedUser?.id ?? null;
+      await linkChatAttachments(savedUserMessageId);
+    }
     catch (e: any) { logger.warn({ sessionId, err: e?.message }, "chat_messages deep-dive user insert failed — non-fatal"); }
     const diveResult = await runDeepDive(effectiveDiveTopic, systemPrompt);
     const surface = detectSurfaceSignal({
@@ -5057,8 +5061,20 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     } as ImageBlock);
   }
 
-  // 3. User-attached images (attachments array — supports multiple)
+  // 3. User-attached files (server-resolved IDs + legacy images)
   for (const att of allAttachments) {
+    if (att.asText && att.textContent != null) {
+      contentParts.push({ type: "text", text: `Attached file: ${att.name ?? "file"}\n\n${att.textContent}` });
+      continue;
+    }
+    if (!att.mediaType.startsWith("image/")) {
+      contentParts.push({ type: "text", text: `Attached file: ${att.name ?? "file"} (${att.mediaType}) — binary content attached as base64 length ${att.base64.length}.` });
+      continue;
+    }
+    if (att.base64.length > MAX_VAULT_B64_SIZE) {
+      logger.warn({ size: att.base64.length }, "User attachment too large — skipped");
+      continue;
+    }
     contentParts.push({
       type: "image",
       source: { type: "base64", media_type: att.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: att.base64 },
@@ -5095,12 +5111,14 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   // have a sessionId to attach to, regardless of lens.
   if (sessionId && !isTelemetryEvent) {
     try {
-      await db.insert(chatMessagesTable).values({
+      const [savedUser] = await db.insert(chatMessagesTable).values({
         sessionId,
         role: "user",
         content: message,
         intentType: body.mode ?? null,
-      });
+      }).returning({ id: chatMessagesTable.id });
+      savedUserMessageId = savedUser?.id ?? null;
+      await linkChatAttachments(savedUserMessageId);
     } catch (dbErr: any) {
       const errMsg = dbErr?.message ?? "";
       const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
@@ -5108,12 +5126,14 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
       if (isMissingColumn) {
         logger.warn({ dbErr: errMsg }, "DB schema behind on user message insert — falling back to core insert");
         try {
-          await db.insert(chatMessagesTable).values({
+          const [savedUser] = await db.insert(chatMessagesTable).values({
             sessionId,
             role: "user",
             content: message,
             intentType: null,
-          });
+          }).returning({ id: chatMessagesTable.id });
+          savedUserMessageId = savedUser?.id ?? null;
+          await linkChatAttachments(savedUserMessageId);
         } catch { /* non-fatal — conversation_messages has the record */ }
       } else if (isFkViolation) {
         logger.warn({ sessionId }, "chat_messages user insert: session FK not found — skipping legacy write (conversation_messages is authoritative)");
