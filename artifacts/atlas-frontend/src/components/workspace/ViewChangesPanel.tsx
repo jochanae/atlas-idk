@@ -1029,6 +1029,20 @@ export function ViewChangesPanel({
 
   const [lens, setLens] = useState<"timeline" | "changes">("timeline");
   const [lensAutoSet, setLensAutoSet] = useState(false);
+
+  // Compact diff legend — persists dismissed state per-user so it doesn't
+  // consume space on every visit. Shown only in the Changes lens or when a
+  // commit is focused (the only surfaces where +/− rows are rendered).
+  const [legendDismissed, setLegendDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem("atlas-changes-legend-dismissed") === "1"; }
+    catch { return false; }
+  });
+  const dismissLegend = useCallback(() => {
+    setLegendDismissed(true);
+    try { window.localStorage.setItem("atlas-changes-legend-dismissed", "1"); } catch {}
+  }, []);
+  const showLegend = !legendDismissed && (!!commitSha || lens === "changes");
   const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId, { conversationId });
 
   // Refresh run list immediately when a run completes — eliminates the 30s lag
