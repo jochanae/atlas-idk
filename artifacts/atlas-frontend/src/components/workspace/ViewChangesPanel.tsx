@@ -25,7 +25,7 @@ import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProject
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
 import { useWorkspaceEvent } from "@/lib/workspaceEventBus";
 import { useShellStore } from "@/store/shellStore";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 
 
 // ── Relative time (seconds → minutes → hours → days → date) ───────────────────
