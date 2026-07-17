@@ -61,14 +61,19 @@ export function RunDetailsDrawer({
   const releaseClaim = useShellStore((s) => s.releaseComposerClaim);
 
   // Open on axiom:open-changes; sync params from event detail or URL.
+  // NOTE: The drawer intentionally opens ONLY for run details. GitHub commit
+  // details are shown in the Changes tab itself (see workspace handler that
+  // sets leftTab="diff" + commitSha URL param). Opening a drawer with the
+  // same ViewChangesPanel was redundant with the tab and has been removed.
   useEffect(() => {
     const handler = (evt: Event) => {
       const detail = (evt as CustomEvent<{ runId?: string; commitSha?: string }>).detail ?? {};
       const url = readParamsFromUrl();
-      setParams({
-        runId: detail.runId ?? url.runId,
-        commitSha: detail.commitSha ?? url.commitSha,
-      });
+      const nextRunId = detail.runId ?? url.runId;
+      const nextCommitSha = detail.commitSha ?? url.commitSha;
+      // Commit-only opens skip the drawer — Changes tab owns that surface.
+      if (!nextRunId && nextCommitSha) return;
+      setParams({ runId: nextRunId, commitSha: nextCommitSha });
       setOpen(true);
     };
     window.addEventListener("axiom:open-changes", handler as EventListener);
