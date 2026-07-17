@@ -1,4 +1,6 @@
 import { fileToBase64Safe } from "@/lib/image-resize";
+import { httpAttachmentAdapter, type AttachmentAdapter } from "@/lib/attachments/adapter";
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_MAX_COUNT, type PersistedAttachment } from "@/lib/attachments/types";
 
 export type ComposerAttachmentPayload = {
   base64: string;
@@ -27,6 +29,70 @@ export async function filesToNexusAttachments(
     }
   }
   return out;
+}
+
+export type PersistentAttachmentUploadResult = {
+  attachmentIds: string[];
+  attachments: PersistedAttachment[];
+  rejected: Array<{ fileName: string; reason: string }>;
+};
+
+/**
+ * Upload staged browser Files to the backend-owned attachment lifecycle and
+ * return IDs for chat sends. The browser never forwards the signed upload URL
+ * to Atlas/Nexus; it is used only for the object-storage PUT.
+ */
+export async function uploadPersistentAttachments(
+  files: File[],
+  opts?: {
+    adapter?: AttachmentAdapter;
+    maxFiles?: number;
+    fetchImpl?: typeof fetch;
+  },
+): Promise<PersistentAttachmentUploadResult> {
+  const adapter = opts?.adapter ?? httpAttachmentAdapter;
+  const fetchImpl = opts?.fetchImpl ?? fetch;
+  const maxFiles = opts?.maxFiles ?? ATTACHMENT_MAX_COUNT;
+  const selected = files.slice(0, maxFiles);
+  const rejected: PersistentAttachmentUploadResult["rejected"] = [];
+  if (files.length > selected.length) {
+    for (const f of files.slice(selected.length)) {
+      rejected.push({ fileName: f.name, reason: `Only ${maxFiles} files can be attached.` });
+    }
+  }
+
+  const attachments: PersistedAttachment[] = [];
+  for (const file of selected) {
+    if (file.size > ATTACHMENT_MAX_BYTES) {
+      rejected.push({ fileName: file.name, reason: "File exceeds 20MB limit." });
+      continue;
+    }
+
+    try {
+      const upload = await adapter.requestUpload(file);
+      if (!upload.uploadUrl.startsWith("mock://")) {
+        const putRes = await fetchImpl(upload.uploadUrl, {
+          method: "PUT",
+          headers: upload.headers ?? { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        if (!putRes.ok) throw new Error(`Upload failed ${putRes.status}`);
+      }
+      const finalized = await adapter.finalizeUpload(upload.attachmentId);
+      attachments.push(finalized);
+    } catch (err) {
+      rejected.push({
+        fileName: file.name,
+        reason: err instanceof Error ? err.message : "Upload failed.",
+      });
+    }
+  }
+
+  return {
+    attachmentIds: attachments.map((a) => a.attachmentId),
+    attachments,
+    rejected,
+  };
 }
 
 /** Pure decision helper — used by Workspace Nexus composer override + tests. */
