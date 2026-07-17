@@ -20,6 +20,11 @@ import {
 } from "lucide-react";
 import SketchComposerSheet from "./SketchComposerSheet";
 import { attachAuditLog } from "@/lib/attachAuditLog";
+import { toast } from "sonner";
+
+// Per-file upload cap. Bigger files are rejected with a toast instead of
+// being handed to the base64 encoder (which can OOM the tab on mobile).
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
 
 
 export type ComposerMenuAction =
