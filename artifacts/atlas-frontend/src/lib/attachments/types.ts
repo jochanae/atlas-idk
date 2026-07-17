@@ -75,6 +75,7 @@ const KIND_BY_MIME: Array<[RegExp, AttachmentKind]> = [
   [/^image\//, "image"],
   [/^application\/pdf$/, "pdf"],
   [/wordprocessingml|msword|officedocument\.wordprocessingml/, "doc"],
+  [/presentationml|ms-powerpoint|vnd\.ms-powerpoint/, "doc"],
   [/spreadsheetml|excel|officedocument\.spreadsheetml|csv/, "spreadsheet"],
   [/^text\/(?:plain|markdown|md)$/, "text"],
 ];
@@ -83,6 +84,7 @@ const KIND_BY_EXT: Array<[RegExp, AttachmentKind]> = [
   [/\.(png|jpe?g|gif|webp|heic|avif|svg)$/i, "image"],
   [/\.pdf$/i, "pdf"],
   [/\.(docx?|rtf|odt)$/i, "doc"],
+  [/\.(pptx?|odp)$/i, "doc"],
   [/\.(xlsx?|ods|csv|tsv)$/i, "spreadsheet"],
   [/\.(ts|tsx|js|jsx|py|rb|go|rs|java|kt|swift|c|cc|cpp|h|hpp|cs|php|sh|sql|yml|yaml|json|toml)$/i, "code"],
   [/\.(md|markdown|txt|log)$/i, "text"],

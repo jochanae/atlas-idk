@@ -1,13 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   __ghostClickShieldForTests,
+  __resetGhostClickShieldForTests,
+  clearPickerPending,
+  GHOST_SHIELD_DOCUMENT_MS,
   installGhostClickShield,
+  isDocumentLikeFile,
+  markPickerPending,
   removeGhostClickShield,
+  shieldMsForFiles,
 } from "@/lib/ghostClickShield";
 
 describe("ghostClickShield", () => {
   afterEach(() => {
-    removeGhostClickShield();
+    __resetGhostClickShieldForTests();
     vi.useRealTimers();
   });
 
@@ -48,5 +54,32 @@ describe("ghostClickShield", () => {
     expect(__ghostClickShieldForTests().active).toBe(true);
     vi.advanceTimersByTime(50);
     expect(__ghostClickShieldForTests().active).toBe(false);
+  });
+
+  it("treats PowerPoint as document-like with a longer shield", () => {
+    const pptx = new File(["x"], "deck.pptx", {
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    });
+    expect(isDocumentLikeFile(pptx)).toBe(true);
+    expect(shieldMsForFiles([pptx])).toBe(GHOST_SHIELD_DOCUMENT_MS);
+    expect(
+      isDocumentLikeFile(new File(["x"], "shot.png", { type: "image/png" })),
+    ).toBe(false);
+  });
+
+  it("re-arms shield when page becomes visible while picker is pending", () => {
+    vi.useFakeTimers();
+    markPickerPending("picker_open:attach");
+    installGhostClickShield("picker_open:attach", 200);
+    vi.advanceTimersByTime(200);
+    expect(__ghostClickShieldForTests().active).toBe(false);
+
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    expect(__ghostClickShieldForTests().active).toBe(true);
+    expect(__ghostClickShieldForTests().reason).toBe("picker_visibility_return");
+    clearPickerPending();
+    removeGhostClickShield();
   });
 });
