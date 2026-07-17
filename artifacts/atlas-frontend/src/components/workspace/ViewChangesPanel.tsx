@@ -607,10 +607,14 @@ function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectI
             </div>
             {isExpanded && (
               <div style={{ padding: "0 10px 10px" }}>
-                <InlineDiffBlock
-                  before={r.beforeContent ?? null}
-                  after={r.content ?? null}
-                />
+                {r.patch ? (
+                  <UnifiedPatchBlock patch={r.patch} />
+                ) : (
+                  <InlineDiffBlock
+                    before={r.beforeContent ?? null}
+                    after={r.content ?? null}
+                  />
+                )}
               </div>
             )}
           </div>
