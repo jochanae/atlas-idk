@@ -66,6 +66,9 @@ interface FileRow {
   projectId: number;
   content?: string | null;
   beforeContent?: string | null;
+  /** Pre-computed unified diff (e.g. from GitHub commit API). When present,
+   *  the Changes lens renders this instead of before/after reconstruction. */
+  patch?: string | null;
   verb?: string;
 }
 
