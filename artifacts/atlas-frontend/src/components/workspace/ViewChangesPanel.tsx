@@ -1348,6 +1348,30 @@ export function ViewChangesPanel({
         </div>
       </div>
 
+      {/* ── Compact diff legend ── shown once, dismissible, persists per-user */}
+      {showLegend && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "6px 14px 8px",
+          borderBottom: "1px solid rgba(var(--atlas-gold-rgb), 0.06)",
+          fontFamily: "var(--app-font-mono)", fontSize: 10,
+          color: "var(--atlas-muted)",
+        }}>
+          <span style={{ opacity: 0.7, letterSpacing: "0.06em", textTransform: "uppercase" }}>Legend</span>
+          <span style={{ color: "rgb(46,160,67)" }}>+ Added</span>
+          <span style={{ color: "rgb(207,63,63)" }}>− Removed</span>
+          <span style={{ flex: 1 }} />
+          <button
+            type="button" onClick={dismissLegend} aria-label="Dismiss legend"
+            style={{
+              background: "transparent", border: "none",
+              color: "var(--atlas-muted)", opacity: 0.55, cursor: "pointer",
+              fontSize: 10, padding: "2px 4px",
+            }}
+          >Got it</button>
+        </div>
+      )}
+
       {/* ── Body ── */}
       {commitSha ? (
         commitLoading && commitRows.length === 0 ? (
