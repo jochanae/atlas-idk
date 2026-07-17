@@ -514,7 +514,7 @@ function CopyFileButton({ content }: { content: string | null }) {
 function ChangesLens({ rows, projectId, runStatus }: { rows: FileRow[]; projectId: number; runStatus?: string }) {
   // Auto-expand the first file when there are ≤3 files and viewable content exists.
   const firstKey = rows.length > 0 ? `${rows[0].messageId}-${rows[0].path}-0` : null;
-  const autoExpand = rows.length <= 3 && (!!rows[0]?.content || !!rows[0]?.beforeContent);
+  const autoExpand = rows.length <= 3 && (!!rows[0]?.content || !!rows[0]?.beforeContent || !!rows[0]?.patch);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => autoExpand && firstKey ? new Set([firstKey]) : new Set()
   );
