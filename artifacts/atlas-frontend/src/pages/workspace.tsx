@@ -92,6 +92,7 @@ import { getAuthHeaders } from "@/lib/api";
 import { attachAuditLog } from "@/lib/attachAuditLog";
 import { filesToNexusAttachments, uploadPersistentAttachments } from "@/lib/composerAttachments";
 import { isAttachmentFlagOn } from "@/lib/attachments/flags";
+import { useAttachmentPreUpload } from "@/hooks/useAttachmentPreUpload";
 import { reportError } from "../lib/errorReporter";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
@@ -4468,6 +4469,8 @@ export default function Workspace() {
     textareaRef,
     fileInputRef,
   } = useComposerDraft();
+
+  const { getPreUploadedIds } = useAttachmentPreUpload(attachedFiles);
 
   // Pre-fill composer from ?msg= param set by project creation with an initial thought
   useEffect(() => {
@@ -9367,20 +9370,25 @@ export default function Workspace() {
                   void (async () => {
                     const files = attachedFiles;
                     attachAuditLog("send_started", { textLen: text.length, fileCount: files.length }, "workspace");
-                    let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
                     if (files.length > 0) {
-                      attachAuditLog("file_read_started", { count: files.length }, "workspace");
-                      try {
-                        attachments = await filesToNexusAttachments(files);
-                        attachAuditLog("file_read_completed", { count: attachments.length }, "workspace");
-                        attachAuditLog("send_attachments_included", { count: attachments.length }, "workspace");
-                      } catch (err) {
-                        attachAuditLog("file_read_failed", { error: String(err) }, "workspace");
-                        attachAuditLog("send_attachments_dropped", { reason: "convert_failed" }, "workspace");
-                      }
                       setAttachedFiles([]);
+                      const preIds = isAttachmentFlagOn("attachments.persistence") ? getPreUploadedIds(files) : null;
+                      if (preIds) {
+                        attachAuditLog("send_attachments_preloaded", { count: preIds.length }, "workspace");
+                        nexusBridge.send(text || "(attachment)", undefined, preIds);
+                      } else {
+                        let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
+                        try {
+                          attachments = await filesToNexusAttachments(files);
+                          attachAuditLog("send_attachments_included", { count: attachments.length }, "workspace");
+                        } catch (err) {
+                          attachAuditLog("send_attachments_dropped", { reason: String(err) }, "workspace");
+                        }
+                        nexusBridge.send(text, attachments);
+                      }
+                    } else {
+                      nexusBridge.send(text);
                     }
-                    nexusBridge.send(text, attachments);
                     try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
                   })();
                 }) as ChatComposerProps["doSend"],
@@ -9390,21 +9398,26 @@ export default function Workspace() {
                     const files = attachedFiles;
                     if (!text && files.length === 0) return;
                     attachAuditLog("send_started", { textLen: text.length, fileCount: files.length }, "workspace");
-                    let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-                    if (files.length > 0) {
-                      attachAuditLog("file_read_started", { count: files.length }, "workspace");
-                      try {
-                        attachments = await filesToNexusAttachments(files);
-                        attachAuditLog("file_read_completed", { count: attachments.length }, "workspace");
-                        attachAuditLog("send_attachments_included", { count: attachments.length }, "workspace");
-                      } catch (err) {
-                        attachAuditLog("file_read_failed", { error: String(err) }, "workspace");
-                        attachAuditLog("send_attachments_dropped", { reason: "convert_failed" }, "workspace");
-                      }
-                    }
                     setInput("");
                     setAttachedFiles([]);
-                    nexusBridge.send(text, attachments);
+                    if (files.length > 0) {
+                      const preIds = isAttachmentFlagOn("attachments.persistence") ? getPreUploadedIds(files) : null;
+                      if (preIds) {
+                        attachAuditLog("send_attachments_preloaded", { count: preIds.length }, "workspace");
+                        nexusBridge.send(text || "(attachment)", undefined, preIds);
+                      } else {
+                        let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
+                        try {
+                          attachments = await filesToNexusAttachments(files);
+                          attachAuditLog("send_attachments_included", { count: attachments.length }, "workspace");
+                        } catch (err) {
+                          attachAuditLog("send_attachments_dropped", { reason: String(err) }, "workspace");
+                        }
+                        nexusBridge.send(text, attachments);
+                      }
+                    } else {
+                      nexusBridge.send(text);
+                    }
                     try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
                   })();
                 }) as ChatComposerProps["handleSend"],

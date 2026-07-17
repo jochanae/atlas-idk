@@ -165,7 +165,7 @@ export interface NexusWorkspaceBridge {
   liveStep: NexusLiveStep | null;
   /** Stable identity of the in-flight turn (null when idle). */
   activeRunId: string | null;
-  send: (text: string, attachments?: Array<{ base64: string; mediaType: string; name?: string }>) => void;
+  send: (text: string, attachments?: Array<{ base64: string; mediaType: string; name?: string }>, attachmentIds?: string[]) => void;
   abort: () => void;
   /** Authorize a pending run gate — passes through from useNexusChatStream. */
   authorizeRun: (runId: string, decision: "approve" | "reject") => void;
@@ -408,12 +408,17 @@ export function useNexusWorkspaceBridge(
   const chatPending = isPending || isStreaming;
 
   const sendText = useCallback(
-    (text: string, attachments?: Array<{ base64: string; mediaType: string; name?: string }>) => {
+    (
+      text: string,
+      attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
+      attachmentIds?: string[],
+    ) => {
       const trimmed = text.trim();
       const hasAttachments = (attachments?.length ?? 0) > 0;
+      const hasIds = (attachmentIds?.length ?? 0) > 0;
       // Allow attachment-only sends — useNexusChatStream substitutes "(file attached)".
-      if (!trimmed && !hasAttachments) return;
-      void send({ text: trimmed, attachments });
+      if (!trimmed && !hasAttachments && !hasIds) return;
+      void send({ text: trimmed, attachments, attachmentIds });
     },
     [send]
   );

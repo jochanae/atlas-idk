@@ -15,6 +15,8 @@
 import {
   classifyKind,
   type PersistedAttachment,
+  type AvailabilityStatus,
+  type ProcessingStatus,
 } from "./types";
 
 export interface RequestUploadResult {
@@ -166,7 +168,7 @@ export function createMockAdapter(opts: MockOptions = {}): AttachmentAdapter & {
         if (!arr.includes(attachmentId)) arr.push(attachmentId);
         byMessage.set(messageId, arr);
       },
-      setAvailability(attachmentId, next) {
+      setAvailability(attachmentId: string, next: AvailabilityStatus) {
         const rec = byId.get(attachmentId);
         if (!rec) return;
         byId.set(attachmentId, {
@@ -175,7 +177,7 @@ export function createMockAdapter(opts: MockOptions = {}): AttachmentAdapter & {
           ...(next === "expired" ? { expiresAt: rec.expiresAt } : {}),
         });
       },
-      setProcessing(attachmentId, next) {
+      setProcessing(attachmentId: string, next: ProcessingStatus) {
         const rec = byId.get(attachmentId);
         if (!rec) return;
         byId.set(attachmentId, { ...rec, processingStatus: next });
