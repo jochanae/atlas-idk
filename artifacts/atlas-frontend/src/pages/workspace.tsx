@@ -4669,6 +4669,23 @@ export default function Workspace() {
   }, [id, conversationId, isTerminalRunStatus, latestRunKey, lazyPanels, queryClient]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
+  // Ownership fix: when LaunchModal (Live URL / Draft / Local Dev / Preview) is
+  // open it fully covers the chat surface, so chat-owned floating controls
+  // (search FAB, TimelineRail) must unmount rather than float over it.
+  // Broadcast a single overlay-state signal that TimelineRail listens for, and
+  // mirror it onto body[data-axiom-overlay] so late-mounted consumers respect
+  // it too.
+  useEffect(() => {
+    const active = launchModal.open;
+    try {
+      if (active) document.body.dataset.axiomOverlay = "1";
+      else delete document.body.dataset.axiomOverlay;
+    } catch {}
+    window.dispatchEvent(new CustomEvent("axiom:overlay-state", { detail: { active } }));
+    return () => {
+      try { delete document.body.dataset.axiomOverlay; } catch {}
+    };
+  }, [launchModal.open]);
   // Slice B: PreviewPanel is the single owner of selected mode and content.
   // It broadcasts axiom:preview-state-change; we store it so LaunchModal mirrors
   // PreviewPanel instead of independently resolving content.
