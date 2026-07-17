@@ -1101,14 +1101,22 @@ export function ViewChangesPanel({
     } catch {}
   };
 
-  const setRunFilter = (id: string) => {
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set("runId", id);
-      window.history.replaceState({}, "", url.toString());
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    } catch {}
-  };
+  // Collapse the composer while this surface is visible — the changes/timeline
+  // view is a stage artifact, not a place to start typing.
+  const claimId = useId();
+  const registerClaim = useShellStore((s) => s.registerComposerClaim);
+  const releaseClaim = useShellStore((s) => s.releaseComposerClaim);
+  const isMobile = useIsMobile();
+  useEffect(() => {
+    registerClaim(claimId, {
+      source: "stage",
+      kind: "view-changes",
+      visibility: isMobile ? "hidden" : "compact",
+    });
+    return () => releaseClaim(claimId);
+  }, [claimId, isMobile, registerClaim, releaseClaim]);
+
+
 
   return (
     <div style={{
