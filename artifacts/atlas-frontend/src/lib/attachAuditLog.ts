@@ -130,9 +130,10 @@ export function installAttachAudit(): void {
 
   window.__atlasAttachAudit = {
     get enabled() {
-      return isEnabled();
+      return runtimeEnabled;
     },
     set enabled(v: boolean) {
+      runtimeEnabled = Boolean(v);
       try {
         window.localStorage.setItem("atlas-attach-audit", v ? "1" : "0");
       } catch {
