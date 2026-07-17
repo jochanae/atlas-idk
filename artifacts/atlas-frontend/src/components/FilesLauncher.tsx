@@ -81,16 +81,16 @@ export function FilesLauncher() {
                   style={{
                     width: "100%", textAlign: "left", cursor: "pointer",
                     padding: "12px 14px",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.06)",
+                    background: "hsl(var(--muted) / 0.4)",
+                    border: "1px solid hsl(var(--border))",
                     borderRadius: 10,
-                    color: "var(--atlas-fg)", fontSize: 14,
+                    color: "hsl(var(--popover-foreground))", fontSize: 14,
                     fontFamily: "var(--app-font-sans)",
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                   }}
                 >
                   <span>{p.name}</span>
-                  <span style={{ color: "rgba(255,255,255,0.35)", fontFamily: "var(--app-font-mono)", fontSize: 10 }}>›</span>
+                  <span style={{ color: "hsl(var(--muted-foreground))", fontFamily: "var(--app-font-mono)", fontSize: 10 }}>›</span>
                 </button>
               </li>
             ))}
@@ -105,7 +105,7 @@ export function FilesLauncher() {
             style={{
               background: "transparent", border: "none", cursor: "pointer",
               fontFamily: "var(--app-font-mono)", fontSize: 10,
-              color: "rgba(255,255,255,0.5)", letterSpacing: "0.16em",
+              color: "hsl(var(--muted-foreground))", letterSpacing: "0.16em",
               padding: 0, marginBottom: 14, textTransform: "uppercase",
             }}
           >
@@ -138,7 +138,7 @@ function FileTree({
 
   if (isLoading) {
     return (
-      <div style={{ padding: "24px 8px", textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 12, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em" }}>
+      <div style={{ padding: "24px 8px", textAlign: "center", color: "hsl(var(--muted-foreground))", fontSize: 12, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em" }}>
         LOADING…
       </div>
     );
@@ -166,7 +166,7 @@ function FileTree({
       <div style={{
         fontFamily: "var(--app-font-mono)", fontSize: 9.5,
         letterSpacing: "0.22em", textTransform: "uppercase",
-        color: "rgba(255,255,255,0.4)", padding: "0 2px 8px",
+        color: "hsl(var(--muted-foreground))", padding: "0 2px 8px",
       }}>
         Workspace tree
       </div>
@@ -181,7 +181,7 @@ function FileTree({
           style={{
             padding: "8px 14px", borderRadius: 8, cursor: "pointer",
             background: "transparent",
-            border: "1px solid rgba(212,175,55,0.4)", color: "var(--atlas-gold)",
+            border: "1px solid rgba(212,175,55,0.4)", color: "var(--atlas-gold, #D4AF37)",
             fontFamily: "var(--app-font-mono)", fontSize: 10,
             fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
           }}
@@ -206,15 +206,17 @@ function TreeNode({ node, depth }: { node: FsNode; depth: number }) {
           paddingLeft: 8 + depth * 14,
           borderRadius: 6,
           cursor: isDir ? "pointer" : "default",
-          color: isDir ? "var(--atlas-fg)" : "rgba(255,255,255,0.7)",
+          color: isDir
+            ? "hsl(var(--popover-foreground))"
+            : "hsl(var(--popover-foreground) / 0.75)",
           fontFamily: "var(--app-font-mono)", fontSize: 12,
           background: "transparent",
         }}
       >
-        <span style={{ width: 12, color: "rgba(255,255,255,0.4)", fontSize: 10 }}>
+        <span style={{ width: 12, color: "hsl(var(--muted-foreground))", fontSize: 10 }}>
           {isDir ? (expanded ? "▾" : "▸") : ""}
         </span>
-        <span style={{ color: isDir ? "var(--atlas-gold)" : "rgba(59,130,246,0.85)", fontSize: 11 }}>
+        <span style={{ color: isDir ? "var(--atlas-gold, #D4AF37)" : "hsl(var(--primary))", fontSize: 11 }}>
           {isDir ? "▣" : "·"}
         </span>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -246,18 +248,18 @@ function EmptyState({
     }}>
       <div style={{
         width: 56, height: 56, borderRadius: 14,
-        background: "rgba(59,130,246,0.08)",
-        border: "1px solid rgba(59,130,246,0.18)",
+        background: "hsl(var(--primary) / 0.08)",
+        border: "1px solid hsl(var(--primary) / 0.18)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        color: "#3B82F6",
+        color: "hsl(var(--primary))",
       }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
         </svg>
       </div>
-      <div style={{ fontSize: 15, color: "var(--atlas-fg)", fontWeight: 500 }}>{title}</div>
+      <div style={{ fontSize: 15, color: "hsl(var(--popover-foreground))", fontWeight: 500 }}>{title}</div>
       <p style={{
-        margin: 0, fontSize: 13, color: "rgba(255,255,255,0.5)",
+        margin: 0, fontSize: 13, color: "hsl(var(--muted-foreground))",
         maxWidth: 360, lineHeight: 1.55,
       }}>{body}</p>
       {action && (
