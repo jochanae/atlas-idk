@@ -77,7 +77,7 @@ function isEnabled(): boolean {
   } catch {
     /* ignore */
   }
-  return Boolean(window.__atlasAttachAudit?.enabled);
+  return false;
 }
 
 export function attachAuditLog(
