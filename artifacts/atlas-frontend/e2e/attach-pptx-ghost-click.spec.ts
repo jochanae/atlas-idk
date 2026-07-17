@@ -75,8 +75,13 @@ test.describe("Ask Atlas PowerPoint attach ghost-click", () => {
       buffer: fs.readFileSync(pptxPath),
     });
 
-    await expect(page.locator('[aria-label="Remove attachment"]').first()).toBeVisible();
-    await expect(page.getByText("PPTX", { exact: true })).toBeVisible();
+    // Home + Ask Atlas composers can both render the chip; shield may cover them.
+    await expect
+      .poll(async () => page.locator('[aria-label="Remove attachment"]').count())
+      .toBeGreaterThanOrEqual(1);
+    await expect
+      .poll(async () => page.getByText("PPTX", { exact: true }).count())
+      .toBeGreaterThanOrEqual(1);
     await expect(page.locator("[data-atlas-ghost-shield]")).toHaveCount(1);
 
     const exit = page.locator('button[aria-label="Exit Ask Atlas"]');
@@ -89,10 +94,16 @@ test.describe("Ask Atlas PowerPoint attach ghost-click", () => {
 
     await expect(page.locator(".atlas-ask-atlas-scroll")).toBeVisible();
     await expect(page.locator("[data-msg-idx]")).toHaveCount(2);
-    await expect(page.locator('[aria-label="Remove attachment"]').first()).toBeVisible();
+    await expect
+      .poll(async () => page.locator('[aria-label="Remove attachment"]').count())
+      .toBeGreaterThanOrEqual(1);
 
     // After the document shield window, intentional Exit still works.
     await page.waitForTimeout(1500);
+    await expect(page.locator("[data-atlas-ghost-shield]")).toHaveCount(0);
+    await expect(
+      page.locator('[aria-label="Remove attachment"]').filter({ visible: true }).first(),
+    ).toBeVisible();
     await exit.click();
     await expect(page.locator(".atlas-ask-atlas-scroll")).toHaveCount(0);
   });

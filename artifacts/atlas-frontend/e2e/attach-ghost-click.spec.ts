@@ -75,7 +75,10 @@ test.describe("Ask Atlas attach ghost-click", () => {
 
     await page.setInputFiles("#ask-atlas-attach-input", pngPath);
 
-    await expect(page.locator('[aria-label="Remove attachment"]').first()).toBeVisible();
+    // Home + Ask Atlas composers can both render the chip; shield may cover them.
+    await expect
+      .poll(async () => page.locator('[aria-label="Remove attachment"]').count())
+      .toBeGreaterThanOrEqual(1);
     await expect(page.locator("[data-atlas-ghost-shield]")).toHaveCount(1);
 
     const exit = page.locator('button[aria-label="Exit Ask Atlas"]');
@@ -86,10 +89,17 @@ test.describe("Ask Atlas attach ghost-click", () => {
     // Surface + thread must survive the ghost tap.
     await expect(page.locator(".atlas-ask-atlas-scroll")).toBeVisible();
     await expect(page.locator("[data-msg-idx]")).toHaveCount(2);
-    await expect(page.locator('[aria-label="Remove attachment"]').first()).toBeVisible();
+    await expect
+      .poll(async () => page.locator('[aria-label="Remove attachment"]').count())
+      .toBeGreaterThanOrEqual(1);
 
     // Intentional exit still works after the shield expires.
     await page.waitForTimeout(500);
+    await expect(page.locator("[data-atlas-ghost-shield]")).toHaveCount(0);
+    // Prefer the visible Ask Atlas chip (home composer may keep a covered duplicate).
+    await expect(
+      page.locator('[aria-label="Remove attachment"]').filter({ visible: true }).first(),
+    ).toBeVisible();
     await exit.click();
     await expect(page.locator(".atlas-ask-atlas-scroll")).toHaveCount(0);
   });
