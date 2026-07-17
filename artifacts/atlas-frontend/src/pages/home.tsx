@@ -2374,7 +2374,7 @@ export default function Home() {
 
   const [threadLoading, setThreadLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
-  const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number }>>([]);
+  const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number; type?: "conversation" | "promoted"; projectId?: number; projectName?: string }>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showTimeTravel, setShowTimeTravel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
