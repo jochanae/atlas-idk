@@ -13,6 +13,7 @@ import "../renderers/xlsxRenderer";
 import "../renderers/mermaidRenderer";
 import "../renderers/chartRenderer";
 import "../renderers/htmlAppRenderer";
+// ↑ All seven renderer types are now registered and available to the agent tool.
 
 const HTML_STAGES = ["Preparing", "Building", "Styling", "Checking", "Ready"] as const;
 type HtmlStage = typeof HTML_STAGES[number];
@@ -23,13 +24,30 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
       "Generate a downloadable file-backed deliverable from the current conversation and save it to the project's Outputs. Use this whenever the user asks for a presentation/deck, document, spreadsheet, or web app/tool/widget to be created — never say you can't produce files. After success, tell the user it's in Outputs.",
     inputSchema: z.object({
       type: z
-        .enum(["pptx", "docx", "xlsx", "html-app"])
-        .describe("Deliverable format: pptx for a slide deck/presentation, docx for a document, xlsx for a spreadsheet, html-app for a complete self-contained interactive web app or tool."),
+        .enum(["pptx", "docx", "xlsx", "html-app", "pdf", "mermaid", "chart"])
+        .describe(
+          "Deliverable format: " +
+          "pptx — slide deck/presentation; " +
+          "docx — Word document; " +
+          "pdf — fixed-layout PDF document (printable, final-form reports and briefs); " +
+          "xlsx — spreadsheet with data; " +
+          "html-app — complete self-contained interactive web app or tool (HTML+CSS+JS, runs instantly in browser); " +
+          "mermaid — structured diagram (flowchart, sequence, or architecture) rendered as Mermaid source; " +
+          "chart — bar/line/pie chart from quantitative data in the conversation, rendered as SVG."
+        ),
       title: z.string().optional().describe("Optional title for the deliverable."),
       docType: z
         .string()
         .optional()
-        .describe("Optional sub-type hint for the renderer, e.g. 'deck', 'brief', 'one-pager'."),
+        .describe("Optional sub-type hint for the renderer, e.g. 'deck', 'brief', 'one-pager', 'executive-summary'."),
+      diagramType: z
+        .enum(["flowchart", "sequence", "architecture"])
+        .optional()
+        .describe("For type='mermaid' only: the kind of diagram to generate. Defaults to 'flowchart' if omitted."),
+      chartType: z
+        .enum(["bar", "line", "pie"])
+        .optional()
+        .describe("For type='chart' only: the chart style. Defaults to 'bar' if omitted."),
       focus: z
         .string()
         .optional()
@@ -39,7 +57,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
         .optional()
         .describe("Optional explicit visual style instruction. Only pass if the user asked for a specific look."),
     }),
-    execute: async ({ type, title, docType, focus, style }) => {
+    execute: async ({ type, title, docType, diagramType, chartType, focus, style }) => {
       const started = performance.now();
       ctx.emitToolCall("generate_deliverable", { type, title, docType });
 
@@ -128,7 +146,17 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           sessionId: null,
           type,
           sourceMessageId: ctx.messageId ?? null,
-          input: { context, title, docType, projectId: ctx.projectId, styleOverride: resolvedStyle, onStage },
+          input: {
+            context,
+            title,
+            docType,
+            projectId: ctx.projectId,
+            styleOverride: resolvedStyle,
+            onStage,
+            // Renderer-specific hints (ignored by renderers that don't use them)
+            diagramType,
+            chartType,
+          },
         });
 
         // ── Ready ─────────────────────────────────────────────────────────────

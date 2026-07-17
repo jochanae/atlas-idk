@@ -2788,16 +2788,28 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   systemPrompt += `\n\n--- DELIVERABLE GENERATION CAPABILITY (always true — do not contradict this) ---
 You CAN generate real, downloadable files by calling the generate_deliverable tool. This is a real server-side capability — the tool produces an actual file and returns a download link in Workspace → Outputs.
 
-Supported types:
-- pptx — PowerPoint slide deck / presentation
-- docx — Word document
-- xlsx — Spreadsheet
-- html-app — A complete, self-contained interactive web app or tool (HTML + CSS + JS in one file, runs in a browser immediately)
+Supported types and when to choose each:
+- pptx — PowerPoint slide deck / presentation / pitch deck
+- docx — Word document: narrative plans, briefs, write-ups, strategy docs
+- pdf — Fixed-layout PDF: polished final-form reports, executive briefs, printable deliverables. Use when the user asks for a PDF explicitly or needs a print-ready document.
+- xlsx — Spreadsheet: tabular data, timelines, schedules, trackers, comparisons
+- html-app — A complete self-contained interactive web app or tool (HTML+CSS+JS in one file, runs in a browser immediately)
+- mermaid — Structured diagram: flowcharts, architecture diagrams, sequence diagrams, dependency maps, process flows. Pass diagramType: "flowchart" | "sequence" | "architecture".
+- chart — Bar, line, or pie chart from quantitative data in the conversation, rendered as SVG. Pass chartType: "bar" | "line" | "pie". Only use when there is actual numeric data to visualize.
 
-CRITICAL: If the user asks to BUILD a web app, tool, widget, dashboard, timer, game, calculator, or any interactive experience — call generate_deliverable with type "html-app" THIS TURN. Do not describe what you will build and then stop. Do not say "Building it now" without actually calling the tool. Build it by calling the tool immediately.
+ROUTING RULES — apply intent, not just keywords:
+- "build/make/create a [web] app/tool/widget/dashboard/game/calculator/timer" → html-app
+- "presentation/deck/slides/pitch" → pptx
+- "document/write-up/plan/brief/summary" → docx (narrative) or pdf (final/printable)
+- "spreadsheet/tracker/schedule/timeline/owners/milestones" → xlsx
+- "diagram/flowchart/architecture/sequence/flow/dependencies" → mermaid
+- "chart/graph/visualize [data]" → chart (only if numbers exist in conversation)
+- "project plan" → typically docx (narrative) + xlsx (schedule) — you can call generate_deliverable twice in one turn
+
+CRITICAL: If the user asks to BUILD a web app, tool, widget, dashboard, timer, game, calculator, or any interactive experience — call generate_deliverable with type "html-app" THIS TURN. Do not describe what you will build and then stop. Build it by calling the tool immediately.
 
 Never tell the user you "can't generate files" or that it's a "hard capability limit" — that is false. You have this tool right now.
-If the user asks for a deck, doc, spreadsheet, or web app: say you'll generate it, then actually call generate_deliverable this turn.
+If the user asks for a deliverable: say you'll generate it, then actually call generate_deliverable this turn.
 Do not substitute a text-only outline or script for the user to run themselves — call the tool and produce the real artifact.
 If tools are not enabled on this specific turn, say plainly that you'll generate it on the next turn and follow through.
 If generate_deliverable is called and returns an error, report the actual failure honestly — never reinterpret a tool failure as "I don't have this capability at all."
@@ -3385,14 +3397,21 @@ WHAT YOU HAVE ACCESS TO:
 - Project files (file tree injected above if available)
 - Project memory, ledger decisions, DNA, Application Model — all injected above
 - FILE_EDIT: propose file writes for the local workspace (see BUILD PROTOCOLS for the exact block format)
-- generate_deliverable: create real downloadable files from this conversation — PowerPoint (.pptx), Word (.docx), spreadsheet (.xlsx), or a complete self-contained web app (.html) — they appear in Workspace → Outputs
+- generate_deliverable: create real downloadable files — pptx (deck), docx (document), pdf (fixed-layout report), xlsx (spreadsheet), html-app (interactive web app), mermaid (flowchart/architecture/sequence diagram), chart (bar/line/pie SVG from numeric data) — all appear in Workspace → Outputs
 - BROWSER_VISIT: visit public URLs for live checks, competitor research (unauthenticated)
 - run_browser_flow: run authenticated browser verification against the live app — launches Chromium, asserts element/text visibility across DESKTOP and MOBILE viewport profiles, returns per-profile pass/fail with screenshots. Use when asked to "verify", "check", or "confirm" any UI state or page behavior.
-- IMAGE_GEN: generate mockups or diagrams on request
+- IMAGE_GEN: generate mockups, sketches, or visual concepts on request (inline image in chat, not a file)
 
 WHEN GENERATING FILES:
-- If the user asks for a deck, presentation, slides, document, write-up, or spreadsheet → call generate_deliverable with the matching type. Never say you can't create files.
-- If the user asks to BUILD a web app, tool, timer, dashboard, widget, game, calculator, or any interactive experience → call generate_deliverable with type "html-app" immediately. Do NOT just describe the plan — call the tool this turn.
+- deck/presentation/slides/pitch → generate_deliverable type "pptx"
+- document/write-up/brief/plan (narrative) → type "docx"
+- PDF/printable/final-form report → type "pdf"
+- spreadsheet/tracker/schedule/timeline → type "xlsx"
+- web app/tool/widget/game/dashboard/calculator/timer → type "html-app" immediately, do NOT just describe
+- flowchart/architecture/sequence/dependency diagram → type "mermaid" with appropriate diagramType
+- chart/graph/visualize numeric data → type "chart" with appropriate chartType
+- project plan → call generate_deliverable twice: "docx" for narrative + "xlsx" for schedule/owners
+- Never say you can't create files. Never substitute a text outline for the actual artifact.
 - After success, tell them it's in Outputs. Keep the prose short; the UI shows an inline card + Outputs entry.
 
 WHAT YOU SHOULD NOT DO:
