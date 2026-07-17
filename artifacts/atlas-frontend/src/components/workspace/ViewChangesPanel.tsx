@@ -1250,13 +1250,6 @@ export function ViewChangesPanel({
       )}
 
 
-      <WorkspaceRunReceipts
-        projectId={projectId}
-        projectName={projectName?.trim() || "Workspace"}
-        runId={runId}
-        onSelectRun={setRunFilter}
-        conversationId={conversationId}
-      />
 
       {/* ── Centered segmented toggle: Timeline · Changes ── */}
       <div style={{
