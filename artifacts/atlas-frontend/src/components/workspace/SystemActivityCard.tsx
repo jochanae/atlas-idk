@@ -109,66 +109,49 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
     : previewUrl;
 
   const accent = "var(--atlas-gold, rgba(201,162,76,0.9))";
+  // Softer border so the card reads as a light timeline event, not a framed
+  // notification panel. Latest still gets a subtle gold hint.
   const border = isLatest
     ? `1px solid ${accent}`
-    : "1px solid rgba(var(--atlas-border-rgb,80,80,80),0.45)";
+    : "1px solid hsl(var(--border) / 0.55)";
   const shadow = isLatest
-    ? `0 0 0 1px rgba(201,162,76,0.18)`
+    ? `0 0 0 1px rgba(201,162,76,0.14)`
     : "none";
-
-  const openUrl = (url?: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  // Details stays inside Atlas. Opens the workspace Changes tab scoped to this
-  // commit SHA via the axiom:open-changes event (same channel as run cards).
-  const canOpenDetails = !!item.sha;
-  const openDetails = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!item.sha) return;
-    window.dispatchEvent(new CustomEvent("axiom:open-changes", {
-      detail: { commitSha: item.sha, lens: "changes" },
-    }));
-  };
 
   return (
     <div
       style={{
         display: "flex", flexDirection: "column",
-        width: "min(100%, 400px)",
+        // Narrower card + horizontal inset so it sits as an object on the page
+        // rather than edge-to-edge.
+        width: "min(calc(100% - 24px), 380px)",
         alignSelf: "flex-start",
-        // Each commit is an independent timeline event — not a sibling in a
-        // grouped GitHub block. Use conversation-level vertical rhythm so
-        // consecutive commits read as separate events, matching the gap
-        // between user/assistant messages.
-        margin: "20px 0 24px",
+        margin: "20px 12px 24px",
         background: "hsl(var(--card))",
         border,
         boxShadow: shadow,
-        borderRadius: 8,
+        // Softer, more editorial corner — premium but not pillowy.
+        borderRadius: 18,
         overflow: "hidden",
         boxSizing: "border-box",
       }}
     >
-      {/* Header row */}
+      {/* Header row — title inset from card edges */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 8,
-        padding: "12px 12px 0",
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "18px 20px 0",
       }}>
         <GitHubMark size={13} color="hsl(var(--card-foreground))" />
         <span style={{
           flex: 1, minWidth: 0,
-          fontSize: 12, lineHeight: 1.35, color: "hsl(var(--card-foreground))",
+          fontSize: 13, lineHeight: 1.4, color: "hsl(var(--card-foreground))",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {item.title}
         </span>
         <span style={{
-          fontSize: 9, fontFamily: "var(--app-font-mono)",
-          color: "hsl(var(--muted-foreground))", opacity: 0.7, flexShrink: 0,
+          fontSize: 10, fontFamily: "var(--app-font-mono)",
+          color: "hsl(var(--muted-foreground))", opacity: 0.65, flexShrink: 0,
         }}>
           {relTime(item.timestamp)}
         </span>
@@ -176,8 +159,8 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
 
       {/* Actions */}
       <div style={{
-        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8,
-        padding: "12px",
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10,
+        padding: "14px 20px 18px",
         marginTop: "auto",
       }}>
         <button
@@ -186,12 +169,12 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           disabled={!canOpenDetails}
           title={canOpenDetails ? "Open changes for this commit" : "No commit reference"}
           style={{
-            padding: "8px 10px",
+            padding: "9px 12px",
             background: "transparent",
-            border: "1px solid hsl(var(--border))",
-            borderRadius: 6,
+            border: "1px solid hsl(var(--border) / 0.6)",
+            borderRadius: 10,
             color: canOpenDetails ? "hsl(var(--card-foreground))" : "hsl(var(--muted-foreground))",
-            fontSize: 11, cursor: canOpenDetails ? "pointer" : "not-allowed",
+            fontSize: 12, cursor: canOpenDetails ? "pointer" : "not-allowed",
             fontFamily: "inherit",
           }}
         >
@@ -203,12 +186,12 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
           disabled={!commitUrl}
           title={commitUrl ? "Open commit on GitHub" : ""}
           style={{
-            padding: "8px 10px",
+            padding: "9px 12px",
             background: "transparent",
-            border: "1px solid hsl(var(--border))",
-            borderRadius: 6,
+            border: "1px solid hsl(var(--border) / 0.6)",
+            borderRadius: 10,
             color: commitUrl ? "hsl(var(--card-foreground))" : "hsl(var(--muted-foreground))",
-            fontSize: 11, cursor: commitUrl ? "pointer" : "not-allowed",
+            fontSize: 12, cursor: commitUrl ? "pointer" : "not-allowed",
             fontFamily: "inherit",
             display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
           }}
