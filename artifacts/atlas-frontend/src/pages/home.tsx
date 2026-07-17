@@ -6492,14 +6492,16 @@ export default function Home() {
         .atlas-overview-sheet-layer {
           position: fixed;
           inset: 0;
-          z-index: 220;
+          /* Must sit above the home composer stack (z: 250-260) so its
+             controls don't bleed through the scrim or sheet content. */
+          z-index: 400;
           display: flex;
           align-items: flex-end;
         }
         .atlas-overview-scrim {
           position: absolute;
           inset: 0;
-          background: rgba(0,0,0,0.72);
+          background: hsl(var(--background) / 0.82);
           backdrop-filter: blur(6px);
           -webkit-backdrop-filter: blur(6px);
         }
@@ -6507,13 +6509,14 @@ export default function Home() {
           position: relative;
           width: 100%;
           height: 55dvh;
-          background: #0a0a0c;
-          border: 1px solid var(--atlas-border);
+          background: hsl(var(--card));
+          color: hsl(var(--card-foreground));
+          border: 1px solid hsl(var(--border));
           border-bottom: none;
           border-radius: 20px 20px 0 0;
           display: flex;
           flex-direction: column;
-          box-shadow: 0 -24px 60px rgba(0,0,0,0.7);
+          box-shadow: 0 -24px 60px hsl(var(--background) / 0.55);
           transition: height 280ms cubic-bezier(0.4,0,0.2,1);
           animation: atlasOverviewSheetUp 300ms ease-out both;
         }
