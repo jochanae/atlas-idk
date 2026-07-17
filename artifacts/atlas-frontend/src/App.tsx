@@ -55,9 +55,14 @@ const queryClient = new QueryClient({
 });
 
 // ── Error Boundary ────────────────────────────────────────────────────────────
+// Auto-recovers from transient render errors (e.g. an unexpected attachment
+// preview crash) by resetting state and surfacing a toast — the user should
+// never see a fullscreen "boot" screen from a single bad interaction.
+// A repeated crash within a short window falls back to the fullscreen state.
 interface ErrorBoundaryState { hasError: boolean; message: string }
 
 class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  private recentErrors: number[] = [];
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false, message: "" };
@@ -66,11 +71,26 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     return { hasError: true, message: err instanceof Error ? err.message : String(err) };
   }
   componentDidCatch(err: unknown) {
-    attachAuditLog(
-      "error_boundary",
-      { message: err instanceof Error ? err.message : String(err) },
-      "global",
-    );
+    const message = err instanceof Error ? err.message : String(err);
+    attachAuditLog("error_boundary", { message }, "global");
+    try { console.error("[error-boundary]", err); } catch { /* ignore */ }
+
+    const now = Date.now();
+    this.recentErrors = this.recentErrors.filter((t) => now - t < 10_000);
+    this.recentErrors.push(now);
+
+    // If we're not looping (<3 crashes in 10s), auto-recover with a toast.
+    if (this.recentErrors.length < 3) {
+      // Best-effort dynamic import to avoid pulling sonner into the boundary
+      // module graph if it's already tree-shaken elsewhere.
+      import("sonner")
+        .then(({ toast }) => {
+          try { toast.error("Something went wrong — please try again."); } catch { /* ignore */ }
+        })
+        .catch(() => { /* ignore */ });
+      // Reset on next tick so React re-renders the tree.
+      setTimeout(() => this.setState({ hasError: false, message: "" }), 0);
+    }
   }
   render() {
     if (!this.state.hasError) return this.props.children;
@@ -107,6 +127,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     );
   }
 }
+
 
 
 // ── Page Transition Spinner ───────────────────────────────────────────────────

@@ -20,6 +20,11 @@ import {
 } from "lucide-react";
 import SketchComposerSheet from "./SketchComposerSheet";
 import { attachAuditLog } from "@/lib/attachAuditLog";
+import { toast } from "sonner";
+
+// Per-file upload cap. Bigger files are rejected with a toast instead of
+// being handed to the base64 encoder (which can OOM the tab on mobile).
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
 
 
 export type ComposerMenuAction =
@@ -197,23 +202,49 @@ export function ComposerActions({
   }, [showPlus, showMore]);
 
   function pickFiles(files: FileList | null) {
+    const surface = scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared";
     if (!files || files.length === 0) {
-      attachAuditLog("file_selected", { count: 0, cancelled: true }, scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared");
+      attachAuditLog("file_selected", { count: 0, cancelled: true }, surface);
       return;
     }
     const list = Array.from(files);
+
+    // Filter oversized files up-front and toast the user rather than letting
+    // downstream base64 conversion throw and crash the composer.
+    const accepted: File[] = [];
+    const rejected: string[] = [];
+    for (const f of list) {
+      if (f.size > MAX_FILE_BYTES) rejected.push(f.name);
+      else accepted.push(f);
+    }
+    if (rejected.length > 0) {
+      const label = rejected.length === 1
+        ? `${rejected[0]} is too large (20MB max).`
+        : `${rejected.length} files skipped — 20MB max per file.`;
+      try { toast.error(label); } catch { /* ignore */ }
+    }
+
     attachAuditLog(
       "file_selected",
       {
-        count: list.length,
-        names: list.map((f) => f.name),
-        types: list.map((f) => f.type),
-        sizes: list.map((f) => f.size),
+        count: accepted.length,
+        rejected: rejected.length,
+        names: accepted.map((f) => f.name),
+        types: accepted.map((f) => f.type),
+        sizes: accepted.map((f) => f.size),
       },
-      scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared",
+      surface,
     );
-    onFiles(list);
+
+    if (accepted.length === 0) return;
+    try {
+      onFiles(accepted);
+    } catch (err) {
+      try { toast.error("Couldn't attach those files. Please try again."); } catch { /* ignore */ }
+      try { console.error("[composer] onFiles failed", err); } catch { /* ignore */ }
+    }
   }
+
 
   const visiblePrimary = PRIMARY_ITEMS.filter((i) => hasProjectContext || !i.projectOnly);
   const visibleMore = MORE_ITEMS.filter((i) => !globalContext || !i.workspaceOnly);
