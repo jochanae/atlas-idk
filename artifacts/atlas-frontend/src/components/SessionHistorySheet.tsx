@@ -146,7 +146,10 @@ export function SessionHistorySheet({
             {emptyHint}
           </div>
         ) : (
-          sorted.map((s) => (
+          sorted.map((s) => {
+            const isPromoted = s.kind === "promoted" && typeof s.projectId === "number";
+            const displayTitle = isPromoted ? (s.projectName || s.title) : s.title;
+            return (
             <div
               key={s.id}
               style={{
@@ -166,23 +169,63 @@ export function SessionHistorySheet({
                   flex: 1, minWidth: 0,
                   background: "transparent", border: "none", padding: 0,
                   cursor: "pointer", textAlign: "left", color: "inherit",
+                  display: "flex", alignItems: "center", gap: 10,
                 }}
               >
-                <div style={{
-                  fontSize: "var(--ts-body)",
-                  color: s.active ? "var(--atlas-gold)" : "var(--atlas-fg)",
-                  marginBottom: 2,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}>
-                  {s.title || "Untitled thread"}
-                </div>
-                <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
-                  {(s.msgCount ?? 0)} msg{relTime(s.timestamp) ? ` · ${relTime(s.timestamp)}` : ""}
-                </div>
+                <span
+                  aria-hidden
+                  style={{
+                    flexShrink: 0,
+                    width: 22, height: 22, borderRadius: 6,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    color: isPromoted ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    background: isPromoted
+                      ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+                      : "transparent",
+                    border: isPromoted
+                      ? "1px solid color-mix(in oklab, var(--atlas-gold) 25%, transparent)"
+                      : "1px solid transparent",
+                  }}
+                >
+                  {isPromoted ? (
+                    // briefcase
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="7" width="20" height="14" rx="2" />
+                      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  ) : (
+                    // chat bubble
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                  )}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: "var(--ts-body)",
+                    color: s.active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                    marginBottom: 2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {displayTitle || "Untitled thread"}
+                  </div>
+                  <div style={{
+                    fontSize: "var(--ts-micro)",
+                    color: isPromoted ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    opacity: isPromoted ? 0.85 : 1,
+                    fontFamily: "var(--app-font-mono)",
+                    letterSpacing: isPromoted ? "0.06em" : undefined,
+                    textTransform: isPromoted ? "uppercase" : undefined,
+                  }}>
+                    {isPromoted
+                      ? `Promoted to Workspace${relTime(s.timestamp) ? ` · ${relTime(s.timestamp)}` : ""} →`
+                      : `${(s.msgCount ?? 0)} msg${relTime(s.timestamp) ? ` · ${relTime(s.timestamp)}` : ""}`}
+                  </div>
+                </span>
               </button>
-              {onDelete && (
+              {onDelete && !isPromoted && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); void onDelete(s.id); }}
@@ -209,7 +252,8 @@ export function SessionHistorySheet({
                 </button>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
