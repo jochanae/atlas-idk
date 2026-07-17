@@ -104,6 +104,8 @@
     "zustand": "^5.0.13"
   },
   "dependencies": {
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1"
   }
