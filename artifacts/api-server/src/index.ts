@@ -1450,36 +1450,37 @@ async function ensureColumns(): Promise<void> {
   }
 
   try {
-    // Data migration: delete orphaned rows with no user (should never happen, but fence it).
+    // Data migration: delete orphaned rows with no Nexus parent.
+    // These are pre-B3 rows that were inserted without a nexus_message_id.
+    // Must run before adding the FK so no NULL-parent rows remain.
     const deleted = await db.execute(sql`
       DELETE FROM message_attachments
-      WHERE user_id IS NULL
+      WHERE nexus_message_id IS NULL
     `);
     if ((deleted as any).rowCount > 0) {
-      logger.info({ count: (deleted as any).rowCount }, "ensureColumns: deleted null-user attachment rows");
+      logger.info({ count: (deleted as any).rowCount }, "ensureColumns: deleted null-nexus-parent attachment rows");
     }
   } catch (err) {
-    logger.warn({ err }, "ensureColumns: message_attachments null-user cleanup failed — non-fatal");
+    logger.warn({ err }, "ensureColumns: message_attachments null-nexus-parent cleanup failed — non-fatal");
   }
 
   try {
-    // Data migration: mark ghost rows (nexus_message_id references deleted messages) as failed.
-    // These are the 18 retired-bucket rows from the pre-B3 attachment system.
+    // Data migration: mark all rows in the retired 'chat-attachments' bucket as failed.
+    // These rows reference objects that no longer exist; they must not be treated as
+    // uploaded. Identified by bucket name, not by orphaned FK, because their
+    // nexus_message_id FK references are still valid.
     const marked = await db.execute(sql`
-      UPDATE message_attachments ma
+      UPDATE message_attachments
       SET    upload_status = 'failed',
              upload_error_code = 'RETIRED_BUCKET'
-      WHERE  ma.nexus_message_id IS NOT NULL
-        AND  ma.upload_status <> 'failed'
-        AND  NOT EXISTS (
-               SELECT 1 FROM nexus_messages nm WHERE nm.id = ma.nexus_message_id
-             )
+      WHERE  storage_bucket = 'chat-attachments'
+        AND  upload_status <> 'failed'
     `);
     if ((marked as any).rowCount > 0) {
-      logger.info({ count: (marked as any).rowCount }, "ensureColumns: marked ghost attachment rows as failed");
+      logger.info({ count: (marked as any).rowCount }, "ensureColumns: marked retired-bucket attachment rows as failed");
     }
   } catch (err) {
-    logger.warn({ err }, "ensureColumns: message_attachments ghost-row migration failed — non-fatal");
+    logger.warn({ err }, "ensureColumns: message_attachments retired-bucket migration failed — non-fatal");
   }
 
   try {

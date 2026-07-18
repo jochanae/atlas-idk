@@ -5533,32 +5533,6 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     }
     // ── end server-driven auto-advance ───────────────────────────────────────
 
-    // ── B3.2: Await attachment uploads and emit final attachment_ack events ───
-    // Awaited here so ack events always arrive BEFORE done. Capped at 30 s to
-    // avoid blocking the response if GCS is slow (uploads update DB regardless).
-    if (_attachmentPersistenceInputs.length > 0) {
-      try {
-        const finalAcks = await Promise.race([
-          attachmentPersistencePromise,
-          new Promise<AttachmentAckPayload[]>((resolve) =>
-            setTimeout(() => resolve([]), 30_000),
-          ),
-        ]);
-        for (const ack of finalAcks) {
-          // Only emit if this ack wasn't already sent as a pending_upload ack
-          if (
-            !res.writableEnded &&
-            !res.destroyed &&
-            ack.status !== "pending_upload"
-          ) {
-            res.write(`event: attachment_ack\ndata: ${JSON.stringify(ack)}\n\n`);
-          }
-        }
-      } catch (ackErr) {
-        req.log.warn({ err: ackErr }, "nexus: attachment_ack finalization failed — non-fatal");
-      }
-    }
-
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.
     // Send done immediately — HUD clears now regardless of image generation speed.
@@ -5656,6 +5630,31 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
       db.update(sessionsTable).set({ ideaMode: false }).where(eq(sessionsTable.id, sessionId)).catch((err: unknown) => {
         logger.warn({ err }, "ideaMode unset on COMMIT failed — non-fatal");
       });
+    }
+
+    // ── B3.2: Emit final attachment_ack events AFTER done ────────────────────
+    // Runs after done so the model response is visible and the composer is
+    // unblocked immediately. The underlying DB write (pending→uploaded/failed)
+    // is independent of this await — it continues even if the race timeout fires
+    // or the client disconnects. The 30 s cap only limits how long we hold the
+    // SSE connection open waiting to deliver the ack; the upload itself is not
+    // cancelled. If the timeout fires, the ack is recoverable via B3.3 hydration.
+    if (_attachmentPersistenceInputs.length > 0) {
+      try {
+        const finalAcks = await Promise.race([
+          attachmentPersistencePromise,
+          new Promise<AttachmentAckPayload[]>((resolve) =>
+            setTimeout(() => resolve([]), 30_000),
+          ),
+        ]);
+        for (const ack of finalAcks) {
+          if (!res.writableEnded && !res.destroyed && ack.status !== "pending_upload") {
+            res.write(`event: attachment_ack\ndata: ${JSON.stringify(ack)}\n\n`);
+          }
+        }
+      } catch (ackErr) {
+        req.log.warn({ err: ackErr }, "nexus: attachment_ack finalization — non-fatal");
+      }
     }
 
     // Generate image AFTER done — client keeps the connection open for this event.

@@ -941,16 +941,20 @@ export function useNexusChatStream(
             resetStreamState();
           },
           onAttachmentAck: (ack) => {
-            // Store attachment acks on the user message so B3.3 can enrich the
-            // optimistic chip with a content URL once the storage route exists.
-            // Only apply to non-pending_upload acks (final status updates).
+            // Store attachment acks on the USER message (id = `user-${streamingId}`)
+            // so B3.3 can look up the durable row id by clientAttachmentId and
+            // enrich the attachment chip with a content URL.
+            // Skip pending_upload — only final-status acks (uploaded | failed) matter here.
             if (ack.status === "pending_upload") return;
+            const userMsgId = `user-${streamingId}`;
             setMessages(prev => prev.map(m =>
-              (m as any).id === streamingId
+              (m as any).id === userMsgId
                 ? {
                     ...m,
                     attachmentAcks: [
-                      ...((m as any).attachmentAcks ?? []),
+                      ...((m as any).attachmentAcks ?? []).filter(
+                        (a: typeof ack) => a.clientAttachmentId !== ack.clientAttachmentId
+                      ),
                       ack,
                     ],
                   }
