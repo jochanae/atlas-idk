@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, projectArtifactsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
+import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, projectArtifactsTable, messageAttachmentsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
@@ -103,6 +103,7 @@ import {
   type AttachmentAckPayload,
   type IncomingAttachment,
 } from "../lib/attachmentPersistence";
+import { objectStorageClient, parseObjectPath } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -1831,6 +1832,66 @@ async function persistNexusExecutionRun(args: {
   }
 }
 
+// GET /api/attachments/:id/content — authenticated attachment download (B3.3)
+// Streams the stored object bytes directly. No storage bucket/path exposed to the browser.
+router.get("/attachments/:id/content", async (req, res): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+    const attachmentId = req.params.id;
+
+    const [row] = await db
+      .select({
+        userId: messageAttachmentsTable.userId,
+        uploadStatus: messageAttachmentsTable.uploadStatus,
+        storagePath: messageAttachmentsTable.storagePath,
+        mimeType: messageAttachmentsTable.mimeType,
+        filename: messageAttachmentsTable.filename,
+      })
+      .from(messageAttachmentsTable)
+      .where(eq(messageAttachmentsTable.id, attachmentId))
+      .limit(1);
+
+    if (!row) { res.status(404).json({ error: "Not found" }); return; }
+    if (row.userId !== userId) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (row.uploadStatus !== "uploaded") { res.status(410).json({ error: "Not available" }); return; }
+
+    // Reconstruct the full GCS path from the stored /objects/... path
+    const storagePath = row.storagePath;
+    if (!storagePath.startsWith("/objects/")) {
+      res.status(500).json({ error: "Invalid storage path" }); return;
+    }
+    const entityId = storagePath.slice("/objects/".length);
+    const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+    if (!privateObjectDir) {
+      logger.warn({}, "attachments/content: PRIVATE_OBJECT_DIR not set");
+      res.status(500).json({ error: "Storage not configured" }); return;
+    }
+    const dir = privateObjectDir.endsWith("/") ? privateObjectDir : `${privateObjectDir}/`;
+    const objectEntityPath = `${dir}${entityId}`;
+    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    const [exists] = await file.exists();
+    if (!exists) { res.status(404).json({ error: "Object not found in storage" }); return; }
+
+    const [metadata] = await file.getMetadata();
+    res.setHeader("Content-Type", row.mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(row.filename)}"`);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    if (metadata.size) res.setHeader("Content-Length", String(metadata.size));
+
+    const nodeStream = file.createReadStream();
+    nodeStream.pipe(res);
+    nodeStream.on("error", (streamErr) => {
+      logger.warn({ err: streamErr }, "attachments/content: stream error");
+      if (!res.headersSent) res.status(500).json({ error: "Stream error" });
+    });
+  } catch (err: any) {
+    logger.warn({ err }, "attachments/content: failed");
+    if (!res.headersSent) res.status(500).json({ error: "Failed to retrieve attachment" });
+  }
+});
+
 // GET /api/nexus/thread — return a conversation thread (optionally scoped by conversationId)
 router.get("/nexus/thread", async (req, res): Promise<void> => {
   try {
@@ -2019,6 +2080,48 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
       logger.warn({ err }, "nexus/thread: failed to hydrate run ids — continuing without receipt anchors");
     }
 
+    // B3.3: hydrate uploaded attachments for user messages, ordered by message_position
+    const userMessageIds = messages.filter(m => m.role === "user").map(m => m.id);
+    const attachmentsByMessageId = new Map<number, Array<{
+      id: string;
+      contentUrl: string;
+      mediaType: string;
+      name: string;
+      messagePosition: number;
+    }>>();
+    if (userMessageIds.length > 0) {
+      try {
+        const attRows = await db
+          .select({
+            id: messageAttachmentsTable.id,
+            nexusMessageId: messageAttachmentsTable.nexusMessageId,
+            mimeType: messageAttachmentsTable.mimeType,
+            filename: messageAttachmentsTable.filename,
+            messagePosition: messageAttachmentsTable.messagePosition,
+          })
+          .from(messageAttachmentsTable)
+          .where(and(
+            inArray(messageAttachmentsTable.nexusMessageId, userMessageIds),
+            eq(messageAttachmentsTable.uploadStatus, "uploaded"),
+          ))
+          .orderBy(asc(messageAttachmentsTable.messagePosition), asc(messageAttachmentsTable.createdAt));
+        for (const att of attRows) {
+          if (att.nexusMessageId == null) continue;
+          const list = attachmentsByMessageId.get(att.nexusMessageId) ?? [];
+          list.push({
+            id: att.id,
+            contentUrl: `/api/attachments/${att.id}/content`,
+            mediaType: att.mimeType,
+            name: att.filename,
+            messagePosition: att.messagePosition ?? list.length,
+          });
+          attachmentsByMessageId.set(att.nexusMessageId, list);
+        }
+      } catch (attErr) {
+        logger.warn({ err: attErr }, "nexus/thread: failed to hydrate attachments — continuing without");
+      }
+    }
+
     res.json(messages.map((m) => {
       const runMeta = runMetaByMessageId.get(m.id) ?? null;
       const mutationSteps = runMeta?.steps.filter((s) =>
@@ -2053,6 +2156,10 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
         ...(fileEdits.length > 0 ? { fileEdits, fileEdit: fileEdits[0] } : {}),
         ...(linePatches.length > 0 ? { linePatches } : {}),
         ...(fileDeletes.length > 0 ? { fileDeletes } : {}),
+        // B3.3: hydrated attachment objects for user messages (contentUrl, no base64)
+        ...(m.role === "user" && attachmentsByMessageId.has(m.id)
+          ? { attachments: attachmentsByMessageId.get(m.id) }
+          : {}),
         executionTimeMs: null,
         inputTokens: null,
         outputTokens: null,

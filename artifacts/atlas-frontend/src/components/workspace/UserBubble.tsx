@@ -46,7 +46,7 @@ export function UserBubble({
   sentAt?: string;
   imageB64?: string;
   imageMimeType?: string;
-  attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
+  attachments?: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string }>;
   onCopy: () => void;
   onEdit: () => void;
 }) {

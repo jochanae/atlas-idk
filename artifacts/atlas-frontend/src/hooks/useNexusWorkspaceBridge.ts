@@ -32,6 +32,7 @@ type ThreadMessage = {
   imageGen?: NexusMessage["imageGen"] | null;
   decisionArtifacts?: NexusMessage["decisionArtifacts"] | null;
   generatedArtifacts?: NexusMessage["generatedArtifacts"] | null;
+  attachments?: Array<{ id: string; contentUrl: string; mediaType: string; name?: string; messagePosition: number }>;
 };
 
 function threadMessageToNexus(m: ThreadMessage): NexusMessage {
@@ -50,6 +51,7 @@ function threadMessageToNexus(m: ThreadMessage): NexusMessage {
     imageGen: m.imageGen ?? null,
     decisionArtifacts: m.decisionArtifacts ?? null,
     generatedArtifacts: m.generatedArtifacts ?? null,
+    ...(m.attachments && m.attachments.length > 0 ? { attachments: m.attachments } : {}),
   };
 }
 

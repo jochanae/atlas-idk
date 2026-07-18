@@ -82,7 +82,7 @@ export interface NexusMessage {
   imageMimeType?: string;
   pendingSketch?: boolean;
   sketchFailed?: boolean;
-  attachments?: Array<{ base64: string; mediaType: string; name?: string; clientAttachmentId?: string }>;
+  attachments?: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string; clientAttachmentId?: string }>;
   /** Attachment persistence acks received from the server via attachment_ack SSE events. */
   attachmentAcks?: Array<{ id: string; clientAttachmentId: string | null; status: string; errorCode?: string }>;
   imageGen?: {
@@ -378,7 +378,7 @@ export function useNexusChatStream(
     text: string;
     imageBase64?: string;
     imageMimeType?: string;
-    attachments?: Array<{ base64: string; mediaType: string; name?: string; clientAttachmentId?: string }>;
+    attachments?: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string; clientAttachmentId?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
     extraBody?: Record<string, unknown>;
   }): { clientMessageId: string; accepted: Promise<void>; completed: Promise<void> } | undefined => {
@@ -386,13 +386,13 @@ export function useNexusChatStream(
     // imgAttachments = images only (used for imageUrl preview in optimistic message + legacy fields).
     // docAttachments = PDFs and other non-image files Atlas can read as documents.
     // allFileAttachments = everything sent to the backend.
-    const imgAttachments: Array<{ base64: string; mediaType: string; name?: string; clientAttachmentId?: string }> =
+    const imgAttachments: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string; clientAttachmentId?: string }> =
       (attachments && attachments.length > 0)
         ? attachments.filter((a) => a.mediaType?.startsWith("image/"))
         : (imageBase64
             ? [{ base64: imageBase64, mediaType: imageMimeType || "image/png" }]
             : []);
-    const docAttachments: Array<{ base64: string; mediaType: string; name?: string; clientAttachmentId?: string }> =
+    const docAttachments: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string; clientAttachmentId?: string }> =
       (attachments && attachments.length > 0)
         ? attachments.filter((a) => !a.mediaType?.startsWith("image/"))
         : [];
@@ -469,7 +469,7 @@ export function useNexusChatStream(
       ...(allFileAttachments.length > 0
         ? {
             attachments: allFileAttachments,
-            ...(firstImg ? { imageUrl: `data:${firstImg.mediaType};base64,${firstImg.base64}` } : {}),
+            ...(firstImg?.base64 ? { imageUrl: `data:${firstImg.mediaType};base64,${firstImg.base64}` } : {}),
           }
         : {}),
     };

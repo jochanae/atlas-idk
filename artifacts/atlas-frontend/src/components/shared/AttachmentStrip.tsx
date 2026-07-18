@@ -27,7 +27,7 @@ export interface AttachmentStripStagedProps {
 
 export interface AttachmentStripSentProps {
   mode: "sent";
-  attachments: ReadonlyArray<{ base64: string; mediaType: string; name?: string }>;
+  attachments: ReadonlyArray<{ base64?: string; contentUrl?: string; mediaType: string; name?: string }>;
 }
 
 export type AttachmentStripProps = AttachmentStripStagedProps | AttachmentStripSentProps;
@@ -65,7 +65,9 @@ export function AttachmentStrip(props: AttachmentStripProps) {
   const { attachments } = props;
   if (attachments.length === 0) return null;
   const lbAtt = lightboxIdx !== null ? attachments[lightboxIdx] : null;
-  const lbUrl = lbAtt ? `data:${lbAtt.mediaType};base64,${lbAtt.base64}` : null;
+  const lbUrl = lbAtt
+    ? (lbAtt.contentUrl ?? (lbAtt.base64 ? `data:${lbAtt.mediaType};base64,${lbAtt.base64}` : null))
+    : null;
 
   return (
     <>
@@ -81,7 +83,8 @@ export function AttachmentStrip(props: AttachmentStripProps) {
       >
         {attachments.map((att, idx) => {
           const isImage = att.mediaType.startsWith("image/");
-          const url = `data:${att.mediaType};base64,${att.base64}`;
+          const url = att.contentUrl ?? (att.base64 ? `data:${att.mediaType};base64,${att.base64}` : null);
+          if (isImage && !url) return null;
           const solo = attachments.length === 1;
           return (
             <div
@@ -108,7 +111,7 @@ export function AttachmentStrip(props: AttachmentStripProps) {
                   }}
                 >
                   <img
-                    src={url}
+                    src={url!}
                     alt={att.name ?? "Attached image"}
                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                   />

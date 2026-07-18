@@ -340,7 +340,7 @@ export interface ChatMessage {
   sentAt?: string;
   imageB64?: string;
   imageMimeType?: string;
-  attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
+  attachments?: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string }>;
   autoFetchedFiles?: string[];
   model?: string;
   modelUsed?: string | null;
