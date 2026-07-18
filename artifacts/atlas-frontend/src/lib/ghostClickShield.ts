@@ -9,7 +9,6 @@
  * a short shield would have expired. Track picker-pending across visibility
  * returns and re-arm a longer shield when the page comes back.
  */
-import { attachAuditLog } from "@/lib/attachAuditLog";
 
 /** Default shield after a quick gallery-style picker interaction. */
 export const GHOST_SHIELD_DEFAULT_MS = 450;
@@ -28,15 +27,6 @@ let visibilityHooked = false;
 function block(ev: Event) {
   ev.preventDefault();
   ev.stopPropagation();
-  try {
-    attachAuditLog(
-      "ghost_click_blocked",
-      { type: ev.type, reason: activeShield?.dataset.atlasGhostShield ?? "unknown" },
-      "global",
-    );
-  } catch {
-    /* ignore */
-  }
 }
 
 const BLOCKED_EVENTS = [
@@ -103,21 +93,11 @@ export function markPickerPending(reason: string = "picker_open"): void {
   pickerPending = true;
   setPendingStorage(true);
   ensureVisibilityHook();
-  try {
-    attachAuditLog("picker_pending", { pending: true, reason }, "global");
-  } catch {
-    /* ignore */
-  }
 }
 
 export function clearPickerPending(): void {
   pickerPending = false;
   setPendingStorage(false);
-  try {
-    attachAuditLog("picker_pending", { pending: false }, "global");
-  } catch {
-    /* ignore */
-  }
 }
 
 /** Office / document-like files need a longer post-select shield. */
@@ -154,7 +134,6 @@ export function installGhostClickShield(
     if (activeTimer) clearTimeout(activeTimer);
     activeShield.dataset.atlasGhostShield = reason;
     activeTimer = setTimeout(removeGhostClickShield, ms);
-    attachAuditLog("ghost_click_shield", { reason, ms, refreshed: true }, "global");
     return;
   }
 
@@ -176,7 +155,6 @@ export function installGhostClickShield(
   document.body.appendChild(shield);
   activeShield = shield;
   activeTimer = setTimeout(removeGhostClickShield, ms);
-  attachAuditLog("ghost_click_shield", { reason, ms, refreshed: false }, "global");
 }
 
 export function removeGhostClickShield(): void {

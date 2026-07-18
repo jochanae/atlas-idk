@@ -14,7 +14,6 @@ import { useThemeMode } from "@/lib/theme";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
 import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
-import { attachAuditLog } from "@/lib/attachAuditLog";
 // CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
 
 
@@ -313,26 +312,6 @@ export function ChatComposer(props: ChatComposerProps) {
 
   
 
-  useEffect(() => {
-    attachAuditLog("component_mount", { component: "ChatComposer" }, "workspace");
-    return () => attachAuditLog("component_unmount", { component: "ChatComposer" }, "workspace");
-  }, []);
-
-  useEffect(() => {
-    attachAuditLog(
-      "composer_rerendered",
-      { inputLen: input.length, attached: attachedFiles.length, inputFocused },
-      "workspace",
-    );
-  }, [input, attachedFiles.length, inputFocused]);
-
-  useEffect(() => {
-    attachAuditLog(
-      "attachment_state_updated",
-      { count: attachedFiles.length, names: attachedFiles.map((f) => f.name) },
-      "workspace",
-    );
-  }, [attachedFiles]);
 
   // When the project is empty, focus the composer so Atlas feels "already in the room".
   // Skip on mobile to avoid yanking the keyboard up uninvited.
@@ -759,7 +738,6 @@ export function ChatComposer(props: ChatComposerProps) {
                 onChange={(e) => {
                   setInput(e.target.value);
                   autoResize();
-                  attachAuditLog("text_changed", { len: e.target.value.length }, "workspace");
                 }}
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}

@@ -80,18 +80,6 @@ export function useRequireAuth() {
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!isLoading && !user) {
-      try {
-        // Dynamic import avoids circular deps with attachAudit at module init.
-        void import("@/lib/attachAuditLog").then(({ attachAuditLog }) => {
-          attachAuditLog(
-            "router_navigation",
-            { method: "useRequireAuth", to: "/login", reason: "no_user" },
-            "global",
-          );
-        });
-      } catch {
-        /* ignore */
-      }
       navigate("/login");
     }
   }, [user, isLoading, navigate]);

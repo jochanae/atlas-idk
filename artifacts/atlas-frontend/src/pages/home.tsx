@@ -59,7 +59,6 @@ import { useShellStore } from "../store/shellStore";
 import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { AskAtlasFocusSheet } from "@/components/AskAtlasFocusSheet";
-import { LibraryAttachmentsBar } from "@/components/LibraryAttachmentsBar";
 import { LibraryBrowseSheet } from "@/components/library/LibraryBrowseSheet";
 import { SpeakButton } from "@/components/workspace/SpeakButton";
 import {
@@ -74,7 +73,6 @@ import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
-import { attachAuditLog } from "@/lib/attachAuditLog";
 import {
   clearAskAtlasComposerDraft,
   getAskAtlasComposerDraft,
@@ -1821,15 +1819,6 @@ export default function Home() {
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
 
   useEffect(() => {
-    attachAuditLog(
-      "draft_init",
-      {
-        inputLen: input.length,
-        fileCount: attachedFiles.length,
-        fromStore: getAskAtlasComposerDraft().files.length > 0 || getAskAtlasComposerDraft().input.length > 0,
-      },
-      "ask-atlas",
-    );
     // Restore staged files (e.g. PowerPoint) after Android Documents hard-reload.
     let cancelled = false;
     void hydrateAskAtlasComposerDraft().then((restored) => {
@@ -1837,24 +1826,10 @@ export default function Home() {
       if (restored.input && !input) setInput(restored.input);
       if (restored.files.length > 0) {
         setAttachedFiles((prev) => (prev.length > 0 ? prev : restored.files));
-        attachAuditLog(
-          "draft_hydrated",
-          {
-            inputLen: restored.input.length,
-            fileCount: restored.files.length,
-            names: restored.files.map((f) => f.name),
-          },
-          "ask-atlas",
-        );
       }
     });
     return () => {
       cancelled = true;
-      attachAuditLog(
-        "draft_cleanup",
-        { inputLen: input.length, fileCount: attachedFiles.length },
-        "ask-atlas",
-      );
     };
     // Mount/unmount only — intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2028,39 +2003,6 @@ export default function Home() {
     askAtlasSession.setConversationId(conversationId);
   };
 
-  // Library attachments for the active Ask Atlas conversation. Truth of record
-  // is server-side (`GET /api/conversations/:id/context`); we refetch whenever
-  // the conversation id changes or after an attach/detach so the composer
-  // subheader and the Library sheet stay in sync across refresh + surface.
-  const [libraryAttachments, setLibraryAttachments] = useState<LibraryContextItem[]>([]);
-  const [libraryDetachBusyId, setLibraryDetachBusyId] = useState<string | null>(null);
-  const refreshLibraryAttachments = useCallback(async (conversationIdOverride?: string | null) => {
-    const conversationId = conversationIdOverride ?? askAtlasConversationId;
-    if (!conversationId) { setLibraryAttachments([]); return; }
-    try {
-      setLibraryAttachments(await fetchLibraryConversationContext(conversationId));
-    } catch {
-      // Non-fatal — leave existing chips in place so a transient failure
-      // does not silently claim the user has nothing attached.
-    }
-  }, [askAtlasConversationId]);
-  useEffect(() => { void refreshLibraryAttachments(); }, [refreshLibraryAttachments]);
-  const libraryAttachedIds = useMemo(
-    () => new Set(libraryAttachments.map(i => i.id)),
-    [libraryAttachments],
-  );
-  const handleLibraryDetach = useCallback(async (item: LibraryContextItem) => {
-    if (!askAtlasConversationId) return;
-    setLibraryDetachBusyId(item.id);
-    try {
-      await detachLibraryContextItem(item.id, askAtlasConversationId);
-      await refreshLibraryAttachments();
-    } catch {
-      // Keep chip visible; the next refresh will reconcile.
-    } finally {
-      setLibraryDetachBusyId(null);
-    }
-  }, [askAtlasConversationId, refreshLibraryAttachments]);
 
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
@@ -3300,20 +3242,16 @@ export default function Home() {
       let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
       if (filesToConvert.length > 0) {
         try {
-          attachAuditLog("file_read_started", { count: filesToConvert.length }, "ask-atlas");
           askAtlasAttachments = await Promise.all(
             filesToConvert.slice(0, 10).map(async (f) => {
               const safe = await fileToBase64Safe(f);
               return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
             })
           );
-          attachAuditLog("file_read_completed", { count: askAtlasAttachments.length }, "ask-atlas");
-          attachAuditLog("send_attachments_included", { count: askAtlasAttachments.length }, "ask-atlas");
-        } catch (err) {
-          attachAuditLog("file_read_failed", { error: String(err) }, "ask-atlas");
+        } catch {
+          // drop files if conversion fails
         }
       }
-      attachAuditLog("send_started", { textLen: text.length, fileCount: filesToConvert.length }, "ask-atlas");
       void askAtlasChat.send({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
         submitInFlightRef.current = false;
       });
@@ -4810,7 +4748,6 @@ export default function Home() {
                           const cid = activeConversationId ?? askAtlasConversationId ?? null;
                           setFocusSheetTab("library");
                           setFocusSheetConversationId(cid);
-                          void refreshLibraryAttachments(cid);
                           setShowFocusPicker(true);
                         }}
                         title="Saved documents"
@@ -5006,7 +4943,6 @@ export default function Home() {
                                       const cid = activeConversationId ?? askAtlasConversationId ?? null;
                                       setFocusSheetTab("library");
                                       setFocusSheetConversationId(cid);
-                                      void refreshLibraryAttachments(cid);
                                       setShowFocusPicker(true);
                                       return;
                                     }
@@ -5345,11 +5281,6 @@ export default function Home() {
                   toast("Max 10 items at a time");
                 }
                 setAttachedFiles(combined);
-                attachAuditLog(
-                  "attachment_state_updated",
-                  { count: combined.length, names: combined.map((f) => f.name), source: "home-file-input" },
-                  "ask-atlas",
-                );
                 e.target.value = "";
               }}
               onClick={(e) => e.stopPropagation()}
@@ -5403,7 +5334,6 @@ export default function Home() {
                     const cid = askAtlasSurfaceVisible ? askAtlasConversationId : activeConversationId;
                     setFocusSheetTab("projects");
                     setFocusSheetConversationId(cid);
-                    void refreshLibraryAttachments(cid);
                     setShowFocusPicker(true);
                   }}
                   style={{
@@ -5645,11 +5575,6 @@ export default function Home() {
                 onClick={(e) => {
                   e.stopPropagation();
                   if (isPickerPending()) {
-                    attachAuditLog(
-                      "surface_exit_blocked",
-                      { reason: "picker_pending", control: "ask_atlas_toggle" },
-                      "ask-atlas",
-                    );
                     return;
                   }
                   if (askAtlasSurfaceOpen) {
@@ -6076,11 +6001,6 @@ export default function Home() {
           const combined = [...attachedFiles, ...files].slice(0, 10);
           if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
           setAttachedFiles(combined);
-          attachAuditLog(
-            "attachment_state_updated",
-            { count: combined.length, names: combined.map((f) => f.name) },
-            "ask-atlas",
-          );
         }}
         onSketch={(prompt) => { void askAtlasChat.send({ text: prompt }); }}
         onSend={(text) => { void askAtlasChat.send({ text }); }}
@@ -6095,20 +6015,7 @@ export default function Home() {
         }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-        subheader={libraryAttachments.length > 0 ? (
-          <LibraryAttachmentsBar
-            items={libraryAttachments}
-            busyId={libraryDetachBusyId}
-            onDetach={handleLibraryDetach}
-            onOpen={() => {
-              // Open the Library sheet on the currently-active Ask Atlas
-              // conversation so the user can view/download/preview the item.
-              setFocusSheetConversationId(askAtlasConversationId ?? activeConversationId);
-              setFocusSheetTab("library");
-              setShowFocusPicker(true);
-            }}
-          />
-        ) : null}
+        subheader={null}
         focusLensChip={focusLensChipRef.current}
         focusChip={
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -6129,18 +6036,8 @@ export default function Home() {
                 // Documents/PPTX picker return can outlive the overlay shield;
                 // refuse Exit while a native picker is still settling.
                 if (isPickerPending()) {
-                  attachAuditLog(
-                    "surface_exit_blocked",
-                    { reason: "picker_pending", control: "exit_chip" },
-                    "ask-atlas",
-                  );
                   return;
                 }
-                attachAuditLog(
-                  "surface_exit",
-                  { reason: "exit_chip_click", msgCount: askAtlasChat.messages.length },
-                  "ask-atlas",
-                );
                 askAtlasSession.markClosed();
                 askAtlasSession.setSurfaceOpen(false);
                 setAskAtlasSurfaceOpen(false);
@@ -6199,8 +6096,8 @@ export default function Home() {
         onSelectAllProjects={handleHomeFocusAllProjects}
         onSelectProject={handleHomeFocusSelect}
         conversationId={focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId}
-        attachedIds={libraryAttachedIds}
-        onAttachmentsChange={() => { void refreshLibraryAttachments(focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId); }}
+        attachedIds={new Set()}
+        onAttachmentsChange={() => {}}
         onOpenConversation={(conversationId, meta) => {
           setShowFocusPicker(false);
           setFocusSheetConversationId(null);
@@ -6225,7 +6122,6 @@ export default function Home() {
         onClose={() => {
           setShowFocusPicker(false);
           setFocusSheetConversationId(null);
-          void refreshLibraryAttachments(askAtlasConversationId);
         }}
       />
 

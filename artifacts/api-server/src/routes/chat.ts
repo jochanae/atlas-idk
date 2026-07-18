@@ -44,7 +44,6 @@ import {
   updateContractRunIntent,
   type ContractRunCtx,
 } from "../lib/chatContractBridge";
-import { linkAttachmentsToMessage, resolveAttachmentIdsForModel } from "../lib/attachmentResolve";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3136,20 +3135,9 @@ router.post("/chat", async (req, res): Promise<void> => {
   const buildMode = Boolean(body.buildMode);
 
   const isFoundationMode = !body.projectId;
-  const attachmentIds = Array.isArray(body.attachmentIds)
-    ? [...new Set(body.attachmentIds.filter((id): id is string => typeof id === "string" && id.length > 0))]
-    : [];
   const legacyAttachments = Array.isArray(body.attachments) ? body.attachments : [];
-  if (legacyAttachments.some((a) => a && typeof a.url === "string" && a.url.length > 0)) {
-    res.status(400).json({ error: "Client-supplied attachment URLs are not accepted. Use attachmentIds." });
-    return;
-  }
-  if (process.env.ATTACHMENTS_PERSISTENCE === "true" && legacyAttachments.length > 0) {
-    res.status(400).json({ error: "Legacy attachments payload disabled. Use attachmentIds." });
-    return;
-  }
 
-  if ((!body.sessionId && !isFlowMode && !isFoundationMode) || (!body.message && !legacyAttachments.length && attachmentIds.length === 0)) {
+  if ((!body.sessionId && !isFlowMode && !isFoundationMode) || (!body.message && !legacyAttachments.length)) {
     res.status(400).json({ error: "Missing required fields: sessionId (or foundation mode), message" });
     return;
   }
@@ -3190,26 +3178,8 @@ router.post("/chat", async (req, res): Promise<void> => {
     asText?: boolean;
     textContent?: string;
   };
-  let resolvedIdAttachments: ModelAttachment[] = [];
-  if (attachmentIds.length > 0) {
-    if (!userId) {
-      res.write(`data: ${JSON.stringify({ type: "done", content: "Please sign in to use persisted attachments.", error: true })}\n\n`);
-      res.end();
-      return;
-    }
-    const { resolved, skipped } = await resolveAttachmentIdsForModel({ userId, attachmentIds });
-    logger.info({ userId, attachmentIds, resolved: resolved.length, skipped }, "chat: resolved attachmentIds for model");
-    resolvedIdAttachments = resolved.map((r) => ({
-      base64: r.base64,
-      mediaType: r.mediaType,
-      name: r.name,
-      asText: r.asText,
-      textContent: r.textContent,
-    }));
-  }
-  // Normalise: id-resolved first, then legacy imageData/imageMimeType + attachments.
+  // Normalise: legacy inline-base64 attachments + single-image fields.
   const allAttachments: ModelAttachment[] = [
-    ...resolvedIdAttachments,
     ...legacyAttachments
       .filter((a): a is { base64: string; mediaType: string; name?: string } =>
         typeof a?.base64 === "string" && typeof a?.mediaType === "string",
@@ -3218,23 +3188,6 @@ router.post("/chat", async (req, res): Promise<void> => {
     ...(legacyBase64 && legacyMimeType ? [{ base64: legacyBase64, mediaType: legacyMimeType }] : []),
   ];
   let savedUserMessageId: number | null = null;
-  const attachmentConversationId = sessionId ? `ws-${sessionId}` : null;
-  const linkChatAttachments = async (chatMessageId: number | null) => {
-    if (!userId || attachmentIds.length === 0 || !chatMessageId) return;
-    try {
-      await linkAttachmentsToMessage({
-        userId,
-        attachmentIds,
-        conversationId: attachmentConversationId,
-        surface: "ask_atlas",
-        projectId: projectId || null,
-        chatMessageId,
-      });
-      logger.info({ userId, attachmentIds, chatMessageId, conversationId: attachmentConversationId }, "chat: linked attachments to user message");
-    } catch (linkErr) {
-      logger.warn({ err: linkErr, attachmentIds, chatMessageId }, "chat: attachment linkage failed — non-fatal");
-    }
-  };
 
   // ── V1.2 Contract bridge — CHAT run lifecycle ────────────────────────────────
   // Best-effort: errors are caught inside beginContractRun and never propagate.

@@ -43,7 +43,6 @@ import ActivatePage from "./pages/activate";
 import TokenBridge from "./pages/token-bridge";
 import { useAuth } from "@/hooks/useAuth";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { attachAuditLog } from "@/lib/attachAuditLog";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,7 +71,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   }
   componentDidCatch(err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    attachAuditLog("error_boundary", { message }, "global");
     try { console.error("[error-boundary]", err); } catch { /* ignore */ }
 
     const now = Date.now();

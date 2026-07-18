@@ -2,8 +2,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
-import { isAttachmentFlagOn } from "@/lib/attachments/flags";
-import { uploadInlineAttachments } from "@/lib/attachments/adapter";
 
 import { pushHudEvent } from "@/lib/hudBus";
 
@@ -276,8 +274,6 @@ export interface UseNexusChatStreamReturn {
     imageBase64?: string;
     imageMimeType?: string;
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
-    /** Pre-uploaded attachment IDs — skips the upload step entirely when provided. */
-    attachmentIds?: string[];
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
     /** Extra fields merged into the backend POST body — used for resume flags
      *  such as _resumeRunId and _approvedPlanVersion. */
@@ -372,7 +368,6 @@ export function useNexusChatStream(
     imageBase64,
     imageMimeType,
     attachments,
-    attachmentIds,
     overrideOptions,
     extraBody,
   }: {
@@ -380,8 +375,6 @@ export function useNexusChatStream(
     imageBase64?: string;
     imageMimeType?: string;
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
-    /** Pre-uploaded attachment IDs — skips the upload step entirely when provided. */
-    attachmentIds?: string[];
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
     extraBody?: Record<string, unknown>;
   }) => {
@@ -497,15 +490,6 @@ export function useNexusChatStream(
       onProjectReady?.(doneData);
     };
 
-    // If attachment persistence is on, resolve IDs — prefer pre-uploaded IDs (no latency)
-    // over the inline upload path (upload-on-send latency).
-    let resolvedAttachmentIds: string[] = [];
-    if (attachmentIds && attachmentIds.length > 0) {
-      resolvedAttachmentIds = attachmentIds;
-    } else if (isAttachmentFlagOn("attachments.persistence") && allFileAttachments.length > 0) {
-      resolvedAttachmentIds = await uploadInlineAttachments(allFileAttachments);
-    }
-
     try {
       await stream({
         endpoint: "/api/nexus/chat",
@@ -520,9 +504,7 @@ export function useNexusChatStream(
           runId: turnRunId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
           ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
-          ...(resolvedAttachmentIds.length > 0
-            ? { attachmentIds: resolvedAttachmentIds }
-            : allFileAttachments.length > 0
+          ...(allFileAttachments.length > 0
             ? {
                 attachments: allFileAttachments,
                 ...(firstImg ? { imageBase64: firstImg.base64, imageMimeType: firstImg.mediaType } : {}),

@@ -12,7 +12,7 @@ const router = Router();
 
 router.get("/capabilities", (_req, res) => {
   res.json({
-    attachmentPersistence: process.env.ATTACHMENTS_PERSISTENCE === "true",
+    
   });
 });
 

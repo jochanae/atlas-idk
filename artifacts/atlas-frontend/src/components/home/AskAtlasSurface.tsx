@@ -11,7 +11,6 @@
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { attachAuditLog } from "@/lib/attachAuditLog";
 
 // Strips the most visually jarring raw-markdown syntax during streaming so the
 // user doesn't see **asterisks** and ## hashes for the full response duration.
@@ -276,19 +275,6 @@ export function AskAtlasSurface({
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [dismissedNavIdx, setDismissedNavIdx] = useState<Set<number>>(new Set());
   const isTiny = useIsTinyMobile();
-
-  useEffect(() => {
-    attachAuditLog("component_mount", { component: "AskAtlasSurface" }, "ask-atlas");
-    return () => attachAuditLog("component_unmount", { component: "AskAtlasSurface" }, "ask-atlas");
-  }, []);
-
-  useEffect(() => {
-    attachAuditLog(
-      "composer_rerendered",
-      { inputLen: input.length, attached: attachedFiles.length, focused },
-      "ask-atlas",
-    );
-  }, [input, attachedFiles.length, focused]);
 
   // Manage object URLs for image previews
   useEffect(() => { ensureComposerAuraCSS(); }, []);
@@ -1225,7 +1211,6 @@ export function AskAtlasSurface({
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
-                attachAuditLog("text_changed", { len: e.target.value.length }, "ask-atlas");
               }}
               onKeyDown={handleKey}
               onFocus={() => setFocused(true)}

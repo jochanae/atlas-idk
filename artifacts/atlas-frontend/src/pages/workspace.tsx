@@ -89,10 +89,7 @@ import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
-import { attachAuditLog } from "@/lib/attachAuditLog";
-import { filesToNexusAttachments, uploadPersistentAttachments } from "@/lib/composerAttachments";
-import { isAttachmentFlagOn } from "@/lib/attachments/flags";
-import { useAttachmentPreUpload } from "@/hooks/useAttachmentPreUpload";
+
 import { reportError } from "../lib/errorReporter";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
@@ -4470,7 +4467,6 @@ export default function Workspace() {
     fileInputRef,
   } = useComposerDraft();
 
-  const { getPreUploadedIds } = useAttachmentPreUpload(attachedFiles);
 
   // Pre-fill composer from ?msg= param set by project creation with an initial thought
   useEffect(() => {
@@ -7390,31 +7386,7 @@ export default function Workspace() {
     // Reset the URL preview after send so it doesn't persist to the next message
     if (urlData) dismissUrl();
 
-    if (isAttachmentFlagOn("attachments.persistence") && files.length > 0) {
-      const upload = await uploadPersistentAttachments(files);
-      const realFailures = upload.rejected.filter((x) => !x.reason.startsWith("Only "));
-      if (realFailures.length > 0) {
-        toast.error(
-          `Could not upload ${realFailures.map((x) => x.fileName).join(", ")}. Check your connection and try again.`,
-        );
-        return;
-      }
-      if (upload.rejected.length > 0) {
-        toast.warning(
-          `${upload.rejected.length} file(s) skipped: ${upload.rejected.map((x) => x.reason).join("; ")}`,
-        );
-      }
-      doSend(fullText, sid, current, combinedCtx, undefined, { ...sendOpts, attachmentIds: upload.attachmentIds });
-    } else if (imageFiles.length > 0) {
-      filesToNexusAttachments(imageFiles)
-        .then((attachments) => doSend(fullText, sid, current, combinedCtx, [...(urlAttachment ? [urlAttachment] : []), ...attachments], sendOpts))
-        .catch(() => {
-          const fallbackText = fullText || `[Attached: ${imageFiles.map(f => f.name).join(", ")}]`;
-          doSend(fallbackText, sid, current, combinedCtx, urlAttachment ? [urlAttachment] : undefined, sendOpts);
-        });
-    } else {
-      doSend(fullText, sid, current, combinedCtx, urlAttachment ? [urlAttachment] : undefined, sendOpts);
-    }
+    doSend(fullText, sid, current, combinedCtx, urlAttachment ? [urlAttachment] : undefined, sendOpts);
   };
 
   const doSendFromComposer = useCallback((...args: Parameters<typeof doSend>) => {
@@ -9367,59 +9339,15 @@ export default function Workspace() {
                 liveStep: nexusBridge.liveStep,
                 messages: nexusBridge.messages,
                 doSend: ((text: string) => {
-                  void (async () => {
-                    const files = attachedFiles;
-                    attachAuditLog("send_started", { textLen: text.length, fileCount: files.length }, "workspace");
-                    if (files.length > 0) {
-                      setAttachedFiles([]);
-                      const preIds = isAttachmentFlagOn("attachments.persistence") ? getPreUploadedIds(files) : null;
-                      if (preIds) {
-                        attachAuditLog("send_attachments_preloaded", { count: preIds.length }, "workspace");
-                        nexusBridge.send(text || "(attachment)", undefined, preIds);
-                      } else {
-                        let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-                        try {
-                          attachments = await filesToNexusAttachments(files);
-                          attachAuditLog("send_attachments_included", { count: attachments.length }, "workspace");
-                        } catch (err) {
-                          attachAuditLog("send_attachments_dropped", { reason: String(err) }, "workspace");
-                        }
-                        nexusBridge.send(text, attachments);
-                      }
-                    } else {
-                      nexusBridge.send(text);
-                    }
-                    try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
-                  })();
+                  nexusBridge.send(text);
+                  try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
                 }) as ChatComposerProps["doSend"],
                 handleSend: (() => {
-                  void (async () => {
-                    const text = (input ?? "").trim();
-                    const files = attachedFiles;
-                    if (!text && files.length === 0) return;
-                    attachAuditLog("send_started", { textLen: text.length, fileCount: files.length }, "workspace");
-                    setInput("");
-                    setAttachedFiles([]);
-                    if (files.length > 0) {
-                      const preIds = isAttachmentFlagOn("attachments.persistence") ? getPreUploadedIds(files) : null;
-                      if (preIds) {
-                        attachAuditLog("send_attachments_preloaded", { count: preIds.length }, "workspace");
-                        nexusBridge.send(text || "(attachment)", undefined, preIds);
-                      } else {
-                        let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-                        try {
-                          attachments = await filesToNexusAttachments(files);
-                          attachAuditLog("send_attachments_included", { count: attachments.length }, "workspace");
-                        } catch (err) {
-                          attachAuditLog("send_attachments_dropped", { reason: String(err) }, "workspace");
-                        }
-                        nexusBridge.send(text, attachments);
-                      }
-                    } else {
-                      nexusBridge.send(text);
-                    }
-                    try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
-                  })();
+                  const text = (input ?? "").trim();
+                  if (!text) return;
+                  setInput("");
+                  nexusBridge.send(text);
+                  try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
                 }) as ChatComposerProps["handleSend"],
                 onAbort: () => nexusBridge.abort(),
               } : {}),

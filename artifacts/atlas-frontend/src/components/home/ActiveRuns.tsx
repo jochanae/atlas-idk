@@ -13,8 +13,6 @@ import { useLocation } from "wouter";
 import { X, ChevronDown, Paperclip, ArrowRight, Loader, GitPullRequest, ChevronUp, FileCode, Terminal } from "lucide-react";
 import type { QuickEditProjectOption } from "./QuickEditRow";
 import { toast } from "sonner";
-import { isAttachmentFlagOn } from "@/lib/attachments/flags";
-import { uploadPersistentAttachments } from "@/lib/composerAttachments";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -288,7 +286,6 @@ async function _startRun(
   run: Omit<ActiveRun, "status" | "sessionId" | "completedAt">,
   attachmentPayload: {
     attachments?: Array<{ base64: string; mediaType: string; name: string }>;
-    attachmentIds?: string[];
   }
 ): Promise<void> {
   const initial: ActiveRun = {
@@ -327,11 +324,9 @@ async function _startRun(
         message: run.prompt,
         history: [],
         entries: [],
-        ...(attachmentPayload.attachmentIds?.length
-          ? { attachmentIds: attachmentPayload.attachmentIds }
-          : attachmentPayload.attachments?.length
-            ? { attachments: attachmentPayload.attachments }
-            : {}),
+        ...(attachmentPayload.attachments?.length
+          ? { attachments: attachmentPayload.attachments }
+          : {}),
         ...modeFlags,
       }),
     });
@@ -688,29 +683,11 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
 
     try {
       // BUILD → background run with live streaming + automatic file apply
-      let attachmentPayload: { attachments?: Array<{ base64: string; mediaType: string; name: string }>; attachmentIds?: string[] };
-      if (isAttachmentFlagOn("attachments.persistence") && attachments.length > 0) {
-        const r = await uploadPersistentAttachments(attachments);
-        const realFailures = r.rejected.filter((x) => !x.reason.startsWith("Only "));
-        if (realFailures.length > 0) {
-          toast.error(
-            `Could not upload ${realFailures.map((x) => x.fileName).join(", ")}. Check your connection and try again.`,
-          );
-          return;
-        }
-        if (r.rejected.length > 0) {
-          toast.warning(
-            `${r.rejected.length} file(s) skipped: ${r.rejected.map((x) => x.reason).join("; ")}`,
-          );
-        }
-        attachmentPayload = { attachmentIds: r.attachmentIds };
-      } else {
-        attachmentPayload = {
-          attachments: attachments.length > 0
-            ? await Promise.all(attachments.map(fileToBase64))
-            : [],
-        };
-      }
+      const attachmentPayload: { attachments?: Array<{ base64: string; mediaType: string; name: string }> } = {
+        attachments: attachments.length > 0
+          ? await Promise.all(attachments.map(fileToBase64))
+          : [],
+      };
 
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const project = projects.find((p) => p.id === projectId);

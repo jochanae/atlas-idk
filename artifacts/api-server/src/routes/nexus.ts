@@ -25,10 +25,7 @@ import { findSemanticTensionsForProject } from "./tensions";
 import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
 import { loadConversationLibraryContext } from "../lib/library";
-import {
-  resolveAttachmentIdsForModel,
-  linkAttachmentsToMessage,
-} from "../lib/attachmentResolve";
+
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
@@ -2275,29 +2272,11 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   };
 
   const userId = (req as any).authUser.id as number;
-  const attachmentIds = Array.isArray(body.attachmentIds)
-    ? [...new Set(body.attachmentIds.filter((id): id is string => typeof id === "string" && id.length > 0))]
-    : [];
   const legacyAttachments = Array.isArray(body.attachments) ? body.attachments : [];
-
-  // Never accept client-supplied signed URLs as trusted input.
-  if (legacyAttachments.some((a) => a && typeof a.url === "string" && a.url.length > 0)) {
-    res.status(400).json({
-      error: "Client-supplied attachment URLs are not accepted. Use attachmentIds.",
-    });
-    return;
-  }
-  // When persistence flag is on in prod/staging, reject the legacy inline payload.
-  if (process.env.ATTACHMENTS_PERSISTENCE === "true" && legacyAttachments.length > 0) {
-    res.status(400).json({
-      error: "Legacy attachments payload disabled. Use attachmentIds.",
-    });
-    return;
-  }
 
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
   const textInput = (body.message ?? body.text)?.trim() ?? "";
-  if (!textInput && !hasImage && attachmentIds.length === 0) {
+  if (!textInput && !hasImage && legacyAttachments.length === 0) {
     res.status(400).json({ error: "message is required" });
     return;
   }
@@ -2327,29 +2306,8 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     textContent?: string;
   };
 
-  // Resolve attachmentIds → bytes server-side (ownership-checked). Never trust client URLs.
-  let resolvedIdAttachments: ModelAttachment[] = [];
-  if (attachmentIds.length > 0) {
-    const { resolved, skipped } = await resolveAttachmentIdsForModel({
-      userId,
-      attachmentIds,
-    });
-    logger.info(
-      { userId, attachmentIds, resolved: resolved.length, skipped },
-      "nexus: resolved attachmentIds for model",
-    );
-    resolvedIdAttachments = resolved.map((r) => ({
-      base64: r.base64,
-      mediaType: r.mediaType,
-      name: r.name,
-      asText: r.asText,
-      textContent: r.textContent,
-    }));
-  }
-
-  // Normalise: id-resolved first, then legacy base64, then single-image fields.
+  // Normalise: legacy inline-base64 attachments + single-image fields.
   const allAttachments: ModelAttachment[] = [
-    ...resolvedIdAttachments,
     ...legacyAttachments
       .filter((a): a is { base64: string; mediaType: string; name?: string } =>
         typeof a?.base64 === "string" && typeof a?.mediaType === "string",
@@ -3623,32 +3581,6 @@ WHAT YOU SHOULD NOT DO:
       throw dbErr;
     }
   }
-  }
-
-  if (attachmentIds.length > 0) {
-    try {
-      await linkAttachmentsToMessage({
-        userId,
-        attachmentIds,
-        conversationId: effectiveConversationId,
-        surface: isInProjectAskAtlas ? "ask_atlas" : "nexus",
-        projectId: focusProjectId ?? null,
-        chatMessageId: linkedChatMessageId,
-        nexusMessageId: linkedNexusMessageId,
-      });
-      logger.info(
-        {
-          userId,
-          attachmentIds,
-          chatMessageId: linkedChatMessageId,
-          nexusMessageId: linkedNexusMessageId,
-          conversationId: effectiveConversationId,
-        },
-        "nexus: linked attachments to user message",
-      );
-    } catch (linkErr) {
-      logger.warn({ err: linkErr, attachmentIds }, "nexus: attachment linkage failed — non-fatal");
-    }
   }
 
   // Set SSE headers

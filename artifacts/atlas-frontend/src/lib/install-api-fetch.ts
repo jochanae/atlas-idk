@@ -3,7 +3,6 @@
 // This is installed once at app bootstrap so legacy call sites that use
 // `fetch("/api/...")` reach the real backend instead of the preview origin.
 import { API_BASE } from "./api";
-import { attachAuditLog } from "./attachAuditLog";
 
 declare global {
   interface Window {
@@ -124,27 +123,9 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
               const baseUrl = API_BASE || window.location.origin;
               const check = await originalFetch(`${baseUrl}/api/auth/me`, { credentials: "include" });
               if (check.status === 401) {
-                attachAuditLog(
-                  "window_location_change",
-                  {
-                    reason: "session_expired",
-                    triggerUrl: urlStr,
-                    authMeStatus: 401,
-                  },
-                  "global",
-                );
                 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 window.location.href = `${base}/login?reason=session_expired`;
               } else {
-                attachAuditLog(
-                  "auth_response",
-                  {
-                    note: "401 on API but /auth/me still valid — not redirecting",
-                    triggerUrl: urlStr,
-                    authMeStatus: check.status,
-                  },
-                  "global",
-                );
                 _401redirectPending = false;
               }
             } catch {

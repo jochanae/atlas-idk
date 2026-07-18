@@ -19,7 +19,6 @@ import {
   Wand2,
 } from "lucide-react";
 import SketchComposerSheet from "./SketchComposerSheet";
-import { attachAuditLog } from "@/lib/attachAuditLog";
 import {
   clearPickerPending,
   installGhostClickShield,
@@ -211,7 +210,6 @@ export function ComposerActions({
 
   function openNativePicker(kind: "attach" | "camera", input: HTMLInputElement | null) {
     const surface = scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared";
-    attachAuditLog("picker_opened", { kind }, surface);
     // Document pickers (pptx via Files app) background the tab for a long time
     // and return a delayed synthetic tap. Mark pending so visibility-return
     // re-arms the shield even after the initial timer expires.
@@ -249,7 +247,6 @@ export function ComposerActions({
     // taps even if the overlay is somehow bypassed (common with pptx/Documents).
     window.setTimeout(() => clearPickerPending(), shieldMs);
     if (!files || files.length === 0) {
-      attachAuditLog("file_selected", { count: 0, cancelled: true }, surface);
       return;
     }
     const list = listPreview;
@@ -268,23 +265,6 @@ export function ComposerActions({
         : `${rejected.length} files skipped — 20MB max per file.`;
       try { toast.error(label); } catch { /* ignore */ }
     }
-
-    attachAuditLog(
-      "file_selected",
-      {
-        count: accepted.length,
-        rejected: rejected.length,
-        names: accepted.map((f) => f.name),
-        types: accepted.map((f) => f.type),
-        sizes: accepted.map((f) => f.size),
-        documentLike: accepted.some((f) =>
-          /\.(pptx?|docx?|xlsx?|pdf)$/i.test(f.name) ||
-          /officedocument|ms-powerpoint|msword|ms-excel|pdf/i.test(f.type),
-        ),
-        shieldMs,
-      },
-      surface,
-    );
 
     if (accepted.length === 0) return;
     try {
