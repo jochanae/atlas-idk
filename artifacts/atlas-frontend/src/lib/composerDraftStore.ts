@@ -194,7 +194,7 @@ export function setAskAtlasComposerDraft(
 ): AskAtlasComposerDraft {
   draft = {
     input: next.input !== undefined ? next.input : draft.input,
-    files: next.files !== undefined ? next.files : draft.files,
+    files: next.files !== undefined ? (PERSIST_FILE_BLOBS ? next.files : []) : draft.files,
     conversationId:
       next.conversationId !== undefined ? next.conversationId : draft.conversationId,
     updatedAt: Date.now(),
