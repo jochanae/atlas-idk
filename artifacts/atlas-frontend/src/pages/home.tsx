@@ -69,6 +69,7 @@ import {
 } from "@/lib/library";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
+import { useAtlasConversation } from "@/hooks/useAtlasConversation";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
@@ -2166,6 +2167,17 @@ export default function Home() {
   });
   const askAtlasConversationActive = askAtlasChat.messages.length > 0;
   const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
+  const askAtlasConvSend = useCallback(
+    (opts: { text: string; attachments?: Array<{ base64: string; mediaType: string; name?: string }> }) =>
+      askAtlasChat.send({ text: opts.text, ...(opts.attachments ? { attachments: opts.attachments } : {}) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [askAtlasChat.send],
+  );
+  const conversation = useAtlasConversation({
+    surface: "ask-atlas",
+    nexusSend: askAtlasConvSend,
+    isSending: askAtlasBusy,
+  });
   // (Clear-nexus-on-ask-atlas-open effect declared below, after
   //  askAtlasSurfaceOpen state is created.)
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
@@ -3252,7 +3264,7 @@ export default function Home() {
           // drop files if conversion fails
         }
       }
-      void askAtlasChat.send({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
+      void conversation.submit({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
         submitInFlightRef.current = false;
       });
       return;

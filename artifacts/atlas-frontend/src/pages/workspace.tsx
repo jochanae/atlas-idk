@@ -122,6 +122,7 @@ import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer, type ChatComposerProps } from "@/components/workspace/ChatComposer";
 import { useNexusWorkspaceBridge } from "@/hooks/useNexusWorkspaceBridge";
+import { useAtlasConversation } from "@/hooks/useAtlasConversation";
 
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { ParkSheet } from "@/components/ParkSheet";
@@ -4729,6 +4730,16 @@ export default function Workspace() {
   }, [id]);
   // Option 2 bridge: Nexus is the transport, ChatStream stays the shell.
   const nexusBridge = useNexusWorkspaceBridge(id, { conversationMode, initialConversationId: conversationId ?? null });
+  const nexusConvSend = useCallback(
+    (opts: { text: string; attachments?: Array<{ base64: string; mediaType: string; name?: string }> }) =>
+      nexusBridge.send(opts.text, opts.attachments),
+    [nexusBridge.send],
+  );
+  const conversation = useAtlasConversation({
+    surface: "workspace",
+    nexusSend: nexusConvSend,
+    isSending: nexusBridge.chatPending,
+  });
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
@@ -7322,6 +7333,18 @@ export default function Workspace() {
   const sendPreparingSession = !sessionId && (sessionsLoading || createSession.isPending);
 
   const handleSend = async (opts?: { mode: "plan" | "build" }) => {
+    if (useNexusWorkspaceChat) {
+      const text = input.trim();
+      if (!text || nexusBridge.chatPending) return;
+      if (atlasGreeting) setAtlasGreeting(null);
+      setShowHomeHandoffBanner(false);
+      setInput("");
+      if (textareaRef.current) { textareaRef.current.style.height = ""; textareaRef.current.blur(); }
+      setInputFocused(false);
+      try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
+      void conversation.submit({ text });
+      return;
+    }
     const text = input.trim();
     if ((!text && attachedFiles.length === 0) || chatPending) return;
     const sid = sessionId ?? await ensureSessionId().catch(() => null);
@@ -7397,8 +7420,12 @@ export default function Workspace() {
       setLeftTab("terminal");
       dispatchVerifyRun(gateAction.kind, Number(id));
     }
+    if (useNexusWorkspaceChat) {
+      void conversation.submit({ text: userText });
+      return;
+    }
     doSend(...args);
-  }, [atlasGreeting, doSend, id]);
+  }, [atlasGreeting, conversation, doSend, id]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -9331,24 +9358,12 @@ export default function Workspace() {
                   return;
                 }
               },
-              // Option 2 overrides — route composer sends through Nexus.
-              // CRITICAL: must convert attachedFiles → base64 and pass them through.
-              // Prior bug: text-only send dropped staged images/PDFs entirely.
+              // Nexus data bindings — chatPending/liveStep/messages come from the bridge.
+              // Submission (handleSend, doSend) is owned by useAtlasConversation (B1).
               ...(useNexusWorkspaceChat ? {
                 chatPending: nexusBridge.chatPending,
                 liveStep: nexusBridge.liveStep,
                 messages: nexusBridge.messages,
-                doSend: ((text: string) => {
-                  nexusBridge.send(text);
-                  try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
-                }) as ChatComposerProps["doSend"],
-                handleSend: (() => {
-                  const text = (input ?? "").trim();
-                  if (!text) return;
-                  setInput("");
-                  nexusBridge.send(text);
-                  try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
-                }) as ChatComposerProps["handleSend"],
                 onAbort: () => nexusBridge.abort(),
               } : {}),
             }}
