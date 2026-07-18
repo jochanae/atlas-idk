@@ -855,6 +855,12 @@ export function AskAtlasSurface({
                   maxWidth: "82%",
                 }}
               >
+                {msg.attachments && msg.attachments.length > 0 && (
+                  <AttachmentStrip
+                    mode="sent"
+                    attachments={msg.attachments}
+                  />
+                )}
                 {renderMessageImages(msg)}
                 <CollapsibleMessageText
                   textStyle={{
