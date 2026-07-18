@@ -2148,10 +2148,12 @@ export default function Home() {
         seed: buildWorkspaceContextSeed(activeProjectCtx),
       }
     : null;
-  const askAtlasChat = useNexusChatStream({
+  // Canonical conversation controller — owns useNexusChatStream for Ask Atlas.
+  // submit({ text, attachments }) calls nexusChatStream.send directly; no field extraction.
+  const askAtlasConv = useAtlasConversation({
+    surface: "ask-atlas",
     focusProjectId: homeFocus ?? null,
     model: "claude",
-    surfaceContext: "ask-atlas",
     conversationId: askAtlasConversationId,
     projectContext: homeFocus != null ? {
       projectId: homeFocus,
@@ -2165,19 +2167,8 @@ export default function Home() {
     },
     onThinkingStable: () => setAskAtlasCrystallized(true),
   });
-  const askAtlasConversationActive = askAtlasChat.messages.length > 0;
-  const askAtlasBusy = askAtlasChat.isStreaming || askAtlasChat.isPending;
-  const askAtlasConvSend = useCallback(
-    (opts: { text: string; attachments?: Array<{ base64: string; mediaType: string; name?: string }> }) =>
-      askAtlasChat.send({ text: opts.text, ...(opts.attachments ? { attachments: opts.attachments } : {}) }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [askAtlasChat.send],
-  );
-  const conversation = useAtlasConversation({
-    surface: "ask-atlas",
-    nexusSend: askAtlasConvSend,
-    isSending: askAtlasBusy,
-  });
+  const askAtlasConversationActive = askAtlasConv.messages.length > 0;
+  const askAtlasBusy = askAtlasConv.isStreaming || askAtlasConv.isPending;
   // (Clear-nexus-on-ask-atlas-open effect declared below, after
   //  askAtlasSurfaceOpen state is created.)
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
@@ -2264,12 +2255,12 @@ export default function Home() {
   // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
   // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
-  // button and routes sends to askAtlasChat.
+  // button and routes sends to askAtlasConv.
   // Also visible while restoring so the surface never flashes blank on return.
   // True when the user explicitly started a new conversation — keeps the surface
   // visible even before the first message lands (messages.length === 0 after clear).
   const [askAtlasNewConvMode, setAskAtlasNewConvMode] = useState(false);
-  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasChat.messages.length > 0 || isAskAtlasRestoring || askAtlasNewConvMode);
+  const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasConv.messages.length > 0 || isAskAtlasRestoring || askAtlasNewConvMode);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -2301,7 +2292,7 @@ export default function Home() {
 
   // Restore Ask Atlas thread after hard refresh or navigation return — the surface
   // may be open (from localStorage) but askAtlasChat is empty because the standard
-  // thread-load effect populates nexusChat, not askAtlasChat.
+  // thread-load effect populates nexusChat, not askAtlasConv.
   const askAtlasRestoreAttemptRef = useRef<string | null>(null);
   useEffect(() => {
     if (!askAtlasSurfaceOpen || !askAtlasConversationId) {
@@ -2309,7 +2300,7 @@ export default function Home() {
       return;
     }
     if (askAtlasRestoreAttemptRef.current === askAtlasConversationId) return;
-    if (askAtlasChat.messages.length > 0) {
+    if (askAtlasConv.messages.length > 0) {
       askAtlasRestoreAttemptRef.current = askAtlasConversationId;
       setIsAskAtlasRestoring(false);
       return;
@@ -2334,9 +2325,9 @@ export default function Home() {
               ? `Welcome back. Picking up where we left off — ${contextHint}… What's next?`
               : "Welcome back. Ready to continue.";
             const welcomeMsg = { id: `aa-resume-${Date.now()}`, role: "assistant" as const, content: greeting };
-            askAtlasChat.setMessages([...(normalized as any), welcomeMsg]);
+            askAtlasConv.setMessages([...(normalized as any), welcomeMsg]);
           } else {
-            askAtlasChat.setMessages(normalized as any);
+            askAtlasConv.setMessages(normalized as any);
           }
         }
         askAtlasRestoreAttemptRef.current = askAtlasConversationId;
@@ -2347,7 +2338,7 @@ export default function Home() {
       .finally(() => {
         setIsAskAtlasRestoring(false);
       });
-  }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasChat.messages.length, askAtlasChat.setMessages]);
+  }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasConv.messages.length, askAtlasConv.setMessages]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -2503,7 +2494,7 @@ export default function Home() {
       setAskAtlasConversationId(null);
       askAtlasSession.clearConversationId();
       nexusChat.setMessages([]);
-      askAtlasChat.clearMessages();
+      askAtlasConv.clearMessages();
       setEarnedTitle(null);
       setDepth("ambient");
     } else {
@@ -2517,7 +2508,7 @@ export default function Home() {
         description: "Macro view across every project.",
       });
     }
-  }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, askAtlasChat.clearMessages, setDepth]);
+  }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, askAtlasConv.clearMessages, setDepth]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
@@ -3235,7 +3226,7 @@ export default function Home() {
     // into project-creation navigation when Ask Atlas surface state raced.
     const hasFiles = files.length > 0;
     if (submitInFlightRef.current || (!text && !hasFiles) || isSending) return;
-    // Ask Atlas surface routing — the surface is the sole owner of askAtlasChat.
+    // Ask Atlas surface routing — the surface is the sole owner of askAtlasConv.
     // When it's open, EVERY send goes through askAtlasChat regardless of how
     // the surface was opened (composer pill, resume, radial, history). This
     // eliminates the old split where entry point determined data source.
@@ -3244,7 +3235,7 @@ export default function Home() {
     // Ask Atlas gate into the project-creation path → hard navigation / "hard refresh".
     const hasAskAtlasContent = !!text || attachedFiles.length > 0;
       if (askAtlasSurfaceOpen && hasAskAtlasContent) {
-      if (askAtlasChat.isStreaming || askAtlasChat.isPending) return;
+      if (askAtlasConv.isStreaming || askAtlasConv.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
       const filesToConvert = attachedFiles; // all files — fileToBase64Safe handles non-images
@@ -3264,7 +3255,7 @@ export default function Home() {
           // drop files if conversion fails
         }
       }
-      void conversation.submit({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
+      void askAtlasConv.submit({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
         submitInFlightRef.current = false;
       });
       return;
@@ -3440,9 +3431,9 @@ export default function Home() {
     projects,
     queryClient,
     nexusChat.send,
-    askAtlasChat.send,
-    askAtlasChat.isStreaming,
-    askAtlasChat.isPending,
+    askAtlasConv.submit,
+    askAtlasConv.isStreaming,
+    askAtlasConv.isPending,
     resolveFocusProjectIdForTurn,
     setActiveProjectId,
     setLocation,
@@ -3617,7 +3608,7 @@ export default function Home() {
   useEffect(() => {
     if (!askAtlasSeedPendingRef.current || isSending) return;
     // Guard against firing when the conversation already has content.
-    if (askAtlasChat.messages.length > 0) {
+    if (askAtlasConv.messages.length > 0) {
       askAtlasSeedPendingRef.current = false;
       return;
     }
@@ -3626,7 +3617,7 @@ export default function Home() {
 
     askAtlasSeedPendingRef.current = false;
     void handleSubmit(ASK_ATLAS_PORTFOLIO_SEED, { forceStayOnHome: true });
-  }, [handleSubmit, isSending, askAtlasChat.messages.length, askAtlasSurfaceOpen]);
+  }, [handleSubmit, isSending, askAtlasConv.messages.length, askAtlasSurfaceOpen]);
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
@@ -3877,11 +3868,11 @@ export default function Home() {
     askAtlasSession.setSurfaceOpen(false);
     clearActiveProjectContext();
     nexusChat.clearMessages();
-    askAtlasChat.clearMessages();
+    askAtlasConv.clearMessages();
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.clearMessages, askAtlasChat.clearMessages]);
+  }, [nexusChat.clearMessages, askAtlasConv.clearMessages]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
@@ -3943,7 +3934,7 @@ export default function Home() {
 
       // Route resumed threads into askAtlasChat so AskAtlasSurface renders
       // them — not into nexusChat which feeds the ambient homepage renderer.
-      askAtlasChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
+      askAtlasConv.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
       nexusChat.clearMessages();
 
       // Tell Ask Atlas it owns this conversation — both in state and storage.
@@ -3968,7 +3959,7 @@ export default function Home() {
 
       setShowHistory(false);
     } catch {}
-  }, [setAskAtlasConversationId, rememberAskAtlasConversationId, askAtlasChat.setMessages, nexusChat.clearMessages, setDepth]);
+  }, [setAskAtlasConversationId, rememberAskAtlasConversationId, askAtlasConv.setMessages, nexusChat.clearMessages, setDepth]);
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
@@ -4193,7 +4184,7 @@ export default function Home() {
       {askAtlasTitleSlot && askAtlasSurfaceVisible && createPortal(
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <AskAtlasTitleCarousel earnedTitle={earnedTitle} />
-          {askAtlasChat.messages.length > 0 && (
+          {askAtlasConv.messages.length > 0 && (
             <button
               type="button"
               title="Download thread"
@@ -4213,7 +4204,7 @@ export default function Home() {
                     }
                     return "";
                   };
-                  const lines = askAtlasChat.messages
+                  const lines = askAtlasConv.messages
                     .map((m: any) => ({ role: m?.role, body: extract(m) }))
                     .filter((m) => m.body && m.body.trim().length > 0)
                     .map((m) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.body}\n`)
@@ -5603,7 +5594,7 @@ export default function Home() {
                     setAskAtlasConversationId(null);
                     askAtlasSession.clearConversationId();
                     nexusChat.setMessages([]);
-                    askAtlasChat.clearMessages();
+                    askAtlasConv.clearMessages();
                     setEarnedTitle(null);
                     setDepth("ambient");
                     // Clear any chip-seeded text so the homepage composer is blank on return.
@@ -5985,8 +5976,8 @@ export default function Home() {
 
       <AskAtlasSurface
         open={askAtlasSurfaceVisible}
-        isRestoring={isAskAtlasRestoring && askAtlasChat.messages.length === 0}
-        messages={askAtlasChat.messages as any}
+        isRestoring={isAskAtlasRestoring && askAtlasConv.messages.length === 0}
+        messages={askAtlasConv.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={askAtlasConversationId}
         input={input}
@@ -5998,10 +5989,10 @@ export default function Home() {
           return result;
         }}
         isSending={askAtlasBusy}
-        isStreaming={askAtlasChat.isStreaming}
+        isStreaming={askAtlasConv.isStreaming}
         crystallized={askAtlasCrystallized}
         pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
-        liveStep={askAtlasChat.liveStep}
+        liveStep={askAtlasConv.liveStep}
         isListening={isListening}
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
@@ -6014,8 +6005,8 @@ export default function Home() {
           if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
           setAttachedFiles(combined);
         }}
-        onSketch={(prompt) => { void askAtlasChat.send({ text: prompt }); }}
-        onSend={(text) => { void askAtlasChat.send({ text }); }}
+        onSketch={(prompt) => { void askAtlasConv.submit({ text: prompt }); }}
+        onSend={(text) => { void askAtlasConv.submit({ text }); }}
         onAction={(id, payload) => {
           if (id === "create-project") {
             const name = typeof payload?.name === "string" ? payload.name : undefined;
@@ -6053,8 +6044,8 @@ export default function Home() {
                 askAtlasSession.markClosed();
                 askAtlasSession.setSurfaceOpen(false);
                 setAskAtlasSurfaceOpen(false);
-                askAtlasChat.abort();
-                askAtlasChat.clearMessages();
+                askAtlasConv.abort();
+                askAtlasConv.clearMessages();
               }}
               style={{
                 height: isTiny ? 28 : 34,
@@ -6082,7 +6073,7 @@ export default function Home() {
             </button>
           </div>
         }
-        handoffSignal={askAtlasChat.handoffSignal}
+        handoffSignal={askAtlasConv.handoffSignal}
         onMenuAction={(action) => {
           if (action === "history") { setShowTimeTravel(true); return; }
           if (action === "settings") { setLocation("/account"); return; }
@@ -6265,12 +6256,12 @@ export default function Home() {
       )}
       {/* Ask Atlas timeline rail — rendered as a sibling (NOT inside AskAtlasSurface) so it lives
           in the normal stacking context and position:fixed children anchor to the viewport. */}
-      {askAtlasSurfaceVisible && askAtlasChat.messages.length > 0 && (
+      {askAtlasSurfaceVisible && askAtlasConv.messages.length > 0 && (
         <TimelineRail
           alwaysVisible={false}
           hideSearch={false}
           bottomOffset={120}
-          messages={(askAtlasChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: (m as any).createdAt, text: (m as any).content }))}
+          messages={(askAtlasConv.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: (m as any).createdAt, text: (m as any).content }))}
         />
       )}
 

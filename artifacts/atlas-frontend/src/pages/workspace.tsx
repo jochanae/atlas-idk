@@ -121,7 +121,7 @@ import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer, type ChatComposerProps } from "@/components/workspace/ChatComposer";
-import { useNexusWorkspaceBridge } from "@/hooks/useNexusWorkspaceBridge";
+import { useNexusWorkspaceBridge, deriveConversationId } from "@/hooks/useNexusWorkspaceBridge";
 import { useAtlasConversation } from "@/hooks/useAtlasConversation";
 
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
@@ -4728,17 +4728,28 @@ export default function Workspace() {
       return next;
     });
   }, [id]);
-  // Option 2 bridge: Nexus is the transport, ChatStream stays the shell.
-  const nexusBridge = useNexusWorkspaceBridge(id, { conversationMode, initialConversationId: conversationId ?? null });
-  const nexusConvSend = useCallback(
-    (opts: { text: string; attachments?: Array<{ base64: string; mediaType: string; name?: string }> }) =>
-      nexusBridge.send(opts.text, opts.attachments),
-    [nexusBridge.send],
+  // Nexus conversation ID — derived from URL param or localStorage on mount.
+  // Updated by the bridge's recovery / pin / project-switch effects via setNexusConversationId.
+  // Passed to useAtlasConversation so useNexusChatStream always sends to the right thread.
+  const [nexusConversationId, setNexusConversationId] = useState<string>(() =>
+    (conversationId ?? null) || (id ? (deriveConversationId(id) ?? "") : "")
   );
-  const conversation = useAtlasConversation({
+  // Canonical conversation controller — owns useNexusChatStream and all submission.
+  // submit({ text, attachments }) calls nexusChatStream.send directly; no field extraction.
+  const atlasConv = useAtlasConversation({
     surface: "workspace",
-    nexusSend: nexusConvSend,
-    isSending: nexusBridge.chatPending,
+    focusProjectId: id || null,
+    conversationId: nexusConversationId || null,
+    conversationMode,
+    mode: "workspace",
+  });
+  // Side-effects bridge — converts NexusMessage → ChatMessage, manages history
+  // load / recovery / WRITE_FILE / run-completed. Never owns send.
+  const nexusBridge = useNexusWorkspaceBridge(id, atlasConv, {
+    conversationId: nexusConversationId,
+    setConversationId: setNexusConversationId,
+    initialConversationId: conversationId ?? null,
+    conversationMode,
   });
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
@@ -5746,9 +5757,9 @@ export default function Workspace() {
     if (lastContent.length > 150) return;
     commitContinuationFiredRef.current = true;
     try { if (convKey) sessionStorage.removeItem(convKey); } catch {}
-    nexusBridge.send("Please continue — I'm ready to see the initial build structure and your full plan.");
+    void atlasConv.submit({ text: "Please continue — I'm ready to see the initial build structure and your full plan." });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nexusBridge.messages, nexusBridge.send, useNexusWorkspaceChat, conversationId, openingMessage]);
+  }, [nexusBridge.messages, atlasConv.submit, useNexusWorkspaceChat, conversationId, openingMessage]);
 
   const [homeHandoffMeta, setHomeHandoffMeta] = useState<HomeHandoffMeta | null>(() => {
     try {
@@ -6818,7 +6829,7 @@ export default function Workspace() {
     // Pass messagesRef.current so transferred thread messages are included as history context.
     // Pass attachments so images from the homepage (Ask Atlas) carry into the first workspace message.
     if (useNexusWorkspaceChat) {
-      nexusBridge.send(trimmedOpeningMessage, openingMessage.attachments ?? undefined);
+      void atlasConv.submit({ text: trimmedOpeningMessage, attachments: openingMessage.attachments ?? undefined });
     } else {
       doSend(trimmedOpeningMessage, sessionId, messagesRef.current, undefined, openingMessage.attachments ?? undefined);
     }
@@ -6828,7 +6839,7 @@ export default function Workspace() {
       sessionStorage.removeItem("atlas-opening-attachments");
     } catch {}
     setOpeningMessage(null);
-  }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef, ensureSessionId, useNexusWorkspaceChat, nexusBridge.send]);
+  }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef, ensureSessionId, useNexusWorkspaceChat, atlasConv.submit]);
 
   useEffect(() => {
     // Same gate: don't fire until session AND prior messages are fully ready.
@@ -6917,7 +6928,7 @@ export default function Workspace() {
       }).catch(() => {});
       setTimeout(() => {
         if (useNexusWorkspaceChat) {
-          nexusBridge.send(prompt);
+          void atlasConv.submit({ text: prompt });
         } else {
           doSend(prompt, sessionId, messagesRef.current);
         }
@@ -6951,7 +6962,7 @@ export default function Workspace() {
       const briefText = (briefEntry.text as string).replace("Project brief from home conversation: ", "");
       primeHomeHandoff(`I've just arrived from our home conversation. You have my project brief in memory: "${briefText}". Acknowledge what we discussed and where we're starting — then ask what's first.`);
     } catch { primeHomeHandoff(fallbackPrompt); }
-  }, [sessionId, messages.length, project, doSend, openingMessage, useNexusWorkspaceChat, nexusBridge.messages.length, nexusBridge.send, messagesRef, id]);
+  }, [sessionId, messages.length, project, doSend, openingMessage, useNexusWorkspaceChat, nexusBridge.messages.length, atlasConv.submit, messagesRef, id]);
 
   // Auto-generate blueprint on handoff — ONLY when the source conversation
   // explicitly requested build/planning output (requestBuild flag on the
@@ -7335,14 +7346,16 @@ export default function Workspace() {
   const handleSend = async (opts?: { mode: "plan" | "build" }) => {
     if (useNexusWorkspaceChat) {
       const text = input.trim();
-      if (!text || nexusBridge.chatPending) return;
+      // Gate checked against canSend — draft is only cleared after this passes.
+      if (!text || !atlasConv.canSend) return;
       if (atlasGreeting) setAtlasGreeting(null);
       setShowHomeHandoffBanner(false);
+      // Draft cleared here — after canSend confirms the turn will be dispatched.
       setInput("");
       if (textareaRef.current) { textareaRef.current.style.height = ""; textareaRef.current.blur(); }
       setInputFocused(false);
       try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
-      void conversation.submit({ text });
+      void atlasConv.submit({ text });
       return;
     }
     const text = input.trim();
@@ -7421,11 +7434,11 @@ export default function Workspace() {
       dispatchVerifyRun(gateAction.kind, Number(id));
     }
     if (useNexusWorkspaceChat) {
-      void conversation.submit({ text: userText });
+      void atlasConv.submit({ text: userText });
       return;
     }
     doSend(...args);
-  }, [atlasGreeting, conversation, doSend, id]);
+  }, [atlasGreeting, atlasConv.submit, doSend, id]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -9230,7 +9243,7 @@ export default function Workspace() {
                 chatPending: nexusBridge.chatPending,
                 liveStep: nexusBridge.liveStep,
                 activeRunId: nexusBridge.activeRunId,
-                onSend: (msg: string) => nexusBridge.send(msg),
+                onSend: (msg: string) => void atlasConv.submit({ text: msg }),
               } : {}),
             } : null}
 
