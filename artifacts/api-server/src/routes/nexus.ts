@@ -98,6 +98,11 @@ import {
 } from "../lib/buildStateContract";
 import { checkAtlasMutationSync } from "../lib/mutationGuard";
 import { resolveAuthorizationPolicy } from "../lib/authorizationPolicy";
+import {
+  persistAttachmentsForMessage,
+  type AttachmentAckPayload,
+  type IncomingAttachment,
+} from "../lib/attachmentPersistence";
 
 const router: IRouter = Router();
 
@@ -2244,7 +2249,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     imageData?: string;
     imageMimeType?: string;
     /** Legacy inline-base64 path. Rejected when ATTACHMENTS_PERSISTENCE=true. */
-    attachments?: Array<{ base64?: string; mediaType?: string; name?: string; url?: string }>;
+    attachments?: Array<{ base64?: string; mediaType?: string; name?: string; url?: string; clientAttachmentId?: string; sizeBytes?: number }>;
     /** Server-resolved attachment IDs (preferred). Never pass client-minted URLs. */
     attachmentIds?: string[];
     conversationId?: string;
@@ -2304,15 +2309,19 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     name?: string;
     asText?: boolean;
     textContent?: string;
+    /** Propagated from the client for B3.2 durable persistence idempotency. */
+    clientAttachmentId?: string;
+    /** Propagated from the client for accurate storage sizing. */
+    sizeBytes?: number;
   };
 
   // Normalise: legacy inline-base64 attachments + single-image fields.
   const allAttachments: ModelAttachment[] = [
     ...legacyAttachments
-      .filter((a): a is { base64: string; mediaType: string; name?: string } =>
+      .filter((a): a is { base64: string; mediaType: string; name?: string; clientAttachmentId?: string; sizeBytes?: number } =>
         typeof a?.base64 === "string" && typeof a?.mediaType === "string",
       )
-      .map((a) => ({ base64: a.base64, mediaType: a.mediaType, name: a.name })),
+      .map((a) => ({ base64: a.base64, mediaType: a.mediaType, name: a.name, clientAttachmentId: a.clientAttachmentId, sizeBytes: a.sizeBytes })),
     ...(imageBase64 && imageMimeType ? [{ base64: imageBase64, mediaType: imageMimeType }] : []),
   ];
   // Always store messages under a conversation ID so they appear in the
@@ -2330,8 +2339,10 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     ? (conversationId ?? null)
     : (conversationId ?? randomUUID());
   const userType = parseHomeUserType(body.userType);
-  // Use a sensible fallback when the user sends an attachment with no text
-  const message = textInput || (hasImage || allAttachments.length > 0 ? "[attachment]" : "");
+  // When only attachments are sent (no text), use an empty message string.
+  // "[attachment]" placeholder has been retired — the model receives image/doc
+  // content through the vision block, not through the text turn.
+  const message = textInput || "";
 
   try {
   const sessionContext = sessionId
@@ -3588,6 +3599,40 @@ WHAT YOU SHOULD NOT DO:
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
+
+  // ── B3.2: Start durable attachment persistence (concurrent with model stream) ──
+  // Persistence Promises are started after flushHeaders so the onPendingAck
+  // callback can safely emit SSE events. They are awaited in finishStream
+  // (before the done event) to guarantee attachment_ack arrives before done.
+  const _attachmentPersistenceInputs: IncomingAttachment[] = allAttachments
+    .filter(a => typeof a.base64 === "string" && a.base64.length > 0)
+    .map(a => ({
+      base64: a.base64,
+      mediaType: a.mediaType,
+      name: a.name,
+      clientAttachmentId: a.clientAttachmentId,
+      sizeBytes: a.sizeBytes,
+    }));
+
+  const _attachmentPendingAcks: AttachmentAckPayload[] = [];
+  const attachmentPersistencePromise: Promise<AttachmentAckPayload[]> =
+    linkedNexusMessageId !== null && _attachmentPersistenceInputs.length > 0
+      ? persistAttachmentsForMessage(
+          _attachmentPersistenceInputs,
+          {
+            nexusMessageId: linkedNexusMessageId,
+            userId,
+            projectId: focusProjectId ?? null,
+            conversationId: effectiveConversationId,
+          },
+          (pendingAck) => {
+            _attachmentPendingAcks.push(pendingAck);
+            if (!res.writableEnded && !res.destroyed) {
+              res.write(`event: attachment_ack\ndata: ${JSON.stringify(pendingAck)}\n\n`);
+            }
+          },
+        )
+      : Promise.resolve([]);
 
   // Emit meta early so the frontend can suppress run cards / Tier1 / timeline
   // on non-BUILD turns before the first text delta arrives.
@@ -5487,6 +5532,32 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
       }
     }
     // ── end server-driven auto-advance ───────────────────────────────────────
+
+    // ── B3.2: Await attachment uploads and emit final attachment_ack events ───
+    // Awaited here so ack events always arrive BEFORE done. Capped at 30 s to
+    // avoid blocking the response if GCS is slow (uploads update DB regardless).
+    if (_attachmentPersistenceInputs.length > 0) {
+      try {
+        const finalAcks = await Promise.race([
+          attachmentPersistencePromise,
+          new Promise<AttachmentAckPayload[]>((resolve) =>
+            setTimeout(() => resolve([]), 30_000),
+          ),
+        ]);
+        for (const ack of finalAcks) {
+          // Only emit if this ack wasn't already sent as a pending_upload ack
+          if (
+            !res.writableEnded &&
+            !res.destroyed &&
+            ack.status !== "pending_upload"
+          ) {
+            res.write(`event: attachment_ack\ndata: ${JSON.stringify(ack)}\n\n`);
+          }
+        }
+      } catch (ackErr) {
+        req.log.warn({ err: ackErr }, "nexus: attachment_ack finalization failed — non-fatal");
+      }
+    }
 
     // Navigation intent is sent as structured data in the done event — never as a text token.
     // The frontend renders a suggestion card; the user decides when to navigate.

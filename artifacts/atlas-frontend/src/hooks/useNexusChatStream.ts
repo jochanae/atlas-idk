@@ -82,7 +82,9 @@ export interface NexusMessage {
   imageMimeType?: string;
   pendingSketch?: boolean;
   sketchFailed?: boolean;
-  attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
+  attachments?: Array<{ base64: string; mediaType: string; name?: string; clientAttachmentId?: string }>;
+  /** Attachment persistence acks received from the server via attachment_ack SSE events. */
+  attachmentAcks?: Array<{ id: string; clientAttachmentId: string | null; status: string; errorCode?: string }>;
   imageGen?: {
     images: Array<{
       imageUrl: string;
@@ -376,7 +378,7 @@ export function useNexusChatStream(
     text: string;
     imageBase64?: string;
     imageMimeType?: string;
-    attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
+    attachments?: Array<{ base64: string; mediaType: string; name?: string; clientAttachmentId?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
     extraBody?: Record<string, unknown>;
   }): { clientMessageId: string; accepted: Promise<void>; completed: Promise<void> } | undefined => {
@@ -384,13 +386,13 @@ export function useNexusChatStream(
     // imgAttachments = images only (used for imageUrl preview in optimistic message + legacy fields).
     // docAttachments = PDFs and other non-image files Atlas can read as documents.
     // allFileAttachments = everything sent to the backend.
-    const imgAttachments: Array<{ base64: string; mediaType: string; name?: string }> =
+    const imgAttachments: Array<{ base64: string; mediaType: string; name?: string; clientAttachmentId?: string }> =
       (attachments && attachments.length > 0)
         ? attachments.filter((a) => a.mediaType?.startsWith("image/"))
         : (imageBase64
             ? [{ base64: imageBase64, mediaType: imageMimeType || "image/png" }]
             : []);
-    const docAttachments: Array<{ base64: string; mediaType: string; name?: string }> =
+    const docAttachments: Array<{ base64: string; mediaType: string; name?: string; clientAttachmentId?: string }> =
       (attachments && attachments.length > 0)
         ? attachments.filter((a) => !a.mediaType?.startsWith("image/"))
         : [];
@@ -937,6 +939,23 @@ export function useNexusChatStream(
                 : m
             ));
             resetStreamState();
+          },
+          onAttachmentAck: (ack) => {
+            // Store attachment acks on the user message so B3.3 can enrich the
+            // optimistic chip with a content URL once the storage route exists.
+            // Only apply to non-pending_upload acks (final status updates).
+            if (ack.status === "pending_upload") return;
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? {
+                    ...m,
+                    attachmentAcks: [
+                      ...((m as any).attachmentAcks ?? []),
+                      ack,
+                    ],
+                  }
+                : m
+            ));
           },
         },
       });

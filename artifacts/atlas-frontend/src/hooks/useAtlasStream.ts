@@ -51,6 +51,12 @@ export interface AtlasStreamCallbacks {
    * submitted message.
    */
   onFirstEvent?: () => void;
+  /**
+   * Called when an `attachment_ack` SSE event arrives. Fires twice per
+   * attachment: once at pending_upload (row inserted, upload starting) and
+   * once at uploaded | failed (upload complete). Always arrives before done.
+   */
+  onAttachmentAck?: (ack: { id: string; clientAttachmentId: string | null; status: string; errorCode?: string }) => void;
   /** Called on stream error */
   onError?: (message: string) => void;
 }
@@ -247,6 +253,9 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                 callbacks.onImage?.(imgPayload);
               } else if (evtName === "image_pending") {
                 callbacks.onImagePending?.();
+              } else if (evtName === "attachment_ack") {
+                const ack = JSON.parse(evtData) as { id: string; clientAttachmentId: string | null; status: string; errorCode?: string };
+                callbacks.onAttachmentAck?.(ack);
               } else if (evtName === "error") {
                 const errMsg = JSON.parse(evtData) as string;
                 callbacks.onError?.(errMsg || "Something went wrong.");

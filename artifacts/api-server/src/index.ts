@@ -1407,6 +1407,104 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: message_attachments failed — server will start anyway");
   }
+
+  // B3.2 — durable attachment write path: 5 new columns + data migration + constraints.
+  // Each ALTER/CREATE is independent so a partial failure does not block the others.
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE message_attachments
+        ADD COLUMN IF NOT EXISTS client_attachment_id  text,
+        ADD COLUMN IF NOT EXISTS upload_error_code     text,
+        ADD COLUMN IF NOT EXISTS upload_error_message  text,
+        ADD COLUMN IF NOT EXISTS upload_attempt_count  integer NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS last_upload_attempt_at timestamptz
+    `);
+    logger.info("ensureColumns: message_attachments B3.2 columns verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments B3.2 columns failed — server will start anyway");
+  }
+
+  try {
+    // Idempotency guard: unique per message + client id (partial — NULL client ids excluded).
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS message_attachments_nexus_msg_client_id_uq
+        ON message_attachments (nexus_message_id, client_attachment_id)
+        WHERE client_attachment_id IS NOT NULL
+          AND nexus_message_id IS NOT NULL
+    `);
+    logger.info("ensureColumns: message_attachments nexus_message+client_id unique index verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments nexus_msg_client_id_uq failed — server will start anyway");
+  }
+
+  try {
+    // Prevent duplicate (bucket, path) pairs.
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS message_attachments_bucket_path_uq
+        ON message_attachments (storage_bucket, storage_path)
+    `);
+    logger.info("ensureColumns: message_attachments bucket+path unique index verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments bucket_path_uq failed — server will start anyway");
+  }
+
+  try {
+    // Data migration: delete orphaned rows with no user (should never happen, but fence it).
+    const deleted = await db.execute(sql`
+      DELETE FROM message_attachments
+      WHERE user_id IS NULL
+    `);
+    if ((deleted as any).rowCount > 0) {
+      logger.info({ count: (deleted as any).rowCount }, "ensureColumns: deleted null-user attachment rows");
+    }
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments null-user cleanup failed — non-fatal");
+  }
+
+  try {
+    // Data migration: mark ghost rows (nexus_message_id references deleted messages) as failed.
+    // These are the 18 retired-bucket rows from the pre-B3 attachment system.
+    const marked = await db.execute(sql`
+      UPDATE message_attachments ma
+      SET    upload_status = 'failed',
+             upload_error_code = 'RETIRED_BUCKET'
+      WHERE  ma.nexus_message_id IS NOT NULL
+        AND  ma.upload_status <> 'failed'
+        AND  NOT EXISTS (
+               SELECT 1 FROM nexus_messages nm WHERE nm.id = ma.nexus_message_id
+             )
+    `);
+    if ((marked as any).rowCount > 0) {
+      logger.info({ count: (marked as any).rowCount }, "ensureColumns: marked ghost attachment rows as failed");
+    }
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments ghost-row migration failed — non-fatal");
+  }
+
+  try {
+    // Add FK with CASCADE so attachment rows are removed when the message is deleted.
+    // Uses DO NOTHING on constraint-already-exists (pg throws 42710 if re-added).
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'message_attachments_nexus_message_id_fk'
+        ) THEN
+          ALTER TABLE message_attachments
+            ADD CONSTRAINT message_attachments_nexus_message_id_fk
+            FOREIGN KEY (nexus_message_id)
+            REFERENCES nexus_messages(id)
+            ON DELETE CASCADE;
+        END IF;
+      END;
+      $$
+    `);
+    logger.info("ensureColumns: message_attachments nexus_message_id FK verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments nexus_message_id FK failed — non-fatal");
+  }
 }
 
 async function runMigrations(): Promise<void> {

@@ -68,6 +68,10 @@ export type AtlasConversationAttachment = {
   base64: string;
   mediaType: string;
   name?: string;
+  /** Stable client-minted UUID from useStagedAttachments (StagedFile.id).
+   *  Sent to the server so attachment_ack events can be correlated back to
+   *  the optimistic chip. Optional — absent for programmatic passthrough sends. */
+  clientAttachmentId?: string;
 };
 
 export type SubmissionError = {
@@ -254,6 +258,7 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
             base64: result.base64,
             mediaType: result.mediaType,
             name: sf.name,
+            clientAttachmentId: sf.id,
           });
         } catch (convErr) {
           const err: StagedFileError = {

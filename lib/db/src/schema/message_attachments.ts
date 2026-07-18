@@ -105,6 +105,20 @@ export const messageAttachmentsTable = pgTable(
     ),
     /** Null once promoted to Library. */
     expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /**
+     * Stable client-minted UUID assigned at file-selection time.
+     * Set by the frontend so the server can correlate attachment_ack
+     * events with the optimistic UI chip. Null for programmatic inserts.
+     */
+    clientAttachmentId: text("client_attachment_id"),
+    /** Machine-readable error code when upload_status = 'failed'. */
+    uploadErrorCode: text("upload_error_code"),
+    /** Human-readable upload failure detail (max 500 chars). */
+    uploadErrorMessage: text("upload_error_message"),
+    /** Number of upload attempts made (incremented each try). */
+    uploadAttemptCount: integer("upload_attempt_count").notNull().default(0),
+    /** Timestamp of the most recent upload attempt. */
+    lastUploadAttemptAt: timestamp("last_upload_attempt_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
