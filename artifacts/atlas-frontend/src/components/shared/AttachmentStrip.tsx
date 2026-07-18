@@ -84,7 +84,16 @@ export function AttachmentStrip(props: AttachmentStripProps) {
         {attachments.map((att, idx) => {
           const isImage = att.mediaType.startsWith("image/");
           const url = att.contentUrl ?? (att.base64 ? `data:${att.mediaType};base64,${att.base64}` : null);
-          if (isImage && !url) return null;
+          // When an image attachment has no displayable URL (e.g. failed upload that
+          // slipped through, or a hydrated row whose content request already failed),
+          // show a small unavailable badge rather than silently dropping the chip.
+          // This preserves the attachment's visual presence and prevents the user
+          // from believing the file was never sent.
+          if (isImage && !url) return (
+            <div key={idx} role="listitem" style={{ position: "relative", flexShrink: 0 }}>
+              <UnavailableImageBadge name={att.name} />
+            </div>
+          );
           const solo = attachments.length === 1;
           return (
             <div
@@ -253,6 +262,47 @@ function StagedThumbnail({
       >
         ×
       </button>
+    </div>
+  );
+}
+
+function UnavailableImageBadge({ name }: { name?: string }) {
+  return (
+    <div
+      title={name ? `Image unavailable: ${name}` : "Image unavailable"}
+      style={{
+        width: 54,
+        height: 54,
+        borderRadius: 7,
+        background: "rgba(239,68,68,0.06)",
+        border: "1px solid rgba(239,68,68,0.28)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 3,
+        overflow: "hidden",
+      }}
+    >
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <rect x="1" y="1" width="13" height="13" rx="2" stroke="rgba(239,68,68,0.55)" strokeWidth="1.2" />
+        <path d="M4 10.5l2.5-3L8 9.5l2-2.5 2 3.5" stroke="rgba(239,68,68,0.55)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="5.5" cy="5.5" r="1" fill="rgba(239,68,68,0.5)" />
+        <line x1="4" y1="4" x2="11" y2="11" stroke="rgba(239,68,68,0.4)" strokeWidth="1" strokeLinecap="round" />
+      </svg>
+      <span
+        style={{
+          fontSize: 7,
+          color: "rgba(239,68,68,0.65)",
+          fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.04em",
+          textAlign: "center",
+          lineHeight: 1.3,
+          padding: "0 4px",
+        }}
+      >
+        unavailable
+      </span>
     </div>
   );
 }

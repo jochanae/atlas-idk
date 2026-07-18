@@ -1839,21 +1839,29 @@ router.get("/attachments/:id/content", async (req, res): Promise<void> => {
     const userId = (req as any).authUser.id as number;
     const attachmentId = req.params.id;
 
+    // Validate UUID format before hitting the DB — a malformed ID is indistinguishable
+    // from a not-found row to the caller; return 404 in both cases.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(attachmentId)) { res.status(404).json({ error: "Not found" }); return; }
+
+    // Single ownership-verified query: any miss (not found, wrong user, wrong status)
+    // returns 404. This prevents enumeration — callers cannot distinguish a valid
+    // attachment owned by another user from a nonexistent ID.
     const [row] = await db
       .select({
-        userId: messageAttachmentsTable.userId,
-        uploadStatus: messageAttachmentsTable.uploadStatus,
         storagePath: messageAttachmentsTable.storagePath,
         mimeType: messageAttachmentsTable.mimeType,
         filename: messageAttachmentsTable.filename,
       })
       .from(messageAttachmentsTable)
-      .where(eq(messageAttachmentsTable.id, attachmentId))
+      .where(and(
+        eq(messageAttachmentsTable.id, attachmentId),
+        eq(messageAttachmentsTable.userId, userId),
+        eq(messageAttachmentsTable.uploadStatus, "uploaded"),
+      ))
       .limit(1);
 
     if (!row) { res.status(404).json({ error: "Not found" }); return; }
-    if (row.userId !== userId) { res.status(403).json({ error: "Forbidden" }); return; }
-    if (row.uploadStatus !== "uploaded") { res.status(410).json({ error: "Not available" }); return; }
 
     // Reconstruct the full GCS path from the stored /objects/... path
     const storagePath = row.storagePath;
