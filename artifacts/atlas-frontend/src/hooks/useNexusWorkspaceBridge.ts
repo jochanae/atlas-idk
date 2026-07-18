@@ -132,6 +132,7 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     ...(nm.fileDeletes?.length ? { fileDeletes: nm.fileDeletes as ChatMessage["fileDeletes"] } : {}),
     ...(nm.githubPush ? { githubPush: nm.githubPush as ChatMessage["githubPush"] } : {}),
     ...(nm.runId ? { runId: nm.runId } : {}),
+    ...(nm.attachments?.length ? { attachments: nm.attachments } : {}),
   };
 }
 

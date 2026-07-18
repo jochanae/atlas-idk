@@ -328,24 +328,24 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
       // Transition converted files "converting" → "sending" now — before the SSE
       // stream completes — so the chip shows the accepted state rather than the
       // conversion spinner throughout the model response.
-      const { clientMessageId, completion: sendCompletion } = sendResult;
+      const { clientMessageId, accepted: sendAccepted, completed: _sendCompleted } = sendResult;
       const sentIds = transported.map(a => a._stagedId);
       if (sentIds.length > 0) {
         submission.onMarkSending?.(sentIds);
       }
 
       try {
-        await sendCompletion;
+        await sendAccepted;
 
         // ── Step 6: Confirmed success ─────────────────────────────────────
-        // stream() resolved → the SSE session completed. The server received
-        // the HTTP POST (including all attachment data) before the first SSE
-        // token was sent. Clearing staged files at this point is safe because:
+        // accepted resolved → server's first SSE token arrived, confirming the
+        // HTTP POST was accepted (including all attachment data). Safe to clear
+        // staged chips now because:
         //   a) The optimistic user message already owns the base64 data
         //      (stored in message.attachments — UserBubble reads from there,
         //      not from staged previewUrl).
-        //   b) The server has the attachment data regardless of whether the
-        //      SSE response contained an error.
+        //   b) The server has the attachment data. Model-generation failures
+        //      that occur after the first token don't affect staged chip safety.
         if (sentIds.length > 0) {
           submission.onClearSent?.(sentIds);
         }

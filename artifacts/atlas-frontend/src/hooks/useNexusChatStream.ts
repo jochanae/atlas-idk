@@ -278,7 +278,7 @@ export interface UseNexusChatStreamReturn {
     /** Extra fields merged into the backend POST body — used for resume flags
      *  such as _resumeRunId and _approvedPlanVersion. */
     extraBody?: Record<string, unknown>;
-  }) => { clientMessageId: string; completion: Promise<void> } | undefined;
+  }) => { clientMessageId: string; accepted: Promise<void>; completed: Promise<void> } | undefined;
   abort: () => void;
   clearMessages: () => void;
   /** Build plan awaiting authorization. Set when the server emits awaitingConfirmation
@@ -379,7 +379,7 @@ export function useNexusChatStream(
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
     extraBody?: Record<string, unknown>;
-  }): { clientMessageId: string; completion: Promise<void> } | undefined => {
+  }): { clientMessageId: string; accepted: Promise<void>; completed: Promise<void> } | undefined => {
     // Unify legacy single-image inputs into the attachments array.
     // imgAttachments = images only (used for imageUrl preview in optimistic message + legacy fields).
     // docAttachments = PDFs and other non-image files Atlas can read as documents.
@@ -493,10 +493,23 @@ export function useNexusChatStream(
     // is already in state before the HTTP request is made.
     const clientMessageId = userMsg.id!;
 
-    // Wrap the entire async SSE session in a completion Promise so callers
-    // can receive clientMessageId immediately (synchronously) and await the
-    // stream result separately via { clientMessageId, completion }.
-    const completion = (async () => {
+    // accepted: resolves when the server sends its first token (transport confirmed,
+    //   optimistic message owns attachment data — safe to clear staged chips).
+    // completed: resolves when the full SSE stream ends (all tokens delivered).
+    // Transport failures reject accepted. Model-generation failures that occur
+    // after the first token (e.g. a downstream API error mid-stream) happen
+    // after accepted resolves, consistent with the send lifecycle contract.
+    let resolveAccepted!: () => void;
+    let rejectAccepted!: (err: unknown) => void;
+    const accepted = new Promise<void>((res, rej) => {
+      resolveAccepted = res;
+      rejectAccepted = rej;
+    });
+    let acceptedFired = false;
+    const fireAccepted = () => {
+      if (!acceptedFired) { acceptedFired = true; resolveAccepted(); }
+    };
+    const completed = (async () => {
     const notifyProjectReady = (doneData?: NexusProjectReadyDoneData) => {
       if (projectReadyNotifiedStreamRef.current === streamingId) return;
       projectReadyNotifiedStreamRef.current = streamingId;
@@ -546,6 +559,7 @@ export function useNexusChatStream(
 
         callbacks: {
           onToken: (released) => {
+            fireAccepted();
             if (hasBareProjectReady(released)) notifyProjectReady();
             // 1. Strip complete signal lines (CONV_STATE, MEMORY_Tx, PROJECT_READY, etc.)
             // 2. Strip partial signal prefixes at the tail so they never flash to the user
@@ -957,9 +971,18 @@ export function useNexusChatStream(
       }));
       resetStreamState();
     }
-    })(); // end completion async closure
+    })(); // end completed async closure
 
-    return { clientMessageId, completion };
+    // Propagate to accepted if the stream ends before any token fires
+    // (transport error, server error before generation, or empty response).
+    completed.then(
+      () => { fireAccepted(); },
+      (err: unknown) => {
+        if (!acceptedFired) { rejectAccepted(err); } else { fireAccepted(); }
+      },
+    );
+
+    return { clientMessageId, accepted, completed };
   }, [focusProjectId, isPending, model, mode, conversationMode, onData, onProjectReady, stream, abortStream, resetStreamState]);
 
   const authorizeRun = async (runId: string, planVersion: string): Promise<void> => {
@@ -985,7 +1008,7 @@ export function useNexusChatStream(
       },
     });
     if (sendResult !== undefined) {
-      await sendResult.completion;
+      await sendResult.completed;
     }
   };
 
