@@ -187,13 +187,25 @@ export function useNexusWorkspaceBridge(
   const recoveryAttemptedRef = useRef(false);
 
   // Reset conversation id + wipe in-memory messages when the project changes.
+  //
+  // Guard against the initial mount transition: `/workspace/:conversationId`
+  // renders once with pid=0 while the numeric project id is being resolved,
+  // then re-renders with the real pid. That 0 → N transition is NOT a project
+  // switch — it is the initial resolve. If we treat it as a switch we clobber
+  // the pinned conversation from the URL, clear the freshly-loaded messages,
+  // and force a recovery round-trip that visually looks like a refresh/reset
+  // on the first send. Only reset when both the previous and next pid are
+  // real, nonzero project ids.
   const prevPidRef = useRef<number>(pid);
   useEffect(() => {
     if (!pid) return;
-    if (prevPidRef.current !== pid) {
+    const prev = prevPidRef.current;
+    if (prev !== pid) {
+      const isInitialResolve = !prev || prev === 0;
+      prevPidRef.current = pid;
+      if (isInitialResolve) return;
       setConversationId(opts?.initialConversationId || deriveConversationId(pid) || "");
       clearMessages();
-      prevPidRef.current = pid;
       historyLoadedRef.current = false;
       recoveryAttemptedRef.current = false;
     }
