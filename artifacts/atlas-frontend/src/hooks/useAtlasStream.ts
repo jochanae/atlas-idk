@@ -44,6 +44,13 @@ export interface AtlasStreamCallbacks {
    * show user-facing loading copy instead of the raw prompt/marker text.
    */
   onImagePending?: () => void;
+  /**
+   * Called once on the very first non-empty SSE event block — fires at
+   * `event:meta` time, before any token or done event. This is the earliest
+   * authoritative signal that the server has accepted and materialized the
+   * submitted message.
+   */
+  onFirstEvent?: () => void;
   /** Called on stream error */
   onError?: (message: string) => void;
 }
@@ -162,6 +169,7 @@ export function useAtlasStream(): UseAtlasStreamReturn {
           callbacks.onDone(streamedText, json ?? { content: streamedText });
         } catch (e) {
           callbacks.onError?.("Couldn't parse Atlas response.");
+          // unreachable, but satisfies TypeScript exhaustiveness
         }
         return;
       }
@@ -169,7 +177,7 @@ export function useAtlasStream(): UseAtlasStreamReturn {
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-
+      let firstEventFired = false;
 
       try {
         while (true) {
@@ -187,6 +195,13 @@ export function useAtlasStream(): UseAtlasStreamReturn {
               else if (line.startsWith("data: ")) evtData = line.slice(6);
             }
             if (!evtData) continue;
+
+            // Fire once on the very first non-empty SSE block — this is
+            // `event:meta` time (server accepted + materialized the message).
+            if (!firstEventFired) {
+              firstEventFired = true;
+              callbacks.onFirstEvent?.();
+            }
 
             try {
               if (evtName === "token") {

@@ -558,8 +558,12 @@ export function useNexusChatStream(
         },
 
         callbacks: {
+          // onFirstEvent fires at event:meta time — the earliest authoritative
+          // signal that the server accepted and materialized the message.
+          // This resolves the accepted promise so staged chips can be cleared
+          // before any textual token has been produced.
+          onFirstEvent: () => { fireAccepted(); },
           onToken: (released) => {
-            fireAccepted();
             if (hasBareProjectReady(released)) notifyProjectReady();
             // 1. Strip complete signal lines (CONV_STATE, MEMORY_Tx, PROJECT_READY, etc.)
             // 2. Strip partial signal prefixes at the tail so they never flash to the user
