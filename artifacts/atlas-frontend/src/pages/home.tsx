@@ -82,7 +82,14 @@ import {
   hydrateAskAtlasComposerDraft,
   setAskAtlasComposerDraft,
 } from "@/lib/composerDraftStore";
-import { isPickerPending } from "@/lib/ghostClickShield";
+import {
+  clearPickerPending,
+  GHOST_SHIELD_DOCUMENT_MS,
+  installGhostClickShield,
+  isPickerPending,
+  markPickerPending,
+  shieldMsForFiles,
+} from "@/lib/ghostClickShield";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
@@ -2630,6 +2637,7 @@ export default function Home() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const askAtlasSurfaceSendInFlightRef = useRef(false);
   // Latest Focus-lens chip node, populated on each render by the home
   // composer JSX so <AskAtlasSurface> below can render the identical chip
   // inside its own composer rectangle without duplicating the JSX.
@@ -3259,10 +3267,11 @@ export default function Home() {
     // When it's open, EVERY send goes through askAtlasChat regardless of how
     // the surface was opened (composer pill, resume, radial, history). This
     // eliminates the old split where entry point determined data source.
-    const hasAskAtlasContent = !!text || staged.files.length > 0;
-      if (askAtlasSurfaceOpen && hasAskAtlasContent) {
-      if (askAtlasConv.isStreaming || askAtlasConv.isPending) return;
+    const hasAskAtlasContent = !!text || readyStagedFiles.length > 0;
+    if (askAtlasSurfaceOpen && hasAskAtlasContent) {
+      if (askAtlasSurfaceSendInFlightRef.current || askAtlasConv.isStreaming || askAtlasConv.isPending) return;
       submitInFlightRef.current = true;
+      askAtlasSurfaceSendInFlightRef.current = true;
       setInput("");
       // Pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
       // Files stay visible as "converting" during async work and are cleared only on confirmed
@@ -3271,7 +3280,7 @@ export default function Home() {
       textareaRef.current?.blur();
       void askAtlasConv.submit({
         text,
-        stagedAttachments: staged.readyFiles,
+        stagedAttachments: readyStagedFiles,
         onMarkConverting: staged.markConverting,
         onMarkSending: staged.markSending,
         onMarkFailed: staged.markFailed,
@@ -3279,6 +3288,7 @@ export default function Home() {
         onClearSent: staged.clearSent,
       }).finally(() => {
         submitInFlightRef.current = false;
+        askAtlasSurfaceSendInFlightRef.current = false;
       });
       return;
     }
@@ -5266,6 +5276,9 @@ export default function Home() {
               onChange={(e) => {
                 e.stopPropagation();
                 const incoming = Array.from(e.target.files ?? []);
+                const shieldMs = incoming.length > 0 ? shieldMsForFiles(incoming) : GHOST_SHIELD_DOCUMENT_MS;
+                installGhostClickShield(incoming.length > 0 ? "home_file_selected" : "home_file_cancelled", shieldMs);
+                window.setTimeout(() => clearPickerPending(), shieldMs);
                 staged.addFiles(incoming);
                 e.target.value = "";
               }}
@@ -5941,11 +5954,7 @@ export default function Home() {
         input={input}
         setInput={setInput}
         hasAttachments={staged.files.length > 0}
-        onSubmit={() => {
-          const result = handleSubmit(undefined);
-          setInput("");
-          return result;
-        }}
+        onSubmit={() => handleSubmit(undefined)}
         isSending={askAtlasBusy}
         isStreaming={askAtlasConv.isStreaming}
         crystallized={askAtlasCrystallized}
@@ -5956,11 +5965,15 @@ export default function Home() {
         onOpenHistory={handleOpenHistory}
         onCreateProject={handleAskAtlasCreateProject}
         onCrystallize={() => setCrystallizeSheetOpen(true)}
-        onAddAsset={() => fileInputRef.current?.click()}
+        onAddAsset={() => {
+          markPickerPending("ask_atlas_add_asset");
+          installGhostClickShield("ask_atlas_add_asset", GHOST_SHIELD_DOCUMENT_MS);
+          fileInputRef.current?.click();
+        }}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => staged.addFiles(files)}
-        onSketch={(prompt) => { void askAtlasConv.submit({ text: prompt }); }}
-        onSend={(text) => { void askAtlasConv.submit({ text }); }}
+        onSketch={(prompt) => { if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text: prompt }); }}
+        onSend={(text) => { if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text }); }}
         onAction={(id, payload) => {
           if (id === "create-project") {
             const name = typeof payload?.name === "string" ? payload.name : undefined;

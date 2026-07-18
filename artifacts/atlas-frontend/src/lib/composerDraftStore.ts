@@ -4,8 +4,9 @@
  * - Module memory survives soft React remounts (ErrorBoundary / surface flip).
  * - sessionStorage keeps the typed input across hard reloads (Documents/PPTX
  *   pickers on Android often kill the WebView).
- * - IndexedDB keeps staged File blobs across those hard reloads so a PowerPoint
- *   selected before a reload can be restored into the composer.
+ * - File blobs are intentionally not persisted while attachment transport is
+ *   stabilized. Restoring stale blobs after a picker-triggered reload caused
+ *   duplicate sends and repeated conversion crashes.
  */
 
 export type AskAtlasComposerDraft = {
@@ -20,6 +21,7 @@ const META_KEY = "atlas-ask-atlas-composer-meta";
 const IDB_NAME = "atlas-ask-atlas-composer";
 const IDB_STORE = "files";
 const IDB_KEY = "staged";
+const PERSIST_FILE_BLOBS = false;
 
 let draft: AskAtlasComposerDraft = {
   input: "",
@@ -83,6 +85,7 @@ type StoredFile = {
 };
 
 async function idbWriteFiles(files: File[]): Promise<void> {
+  if (!PERSIST_FILE_BLOBS) return;
   const db = await openDb();
   if (!db) return;
   const payload: StoredFile[] = await Promise.all(
@@ -108,6 +111,7 @@ async function idbWriteFiles(files: File[]): Promise<void> {
 }
 
 async function idbReadFiles(): Promise<File[]> {
+  if (!PERSIST_FILE_BLOBS) return [];
   const db = await openDb();
   if (!db) return [];
   const stored = await new Promise<StoredFile[] | null>((resolve) => {
@@ -164,12 +168,12 @@ async function persistAskAtlasComposerDraft(): Promise<void> {
     META_KEY,
     JSON.stringify({
       conversationId: draft.conversationId,
-      fileCount: draft.files.length,
-      names: draft.files.map((f) => f.name),
+      fileCount: PERSIST_FILE_BLOBS ? draft.files.length : 0,
+      names: PERSIST_FILE_BLOBS ? draft.files.map((f) => f.name) : [],
       updatedAt: draft.updatedAt,
     }),
   );
-  if (draft.files.length === 0) {
+  if (!PERSIST_FILE_BLOBS || draft.files.length === 0) {
     await idbClearFiles();
   } else {
     await idbWriteFiles(draft.files);
@@ -190,7 +194,7 @@ export function setAskAtlasComposerDraft(
 ): AskAtlasComposerDraft {
   draft = {
     input: next.input !== undefined ? next.input : draft.input,
-    files: next.files !== undefined ? next.files : draft.files,
+    files: next.files !== undefined ? (PERSIST_FILE_BLOBS ? next.files : []) : draft.files,
     conversationId:
       next.conversationId !== undefined ? next.conversationId : draft.conversationId,
     updatedAt: Date.now(),

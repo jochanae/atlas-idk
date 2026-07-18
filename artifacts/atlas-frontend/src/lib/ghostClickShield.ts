@@ -11,11 +11,11 @@
  */
 
 /** Default shield after a quick gallery-style picker interaction. */
-export const GHOST_SHIELD_DEFAULT_MS = 450;
+export const GHOST_SHIELD_DEFAULT_MS = 1500;
 /** Longer shield after document / Office file selection (pptx etc.). */
-export const GHOST_SHIELD_DOCUMENT_MS = 2000;
+export const GHOST_SHIELD_DOCUMENT_MS = 3000;
 /** Re-arm window when returning from a backgrounded native picker. */
-export const GHOST_SHIELD_VISIBILITY_MS = 2000;
+export const GHOST_SHIELD_VISIBILITY_MS = 3000;
 
 const PICKER_PENDING_KEY = "atlas-picker-pending";
 

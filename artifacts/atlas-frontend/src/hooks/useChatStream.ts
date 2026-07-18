@@ -409,10 +409,10 @@ export function useChatStream(
         ...(projectMap ? { projectMap } : {}),
         ...(imgAttachments.length > 0
           ? {
+              // Canonical attachment transport. Do not also send legacy
+              // imageData/imageMimeType; the backend can treat those as an
+              // additional image and duplicate the first attachment.
               attachments: imgAttachments,
-              // Legacy fields for backend compat with the pre-multi-image contract.
-              imageData: firstImg!.base64,
-              imageMimeType: firstImg!.mediaType,
             }
           : {}),
         ...(forgeContext ? { forgeContext } : {}),
