@@ -3,6 +3,13 @@ import ReactMarkdown from "react-markdown";
 import { renderChildrenWithCitations } from "@/features/codebase";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { Tier1GapCard } from "@/components/workspace/Tier1GapCard";
+import {
+  clearPickerPending,
+  installGhostClickShield,
+  markPickerPending,
+  shieldMsForFiles,
+  GHOST_SHIELD_DOCUMENT_MS,
+} from "@/lib/ghostClickShield";
 
 interface WorkspaceConversationSurfaceProps {
   projectId: number;
@@ -101,6 +108,7 @@ export function WorkspaceConversationSurface({
   const atBottom = useRef(true);
   const prevStreamingRef = useRef(false);
   const processedTokens = useRef(new Set<string>());
+  const sendInFlightRef = useRef(false);
 
   const { messages, isStreaming, isPending, send, abort } = useNexusChatStream({
     focusProjectId: projectId,
@@ -175,6 +183,9 @@ export function WorkspaceConversationSurface({
 
   const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
+    const shieldMs = files.length > 0 ? shieldMsForFiles(files) : GHOST_SHIELD_DOCUMENT_MS;
+    installGhostClickShield(files.length > 0 ? "workspace_file_selected" : "workspace_file_cancelled", shieldMs);
+    window.setTimeout(() => clearPickerPending(), shieldMs);
     if (files.length === 0) return;
     setStagedFiles((prev) => {
       const existing = new Set(prev.map((f) => f.name + f.size));
@@ -189,22 +200,33 @@ export function WorkspaceConversationSurface({
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
-    if ((!text && stagedFiles.length === 0) || isPending || isStreaming) return;
-    setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if (sendInFlightRef.current || (!text && stagedFiles.length === 0) || isPending || isStreaming) return;
+    sendInFlightRef.current = true;
     const filesToSend = stagedFiles;
-    setStagedFiles([]);
-    if (filesToSend.length > 0) {
-      const attachments = await Promise.all(
-        filesToSend.map(async (f) => ({
-          base64: await fileToBase64(f),
-          mediaType: f.type || "application/octet-stream",
-          name: f.name,
-        }))
-      );
-      await send({ text: text || " ", attachments });
-    } else {
-      await send({ text });
+    try {
+      setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      setStagedFiles([]);
+      if (filesToSend.length > 0) {
+        const attachments = await Promise.all(
+          filesToSend.map(async (f) => ({
+            base64: await fileToBase64(f),
+            mediaType: f.type || "application/octet-stream",
+            name: f.name,
+          }))
+        );
+        const result = send({ text, attachments });
+        if (!result) setStagedFiles(filesToSend);
+      } else {
+        const result = send({ text });
+        if (!result) setInput(text);
+      }
+    } catch (err) {
+      setStagedFiles(filesToSend);
+      setInput(text);
+      try { console.error("[workspace-conversation] send failed", err); } catch { /* noop */ }
+    } finally {
+      sendInFlightRef.current = false;
     }
   }, [input, stagedFiles, isPending, isStreaming, send]);
 
@@ -496,7 +518,12 @@ export function WorkspaceConversationSurface({
           {/* Paperclip button */}
           <button
             className="wcs-attach-btn"
-            onClick={() => fileInputRef.current?.click()}
+            type="button"
+            onClick={() => {
+              markPickerPending("workspace_picker_open");
+              installGhostClickShield("workspace_picker_open", GHOST_SHIELD_DOCUMENT_MS);
+              fileInputRef.current?.click();
+            }}
             disabled={isPending || isStreaming}
             title="Attach file"
             style={{
@@ -542,6 +569,7 @@ export function WorkspaceConversationSurface({
           />
           {isStreaming ? (
             <button
+              type="button"
               onClick={abort}
               style={{
                 flexShrink: 0,
@@ -565,6 +593,7 @@ export function WorkspaceConversationSurface({
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => void handleSend()}
               disabled={!canSend}
               style={{
