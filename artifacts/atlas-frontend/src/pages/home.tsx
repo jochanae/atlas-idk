@@ -3268,7 +3268,7 @@ export default function Home() {
     // the surface was opened (composer pill, resume, radial, history). This
     // eliminates the old split where entry point determined data source.
     const hasAskAtlasContent = !!text || readyStagedFiles.length > 0;
-      if (askAtlasSurfaceOpen && hasAskAtlasContent) {
+    if (askAtlasSurfaceOpen && hasAskAtlasContent) {
       if (askAtlasSurfaceSendInFlightRef.current || askAtlasConv.isStreaming || askAtlasConv.isPending) return;
       submitInFlightRef.current = true;
       askAtlasSurfaceSendInFlightRef.current = true;
@@ -3280,7 +3280,7 @@ export default function Home() {
       textareaRef.current?.blur();
       void askAtlasConv.submit({
         text,
-        stagedAttachments: staged.readyFiles,
+        stagedAttachments: readyStagedFiles,
         onMarkConverting: staged.markConverting,
         onMarkSending: staged.markSending,
         onMarkFailed: staged.markFailed,
@@ -5954,11 +5954,7 @@ export default function Home() {
         input={input}
         setInput={setInput}
         hasAttachments={staged.files.length > 0}
-        onSubmit={() => {
-          const result = handleSubmit(undefined);
-          setInput("");
-          return result;
-        }}
+        onSubmit={() => handleSubmit(undefined)}
         isSending={askAtlasBusy}
         isStreaming={askAtlasConv.isStreaming}
         crystallized={askAtlasCrystallized}
