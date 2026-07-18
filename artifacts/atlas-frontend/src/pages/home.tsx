@@ -113,6 +113,39 @@ const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id";
 const OPENING_CONVERSATION_STORAGE_KEY = "atlas-opening-conversation";
 const OPENING_ATTACHMENTS_STORAGE_KEY = "atlas-opening-attachments";
+
+/**
+ * prepareOpeningAttachments — Pre-conversation workspace seed data only.
+ *
+ * Converts image File objects to inline base64 so the Workspace can display
+ * opening-message attachment thumbnails after navigation to the new project.
+ *
+ * ── Scope ────────────────────────────────────────────────────────────────────
+ * This is NOT an attachment pipeline for chat sends.
+ * Files converted here go to sessionStorage for the Workspace to read after
+ * the router navigates; they are NOT sent to /api/nexus/chat.
+ * The actual conversation message is created server-side by POST /api/conversations
+ * (body: { initialMessage: messageText }).
+ *
+ * ── Why this exists ───────────────────────────────────────────────────────────
+ * useAtlasConversation.submit() owns all conversational attachment conversion.
+ * The project-creation path is not a conversational send — it navigates away,
+ * so the canonical controller cannot drive the Nexus turn. This function gives
+ * the pre-navigation seed data preparation a named, narrow contract instead of
+ * embedding an anonymous fileToBase64Safe loop in handleSubmit.
+ */
+async function prepareOpeningAttachments(
+  imageFiles: File[],
+  maxCount = 4,
+): Promise<Array<{ base64: string; mediaType: string; name: string }>> {
+  const capped = imageFiles.slice(0, maxCount);
+  return Promise.all(
+    capped.map(async (f) => {
+      const safe = await fileToBase64Safe(f);
+      return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
+    }),
+  );
+}
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
 const ASK_ATLAS_PORTFOLIO_SEED =
@@ -3329,64 +3362,25 @@ export default function Home() {
     };
 
     if (shouldStayOnHome) {
-      // B2: per-file conversion with error isolation. Failures leave the file as "failed"
-      // in the staged list; the send proceeds with any remaining convertible files.
-      const failedConversionIds: string[] = [];
-      const sentIds: string[] = [];
-      try {
-        let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-        if (readyStagedFiles.length > 0) {
-          const imageStaged = readyStagedFiles
-            .filter(sf => sf.mimeType.startsWith("image/"))
-            .slice(0, 10);
-          const nonImageStaged = readyStagedFiles.filter(sf => !sf.mimeType.startsWith("image/"));
-          const imageResults = await Promise.allSettled(
-            imageStaged.map(async (sf) => {
-              const safe = await fileToBase64Safe(sf.file);
-              return { id: sf.id, base64: safe.base64, mediaType: safe.mediaType, name: sf.name };
-            }),
-          );
-          const convertedImages: Array<{ base64: string; mediaType: string; name: string }> = [];
-          for (let i = 0; i < imageStaged.length; i++) {
-            const result = imageResults[i];
-            if (result.status === "fulfilled") {
-              convertedImages.push({
-                base64: result.value.base64,
-                mediaType: result.value.mediaType,
-                name: result.value.name,
-              });
-              sentIds.push(imageStaged[i].id);
-            } else {
-              failedConversionIds.push(imageStaged[i].id);
-              staged.markFailed(imageStaged[i].id, {
-                code: "CONVERSION_FAILED",
-                message: "Could not read file",
-                retryable: true,
-              });
-            }
-          }
-          // Non-image files are referenced in the text suffix; mark them as sent on success.
-          for (const sf of nonImageStaged) sentIds.push(sf.id);
-          attachments = convertedImages.length > 0 ? convertedImages : undefined;
-        }
-        await nexusChat.send({
-          text: messageText,
-          attachments,
-          overrideOptions: { focusProjectId: turnFocusProjectId },
-        });
-        // Transport confirmed — remove only the files that were successfully submitted.
-        staged.clearSent(sentIds);
-      } catch (err) {
-        // Transport failed — restore converting (not already "failed") files to "ready".
-        const stillConverting = readyIds.filter(id => !failedConversionIds.includes(id));
-        staged.restoreToReady(stillConverting);
-        handleSubmitError(err);
-      } finally {
-        setIsAtlasStreaming(false);
-        setIsSending(false);
-        document.body.dataset.voiceActive = "false";
-        submitInFlightRef.current = false;
-      }
+      // ── DEAD CODE — architectural classification ──────────────────────────
+      // This branch is unreachable from any production call site.
+      //
+      // Both places that pass forceStayOnHome:true require askAtlasSurfaceOpen=true:
+      //   • AskAtlasSurface.onSubmit (line ~6020): fires only while the surface is
+      //     visible → askAtlasSurfaceOpen=true at the call site.
+      //   • Portfolio seed (line ~3680): guarded by `if (!askAtlasSurfaceOpen) return`
+      //     immediately above the handleSubmit call.
+      //
+      // When askAtlasSurfaceOpen=true, the guard at the top of handleSubmit
+      // (`if (askAtlasSurfaceOpen && hasAskAtlasContent)`) intercepts via
+      // askAtlasConv.submit() and returns before this block is ever evaluated.
+      //
+      // ── Rule if a new call site is added ─────────────────────────────────
+      // Route through askAtlasConv.submit() with staged lifecycle callbacks.
+      // Do NOT add a second fileToBase64Safe loop here — useAtlasConversation
+      // is the one conversion point for all conversational sends.
+      staged.restoreToReady(readyIds);
+      resetSubmitState();
       return;
     }
 
@@ -3425,11 +3419,7 @@ export default function Home() {
       } catch {}
       if (imageFiles.length > 0) {
         try {
-          const capped = imageFiles.slice(0, 4);
-          const atts = await Promise.all(capped.map(async (f) => {
-            const safe = await fileToBase64Safe(f);
-            return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
-          }));
+          const atts = await prepareOpeningAttachments(imageFiles);
           sessionStorage.setItem(OPENING_ATTACHMENTS_STORAGE_KEY, JSON.stringify(atts));
         } catch {}
       }

@@ -287,6 +287,15 @@ export interface UseNexusChatStreamReturn {
   /** Authorize a pending build plan and immediately resume execution.
    *  Calls POST /api/runs/:id/authorize then sends a resume message. */
   authorizeRun: (runId: string, planVersion: string) => Promise<void>;
+  /**
+   * Returns the optimistic message id (`user-${Date.now()}`) of the most recently
+   * submitted user turn.  The ref is set synchronously inside send() immediately
+   * after the optimistic message is added to state — before the network request.
+   * It is therefore stable by the time any awaiter of send() resumes.
+   * useAtlasConversation uses this to return a real clientMessageId that
+   * corresponds to the actual message in the stream rather than an invented UUID.
+   */
+  getLastSentMessageId: () => string | null;
 }
 
 export function useNexusChatStream(
@@ -332,6 +341,8 @@ export function useNexusChatStream(
   // React state (isPending) is not enough here because state updates are batched
   // and two submits can both see isPending===false before the first render fires.
   const sendInFlightRef = useRef(false);
+  /** Tracks the id of the optimistic user message created in the most recent send() call. */
+  const lastSentUserMessageIdRef = useRef<string | null>(null);
 
   const resetStreamState = useCallback(() => {
     if (timeoutRef.current) {
@@ -471,6 +482,9 @@ export function useNexusChatStream(
         : {}),
     };
     setMessages(prev => [...prev, userMsg]);
+    // Record the stable id so useAtlasConversation.submit() can return a real
+    // clientMessageId rather than an invented UUID.  Must be set before await stream().
+    lastSentUserMessageIdRef.current = userMsg.id ?? null;
 
     // Add streaming assistant bubble
     const assistantMsg: NexusMessage = {
@@ -506,8 +520,12 @@ export function useNexusChatStream(
           ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
           ...(allFileAttachments.length > 0
             ? {
+                // B2: send ONLY via attachments[] (modern path).
+                // Do NOT also set imageBase64/imageMimeType — the server appends
+                // that field as a SECOND image block on top of attachments[], causing
+                // the first image to be sent twice to the model (confirmed in matrix
+                // test 4: 2-image send with legacy field → model reported 3 images).
                 attachments: allFileAttachments,
-                ...(firstImg ? { imageBase64: firstImg.base64, imageMimeType: firstImg.mediaType } : {}),
               }
             : {}),
           ...(askAtlasInProject
@@ -966,6 +984,8 @@ export function useNexusChatStream(
     });
   };
 
+  const getLastSentMessageId = useCallback(() => lastSentUserMessageIdRef.current, []);
+
   return {
     messages,
     setMessages,
@@ -984,5 +1004,6 @@ export function useNexusChatStream(
     clearMessages,
     pendingAuthorization,
     authorizeRun,
+    getLastSentMessageId,
   };
 }
