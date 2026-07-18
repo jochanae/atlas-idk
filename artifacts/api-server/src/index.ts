@@ -1483,6 +1483,31 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: message_attachments retired-bucket migration failed — non-fatal");
   }
 
+  // B3.2 ordering — deterministic multi-attachment position field.
+  try {
+    await db.execute(sql`
+      ALTER TABLE message_attachments
+        ADD COLUMN IF NOT EXISTS message_position integer
+    `);
+    logger.info("ensureColumns: message_attachments.message_position column verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments.message_position column failed — server will start anyway");
+  }
+
+  try {
+    // Partial unique index: only covers rows where both nexus_message_id and
+    // message_position are set (excludes pre-B3.2 rows where position is NULL).
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS message_attachments_nexus_msg_pos_uq
+        ON message_attachments (nexus_message_id, message_position)
+        WHERE nexus_message_id IS NOT NULL
+          AND message_position IS NOT NULL
+    `);
+    logger.info("ensureColumns: message_attachments nexus_message+position unique index verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments nexus_msg_pos_uq failed — server will start anyway");
+  }
+
   try {
     // Add FK with CASCADE so attachment rows are removed when the message is deleted.
     // Uses DO NOTHING on constraint-already-exists (pg throws 42710 if re-added).

@@ -2342,7 +2342,11 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // When only attachments are sent (no text), use an empty message string.
   // "[attachment]" placeholder has been retired — the model receives image/doc
   // content through the vision block, not through the text turn.
-  const message = textInput || "";
+  // B3.2: defensively normalize any legacy placeholder the frontend may have
+  // sent (e.g. from cached code or third-party callers) so they never leak
+  // into nexus_messages.content, titles, summaries, or model context.
+  const _rawMessage = textInput || "";
+  const message = (_rawMessage === "[attachment]" || _rawMessage === "(file attached)") ? "" : _rawMessage;
 
   try {
   const sessionContext = sessionId
@@ -3606,12 +3610,15 @@ WHAT YOU SHOULD NOT DO:
   // (before the done event) to guarantee attachment_ack arrives before done.
   const _attachmentPersistenceInputs: IncomingAttachment[] = allAttachments
     .filter(a => typeof a.base64 === "string" && a.base64.length > 0)
-    .map(a => ({
+    .map((a, index) => ({
       base64: a.base64,
       mediaType: a.mediaType,
       name: a.name,
       clientAttachmentId: a.clientAttachmentId,
       sizeBytes: a.sizeBytes,
+      // Preserve the original staged-file order so B3.3 hydration is deterministic
+      // regardless of which upload completes first.
+      messagePosition: index,
     }));
 
   const _attachmentPendingAcks: AttachmentAckPayload[] = [];
@@ -6038,11 +6045,23 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     }
   }
 
-  // 3. User text
-  contentParts.push({ type: "text", text: message });
+  // 3. User text — only pushed when non-empty.
+  // B3.2: empty string is valid in nexus_messages.content (attachment-only turns),
+  // but Anthropic's API rejects empty text content blocks entirely.
+  if (message) {
+    contentParts.push({ type: "text", text: message });
+  }
 
+  // Use the string shorthand only for a pure text-only turn (single text block,
+  // no vision/document parts). Any multi-part or image-only array must use the
+  // array form — the length-1 shorthand would resolve to `message` (empty) for
+  // image-only turns where no text block was pushed.
   const userContent: Anthropic.MessageParam["content"] =
-    contentParts.length === 1 ? message : contentParts;
+    contentParts.length === 0
+      ? message  // edge case: no attachments, no text — caller's problem
+      : contentParts.length === 1 && contentParts[0].type === "text"
+        ? message  // pure text-only: string shorthand (preserves existing behavior)
+        : contentParts;
 
   const anthropicMessages: Anthropic.MessageParam[] = [
     ...conversationHistory,

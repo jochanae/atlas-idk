@@ -111,6 +111,14 @@ export const messageAttachmentsTable = pgTable(
      * events with the optimistic UI chip. Null for programmatic inserts.
      */
     clientAttachmentId: text("client_attachment_id"),
+    /**
+     * Zero-based position of this attachment within the originating message.
+     * Set from the client's staged-file array index so B3.3 hydration can
+     * reconstruct the original visual order regardless of upload-completion
+     * sequence. Null for programmatic/pre-B3.2 inserts (excluded from the
+     * ordering unique index via a partial WHERE clause).
+     */
+    messagePosition: integer("message_position"),
     /** Machine-readable error code when upload_status = 'failed'. */
     uploadErrorCode: text("upload_error_code"),
     /** Human-readable upload failure detail (max 500 chars). */

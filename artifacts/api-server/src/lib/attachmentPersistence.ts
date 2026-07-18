@@ -44,6 +44,8 @@ export type IncomingAttachment = {
   name?: string;
   clientAttachmentId?: string;
   sizeBytes?: number;
+  /** Zero-based position in the staged-file array. Used for deterministic B3.3 ordering. */
+  messagePosition?: number;
 };
 
 export type AttachmentPersistenceContext = {
@@ -190,6 +192,7 @@ async function persistOne(
         uploadStatus: "pending_upload",
         uploadAttemptCount: 1,
         lastUploadAttemptAt: new Date(),
+        ...(att.messagePosition !== undefined ? { messagePosition: att.messagePosition } : {}),
       })
       .returning({ id: messageAttachmentsTable.id });
     rowId = row.id;

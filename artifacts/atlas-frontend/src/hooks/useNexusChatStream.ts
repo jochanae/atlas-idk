@@ -400,10 +400,9 @@ export function useNexusChatStream(
     if (sendInFlightRef.current || (!text.trim() && allFileAttachments.length === 0) || isPending) return undefined;
     const firstImg = imgAttachments[0];
 
-    // Backend requires a non-empty `message` field even when only files are attached.
-    const effectiveText = text.trim().length > 0
-      ? text
-      : (allFileAttachments.length > 0 ? "(file attached)" : text);
+    // B3.1/B3.2: empty string is valid when attachments are present.
+    // Never substitute a placeholder — attachment-only sends persist "" content.
+    const effectiveText = text.trim();
     // R6: [SKETCH:*] client-side short-circuit removed. Route through the LLM which
     // emits IMAGE_GEN tokens — handled server-side via Gemini/Imagen.
     // Transform [SKETCH:<preset>] prefix into natural language so the LLM has style context.
