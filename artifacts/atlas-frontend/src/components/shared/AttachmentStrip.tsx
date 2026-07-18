@@ -140,11 +140,13 @@ function StagedThumbnail({
   file: StagedFile;
   onRemove: (id: string) => void;
 }) {
-  const isError = file.status === "error";
+  const isFailed = file.status === "failed";
+  const isConverting = file.status === "converting";
+  const errorMessage = file.error?.message ?? null;
   return (
     <div
       role="listitem"
-      title={isError ? (file.error ?? undefined) : file.name}
+      title={isFailed ? (errorMessage ?? file.name) : file.name}
       style={{ position: "relative", flexShrink: 0 }}
     >
       {file.previewUrl ? (
@@ -156,15 +158,48 @@ function StagedThumbnail({
             height: 54,
             borderRadius: 7,
             objectFit: "cover",
-            border: `1px solid ${isError ? "rgba(239,68,68,0.4)" : "rgba(201,162,76,0.25)"}`,
+            border: `1px solid ${isFailed ? "rgba(239,68,68,0.4)" : "rgba(201,162,76,0.25)"}`,
             display: "block",
-            opacity: isError ? 0.45 : 1,
+            opacity: isFailed ? 0.45 : isConverting ? 0.6 : 1,
           }}
         />
       ) : (
-        <NonImageBadge name={file.name} mimeType={file.mimeType} error={isError} />
+        <NonImageBadge name={file.name} mimeType={file.mimeType} error={isFailed} />
       )}
-      {isError && file.error && (
+      {/* Conversion spinner overlay */}
+      {isConverting && (
+        <div
+          aria-label="Converting"
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 7,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.36)",
+            pointerEvents: "none",
+          }}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
+            style={{ animation: "spin 1s linear infinite" }}
+          >
+            <circle cx="9" cy="9" r="7" stroke="rgba(212,175,55,0.3)" strokeWidth="2" />
+            <path
+              d="M9 2a7 7 0 0 1 7 7"
+              stroke="rgba(212,175,55,0.9)"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+      )}
+      {/* Validation / conversion error badge */}
+      {isFailed && errorMessage && (
         <div
           style={{
             position: "absolute",
@@ -184,13 +219,14 @@ function StagedThumbnail({
             lineHeight: 1.4,
           }}
         >
-          {file.error}
+          {errorMessage}
         </div>
       )}
       <button
         type="button"
         onClick={() => onRemove(file.id)}
         aria-label={`Remove ${file.name}`}
+        disabled={isConverting}
         style={{
           position: "absolute",
           top: -6,
@@ -200,7 +236,7 @@ function StagedThumbnail({
           borderRadius: "50%",
           background: "rgba(8,8,10,0.92)",
           border: "1px solid rgba(201,162,76,0.32)",
-          cursor: "pointer",
+          cursor: isConverting ? "default" : "pointer",
           color: "var(--atlas-fg)",
           fontSize: 10,
           lineHeight: 1,
@@ -209,6 +245,7 @@ function StagedThumbnail({
           justifyContent: "center",
           padding: 0,
           zIndex: 2,
+          opacity: isConverting ? 0.4 : 1,
         }}
       >
         ×

@@ -3215,8 +3215,12 @@ export default function Home() {
     const liveText = messageOverride ?? textareaRef.current?.value ?? input;
     const text = liveText.trim();
     // B2: staged files are the attachment source. messageOverride clears files (it's a programmatic resend).
-    // `files` preserves the non-Ask-Atlas project-creation path (image attachment note in message text).
-    const files = messageOverride ? [] : staged.readyFiles.map(sf => sf.file);
+    // B2: snapshot staged state for this turn.
+    // `readyStagedFiles` + `readyIds` drive the lifecycle callbacks (markConverting, clearSent, etc.).
+    // `files` is a plain File[] snapshot for the non-Ask-Atlas path (text suffix + sessionStorage).
+    const readyStagedFiles = messageOverride ? [] : staged.readyFiles;
+    const readyIds = readyStagedFiles.map(sf => sf.id);
+    const files = readyStagedFiles.map(sf => sf.file);
     const hasFiles = files.length > 0;
     if (submitInFlightRef.current || (!text && !hasFiles) || isSending) return;
     // Ask Atlas surface routing — the surface is the sole owner of askAtlasConv.
@@ -3228,14 +3232,19 @@ export default function Home() {
       if (askAtlasConv.isStreaming || askAtlasConv.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
-      // B2: snapshot ready files, then immediately clear staged state.
-      // The controller (useAtlasConversation.submit) converts the snapshot to base64 inline.
-      // Clearing before the async work is intentional — optimistic clear prevents double-send.
-      const stagedToSubmit = staged.readyFiles;
-      staged.clearFiles();
+      // B2: pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
+      // Files stay visible as "converting" during async work and are cleared only on confirmed
+      // transport success (onClearSent) or restored to "ready" on failure (onRestoreToReady).
       clearAskAtlasComposerDraft();
       textareaRef.current?.blur();
-      void askAtlasConv.submit({ text, stagedAttachments: stagedToSubmit }).finally(() => {
+      void askAtlasConv.submit({
+        text,
+        stagedAttachments: staged.readyFiles,
+        onMarkConverting: staged.markConverting,
+        onMarkFailed: staged.markFailed,
+        onRestoreToReady: staged.restoreToReady,
+        onClearSent: staged.clearSent,
+      }).finally(() => {
         submitInFlightRef.current = false;
       });
       return;
@@ -3261,7 +3270,8 @@ export default function Home() {
     setIsSending(true);
     document.body.dataset.voiceActive = "true";
     setInput("");
-    staged.clearFiles();
+    // B2: mark all ready files as converting — cleared only on confirmed success.
+    staged.markConverting(readyIds);
 
     const imageFiles = files.filter((f) => f.type.startsWith("image/"));
     const otherFiles = files.filter((f) => !f.type.startsWith("image/"));
@@ -3319,23 +3329,57 @@ export default function Home() {
     };
 
     if (shouldStayOnHome) {
+      // B2: per-file conversion with error isolation. Failures leave the file as "failed"
+      // in the staged list; the send proceeds with any remaining convertible files.
+      const failedConversionIds: string[] = [];
+      const sentIds: string[] = [];
       try {
         let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-        if (imageFiles.length > 0) {
-          try {
-            const capped = imageFiles.slice(0, 10);
-            attachments = await Promise.all(capped.map(async (f) => {
-              const safe = await fileToBase64Safe(f);
-              return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
-            }));
-          } catch {}
+        if (readyStagedFiles.length > 0) {
+          const imageStaged = readyStagedFiles
+            .filter(sf => sf.mimeType.startsWith("image/"))
+            .slice(0, 10);
+          const nonImageStaged = readyStagedFiles.filter(sf => !sf.mimeType.startsWith("image/"));
+          const imageResults = await Promise.allSettled(
+            imageStaged.map(async (sf) => {
+              const safe = await fileToBase64Safe(sf.file);
+              return { id: sf.id, base64: safe.base64, mediaType: safe.mediaType, name: sf.name };
+            }),
+          );
+          const convertedImages: Array<{ base64: string; mediaType: string; name: string }> = [];
+          for (let i = 0; i < imageStaged.length; i++) {
+            const result = imageResults[i];
+            if (result.status === "fulfilled") {
+              convertedImages.push({
+                base64: result.value.base64,
+                mediaType: result.value.mediaType,
+                name: result.value.name,
+              });
+              sentIds.push(imageStaged[i].id);
+            } else {
+              failedConversionIds.push(imageStaged[i].id);
+              staged.markFailed(imageStaged[i].id, {
+                code: "CONVERSION_FAILED",
+                message: "Could not read file",
+                retryable: true,
+              });
+            }
+          }
+          // Non-image files are referenced in the text suffix; mark them as sent on success.
+          for (const sf of nonImageStaged) sentIds.push(sf.id);
+          attachments = convertedImages.length > 0 ? convertedImages : undefined;
         }
         await nexusChat.send({
           text: messageText,
           attachments,
           overrideOptions: { focusProjectId: turnFocusProjectId },
         });
+        // Transport confirmed — remove only the files that were successfully submitted.
+        staged.clearSent(sentIds);
       } catch (err) {
+        // Transport failed — restore converting (not already "failed") files to "ready".
+        const stillConverting = readyIds.filter(id => !failedConversionIds.includes(id));
+        staged.restoreToReady(stillConverting);
         handleSubmitError(err);
       } finally {
         setIsAtlasStreaming(false);
@@ -3397,6 +3441,8 @@ export default function Home() {
         setLocation(`/project/${projectId}`);
       }
     } catch (err) {
+      // Project creation failed — restore staged files to "ready" so the user can retry.
+      staged.restoreToReady(readyIds);
       handleSubmitError(err);
     } finally {
       resetSubmitState();
@@ -3404,6 +3450,10 @@ export default function Home() {
   }, [
     input,
     staged.readyFiles,
+    staged.markConverting,
+    staged.markFailed,
+    staged.restoreToReady,
+    staged.clearSent,
     isSending,
     askAtlasSurfaceOpen,
     backendReady,

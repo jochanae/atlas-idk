@@ -1,10 +1,15 @@
 /**
  * useStagedAttachments — Shared staged-attachment controller (B2).
  *
- * Owns file selection staging, MIME/extension detection, size validation,
- * duplicate handling, local preview-URL generation, removal, and error state.
- * Does NOT touch base64 conversion or Nexus payload shape — that lives in
- * useAtlasConversation.submit() as temporary B2 inline transport.
+ * Owns the full lifecycle for every file from selection to cleared-after-confirmed-send:
+ *   addFiles → ready → converting → cleared (clearSent) on success
+ *                               ↘ failed (markFailed) on conversion error
+ *   on transport failure: converting → restoreToReady
+ *
+ * Surfaces NEVER call clearFiles() before submit() completes.
+ * The conversation controller (useAtlasConversation.submit) calls the lifecycle
+ * callbacks — onMarkConverting, onMarkFailed, onRestoreToReady, onClearSent —
+ * which drive state transitions here.
  *
  * Both Ask Atlas and Workspace consume this hook directly.
  * No surface-specific file conversion or send logic may live outside this
@@ -14,51 +19,103 @@ import { useCallback, useEffect, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type StagedFileStatus = "ready" | "error";
+/**
+ * Lifecycle:
+ *   ready       — validated, waiting for user to send
+ *   converting  — base64 conversion in progress; file is visible with a spinner
+ *   failed      — validation OR conversion failed; file is visible with an error badge;
+ *                 user can remove or retry
+ */
+export type StagedFileStatus = "ready" | "converting" | "failed";
+
+export type StagedFileError = {
+  /** Machine-readable code for programmatic handling (e.g. "TOO_LARGE", "CONVERSION_FAILED"). */
+  code: string;
+  /** Human-readable message shown in the AttachmentStrip error badge. */
+  message: string;
+  /** True when re-attempting the operation may succeed (network blip, recoverable). */
+  retryable: boolean;
+};
+
+export type AttachmentCategory =
+  | "image"
+  | "pdf"
+  | "document"
+  | "spreadsheet"
+  | "presentation"
+  | "text"
+  | "other";
 
 export interface StagedFile {
-  /** Stable client-side ID — safe for React keys and targeted removal. */
+  /** Stable client-side ID — safe for React keys and targeted operations. */
   id: string;
   file: File;
   name: string;
   mimeType: string;
   extension: string;
   sizeBytes: number;
+  category: AttachmentCategory;
   /**
-   * Object URL created via URL.createObjectURL for image preview.
-   * Null for non-image files (PDF, doc, etc.).
-   * Revoked automatically on removal and unmount.
+   * Object URL created via URL.createObjectURL for image preview in the composer.
+   * Null for non-image files (PDF, doc, etc.) and SVG.
+   * Revoked automatically: on removeFile, clearSent, clearFiles, or component unmount.
+   * The sent-message preview in UserBubble uses base64 data URIs, NOT this URL.
    */
   previewUrl: string | null;
   status: StagedFileStatus;
-  /** Human-readable error. Non-null iff status === "error". */
-  error: string | null;
+  /** Non-null iff status === "failed". */
+  error: StagedFileError | null;
 }
 
 export interface UseStagedAttachmentsReturn {
-  /** All staged files, including those with status === "error". */
+  /** All staged files including failed ones. */
   files: StagedFile[];
-  /** Only files with status === "ready". Safe to convert and submit. */
+  /** Files with status === "ready". Safe to pass to submit(). */
   readyFiles: StagedFile[];
-  /** Add one or more files. Deduplicates by name+size. Marks oversized files as errors. */
+  /** Files with status === "converting". In-flight: do not re-submit. */
+  convertingFiles: StagedFile[];
+  /** Files with status === "failed". Visible with error badge; can be removed or retried. */
+  failedFiles: StagedFile[];
+  /** True when at least one ready file exists. */
+  canSubmitFiles: boolean;
+  /** Add one or more files. Normalises MIME/extension, deduplicates, validates. */
   addFiles: (files: FileList | File[] | null | undefined) => void;
   /** Remove a single staged file and revoke its preview URL. */
   removeFile: (id: string) => void;
-  /** Revoke all preview URLs and empty the list. Call after a successful submit. */
+  /**
+   * Transition specific files from "ready" → "converting".
+   * Called by useAtlasConversation.submit() before conversion begins.
+   */
+  markConverting: (ids: string[]) => void;
+  /**
+   * Transition a single file to "failed" with a structured error.
+   * Called by useAtlasConversation.submit() when base64 conversion throws.
+   */
+  markFailed: (id: string, error: StagedFileError) => void;
+  /**
+   * Restore "converting" files back to "ready".
+   * Called by useAtlasConversation.submit() when the transport layer fails AFTER
+   * conversion — so the user can fix the issue and retry without re-selecting files.
+   * Pass specific ids to restore a subset; pass [] to restore all converting files.
+   */
+  restoreToReady: (ids: string[]) => void;
+  /**
+   * Remove and revoke only the successfully submitted files.
+   * Called by useAtlasConversation.submit() on confirmed transport success.
+   * Files that failed conversion remain staged (status "failed") for user action.
+   */
+  clearSent: (ids: string[]) => void;
+  /**
+   * Revoke all preview URLs and empty the list.
+   * Use only for explicit cancel actions (user clicks "clear all") or component unmount.
+   * Do NOT call this before submit() succeeds — use the lifecycle callbacks instead.
+   */
   clearFiles: () => void;
-  /** True when readyFiles.length > 0. */
-  canSubmitFiles: boolean;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/**
- * B2 temporary limit.
- * Inline base64 transport cannot handle very large files gracefully.
- * This will be lifted in B3/C when storage-backed URLs replace inline transport.
- */
 const B2_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
-
 const B2_MAX_FILE_COUNT = 10;
 
 const EXTENSION_MIME_MAP: Record<string, string> = {
@@ -96,10 +153,28 @@ function detectExtension(file: File): string {
   return (file.name.split(".").pop() ?? "").toLowerCase();
 }
 
+function detectCategory(mimeType: string, extension: string): AttachmentCategory {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType === "application/pdf") return "pdf";
+  if (
+    mimeType === "application/msword" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) return "document";
+  if (
+    mimeType === "application/vnd.ms-excel" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  ) return "spreadsheet";
+  if (
+    mimeType === "application/vnd.ms-powerpoint" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+  ) return "presentation";
+  if (mimeType.startsWith("text/") || ["json", "md", "markdown", "csv"].includes(extension)) {
+    return "text";
+  }
+  return "other";
+}
+
 function makePreviewUrl(file: File, mimeType: string): string | null {
-  // SVGs are excluded: browsers can render them as <img> src but object URLs
-  // for SVGs raise security flags in some policies. Extension-detected SVGs
-  // also lack the `type` field reliability of rasterised formats.
   if (mimeType.startsWith("image/") && !mimeType.includes("svg")) {
     try {
       return URL.createObjectURL(file);
@@ -110,14 +185,14 @@ function makePreviewUrl(file: File, mimeType: string): string | null {
   return null;
 }
 
-function revokeAll(files: StagedFile[]): void {
-  for (const sf of files) {
-    if (sf.previewUrl) {
-      try {
-        URL.revokeObjectURL(sf.previewUrl);
-      } catch {}
-    }
+function revokeUrl(sf: StagedFile): void {
+  if (sf.previewUrl) {
+    try { URL.revokeObjectURL(sf.previewUrl); } catch {}
   }
+}
+
+function revokeAll(files: StagedFile[]): void {
+  for (const sf of files) revokeUrl(sf);
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -131,16 +206,11 @@ export function useStagedAttachments(opts?: {
 
   const [files, setFiles] = useState<StagedFile[]>([]);
 
-  // Revoke all object URLs when the component unmounts.
   useEffect(() => {
     return () => {
-      // Read current files from a functional updater to avoid stale closure.
-      setFiles(prev => {
-        revokeAll(prev);
-        return prev;
-      });
+      setFiles(prev => { revokeAll(prev); return prev; });
     };
-  }, []); // mount/unmount only — intentional
+  }, []);
 
   const addFiles = useCallback(
     (incoming: FileList | File[] | null | undefined) => {
@@ -152,7 +222,7 @@ export function useStagedAttachments(opts?: {
         const result: StagedFile[] = [...prev];
 
         for (const file of arr) {
-          // Hard cap: show an error entry for the first file that would exceed it.
+          // Hard cap — add an error entry for the first file that would exceed it.
           if (result.length >= maxCount) {
             result.push({
               id: crypto.randomUUID(),
@@ -161,9 +231,14 @@ export function useStagedAttachments(opts?: {
               mimeType: detectMimeType(file),
               extension: detectExtension(file),
               sizeBytes: file.size,
+              category: "other",
               previewUrl: null,
-              status: "error",
-              error: `Max ${maxCount} files`,
+              status: "failed",
+              error: {
+                code: "MAX_COUNT",
+                message: `Max ${maxCount} files`,
+                retryable: false,
+              },
             });
             break;
           }
@@ -176,30 +251,39 @@ export function useStagedAttachments(opts?: {
 
           const mimeType = detectMimeType(file);
           const extension = detectExtension(file);
-
-          let status: StagedFileStatus = "ready";
-          let error: string | null = null;
-          let previewUrl: string | null = null;
+          const category = detectCategory(mimeType, extension);
 
           if (file.size > maxSize) {
-            status = "error";
-            error = `Too large (max ${Math.round(maxSize / 1024 / 1024)} MB)`;
-            // No preview URL for oversized files.
+            result.push({
+              id: crypto.randomUUID(),
+              file,
+              name: file.name,
+              mimeType,
+              extension,
+              sizeBytes: file.size,
+              category,
+              previewUrl: null,
+              status: "failed",
+              error: {
+                code: "TOO_LARGE",
+                message: `Too large (max ${Math.round(maxSize / 1024 / 1024)} MB)`,
+                retryable: false,
+              },
+            });
           } else {
-            previewUrl = makePreviewUrl(file, mimeType);
+            result.push({
+              id: crypto.randomUUID(),
+              file,
+              name: file.name,
+              mimeType,
+              extension,
+              sizeBytes: file.size,
+              category,
+              previewUrl: makePreviewUrl(file, mimeType),
+              status: "ready",
+              error: null,
+            });
           }
-
-          result.push({
-            id: crypto.randomUUID(),
-            file,
-            name: file.name,
-            mimeType,
-            extension,
-            sizeBytes: file.size,
-            previewUrl,
-            status,
-            error,
-          });
         }
 
         return result;
@@ -211,12 +295,52 @@ export function useStagedAttachments(opts?: {
   const removeFile = useCallback((id: string) => {
     setFiles(prev => {
       const target = prev.find(sf => sf.id === id);
-      if (target?.previewUrl) {
-        try {
-          URL.revokeObjectURL(target.previewUrl);
-        } catch {}
-      }
+      if (target) revokeUrl(target);
       return prev.filter(sf => sf.id !== id);
+    });
+  }, []);
+
+  const markConverting = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    setFiles(prev =>
+      prev.map(sf =>
+        idSet.has(sf.id) && sf.status === "ready"
+          ? { ...sf, status: "converting" as StagedFileStatus }
+          : sf,
+      ),
+    );
+  }, []);
+
+  const markFailed = useCallback((id: string, error: StagedFileError) => {
+    setFiles(prev =>
+      prev.map(sf =>
+        sf.id === id
+          ? { ...sf, status: "failed" as StagedFileStatus, error }
+          : sf,
+      ),
+    );
+  }, []);
+
+  const restoreToReady = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    setFiles(prev =>
+      prev.map(sf =>
+        idSet.has(sf.id) && sf.status === "converting"
+          ? { ...sf, status: "ready" as StagedFileStatus, error: null }
+          : sf,
+      ),
+    );
+  }, []);
+
+  const clearSent = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    setFiles(prev => {
+      const removed = prev.filter(sf => idSet.has(sf.id));
+      revokeAll(removed);
+      return prev.filter(sf => !idSet.has(sf.id));
     });
   }, []);
 
@@ -228,13 +352,21 @@ export function useStagedAttachments(opts?: {
   }, []);
 
   const readyFiles = files.filter(sf => sf.status === "ready");
+  const convertingFiles = files.filter(sf => sf.status === "converting");
+  const failedFiles = files.filter(sf => sf.status === "failed");
 
   return {
     files,
     readyFiles,
+    convertingFiles,
+    failedFiles,
+    canSubmitFiles: readyFiles.length > 0,
     addFiles,
     removeFile,
+    markConverting,
+    markFailed,
+    restoreToReady,
+    clearSent,
     clearFiles,
-    canSubmitFiles: readyFiles.length > 0,
   };
 }

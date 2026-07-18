@@ -7357,15 +7357,21 @@ export default function Workspace() {
       if ((!text && staged.readyFiles.length === 0) || !atlasConv.canSend) return;
       if (atlasGreeting) setAtlasGreeting(null);
       setShowHomeHandoffBanner(false);
-      // Draft cleared here — after canSend confirms the turn will be dispatched.
       setInput("");
       if (textareaRef.current) { textareaRef.current.style.height = ""; textareaRef.current.blur(); }
       setInputFocused(false);
       try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
-      // B2: snapshot staged files, clear state, then submit.
-      const stagedToSubmit = staged.readyFiles;
-      staged.clearFiles();
-      void atlasConv.submit({ text, stagedAttachments: stagedToSubmit });
+      // B2: pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
+      // Files remain visible as "converting" during async work; cleared only on confirmed
+      // transport success (onClearSent) or restored to "ready" on transport failure (onRestoreToReady).
+      void atlasConv.submit({
+        text,
+        stagedAttachments: staged.readyFiles,
+        onMarkConverting: staged.markConverting,
+        onMarkFailed: staged.markFailed,
+        onRestoreToReady: staged.restoreToReady,
+        onClearSent: staged.clearSent,
+      });
       return;
     }
     const text = input.trim();
@@ -7378,7 +7384,7 @@ export default function Workspace() {
     const current = messages;
     const files = attachedFiles;
     setInput("");
-    staged.clearFiles();
+    setAttachedFiles([]);
     if (textareaRef.current) {
       // Clear inline height so the textarea collapses back to its ambient
       // single-line size (driven by style minHeight), then blur to dismiss
