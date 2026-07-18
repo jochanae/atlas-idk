@@ -2,14 +2,15 @@
  * useStagedAttachments — Shared staged-attachment controller (B2).
  *
  * Owns the full lifecycle for every file from selection to cleared-after-confirmed-send:
- *   addFiles → ready → converting → cleared (clearSent) on success
+ *   addFiles → ready → converting → sending → cleared (clearSent) on stream success
  *                               ↘ failed (markFailed) on conversion error
- *   on transport failure: converting → restoreToReady
+ *   on network failure after send(): sending → restoreToReady
+ *   on transport layer failure before send(): converting → restoreToReady
  *
  * Surfaces NEVER call clearFiles() before submit() completes.
  * The conversation controller (useAtlasConversation.submit) calls the lifecycle
- * callbacks — onMarkConverting, onMarkFailed, onRestoreToReady, onClearSent —
- * which drive state transitions here.
+ * callbacks — onMarkConverting, onMarkSending, onMarkFailed, onRestoreToReady,
+ * onClearSent — which drive state transitions here.
  *
  * Both Ask Atlas and Workspace consume this hook directly.
  * No surface-specific file conversion or send logic may live outside this
@@ -23,10 +24,14 @@ import { useCallback, useEffect, useState } from "react";
  * Lifecycle:
  *   ready       — validated, waiting for user to send
  *   converting  — base64 conversion in progress; file is visible with a spinner
+ *   sending     — conversion complete; send() returned; optimistic message owns the data.
+ *                 Chip is shown as accepted/faded (no spinner). Transitions →
+ *                 cleared (clearSent) on stream success, or → ready (restoreToReady)
+ *                 on network-level failure so the user can retry without reselecting.
  *   failed      — validation OR conversion failed; file is visible with an error badge;
  *                 user can remove or retry
  */
-export type StagedFileStatus = "ready" | "converting" | "failed";
+export type StagedFileStatus = "ready" | "converting" | "sending" | "failed";
 
 export type StagedFileError = {
   /** Machine-readable code for programmatic handling (e.g. "TOO_LARGE", "CONVERSION_FAILED"). */
@@ -74,6 +79,8 @@ export interface UseStagedAttachmentsReturn {
   readyFiles: StagedFile[];
   /** Files with status === "converting". In-flight: do not re-submit. */
   convertingFiles: StagedFile[];
+  /** Files with status === "sending". HTTP request accepted; stream in progress. Do not re-submit. */
+  sendingFiles: StagedFile[];
   /** Files with status === "failed". Visible with error badge; can be removed or retried. */
   failedFiles: StagedFile[];
   /** True when at least one ready file exists. */
@@ -88,15 +95,23 @@ export interface UseStagedAttachmentsReturn {
    */
   markConverting: (ids: string[]) => void;
   /**
+   * Transition specific files from "converting" → "sending".
+   * Called by useAtlasConversation.submit() immediately after send() returns the
+   * clientMessageId — before the SSE stream completes — so the chip transitions
+   * from the conversion spinner to the "accepted/sending" state. The optimistic
+   * user message already owns the base64 data at this point.
+   */
+  markSending: (ids: string[]) => void;
+  /**
    * Transition a single file to "failed" with a structured error.
    * Called by useAtlasConversation.submit() when base64 conversion throws.
    */
   markFailed: (id: string, error: StagedFileError) => void;
   /**
-   * Restore "converting" files back to "ready".
-   * Called by useAtlasConversation.submit() when the transport layer fails AFTER
-   * conversion — so the user can fix the issue and retry without re-selecting files.
-   * Pass specific ids to restore a subset; pass [] to restore all converting files.
+   * Restore "converting" or "sending" files back to "ready".
+   * Called by useAtlasConversation.submit() when the transport layer fails —
+   * so the user can fix the issue and retry without re-selecting files.
+   * Pass specific ids to restore a subset.
    */
   restoreToReady: (ids: string[]) => void;
   /**
@@ -312,6 +327,18 @@ export function useStagedAttachments(opts?: {
     );
   }, []);
 
+  const markSending = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    setFiles(prev =>
+      prev.map(sf =>
+        idSet.has(sf.id) && sf.status === "converting"
+          ? { ...sf, status: "sending" as StagedFileStatus }
+          : sf,
+      ),
+    );
+  }, []);
+
   const markFailed = useCallback((id: string, error: StagedFileError) => {
     setFiles(prev =>
       prev.map(sf =>
@@ -327,7 +354,7 @@ export function useStagedAttachments(opts?: {
     const idSet = new Set(ids);
     setFiles(prev =>
       prev.map(sf =>
-        idSet.has(sf.id) && sf.status === "converting"
+        idSet.has(sf.id) && (sf.status === "converting" || sf.status === "sending")
           ? { ...sf, status: "ready" as StagedFileStatus, error: null }
           : sf,
       ),
@@ -353,17 +380,20 @@ export function useStagedAttachments(opts?: {
 
   const readyFiles = files.filter(sf => sf.status === "ready");
   const convertingFiles = files.filter(sf => sf.status === "converting");
+  const sendingFiles = files.filter(sf => sf.status === "sending");
   const failedFiles = files.filter(sf => sf.status === "failed");
 
   return {
     files,
     readyFiles,
     convertingFiles,
+    sendingFiles,
     failedFiles,
     canSubmitFiles: readyFiles.length > 0,
     addFiles,
     removeFile,
     markConverting,
+    markSending,
     markFailed,
     restoreToReady,
     clearSent,

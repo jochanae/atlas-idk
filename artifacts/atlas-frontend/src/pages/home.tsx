@@ -136,11 +136,15 @@ const OPENING_ATTACHMENTS_STORAGE_KEY = "atlas-opening-attachments";
  */
 async function prepareOpeningAttachments(
   imageFiles: File[],
-  maxCount = 4,
 ): Promise<Array<{ base64: string; mediaType: string; name: string }>> {
-  const capped = imageFiles.slice(0, maxCount);
+  // DISPLAY-ONLY: These attachments seed the workspace UI after navigation.
+  // They are NOT sent to /api/nexus/chat and NOT part of the authoritative
+  // server message created by POST /api/conversations (body: { initialMessage }).
+  // The server message contains only the text. Full server-side attachment
+  // persistence requires the B3/C storage layer (not yet implemented).
+  // All ready staged image files are included — no artificial cap.
   return Promise.all(
-    capped.map(async (f) => {
+    imageFiles.map(async (f) => {
       const safe = await fileToBase64Safe(f);
       return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
     }),
@@ -3243,7 +3247,6 @@ export default function Home() {
 
   const handleSubmit = useCallback(async (
     messageOverride?: string,
-    options?: { forceStayOnHome?: boolean },
   ) => {
     const liveText = messageOverride ?? textareaRef.current?.value ?? input;
     const text = liveText.trim();
@@ -3274,6 +3277,7 @@ export default function Home() {
         text,
         stagedAttachments: staged.readyFiles,
         onMarkConverting: staged.markConverting,
+        onMarkSending: staged.markSending,
         onMarkFailed: staged.markFailed,
         onRestoreToReady: staged.restoreToReady,
         onClearSent: staged.clearSent,
@@ -3282,19 +3286,15 @@ export default function Home() {
       });
       return;
     }
-    const shouldStayOnHome = options?.forceStayOnHome ?? false;
-    if (shouldStayOnHome && !askAtlasSurfaceOpen && !thinkOutLoudInlineRef.current) {
-      setAskAtlasSurfaceOpen(true);
-    }
     // All blocking gates — nothing above this line mutates project/send state.
     // Each gate is a clean exit: no flags set, no API calls made.
-    if (!shouldStayOnHome && !backendReady) {
+    if (!backendReady) {
       setCreateError(
         "Project creation is unavailable in this preview because the backend API URL is not configured.",
       );
       return;
     }
-    if (!shouldStayOnHome && isFree && (projects?.length ?? 0) >= 1) {
+    if (isFree && (projects?.length ?? 0) >= 1) {
       setShowUpgrade(true);
       return;
     }
@@ -3312,12 +3312,7 @@ export default function Home() {
       otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map((f) => f.name).join(", ")}]` : "";
     const fullText = text + suffix;
 
-    // Preserve the existing text note for multi-image starts; inline home sends attach the first image.
-    const imageNote =
-      imageFiles.length > 1
-        ? ` [${imageFiles.length} images attached — showing first]`
-        : "";
-    const messageText = fullText + imageNote;
+    const messageText = fullText;
     // Use only the current message for per-turn focus detection.
     // The accumulated recentFocusUserMessages can carry stale project names
     // from earlier in the conversation, which misroutes new unrelated topics
@@ -3360,29 +3355,6 @@ export default function Home() {
       document.body.dataset.voiceActive = "false";
       submitInFlightRef.current = false;
     };
-
-    if (shouldStayOnHome) {
-      // ── DEAD CODE — architectural classification ──────────────────────────
-      // This branch is unreachable from any production call site.
-      //
-      // Both places that pass forceStayOnHome:true require askAtlasSurfaceOpen=true:
-      //   • AskAtlasSurface.onSubmit (line ~6020): fires only while the surface is
-      //     visible → askAtlasSurfaceOpen=true at the call site.
-      //   • Portfolio seed (line ~3680): guarded by `if (!askAtlasSurfaceOpen) return`
-      //     immediately above the handleSubmit call.
-      //
-      // When askAtlasSurfaceOpen=true, the guard at the top of handleSubmit
-      // (`if (askAtlasSurfaceOpen && hasAskAtlasContent)`) intercepts via
-      // askAtlasConv.submit() and returns before this block is ever evaluated.
-      //
-      // ── Rule if a new call site is added ─────────────────────────────────
-      // Route through askAtlasConv.submit() with staged lifecycle callbacks.
-      // Do NOT add a second fileToBase64Safe loop here — useAtlasConversation
-      // is the one conversion point for all conversational sends.
-      staged.restoreToReady(readyIds);
-      resetSubmitState();
-      return;
-    }
 
     try {
       const authToken = localStorage.getItem("atlas-auth-token");
@@ -3636,7 +3608,7 @@ export default function Home() {
     if (!askAtlasSurfaceOpen) return;
 
     askAtlasSeedPendingRef.current = false;
-    void handleSubmit(ASK_ATLAS_PORTFOLIO_SEED, { forceStayOnHome: true });
+    void handleSubmit(ASK_ATLAS_PORTFOLIO_SEED);
   }, [handleSubmit, isSending, askAtlasConv.messages.length, askAtlasSurfaceOpen]);
 
 
@@ -5975,7 +5947,7 @@ export default function Home() {
         setInput={setInput}
         hasAttachments={staged.files.length > 0}
         onSubmit={() => {
-          const result = handleSubmit(undefined, { forceStayOnHome: true });
+          const result = handleSubmit(undefined);
           setInput("");
           return result;
         }}

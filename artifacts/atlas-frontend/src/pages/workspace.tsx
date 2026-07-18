@@ -7362,12 +7362,14 @@ export default function Workspace() {
       setInputFocused(false);
       try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
       // B2: pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
-      // Files remain visible as "converting" during async work; cleared only on confirmed
-      // transport success (onClearSent) or restored to "ready" on transport failure (onRestoreToReady).
+      // Files remain "converting" during async work; transition to "sending" once send() returns
+      // (optimistic message owns the data), then cleared on confirmed stream success (onClearSent)
+      // or restored to "ready" on transport failure (onRestoreToReady).
       void atlasConv.submit({
         text,
         stagedAttachments: staged.readyFiles,
         onMarkConverting: staged.markConverting,
+        onMarkSending: staged.markSending,
         onMarkFailed: staged.markFailed,
         onRestoreToReady: staged.restoreToReady,
         onClearSent: staged.clearSent,

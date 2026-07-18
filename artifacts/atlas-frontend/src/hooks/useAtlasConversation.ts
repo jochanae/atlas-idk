@@ -139,8 +139,15 @@ export type AtlasConversationSubmission = {
   /** Called when a file's base64 conversion throws. Transitions to "failed". */
   onMarkFailed?: (id: string, error: StagedFileError) => void;
   /**
+   * Called immediately after send() returns (before the SSE stream completes),
+   * once the optimistic user message owns the base64 attachment data.
+   * Transitions "converting" → "sending" so the attachment chip shows the
+   * "accepted" state rather than the conversion spinner throughout the stream.
+   */
+  onMarkSending?: (ids: string[]) => void;
+  /**
    * Called when transport fails (after conversion) or when nothing survived
-   * conversion. Restores "converting" → "ready" so the user can retry.
+   * conversion. Restores "converting" or "sending" → "ready" so the user can retry.
    */
   onRestoreToReady?: (ids: string[]) => void;
   /**
@@ -297,12 +304,12 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
       // the send call). We detect this explicitly rather than resolving via
       // `?? Promise.resolve()`, which would incorrectly call onClearSent without
       // any message having been sent.
-      const sendPromise = nexusChatStream.send({
+      const sendResult = nexusChatStream.send({
         text: trimmed,
         attachments: allAttachments.length > 0 ? allAttachments : undefined,
       });
 
-      if (sendPromise === undefined) {
+      if (sendResult === undefined) {
         // send() guard fired — stream is already in-flight or pending.
         // Restore all converting files (none have failed conversion) to "ready".
         const stillConverting = readyIds.filter(id => !failedConversionIds.includes(id));
@@ -316,30 +323,32 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
         };
       }
 
+      // send() returned synchronously with clientMessageId and a completion Promise.
+      // The optimistic user message is already in state and owns the base64 data.
+      // Transition converted files "converting" → "sending" now — before the SSE
+      // stream completes — so the chip shows the accepted state rather than the
+      // conversion spinner throughout the model response.
+      const { clientMessageId, completion: sendCompletion } = sendResult;
+      const sentIds = transported.map(a => a._stagedId);
+      if (sentIds.length > 0) {
+        submission.onMarkSending?.(sentIds);
+      }
+
       try {
-        await sendPromise;
+        await sendCompletion;
 
         // ── Step 6: Confirmed success ─────────────────────────────────────
-        // stream() resolved → the SSE session completed.  The server received
+        // stream() resolved → the SSE session completed. The server received
         // the HTTP POST (including all attachment data) before the first SSE
-        // token was sent.  Clearing staged files at this point is safe because:
+        // token was sent. Clearing staged files at this point is safe because:
         //   a) The optimistic user message already owns the base64 data
         //      (stored in message.attachments — UserBubble reads from there,
         //      not from staged previewUrl).
         //   b) The server has the attachment data regardless of whether the
         //      SSE response contained an error.
-        const sentIds = transported.map(a => a._stagedId);
         if (sentIds.length > 0) {
           submission.onClearSent?.(sentIds);
         }
-
-        // clientMessageId: the actual optimistic user message id set synchronously
-        // in send() before the network request (format: "user-${Date.now()}").
-        // getLastSentMessageId() reads lastSentUserMessageIdRef — a mutable ref,
-        // not a React state snapshot — so it reflects the value set during this
-        // specific send() call even if the component has re-rendered.
-        const clientMessageId =
-          nexusChatStream.getLastSentMessageId() ?? `user-${Date.now()}`;
 
         return {
           ok: true,
@@ -349,14 +358,11 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
         };
       } catch (transportErr) {
         // ── Step 7: Network-level transport failure ───────────────────────
-        // stream() rejected — the HTTP request failed before the server could
-        // acknowledge it (connection refused, DNS failure, fetch abort, timeout).
-        // Files that converted successfully are still in "converting" state;
-        // restore them to "ready" so the user can retry without reselecting.
-        // Files already marked "failed" (conversion errors) remain "failed".
-        const stillConverting = readyIds.filter(id => !failedConversionIds.includes(id));
-        if (stillConverting.length > 0) {
-          submission.onRestoreToReady?.(stillConverting);
+        // stream() rejected — the HTTP request failed (connection refused, DNS
+        // failure, fetch abort, timeout). Files are in "sending" state; restore
+        // them to "ready" so the user can retry without reselecting.
+        if (sentIds.length > 0) {
+          submission.onRestoreToReady?.(sentIds);
         }
 
         return {
@@ -371,7 +377,7 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nexusChatStream.send, nexusChatStream.getLastSentMessageId, canSend],
+    [nexusChatStream.send, canSend],
   );
 
   return {

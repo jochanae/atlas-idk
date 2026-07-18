@@ -278,7 +278,7 @@ export interface UseNexusChatStreamReturn {
     /** Extra fields merged into the backend POST body — used for resume flags
      *  such as _resumeRunId and _approvedPlanVersion. */
     extraBody?: Record<string, unknown>;
-  }) => Promise<void>;
+  }) => { clientMessageId: string; completion: Promise<void> } | undefined;
   abort: () => void;
   clearMessages: () => void;
   /** Build plan awaiting authorization. Set when the server emits awaitingConfirmation
@@ -287,15 +287,6 @@ export interface UseNexusChatStreamReturn {
   /** Authorize a pending build plan and immediately resume execution.
    *  Calls POST /api/runs/:id/authorize then sends a resume message. */
   authorizeRun: (runId: string, planVersion: string) => Promise<void>;
-  /**
-   * Returns the optimistic message id (`user-${Date.now()}`) of the most recently
-   * submitted user turn.  The ref is set synchronously inside send() immediately
-   * after the optimistic message is added to state — before the network request.
-   * It is therefore stable by the time any awaiter of send() resumes.
-   * useAtlasConversation uses this to return a real clientMessageId that
-   * corresponds to the actual message in the stream rather than an invented UUID.
-   */
-  getLastSentMessageId: () => string | null;
 }
 
 export function useNexusChatStream(
@@ -374,7 +365,7 @@ export function useNexusChatStream(
 
   const [pendingAuthorization, setPendingAuthorization] = useState<Record<string, unknown> | null>(null);
 
-  const send = useCallback(async ({
+  const send = useCallback(({
     text,
     imageBase64,
     imageMimeType,
@@ -388,7 +379,7 @@ export function useNexusChatStream(
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
     extraBody?: Record<string, unknown>;
-  }) => {
+  }): { clientMessageId: string; completion: Promise<void> } | undefined => {
     // Unify legacy single-image inputs into the attachments array.
     // imgAttachments = images only (used for imageUrl preview in optimistic message + legacy fields).
     // docAttachments = PDFs and other non-image files Atlas can read as documents.
@@ -404,7 +395,7 @@ export function useNexusChatStream(
         ? attachments.filter((a) => !a.mediaType?.startsWith("image/"))
         : [];
     const allFileAttachments = [...imgAttachments, ...docAttachments];
-    if (sendInFlightRef.current || (!text.trim() && allFileAttachments.length === 0) || isPending) return;
+    if (sendInFlightRef.current || (!text.trim() && allFileAttachments.length === 0) || isPending) return undefined;
     const firstImg = imgAttachments[0];
 
     // Backend requires a non-empty `message` field even when only files are attached.
@@ -498,6 +489,14 @@ export function useNexusChatStream(
     };
     setMessages(prev => [...prev, assistantMsg]);
 
+    // clientMessageId is set synchronously here — the optimistic user message
+    // is already in state before the HTTP request is made.
+    const clientMessageId = userMsg.id!;
+
+    // Wrap the entire async SSE session in a completion Promise so callers
+    // can receive clientMessageId immediately (synchronously) and await the
+    // stream result separately via { clientMessageId, completion }.
+    const completion = (async () => {
     const notifyProjectReady = (doneData?: NexusProjectReadyDoneData) => {
       if (projectReadyNotifiedStreamRef.current === streamingId) return;
       projectReadyNotifiedStreamRef.current = streamingId;
@@ -958,6 +957,9 @@ export function useNexusChatStream(
       }));
       resetStreamState();
     }
+    })(); // end completion async closure
+
+    return { clientMessageId, completion };
   }, [focusProjectId, isPending, model, mode, conversationMode, onData, onProjectReady, stream, abortStream, resetStreamState]);
 
   const authorizeRun = async (runId: string, planVersion: string): Promise<void> => {
@@ -975,16 +977,17 @@ export function useNexusChatStream(
     // Clear pending authorization state immediately
     setPendingAuthorization(null);
     // Step 2: send a resume turn that triggers execution
-    await send({
+    const sendResult = send({
       text: "(Authorized — proceeding with build plan)",
       extraBody: {
         _resumeRunId: runId,
         _approvedPlanVersion: planVersion,
       },
     });
+    if (sendResult !== undefined) {
+      await sendResult.completion;
+    }
   };
-
-  const getLastSentMessageId = useCallback(() => lastSentUserMessageIdRef.current, []);
 
   return {
     messages,
@@ -1004,6 +1007,5 @@ export function useNexusChatStream(
     clearMessages,
     pendingAuthorization,
     authorizeRun,
-    getLastSentMessageId,
   };
 }
