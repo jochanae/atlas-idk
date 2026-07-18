@@ -4812,7 +4812,6 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     try {
       const [savedUser] = await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message, intentType: body.mode ?? null }).returning({ id: chatMessagesTable.id });
       savedUserMessageId = savedUser?.id ?? null;
-      await linkChatAttachments(savedUserMessageId);
     }
     catch (e: any) { logger.warn({ sessionId, err: e?.message }, "chat_messages deep-dive user insert failed — non-fatal"); }
     const diveResult = await runDeepDive(effectiveDiveTopic, systemPrompt);
@@ -5074,7 +5073,6 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         intentType: body.mode ?? null,
       }).returning({ id: chatMessagesTable.id });
       savedUserMessageId = savedUser?.id ?? null;
-      await linkChatAttachments(savedUserMessageId);
     } catch (dbErr: any) {
       const errMsg = dbErr?.message ?? "";
       const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
@@ -5089,7 +5087,6 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
             intentType: null,
           }).returning({ id: chatMessagesTable.id });
           savedUserMessageId = savedUser?.id ?? null;
-          await linkChatAttachments(savedUserMessageId);
         } catch { /* non-fatal — conversation_messages has the record */ }
       } else if (isFkViolation) {
         logger.warn({ sessionId }, "chat_messages user insert: session FK not found — skipping legacy write (conversation_messages is authoritative)");

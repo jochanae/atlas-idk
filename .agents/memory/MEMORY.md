@@ -1,3 +1,4 @@
+- [Attachment Rebuild Contract](attachment-rebuild-contract.md) — architectural failures in deleted system (PPTX through image renderer, 400 on legacy payload, split surfaces); rebuild must share one staged-file model, one contract, one classifier, one renderer, one adapter
 - [HTML App Build Lifecycle](html-app-build-lifecycle.md) — inline preview (iframe in chat), iteration loop, deploy/share all missing; generation works, UX stops at Outputs download; Jo confirmed Lovable-style inline render is the right model
 - [User Identity Layer](user-identity-layer.md) — users.user_identity column; prepended to system prompt above all project context; pre-seeded for Jo (user 1); synthesizeUserIdentity fires after each Atlas turn
 - [V1.2 turn-entry endpoint](turn-entry-endpoint.md) — POST /api/conversations/:id/messages; idempotency key, ws-{n} routing, _contractRunId bridge to skip duplicate beginContractRun in chat.ts
