@@ -5991,6 +5991,7 @@ export default function Workspace() {
   // Emit run-completed on the bus when a classic chat turn finishes.
   // Subscribers (WorkspaceRunCard, ViewChangesPanel) invalidate their own queries.
   const chatPendingRef = useRef(chatPending);
+  const workspaceSendInFlightRef = useRef(false);
   useEffect(() => {
     const prev = chatPendingRef.current;
     chatPendingRef.current = chatPending;
@@ -7352,7 +7353,8 @@ export default function Workspace() {
     if (useNexusWorkspaceChat) {
       const text = input.trim();
       // Gate checked against canSend — draft is only cleared after this passes.
-      if ((!text && staged.readyFiles.length === 0) || !atlasConv.canSend) return;
+      if (workspaceSendInFlightRef.current || (!text && staged.readyFiles.length === 0) || !atlasConv.canSend) return;
+      workspaceSendInFlightRef.current = true;
       if (atlasGreeting) setAtlasGreeting(null);
       setShowHomeHandoffBanner(false);
       setInput("");
@@ -7371,6 +7373,8 @@ export default function Workspace() {
         onMarkFailed: staged.markFailed,
         onRestoreToReady: staged.restoreToReady,
         onClearSent: staged.clearSent,
+      }).finally(() => {
+        workspaceSendInFlightRef.current = false;
       });
       return;
     }
