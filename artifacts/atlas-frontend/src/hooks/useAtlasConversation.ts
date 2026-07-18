@@ -8,7 +8,13 @@
  * reconstruct fields.
  *
  * B1 scope: text + pass-through attachments.
- * B2 will add StagedAttachment[] processing inside this controller.
+ * B2 scope: StagedFile[] → temporary inline base64 transport conversion.
+ *   Surfaces pass stagedAttachments: StagedFile[] to submit().
+ *   This controller converts ready staged files to { base64, mediaType, name }
+ *   via fileToBase64Safe — the ONLY place this conversion occurs in the codebase.
+ *   The inline base64 shape is intentionally temporary. B3/C will replace it
+ *   with storage-backed attachment URLs without changing surface call sites.
+ * B3/C: storage, persistence, database migrations — NOT implemented here.
  */
 import { useCallback } from "react";
 import {
@@ -19,6 +25,8 @@ import {
   type NexusHandoffSignal,
   type UseNexusChatStreamOptions,
 } from "./useNexusChatStream";
+import { fileToBase64Safe } from "@/lib/image-resize";
+import type { StagedFile } from "./useStagedAttachments";
 
 export type AtlasConversationAttachment = {
   base64: string;
@@ -30,8 +38,16 @@ export type AtlasConversationSubmission = {
   /** Raw user text; the controller trims it. */
   text: string;
   /**
-   * B1 pass-through: already-converted attachment data from the surface.
-   * Surfaces own staging and file-to-base64 conversion until B2.
+   * B2 staged files — passed from surfaces that use useStagedAttachments.
+   * The controller converts ready files to inline base64 transport inside submit().
+   * Surfaces must NOT perform this conversion themselves.
+   */
+  stagedAttachments?: StagedFile[];
+  /**
+   * B1 / legacy pass-through: already-converted attachment data.
+   * Used by non-staged call sites (opening-message sessionStorage handoffs,
+   * auto-continue, suggestion chips). Will be removed once all call sites
+   * migrate to stagedAttachments in B3/C.
    */
   attachments?: AtlasConversationAttachment[];
 };
@@ -58,7 +74,8 @@ export type AtlasConversation = {
   /**
    * Canonical user-initiated send. Called from both Ask Atlas and Workspace.
    * Always returns a Promise — never null — so callers can chain .finally().
-   * The controller validates, normalises, and calls nexusChatStream.send directly.
+   * The controller validates, normalises, converts staged attachments to transport,
+   * and calls nexusChatStream.send directly.
    * No surface adapter may intercept or reconstruct the submission payload.
    */
   submit: (submission: AtlasConversationSubmission) => Promise<void>;
@@ -102,16 +119,47 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
   const canSend = !nexusChatStream.isPending && !nexusChatStream.isStreaming;
 
   const submit = useCallback(
-    (submission: AtlasConversationSubmission): Promise<void> => {
+    async (submission: AtlasConversationSubmission): Promise<void> => {
       const trimmed = submission.text.trim();
-      const hasAttachments = (submission.attachments?.length ?? 0) > 0;
-      const hasContent = trimmed.length > 0 || hasAttachments;
-      // Gate: empty or busy — return a resolved promise so callers can always
-      // chain .finally() without null-checking.
-      if (!hasContent || !canSend) return Promise.resolve();
-      // One canonical call. The canonical submission object is passed directly
-      // to nexusChatStream.send — no field extraction, no surface adapter.
-      return nexusChatStream.send({ text: trimmed, attachments: submission.attachments }) ?? Promise.resolve();
+
+      // Pre-check: bail immediately if clearly nothing to send.
+      const hasStagedFiles = (submission.stagedAttachments?.length ?? 0) > 0;
+      const hasPassthrough = (submission.attachments?.length ?? 0) > 0;
+      if ((trimmed.length === 0 && !hasStagedFiles && !hasPassthrough) || !canSend) {
+        return;
+      }
+
+      // ── B2: Convert staged files → temporary inline base64 transport ─────────
+      // This is the ONLY place in the codebase where StagedFile → base64 occurs.
+      // Surfaces snapshot readyFiles and clear staged state before calling submit(),
+      // so failed conversions drop that file without restoring the draft (the
+      // directive: "failed conversion preserves the draft and unaffected files"
+      // is enforced at the surface level by the snapshot-then-clear pattern).
+      const transported: AtlasConversationAttachment[] = [];
+      for (const sf of (submission.stagedAttachments ?? [])) {
+        if (sf.status !== "ready") continue;
+        try {
+          const result = await fileToBase64Safe(sf.file);
+          transported.push({ base64: result.base64, mediaType: result.mediaType, name: sf.name });
+        } catch {
+          // Conversion failed for this file — proceed without it.
+        }
+      }
+
+      const allAttachments: AtlasConversationAttachment[] = [
+        ...transported,
+        ...(submission.attachments ?? []),
+      ];
+
+      // Re-check after conversion (all staged files may have failed).
+      const hasFinalContent = trimmed.length > 0 || allAttachments.length > 0;
+      if (!hasFinalContent) return;
+
+      // One canonical call. No field extraction, no surface adapter, no reconstruction.
+      await (nexusChatStream.send({
+        text: trimmed,
+        attachments: allAttachments.length > 0 ? allAttachments : undefined,
+      }) ?? Promise.resolve());
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [nexusChatStream.send, canSend],

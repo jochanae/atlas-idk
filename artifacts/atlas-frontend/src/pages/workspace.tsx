@@ -123,6 +123,7 @@ import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer, type ChatComposerProps } from "@/components/workspace/ChatComposer";
 import { useNexusWorkspaceBridge, deriveConversationId } from "@/hooks/useNexusWorkspaceBridge";
 import { useAtlasConversation } from "@/hooks/useAtlasConversation";
+import { useStagedAttachments } from "@/hooks/useStagedAttachments";
 
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
 import { ParkSheet } from "@/components/ParkSheet";
@@ -4460,13 +4461,18 @@ export default function Workspace() {
 
   const {
     input, setInput,
-    attachedFiles, setAttachedFiles,
     inputFocused, setInputFocused,
     firstRunDismissed, setFirstRunDismissed,
     firstRunInput, setFirstRunInput,
     textareaRef,
     fileInputRef,
+    // B2: setAttachedFiles kept for the legacy doSend path (non-Nexus) until it is deleted.
+    setAttachedFiles,
   } = useComposerDraft();
+  // B2: staged attachment controller for the Nexus path.
+  // attachedFiles is derived from staged.readyFiles so both paths share one source of truth.
+  const staged = useStagedAttachments();
+  const attachedFiles = staged.readyFiles.map(sf => sf.file);
 
 
   // Pre-fill composer from ?msg= param set by project creation with an initial thought
@@ -7347,7 +7353,8 @@ export default function Workspace() {
     if (useNexusWorkspaceChat) {
       const text = input.trim();
       // Gate checked against canSend — draft is only cleared after this passes.
-      if (!text || !atlasConv.canSend) return;
+      // B2: canonical send rule: text OR staged ready files (image, PDF, doc).
+      if ((!text && staged.readyFiles.length === 0) || !atlasConv.canSend) return;
       if (atlasGreeting) setAtlasGreeting(null);
       setShowHomeHandoffBanner(false);
       // Draft cleared here — after canSend confirms the turn will be dispatched.
@@ -7355,7 +7362,10 @@ export default function Workspace() {
       if (textareaRef.current) { textareaRef.current.style.height = ""; textareaRef.current.blur(); }
       setInputFocused(false);
       try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
-      void atlasConv.submit({ text });
+      // B2: snapshot staged files, clear state, then submit.
+      const stagedToSubmit = staged.readyFiles;
+      staged.clearFiles();
+      void atlasConv.submit({ text, stagedAttachments: stagedToSubmit });
       return;
     }
     const text = input.trim();
@@ -7368,7 +7378,7 @@ export default function Workspace() {
     const current = messages;
     const files = attachedFiles;
     setInput("");
-    setAttachedFiles([]);
+    staged.clearFiles();
     if (textareaRef.current) {
       // Clear inline height so the textarea collapses back to its ambient
       // single-line size (driven by style minHeight), then blur to dismiss
@@ -9263,6 +9273,11 @@ export default function Workspace() {
               leftTab,
               fileInputRef,
               processZip,
+              // B2: staged attachment props for the shared controller/renderer.
+              stagedFiles: staged.files,
+              onAddFiles: staged.addFiles,
+              onRemoveFile: staged.removeFile,
+              // Legacy props kept for the non-Nexus doSend path.
               attachedFiles,
               setAttachedFiles,
               zipFiles,
@@ -9293,7 +9308,7 @@ export default function Workspace() {
               setMobileTab,
               setDesktopForceTab,
               hasInput,
-              hasAttachments: attachedFiles.length > 0,
+              hasAttachments: staged.files.length > 0,
               inputFocused,
               setInputFocused,
               wsLens,

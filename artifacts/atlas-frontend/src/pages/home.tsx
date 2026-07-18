@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment, type ReactNode } from "react";
+import { useStagedAttachments } from "@/hooks/useStagedAttachments";
+import { AttachmentStrip } from "@/components/shared/AttachmentStrip";
 import ReactMarkdown from "react-markdown";
 import { Project, getListProjectsQueryKey, createProject, useCreateProject, createEntry, useCreateEntry } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
@@ -1814,10 +1816,17 @@ export default function Home() {
   const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
   const backendReady = true;
-  const [attachedFiles, setAttachedFiles] = useState<File[]>(
-    () => getAskAtlasComposerDraft().files,
-  );
-  const filePreviewUrls = useRef<Map<File, string>>(new Map());
+  // B2: staged attachment controller — shared between the ambient home composer
+  // and AskAtlasSurface. Replaces the old attachedFiles state + filePreviewUrls ref.
+  const staged = useStagedAttachments();
+  // Seed from saved draft on first mount (Android Documents hard-reload hydration).
+  // The main mount-time hydration effect below handles the async case.
+  useEffect(() => {
+    const draft = getAskAtlasComposerDraft();
+    if (draft.files.length > 0) staged.addFiles(draft.files);
+    // mount/unmount only — intentional
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Restore staged files (e.g. PowerPoint) after Android Documents hard-reload.
@@ -1826,7 +1835,7 @@ export default function Home() {
       if (cancelled) return;
       if (restored.input && !input) setInput(restored.input);
       if (restored.files.length > 0) {
-        setAttachedFiles((prev) => (prev.length > 0 ? prev : restored.files));
+        staged.addFiles(restored.files);
       }
     });
     return () => {
@@ -1837,26 +1846,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    setAskAtlasComposerDraft({ input, files: attachedFiles });
-  }, [input, attachedFiles]);
-
-  // Create/revoke Object URLs exactly once per file — never inside JSX
-  useEffect(() => {
-    const current = new Set(attachedFiles);
-    // Revoke URLs for files that were removed
-    for (const [file, url] of filePreviewUrls.current.entries()) {
-      if (!current.has(file)) {
-        URL.revokeObjectURL(url);
-        filePreviewUrls.current.delete(file);
-      }
-    }
-    // Create URLs for newly added files
-    for (const file of attachedFiles) {
-      if (file.type.startsWith("image/") && !filePreviewUrls.current.has(file)) {
-        filePreviewUrls.current.set(file, URL.createObjectURL(file));
-      }
-    }
-  }, [attachedFiles]);
+    setAskAtlasComposerDraft({ input, files: staged.readyFiles.map(sf => sf.file) });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, staged.readyFiles]);
+  // B2: filePreviewUrls effect removed — preview URLs are now owned by
+  // useStagedAttachments (StagedFile.previewUrl). AttachmentStrip renders them.
   const [showVault, setShowVault] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
@@ -3220,42 +3214,28 @@ export default function Home() {
   ) => {
     const liveText = messageOverride ?? textareaRef.current?.value ?? input;
     const text = liveText.trim();
-    const files = messageOverride ? [] : attachedFiles;
-    // Any staged file counts as content (images, PDFs, docs) — not images only.
-    // Image-only gate previously blocked PDF attach+send and could fall through
-    // into project-creation navigation when Ask Atlas surface state raced.
+    // B2: staged files are the attachment source. messageOverride clears files (it's a programmatic resend).
+    // `files` preserves the non-Ask-Atlas project-creation path (image attachment note in message text).
+    const files = messageOverride ? [] : staged.readyFiles.map(sf => sf.file);
     const hasFiles = files.length > 0;
     if (submitInFlightRef.current || (!text && !hasFiles) || isSending) return;
     // Ask Atlas surface routing — the surface is the sole owner of askAtlasConv.
     // When it's open, EVERY send goes through askAtlasChat regardless of how
     // the surface was opened (composer pill, resume, radial, history). This
     // eliminates the old split where entry point determined data source.
-    // Any attached file (image OR document) counts as content — not just images.
-    // Previously PDFs were excluded here, causing the send to fall through the
-    // Ask Atlas gate into the project-creation path → hard navigation / "hard refresh".
-    const hasAskAtlasContent = !!text || attachedFiles.length > 0;
+    const hasAskAtlasContent = !!text || staged.files.length > 0;
       if (askAtlasSurfaceOpen && hasAskAtlasContent) {
       if (askAtlasConv.isStreaming || askAtlasConv.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
-      const filesToConvert = attachedFiles; // all files — fileToBase64Safe handles non-images
-      setAttachedFiles([]);
+      // B2: snapshot ready files, then immediately clear staged state.
+      // The controller (useAtlasConversation.submit) converts the snapshot to base64 inline.
+      // Clearing before the async work is intentional — optimistic clear prevents double-send.
+      const stagedToSubmit = staged.readyFiles;
+      staged.clearFiles();
       clearAskAtlasComposerDraft();
       textareaRef.current?.blur();
-      let askAtlasAttachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
-      if (filesToConvert.length > 0) {
-        try {
-          askAtlasAttachments = await Promise.all(
-            filesToConvert.slice(0, 10).map(async (f) => {
-              const safe = await fileToBase64Safe(f);
-              return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
-            })
-          );
-        } catch {
-          // drop files if conversion fails
-        }
-      }
-      void askAtlasConv.submit({ text, ...(askAtlasAttachments ? { attachments: askAtlasAttachments } : {}) }).finally(() => {
+      void askAtlasConv.submit({ text, stagedAttachments: stagedToSubmit }).finally(() => {
         submitInFlightRef.current = false;
       });
       return;
@@ -3281,7 +3261,7 @@ export default function Home() {
     setIsSending(true);
     document.body.dataset.voiceActive = "true";
     setInput("");
-    setAttachedFiles([]);
+    staged.clearFiles();
 
     const imageFiles = files.filter((f) => f.type.startsWith("image/"));
     const otherFiles = files.filter((f) => !f.type.startsWith("image/"));
@@ -3423,7 +3403,7 @@ export default function Home() {
     }
   }, [
     input,
-    attachedFiles,
+    staged.readyFiles,
     isSending,
     askAtlasSurfaceOpen,
     backendReady,
@@ -4014,14 +3994,14 @@ export default function Home() {
     const ro = new ResizeObserver(recompute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [askAtlasSurfaceOpen, input, attachedFiles.length, inputFocused]);
+  }, [askAtlasSurfaceOpen, input, staged.files.length, inputFocused]);
 
   const hasInput = input.trim().length > 0;
-  const hasAttachments = attachedFiles.length > 0;
+  const hasAttachments = staged.files.length > 0;
   const canSubmit = hasInput || hasAttachments;
   const canSubmitNow = () => {
     const liveText = textareaRef.current?.value ?? input;
-    return liveText.trim().length > 0 || attachedFiles.length > 0;
+    return liveText.trim().length > 0 || staged.files.length > 0;
   };
   const [askAtlasTitleSlot, setAskAtlasTitleSlot] = useState<HTMLElement | null>(null);
   const [shapingHeaderSlot, setShapingHeaderSlot] = useState<HTMLElement | null>(null);
@@ -5279,11 +5259,7 @@ export default function Home() {
               onChange={(e) => {
                 e.stopPropagation();
                 const incoming = Array.from(e.target.files ?? []);
-                const combined = [...attachedFiles, ...incoming].slice(0, 10);
-                if (incoming.length + attachedFiles.length > 10) {
-                  toast("Max 10 items at a time");
-                }
-                setAttachedFiles(combined);
+                staged.addFiles(incoming);
                 e.target.value = "";
               }}
               onClick={(e) => e.stopPropagation()}
@@ -5293,31 +5269,10 @@ export default function Home() {
 
 
 
-            {/* Attached files preview strip */}
-            {attachedFiles.length > 0 && (
-              <div style={{ display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
-                {attachedFiles.map((file, idx) => (
-                  <div key={idx} style={{ position: "relative", flexShrink: 0 }}>
-                    {file.type.startsWith("image/") ? (
-                      <img
-                        src={filePreviewUrls.current.get(file)}
-                        alt={file.name}
-                        style={{ width: 54, height: 54, borderRadius: 7, objectFit: "cover", border: "1px solid rgba(201,162,76,0.25)", display: "block" }}
-                      />
-                    ) : (
-                      <div style={{ width: 54, height: 54, borderRadius: 7, background: "rgba(201,162,76,0.07)", border: "1px solid rgba(201,162,76,0.2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, overflow: "hidden" }}>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="rgba(201,162,76,0.6)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        <span style={{ fontSize: "var(--ts-tiny)", color: "rgba(201,162,76,0.55)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                      aria-label="Remove attachment"
-                      style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(201,162,76,0.32)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
-                    >×</button>
-                  </div>
-                ))}
+            {/* Attached files preview strip — B2 shared renderer */}
+            {staged.files.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <AttachmentStrip mode="staged" files={staged.files} onRemove={staged.removeFile} />
               </div>
             )}
 
@@ -5388,24 +5343,24 @@ export default function Home() {
               ["--atlas-reveal-delay" as string]: "300ms",
               position: "relative",
               borderRadius: 14,
-              padding: (inputFocused || hasInput || attachedFiles.length > 0) ? "12px 14px" : 0,
-              background: (inputFocused || hasInput || attachedFiles.length > 0)
+              padding: (inputFocused || hasInput || hasAttachments) ? "12px 14px" : 0,
+              background: (inputFocused || hasInput || hasAttachments)
                 ? (isParchment ? "var(--bg-surface)" : "rgba(20,16,10,0.32)")
                 : "transparent",
               border: "1px solid",
-              borderColor: (inputFocused || hasInput || attachedFiles.length > 0)
+              borderColor: (inputFocused || hasInput || hasAttachments)
                 ? (isParchment ? "rgba(15,23,42,0.14)" : "rgba(212,175,55,0.45)")
                 : "rgba(212,175,55,0)",
-              boxShadow: (inputFocused || hasInput || attachedFiles.length > 0)
+              boxShadow: (inputFocused || hasInput || hasAttachments)
                 ? (isParchment ? "0 1px 6px rgba(15,23,42,0.04)" : "inset 0 0 22px rgba(212,175,55,0.08), 0 0 18px rgba(212,175,55,0.06)")
                 : "none",
-              backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
+              backdropFilter: (inputFocused || hasInput || hasAttachments) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
               {/* Focus lens — top-left inside the composer rectangle. Only
                   shows when the box is visually "open" (focused or has content)
                   so the ambient homepage stays clean. */}
-              {(inputFocused || hasInput || attachedFiles.length > 0) && (
+              {(inputFocused || hasInput || hasAttachments) && (
                 <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 6 }}>
                   {focusLensChipNode}
                 </div>
@@ -5481,8 +5436,8 @@ export default function Home() {
             {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
             <div style={{
               display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative",
-              opacity: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? 1 : 0,
-              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? "auto" : "none",
+              opacity: (inputFocused || hasInput || hasAttachments || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? 1 : 0,
+              pointerEvents: (inputFocused || hasInput || hasAttachments || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? "auto" : "none",
               transition: "opacity 200ms ease-in-out",
             }}>
               <div
@@ -5541,12 +5496,8 @@ export default function Home() {
                 globalContext={true}
                 borderless={true}
                 compact={isTiny}
-                hasAttachments={attachedFiles.length > 0}
-                onFiles={(files) => {
-                  const combined = [...attachedFiles, ...files].slice(0, 10);
-                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
-                  setAttachedFiles(combined);
-                }}
+                hasAttachments={staged.files.length > 0}
+                onFiles={(files) => staged.addFiles(files)}
                 onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
                 onMenuAction={(action) => {
                   if (action === "park") { setShowParkSheet(true); return; }
@@ -5982,7 +5933,7 @@ export default function Home() {
         conversationId={askAtlasConversationId}
         input={input}
         setInput={setInput}
-        hasAttachments={attachedFiles.length > 0}
+        hasAttachments={staged.files.length > 0}
         onSubmit={() => {
           const result = handleSubmit(undefined, { forceStayOnHome: true });
           setInput("");
@@ -6000,11 +5951,7 @@ export default function Home() {
         onCrystallize={() => setCrystallizeSheetOpen(true)}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
-        onFiles={(files) => {
-          const combined = [...attachedFiles, ...files].slice(0, 10);
-          if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
-          setAttachedFiles(combined);
-        }}
+        onFiles={(files) => staged.addFiles(files)}
         onSketch={(prompt) => { void askAtlasConv.submit({ text: prompt }); }}
         onSend={(text) => { void askAtlasConv.submit({ text }); }}
         onAction={(id, payload) => {
@@ -6016,8 +5963,8 @@ export default function Home() {
             if (projectId) setLocation(`/project/${projectId}`);
           }
         }}
-        attachedFiles={attachedFiles}
-        onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+        stagedFiles={staged.files}
+        onRemoveFile={(id) => staged.removeFile(id)}
         subheader={null}
         focusLensChip={focusLensChipRef.current}
         focusChip={

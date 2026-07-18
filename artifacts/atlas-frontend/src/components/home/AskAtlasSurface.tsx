@@ -11,6 +11,7 @@
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { AttachmentStrip } from "@/components/shared/AttachmentStrip";
 
 // Strips the most visually jarring raw-markdown syntax during streaming so the
 // user doesn't see **asterisks** and ## hashes for the full response duration.
@@ -199,8 +200,10 @@ interface Props {
   onFiles?: (files: File[]) => void;
   onMenuAction?: (action: ComposerMenuAction) => void;
   onSketch?: (prompt: string) => void;
-  attachedFiles?: File[];
-  onRemoveFile?: (index: number) => void;
+  /** B2: staged files from useStagedAttachments — replaces raw attachedFiles. */
+  stagedFiles?: import("@/hooks/useStagedAttachments").StagedFile[];
+  /** B2: remove by stable id. */
+  onRemoveFile?: (id: string) => void;
   focusChip?: ReactNode;
   /** Focus lens chip rendered top-left INSIDE the composer rectangle (all modes). */
   focusLensChip?: ReactNode;
@@ -241,7 +244,7 @@ export function AskAtlasSurface({
   onFiles,
   onMenuAction,
   onSketch,
-  attachedFiles = [],
+  stagedFiles = [],
   onRemoveFile,
   focusChip,
   focusLensChip,
@@ -271,7 +274,6 @@ export function AskAtlasSurface({
   const [showParkSheet, setShowParkSheet] = useState(false);
   
   const isParchment = useThemeMode() === "parchment";
-  const filePreviewUrls = useRef<Map<File, string>>(new Map());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [dismissedNavIdx, setDismissedNavIdx] = useState<Set<number>>(new Set());
   const isTiny = useIsTinyMobile();
@@ -297,20 +299,8 @@ export function AskAtlasSurface({
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
   }, []);
 
-  useEffect(() => {
-    const current = new Set(attachedFiles);
-    for (const [file, url] of filePreviewUrls.current.entries()) {
-      if (!current.has(file)) {
-        URL.revokeObjectURL(url);
-        filePreviewUrls.current.delete(file);
-      }
-    }
-    for (const file of attachedFiles) {
-      if (file.type.startsWith("image/") && !filePreviewUrls.current.has(file)) {
-        filePreviewUrls.current.set(file, URL.createObjectURL(file));
-      }
-    }
-  }, [attachedFiles]);
+  // B2: filePreviewUrls effect removed — preview URLs are now owned by
+  // useStagedAttachments (StagedFile.previewUrl). AttachmentStrip renders them.
 
   // Smart Anchor auto-scroll — stick to bottom only if user is already near bottom.
   // If they scrolled up to re-read, freeze; don't yank them back during streaming.
@@ -1150,34 +1140,9 @@ export function AskAtlasSurface({
               </svg>
             </button>
           )}
-          {/* Attachment preview strip */}
-          {attachedFiles.length > 0 && (
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
-              {attachedFiles.map((file, idx) => (
-                <div key={idx} style={{ position: "relative", flexShrink: 0 }}>
-                  {file.type.startsWith("image/") ? (
-                    <img
-                      src={filePreviewUrls.current.get(file)}
-                      alt={file.name}
-                      style={{ width: 54, height: 54, borderRadius: 7, objectFit: "cover", border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)", display: "block" }}
-                    />
-                  ) : (
-                    <div style={{ width: 54, height: 54, borderRadius: 7, background: "color-mix(in oklab, var(--atlas-gold) 7%, transparent)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, overflow: "hidden" }}>
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="var(--atlas-gold)" strokeOpacity="0.65" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      <span style={{ fontSize: 8, color: "color-mix(in oklab, var(--atlas-gold) 60%, transparent)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
-                    </div>
-                  )}
-                  {onRemoveFile && (
-                    <button
-                      type="button"
-                      onClick={() => onRemoveFile(idx)}
-                      aria-label="Remove attachment"
-                      style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "var(--atlas-surface)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 35%, transparent)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
-                    >×</button>
-                  )}
-                </div>
-              ))}
-            </div>
+          {/* Attachment preview strip — B2 shared renderer */}
+          {stagedFiles.length > 0 && onRemoveFile && (
+            <AttachmentStrip mode="staged" files={stagedFiles} onRemove={onRemoveFile} />
           )}
 
           {/* Textarea row — full width, generous height */}

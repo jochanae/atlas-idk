@@ -7,6 +7,7 @@ import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+import { AttachmentStrip } from "@/components/shared/AttachmentStrip";
 // ComposerDock removed — footer center "A" is the single composer anchor.
 import { SessionSummaryPill } from "@/components/workspace/SessionSummaryPill";
 import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/composerAura";
@@ -108,9 +109,16 @@ export interface ChatComposerProps {
   // Visibility gate
   leftTab: "chat" | "diff" | "blueprints" | "terminal" | string;
 
-  // File / image / ZIP
+  // File / image / ZIP — B2 staged attachment props
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   processZip: (file: File) => Promise<void>;
+  /** B2: Staged files from useStagedAttachments — used for display. */
+  stagedFiles: import("@/hooks/useStagedAttachments").StagedFile[];
+  /** B2: Add files through the shared staged controller. */
+  onAddFiles: (files: File[]) => void;
+  /** B2: Remove a staged file by its stable id. */
+  onRemoveFile: (id: string) => void;
+  /** Legacy: raw File[] kept for the legacy doSend code path. Derived from staged.readyFiles in workspace.tsx. */
   attachedFiles: File[];
   setAttachedFiles: React.Dispatch<React.SetStateAction<File[]>>;
   zipFiles: ZipEntry[];
@@ -217,6 +225,9 @@ export function ChatComposer(props: ChatComposerProps) {
     leftTab,
     fileInputRef,
     processZip,
+    stagedFiles,
+    onAddFiles,
+    onRemoveFile,
     attachedFiles,
     setAttachedFiles,
     zipFiles,
@@ -292,7 +303,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
   const [composerMode, setComposerMode] = useState<"plan" | "build">(defaultComposerMode ?? "build");
   const [planBannerVisible, setPlanBannerVisible] = useState(false);
-  const filePreviewUrls = useRef<Map<File, string>>(new Map());
+  // B2: filePreviewUrls ref removed — preview URLs managed by useStagedAttachments.
   // Intake mode lives in ForgeIntakeSheet now — composer no longer tracks it.
 
   const togglePlanMode = () => {
@@ -324,26 +335,9 @@ export function ChatComposer(props: ChatComposerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, isMobile]);
 
-  useEffect(() => {
-    const current = new Set(attachedFiles);
-    for (const [file, url] of filePreviewUrls.current.entries()) {
-      if (!current.has(file)) {
-        URL.revokeObjectURL(url);
-        filePreviewUrls.current.delete(file);
-      }
-    }
-    for (const file of attachedFiles) {
-      if (file.type.startsWith("image/") && !filePreviewUrls.current.has(file)) {
-        filePreviewUrls.current.set(file, URL.createObjectURL(file));
-      }
-    }
-    return () => {
-      if (attachedFiles.length === 0) {
-        for (const url of filePreviewUrls.current.values()) URL.revokeObjectURL(url);
-        filePreviewUrls.current.clear();
-      }
-    };
-  }, [attachedFiles]);
+  // B2: filePreviewUrls effect removed — preview URLs are now managed by
+  // useStagedAttachments (via StagedFile.previewUrl) in workspace.tsx.
+  // AttachmentStrip renders from staged.files passed through the stagedFiles prop.
 
   // Option 2 — expand-on-focus bottom sheet.
   // While focused, lock body + html scroll so the page behind the sheet stays put.
@@ -558,7 +552,7 @@ export function ChatComposer(props: ChatComposerProps) {
             const zipFile = files.find(f => f.name.endsWith(".zip") || f.type === "application/zip");
             const others = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
             if (zipFile) await processZip(zipFile);
-            if (others.length > 0) setAttachedFiles(prev => [...prev, ...others].slice(0, 10));
+            if (others.length > 0) onAddFiles(others);
             e.target.value = "";
           }}
         />
@@ -632,30 +626,10 @@ export function ChatComposer(props: ChatComposerProps) {
         {/* Generate Blueprint pill removed from composer — accessible from the
             Blueprints tab empty state instead. */}
 
-        {/* Attachment preview strip */}
-        {attachedFiles.length > 0 && !isCompact && (
-          <div style={{ display: "flex", gap: 6, marginBottom: 8, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
-            {attachedFiles.map((file, idx) => (
-              <div key={idx} style={{ position: "relative", flexShrink: 0 }}>
-                {file.type.startsWith("image/") ? (
-                  <img
-                    src={filePreviewUrls.current.get(file)}
-                    alt={file.name}
-                    style={{ width: 54, height: 54, borderRadius: 7, objectFit: "cover", border: "1px solid rgba(201,162,76,0.25)", display: "block" }}
-                  />
-                ) : (
-                  <div style={{ width: 54, height: 54, borderRadius: 7, background: "rgba(201,162,76,0.07)", border: "1px solid rgba(201,162,76,0.2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, overflow: "hidden" }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="rgba(201,162,76,0.6)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    <span style={{ fontSize: 8, color: "rgba(201,162,76,0.55)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
-                  </div>
-                )}
-                <button
-                  onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                  aria-label="Remove attachment"
-                  style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(201,162,76,0.32)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
-                >×</button>
-              </div>
-            ))}
+        {/* Attachment preview strip — B2 shared renderer */}
+        {stagedFiles.length > 0 && !isCompact && (
+          <div style={{ marginBottom: 8 }}>
+            <AttachmentStrip mode="staged" files={stagedFiles} onRemove={onRemoveFile} />
           </div>
         )}
 
@@ -774,7 +748,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   // Prevent the default paste only when we captured files,
                   // so plain text pastes still work normally.
                   e.preventDefault();
-                  setAttachedFiles(prev => [...prev, ...pasted].slice(0, 10));
+                  onAddFiles(pasted);
                 }}
                 rows={1}
                 style={{
@@ -810,7 +784,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   const zipFile = files.find(f => f.name.endsWith(".zip") || f.type === "application/zip");
                   const others = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
                   if (zipFile) await processZip(zipFile);
-                  if (others.length > 0) setAttachedFiles(prev => [...prev, ...others].slice(0, 10));
+                  if (others.length > 0) onAddFiles(others);
                 }}
                 onSketch={props.onSketch}
                 parkedCount={parkedCount}
