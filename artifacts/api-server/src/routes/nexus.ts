@@ -1844,9 +1844,9 @@ router.get("/attachments/:id/content", async (req, res): Promise<void> => {
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!UUID_RE.test(attachmentId)) { res.status(404).json({ error: "Not found" }); return; }
 
-    // Single ownership-verified query: any miss (not found, wrong user, wrong status)
-    // returns 404. This prevents enumeration — callers cannot distinguish a valid
-    // attachment owned by another user from a nonexistent ID.
+    // Dual-owner query: verify ownership on BOTH the attachment row AND its parent
+    // nexus message. The INNER JOIN also ensures the message exists. Any miss —
+    // nonexistent, wrong user, wrong status, unlinked, or soft-deleted — returns 404.
     const [row] = await db
       .select({
         storagePath: messageAttachmentsTable.storagePath,
@@ -1854,10 +1854,16 @@ router.get("/attachments/:id/content", async (req, res): Promise<void> => {
         filename: messageAttachmentsTable.filename,
       })
       .from(messageAttachmentsTable)
+      .innerJoin(
+        nexusMessagesTable,
+        eq(nexusMessagesTable.id, messageAttachmentsTable.nexusMessageId),
+      )
       .where(and(
         eq(messageAttachmentsTable.id, attachmentId),
         eq(messageAttachmentsTable.userId, userId),
+        eq(nexusMessagesTable.userId, userId),
         eq(messageAttachmentsTable.uploadStatus, "uploaded"),
+        eq(messageAttachmentsTable.availabilityStatus, "active"),
       ))
       .limit(1);
 
