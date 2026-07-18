@@ -1853,8 +1853,7 @@ export default function Home() {
   const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
   const backendReady = true;
-  // B2: staged attachment controller — shared between the ambient home composer
-  // and AskAtlasSurface. Replaces the old attachedFiles state + filePreviewUrls ref.
+  // Staged attachment controller — shared between the ambient home composer and AskAtlasSurface.
   const staged = useStagedAttachments();
   // Seed from saved draft on first mount (Android Documents hard-reload hydration).
   // The main mount-time hydration effect below handles the async case.
@@ -1886,8 +1885,6 @@ export default function Home() {
     setAskAtlasComposerDraft({ input, files: staged.readyFiles.map(sf => sf.file) });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, staged.readyFiles]);
-  // B2: filePreviewUrls effect removed — preview URLs are now owned by
-  // useStagedAttachments (StagedFile.previewUrl). AttachmentStrip renders them.
   const [showVault, setShowVault] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
@@ -3250,8 +3247,7 @@ export default function Home() {
   ) => {
     const liveText = messageOverride ?? textareaRef.current?.value ?? input;
     const text = liveText.trim();
-    // B2: staged files are the attachment source. messageOverride clears files (it's a programmatic resend).
-    // B2: snapshot staged state for this turn.
+    // Snapshot staged state for this turn. messageOverride indicates a programmatic resend (no files).
     // `readyStagedFiles` + `readyIds` drive the lifecycle callbacks (markConverting, clearSent, etc.).
     // `files` is a plain File[] snapshot for the non-Ask-Atlas path (text suffix + sessionStorage).
     const readyStagedFiles = messageOverride ? [] : staged.readyFiles;
@@ -3268,7 +3264,7 @@ export default function Home() {
       if (askAtlasConv.isStreaming || askAtlasConv.isPending) return;
       submitInFlightRef.current = true;
       setInput("");
-      // B2: pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
+      // Pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
       // Files stay visible as "converting" during async work and are cleared only on confirmed
       // transport success (onClearSent) or restored to "ready" on failure (onRestoreToReady).
       clearAskAtlasComposerDraft();
@@ -3303,7 +3299,6 @@ export default function Home() {
     setIsSending(true);
     document.body.dataset.voiceActive = "true";
     setInput("");
-    // B2: mark all ready files as converting — cleared only on confirmed success.
     staged.markConverting(readyIds);
 
     const imageFiles = files.filter((f) => f.type.startsWith("image/"));

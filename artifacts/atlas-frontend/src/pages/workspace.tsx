@@ -4466,10 +4466,9 @@ export default function Workspace() {
     firstRunInput, setFirstRunInput,
     textareaRef,
     fileInputRef,
-    // B2: setAttachedFiles kept for the legacy doSend path (non-Nexus) until it is deleted.
     setAttachedFiles,
   } = useComposerDraft();
-  // B2: staged attachment controller for the Nexus path.
+  // Staged attachment controller for the Nexus send path.
   // attachedFiles is derived from staged.readyFiles so both paths share one source of truth.
   const staged = useStagedAttachments();
   const attachedFiles = staged.readyFiles.map(sf => sf.file);
@@ -7353,7 +7352,6 @@ export default function Workspace() {
     if (useNexusWorkspaceChat) {
       const text = input.trim();
       // Gate checked against canSend — draft is only cleared after this passes.
-      // B2: canonical send rule: text OR staged ready files (image, PDF, doc).
       if ((!text && staged.readyFiles.length === 0) || !atlasConv.canSend) return;
       if (atlasGreeting) setAtlasGreeting(null);
       setShowHomeHandoffBanner(false);
@@ -7361,7 +7359,7 @@ export default function Workspace() {
       if (textareaRef.current) { textareaRef.current.style.height = ""; textareaRef.current.blur(); }
       setInputFocused(false);
       try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
-      // B2: pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
+      // Pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
       // Files remain "converting" during async work; transition to "sending" once send() returns
       // (optimistic message owns the data), then cleared on confirmed stream success (onClearSent)
       // or restored to "ready" on transport failure (onRestoreToReady).
@@ -9281,7 +9279,6 @@ export default function Workspace() {
               leftTab,
               fileInputRef,
               processZip,
-              // B2: staged attachment props for the shared controller/renderer.
               stagedFiles: staged.files,
               onAddFiles: staged.addFiles,
               onRemoveFile: staged.removeFile,

@@ -532,7 +532,7 @@ export function useNexusChatStream(
           ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
           ...(allFileAttachments.length > 0
             ? {
-                // B2: send ONLY via attachments[] (modern path).
+                // Send via attachments[] only — the canonical transport path.
                 // Do NOT also set imageBase64/imageMimeType — the server appends
                 // that field as a SECOND image block on top of attachments[], causing
                 // the first image to be sent twice to the model (confirmed in matrix

@@ -1,5 +1,5 @@
 /**
- * useStagedAttachments — Shared staged-attachment controller (B2).
+ * useStagedAttachments — Shared staged-attachment controller.
  *
  * Owns the full lifecycle for every file from selection to cleared-after-confirmed-send:
  *   addFiles → ready → converting → sending → cleared (clearSent) on stream success
@@ -130,8 +130,8 @@ export interface UseStagedAttachmentsReturn {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const B2_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
-const B2_MAX_FILE_COUNT = 10;
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_FILE_COUNT = 10;
 
 const EXTENSION_MIME_MAP: Record<string, string> = {
   jpg: "image/jpeg",
@@ -216,8 +216,8 @@ export function useStagedAttachments(opts?: {
   maxCount?: number;
   maxSizeBytes?: number;
 }): UseStagedAttachmentsReturn {
-  const maxCount = opts?.maxCount ?? B2_MAX_FILE_COUNT;
-  const maxSize = opts?.maxSizeBytes ?? B2_MAX_FILE_SIZE_BYTES;
+  const maxCount = opts?.maxCount ?? MAX_FILE_COUNT;
+  const maxSize = opts?.maxSizeBytes ?? MAX_FILE_SIZE_BYTES;
 
   const [files, setFiles] = useState<StagedFile[]>([]);
 

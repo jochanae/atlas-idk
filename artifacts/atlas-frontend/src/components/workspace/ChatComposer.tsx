@@ -109,14 +109,10 @@ export interface ChatComposerProps {
   // Visibility gate
   leftTab: "chat" | "diff" | "blueprints" | "terminal" | string;
 
-  // File / image / ZIP — B2 staged attachment props
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   processZip: (file: File) => Promise<void>;
-  /** B2: Staged files from useStagedAttachments — used for display. */
   stagedFiles: import("@/hooks/useStagedAttachments").StagedFile[];
-  /** B2: Add files through the shared staged controller. */
   onAddFiles: (files: File[]) => void;
-  /** B2: Remove a staged file by its stable id. */
   onRemoveFile: (id: string) => void;
   /** Legacy: raw File[] kept for the legacy doSend code path. Derived from staged.readyFiles in workspace.tsx. */
   attachedFiles: File[];
@@ -303,8 +299,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
   const [composerMode, setComposerMode] = useState<"plan" | "build">(defaultComposerMode ?? "build");
   const [planBannerVisible, setPlanBannerVisible] = useState(false);
-  // B2: filePreviewUrls ref removed — preview URLs managed by useStagedAttachments.
-  // Intake mode lives in ForgeIntakeSheet now — composer no longer tracks it.
+  // Preview URLs are managed by useStagedAttachments (StagedFile.previewUrl).
 
   const togglePlanMode = () => {
     setComposerMode(mode => {
@@ -335,9 +330,7 @@ export function ChatComposer(props: ChatComposerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, isMobile]);
 
-  // B2: filePreviewUrls effect removed — preview URLs are now managed by
-  // useStagedAttachments (via StagedFile.previewUrl) in workspace.tsx.
-  // AttachmentStrip renders from staged.files passed through the stagedFiles prop.
+
 
   // Option 2 — expand-on-focus bottom sheet.
   // While focused, lock body + html scroll so the page behind the sheet stays put.

@@ -200,9 +200,7 @@ interface Props {
   onFiles?: (files: File[]) => void;
   onMenuAction?: (action: ComposerMenuAction) => void;
   onSketch?: (prompt: string) => void;
-  /** B2: staged files from useStagedAttachments — replaces raw attachedFiles. */
   stagedFiles?: import("@/hooks/useStagedAttachments").StagedFile[];
-  /** B2: remove by stable id. */
   onRemoveFile?: (id: string) => void;
   focusChip?: ReactNode;
   /** Focus lens chip rendered top-left INSIDE the composer rectangle (all modes). */
@@ -298,9 +296,6 @@ export function AskAtlasSurface({
     window.addEventListener("atlas:focus-composer", onFocus);
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
   }, []);
-
-  // B2: filePreviewUrls effect removed — preview URLs are now owned by
-  // useStagedAttachments (StagedFile.previewUrl). AttachmentStrip renders them.
 
   // Smart Anchor auto-scroll — stick to bottom only if user is already near bottom.
   // If they scrolled up to re-read, freeze; don't yank them back during streaming.

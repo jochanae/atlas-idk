@@ -89,7 +89,7 @@ export function UserBubble({
             border: `0.5px solid ${bubbleBorder}`,
           }}
         >
-          {/* Attachment thumbnail row — B2 shared sent-mode renderer */}
+          {/* Attachment thumbnail row */}
           {imgs.length > 0 && (
             <div style={{ marginBottom: content ? 10 : 0 }}>
               <AttachmentStrip mode="sent" attachments={imgs} />

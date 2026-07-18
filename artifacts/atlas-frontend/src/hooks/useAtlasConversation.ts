@@ -7,9 +7,6 @@
  * extraction. Nothing between submit() and the transport may remove or
  * reconstruct fields.
  *
- * B1 scope: text + pass-through attachments.
- * B2 scope: Full staged-file lifecycle.
- *
  * ── Canonical conversion path ────────────────────────────────────────────────
  * submit() is the ONE place where StagedFile → base64 conversion happens for
  * conversational sends. No other code in home.tsx or workspace.tsx may perform
@@ -50,7 +47,8 @@
  * Surfaces can distinguish "all sent" from "partially sent" via:
  *   result.submittedAttachmentIds.length === submission.stagedAttachments?.length
  *
- * B3/C: storage, persistence, database migrations — NOT implemented here.
+ * Storage-layer persistence (server-side attachment URLs, database migrations)
+ * is intentionally deferred and does not belong in this controller.
  */
 import { useCallback } from "react";
 import {
@@ -115,7 +113,7 @@ export type AtlasConversationSubmission = {
   /** Raw user text; the controller trims it. */
   text: string;
   /**
-   * B2 staged files — passed from surfaces that use useStagedAttachments.
+   * Staged files — passed from surfaces that use useStagedAttachments.
    * The controller converts ready files to inline base64 transport inside submit().
    * Surfaces must NOT perform this conversion themselves.
    * Surfaces must NOT clear staged state before awaiting submit() — the

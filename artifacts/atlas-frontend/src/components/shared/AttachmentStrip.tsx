@@ -1,5 +1,5 @@
 /**
- * AttachmentStrip — Shared renderer for staged and sent attachments (B2).
+ * AttachmentStrip — Shared renderer for staged and sent attachments.
  *
  * Two modes:
  *   "staged" — Composer preview strip. Uses StagedFile.previewUrl (object URL
@@ -10,9 +10,9 @@
  * Both Ask Atlas and Workspace consume this component so the same image appears
  * identically before send (staged), after send (sent), and during streaming.
  *
- * B2 note: "sent" mode renders inline base64, which is the temporary B2
- * transport shape. B3/C will switch to storage-backed URLs without changing
- * this component's public interface.
+ * Current transport shape: inline base64 in the request body and message state.
+ * Future: storage-backed URLs (server-side persistence). This component's public
+ * interface is intentionally URL-agnostic so that switch requires no changes here.
  */
 import { useState } from "react";
 import type { StagedFile } from "@/hooks/useStagedAttachments";
