@@ -98,6 +98,13 @@ export function getServerCapabilities(): ServerCapabilities | null {
 // ─── Flag resolution ──────────────────────────────────────────────────────────
 
 export function isAttachmentFlagOn(flag: AttachmentFlag): boolean {
+  // 0. HARD KILL SWITCH (Step 1 rollback, 2026-07-18).
+  // The persistence pipeline is dormant pending Step 2 (delete) + Step 3 (rebuild).
+  // Every send falls back to inline base64 through the legacy path.
+  // Do NOT remove without explicit approval — this is the "stop the bleeding" flag.
+  if (flag === "attachments.persistence") return false;
+  if (flag === "attachments.useAgain" || flag === "attachments.library") return false;
+
   // 1. Build-time kill switch — if explicitly false, always off.
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
