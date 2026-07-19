@@ -447,8 +447,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
           <NavRow
             icon={<Library size={14} strokeWidth={1.6} />}
-            label="Library"
-            sublabel="Saved across Axiom"
+            label="Files"
+            sublabel="Everything available to Atlas"
             onClick={() => {
               if (onOpenLibrary) {
                 onOpenLibrary();

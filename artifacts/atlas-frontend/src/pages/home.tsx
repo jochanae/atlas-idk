@@ -4762,7 +4762,7 @@ export default function Home() {
                         onMouseLeave={e => (e.currentTarget.style.opacity = "0.45")}
                       >
                         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2h8a1 1 0 011 1v11l-4-2-4 2V3a1 1 0 011-1z"/></svg>
-                        Library
+                        Files
                       </button>
                     </div>
                   )}
@@ -4937,7 +4937,7 @@ export default function Home() {
                               )}
                               {!msg.streaming && displayContent.length > 350 && (
                                 <button
-                                  title={savedMsgIdxSet.has(i) ? "Saved to Library" : "Save to Library"}
+                                  title={savedMsgIdxSet.has(i) ? "Saved to Files" : "Save to Files"}
                                   onClick={async () => {
                                     if (savedMsgIdxSet.has(i)) {
                                       const cid = activeConversationId ?? askAtlasConversationId ?? null;
