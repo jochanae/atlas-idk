@@ -44,6 +44,7 @@ import {
   updateContractRunIntent,
   type ContractRunCtx,
 } from "../lib/chatContractBridge";
+import { resolveAttachmentIdsForModel } from "../lib/attachmentResolve";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3136,8 +3137,19 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   const isFoundationMode = !body.projectId;
   const legacyAttachments = Array.isArray(body.attachments) ? body.attachments : [];
+  const attachmentIds = Array.isArray(body.attachmentIds)
+    ? [...new Set(body.attachmentIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0))]
+    : [];
 
-  if ((!body.sessionId && !isFlowMode && !isFoundationMode) || (!body.message && !legacyAttachments.length)) {
+  if (legacyAttachments.length > 0 && attachmentIds.length > 0) {
+    res.status(400).json({ error: "Use either attachments or attachmentIds, not both" });
+    return;
+  }
+
+  if (
+    (!body.sessionId && !isFlowMode && !isFoundationMode) ||
+    (!body.message && !legacyAttachments.length && attachmentIds.length === 0)
+  ) {
     res.status(400).json({ error: "Missing required fields: sessionId (or foundation mode), message" });
     return;
   }
@@ -3178,8 +3190,31 @@ router.post("/chat", async (req, res): Promise<void> => {
     asText?: boolean;
     textContent?: string;
   };
-  // Normalise: legacy inline-base64 attachments + single-image fields.
+  // Prefer attachmentIds (server-resolved). Legacy inline base64 remains for
+  // transitional callers until fully retired.
+  const resolvedFromIds: ModelAttachment[] = [];
+  if (attachmentIds.length > 0 && userId) {
+    try {
+      const { resolved } = await resolveAttachmentIdsForModel({
+        userId,
+        attachmentIds,
+      });
+      for (const r of resolved) {
+        resolvedFromIds.push({
+          base64: r.base64,
+          mediaType: r.mediaType,
+          name: r.name,
+          asText: r.asText,
+          textContent: r.textContent,
+        });
+      }
+    } catch (err) {
+      logger.warn({ err, userId }, "chat: failed to resolve attachmentIds");
+    }
+  }
+
   const allAttachments: ModelAttachment[] = [
+    ...resolvedFromIds,
     ...legacyAttachments
       .filter((a): a is { base64: string; mediaType: string; name?: string } =>
         typeof a?.base64 === "string" && typeof a?.mediaType === "string",

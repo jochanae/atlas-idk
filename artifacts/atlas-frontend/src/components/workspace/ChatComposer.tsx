@@ -115,6 +115,7 @@ export interface ChatComposerProps {
   stagedFiles: import("@/hooks/useStagedAttachments").StagedFile[];
   onAddFiles: (files: File[]) => void;
   onRemoveFile: (id: string) => void;
+  onRetryFile?: (id: string) => void;
   /** Legacy: raw File[] kept for the legacy doSend code path. Derived from staged.readyFiles in workspace.tsx. */
   attachedFiles: File[];
   setAttachedFiles: React.Dispatch<React.SetStateAction<File[]>>;
@@ -225,6 +226,7 @@ export function ChatComposer(props: ChatComposerProps) {
     stagedFiles,
     onAddFiles,
     onRemoveFile,
+    onRetryFile,
     attachedFiles,
     setAttachedFiles,
     zipFiles,
@@ -547,12 +549,12 @@ export function ChatComposer(props: ChatComposerProps) {
           accept="*/*"
           style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
           multiple
-          onChange={async (e) => {
+          onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
-            const zipFile = files.find(f => f.name.endsWith(".zip") || f.type === "application/zip");
-            const others = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
-            if (zipFile) await processZip(zipFile);
-            if (others.length > 0) onAddFiles(others);
+            // All attachable types — including ZIP — go through the shared
+            // staged-attachment path (storage_only for ZIP). Project code-context
+            // ZIP import remains on ws-code-context-input below.
+            if (files.length > 0) onAddFiles(files);
             e.target.value = "";
           }}
         />
@@ -629,7 +631,12 @@ export function ChatComposer(props: ChatComposerProps) {
         {/* Attachment preview strip — B2 shared renderer */}
         {stagedFiles.length > 0 && !isCompact && (
           <div style={{ marginBottom: 8 }}>
-            <AttachmentStrip mode="staged" files={stagedFiles} onRemove={onRemoveFile} />
+            <AttachmentStrip
+              mode="staged"
+              files={stagedFiles}
+              onRemove={onRemoveFile}
+              onRetry={onRetryFile}
+            />
           </div>
         )}
 
@@ -781,11 +788,8 @@ export function ChatComposer(props: ChatComposerProps) {
                 borderless
                 hasAttachments={attachedFiles.length > 0 || zipFiles.length > 0 || !!codeContextStatus}
                 filesContext={{ projectId: projectId ?? null }}
-                onFiles={async (files) => {
-                  const zipFile = files.find(f => f.name.endsWith(".zip") || f.type === "application/zip");
-                  const others = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
-                  if (zipFile) await processZip(zipFile);
-                  if (others.length > 0) onAddFiles(others);
+                onFiles={(files) => {
+                  if (files.length > 0) onAddFiles(files);
                 }}
                 onSketch={props.onSketch}
                 parkedCount={parkedCount}

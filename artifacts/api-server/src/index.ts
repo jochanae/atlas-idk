@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { sql } from "drizzle-orm";
 import { startScheduledChecksWorker } from "./lib/scheduledChecksWorker";
 import { startCapacityResetWorker } from "./lib/capacityResetWorker";
+import { startAttachmentRetentionWorker } from "./lib/attachmentRetentionWorker";
 import { seedMissingGenomes, backfillEmptyGenomes, seedMissingSessionsForCommitted } from "./lib/genomeExtract";
 import { seedMissingApplicationModels } from "./routes/applicationModel";
 import { migrateGenomeToApplicationModel } from "./lib/projectDNA";
@@ -1633,6 +1634,7 @@ async function main() {
     if (process.send) process.send("ready");
     startScheduledChecksWorker();
     startCapacityResetWorker();
+    startAttachmentRetentionWorker();
 
     backgroundInit().catch((err) => {
       logger.error({ err }, "backgroundInit failed — server still running");

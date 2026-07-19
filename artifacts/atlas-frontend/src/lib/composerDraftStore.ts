@@ -21,7 +21,8 @@ const META_KEY = "atlas-ask-atlas-composer-meta";
 const IDB_NAME = "atlas-ask-atlas-composer";
 const IDB_STORE = "files";
 const IDB_KEY = "staged";
-const PERSIST_FILE_BLOBS = false;
+/** Persist staged blobs across refresh so reopen restores composer files. */
+const PERSIST_FILE_BLOBS = true;
 
 let draft: AskAtlasComposerDraft = {
   input: "",

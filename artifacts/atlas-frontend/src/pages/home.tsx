@@ -75,7 +75,6 @@ import { useAtlasConversation } from "@/hooks/useAtlasConversation";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
-import { fileToBase64Safe } from "@/lib/image-resize";
 import {
   clearAskAtlasComposerDraft,
   getAskAtlasComposerDraft,
@@ -122,40 +121,45 @@ const OPENING_CONVERSATION_STORAGE_KEY = "atlas-opening-conversation";
 const OPENING_ATTACHMENTS_STORAGE_KEY = "atlas-opening-attachments";
 
 /**
- * prepareOpeningAttachments — Pre-conversation workspace seed data only.
+ * Home → Workspace attachment handoff.
  *
- * Converts image File objects to inline base64 so the Workspace can display
- * opening-message attachment thumbnails after navigation to the new project.
- *
- * ── Scope ────────────────────────────────────────────────────────────────────
- * This is NOT an attachment pipeline for chat sends.
- * Files converted here go to sessionStorage for the Workspace to read after
- * the router navigates; they are NOT sent to /api/nexus/chat.
- * The actual conversation message is created server-side by POST /api/conversations
- * (body: { initialMessage: messageText }).
- *
- * ── Why this exists ───────────────────────────────────────────────────────────
- * useAtlasConversation.submit() owns all conversational attachment conversion.
- * The project-creation path is not a conversational send — it navigates away,
- * so the canonical controller cannot drive the Nexus turn. This function gives
- * the pre-navigation seed data preparation a named, narrow contract instead of
- * embedding an anonymous fileToBase64Safe loop in handleSubmit.
+ * Staged files are already uploaded by useStagedAttachments. We persist the
+ * server attachmentIds (+ display metadata) so Workspace can submit one Nexus
+ * turn with the same shared payload — no parallel image-only path.
  */
-async function prepareOpeningAttachments(
-  imageFiles: File[],
-): Promise<Array<{ base64: string; mediaType: string; name: string }>> {
-  // DISPLAY-ONLY: These attachments seed the workspace UI after navigation.
-  // They are NOT sent to /api/nexus/chat and NOT part of the authoritative
-  // server message created by POST /api/conversations (body: { initialMessage }).
-  // The server message contains only the text. Full server-side attachment
-  // persistence requires the B3/C storage layer (not yet implemented).
-  // All ready staged image files are included — no artificial cap.
-  return Promise.all(
-    imageFiles.map(async (f) => {
-      const safe = await fileToBase64Safe(f);
-      return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
-    }),
-  );
+type OpeningAttachmentHandoff = {
+  attachmentIds: string[];
+  attachments: Array<{
+    attachmentId: string;
+    mediaType: string;
+    name: string;
+    contentUrl?: string;
+    processingStatus?: string;
+  }>;
+};
+
+function prepareOpeningAttachmentHandoff(
+  readyStaged: Array<{
+    attachmentId: string | null;
+    mimeType: string;
+    name: string;
+    previewUrl: string | null;
+    processingStatus: string | null;
+  }>,
+): OpeningAttachmentHandoff {
+  const attachments = readyStaged
+    .filter((sf): sf is typeof sf & { attachmentId: string } => !!sf.attachmentId)
+    .map((sf) => ({
+      attachmentId: sf.attachmentId,
+      mediaType: sf.mimeType,
+      name: sf.name,
+      contentUrl: sf.previewUrl ?? undefined,
+      processingStatus: sf.processingStatus ?? undefined,
+    }));
+  return {
+    attachmentIds: attachments.map((a) => a.attachmentId),
+    attachments,
+  };
 }
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
@@ -3267,7 +3271,14 @@ export default function Home() {
     // eliminates the old split where entry point determined data source.
     const hasAskAtlasContent = !!text || readyStagedFiles.length > 0;
     if (askAtlasSurfaceOpen && hasAskAtlasContent) {
-      if (askAtlasSurfaceSendInFlightRef.current || askAtlasConv.isStreaming || askAtlasConv.isPending) return;
+      if (
+        askAtlasSurfaceSendInFlightRef.current ||
+        askAtlasConv.isStreaming ||
+        askAtlasConv.isPending ||
+        staged.isUploading
+      ) {
+        return;
+      }
       submitInFlightRef.current = true;
       askAtlasSurfaceSendInFlightRef.current = true;
       setInput("");
@@ -3303,19 +3314,14 @@ export default function Home() {
       return;
     }
     // All gates cleared — commit to the operation now.
+    // Wait for uploads — never hand off incomplete staged files.
+    if (staged.isUploading) return;
     submitInFlightRef.current = true;
     setIsSending(true);
     document.body.dataset.voiceActive = "true";
     setInput("");
-    staged.markConverting(readyIds);
 
-    const imageFiles = files.filter((f) => f.type.startsWith("image/"));
-    const otherFiles = files.filter((f) => !f.type.startsWith("image/"));
-    const suffix =
-      otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map((f) => f.name).join(", ")}]` : "";
-    const fullText = text + suffix;
-
-    const messageText = fullText;
+    const messageText = text;
     // Use only the current message for per-turn focus detection.
     // The accumulated recentFocusUserMessages can carry stale project names
     // from earlier in the conversation, which misroutes new unrelated topics
@@ -3331,9 +3337,8 @@ export default function Home() {
       pushHudEvent("INTENT", text.length > 60 ? text.slice(0, 57) + "…" : text);
     }
     if (files.length > 0) {
-      const label = files.length === 1
-        ? files[0].name
-        : `${files.length} files (${imageFiles.length} image${imageFiles.length === 1 ? "" : "s"})`;
+      const label =
+        files.length === 1 ? files[0].name : `${files.length} files`;
       pushHudEvent("INGESTED", label);
     }
     setIsSending(true);
@@ -3392,11 +3397,17 @@ export default function Home() {
           sessionStorage.setItem(`atlas-cid-${project.conversationId}`, String(projectId));
         }
       } catch {}
-      if (imageFiles.length > 0) {
+      if (readyStagedFiles.length > 0) {
         try {
-          const atts = await prepareOpeningAttachments(imageFiles);
-          sessionStorage.setItem(OPENING_ATTACHMENTS_STORAGE_KEY, JSON.stringify(atts));
-        } catch {}
+          const handoff = prepareOpeningAttachmentHandoff(readyStagedFiles);
+          sessionStorage.setItem(
+            OPENING_ATTACHMENTS_STORAGE_KEY,
+            JSON.stringify(handoff),
+          );
+          staged.clearSent(readyIds);
+        } catch {
+          staged.restoreToReady(readyIds);
+        }
       }
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setActiveProjectId(projectId);
@@ -5259,7 +5270,12 @@ export default function Home() {
             {/* Attached files preview strip — B2 shared renderer */}
             {staged.files.length > 0 && (
               <div style={{ marginBottom: 10 }}>
-                <AttachmentStrip mode="staged" files={staged.files} onRemove={staged.removeFile} />
+                <AttachmentStrip
+                  mode="staged"
+                  files={staged.files}
+                  onRemove={staged.removeFile}
+                  onRetry={staged.retryFile}
+                />
               </div>
             )}
 
@@ -5950,6 +5966,7 @@ export default function Home() {
         }}
         stagedFiles={staged.files}
         onRemoveFile={(id) => staged.removeFile(id)}
+        onRetryFile={(id) => staged.retryFile(id)}
         subheader={null}
         focusLensChip={focusLensChipRef.current}
         focusChip={

@@ -104,6 +104,10 @@ import {
   type AttachmentAckPayload,
   type IncomingAttachment,
 } from "../lib/attachmentPersistence";
+import {
+  linkAttachmentsToMessage,
+  resolveAttachmentIdsForModel,
+} from "../lib/attachmentResolve";
 import { objectStorageClient, parseObjectPath } from "../lib/objectStorage";
 
 const router: IRouter = Router();
@@ -2400,10 +2404,25 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
 
   const userId = (req as any).authUser.id as number;
   const legacyAttachments = Array.isArray(body.attachments) ? body.attachments : [];
+  if (body.attachments !== undefined && !Array.isArray(body.attachments)) {
+    res.status(400).json({ error: "attachments must be an array" });
+    return;
+  }
+  if (body.attachmentIds !== undefined && !Array.isArray(body.attachmentIds)) {
+    res.status(400).json({ error: "attachmentIds must be an array" });
+    return;
+  }
+  const attachmentIds = Array.isArray(body.attachmentIds)
+    ? [...new Set(body.attachmentIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0))]
+    : [];
+  if (legacyAttachments.length > 0 && attachmentIds.length > 0) {
+    res.status(400).json({ error: "Use either attachments or attachmentIds, not both" });
+    return;
+  }
 
   const hasImage = !!(body.imageBase64 ?? body.imageData) && !!body.imageMimeType;
   const textInput = (body.message ?? body.text)?.trim() ?? "";
-  if (!textInput && !hasImage && legacyAttachments.length === 0) {
+  if (!textInput && !hasImage && legacyAttachments.length === 0 && attachmentIds.length === 0) {
     res.status(400).json({ error: "message is required" });
     return;
   }
@@ -2437,14 +2456,47 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     sizeBytes?: number;
   };
 
-  // Normalise: legacy inline-base64 attachments + single-image fields.
-  const allAttachments: ModelAttachment[] = [
+  let resolvedAttachmentIdPayloads: ModelAttachment[] = [];
+  if (attachmentIds.length > 0) {
+    try {
+      const { resolved, skipped } = await resolveAttachmentIdsForModel({
+        userId,
+        attachmentIds,
+      });
+      if (skipped.length > 0) {
+        logger.info(
+          { userId, skipped },
+          "nexus: some attachmentIds skipped for model injection",
+        );
+      }
+      resolvedAttachmentIdPayloads = resolved.map((att) => ({
+        base64: att.base64,
+        mediaType: att.mediaType,
+        name: att.name,
+        asText: att.asText,
+        textContent: att.textContent,
+      }));
+    } catch (err) {
+      logger.warn({ err, userId }, "nexus: failed to resolve attachmentIds");
+      res.status(500).json({ error: "Failed to resolve attachments" });
+      return;
+    }
+  }
+
+  const legacyInlineModelAttachments: ModelAttachment[] = [
     ...legacyAttachments
       .filter((a): a is { base64: string; mediaType: string; name?: string; clientAttachmentId?: string; sizeBytes?: number } =>
         typeof a?.base64 === "string" && typeof a?.mediaType === "string",
       )
       .map((a) => ({ base64: a.base64, mediaType: a.mediaType, name: a.name, clientAttachmentId: a.clientAttachmentId, sizeBytes: a.sizeBytes })),
     ...(imageBase64 && imageMimeType ? [{ base64: imageBase64, mediaType: imageMimeType }] : []),
+  ];
+  // Normalise: preferred attachmentIds (already persisted) + legacy inline-base64
+  // attachments + single-image fields. Unsupported persisted attachments are not
+  // included here, so the model injection loops below never see them.
+  const allAttachments: ModelAttachment[] = [
+    ...resolvedAttachmentIdPayloads,
+    ...legacyInlineModelAttachments,
   ];
   // Always store messages under a conversation ID so they appear in the
   // conversations list. If the frontend doesn't send one (new thread), we
@@ -3720,6 +3772,18 @@ WHAT YOU SHOULD NOT DO:
   }
   }
 
+  if (attachmentIds.length > 0) {
+    await linkAttachmentsToMessage({
+      userId,
+      attachmentIds,
+      conversationId: effectiveConversationId,
+      surface: isInProjectAskAtlas ? "ask_atlas" : "nexus",
+      projectId: focusProjectId ?? null,
+      chatMessageId: linkedChatMessageId,
+      nexusMessageId: linkedNexusMessageId,
+    });
+  }
+
   // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -3730,7 +3794,7 @@ WHAT YOU SHOULD NOT DO:
   // Persistence Promises are started after flushHeaders so the onPendingAck
   // callback can safely emit SSE events. They are awaited in finishStream
   // (before the done event) to guarantee attachment_ack arrives before done.
-  const _attachmentPersistenceInputs: IncomingAttachment[] = allAttachments
+  const _attachmentPersistenceInputs: IncomingAttachment[] = legacyInlineModelAttachments
     .filter(a => typeof a.base64 === "string" && a.base64.length > 0)
     .map((a, index) => ({
       base64: a.base64,
@@ -6224,8 +6288,10 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
   // image-only turns where no text block was pushed.
   const userContent: Anthropic.MessageParam["content"] =
     contentParts.length === 0
-      ? message  // edge case: no attachments, no text — caller's problem
-      : contentParts.length === 1 && contentParts[0].type === "text"
+      ? (message || (attachmentIds.length > 0
+          ? "The user attached file(s), but no attached file content is available to the model."
+          : message))
+      : contentParts.length === 1 && contentParts[0].type === "text" && allAttachments.length === 0 && vault.imageBlocks.length === 0 && urlBlocks.length === 0
         ? message  // pure text-only: string shorthand (preserves existing behavior)
         : contentParts;
 
