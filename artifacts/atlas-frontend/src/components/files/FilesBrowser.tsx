@@ -399,10 +399,24 @@ export function FilesBrowser({
 
         {/* Right pane: results */}
         <div style={{ flex: 1, minWidth: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 12, overscrollBehavior: "contain" }}>
+          {section === "recent" && recentLog.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, fontSize: 11, color: "var(--atlas-muted, hsl(var(--muted-foreground)))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span>{recentLog.length} recently attached</span>
+              <button
+                type="button"
+                onClick={() => { if (confirm("Clear recent attachments history?")) clearRecentAttachments(); }}
+                style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer", fontFamily: "inherit", fontSize: "inherit", letterSpacing: "inherit", textTransform: "inherit", padding: 4 }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
           {isLoading && <EmptyPane title="Loading…" body="Fetching your files." />}
           {!isLoading && anyError && <EmptyPane title="Couldn't load files" body={String((anyError as Error).message ?? anyError)} />}
           {!isLoading && !anyError && visible.length === 0 && (
-            <EmptyPane title="No files match" body="Try a different section or clear the search." />
+            section === "recent"
+              ? <EmptyPane title="No recent attachments" body="Files you attach to messages will appear here." />
+              : <EmptyPane title="No files match" body="Try a different section or clear the search." />
           )}
           {!isLoading && !anyError && visible.length > 0 && (
             view === "list" ? (
