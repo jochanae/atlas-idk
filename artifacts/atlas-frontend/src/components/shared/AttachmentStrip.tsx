@@ -332,8 +332,10 @@ function StagedThumbnail({
       <button
         type="button"
         onClick={() => onRemove(file.id)}
-        aria-label={`Remove ${file.name}`}
-        disabled={isUploading}
+        aria-label={
+          isUploading ? `Cancel upload ${file.name}` : `Remove ${file.name}`
+        }
+        title={isUploading ? "Cancel upload" : "Remove"}
         style={{
           position: "absolute",
           top: -6,
@@ -343,7 +345,7 @@ function StagedThumbnail({
           borderRadius: "50%",
           background: "rgba(8,8,10,0.92)",
           border: "1px solid rgba(201,162,76,0.32)",
-          cursor: isUploading ? "default" : "pointer",
+          cursor: "pointer",
           color: "var(--atlas-fg)",
           fontSize: 10,
           lineHeight: 1,
@@ -352,7 +354,6 @@ function StagedThumbnail({
           justifyContent: "center",
           padding: 0,
           zIndex: 2,
-          opacity: isUploading ? 0.4 : 1,
         }}
       >
         ×
