@@ -125,6 +125,46 @@ function flattenFs(nodes: FsNode[], parentPath = ""): FsNode[] {
   return out;
 }
 
+// ── Session browse state (section / filters / search / project) ─────────────
+// Survives remounts when the user leaves /files and returns in the same tab.
+const BROWSE_STATE_KEY = "atlas.files.browseState";
+
+type BrowseSessionState = {
+  section: FilesSection;
+  typeFilter: FilesTypeFilter;
+  query: string;
+  workspaceProjectId: number | null;
+};
+
+const SECTIONS: FilesSection[] = ["all", "workspace", "saved", "generated", "recent"];
+const TYPE_FILTERS: FilesTypeFilter[] = ["any", "images", "documents", "code", "archives"];
+
+function readBrowseSession(): Partial<BrowseSessionState> {
+  try {
+    const raw = sessionStorage.getItem(BROWSE_STATE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Partial<BrowseSessionState> = {};
+    if ((SECTIONS as string[]).includes(parsed.section)) out.section = parsed.section as FilesSection;
+    if ((TYPE_FILTERS as string[]).includes(parsed.typeFilter)) out.typeFilter = parsed.typeFilter as FilesTypeFilter;
+    if (typeof parsed.query === "string") out.query = parsed.query;
+    if (parsed.workspaceProjectId == null) out.workspaceProjectId = null;
+    else if (typeof parsed.workspaceProjectId === "number" && Number.isFinite(parsed.workspaceProjectId)) {
+      out.workspaceProjectId = parsed.workspaceProjectId;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeBrowseSession(state: BrowseSessionState) {
+  try {
+    sessionStorage.setItem(BROWSE_STATE_KEY, JSON.stringify(state));
+  } catch { /* noop */ }
+}
+
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function FilesBrowser({
@@ -136,9 +176,14 @@ export function FilesBrowser({
   currentConversationId = null,
   pinnedProjectId = null,
 }: FilesBrowserProps) {
-  const [section, setSection] = useState<FilesSection>("all");
-  const [typeFilter, setTypeFilter] = useState<FilesTypeFilter>("any");
-  const [query, setQuery] = useState("");
+  const sessionInit = readBrowseSession();
+  const [section, setSection] = useState<FilesSection>(
+    () => sessionInit.section ?? "all",
+  );
+  const [typeFilter, setTypeFilter] = useState<FilesTypeFilter>(
+    () => sessionInit.typeFilter ?? "any",
+  );
+  const [query, setQuery] = useState(() => sessionInit.query ?? "");
   // Recent attachments log (localStorage-backed).
   const [recentLog, setRecentLog] = useState<RecentAttachmentEntry[]>(() => getRecentAttachments());
   useEffect(() => subscribeRecentAttachments(() => setRecentLog(getRecentAttachments())), []);
@@ -165,7 +210,7 @@ export function FilesBrowser({
   const { data: projectsRaw } = useListProjects();
   const projects = useMemo(() => Array.isArray(projectsRaw) ? projectsRaw : [], [projectsRaw]);
   const [workspaceProjectId, setWorkspaceProjectId] = useState<number | null>(
-    pinnedProjectId ?? currentProjectId ?? null,
+    () => pinnedProjectId ?? currentProjectId ?? sessionInit.workspaceProjectId ?? null,
   );
   useEffect(() => {
     if (pinnedProjectId != null) setWorkspaceProjectId(pinnedProjectId);
@@ -173,6 +218,17 @@ export function FilesBrowser({
       setWorkspaceProjectId(currentProjectId ?? projects[0].id);
     }
   }, [pinnedProjectId, currentProjectId, projects, workspaceProjectId]);
+
+  // Persist browse UI for same-session return to /files (and attach reuse).
+  useEffect(() => {
+    if (pinnedProjectId != null) return; // don't overwrite global browse project with a pinned attach context
+    writeBrowseSession({
+      section,
+      typeFilter,
+      query,
+      workspaceProjectId,
+    });
+  }, [section, typeFilter, query, workspaceProjectId, pinnedProjectId]);
 
   const librarySavedQ = useQuery<LibraryItem[]>({
     queryKey: ["files-library-saved"],

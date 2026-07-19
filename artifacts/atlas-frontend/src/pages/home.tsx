@@ -5525,7 +5525,8 @@ export default function Home() {
                   if (action === "settings") { setLocation("/account"); return; }
                   if (action === "code") { setLocation("/code"); return; }
                   if (action === "connectors") { setLocation("/connectors"); return; }
-                  if (action === "files" || action === "share" ||
+                  if (action === "files") { setLocation("/files"); return; }
+                  if (action === "share" ||
                       action === "publish" ||
                       action === "more:forge") { setLocation("/projects"); return; }
                   toast("Open a project to use that");
@@ -6046,7 +6047,8 @@ export default function Home() {
           if (action === "settings") { setLocation("/account"); return; }
           if (action === "code") { setLocation("/code"); return; }
           if (action === "connectors") { setLocation("/connectors"); return; }
-          if (action === "files" || action === "share" ||
+          if (action === "files") { setLocation("/files"); return; }
+          if (action === "share" ||
               action === "publish" ||
               action === "more:forge") { setLocation("/projects"); return; }
           toast("Open a project to use that");
