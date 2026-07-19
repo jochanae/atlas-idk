@@ -210,13 +210,13 @@ export function ComposerActions({
 
   // Lock body scroll while a sheet is open
   useEffect(() => {
-    if (!showPlus && !showMore) return;
+    if (!showPlus && !showMore && !showFiles) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [showPlus, showMore]);
+  }, [showPlus, showMore, showFiles]);
 
   function openNativePicker(kind: "attach" | "camera", input: HTMLInputElement | null) {
     const surface = scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared";
