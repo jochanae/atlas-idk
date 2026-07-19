@@ -192,11 +192,16 @@ export function ComposerActions({
   onSketch,
   hidePark = false,
   compact = false,
+  filesContext,
 }: ComposerActionsProps) {
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [moreExpanded, setMoreExpanded] = useState(false);
   const [showSketch, setShowSketch] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
+  const [filesSelected, setFilesSelected] = useState<string[]>([]);
+  const [filesPicks, setFilesPicks] = useState<UnifiedFile[]>([]);
+  const [filesResolving, setFilesResolving] = useState(false);
   const portalHost = typeof document !== "undefined" ? document.body : null;
 
 
