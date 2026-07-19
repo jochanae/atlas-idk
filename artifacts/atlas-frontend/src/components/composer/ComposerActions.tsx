@@ -84,6 +84,8 @@ export interface ComposerActionsProps {
   hidePark?: boolean;
   /** Tighter 32px icon buttons for tiny mobile widths. */
   compact?: boolean;
+  /** Context passed to the unified Files browser (bias Availability + pin project). */
+  filesContext?: { projectId?: number | null; conversationId?: string | null };
 }
 
 type PrimaryItem = {
