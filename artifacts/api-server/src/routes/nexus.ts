@@ -27,6 +27,7 @@ import { logger } from "../lib/logger";
 import { loadConversationLibraryContext } from "../lib/library";
 
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
+import { extractOoxmlText } from "../lib/attachmentExtract";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
@@ -6019,6 +6020,25 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     void failStream("Run cancelled by the user.", "cancelled");
   });
 
+  // Pre-extract text from OOXML binary attachments (DOCX, PPTX, XLSX) so both
+  // the Gemini and Claude paths see readable text instead of "cannot extract".
+  // JSZip is already bundled; extraction is fast (< 200 ms for typical docs).
+  for (const att of allAttachments) {
+    if (att.asText || att.textContent != null) continue;
+    const ext = (att.name ?? "").split(".").pop()?.toLowerCase() ?? "";
+    if (["docx", "doc", "pptx", "ppt", "xlsx", "xls"].includes(ext)) {
+      try {
+        const extracted = await extractOoxmlText(att.base64, att.name ?? ext);
+        if (extracted) {
+          att.asText = true;
+          att.textContent = extracted;
+        }
+      } catch {
+        // extraction failure is non-fatal — fall through to the "cannot extract" stub
+      }
+    }
+  }
+
   // Call the selected model
   if (activeModel === "gemini") {
     let rawContent = "";
@@ -6181,18 +6201,12 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
         });
       }
     } else {
-      // Truly binary formats (DOCX, XLSX, PPTX, etc.) — Atlas cannot read
-      // these without a dedicated extraction library. Tell the user clearly
-      // rather than sending a useless base64-length stub.
-      const ext = (att.name ?? "").split(".").pop()?.toLowerCase() ?? "";
-      const hint =
-        ext === "docx" || ext === "doc" ? "Word documents"
-        : ext === "xlsx" || ext === "xls" ? "Excel spreadsheets"
-        : ext === "pptx" || ext === "ppt" ? "PowerPoint files"
-        : "this binary format";
+      // Formats that extractOoxmlText couldn't handle (unknown binary, corrupt
+      // archive, or a format we haven't implemented yet).  Give a clear message
+      // rather than silently swallowing the attachment.
       contentParts.push({
         type: "text",
-        text: `Attached file: ${att.name ?? "file"} (${att.mediaType}) — Atlas cannot extract the contents of ${hint} yet. Please paste the relevant text directly into the message, or export the content as a PDF or plain-text file.`,
+        text: `Attached file: ${att.name ?? "file"} (${att.mediaType}) — the content could not be extracted from this file format. Try exporting it as a PDF, plain text, or Markdown instead.`,
       });
     }
   }
