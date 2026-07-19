@@ -2374,9 +2374,14 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     imageBase64?: string;
     imageData?: string;
     imageMimeType?: string;
-    /** Legacy inline-base64 path. Rejected when ATTACHMENTS_PERSISTENCE=true. */
+    /**
+     * Legacy inline-base64 path. Still accepted for transitional callers.
+     * ATTACHMENTS_PERSISTENCE does not reject this shape — it only feeds
+     * GET /api/capabilities. Prefer attachmentIds for new clients.
+     * Cannot be combined with attachmentIds (400).
+     */
     attachments?: Array<{ base64?: string; mediaType?: string; name?: string; url?: string; clientAttachmentId?: string; sizeBytes?: number }>;
-    /** Server-resolved attachment IDs (preferred). Never pass client-minted URLs. */
+    /** Canonical transport: server-resolved attachment IDs. Never pass client-minted URLs. */
     attachmentIds?: string[];
     conversationId?: string;
     sessionId?: number;
