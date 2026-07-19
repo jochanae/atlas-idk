@@ -266,18 +266,49 @@ export function FilesBrowser({
   // ── Render ───────────────────────────────────────────────────────────────
   const isLoading = librarySavedQ.isLoading || generatedQ.isLoading || (workspaceProjectId != null && workspaceTreeQ.isLoading);
   const anyError = librarySavedQ.error || generatedQ.error || workspaceTreeQ.error;
+  const isNarrow = useIsNarrow(720);
+  const [previewFile, setPreviewFile] = useState<UnifiedFile | null>(null);
+
+  const openPreview = (f: UnifiedFile) => setPreviewFile(f);
+  const closePreview = () => setPreviewFile(null);
+
+  const primaryAction = (f: UnifiedFile) => {
+    if (mode === "attach") toggle(f.id);
+    else onOpen?.(f);
+    closePreview();
+  };
+
+  // Rail contents (used inline for desktop aside AND horizontal pill row for mobile).
+  const sectionButtons = (
+    <>
+      <RailBtn active={section === "all"} onClick={() => setSection("all")} icon={<FileIcon size={13} />}>All</RailBtn>
+      <RailBtn active={section === "workspace"} onClick={() => setSection("workspace")} icon={<Folder size={13} />}>Workspace</RailBtn>
+      <RailBtn active={section === "saved"} onClick={() => setSection("saved")} icon={<Bookmark size={13} />}>Saved</RailBtn>
+      <RailBtn active={section === "generated"} onClick={() => setSection("generated")} icon={<Sparkles size={13} />}>Generated</RailBtn>
+      <RailBtn active={section === "recent"} onClick={() => setSection("recent")} icon={<FileText size={13} />}>Recent</RailBtn>
+    </>
+  );
+  const typeButtons = (
+    <>
+      <RailBtn active={typeFilter === "any"} onClick={() => setTypeFilter("any")}>Any</RailBtn>
+      <RailBtn active={typeFilter === "images"} onClick={() => setTypeFilter("images")} icon={<ImageIcon size={13} />}>Images</RailBtn>
+      <RailBtn active={typeFilter === "documents"} onClick={() => setTypeFilter("documents")} icon={<FileText size={13} />}>Documents</RailBtn>
+      <RailBtn active={typeFilter === "code"} onClick={() => setTypeFilter("code")} icon={<Code2 size={13} />}>Code</RailBtn>
+      <RailBtn active={typeFilter === "archives"} onClick={() => setTypeFilter("archives")} icon={<Archive size={13} />}>Archives</RailBtn>
+    </>
+  );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%", color: "hsl(var(--popover-foreground, 30 20% 92%))" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%", color: "hsl(var(--popover-foreground, 30 20% 92%))", position: "relative" }}>
       {/* Header: search + view toggle */}
-      <div style={{ display: "flex", gap: 8, padding: "10px 14px", borderBottom: "1px solid hsl(var(--border))" }}>
+      <div style={{ display: "flex", gap: 8, padding: "10px 14px", borderBottom: "1px solid hsl(var(--border))", flexShrink: 0 }}>
         <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: "hsl(var(--muted) / 0.35)", border: "1px solid hsl(var(--border))" }}>
           <Search size={14} strokeWidth={1.6} opacity={0.6} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search files..."
-            style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "inherit", fontSize: 13, fontFamily: "var(--app-font-sans)" }}
+            style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "inherit", fontSize: 13, fontFamily: "var(--app-font-sans)" }}
           />
         </div>
         <div style={{ display: "flex", gap: 2, padding: 2, borderRadius: 8, background: "hsl(var(--muted) / 0.35)", border: "1px solid hsl(var(--border))" }}>
@@ -286,39 +317,54 @@ export function FilesBrowser({
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {/* Left rail: sections + type filters */}
-        <aside style={{ width: 168, flexShrink: 0, borderRight: "1px solid hsl(var(--border))", padding: "12px 8px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-          <RailGroup label="Sections">
-            <RailBtn active={section === "all"} onClick={() => setSection("all")} icon={<FileIcon size={13} />}>All</RailBtn>
-            <RailBtn active={section === "workspace"} onClick={() => setSection("workspace")} icon={<Folder size={13} />}>Workspace</RailBtn>
-            <RailBtn active={section === "saved"} onClick={() => setSection("saved")} icon={<Bookmark size={13} />}>Saved</RailBtn>
-            <RailBtn active={section === "generated"} onClick={() => setSection("generated")} icon={<Sparkles size={13} />}>Generated</RailBtn>
-            <RailBtn active={section === "recent"} onClick={() => setSection("recent")} icon={<FileText size={13} />}>Recent</RailBtn>
-          </RailGroup>
-          <RailGroup label="Type">
-            <RailBtn active={typeFilter === "any"} onClick={() => setTypeFilter("any")}>Any</RailBtn>
-            <RailBtn active={typeFilter === "images"} onClick={() => setTypeFilter("images")} icon={<ImageIcon size={13} />}>Images</RailBtn>
-            <RailBtn active={typeFilter === "documents"} onClick={() => setTypeFilter("documents")} icon={<FileText size={13} />}>Documents</RailBtn>
-            <RailBtn active={typeFilter === "code"} onClick={() => setTypeFilter("code")} icon={<Code2 size={13} />}>Code</RailBtn>
-            <RailBtn active={typeFilter === "archives"} onClick={() => setTypeFilter("archives")} icon={<Archive size={13} />}>Archives</RailBtn>
-          </RailGroup>
-
+      {/* Mobile: horizontal scrolling pill rows for Section + Type */}
+      {isNarrow && (
+        <div style={{
+          display: "flex", flexDirection: "column", gap: 6,
+          padding: "8px 12px", borderBottom: "1px solid hsl(var(--border))", flexShrink: 0,
+        }}>
+          <div style={{
+            display: "flex", gap: 4, overflowX: "auto", WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none",
+          }}>{sectionButtons}</div>
+          <div style={{
+            display: "flex", gap: 4, overflowX: "auto", WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none",
+          }}>{typeButtons}</div>
           {(section === "workspace" || section === "all") && !pinnedProjectId && projects.length > 0 && (
-            <RailGroup label="Project">
-              <select
-                value={workspaceProjectId ?? ""}
-                onChange={(e) => setWorkspaceProjectId(parseInt(e.target.value, 10))}
-                style={{ width: "100%", padding: "6px 8px", borderRadius: 6, fontSize: 12, background: "hsl(var(--muted) / 0.35)", border: "1px solid hsl(var(--border))", color: "inherit", fontFamily: "var(--app-font-sans)" }}
-              >
-                {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
-              </select>
-            </RailGroup>
+            <select
+              value={workspaceProjectId ?? ""}
+              onChange={(e) => setWorkspaceProjectId(parseInt(e.target.value, 10))}
+              style={{ width: "100%", padding: "6px 8px", borderRadius: 6, fontSize: 12, background: "hsl(var(--muted) / 0.35)", border: "1px solid hsl(var(--border))", color: "inherit", fontFamily: "var(--app-font-sans)" }}
+            >
+              {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+            </select>
           )}
-        </aside>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {/* Desktop-only left rail */}
+        {!isNarrow && (
+          <aside style={{ width: 168, flexShrink: 0, borderRight: "1px solid hsl(var(--border))", padding: "12px 8px", overflowY: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column", gap: 14 }}>
+            <RailGroup label="Sections">{sectionButtons}</RailGroup>
+            <RailGroup label="Type">{typeButtons}</RailGroup>
+            {(section === "workspace" || section === "all") && !pinnedProjectId && projects.length > 0 && (
+              <RailGroup label="Project">
+                <select
+                  value={workspaceProjectId ?? ""}
+                  onChange={(e) => setWorkspaceProjectId(parseInt(e.target.value, 10))}
+                  style={{ width: "100%", padding: "6px 8px", borderRadius: 6, fontSize: 12, background: "hsl(var(--muted) / 0.35)", border: "1px solid hsl(var(--border))", color: "inherit", fontFamily: "var(--app-font-sans)" }}
+                >
+                  {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+                </select>
+              </RailGroup>
+            )}
+          </aside>
+        )}
 
         {/* Right pane: results */}
-        <div style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: 12 }}>
+        <div style={{ flex: 1, minWidth: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 12, overscrollBehavior: "contain" }}>
           {isLoading && <EmptyPane title="Loading…" body="Fetching your files." />}
           {!isLoading && anyError && <EmptyPane title="Couldn't load files" body={String((anyError as Error).message ?? anyError)} />}
           {!isLoading && !anyError && visible.length === 0 && (
@@ -334,8 +380,9 @@ export function FilesBrowser({
                     mode={mode}
                     onClick={() => {
                       if (mode === "attach") toggle(f.id);
-                      else onOpen?.(f);
+                      else openPreview(f);
                     }}
+                    onPreview={() => openPreview(f)}
                     currentConversationId={currentConversationId}
                   />
                 ))}
@@ -349,8 +396,9 @@ export function FilesBrowser({
                     mode={mode}
                     onClick={() => {
                       if (mode === "attach") toggle(f.id);
-                      else onOpen?.(f);
+                      else openPreview(f);
                     }}
+                    onPreview={() => openPreview(f)}
                   />
                 ))}
               </div>
@@ -360,11 +408,26 @@ export function FilesBrowser({
       </div>
 
       {mode === "attach" && (
-        <div style={{ padding: "10px 14px", borderTop: "1px solid hsl(var(--border))", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{
+          padding: "10px 14px calc(10px + env(safe-area-inset-bottom, 0px))",
+          borderTop: "1px solid hsl(var(--border))",
+          display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0,
+        }}>
           <span style={{ fontSize: 12, color: "hsl(var(--muted-foreground))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em" }}>
             {selectedIds.length} selected
           </span>
         </div>
+      )}
+
+      {previewFile && (
+        <PreviewPanel
+          file={previewFile}
+          mode={mode}
+          isNarrow={isNarrow}
+          onClose={closePreview}
+          onPrimary={() => primaryAction(previewFile)}
+          isSelected={selectedIds.includes(previewFile.id)}
+        />
       )}
     </div>
   );
