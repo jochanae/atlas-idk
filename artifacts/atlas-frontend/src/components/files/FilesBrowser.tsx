@@ -139,6 +139,14 @@ export function FilesBrowser({
   const [section, setSection] = useState<FilesSection>("all");
   const [typeFilter, setTypeFilter] = useState<FilesTypeFilter>("any");
   const [query, setQuery] = useState("");
+  // Recent attachments log (localStorage-backed).
+  const [recentLog, setRecentLog] = useState<RecentAttachmentEntry[]>(() => getRecentAttachments());
+  useEffect(() => subscribeRecentAttachments(() => setRecentLog(getRecentAttachments())), []);
+  const recentOrder = useMemo(() => {
+    const m = new Map<string, number>();
+    recentLog.forEach((e, i) => m.set(e.id, i));
+    return m;
+  }, [recentLog]);
   // per-section view mode, remembered in localStorage
   const [viewByS, setViewByS] = useState<Record<FilesSection, FilesViewMode>>(() => {
     try {
