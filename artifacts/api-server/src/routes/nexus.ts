@@ -6157,11 +6157,42 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
           data: att.base64,
         },
       } as VaultBlock);
+    } else if (
+      att.mediaType.startsWith("text/") ||
+      att.mediaType === "application/json" ||
+      att.mediaType === "application/xml" ||
+      att.mediaType === "application/javascript" ||
+      att.mediaType === "application/typescript"
+    ) {
+      // Text-like formats: decode base64 to UTF-8 and send actual content.
+      // These files are readable as plain text — no extraction library needed.
+      // Covers: TXT, MD, CSV, HTML, JSON, XML, JS, TS, and any text/* MIME.
+      try {
+        const decoded = Buffer.from(att.base64, "base64").toString("utf-8");
+        const truncated = decoded.length > 200_000 ? decoded.slice(0, 200_000) + "\n\n[truncated — file exceeds 200 000 characters]" : decoded;
+        contentParts.push({
+          type: "text",
+          text: `Attached file: ${att.name ?? "file"}\n\n${truncated}`,
+        });
+      } catch {
+        contentParts.push({
+          type: "text",
+          text: `Attached file: ${att.name ?? "file"} (${att.mediaType}) — could not decode as text.`,
+        });
+      }
     } else {
-      // Fallback: treat remaining understood binaries as document blocks when possible.
+      // Truly binary formats (DOCX, XLSX, PPTX, etc.) — Atlas cannot read
+      // these without a dedicated extraction library. Tell the user clearly
+      // rather than sending a useless base64-length stub.
+      const ext = (att.name ?? "").split(".").pop()?.toLowerCase() ?? "";
+      const hint =
+        ext === "docx" || ext === "doc" ? "Word documents"
+        : ext === "xlsx" || ext === "xls" ? "Excel spreadsheets"
+        : ext === "pptx" || ext === "ppt" ? "PowerPoint files"
+        : "this binary format";
       contentParts.push({
         type: "text",
-        text: `Attached file: ${att.name ?? "file"} (${att.mediaType}) — binary content attached as base64 length ${att.base64.length}.`,
+        text: `Attached file: ${att.name ?? "file"} (${att.mediaType}) — Atlas cannot extract the contents of ${hint} yet. Please paste the relevant text directly into the message, or export the content as a PDF or plain-text file.`,
       });
     }
   }
