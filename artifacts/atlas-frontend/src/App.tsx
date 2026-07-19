@@ -26,6 +26,7 @@ import ComponentRegistryPage from "./pages/component-registry";
 import EntryDetail from "./pages/entry-detail";
 import CodePage from "./pages/code";
 import ConnectorsPage from "./pages/connectors";
+import FilesPage from "./pages/files";
 import MasterMap from "./pages/master-map";
 import RunPage from "./pages/run";
 import CommitPage from "./pages/commit";
@@ -288,6 +289,7 @@ function Router() {
           <Route path="/workshop" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/code" component={CodePage} />
           <Route path="/connectors" component={ConnectorsPage} />
+          <Route path="/files" component={FilesPage} />
           <Route path="/terms" component={Terms} />
           <Route path="/privacy" component={Privacy} />
           <Route path="/pricing" component={Pricing} />
