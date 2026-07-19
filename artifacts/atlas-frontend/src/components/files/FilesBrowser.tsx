@@ -503,13 +503,13 @@ function CategoryGlyph({ cat }: { cat: FilesTypeFilter }) {
   return <FileIcon size={size} strokeWidth={s} />;
 }
 
-function FileRow({ file, selected, mode, onClick }: { file: UnifiedFile; selected: boolean; mode: "browse" | "attach"; onClick: () => void; currentConversationId: string | null }) {
+function FileRow({ file, selected, mode, onClick, onPreview }: { file: UnifiedFile; selected: boolean; mode: "browse" | "attach"; onClick: () => void; onPreview: () => void; currentConversationId: string | null }) {
   return (
-    <li data-unified-file-id={file.id} data-unified-file={JSON.stringify(file)}>
+    <li data-unified-file-id={file.id} data-unified-file={JSON.stringify(file)} style={{ display: "flex", alignItems: "stretch", gap: 4 }}>
       <button
         onClick={onClick}
         style={{
-          width: "100%", display: "flex", alignItems: "center", gap: 10,
+          flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10,
           padding: "8px 10px", borderRadius: 6, cursor: "pointer",
           background: selected ? "hsl(var(--primary) / 0.10)" : "transparent",
           border: "1px solid " + (selected ? "hsl(var(--primary) / 0.35)" : "transparent"),
@@ -517,60 +517,98 @@ function FileRow({ file, selected, mode, onClick }: { file: UnifiedFile; selecte
         }}
       >
         {mode === "attach" && (
-          <input type="checkbox" readOnly checked={selected} style={{ pointerEvents: "none" }} />
+          <input type="checkbox" readOnly checked={selected} style={{ pointerEvents: "none", flexShrink: 0 }} />
         )}
         <span style={{ color: "hsl(var(--primary))", flexShrink: 0 }}><CategoryGlyph cat={file.category} /></span>
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
           <div style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{file.name}</div>
           <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))", display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
-            <span>{file.projectLabel ?? "—"}</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.projectLabel ?? "—"}</span>
             <span>·</span>
-            <span>{new Date(file.updatedAt).toLocaleDateString()}</span>
+            <span style={{ flexShrink: 0 }}>{new Date(file.updatedAt).toLocaleDateString()}</span>
           </div>
         </span>
         <AvailabilityBadge availability={file.availability} />
       </button>
+      {mode === "attach" && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPreview(); }}
+          aria-label="Preview"
+          title="Preview"
+          style={{
+            flexShrink: 0, width: 36, display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: 6, background: "transparent",
+            border: "1px solid hsl(var(--border))",
+            color: "hsl(var(--muted-foreground))", cursor: "pointer",
+          }}
+        >
+          <Eye size={14} />
+        </button>
+      )}
     </li>
   );
 }
 
-function FileTile({ file, selected, mode, onClick }: { file: UnifiedFile; selected: boolean; mode: "browse" | "attach"; onClick: () => void }) {
+function FileTile({ file, selected, mode, onClick, onPreview }: { file: UnifiedFile; selected: boolean; mode: "browse" | "attach"; onClick: () => void; onPreview: () => void }) {
   return (
-    <button
+    <div
       data-unified-file-id={file.id}
       data-unified-file={JSON.stringify(file)}
-      onClick={onClick}
       style={{
+        position: "relative",
         display: "flex", flexDirection: "column", gap: 6,
-        padding: 8, borderRadius: 8, cursor: "pointer",
+        padding: 8, borderRadius: 8,
         background: selected ? "hsl(var(--primary) / 0.10)" : "hsl(var(--muted) / 0.28)",
         border: "1px solid " + (selected ? "hsl(var(--primary) / 0.4)" : "hsl(var(--border))"),
-        textAlign: "left", color: "inherit",
       }}
     >
-      <div style={{
-        aspectRatio: "4/3", borderRadius: 6, background: "hsl(var(--muted) / 0.5)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: "hsl(var(--primary))", overflow: "hidden",
-      }}>
-        {file.thumbUrl ? (
-          // eslint-disable-next-line jsx-a11y/alt-text
-          <img src={file.thumbUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <CategoryGlyph cat={file.category} />
+      <button
+        onClick={onClick}
+        style={{
+          all: "unset", cursor: "pointer",
+          display: "flex", flexDirection: "column", gap: 6,
+          color: "inherit",
+        }}
+      >
+        <div style={{
+          aspectRatio: "4/3", borderRadius: 6, background: "hsl(var(--muted) / 0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "hsl(var(--primary))", overflow: "hidden",
+        }}>
+          {file.thumbUrl ? (
+            // eslint-disable-next-line jsx-a11y/alt-text
+            <img src={file.thumbUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <CategoryGlyph cat={file.category} />
+          )}
+        </div>
+        <div style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{file.name.split("/").pop()}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {file.projectLabel ?? ""}
+          </span>
+          <AvailabilityBadge availability={file.availability} />
+        </div>
+        {mode === "attach" && selected && (
+          <div style={{ fontSize: 10, color: "hsl(var(--primary))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em" }}>SELECTED</div>
         )}
-      </div>
-      <div style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{file.name.split("/").pop()}</div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-        <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {file.projectLabel ?? ""}
-        </span>
-        <AvailabilityBadge availability={file.availability} />
-      </div>
-      {mode === "attach" && selected && (
-        <div style={{ fontSize: 10, color: "hsl(var(--primary))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em" }}>SELECTED</div>
-      )}
-    </button>
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onPreview(); }}
+        aria-label="Preview"
+        title="Preview"
+        style={{
+          position: "absolute", top: 6, right: 6,
+          width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+          borderRadius: 6, background: "hsl(var(--background) / 0.75)",
+          border: "1px solid hsl(var(--border))",
+          color: "hsl(var(--muted-foreground))", cursor: "pointer",
+          backdropFilter: "blur(4px)",
+        }}
+      >
+        <Eye size={13} />
+      </button>
+    </div>
   );
 }
 
@@ -582,5 +620,171 @@ function EmptyPane({ title, body }: { title: string; body: string }) {
     </div>
   );
 }
+
+// ── Preview Panel ────────────────────────────────────────────────────────────
+// Full-screen sheet on mobile (isNarrow), right-side drawer on desktop.
+// Scrollable body with safe-area padding.
+
+function PreviewPanel({
+  file, mode, isNarrow, onClose, onPrimary, isSelected,
+}: {
+  file: UnifiedFile;
+  mode: "browse" | "attach";
+  isNarrow: boolean;
+  onClose: () => void;
+  onPrimary: () => void;
+  isSelected: boolean;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const primaryLabel = mode === "attach"
+    ? (isSelected ? "Remove selection" : "Add to attachments")
+    : (file.section === "workspace" ? "Open in workspace" : "Open");
+
+  const containerStyle: React.CSSProperties = isNarrow
+    ? {
+        position: "fixed", inset: 0, zIndex: 3000,
+        display: "flex", flexDirection: "column",
+        background: "hsl(var(--background))",
+        color: "hsl(var(--foreground))",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }
+    : {
+        position: "absolute", top: 0, right: 0, bottom: 0,
+        width: "min(380px, 60%)", zIndex: 30,
+        display: "flex", flexDirection: "column",
+        background: "hsl(var(--popover))",
+        color: "hsl(var(--popover-foreground))",
+        borderLeft: "1px solid hsl(var(--border))",
+        boxShadow: "-16px 0 48px hsl(var(--background) / 0.4)",
+      };
+
+  const shortName = file.name.split("/").pop() ?? file.name;
+  const isImage = file.category === "images";
+
+  return (
+    <>
+      {!isNarrow && (
+        <div
+          onClick={onClose}
+          style={{ position: "absolute", inset: 0, zIndex: 29, background: "hsl(var(--background) / 0.5)" }}
+        />
+      )}
+      <div style={containerStyle} role="dialog" aria-label={`Preview: ${shortName}`}>
+        <header style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+          padding: "14px 16px", borderBottom: "1px solid hsl(var(--border))", flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <span style={{ color: "hsl(var(--primary))", flexShrink: 0 }}><CategoryGlyph cat={file.category} /></span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{shortName}</div>
+              <div style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 2 }}>
+                {file.section}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close preview"
+            style={{
+              flexShrink: 0, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 6, background: "transparent",
+              border: "1px solid hsl(var(--border))", color: "hsl(var(--muted-foreground))", cursor: "pointer",
+            }}
+          ><X size={14} /></button>
+        </header>
+
+        <div style={{
+          flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch",
+          padding: 16, display: "flex", flexDirection: "column", gap: 14,
+        }}>
+          <div style={{
+            aspectRatio: isImage ? "4/3" : "16/9",
+            borderRadius: 8,
+            background: "hsl(var(--muted) / 0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "hsl(var(--primary))", overflow: "hidden",
+            border: "1px solid hsl(var(--border))",
+          }}>
+            {file.thumbUrl ? (
+              // eslint-disable-next-line jsx-a11y/alt-text
+              <img src={file.thumbUrl} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            ) : (
+              <div style={{ transform: "scale(2.4)", opacity: 0.7 }}>
+                <CategoryGlyph cat={file.category} />
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <AvailabilityBadge availability={file.availability} />
+            {file.projectLabel && (
+              <span style={{
+                fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase",
+                padding: "2px 6px", borderRadius: 4,
+                border: "1px solid hsl(var(--border))",
+                color: "hsl(var(--muted-foreground))",
+                fontFamily: "var(--app-font-mono)",
+              }}>{file.projectLabel}</span>
+            )}
+          </div>
+
+          <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 12px", fontSize: 12 }}>
+            <dt style={{ color: "hsl(var(--muted-foreground))" }}>Path</dt>
+            <dd style={{ margin: 0, wordBreak: "break-all", fontFamily: "var(--app-font-mono)" }}>{file.name}</dd>
+            <dt style={{ color: "hsl(var(--muted-foreground))" }}>Type</dt>
+            <dd style={{ margin: 0 }}>{file.category}</dd>
+            <dt style={{ color: "hsl(var(--muted-foreground))" }}>Updated</dt>
+            <dd style={{ margin: 0 }}>{new Date(file.updatedAt).toLocaleString()}</dd>
+          </dl>
+
+          {file.preview && (
+            <div style={{
+              padding: 12, borderRadius: 8,
+              background: "hsl(var(--muted) / 0.35)",
+              border: "1px solid hsl(var(--border))",
+              fontSize: 12, lineHeight: 1.55,
+              color: "hsl(var(--popover-foreground) / 0.85)",
+              whiteSpace: "pre-wrap", wordBreak: "break-word",
+              maxHeight: 260, overflowY: "auto", WebkitOverflowScrolling: "touch",
+            }}>
+              {file.preview}
+            </div>
+          )}
+        </div>
+
+        <footer style={{
+          display: "flex", gap: 8, padding: "12px 16px calc(12px + env(safe-area-inset-bottom, 0px))",
+          borderTop: "1px solid hsl(var(--border))", flexShrink: 0,
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1, padding: "10px 14px", borderRadius: 8,
+              background: "transparent", border: "1px solid hsl(var(--border))",
+              color: "hsl(var(--popover-foreground))", cursor: "pointer",
+              fontSize: 13, fontFamily: "var(--app-font-sans)",
+            }}
+          >Close</button>
+          <button
+            onClick={onPrimary}
+            style={{
+              flex: 2, padding: "10px 14px", borderRadius: 8,
+              background: "hsl(var(--primary))", border: "1px solid hsl(var(--primary))",
+              color: "hsl(var(--primary-foreground))", cursor: "pointer",
+              fontSize: 13, fontWeight: 500, fontFamily: "var(--app-font-sans)",
+            }}
+          >{primaryLabel}</button>
+        </footer>
+      </div>
+    </>
+  );
+}
+
 
 export default FilesBrowser;
