@@ -5276,9 +5276,6 @@ export default function Home() {
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={(e) => {
                     e.stopPropagation();
-                    const cid = askAtlasSurfaceVisible ? askAtlasConversationId : activeConversationId;
-                    setFocusSheetTab("projects");
-                    setFocusSheetConversationId(cid);
                     setShowFocusPicker(true);
                   }}
                   style={{
