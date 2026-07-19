@@ -5606,7 +5606,7 @@ export default function Workspace() {
   const fetchWorkspaceAtlasConversations = useCallback(() => {
     fetch("/api/nexus/conversations", { credentials: "include" })
       .then((r) => r.ok ? r.json() : { conversations: [] })
-      .then((data: { conversations?: Array<{ id: string; title?: string | null; messageCount?: number; createdAt?: string | null }> }) => {
+      .then((data: { conversations?: Array<{ id: string; title?: string | null; messageCount?: number; createdAt?: string | null; type?: "conversation" | "promoted"; projectId?: number; projectName?: string }> }) => {
         const list = data.conversations ?? [];
         setDrawerAtlasConversations(list.map(s => ({
           id: s.id,
@@ -5614,6 +5614,9 @@ export default function Workspace() {
           messageCount: s.messageCount ?? 0,
           updatedAt: s.createdAt ?? null,
           createdAt: s.createdAt ?? null,
+          type: s.type,
+          projectId: s.projectId,
+          projectName: s.projectName,
         })));
       })
       .catch(() => {});
