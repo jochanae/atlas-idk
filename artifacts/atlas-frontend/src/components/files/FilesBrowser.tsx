@@ -15,9 +15,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon } from "lucide-react";
+import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X } from "lucide-react";
 import { useListProjects } from "@workspace/api-client-react";
 import { fetchLibraryItems, type LibraryItem } from "@/lib/library";
+
+// Narrow-screen detector — inline to avoid coupling FilesBrowser to a hook.
+function useIsNarrow(breakpoint = 720): boolean {
+  const [narrow, setNarrow] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.innerWidth < breakpoint : false,
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = () => setNarrow(window.innerWidth < breakpoint);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, [breakpoint]);
+  return narrow;
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
