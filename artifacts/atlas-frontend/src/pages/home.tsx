@@ -401,7 +401,13 @@ function normalizeLoadedHomeMessages(
     const shouldMock = demoRunSummary && m.role === "assistant" && !runStatus;
     return {
       attachments: Array.isArray(m.attachments)
-        ? m.attachments.filter((a: any) => a && typeof a.base64 === "string" && typeof a.mediaType === "string")
+        ? m.attachments.filter(
+            (a: any) =>
+              a &&
+              typeof a.mediaType === "string" &&
+              // Accept base64 (live sends) or contentUrl (history-loaded from thread endpoint)
+              (typeof a.base64 === "string" || typeof a.contentUrl === "string"),
+          )
         : undefined,
       imageUrl: typeof m.imageUrl === "string" ? m.imageUrl : undefined,
       executionTimeMs: m.executionTimeMs ?? m.execution_time_ms ?? null,
@@ -2518,18 +2524,18 @@ export default function Home() {
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (askAtlasSurfaceOpen) {
-      // Exit Ask Atlas → return to the ambient homepage, NOT a stranded
-      // "Untitled conversation" view. Clear the active thread and message
-      // stream so the hero/quick-actions come back.
+      // Minimize Ask Atlas — return to the ambient homepage but PRESERVE the
+      // conversation so it can be restored when the user reopens.
+      // Only a deliberate "Start fresh" / shred action should clear the ID.
       void callAskAtlasMode(false);
       setAskAtlasSurfaceOpen(false);
+      askAtlasSession.markClosed(); // suppress auto-resume until user explicitly reopens
+      askAtlasRestoreAttemptRef.current = null; // allow re-fetch on next open
       try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
       try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
       conversationThreadRequestRef.current = null;
       thinkOutLoudInlineRef.current = false;
       setActiveConversationId(null);
-      setAskAtlasConversationId(null);
-      askAtlasSession.clearConversationId();
       nexusChat.setMessages([]);
       askAtlasConv.clearMessages();
       setEarnedTitle(null);
@@ -2538,6 +2544,7 @@ export default function Home() {
       setShowOverviewSheet(false);
       setShowHistory(false);
       setShowFocusPicker(false);
+      askAtlasSession.clearClosed(); // allow restore to fire when surface opens
       setAskAtlasSurfaceOpen(true);
       window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
       toast("Ask Atlas · Strategic view", {
