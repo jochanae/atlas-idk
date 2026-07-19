@@ -63,7 +63,7 @@ export interface ComposerActionsProps {
   onFiles: (files: File[]) => void;
   /** Route a primary or `more:*` menu action to the host surface. */
   onMenuAction: (action: ComposerMenuAction) => void;
-  /** When false, hides project-context-only items (Files/Code/Share/Publish/Connectors/Settings). */
+  /** When false, hides project-context-only items (Code/Share/Publish/Settings). */
   hasProjectContext?: boolean;
   /** Unique id-suffix so home + workspace inputs don't collide on the page. */
   scope?: string;
@@ -98,7 +98,9 @@ type PrimaryItem = {
 
 const PRIMARY_ITEMS: PrimaryItem[] = [
   { id: "forge-intake", label: "Add to Forge", icon: <Flame size={18} strokeWidth={1.6} />, projectOnly: true },
-  { id: "files", label: "Files", icon: <FolderClosed size={18} strokeWidth={1.6} />, projectOnly: true },
+  // Files is available in Ask Atlas / ambient home (global) as well as workspace —
+  // it opens the same /files route as the hamburger drawer.
+  { id: "files", label: "Files", icon: <FolderClosed size={18} strokeWidth={1.6} /> },
   { id: "mcp", label: "MCP", icon: <Layers size={18} strokeWidth={1.6} /> },
   { id: "connectors", label: "Connectors", icon: <Plug size={18} strokeWidth={1.6} /> },
   { id: "code", label: "Code", icon: <Code2 size={18} strokeWidth={1.6} />, projectOnly: true },
