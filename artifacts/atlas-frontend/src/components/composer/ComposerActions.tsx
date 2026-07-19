@@ -527,6 +527,130 @@ export function ComposerActions({
           onSend={(prompt) => onSketch(prompt)}
         />
       )}
+
+      {/* Unified Files browser — same component /files uses, in attach mode. */}
+      {showFiles && portalHost && createPortal(
+        <div
+          style={{ ...SHEET_OVERLAY, padding: "0", alignItems: "stretch" }}
+          onClick={() => setShowFiles(false)}
+        >
+          <div
+            role="dialog"
+            aria-label="Files"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              zIndex: 9999,
+              width: "100%",
+              maxWidth: 720,
+              margin: "auto",
+              height: "calc(100vh - 80px)",
+              maxHeight: "calc(100vh - 80px)",
+              background: "color-mix(in oklab, var(--atlas-surface) 96%, transparent)",
+              backdropFilter: "blur(28px) saturate(150%)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
+              borderRadius: 22,
+              boxShadow: "0 24px 80px rgba(0,0,0,0.65)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 16px", borderBottom: "1px solid hsl(var(--border))",
+            }}>
+              <div style={{
+                fontFamily: "var(--app-font-mono)", fontSize: 11,
+                letterSpacing: "0.18em", textTransform: "uppercase",
+                color: "var(--atlas-gold)",
+              }}>Files</div>
+              <button
+                type="button"
+                onClick={() => setShowFiles(false)}
+                style={{
+                  background: "transparent", border: "none", cursor: "pointer",
+                  color: "var(--atlas-muted)", fontSize: 13, fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.12em", textTransform: "uppercase",
+                }}
+              >Close</button>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+              <FilesBrowser
+                mode="attach"
+                selectedIds={filesSelected}
+                onSelectionChange={(ids) => {
+                  setFilesSelected(ids);
+                }}
+                onOpen={() => { /* attach mode: click toggles selection */ }}
+                currentProjectId={filesContext?.projectId ?? null}
+                currentConversationId={filesContext?.conversationId ?? null}
+                pinnedProjectId={filesContext?.projectId ?? null}
+              />
+            </div>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 16px", borderTop: "1px solid hsl(var(--border))",
+              gap: 10,
+            }}>
+              <span style={{
+                fontSize: 12, color: "var(--atlas-muted)",
+                fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+              }}>
+                {filesSelected.length} selected
+              </span>
+              <button
+                type="button"
+                disabled={filesSelected.length === 0 || filesResolving}
+                onClick={async () => {
+                  // Rebuild picks from selection order. FilesBrowser doesn't
+                  // return the UnifiedFile refs on change, so we recover via
+                  // its selection ids by querying the DOM data attribute.
+                  const nodes = document.querySelectorAll<HTMLElement>('[data-unified-file-id]');
+                  const map = new Map<string, UnifiedFile>();
+                  nodes.forEach((el) => {
+                    const id = el.getAttribute('data-unified-file-id');
+                    const raw = el.getAttribute('data-unified-file');
+                    if (id && raw) {
+                      try { map.set(id, JSON.parse(raw)); } catch { /* ignore */ }
+                    }
+                  });
+                  const picks = filesSelected.map((id) => map.get(id)).filter(Boolean) as UnifiedFile[];
+                  if (picks.length === 0) return;
+                  setFilesResolving(true);
+                  try {
+                    const { files, skipped } = await resolveToFiles(picks);
+                    if (files.length > 0) onFiles(files);
+                    if (skipped.length > 0) {
+                      toast.error(`Skipped ${skipped.length}: ${skipped.map((s) => s.name).slice(0, 2).join(", ")}${skipped.length > 2 ? "…" : ""}`);
+                    }
+                    setShowFiles(false);
+                  } catch (err) {
+                    toast.error(`Attach failed: ${(err as Error).message}`);
+                  } finally {
+                    setFilesResolving(false);
+                  }
+                }}
+                style={{
+                  padding: "8px 16px", borderRadius: 8,
+                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+                  background: filesSelected.length === 0
+                    ? "rgba(201,162,76,0.08)"
+                    : "var(--atlas-gold)",
+                  color: filesSelected.length === 0 ? "var(--atlas-muted)" : "#0D0B09",
+                  fontFamily: "var(--app-font-mono)", fontSize: 12,
+                  letterSpacing: "0.12em", textTransform: "uppercase",
+                  cursor: filesSelected.length === 0 || filesResolving ? "not-allowed" : "pointer",
+                  opacity: filesResolving ? 0.6 : 1,
+                }}
+              >
+                {filesResolving ? "Attaching…" : `Attach ${filesSelected.length || ""}`.trim()}
+              </button>
+            </div>
+          </div>
+        </div>,
+        portalHost
+      )}
     </>
   );
 }
