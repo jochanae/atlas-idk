@@ -9,27 +9,6 @@ args = ["pnpm", "store", "prune"]
 env = { "CI" = "true" }
 
 [workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "artifacts/atlas-frontend-next: web"
-
-[[workflows.workflow]]
-name = "artifacts/atlas-frontend-next: web"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pnpm --filter @workspace/atlas-frontend-next run dev"
 
 [agent]
 stack = "PNPM_WORKSPACE"
