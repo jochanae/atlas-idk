@@ -450,11 +450,10 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             label="Files"
             sublabel="Everything available to Atlas"
             onClick={() => {
-              if (onOpenLibrary) {
-                onOpenLibrary();
-                onClose();
-              }
+              navigate("/files");
+              onClose();
             }}
+
           />
 
           {/* WORKSPACE — collapsed by default */}
