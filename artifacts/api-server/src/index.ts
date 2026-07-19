@@ -1452,36 +1452,20 @@ async function ensureColumns(): Promise<void> {
 
   try {
     // Data migration: delete orphaned rows with no Nexus parent.
-    // These are pre-B3 rows that were inserted without a nexus_message_id.
-    // Must run before adding the FK so no NULL-parent rows remain.
-    const deleted = await db.execute(sql`
-      DELETE FROM message_attachments
-      WHERE nexus_message_id IS NULL
-    `);
-    if ((deleted as any).rowCount > 0) {
-      logger.info({ count: (deleted as any).rowCount }, "ensureColumns: deleted null-nexus-parent attachment rows");
-    }
+    // Pending uploads legitimately have nexus_message_id IS NULL until finalize()
+    // links them. Do not delete them on boot — the retention worker handles cleanup
+    // of expired/orphaned rows after their TTL.
+    logger.info("ensureColumns: message_attachments null-nexus-parent cleanup skipped (handled by retention worker)");
   } catch (err) {
-    logger.warn({ err }, "ensureColumns: message_attachments null-nexus-parent cleanup failed — non-fatal");
+    logger.warn({ err }, "ensureColumns: message_attachments setup failed — non-fatal");
   }
 
   try {
-    // Data migration: mark all rows in the retired 'chat-attachments' bucket as failed.
-    // These rows reference objects that no longer exist; they must not be treated as
-    // uploaded. Identified by bucket name, not by orphaned FK, because their
-    // nexus_message_id FK references are still valid.
-    const marked = await db.execute(sql`
-      UPDATE message_attachments
-      SET    upload_status = 'failed',
-             upload_error_code = 'RETIRED_BUCKET'
-      WHERE  storage_bucket = 'chat-attachments'
-        AND  upload_status <> 'failed'
-    `);
-    if ((marked as any).rowCount > 0) {
-      logger.info({ count: (marked as any).rowCount }, "ensureColumns: marked retired-bucket attachment rows as failed");
-    }
+    // 'chat-attachments' is the active local fallback bucket (LOGICAL_BUCKET in
+    // attachmentStorage.ts). Do not mark these rows as failed.
+    logger.info("ensureColumns: message_attachments bucket check skipped (chat-attachments is the active bucket)");
   } catch (err) {
-    logger.warn({ err }, "ensureColumns: message_attachments retired-bucket migration failed — non-fatal");
+    logger.warn({ err }, "ensureColumns: message_attachments bucket check failed — non-fatal");
   }
 
   // B3.2 ordering — deterministic multi-attachment position field.

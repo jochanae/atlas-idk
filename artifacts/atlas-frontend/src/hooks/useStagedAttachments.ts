@@ -484,7 +484,10 @@ export function useStagedAttachments(opts?: {
     const idSet = new Set(ids);
     setFiles((prev) => {
       const removed = prev.filter((sf) => idSet.has(sf.id));
-      revokeAll(removed);
+      // Do not revoke blob URLs here — the optimistic chip in the chat stream
+      // may still be rendering sf.previewUrl as contentUrl until the server
+      // attachment_ack arrives with a persistent contentUrl. The browser
+      // cleans up blob URLs on page unload.
       for (const sf of removed) uploadGenRef.current.delete(sf.id);
       return prev.filter((sf) => !idSet.has(sf.id));
     });
