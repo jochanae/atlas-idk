@@ -2091,8 +2091,6 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
-  const [focusSheetTab, setFocusSheetTab] = useState<"projects" | "library">("projects");
-  const [focusSheetConversationId, setFocusSheetConversationId] = useState<string | null>(null);
   const [showLibraryBrowse, setShowLibraryBrowse] = useState(false);
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
@@ -4741,31 +4739,6 @@ export default function Home() {
                       Gone.
                     </div>
                   )}
-                  {nexusChat.messages.length > 0 && (
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-                      <button
-                        onClick={() => {
-                          const cid = activeConversationId ?? askAtlasConversationId ?? null;
-                          setFocusSheetTab("library");
-                          setFocusSheetConversationId(cid);
-                          setShowFocusPicker(true);
-                        }}
-                        title="Saved documents"
-                        style={{
-                          background: "transparent", border: "none", padding: "3px 6px", cursor: "pointer",
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          color: "var(--atlas-muted)", opacity: 0.45,
-                          fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.1em",
-                          textTransform: "uppercase", transition: "opacity 140ms",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
-                        onMouseLeave={e => (e.currentTarget.style.opacity = "0.45")}
-                      >
-                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2h8a1 1 0 011 1v11l-4-2-4 2V3a1 1 0 011-1z"/></svg>
-                        Files
-                      </button>
-                    </div>
-                  )}
                   {(nexusChat.messages as HomeMessage[]).map((msg, i) => {
                     const displayContent =
                       msg.role === "assistant"
@@ -4939,13 +4912,7 @@ export default function Home() {
                                 <button
                                   title={savedMsgIdxSet.has(i) ? "Saved to Files" : "Save to Files"}
                                   onClick={async () => {
-                                    if (savedMsgIdxSet.has(i)) {
-                                      const cid = activeConversationId ?? askAtlasConversationId ?? null;
-                                      setFocusSheetTab("library");
-                                      setFocusSheetConversationId(cid);
-                                      setShowFocusPicker(true);
-                                      return;
-                                    }
+                                    if (savedMsgIdxSet.has(i)) return;
                                     const headingMatch = displayContent.match(/^#{1,3}\s+(.+)/m);
                                     const autoTitle = headingMatch
                                       ? headingMatch[1].trim().slice(0, 80)
@@ -6057,44 +6024,13 @@ export default function Home() {
 
       {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Atlas too. */}
 
-      {/* Focus + Library sheet. Library reads the canonical `/api/library`
-          endpoint and drives persistent attachments to the active Ask Atlas
-          conversation. */}
       <AskAtlasFocusSheet
         open={showFocusPicker}
-        initialTab={focusSheetTab}
         focusProjectId={homeFocus ?? null}
         projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
         onSelectAllProjects={handleHomeFocusAllProjects}
         onSelectProject={handleHomeFocusSelect}
-        conversationId={focusSheetConversationId ?? askAtlasConversationId ?? activeConversationId}
-        attachedIds={new Set()}
-        onAttachmentsChange={() => {}}
-        onOpenConversation={(conversationId, meta) => {
-          setShowFocusPicker(false);
-          setFocusSheetConversationId(null);
-          // Exact conversationId restore — workspace origins use workspace route;
-          // Ask Atlas / bookmark origins resume on the home Ask Atlas surface.
-          if (meta.originSource === "workspace") {
-            setLocation(`/workspace/${encodeURIComponent(conversationId)}`);
-            return;
-          }
-          void handleSwitchConversation(conversationId);
-        }}
-        onOpenProject={(projectId) => {
-          setShowFocusPicker(false);
-          setFocusSheetConversationId(null);
-          navigateToProject(projectId);
-        }}
-        onNavigateToProject={(projectId) => {
-          setShowFocusPicker(false);
-          setFocusSheetConversationId(null);
-          setLocation(`/project/${projectId}`);
-        }}
-        onClose={() => {
-          setShowFocusPicker(false);
-          setFocusSheetConversationId(null);
-        }}
+        onClose={() => setShowFocusPicker(false)}
       />
 
 

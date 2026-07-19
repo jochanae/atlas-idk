@@ -1,13 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { LibrarySurface } from "./library/LibrarySurface";
-
-/**
- * AskAtlasFocusSheet — Focus + Library sheet.
- *
- * Projects tab stays local. Library tab mounts the shared LibrarySurface
- * in attach mode (bring items into the active conversation).
- */
 
 interface ProjectOption {
   id: number;
@@ -21,47 +13,19 @@ interface Props {
   projects: ProjectOption[];
   onSelectAllProjects: () => void;
   onSelectProject: (id: number) => void;
-  /** Active Ask Atlas conversation id — required for attachment actions. */
-  conversationId: string | null;
-  /** Ids of library items currently attached to the active conversation. */
-  attachedIds: ReadonlySet<string>;
-  /** Called after a successful attach/detach so the parent can re-fetch. */
-  onAttachmentsChange: () => void;
-  initialTab?: "projects" | "library";
-  onOpenConversation?: (
-    conversationId: string,
-    meta: { projectId: number | null; originSource: string },
-  ) => void;
-  onOpenProject?: (projectId: number) => void;
-  onNavigateToProject?: (projectId: number) => void;
-  currentProjectId?: number | null;
 }
 
 export function AskAtlasFocusSheet({
   open, onClose, focusProjectId, projects,
   onSelectAllProjects, onSelectProject,
-  conversationId, attachedIds, onAttachmentsChange,
-  initialTab = "projects",
-  onOpenConversation,
-  onOpenProject,
-  onNavigateToProject,
-  currentProjectId = null,
 }: Props) {
-  const [tab, setTab] = useState<"projects" | "library">(initialTab);
-  /** Mount-flicker fix: enter state gates the sheet slide until backdrop is opaque. */
   const [entered, setEntered] = useState(false);
 
-  useEffect(() => { if (open) setTab(initialTab); }, [open, initialTab]);
   useEffect(() => {
     if (!open) { setEntered(false); return; }
     const r = requestAnimationFrame(() => setEntered(true));
     return () => cancelAnimationFrame(r);
   }, [open]);
-
-  const focusedProjectName = useMemo(
-    () => (focusProjectId != null ? projects.find((p) => p.id === focusProjectId)?.name ?? null : null),
-    [focusProjectId, projects],
-  );
 
   if (!open) return null;
 
@@ -92,91 +56,52 @@ export function AskAtlasFocusSheet({
         willChange: "transform, opacity",
       }}>
         <div style={{
-          padding: "16px 20px 0",
+          padding: "16px 20px 12px",
           borderBottom: "1px solid var(--atlas-border, rgba(255,255,255,0.07))",
           flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <span style={{
-              fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.12em",
-              textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.7,
-            }}>
-              Atlas focus
-            </span>
-            <button
-              onClick={onClose}
-              style={{ background: "transparent", border: "none", padding: 4, cursor: "pointer", color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1 }}
-              aria-label="Close"
-            >
-              <X size={14} strokeWidth={1.8} />
-            </button>
-          </div>
-          <div style={{ display: "flex", gap: 4 }}>
-            {(["projects", "library"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                style={{
-                  padding: "8px 14px", background: "transparent", border: "none",
-                  borderBottom: tab === t ? "2px solid var(--atlas-gold, #c9a24c)" : "2px solid transparent",
-                  color: tab === t ? "var(--atlas-fg)" : "var(--atlas-muted)",
-                  fontFamily: "var(--app-font-sans)", fontSize: 13, fontWeight: tab === t ? 600 : 400,
-                  cursor: "pointer", marginBottom: -1,
-                }}
-              >
-                {t === "projects" ? "Projects" : "Files"}
-              </button>
-            ))}
-          </div>
+          <span style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.7,
+          }}>
+            Atlas focus
+          </span>
+          <button
+            onClick={onClose}
+            style={{ background: "transparent", border: "none", padding: 4, cursor: "pointer", color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1 }}
+            aria-label="Close"
+          >
+            <X size={14} strokeWidth={1.8} />
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 0 24px" }}>
-          {tab === "projects" && (
-            <>
-              <button
-                type="button"
-                onClick={onSelectAllProjects}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", background: focusProjectId == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: focusProjectId == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                All Projects
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5 }}>General</span>
-              </button>
-              {projects.length === 0 && (
-                <div style={{ padding: "16px 20px", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.5, fontFamily: "var(--app-font-sans)" }}>
-                  No projects yet.
-                </div>
-              )}
-              {projects.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => onSelectProject(p.id)}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", background: focusProjectId === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-                >
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: focusProjectId === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                  {p.name}
-                </button>
-              ))}
-            </>
+          <button
+            type="button"
+            onClick={onSelectAllProjects}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", background: focusProjectId == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: focusProjectId == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+            All Projects
+            <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5 }}>General</span>
+          </button>
+          {projects.length === 0 && (
+            <div style={{ padding: "16px 20px", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.5, fontFamily: "var(--app-font-sans)" }}>
+              No projects yet.
+            </div>
           )}
-
-          {tab === "library" && (
-            <LibrarySurface
-              mode="attach"
-              active={open && tab === "library"}
-              focusProjectId={focusProjectId}
-              focusProjectName={focusedProjectName}
-              conversationId={conversationId}
-              attachedIds={attachedIds}
-              onAttachmentsChange={onAttachmentsChange}
-              onOpenConversation={onOpenConversation}
-              onOpenProject={onOpenProject}
-              onNavigateToProject={onNavigateToProject}
-              currentProjectId={currentProjectId}
-              onClose={onClose}
-            />
-          )}
+          {projects.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onSelectProject(p.id)}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", background: focusProjectId === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: focusProjectId === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+              {p.name}
+            </button>
+          ))}
         </div>
       </div>
     </div>
