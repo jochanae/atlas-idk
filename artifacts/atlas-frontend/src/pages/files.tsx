@@ -22,12 +22,13 @@ export default function FilesPage() {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "hsl(var(--background))",
+      height: "100dvh", background: "hsl(var(--background))",
       color: "hsl(var(--foreground))", display: "flex", flexDirection: "column",
+      paddingBottom: "env(safe-area-inset-bottom, 0px)",
     }}>
       <header style={{
-        padding: "18px 24px 12px", borderBottom: "1px solid hsl(var(--border))",
-        display: "flex", alignItems: "baseline", gap: 12,
+        padding: "18px 20px 12px", borderBottom: "1px solid hsl(var(--border))",
+        display: "flex", alignItems: "baseline", gap: 12, flexShrink: 0,
       }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, letterSpacing: "-0.01em" }}>Files</h1>
         <span style={{
