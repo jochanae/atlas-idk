@@ -28,7 +28,7 @@ import {
 
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
-import { DecisionCatchCard } from "./DecisionCatchCard";
+// DecisionCatchCard removed — intelligence now surfaces inline in Atlas's prose.
 import { DecisionArtifactCard } from "./DecisionArtifactCard";
 import { SpeakButton } from "./SpeakButton";
 import { detectPlanFromText } from "../../lib/plan";
