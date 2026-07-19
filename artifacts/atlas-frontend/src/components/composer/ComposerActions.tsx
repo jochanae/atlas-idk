@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { logEvent as _adbgLog } from "@/lib/attachDebugLog";
+import { logEvent as _adbgLog, signalPickerReturn } from "@/lib/attachDebugLog";
 import { createPortal } from "react-dom";
 import {
   Camera,
@@ -238,6 +238,7 @@ export function ComposerActions({
     // PowerPoint / Office files get a longer shield — Documents app ghost taps
     // routinely arrive 500–1500ms after the change event on Android.
     const listPreview = files ? Array.from(files) : [];
+    signalPickerReturn(); // resets lastVis in inline script before any chunk-load checks fire
     _adbgLog(listPreview.length > 0 ? "file_picker_change" : "file_picker_cancelled", { surface, count: listPreview.length, files: listPreview.map((f) => ({ name: f.name, mime: f.type || "unknown", size: f.size })) });
     const shieldMs =
       listPreview.length > 0 ? shieldMsForFiles(listPreview) : GHOST_SHIELD_DOCUMENT_MS;

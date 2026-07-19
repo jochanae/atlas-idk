@@ -83,6 +83,19 @@ function RootShell({ children }: { children: React.ReactNode }) {
     var m=r&&(r.message||String(r));
     if(reload(m)){e.preventDefault&&e.preventDefault();}
   });
+  // beforeunload fires for EVERY reload and navigation — even Vite HMR's own
+  // location.reload().  Logged to localStorage so the NEXT page load can read it.
+  window.addEventListener('beforeunload',function(){
+    _adbg('page_beforeunload',{href:window.location.href,visAge:Date.now()-lastVis});
+  });
+  // Reset the visibility timestamp whenever the file picker returns.
+  // On many mobile browsers the file picker does NOT fire visibilitychange,
+  // so lastVis can be stale when onChange fires and the 8-second guard would
+  // not protect against chunk-load errors that arrive right after the picker.
+  window.addEventListener('atlas-picker-return',function(){
+    lastVis=Date.now();
+    _adbg('picker_return_lastVis_reset');
+  });
 })();`,
           }}
         />
