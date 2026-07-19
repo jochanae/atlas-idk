@@ -75,9 +75,23 @@ function putWithProgress(
   });
 }
 
+/** True when an error message indicates a 401 auth failure. */
+function is401Error(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  // adapter.ts json() produces "Attachment API 401: ..."
+  return err.message.includes("401");
+}
+
 /**
  * Upload one File through the attachment lifecycle.
  * Does not mutate staged state — the staging hook owns that.
+ *
+ * Auth-race retry: if request-upload fails with a 401 on the first
+ * attempt (common when the file picker returns before the session
+ * cookie/token has settled), we wait 1 500 ms and try once more.
+ * This matches the auth-settle window in install-api-fetch.ts.
+ * A second 401 is surfaced as a normal error so the staging hook
+ * can show a retryable chip — it is never a hard app reload.
  */
 export async function uploadAttachmentFile(
   file: File,
@@ -87,7 +101,21 @@ export async function uploadAttachmentFile(
   },
 ): Promise<UploadResult> {
   const adapter = opts?.adapter ?? httpAttachmentAdapter;
-  const { attachmentId, uploadUrl, headers } = await adapter.requestUpload(file);
+
+  let requestResult: Awaited<ReturnType<typeof adapter.requestUpload>>;
+  try {
+    requestResult = await adapter.requestUpload(file);
+  } catch (firstErr) {
+    if (is401Error(firstErr)) {
+      // Auth may still be settling after picker return — wait then retry once.
+      await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+      requestResult = await adapter.requestUpload(file);
+    } else {
+      throw firstErr;
+    }
+  }
+
+  const { attachmentId, uploadUrl, headers } = requestResult;
   opts?.onProgress?.(0.05);
   await putWithProgress(uploadUrl, file, headers, (p) => {
     // Map PUT progress into 5%..95%; finalize owns the last 5%.

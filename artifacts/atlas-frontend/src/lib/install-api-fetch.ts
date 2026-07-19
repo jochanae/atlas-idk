@@ -11,7 +11,20 @@ declare global {
   }
 }
 
-const SILENT_401_PATTERNS = ["/api/nexus/activity", "/api/nexus/briefing", "/api/stripe/", "/api/connections"];
+// Attachment endpoints are silenced here because a transient 401
+// (race between file-picker return and auth-session settling) must
+// NEVER hard-redirect to /login and wipe the composer.  The upload
+// service handles auth failures locally: it retries once after the
+// auth-settle window and, on a second failure, marks only the
+// affected file as failed (retryable chip) while preserving text
+// and all other staged files.
+const SILENT_401_PATTERNS = [
+  "/api/nexus/activity",
+  "/api/nexus/briefing",
+  "/api/stripe/",
+  "/api/connections",
+  "/api/attachments",
+];
 
 let _401redirectPending = false;
 
