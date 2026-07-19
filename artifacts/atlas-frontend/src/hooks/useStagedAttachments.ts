@@ -393,6 +393,10 @@ export function useStagedAttachments(opts?: {
         return result;
       });
 
+      _adbgLog("add_files_to_upload_queue", {
+        count: toUpload.length,
+        ids: toUpload.map((i) => i.id),
+      });
       for (const item of toUpload) {
         startUpload(item.id, item.file);
       }
