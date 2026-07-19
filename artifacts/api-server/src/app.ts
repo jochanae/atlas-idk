@@ -249,6 +249,8 @@ app.use("/api/shell", shellRouter);
 
 // Public capability flags — no auth required. Must be registered before the
 // authenticated /api router so requireAuth middleware cannot intercept it.
+// Note: attachmentPersistence is advisory only. ATTACHMENTS_PERSISTENCE does
+// not gate /api/attachments/* or nexus/chat attachmentIds acceptance.
 app.get("/api/capabilities", (_req, res) => {
   res.json({
     attachmentPersistence: process.env.ATTACHMENTS_PERSISTENCE === "true",

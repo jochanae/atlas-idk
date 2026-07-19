@@ -3121,7 +3121,11 @@ router.post("/chat", async (req, res): Promise<void> => {
     imageData?: string | { base64: string; mediaType: string };
     imageMimeType?: string;
     attachments?: Array<{ base64?: string; mediaType?: string; name?: string; url?: string }>;
-    /** Server-resolved attachment IDs. Preferred when ATTACHMENTS_PERSISTENCE=true. */
+    /**
+     * Canonical transport: server-resolved attachment IDs.
+     * ATTACHMENTS_PERSISTENCE does not gate this field — it only feeds
+     * GET /api/capabilities. Cannot be combined with attachments[] (400).
+     */
     attachmentIds?: string[];
     flowMode?: boolean;
     flowNodes?: Array<{ type: string; label: string; question?: string; strategicAnswer?: string }>;
