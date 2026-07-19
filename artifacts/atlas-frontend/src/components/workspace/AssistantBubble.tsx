@@ -28,7 +28,7 @@ import {
 
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
-import { DecisionCatchCard } from "./DecisionCatchCard";
+// DecisionCatchCard removed — intelligence now surfaces inline in Atlas's prose.
 import { DecisionArtifactCard } from "./DecisionArtifactCard";
 import { SpeakButton } from "./SpeakButton";
 import { detectPlanFromText } from "../../lib/plan";
@@ -2807,14 +2807,10 @@ function AssistantBubbleImpl({
                 />
               )}
 
-              {!primaryCardShown && !message.streaming && message.catchPayload && (
-                <DecisionCatchCard
-                  payload={message.catchPayload}
-                  projectId={projectId}
-                  sessionId={sessionId}
-                  sourceMessageId={message.id}
-                />
-              )}
+              {/* Decision Catch card UI removed — intelligence now surfaces inline
+                  in Atlas's prose. Payload still arrives on message.catchPayload
+                  for telemetry/inline hints; no modal-style interrupt is rendered.
+                  Hard confirmations (destructive actions) live on their own dialogs. */}
 
               {!message.streaming && message.decisionDraft && projectId && (
                 <DecisionDraftConfirmChip
