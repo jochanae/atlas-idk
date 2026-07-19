@@ -18,6 +18,12 @@ import { useQuery } from "@tanstack/react-query";
 import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X } from "lucide-react";
 import { useListProjects } from "@workspace/api-client-react";
 import { fetchLibraryItems, type LibraryItem } from "@/lib/library";
+import {
+  getRecentAttachments,
+  subscribeRecentAttachments,
+  clearRecentAttachments,
+  type RecentAttachmentEntry,
+} from "@/components/files/recentAttachments";
 
 // Narrow-screen detector — inline to avoid coupling FilesBrowser to a hook.
 function useIsNarrow(breakpoint = 720): boolean {
@@ -133,6 +139,14 @@ export function FilesBrowser({
   const [section, setSection] = useState<FilesSection>("all");
   const [typeFilter, setTypeFilter] = useState<FilesTypeFilter>("any");
   const [query, setQuery] = useState("");
+  // Recent attachments log (localStorage-backed).
+  const [recentLog, setRecentLog] = useState<RecentAttachmentEntry[]>(() => getRecentAttachments());
+  useEffect(() => subscribeRecentAttachments(() => setRecentLog(getRecentAttachments())), []);
+  const recentOrder = useMemo(() => {
+    const m = new Map<string, number>();
+    recentLog.forEach((e, i) => m.set(e.id, i));
+    return m;
+  }, [recentLog]);
   // per-section view mode, remembered in localStorage
   const [viewByS, setViewByS] = useState<Record<FilesSection, FilesViewMode>>(() => {
     try {
@@ -247,16 +261,36 @@ export function FilesBrowser({
     else if (section === "saved") arr = arr.filter((f) => f.section === "saved");
     else if (section === "generated") arr = arr.filter((f) => f.section === "generated");
     else if (section === "recent") {
-      const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
-      arr = arr.filter((f) => new Date(f.updatedAt).getTime() >= cutoff);
+      // Recent = files the user has actually attached (from the local log).
+      // Include known aggregated files, plus synthesize lightweight rows for
+      // entries whose source no longer resolves (e.g. deleted saved item).
+      const byId = new Map(arr.map((f) => [f.id, f] as const));
+      arr = recentLog.map((entry) => {
+        const existing = byId.get(entry.id);
+        if (existing) return existing;
+        return {
+          id: entry.id,
+          name: entry.name,
+          category: (entry.category as FilesTypeFilter | undefined) ?? categoryFor(entry.name),
+          section: (entry.section as UnifiedFile["section"]) ?? "saved",
+          updatedAt: entry.attachedAt,
+          projectLabel: entry.projectLabel ?? null,
+          availability: "all-projects",
+          thumbUrl: entry.thumbUrl ?? null,
+        } satisfies UnifiedFile;
+      });
     }
     if (typeFilter !== "any") arr = arr.filter((f) => f.category === typeFilter);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       arr = arr.filter((f) => f.name.toLowerCase().includes(q) || (f.preview ?? "").toLowerCase().includes(q));
     }
+    if (section === "recent") {
+      // Preserve attach-order (most recent first) instead of updatedAt sort.
+      return [...arr].sort((a, b) => (recentOrder.get(a.id) ?? 0) - (recentOrder.get(b.id) ?? 0));
+    }
     return [...arr].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-  }, [files, section, typeFilter, query]);
+  }, [files, section, typeFilter, query, recentLog, recentOrder]);
 
   const toggle = (id: string) => {
     if (!onSelectionChange) return;
@@ -365,10 +399,24 @@ export function FilesBrowser({
 
         {/* Right pane: results */}
         <div style={{ flex: 1, minWidth: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 12, overscrollBehavior: "contain" }}>
+          {section === "recent" && recentLog.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, fontSize: 11, color: "var(--atlas-muted, hsl(var(--muted-foreground)))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span>{recentLog.length} recently attached</span>
+              <button
+                type="button"
+                onClick={() => { if (confirm("Clear recent attachments history?")) clearRecentAttachments(); }}
+                style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer", fontFamily: "inherit", fontSize: "inherit", letterSpacing: "inherit", textTransform: "inherit", padding: 4 }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
           {isLoading && <EmptyPane title="Loading…" body="Fetching your files." />}
           {!isLoading && anyError && <EmptyPane title="Couldn't load files" body={String((anyError as Error).message ?? anyError)} />}
           {!isLoading && !anyError && visible.length === 0 && (
-            <EmptyPane title="No files match" body="Try a different section or clear the search." />
+            section === "recent"
+              ? <EmptyPane title="No recent attachments" body="Files you attach to messages will appear here." />
+              : <EmptyPane title="No files match" body="Try a different section or clear the search." />
           )}
           {!isLoading && !anyError && visible.length > 0 && (
             view === "list" ? (
