@@ -26,6 +26,7 @@ Before any change to the conversation stack, answer these three questions:
 | Never call `fetch("/api/chat")` directly from a new component | `/api/chat` is a legacy route; new surfaces use the Nexus route |
 | Programmatic / automated sends may continue using `doSend()` until Phase 2 migration lands | `doSend` is still wired to session-ID-keyed infrastructure that Nexus path does not yet replicate |
 | Do not add a new `useChatStream` instantiation | There must be exactly one `useChatStream` in the tree (currently in `workspace.tsx`) |
+| **When adding, removing, or migrating a `doSend` call in `workspace.tsx`, update the inventory table in [conversation-ownership.md § Workspace Legacy doSend Inventory](conversation-ownership.md#workspace-legacy-dosend-inventory)** | The inventory is the authoritative migration tracker; stale entries mislead future agents about reachability and readiness |
 
 ---
 
