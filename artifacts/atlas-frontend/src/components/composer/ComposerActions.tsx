@@ -20,6 +20,8 @@ import {
   Wand2,
 } from "lucide-react";
 import SketchComposerSheet from "./SketchComposerSheet";
+import { FilesBrowser, type UnifiedFile } from "@/components/files/FilesBrowser";
+import { resolveToFiles } from "@/components/files/resolveToFiles";
 import {
   clearPickerPending,
   installGhostClickShield,
