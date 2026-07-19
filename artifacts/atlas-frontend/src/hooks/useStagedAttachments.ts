@@ -139,15 +139,31 @@ export function useStagedAttachments(opts?: {
   const filesRef = useRef(files);
   filesRef.current = files;
   const uploadGenRef = useRef(new Map<string, number>());
+  const uploadAbortRef = useRef(new Map<string, AbortController>());
+
+  const abortUpload = useCallback((id: string) => {
+    const controller = uploadAbortRef.current.get(id);
+    if (controller) {
+      try {
+        controller.abort();
+      } catch {
+        /* ignore */
+      }
+      uploadAbortRef.current.delete(id);
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
+      for (const id of [...uploadAbortRef.current.keys()]) {
+        abortUpload(id);
+      }
       setFiles((prev) => {
         revokeAll(prev);
         return prev;
       });
     };
-  }, []);
+  }, [abortUpload]);
 
   useEffect(() => {
     _setStagedCount(files.length);
@@ -168,6 +184,11 @@ export function useStagedAttachments(opts?: {
       const gen = (uploadGenRef.current.get(id) ?? 0) + 1;
       uploadGenRef.current.set(id, gen);
 
+      // Cancel any in-flight PUT for this chip (retry / remount).
+      abortUpload(id);
+      const controller = new AbortController();
+      uploadAbortRef.current.set(id, controller);
+
       _adbgLog("start_upload_begin", { id, gen, name: file.name, size: file.size });
 
       patchFile(id, {
@@ -182,6 +203,7 @@ export function useStagedAttachments(opts?: {
           _adbgLog("start_upload_request_upload", { id, gen });
           const result = await uploadAttachmentFile(file, {
             adapter,
+            signal: controller.signal,
             onProgress: (p) => {
               if (uploadGenRef.current.get(id) !== gen) return;
               patchFile(id, { uploadProgress: p, uploadStatus: "uploading" });
@@ -191,6 +213,7 @@ export function useStagedAttachments(opts?: {
             _adbgLog("start_upload_gen_stale", { id, gen, current: uploadGenRef.current.get(id) });
             return;
           }
+          uploadAbortRef.current.delete(id);
           _adbgLog("start_upload_success", { id, gen, attachmentId: result.attachmentId });
           patchFile(id, {
             status: "ready",
@@ -202,8 +225,14 @@ export function useStagedAttachments(opts?: {
           });
         } catch (err) {
           if (uploadGenRef.current.get(id) !== gen) return;
+          uploadAbortRef.current.delete(id);
           const message =
             err instanceof Error ? err.message : "Upload failed";
+          // User-initiated cancel — chip is already gone; don't flash failed.
+          if (message.includes("aborted")) {
+            _adbgLog("start_upload_aborted", { id, gen });
+            return;
+          }
           _adbgLog("start_upload_error", { id, gen, message });
           patchFile(id, {
             status: "failed",
@@ -218,7 +247,7 @@ export function useStagedAttachments(opts?: {
         }
       })();
     },
-    [adapter, autoUpload, patchFile],
+    [abortUpload, adapter, autoUpload, patchFile],
   );
 
   const addFiles = useCallback(
@@ -405,13 +434,16 @@ export function useStagedAttachments(opts?: {
   );
 
   const removeFile = useCallback((id: string) => {
+    // Bump gen so a late resolve cannot resurrect the chip, then abort PUT.
+    uploadGenRef.current.set(id, (uploadGenRef.current.get(id) ?? 0) + 1);
+    abortUpload(id);
     uploadGenRef.current.delete(id);
     setFiles((prev) => {
       const target = prev.find((sf) => sf.id === id);
       if (target) revokeUrl(target);
       return prev.filter((sf) => sf.id !== id);
     });
-  }, []);
+  }, [abortUpload]);
 
   const retryFile = useCallback(
     (id: string) => {

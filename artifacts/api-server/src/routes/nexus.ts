@@ -108,7 +108,7 @@ import {
   linkAttachmentsToMessage,
   resolveAttachmentIdsForModel,
 } from "../lib/attachmentResolve";
-import { objectStorageClient, parseObjectPath } from "../lib/objectStorage";
+import { getAttachmentFile } from "../lib/attachmentStorage";
 
 const router: IRouter = Router();
 
@@ -1852,9 +1852,12 @@ router.get("/attachments/:id/content", async (req, res): Promise<void> => {
     // Dual-owner query: verify ownership on BOTH the attachment row AND its parent
     // nexus message. The INNER JOIN also ensures the message exists. Any miss —
     // nonexistent, wrong user, wrong status, unlinked, or soft-deleted — returns 404.
+    // availability may be active / expiring / library — retention marks pending
+    // rows expiring quickly; content must still serve until expired.
     const [row] = await db
       .select({
         storagePath: messageAttachmentsTable.storagePath,
+        storageBucket: messageAttachmentsTable.storageBucket,
         mimeType: messageAttachmentsTable.mimeType,
         filename: messageAttachmentsTable.filename,
       })
@@ -1868,28 +1871,22 @@ router.get("/attachments/:id/content", async (req, res): Promise<void> => {
         eq(messageAttachmentsTable.userId, userId),
         eq(nexusMessagesTable.userId, userId),
         eq(messageAttachmentsTable.uploadStatus, "uploaded"),
-        eq(messageAttachmentsTable.availabilityStatus, "active"),
+        inArray(messageAttachmentsTable.availabilityStatus, [
+          "active",
+          "expiring",
+          "library",
+        ]),
       ))
       .limit(1);
 
     if (!row) { res.status(404).json({ error: "Not found" }); return; }
 
-    // Reconstruct the full GCS path from the stored /objects/... path
-    const storagePath = row.storagePath;
-    if (!storagePath.startsWith("/objects/")) {
-      res.status(500).json({ error: "Invalid storage path" }); return;
-    }
-    const entityId = storagePath.slice("/objects/".length);
-    const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
-    if (!privateObjectDir) {
-      logger.warn({}, "attachments/content: PRIVATE_OBJECT_DIR not set");
-      res.status(500).json({ error: "Storage not configured" }); return;
-    }
-    const dir = privateObjectDir.endsWith("/") ? privateObjectDir : `${privateObjectDir}/`;
-    const objectEntityPath = `${dir}${entityId}`;
-    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
-    const bucket = objectStorageClient.bucket(bucketName);
-    const file = bucket.file(objectName);
+    // Canonical paths are `{userId}/{attachmentId}/{filename}`; legacy rows may
+    // still use `/objects/...`. resolveStoredObject handles both.
+    const file = getAttachmentFile({
+      storageBucket: row.storageBucket,
+      storagePath: row.storagePath,
+    });
     const [exists] = await file.exists();
     if (!exists) { res.status(404).json({ error: "Object not found in storage" }); return; }
 

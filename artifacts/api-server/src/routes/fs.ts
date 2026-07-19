@@ -18,10 +18,36 @@ import {
   redactToken,
 } from "../lib/terminalSandbox";
 import { runClosedLoopVerification } from "../lib/closedLoopVerification";
+import { ATTACHMENT_MAX_BYTES } from "../lib/attachmentStorage";
 
 const router: IRouter = Router();
 
-const MAX_FILE_BYTES = 512_000; // 500 KB
+const MAX_FILE_BYTES = 512_000; // 500 KB — text editor open limit
+/** Raw download for composer attach — matches chat attachment cap. */
+const MAX_RAW_FILE_BYTES = ATTACHMENT_MAX_BYTES;
+
+const RAW_MIME_BY_EXT: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".pdf": "application/pdf",
+  ".txt": "text/plain",
+  ".md": "text/markdown",
+  ".markdown": "text/markdown",
+  ".csv": "text/csv",
+  ".json": "application/json",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".zip": "application/zip",
+};
+
+function mimeForWorkspacePath(userPath: string): string {
+  const ext = path.extname(userPath).toLowerCase();
+  return RAW_MIME_BY_EXT[ext] || "application/octet-stream";
+}
 
 function queryString(value: unknown): string | null {
   if (typeof value === "string") return value;
@@ -163,6 +189,64 @@ router.get("/fs/:projectId/file", async (req: Request, res: Response): Promise<v
   } catch (err) {
     req.log?.error({ err }, "fs file read error");
     res.status(500).json({ error: "Failed to read file" });
+  }
+});
+
+// GET /api/fs/:projectId/raw?path=...
+// Streams raw workspace file bytes for composer attach (binary-safe).
+// Distinct from /file which returns JSON text-editor payloads and rejects binary.
+router.get("/fs/:projectId/raw", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+    const projectId = parseProjectId(req.params.projectId);
+    if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
+    if (!await assertProjectOwner(projectId, userId)) { res.status(404).json({ error: "Project not found" }); return; }
+
+    const userPath = queryString(req.query.path);
+    if (!userPath) { res.status(400).json({ error: "Missing path" }); return; }
+
+    const workspaceDir = projectWorkspaceDir(projectId);
+    let absPath: string;
+    try {
+      absPath = resolveWorkspacePath(workspaceDir, userPath);
+    } catch {
+      res.status(400).json({ error: "Invalid path" }); return;
+    }
+
+    let stat: fsNode.Stats;
+    try {
+      stat = await fsPromises.stat(absPath);
+    } catch {
+      res.status(404).json({ error: "File not found" }); return;
+    }
+
+    if (!stat.isFile()) { res.status(400).json({ error: "Not a file" }); return; }
+    if (stat.size > MAX_RAW_FILE_BYTES) {
+      res.status(413).json({
+        error: `File too large to attach (${Math.round(stat.size / 1024)} KB — max ${Math.round(MAX_RAW_FILE_BYTES / 1024)} KB)`,
+      });
+      return;
+    }
+
+    const mime = mimeForWorkspacePath(userPath);
+    const basename = path.basename(userPath);
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Length", String(stat.size));
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${encodeURIComponent(basename)}"`,
+    );
+    res.setHeader("Cache-Control", "private, no-store");
+
+    const stream = fsNode.createReadStream(absPath);
+    stream.pipe(res);
+    stream.on("error", (streamErr) => {
+      req.log?.error({ err: streamErr }, "fs raw stream error");
+      if (!res.headersSent) res.status(500).json({ error: "Failed to read file" });
+    });
+  } catch (err) {
+    req.log?.error({ err }, "fs raw read error");
+    if (!res.headersSent) res.status(500).json({ error: "Failed to read file" });
   }
 });
 

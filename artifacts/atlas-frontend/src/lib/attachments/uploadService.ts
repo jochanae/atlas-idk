@@ -16,22 +16,57 @@ export type UploadResult = {
   persisted: PersistedAttachment;
 };
 
+/** Hard ceiling for the storage PUT — large files on slow networks. */
+export const PUT_TIMEOUT_MS = 120_000;
+/**
+ * If the PUT reports no progress for this long, abort early so the chip
+ * can leave the gold spinner and become retryable.
+ */
+export const PUT_STALL_TIMEOUT_MS = 25_000;
+
+export type PutWithProgressOptions = {
+  onProgress?: UploadProgressCallback;
+  /** Caller abort (e.g. user removed the staged chip). */
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  stallTimeoutMs?: number;
+};
+
 /**
  * PUT with XHR so upload progress events are available.
  * Falls back to fetch when XHR is unavailable (rare / non-browser).
+ *
+ * Always time-bounded: hard timeout + stall watchdog + optional abort signal.
  */
-function putWithProgress(
+export function putWithProgress(
   uploadUrl: string,
   file: File,
   headers: Record<string, string> | undefined,
-  onProgress?: UploadProgressCallback,
+  opts?: PutWithProgressOptions | UploadProgressCallback,
 ): Promise<void> {
+  const normalized: PutWithProgressOptions =
+    typeof opts === "function" ? { onProgress: opts } : (opts ?? {});
+  const onProgress = normalized.onProgress;
+  const timeoutMs = normalized.timeoutMs ?? PUT_TIMEOUT_MS;
+  const stallTimeoutMs = normalized.stallTimeoutMs ?? PUT_STALL_TIMEOUT_MS;
+  const externalSignal = normalized.signal;
+
   if (uploadUrl.startsWith("mock://")) {
     onProgress?.(1);
     return Promise.resolve();
   }
 
+  if (externalSignal?.aborted) {
+    return Promise.reject(new Error("Storage upload aborted"));
+  }
+
   if (typeof XMLHttpRequest === "undefined") {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+    const onExternalAbort = () => controller.abort();
+    externalSignal?.addEventListener("abort", onExternalAbort);
     return fetch(uploadUrl, {
       method: "PUT",
       headers: {
@@ -39,17 +74,71 @@ function putWithProgress(
         ...(headers ?? {}),
       },
       body: file,
-    }).then((res) => {
-      if (!res.ok) throw new Error(`Storage upload failed: ${res.status}`);
-      onProgress?.(1);
-    });
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Storage upload failed: ${res.status}`);
+        onProgress?.(1);
+      })
+      .catch((err) => {
+        if (externalSignal?.aborted) {
+          throw new Error("Storage upload aborted");
+        }
+        if (err instanceof Error && err.name === "AbortError") {
+          throw new Error("Storage upload timed out");
+        }
+        throw err;
+      })
+      .finally(() => {
+        clearTimeout(timer);
+        externalSignal?.removeEventListener("abort", onExternalAbort);
+      });
   }
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    let settled = false;
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      if (stallTimer) clearTimeout(stallTimer);
+      externalSignal?.removeEventListener("abort", onExternalAbort);
+      fn();
+    };
+
+    const armStallWatchdog = () => {
+      if (stallTimer) clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        settle(() => {
+          try {
+            xhr.abort();
+          } catch {
+            /* ignore */
+          }
+          reject(
+            new Error(
+              "Upload stalled — check your connection and tap Retry",
+            ),
+          );
+        });
+      }, stallTimeoutMs);
+    };
+
+    const onExternalAbort = () => {
+      settle(() => {
+        try {
+          xhr.abort();
+        } catch {
+          /* ignore */
+        }
+        reject(new Error("Storage upload aborted"));
+      });
+    };
+
     xhr.open("PUT", uploadUrl);
-    // 2-minute timeout for large files — prevents infinite hung PUT.
-    xhr.timeout = 120_000;
+    xhr.timeout = timeoutMs;
     xhr.setRequestHeader(
       "Content-Type",
       file.type || "application/octet-stream",
@@ -60,20 +149,35 @@ function putWithProgress(
       }
     }
     xhr.upload.onprogress = (evt) => {
+      armStallWatchdog();
       if (!evt.lengthComputable || !onProgress) return;
       onProgress(Math.min(1, evt.loaded / Math.max(evt.total, 1)));
     };
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        onProgress?.(1);
-        resolve();
-      } else {
-        reject(new Error(`Storage upload failed: ${xhr.status}`));
-      }
+      settle(() => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress?.(1);
+          resolve();
+        } else {
+          reject(new Error(`Storage upload failed: ${xhr.status}`));
+        }
+      });
     };
-    xhr.onerror = () => reject(new Error("Storage upload network error"));
-    xhr.onabort = () => reject(new Error("Storage upload aborted"));
-    xhr.ontimeout = () => reject(new Error("Storage upload timed out"));
+    xhr.onerror = () =>
+      settle(() => reject(new Error("Storage upload network error")));
+    xhr.onabort = () => {
+      // External abort / stall already settled with a specific message.
+      settle(() => reject(new Error("Storage upload aborted")));
+    };
+    xhr.ontimeout = () =>
+      settle(() =>
+        reject(
+          new Error("Upload timed out — check your connection and tap Retry"),
+        ),
+      );
+
+    externalSignal?.addEventListener("abort", onExternalAbort);
+    armStallWatchdog();
     xhr.send(file);
   });
 }
@@ -101,17 +205,28 @@ export async function uploadAttachmentFile(
   opts?: {
     adapter?: AttachmentAdapter;
     onProgress?: UploadProgressCallback;
+    signal?: AbortSignal;
   },
 ): Promise<UploadResult> {
   const adapter = opts?.adapter ?? httpAttachmentAdapter;
+
+  if (opts?.signal?.aborted) {
+    throw new Error("Storage upload aborted");
+  }
 
   let requestResult: Awaited<ReturnType<typeof adapter.requestUpload>>;
   try {
     requestResult = await adapter.requestUpload(file);
   } catch (firstErr) {
+    if (opts?.signal?.aborted) {
+      throw new Error("Storage upload aborted");
+    }
     if (is401Error(firstErr)) {
       // Auth may still be settling after picker return — wait then retry once.
       await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+      if (opts?.signal?.aborted) {
+        throw new Error("Storage upload aborted");
+      }
       requestResult = await adapter.requestUpload(file);
     } else {
       throw firstErr;
@@ -120,10 +235,16 @@ export async function uploadAttachmentFile(
 
   const { attachmentId, uploadUrl, headers } = requestResult;
   opts?.onProgress?.(0.05);
-  await putWithProgress(uploadUrl, file, headers, (p) => {
-    // Map PUT progress into 5%..95%; finalize owns the last 5%.
-    opts?.onProgress?.(0.05 + p * 0.9);
+  await putWithProgress(uploadUrl, file, headers, {
+    onProgress: (p) => {
+      // Map PUT progress into 5%..95%; finalize owns the last 5%.
+      opts?.onProgress?.(0.05 + p * 0.9);
+    },
+    signal: opts?.signal,
   });
+  if (opts?.signal?.aborted) {
+    throw new Error("Storage upload aborted");
+  }
   const persisted = await adapter.finalizeUpload(attachmentId);
   opts?.onProgress?.(1);
   return { attachmentId, persisted };
@@ -139,6 +260,7 @@ export async function uploadAttachmentFiles(
   opts?: {
     adapter?: AttachmentAdapter;
     onFileProgress?: (index: number, progress: number) => void;
+    signal?: AbortSignal;
   },
 ): Promise<{
   uploaded: UploadResult[];
@@ -152,6 +274,7 @@ export async function uploadAttachmentFiles(
       const result = await uploadAttachmentFile(file, {
         adapter: opts?.adapter,
         onProgress: (p) => opts?.onFileProgress?.(i, p),
+        signal: opts?.signal,
       });
       uploaded.push(result);
     } catch (err) {
