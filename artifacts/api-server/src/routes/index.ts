@@ -65,6 +65,7 @@ import shareRouter from "./share";
 import publishRouter from "./publish";
 import homeArtifactsRouter from "./homeArtifacts";
 import libraryRouter from "./library";
+import attachmentsRouter from "./attachments";
 
 import capabilitiesRouter from "./capabilities";
 import verifyRouter from "./verify";
@@ -190,6 +191,9 @@ router.use(requireAuth, homeArtifactsRouter);
 
 // Canonical Library — supersedes home_artifacts / project_bookmarks as the read path
 router.use(requireAuth, libraryRouter);
+
+// Attachment lifecycle — request-upload/finalize/message/open-url/download
+router.use(requireAuth, attachmentsRouter);
 
 // Runtime feature capabilities — no auth required (no user data).
 router.use(capabilitiesRouter);
