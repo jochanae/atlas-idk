@@ -18,6 +18,12 @@ import { useQuery } from "@tanstack/react-query";
 import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X } from "lucide-react";
 import { useListProjects } from "@workspace/api-client-react";
 import { fetchLibraryItems, type LibraryItem } from "@/lib/library";
+import {
+  getRecentAttachments,
+  subscribeRecentAttachments,
+  clearRecentAttachments,
+  type RecentAttachmentEntry,
+} from "@/components/files/recentAttachments";
 
 // Narrow-screen detector — inline to avoid coupling FilesBrowser to a hook.
 function useIsNarrow(breakpoint = 720): boolean {
