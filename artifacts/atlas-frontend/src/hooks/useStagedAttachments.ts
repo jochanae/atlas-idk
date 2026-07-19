@@ -1,48 +1,44 @@
 /**
  * useStagedAttachments — Shared staged-attachment controller.
  *
- * Owns the full lifecycle for every file from selection to cleared-after-confirmed-send:
- *   addFiles → ready → converting → sending → cleared (clearSent) on stream success
- *                               ↘ failed (markFailed) on conversion error
- *   on network failure after send(): sending → restoreToReady
- *   on transport layer failure before send(): converting → restoreToReady
+ * One hook for Ask Atlas and Workspace. Owns validation (support matrix +
+ * limits), per-file upload progress, failure/retry, and send lifecycle.
  *
- * Surfaces NEVER call clearFiles() before submit() completes.
- * The conversation controller (useAtlasConversation.submit) calls the lifecycle
- * callbacks — onMarkConverting, onMarkSending, onMarkFailed, onRestoreToReady,
- * onClearSent — which drive state transitions here.
- *
- * Both Ask Atlas and Workspace consume this hook directly.
- * No surface-specific file conversion or send logic may live outside this
- * controller or useAtlasConversation.
- */
-import { useCallback, useEffect, useState } from "react";
-import { logEvent as _adbgLog, setStagedCount as _setStagedCount } from "@/lib/attachDebugLog";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-/**
  * Lifecycle:
- *   ready       — validated, waiting for user to send
- *   converting  — base64 conversion in progress; file is visible with a spinner
- *   sending     — conversion complete; send() returned; optimistic message owns the data.
- *                 Chip is shown as accepted/faded (no spinner). Transitions →
- *                 cleared (clearSent) on stream success, or → ready (restoreToReady)
- *                 on network-level failure so the user can retry without reselecting.
- *   failed      — validation OR conversion failed; file is visible with an error badge;
- *                 user can remove or retry
+ *   addFiles → uploading → ready (uploaded) → sending → cleared
+ *                      ↘ failed (retryable) / blocked (not sendable)
+ *
+ * Surfaces must not convert files or call the upload API directly.
  */
-export type StagedFileStatus = "ready" | "converting" | "sending" | "failed";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { logEvent as _adbgLog, setStagedCount as _setStagedCount } from "@/lib/attachDebugLog";
+import {
+  ATTACHMENT_MAX_BYTES,
+  ATTACHMENT_MAX_COUNT,
+  ATTACHMENT_MAX_MESSAGE_BYTES,
+  type StagedAttachment,
+  type StagedFileError,
+  type StagedFileStatus,
+  type ProcessingStatus,
+} from "@/lib/attachments/types";
+import { resolveSupport } from "@/lib/attachments/supportMatrix";
+import type { AttachmentAdapter } from "@/lib/attachments/adapter";
+import { httpAttachmentAdapter } from "@/lib/attachments/adapter";
+import { uploadAttachmentFile } from "@/lib/attachments/uploadService";
 
-export type StagedFileError = {
-  /** Machine-readable code for programmatic handling (e.g. "TOO_LARGE", "CONVERSION_FAILED"). */
-  code: string;
-  /** Human-readable message shown in the AttachmentStrip error badge. */
-  message: string;
-  /** True when re-attempting the operation may succeed (network blip, recoverable). */
-  retryable: boolean;
+// ─── Re-exports for existing call sites ───────────────────────────────────────
+
+export type {
+  StagedAttachment,
+  StagedFileError,
+  StagedFileStatus,
+  ProcessingStatus,
 };
 
+/** @deprecated Prefer StagedAttachment — kept as alias during migration. */
+export type StagedFile = StagedAttachment;
+
+/** @deprecated Prefer StagedAttachment.kind — mapped for AttachmentStrip. */
 export type AttachmentCategory =
   | "image"
   | "pdf"
@@ -52,142 +48,50 @@ export type AttachmentCategory =
   | "text"
   | "other";
 
-export interface StagedFile {
-  /** Stable client-side ID — safe for React keys and targeted operations. */
-  id: string;
-  file: File;
-  name: string;
-  mimeType: string;
-  extension: string;
-  sizeBytes: number;
-  category: AttachmentCategory;
-  /**
-   * Object URL created via URL.createObjectURL for image preview in the composer.
-   * Null for non-image files (PDF, doc, etc.) and SVG.
-   * Revoked automatically: on removeFile, clearSent, clearFiles, or component unmount.
-   * The sent-message preview in UserBubble uses base64 data URIs, NOT this URL.
-   */
-  previewUrl: string | null;
-  status: StagedFileStatus;
-  /** Non-null iff status === "failed". */
-  error: StagedFileError | null;
-}
-
 export interface UseStagedAttachmentsReturn {
-  /** All staged files including failed ones. */
-  files: StagedFile[];
-  /** Files with status === "ready". Safe to pass to submit(). */
-  readyFiles: StagedFile[];
-  /** Files with status === "converting". In-flight: do not re-submit. */
-  convertingFiles: StagedFile[];
-  /** Files with status === "sending". HTTP request accepted; stream in progress. Do not re-submit. */
-  sendingFiles: StagedFile[];
-  /** Files with status === "failed". Visible with error badge; can be removed or retried. */
-  failedFiles: StagedFile[];
-  /** True when at least one ready file exists. */
+  files: StagedAttachment[];
+  readyFiles: StagedAttachment[];
+  uploadingFiles: StagedAttachment[];
+  sendingFiles: StagedAttachment[];
+  failedFiles: StagedAttachment[];
+  blockedFiles: StagedAttachment[];
+  /** True when at least one ready (uploaded) file exists. */
   canSubmitFiles: boolean;
-  /** Add one or more files. Normalises MIME/extension, deduplicates, validates. */
+  /** True while any file is still uploading. */
+  isUploading: boolean;
+  /** Sum of staged file sizes (excludes blocked). */
+  totalBytes: number;
   addFiles: (files: FileList | File[] | null | undefined) => void;
-  /** Remove a single staged file and revoke its preview URL. */
   removeFile: (id: string) => void;
+  /** Retry a single failed upload without touching successful files. */
+  retryFile: (id: string) => void;
+  /** Retry all failed uploads. */
+  retryFailed: () => void;
+  markSending: (ids: string[]) => void;
+  markFailed: (id: string, error: StagedFileError) => void;
+  restoreToReady: (ids: string[]) => void;
+  clearSent: (ids: string[]) => void;
+  clearFiles: () => void;
   /**
-   * Transition specific files from "ready" → "converting".
-   * Called by useAtlasConversation.submit() before conversion begins.
+   * Legacy no-op kept so existing submit wiring compiles.
+   * Upload now happens at addFiles time.
    */
   markConverting: (ids: string[]) => void;
-  /**
-   * Transition specific files from "converting" → "sending".
-   * Called by useAtlasConversation.submit() immediately after send() returns the
-   * clientMessageId — before the SSE stream completes — so the chip transitions
-   * from the conversion spinner to the "accepted/sending" state. The optimistic
-   * user message already owns the base64 data at this point.
-   */
-  markSending: (ids: string[]) => void;
-  /**
-   * Transition a single file to "failed" with a structured error.
-   * Called by useAtlasConversation.submit() when base64 conversion throws.
-   */
-  markFailed: (id: string, error: StagedFileError) => void;
-  /**
-   * Restore "converting" or "sending" files back to "ready".
-   * Called by useAtlasConversation.submit() when the transport layer fails —
-   * so the user can fix the issue and retry without re-selecting files.
-   * Pass specific ids to restore a subset.
-   */
-  restoreToReady: (ids: string[]) => void;
-  /**
-   * Remove and revoke only the successfully submitted files.
-   * Called by useAtlasConversation.submit() on confirmed transport success.
-   * Files that failed conversion remain staged (status "failed") for user action.
-   */
-  clearSent: (ids: string[]) => void;
-  /**
-   * Revoke all preview URLs and empty the list.
-   * Use only for explicit cancel actions (user clicks "clear all") or component unmount.
-   * Do NOT call this before submit() succeeds — use the lifecycle callbacks instead.
-   */
-  clearFiles: () => void;
+  /** @deprecated alias — convertingFiles is always empty; use uploadingFiles. */
+  convertingFiles: StagedAttachment[];
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
-const MAX_FILE_COUNT = 10;
-
-const EXTENSION_MIME_MAP: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  gif: "image/gif",
-  webp: "image/webp",
-  bmp: "image/bmp",
-  tiff: "image/tiff",
-  svg: "image/svg+xml",
-  pdf: "application/pdf",
-  txt: "text/plain",
-  md: "text/markdown",
-  markdown: "text/markdown",
-  csv: "text/csv",
-  json: "application/json",
-  doc: "application/msword",
-  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  xls: "application/vnd.ms-excel",
-  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  ppt: "application/vnd.ms-powerpoint",
-  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function detectMimeType(file: File): string {
-  if (file.type) return file.type;
-  const ext = (file.name.split(".").pop() ?? "").toLowerCase();
-  return EXTENSION_MIME_MAP[ext] ?? "application/octet-stream";
-}
 
 function detectExtension(file: File): string {
   return (file.name.split(".").pop() ?? "").toLowerCase();
 }
 
-function detectCategory(mimeType: string, extension: string): AttachmentCategory {
-  if (mimeType.startsWith("image/")) return "image";
-  if (mimeType === "application/pdf") return "pdf";
-  if (
-    mimeType === "application/msword" ||
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) return "document";
-  if (
-    mimeType === "application/vnd.ms-excel" ||
-    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  ) return "spreadsheet";
-  if (
-    mimeType === "application/vnd.ms-powerpoint" ||
-    mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-  ) return "presentation";
-  if (mimeType.startsWith("text/") || ["json", "md", "markdown", "csv"].includes(extension)) {
-    return "text";
-  }
-  return "other";
+function detectMimeType(file: File): string {
+  if (file.type) return file.type;
+  const ext = detectExtension(file);
+  const support = resolveSupport("", file.name);
+  return support.entry?.mimeTypes[0] ?? "application/octet-stream";
 }
 
 function makePreviewUrl(file: File, mimeType: string): string | null {
@@ -201,13 +105,17 @@ function makePreviewUrl(file: File, mimeType: string): string | null {
   return null;
 }
 
-function revokeUrl(sf: StagedFile): void {
+function revokeUrl(sf: StagedAttachment): void {
   if (sf.previewUrl) {
-    try { URL.revokeObjectURL(sf.previewUrl); } catch {}
+    try {
+      URL.revokeObjectURL(sf.previewUrl);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
-function revokeAll(files: StagedFile[]): void {
+function revokeAll(files: StagedAttachment[]): void {
   for (const sf of files) revokeUrl(sf);
 }
 
@@ -216,131 +124,311 @@ function revokeAll(files: StagedFile[]): void {
 export function useStagedAttachments(opts?: {
   maxCount?: number;
   maxSizeBytes?: number;
+  maxMessageBytes?: number;
+  adapter?: AttachmentAdapter;
+  /** When false, stage only — tests that assert validation without network. */
+  autoUpload?: boolean;
 }): UseStagedAttachmentsReturn {
-  const maxCount = opts?.maxCount ?? MAX_FILE_COUNT;
-  const maxSize = opts?.maxSizeBytes ?? MAX_FILE_SIZE_BYTES;
+  const maxCount = opts?.maxCount ?? ATTACHMENT_MAX_COUNT;
+  const maxSize = opts?.maxSizeBytes ?? ATTACHMENT_MAX_BYTES;
+  const maxMessage = opts?.maxMessageBytes ?? ATTACHMENT_MAX_MESSAGE_BYTES;
+  const adapter = opts?.adapter ?? httpAttachmentAdapter;
+  const autoUpload = opts?.autoUpload !== false;
 
-  const [files, setFiles] = useState<StagedFile[]>([]);
+  const [files, setFiles] = useState<StagedAttachment[]>([]);
+  const filesRef = useRef(files);
+  filesRef.current = files;
+  const uploadGenRef = useRef(new Map<string, number>());
 
   useEffect(() => {
     return () => {
-      setFiles(prev => { revokeAll(prev); return prev; });
+      setFiles((prev) => {
+        revokeAll(prev);
+        return prev;
+      });
     };
   }, []);
 
-  // Mirror staged-file count to module scope + sessionStorage so the
-  // pre-React inline script (visibility handler) can read it without React.
   useEffect(() => {
     _setStagedCount(files.length);
   }, [files]);
+
+  const patchFile = useCallback(
+    (id: string, patch: Partial<StagedAttachment>) => {
+      setFiles((prev) =>
+        prev.map((sf) => (sf.id === id ? { ...sf, ...patch } : sf)),
+      );
+    },
+    [],
+  );
+
+  const startUpload = useCallback(
+    (id: string, file: File) => {
+      if (!autoUpload) return;
+      const gen = (uploadGenRef.current.get(id) ?? 0) + 1;
+      uploadGenRef.current.set(id, gen);
+
+      patchFile(id, {
+        status: "uploading",
+        uploadStatus: "uploading",
+        uploadProgress: 0,
+        error: null,
+      });
+
+      void (async () => {
+        try {
+          const result = await uploadAttachmentFile(file, {
+            adapter,
+            onProgress: (p) => {
+              if (uploadGenRef.current.get(id) !== gen) return;
+              patchFile(id, { uploadProgress: p, uploadStatus: "uploading" });
+            },
+          });
+          if (uploadGenRef.current.get(id) !== gen) return;
+          patchFile(id, {
+            status: "ready",
+            uploadStatus: "uploaded",
+            uploadProgress: 1,
+            attachmentId: result.attachmentId,
+            processingStatus: result.persisted.processingStatus,
+            error: null,
+          });
+        } catch (err) {
+          if (uploadGenRef.current.get(id) !== gen) return;
+          const message =
+            err instanceof Error ? err.message : "Upload failed";
+          patchFile(id, {
+            status: "failed",
+            uploadStatus: "failed",
+            uploadProgress: 0,
+            error: {
+              code: "UPLOAD_FAILED",
+              message,
+              retryable: true,
+            },
+          });
+        }
+      })();
+    },
+    [adapter, autoUpload, patchFile],
+  );
 
   const addFiles = useCallback(
     (incoming: FileList | File[] | null | undefined) => {
       if (!incoming) return;
       const arr = Array.from(incoming);
       if (arr.length === 0) return;
-      _adbgLog("staged_files_add_called", { count: arr.length, files: arr.map((f) => ({ name: f.name, mime: f.type || "unknown", size: f.size })) });
+      _adbgLog("staged_files_add_called", {
+        count: arr.length,
+        files: arr.map((f) => ({
+          name: f.name,
+          mime: f.type || "unknown",
+          size: f.size,
+        })),
+      });
 
-      setFiles(prev => {
-        const result: StagedFile[] = [...prev];
+      const toUpload: Array<{ id: string; file: File }> = [];
+
+      setFiles((prev) => {
+        const result: StagedAttachment[] = [...prev];
+        let runningTotal = result
+          .filter((sf) => sf.status !== "blocked")
+          .reduce((sum, sf) => sum + sf.sizeBytes, 0);
 
         for (const file of arr) {
-          // Hard cap — add an error entry for the first file that would exceed it.
-          if (result.length >= maxCount) {
+          const mimeType = detectMimeType(file);
+          const extension = detectExtension(file);
+          const support = resolveSupport(mimeType, file.name);
+          const id = crypto.randomUUID();
+
+          const activeCount = result.filter(
+            (sf) => sf.status !== "blocked",
+          ).length;
+
+          if (activeCount >= maxCount) {
             result.push({
-              id: crypto.randomUUID(),
+              id,
               file,
               name: file.name,
-              mimeType: detectMimeType(file),
-              extension: detectExtension(file),
+              mimeType,
+              extension,
               sizeBytes: file.size,
-              category: "other",
+              kind: support.kind,
+              capability: support.capability,
+              statusLabel: `Max ${maxCount} files`,
               previewUrl: null,
               status: "failed",
+              uploadStatus: "failed",
+              uploadProgress: 0,
+              attachmentId: null,
+              processingStatus: null,
               error: {
                 code: "MAX_COUNT",
                 message: `Max ${maxCount} files`,
                 retryable: false,
               },
             });
-            break;
+            continue;
           }
 
-          // Deduplicate: same name + size already staged.
           const isDup = result.some(
-            sf => sf.file.name === file.name && sf.file.size === file.size,
+            (sf) => sf.file.name === file.name && sf.file.size === file.size,
           );
           if (isDup) continue;
 
-          const mimeType = detectMimeType(file);
-          const extension = detectExtension(file);
-          const category = detectCategory(mimeType, extension);
-
-          if (file.size > maxSize) {
+          if (!support.allowed) {
             result.push({
-              id: crypto.randomUUID(),
+              id,
               file,
               name: file.name,
               mimeType,
               extension,
               sizeBytes: file.size,
-              category,
+              kind: support.kind,
+              capability: "blocked",
+              statusLabel: support.statusLabel,
+              previewUrl: null,
+              status: "blocked",
+              uploadStatus: "failed",
+              uploadProgress: 0,
+              attachmentId: null,
+              processingStatus: "failed",
+              error: {
+                code: "UNSUPPORTED_TYPE",
+                message: support.statusLabel,
+                retryable: false,
+              },
+            });
+            continue;
+          }
+
+          if (file.size > maxSize) {
+            result.push({
+              id,
+              file,
+              name: file.name,
+              mimeType,
+              extension,
+              sizeBytes: file.size,
+              kind: support.kind,
+              capability: support.capability,
+              statusLabel: support.statusLabel,
               previewUrl: null,
               status: "failed",
+              uploadStatus: "failed",
+              uploadProgress: 0,
+              attachmentId: null,
+              processingStatus: null,
               error: {
                 code: "TOO_LARGE",
                 message: `Too large (max ${Math.round(maxSize / 1024 / 1024)} MB)`,
                 retryable: false,
               },
             });
-          } else {
+            continue;
+          }
+
+          if (runningTotal + file.size > maxMessage) {
             result.push({
-              id: crypto.randomUUID(),
+              id,
               file,
               name: file.name,
               mimeType,
               extension,
               sizeBytes: file.size,
-              category,
-              previewUrl: makePreviewUrl(file, mimeType),
-              status: "ready",
-              error: null,
+              kind: support.kind,
+              capability: support.capability,
+              statusLabel: support.statusLabel,
+              previewUrl: null,
+              status: "failed",
+              uploadStatus: "failed",
+              uploadProgress: 0,
+              attachmentId: null,
+              processingStatus: null,
+              error: {
+                code: "MESSAGE_TOO_LARGE",
+                message: `Total exceeds ${Math.round(maxMessage / 1024 / 1024)} MB`,
+                retryable: false,
+              },
             });
+            continue;
           }
+
+          runningTotal += file.size;
+          const staged: StagedAttachment = {
+            id,
+            file,
+            name: file.name,
+            mimeType,
+            extension,
+            sizeBytes: file.size,
+            kind: support.kind,
+            capability: support.capability,
+            statusLabel: support.statusLabel,
+            previewUrl: makePreviewUrl(file, mimeType),
+            status: autoUpload ? "uploading" : "ready",
+            uploadStatus: autoUpload ? "uploading" : "pending",
+            uploadProgress: 0,
+            attachmentId: null,
+            processingStatus:
+              support.capability === "model_use"
+                ? "understood"
+                : support.capability === "storage_only"
+                  ? "unsupported"
+                  : null,
+            error: null,
+          };
+          result.push(staged);
+          if (autoUpload) toUpload.push({ id, file });
         }
 
         return result;
       });
+
+      for (const item of toUpload) {
+        startUpload(item.id, item.file);
+      }
     },
-    [maxCount, maxSize],
+    [autoUpload, maxCount, maxMessage, maxSize, startUpload],
   );
 
   const removeFile = useCallback((id: string) => {
-    setFiles(prev => {
-      const target = prev.find(sf => sf.id === id);
+    uploadGenRef.current.delete(id);
+    setFiles((prev) => {
+      const target = prev.find((sf) => sf.id === id);
       if (target) revokeUrl(target);
-      return prev.filter(sf => sf.id !== id);
+      return prev.filter((sf) => sf.id !== id);
     });
   }, []);
 
-  const markConverting = useCallback((ids: string[]) => {
-    if (ids.length === 0) return;
-    const idSet = new Set(ids);
-    setFiles(prev =>
-      prev.map(sf =>
-        idSet.has(sf.id) && sf.status === "ready"
-          ? { ...sf, status: "converting" as StagedFileStatus }
-          : sf,
-      ),
-    );
+  const retryFile = useCallback(
+    (id: string) => {
+      const target = filesRef.current.find((sf) => sf.id === id);
+      if (!target) return;
+      if (!target.error?.retryable && target.status !== "failed") return;
+      startUpload(id, target.file);
+    },
+    [startUpload],
+  );
+
+  const retryFailed = useCallback(() => {
+    for (const sf of filesRef.current) {
+      if (sf.status === "failed" && sf.error?.retryable) {
+        startUpload(sf.id, sf.file);
+      }
+    }
+  }, [startUpload]);
+
+  const markConverting = useCallback((_ids: string[]) => {
+    // Upload already happened at stage time.
   }, []);
 
   const markSending = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    setFiles(prev =>
-      prev.map(sf =>
-        idSet.has(sf.id) && sf.status === "converting"
+    setFiles((prev) =>
+      prev.map((sf) =>
+        idSet.has(sf.id) && sf.status === "ready"
           ? { ...sf, status: "sending" as StagedFileStatus }
           : sf,
       ),
@@ -348,10 +436,15 @@ export function useStagedAttachments(opts?: {
   }, []);
 
   const markFailed = useCallback((id: string, error: StagedFileError) => {
-    setFiles(prev =>
-      prev.map(sf =>
+    setFiles((prev) =>
+      prev.map((sf) =>
         sf.id === id
-          ? { ...sf, status: "failed" as StagedFileStatus, error }
+          ? {
+              ...sf,
+              status: "failed" as StagedFileStatus,
+              uploadStatus: "failed",
+              error,
+            }
           : sf,
       ),
     );
@@ -360,11 +453,28 @@ export function useStagedAttachments(opts?: {
   const restoreToReady = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    setFiles(prev =>
-      prev.map(sf =>
-        idSet.has(sf.id) && (sf.status === "converting" || sf.status === "sending")
-          ? { ...sf, status: "ready" as StagedFileStatus, error: null }
-          : sf,
+    setFiles((prev) =>
+      prev.map((sf) =>
+        idSet.has(sf.id) &&
+        (sf.status === "sending" || sf.status === "uploading") &&
+        sf.attachmentId
+          ? {
+              ...sf,
+              status: "ready" as StagedFileStatus,
+              uploadStatus: "uploaded",
+              error: null,
+            }
+          : idSet.has(sf.id) && sf.status === "sending"
+            ? {
+                ...sf,
+                status: "failed" as StagedFileStatus,
+                error: {
+                  code: "SEND_FAILED",
+                  message: "Send failed — retry upload",
+                  retryable: true,
+                },
+              }
+            : sf,
       ),
     );
   }, []);
@@ -372,39 +482,53 @@ export function useStagedAttachments(opts?: {
   const clearSent = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    setFiles(prev => {
-      const removed = prev.filter(sf => idSet.has(sf.id));
+    setFiles((prev) => {
+      const removed = prev.filter((sf) => idSet.has(sf.id));
       revokeAll(removed);
-      return prev.filter(sf => !idSet.has(sf.id));
+      for (const sf of removed) uploadGenRef.current.delete(sf.id);
+      return prev.filter((sf) => !idSet.has(sf.id));
     });
   }, []);
 
   const clearFiles = useCallback(() => {
-    setFiles(prev => {
+    setFiles((prev) => {
       revokeAll(prev);
+      uploadGenRef.current.clear();
       return [];
     });
   }, []);
 
-  const readyFiles = files.filter(sf => sf.status === "ready");
-  const convertingFiles = files.filter(sf => sf.status === "converting");
-  const sendingFiles = files.filter(sf => sf.status === "sending");
-  const failedFiles = files.filter(sf => sf.status === "failed");
+  const readyFiles = files.filter(
+    (sf) => sf.status === "ready" && !!sf.attachmentId,
+  );
+  const uploadingFiles = files.filter((sf) => sf.status === "uploading");
+  const sendingFiles = files.filter((sf) => sf.status === "sending");
+  const failedFiles = files.filter((sf) => sf.status === "failed");
+  const blockedFiles = files.filter((sf) => sf.status === "blocked");
+  const totalBytes = files
+    .filter((sf) => sf.status !== "blocked")
+    .reduce((sum, sf) => sum + sf.sizeBytes, 0);
 
   return {
     files,
     readyFiles,
-    convertingFiles,
+    uploadingFiles,
     sendingFiles,
     failedFiles,
+    blockedFiles,
     canSubmitFiles: readyFiles.length > 0,
+    isUploading: uploadingFiles.length > 0,
+    totalBytes,
     addFiles,
     removeFile,
-    markConverting,
+    retryFile,
+    retryFailed,
     markSending,
     markFailed,
     restoreToReady,
     clearSent,
     clearFiles,
+    markConverting,
+    convertingFiles: [],
   };
 }

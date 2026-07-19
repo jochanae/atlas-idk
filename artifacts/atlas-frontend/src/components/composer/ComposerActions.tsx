@@ -33,9 +33,10 @@ import {
 } from "@/lib/ghostClickShield";
 import { toast } from "sonner";
 
-// Per-file upload cap. Bigger files are rejected with a toast instead of
-// being handed to the base64 encoder (which can OOM the tab on mobile).
-const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
+import { ATTACHMENT_MAX_BYTES } from "@/lib/attachments/limits";
+
+// Per-file upload cap — shared with useStagedAttachments / backend.
+const MAX_FILE_BYTES = ATTACHMENT_MAX_BYTES;
 
 
 export type ComposerMenuAction =

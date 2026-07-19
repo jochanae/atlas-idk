@@ -83,7 +83,15 @@ export interface NexusMessage {
   imageMimeType?: string;
   pendingSketch?: boolean;
   sketchFailed?: boolean;
-  attachments?: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string; clientAttachmentId?: string }>;
+  attachments?: Array<{
+    base64?: string;
+    contentUrl?: string;
+    mediaType: string;
+    name?: string;
+    clientAttachmentId?: string;
+    attachmentId?: string;
+    processingStatus?: string;
+  }>;
   /** Attachment persistence acks received from the server via attachment_ack SSE events. */
   attachmentAcks?: Array<{ id: string; clientAttachmentId: string | null; status: string; errorCode?: string }>;
   imageGen?: {
@@ -373,32 +381,47 @@ export function useNexusChatStream(
     imageBase64,
     imageMimeType,
     attachments,
+    attachmentIds,
     overrideOptions,
     extraBody,
   }: {
     text: string;
     imageBase64?: string;
     imageMimeType?: string;
-    attachments?: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string; clientAttachmentId?: string }>;
+    /** Display metadata for optimistic chips — not the transport payload when attachmentIds is set. */
+    attachments?: Array<{
+      base64?: string;
+      contentUrl?: string;
+      mediaType: string;
+      name?: string;
+      clientAttachmentId?: string;
+      attachmentId?: string;
+      processingStatus?: string;
+    }>;
+    /** Canonical transport — server resolves bytes. */
+    attachmentIds?: string[];
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
     extraBody?: Record<string, unknown>;
   }): { clientMessageId: string; accepted: Promise<void>; completed: Promise<void> } | undefined => {
-    // Unify legacy single-image inputs into the attachments array.
-    // imgAttachments = images only (used for imageUrl preview in optimistic message + legacy fields).
-    // docAttachments = PDFs and other non-image files Atlas can read as documents.
-    // allFileAttachments = everything sent to the backend.
-    const imgAttachments: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string; clientAttachmentId?: string }> =
+    const resolvedAttachmentIds = [
+      ...new Set((attachmentIds ?? []).filter((id): id is string => typeof id === "string" && id.length > 0)),
+    ];
+    const imgAttachments =
       (attachments && attachments.length > 0)
         ? attachments.filter((a) => a.mediaType?.startsWith("image/"))
         : (imageBase64
             ? [{ base64: imageBase64, mediaType: imageMimeType || "image/png" }]
             : []);
-    const docAttachments: Array<{ base64?: string; contentUrl?: string; mediaType: string; name?: string; clientAttachmentId?: string }> =
+    const docAttachments =
       (attachments && attachments.length > 0)
         ? attachments.filter((a) => !a.mediaType?.startsWith("image/"))
         : [];
     const allFileAttachments = [...imgAttachments, ...docAttachments];
-    if (sendInFlightRef.current || (!text.trim() && allFileAttachments.length === 0) || isPending) return undefined;
+    const hasTransport =
+      resolvedAttachmentIds.length > 0 || allFileAttachments.some((a) => !!a.base64);
+    if (sendInFlightRef.current || (!text.trim() && !hasTransport && allFileAttachments.length === 0) || isPending) {
+      return undefined;
+    }
     const firstImg = imgAttachments[0];
 
     // B3.1/B3.2: empty string is valid when attachments are present.
@@ -519,11 +542,17 @@ export function useNexusChatStream(
     };
 
     try {
-      _adbgLog("post_nexus_chat_send", { hasAttachments: allFileAttachments.length > 0, attachmentCount: allFileAttachments.length, names: allFileAttachments.map((a) => (a as Record<string, unknown>).name ?? "(unnamed)") });
+      _adbgLog("post_nexus_chat_send", {
+        hasAttachments: allFileAttachments.length > 0 || resolvedAttachmentIds.length > 0,
+        attachmentCount: resolvedAttachmentIds.length || allFileAttachments.length,
+        attachmentIds: resolvedAttachmentIds,
+        names: allFileAttachments.map((a) => a.name ?? "(unnamed)"),
+      });
       await stream({
         endpoint: "/api/nexus/chat",
         body: {
           message: routedText,
+          text: routedText,
           history,
           userProfile,
           model: resolvedModel,
@@ -533,16 +562,18 @@ export function useNexusChatStream(
           runId: turnRunId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
           ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
-          ...(allFileAttachments.length > 0
+          ...(resolvedAttachmentIds.length > 0
             ? {
-                // Send via attachments[] only — the canonical transport path.
-                // Do NOT also set imageBase64/imageMimeType — the server appends
-                // that field as a SECOND image block on top of attachments[], causing
-                // the first image to be sent twice to the model (confirmed in matrix
-                // test 4: 2-image send with legacy field → model reported 3 images).
-                attachments: allFileAttachments,
+                // Canonical transport — server resolves + authorizes bytes.
+                attachmentIds: resolvedAttachmentIds,
               }
-            : {}),
+            : allFileAttachments.length > 0
+              ? {
+                  // Legacy inline path kept only for rare programmatic callers.
+                  // Do NOT also set imageBase64/imageMimeType.
+                  attachments: allFileAttachments.filter((a) => !!a.base64),
+                }
+              : {}),
           ...(askAtlasInProject
             ? (() => {
                 const key = `${askAtlasInProject.projectId}:${askAtlasInProject.sessionId}`;

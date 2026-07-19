@@ -2,15 +2,15 @@
  * useAtlasConversation — Surface-neutral conversation controller.
  *
  * Owns useNexusChatStream directly. Both Ask Atlas and Workspace instantiate
- * this hook. The controller calls nexusChatStream.send({ text, attachments })
+ * this hook. The controller calls nexusChatStream.send({ text, attachmentIds })
  * with the canonical submission object — no surface adapter, no field
  * extraction. Nothing between submit() and the transport may remove or
  * reconstruct fields.
  *
- * ── Canonical conversion path ────────────────────────────────────────────────
- * submit() is the ONE place where StagedFile → base64 conversion happens for
- * conversational sends. No other code in home.tsx or workspace.tsx may perform
- * fileToBase64Safe for a nexus/chat send.
+ * ── Canonical attachment path ────────────────────────────────────────────────
+ * Staged files are uploaded by useStagedAttachments (shared upload service).
+ * submit() sends server attachmentIds only. Surfaces must not convert files
+ * or invent payload shapes.
  *
  * ── Success boundary of nexusChatStream.send() ───────────────────────────────
  * send() is async and resolves AFTER the full SSE stream session completes:
@@ -50,7 +50,7 @@
  * Storage-layer persistence (server-side attachment URLs, database migrations)
  * is intentionally deferred and does not belong in this controller.
  */
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import {
   useNexusChatStream,
   type NexusMessage,
@@ -59,19 +59,20 @@ import {
   type NexusHandoffSignal,
   type UseNexusChatStreamOptions,
 } from "./useNexusChatStream";
-import { fileToBase64Safe } from "@/lib/image-resize";
-import type { StagedFile, StagedFileError } from "./useStagedAttachments";
+import type { StagedAttachment, StagedFileError } from "./useStagedAttachments";
+import { shouldIncludeAttachmentsOnSend } from "@/lib/attachments/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** @deprecated Inline base64 passthrough — prefer staged attachmentIds. */
 export type AtlasConversationAttachment = {
-  base64: string;
+  base64?: string;
   mediaType: string;
   name?: string;
-  /** Stable client-minted UUID from useStagedAttachments (StagedFile.id).
-   *  Sent to the server so attachment_ack events can be correlated back to
-   *  the optimistic chip. Optional — absent for programmatic passthrough sends. */
   clientAttachmentId?: string;
+  attachmentId?: string;
+  contentUrl?: string;
+  processingStatus?: string;
 };
 
 export type SubmissionError = {
@@ -117,45 +118,26 @@ export type AtlasConversationSubmission = {
   /** Raw user text; the controller trims it. */
   text: string;
   /**
-   * Staged files — passed from surfaces that use useStagedAttachments.
-   * The controller converts ready files to inline base64 transport inside submit().
-   * Surfaces must NOT perform this conversion themselves.
-   * Surfaces must NOT clear staged state before awaiting submit() — the
-   * lifecycle callbacks manage state transitions based on actual outcomes.
+   * Staged files from useStagedAttachments. Ready files must already have
+   * attachmentId from the shared upload service. Surfaces must NOT clear
+   * staged state before awaiting submit().
    */
-  stagedAttachments?: StagedFile[];
+  stagedAttachments?: StagedAttachment[];
   /**
-   * B1 / legacy pass-through: already-converted attachment data.
-   * Used by non-staged call sites (opening-message sessionStorage handoffs,
-   * auto-continue, suggestion chips). Will be removed once all call sites
-   * migrate to stagedAttachments in B3/C.
+   * Optional pre-uploaded attachment IDs (e.g. home→workspace handoff).
+   * Merged with IDs from stagedAttachments.
+   */
+  attachmentIds?: string[];
+  /**
+   * Display-only passthrough for optimistic chips (opening-message handoff).
+   * Never sent as inline base64 to the server when attachmentIds are present.
    */
   attachments?: AtlasConversationAttachment[];
 
-  // ── Staged-file lifecycle callbacks ──────────────────────────────────────
-  // Wire these from useStagedAttachments so submit() drives the full lifecycle.
-  // All callbacks are optional; omitting them disables per-file status transitions.
-
-  /** Called before conversion begins. Transitions "ready" → "converting". */
   onMarkConverting?: (ids: string[]) => void;
-  /** Called when a file's base64 conversion throws. Transitions to "failed". */
   onMarkFailed?: (id: string, error: StagedFileError) => void;
-  /**
-   * Called immediately after send() returns (before the SSE stream completes),
-   * once the optimistic user message owns the base64 attachment data.
-   * Transitions "converting" → "sending" so the attachment chip shows the
-   * "accepted" state rather than the conversion spinner throughout the stream.
-   */
   onMarkSending?: (ids: string[]) => void;
-  /**
-   * Called when transport fails (after conversion) or when nothing survived
-   * conversion. Restores "converting" or "sending" → "ready" so the user can retry.
-   */
   onRestoreToReady?: (ids: string[]) => void;
-  /**
-   * Called on confirmed transport success. Removes only the files that were
-   * actually sent. Files that failed conversion remain staged as "failed".
-   */
   onClearSent?: (ids: string[]) => void;
 };
 
@@ -220,105 +202,90 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
   });
 
   const canSend = !nexusChatStream.isPending && !nexusChatStream.isStreaming;
+  const submitInFlightRef = useRef(false);
 
   const submit = useCallback(
     async (submission: AtlasConversationSubmission): Promise<SubmissionResult> => {
-      const trimmed = submission.text.trim();
-      const staged = submission.stagedAttachments ?? [];
-      const readyStaged = staged.filter(sf => sf.status === "ready");
-      const hasStagedFiles = readyStaged.length > 0;
-      const hasPassthrough = (submission.attachments?.length ?? 0) > 0;
-
-      if ((trimmed.length === 0 && !hasStagedFiles && !hasPassthrough) || !canSend) {
+      // One message submission despite repeated Send taps.
+      if (submitInFlightRef.current || !canSend) {
         return {
           ok: false,
-          error: { code: "NO_CONTENT", message: "Nothing to send or not ready" },
+          error: { code: "STREAM_BUSY", message: "A send is already in progress" },
         };
       }
 
-      // ── Step 1: Mark all ready staged files as converting ─────────────────
-      const readyIds = readyStaged.map(sf => sf.id);
-      if (readyIds.length > 0) {
-        submission.onMarkConverting?.(readyIds);
-      }
-
-      // ── Step 2: Convert each staged file — per-file error isolation ───────
-      // Each file is converted independently. A single file failure does NOT
-      // abort the other files. Failures are recorded in failedAttachmentsForResult
-      // (returned to the caller) AND reported via onMarkFailed (updates staged UI).
-      const transported: Array<{ _stagedId: string } & AtlasConversationAttachment> = [];
-      const failedConversionIds: string[] = [];
+      const trimmed = submission.text.trim();
+      const staged = submission.stagedAttachments ?? [];
+      const readyStaged = staged.filter(
+        (sf) => sf.status === "ready" && !!sf.attachmentId,
+      );
+      const missingId = staged.filter(
+        (sf) => sf.status === "ready" && !sf.attachmentId,
+      );
       const failedAttachmentsForResult: Array<{ id: string; error: StagedFileError }> = [];
 
-      for (const sf of readyStaged) {
-        try {
-          const result = await fileToBase64Safe(sf.file);
-          transported.push({
-            _stagedId: sf.id,
-            base64: result.base64,
-            mediaType: result.mediaType,
-            name: sf.name,
-            clientAttachmentId: sf.id,
-          });
-        } catch (convErr) {
-          const err: StagedFileError = {
-            code: "CONVERSION_FAILED",
-            message: convErr instanceof Error ? convErr.message : "Could not read file",
-            retryable: true,
-          };
-          failedConversionIds.push(sf.id);
-          failedAttachmentsForResult.push({ id: sf.id, error: err });
-          submission.onMarkFailed?.(sf.id, err);
-        }
+      for (const sf of missingId) {
+        const err: StagedFileError = {
+          code: "NOT_UPLOADED",
+          message: "File is not uploaded yet",
+          retryable: true,
+        };
+        failedAttachmentsForResult.push({ id: sf.id, error: err });
+        submission.onMarkFailed?.(sf.id, err);
       }
 
-      // ── Step 3: Build final attachment list ───────────────────────────────
-      // Strip the internal _stagedId before handing to the transport layer.
-      const transportedAttachments: AtlasConversationAttachment[] = transported.map(
-        ({ _stagedId: _, ...rest }) => rest,
-      );
-      const allAttachments: AtlasConversationAttachment[] = [
-        ...transportedAttachments,
-        ...(submission.attachments ?? []),
-      ];
+      const stagedIds = readyStaged.map((sf) => sf.attachmentId!).filter(Boolean);
+      const passthroughIds = (submission.attachmentIds ?? []).filter(Boolean);
+      const attachmentIds = [...new Set([...stagedIds, ...passthroughIds])];
 
-      const hasFinalContent = trimmed.length > 0 || allAttachments.length > 0;
-
-      // ── Step 4: Bail if nothing survived conversion ────────────────────────
-      if (!hasFinalContent) {
-        // All staged files failed conversion and there is no text or passthrough.
-        // Files are already marked "failed" by onMarkFailed above. Any file that
-        // is still "converting" (converted OK but somehow not in transported due
-        // to a logic gap) is restored to "ready".
-        const stillConverting = readyIds.filter(id => !failedConversionIds.includes(id));
-        if (stillConverting.length > 0) {
-          submission.onRestoreToReady?.(stillConverting);
-        }
+      const gate = shouldIncludeAttachmentsOnSend({
+        text: trimmed,
+        attachmentCount: attachmentIds.length,
+      });
+      if (!gate.ok) {
         return {
           ok: false,
-          error: { code: "ALL_CONVERSIONS_FAILED", message: "No files could be converted" },
+          error: { code: "NO_CONTENT", message: "Nothing to send or not ready" },
           failedAttachments: failedAttachmentsForResult,
         };
       }
 
-      // ── Step 5: Attempt transport ─────────────────────────────────────────
-      // IMPORTANT: nexusChatStream.send() can return undefined when its internal
-      // guard fires (sendInFlight or isPending race between our canSend check and
-      // the send call). We detect this explicitly rather than resolving via
-      // `?? Promise.resolve()`, which would incorrectly call onClearSent without
-      // any message having been sent.
+      const readyIds = readyStaged.map((sf) => sf.id);
+      submission.onMarkConverting?.(readyIds);
+
+      // Optimistic display metadata from staged files (no inline base64 transport).
+      const displayAttachments: AtlasConversationAttachment[] = [
+        ...readyStaged.map((sf) => ({
+          mediaType: sf.mimeType,
+          name: sf.name,
+          clientAttachmentId: sf.id,
+          attachmentId: sf.attachmentId ?? undefined,
+          contentUrl: sf.previewUrl ?? undefined,
+          processingStatus: sf.processingStatus ?? undefined,
+        })),
+        ...(submission.attachments ?? []).map((a) => ({
+          mediaType: a.mediaType,
+          name: a.name,
+          clientAttachmentId: a.clientAttachmentId,
+          attachmentId: a.attachmentId,
+          contentUrl: a.contentUrl,
+          processingStatus: a.processingStatus,
+          // Keep base64 only for rare display-only handoff previews.
+          base64: a.base64,
+        })),
+      ];
+
+      submitInFlightRef.current = true;
       const sendResult = nexusChatStream.send({
         text: trimmed,
-        attachments: allAttachments.length > 0 ? allAttachments : undefined,
+        attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
+        attachments:
+          displayAttachments.length > 0 ? displayAttachments : undefined,
       });
 
       if (sendResult === undefined) {
-        // send() guard fired — stream is already in-flight or pending.
-        // Restore all converting files (none have failed conversion) to "ready".
-        const stillConverting = readyIds.filter(id => !failedConversionIds.includes(id));
-        if (stillConverting.length > 0) {
-          submission.onRestoreToReady?.(stillConverting);
-        }
+        submitInFlightRef.current = false;
+        if (readyIds.length > 0) submission.onRestoreToReady?.(readyIds);
         return {
           ok: false,
           error: { code: "STREAM_BUSY", message: "A send is already in progress" },
@@ -326,48 +293,20 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
         };
       }
 
-      // send() returned synchronously with clientMessageId and a completion Promise.
-      // The optimistic user message is already in state and owns the base64 data.
-      // Transition converted files "converting" → "sending" now — before the SSE
-      // stream completes — so the chip shows the accepted state rather than the
-      // conversion spinner throughout the model response.
-      const { clientMessageId, accepted: sendAccepted, completed: _sendCompleted } = sendResult;
-      const sentIds = transported.map(a => a._stagedId);
-      if (sentIds.length > 0) {
-        submission.onMarkSending?.(sentIds);
-      }
+      const { clientMessageId, accepted: sendAccepted } = sendResult;
+      if (readyIds.length > 0) submission.onMarkSending?.(readyIds);
 
       try {
         await sendAccepted;
-
-        // ── Step 6: Confirmed success ─────────────────────────────────────
-        // accepted resolved → server's first SSE token arrived, confirming the
-        // HTTP POST was accepted (including all attachment data). Safe to clear
-        // staged chips now because:
-        //   a) The optimistic user message already owns the base64 data
-        //      (stored in message.attachments — UserBubble reads from there,
-        //      not from staged previewUrl).
-        //   b) The server has the attachment data. Model-generation failures
-        //      that occur after the first token don't affect staged chip safety.
-        if (sentIds.length > 0) {
-          submission.onClearSent?.(sentIds);
-        }
-
+        if (readyIds.length > 0) submission.onClearSent?.(readyIds);
         return {
           ok: true,
           clientMessageId,
-          submittedAttachmentIds: sentIds,
+          submittedAttachmentIds: readyIds,
           failedAttachments: failedAttachmentsForResult,
         };
       } catch (transportErr) {
-        // ── Step 7: Network-level transport failure ───────────────────────
-        // stream() rejected — the HTTP request failed (connection refused, DNS
-        // failure, fetch abort, timeout). Files are in "sending" state; restore
-        // them to "ready" so the user can retry without reselecting.
-        if (sentIds.length > 0) {
-          submission.onRestoreToReady?.(sentIds);
-        }
-
+        if (readyIds.length > 0) submission.onRestoreToReady?.(readyIds);
         return {
           ok: false,
           error: {
@@ -377,6 +316,8 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
           },
           failedAttachments: failedAttachmentsForResult,
         };
+      } finally {
+        submitInFlightRef.current = false;
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

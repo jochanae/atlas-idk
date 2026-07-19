@@ -7,7 +7,7 @@ import type { ArchNode as SystemMapNode } from "../SystemMap";
 
 import { useThemeMode } from "@/lib/theme";
 import { TheForge } from "../TheForge";
-import { fileToBase64Safe } from "@/lib/image-resize";
+import { uploadAttachmentFiles } from "@/lib/attachments/uploadService";
 import { reportError } from "../../lib/errorReporter";
 import { useStageArtifact } from "@/hooks/useComposerVisibility";
 import { exportFlowSurfacePng, exportFlowJson, exportFlowPdf } from "@/lib/flowExport";
@@ -362,10 +362,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
     if (!text.trim() || flowLoading) return;
     const files = flowAttachedFiles;
     setFlowAttachedFiles([]);
-    const imageFile = files.find(f => f.type.startsWith("image/"));
-    const otherFiles = files.filter(f => f !== imageFile);
-    const suffix = otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map(f => f.name).join(", ")}]` : "";
-    const fullText = text + suffix;
+    const fullText = text.trim();
     addFlowMessage({ role: "user", content: fullText });
     setFlowInput("");
     setFlowLoading(true);
@@ -373,13 +370,12 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
       const nodeContext = nodes.length > 0
         ? `Current canvas nodes:\n${nodes.map(n => `- [${n.type}] ${n.label}${n.strategicAnswer ? " (answered)" : " (unanswered)"}`).join("\n")}`
         : "Canvas is empty — no nodes yet.";
-      // ── LEGACY DIRECT SENDER — /api/chat ─────────────────────────────────────
-      // FlowPanel bypasses the canonical conversation stack (useAtlasConversation /
-      // useNexusChatStream).  This is a known LEGACY BUT REACHABLE path.
-      // It skips: useStagedAttachments, WhisperGate, Nexus features (CLARIFY,
-      // DECIDE, memory chips), and conversation persistence.
-      // Do NOT add new features here.  Migrate to atlasConv.submit() when possible.
-      // Architecture: docs/architecture/runtime-map.md § Surface 4 — FlowPanel
+      // Shared upload service → attachmentIds (same contract as Ask Atlas / Workspace).
+      let attachmentIds: string[] = [];
+      if (files.length > 0) {
+        const uploaded = await uploadAttachmentFiles(files);
+        attachmentIds = uploaded.uploaded.map((u) => u.attachmentId);
+      }
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -392,14 +388,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           history: flowMessages.map(m => ({ role: m.role, content: m.content })),
           projectMap: nodeContext,
           mode: "plan",
-          ...(imageFile
-            // ── LEGACY ATTACHMENT CONVERSION ──────────────────────────────────
-            // Direct fileToBase64Safe call — bypasses useStagedAttachments state
-            // machine and the canonical useAtlasConversation conversion loop.
-            // Single image only.  Do NOT extend to non-image types here.
-            // Canonical path: docs/architecture/attachment-ownership.md
-            ? await fileToBase64Safe(imageFile).then(r => ({ imageData: r.base64, imageMimeType: r.mediaType })).catch(() => ({ imageData: "", imageMimeType: "" }))
-            : {}),
+          ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
         }),
       }).then(async (r) => {
         if (!r.ok) return Promise.reject(r.status);

@@ -263,29 +263,12 @@ function extractShellLines(
   }));
 }
 
-// ── file → base64 ────────────────────────────────────────────────────────────
-
-async function fileToBase64(
-  file: File
-): Promise<{ base64: string; mediaType: string; name: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.includes(",") ? result.split(",")[1] : result;
-      resolve({ base64: base64 ?? "", mediaType: file.type || "application/octet-stream", name: file.name });
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 // ── startRun (module-level, survives component remounts) ──────────────────────
 
 async function _startRun(
   run: Omit<ActiveRun, "status" | "sessionId" | "completedAt">,
   attachmentPayload: {
-    attachments?: Array<{ base64: string; mediaType: string; name: string }>;
+    attachmentIds?: string[];
   }
 ): Promise<void> {
   const initial: ActiveRun = {
@@ -331,8 +314,8 @@ async function _startRun(
         message: run.prompt,
         history: [],
         entries: [],
-        ...(attachmentPayload.attachments?.length
-          ? { attachments: attachmentPayload.attachments }
+        ...(attachmentPayload.attachmentIds?.length
+          ? { attachmentIds: attachmentPayload.attachmentIds }
           : {}),
         ...modeFlags,
       }),
@@ -689,12 +672,18 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
     setSubmitting(true);
 
     try {
-      // BUILD → background run with live streaming + automatic file apply
-      const attachmentPayload: { attachments?: Array<{ base64: string; mediaType: string; name: string }> } = {
-        attachments: attachments.length > 0
-          ? await Promise.all(attachments.map(fileToBase64))
-          : [],
-      };
+      // Shared upload service — same attachmentIds contract as Ask Atlas / Workspace.
+      let attachmentIds: string[] = [];
+      if (attachments.length > 0) {
+        const { uploadAttachmentFiles } = await import(
+          "@/lib/attachments/uploadService"
+        );
+        const uploaded = await uploadAttachmentFiles(attachments);
+        if (uploaded.failed.length > 0 && uploaded.uploaded.length === 0) {
+          throw new Error(uploaded.failed[0]!.error.message);
+        }
+        attachmentIds = uploaded.uploaded.map((u) => u.attachmentId);
+      }
 
       const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const project = projects.find((p) => p.id === projectId);
@@ -709,7 +698,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
           attachmentNames: attachments.map((f) => f.name),
           createdAt: Date.now(),
         },
-        attachmentPayload
+        { attachmentIds },
       );
 
       setPrompt("");

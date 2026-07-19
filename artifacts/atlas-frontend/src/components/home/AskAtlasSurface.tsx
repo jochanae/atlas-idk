@@ -202,6 +202,7 @@ interface Props {
   onSketch?: (prompt: string) => void;
   stagedFiles?: import("@/hooks/useStagedAttachments").StagedFile[];
   onRemoveFile?: (id: string) => void;
+  onRetryFile?: (id: string) => void;
   focusChip?: ReactNode;
   /** Focus lens chip rendered top-left INSIDE the composer rectangle (all modes). */
   focusLensChip?: ReactNode;
@@ -244,6 +245,7 @@ export function AskAtlasSurface({
   onSketch,
   stagedFiles = [],
   onRemoveFile,
+  onRetryFile,
   focusChip,
   focusLensChip,
   subheader,
@@ -1143,7 +1145,12 @@ export function AskAtlasSurface({
           )}
           {/* Attachment preview strip — B2 shared renderer */}
           {stagedFiles.length > 0 && onRemoveFile && (
-            <AttachmentStrip mode="staged" files={stagedFiles} onRemove={onRemoveFile} />
+            <AttachmentStrip
+              mode="staged"
+              files={stagedFiles}
+              onRemove={onRemoveFile}
+              onRetry={onRetryFile}
+            />
           )}
 
           {/* Textarea row — full width, generous height */}

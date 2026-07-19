@@ -1,72 +1,74 @@
 /**
  * AttachmentStrip — Shared renderer for staged and sent attachments.
  *
- * Two modes:
- *   "staged" — Composer preview strip. Uses StagedFile.previewUrl (object URL
- *              for images). Shows error badge and remove button per file.
- *   "sent"   — Sent-message thumbnail row. Uses base64 data URIs. Tap-to-expand
- *              lightbox for images.
+ * One component for Ask Atlas and Workspace. Modes:
+ *   "staged" — composer preview with upload progress, capability labels, retry
+ *   "sent"   — message thumbnail row (contentUrl / base64 / capability badge)
  *
- * Both Ask Atlas and Workspace consume this component so the same image appears
- * identically before send (staged), after send (sent), and during streaming.
- *
- * Current transport shape: inline base64 in the request body and message state.
- * Future: storage-backed URLs (server-side persistence). This component's public
- * interface is intentionally URL-agnostic so that switch requires no changes here.
+ * Non-image files NEVER route through the image renderer.
  */
 import { useState } from "react";
-import type { StagedFile } from "@/hooks/useStagedAttachments";
-
-// ─── Public types ─────────────────────────────────────────────────────────────
+import type { StagedAttachment } from "@/hooks/useStagedAttachments";
 
 export interface AttachmentStripStagedProps {
   mode: "staged";
-  files: StagedFile[];
+  files: StagedAttachment[];
   onRemove: (id: string) => void;
+  onRetry?: (id: string) => void;
 }
 
 export interface AttachmentStripSentProps {
   mode: "sent";
-  attachments: ReadonlyArray<{ base64?: string; contentUrl?: string; mediaType: string; name?: string }>;
+  attachments: ReadonlyArray<{
+    base64?: string;
+    contentUrl?: string;
+    mediaType: string;
+    name?: string;
+    processingStatus?: string;
+    attachmentId?: string;
+  }>;
 }
 
-export type AttachmentStripProps = AttachmentStripStagedProps | AttachmentStripSentProps;
-
-// ─── Component ────────────────────────────────────────────────────────────────
+export type AttachmentStripProps =
+  | AttachmentStripStagedProps
+  | AttachmentStripSentProps;
 
 export function AttachmentStrip(props: AttachmentStripProps) {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   if (props.mode === "staged") {
-    const { files, onRemove } = props;
+    const { files, onRemove, onRetry } = props;
     if (files.length === 0) return null;
     return (
-      <>
-        <div
-          role="list"
-          aria-label="Staged attachments"
-          style={{
-            display: "flex",
-            gap: 6,
-            overflowX: "auto",
-            paddingBottom: 2,
-            flexShrink: 0,
-          }}
-        >
-          {files.map(sf => (
-            <StagedThumbnail key={sf.id} file={sf} onRemove={onRemove} />
-          ))}
-        </div>
-      </>
+      <div
+        role="list"
+        aria-label="Staged attachments"
+        style={{
+          display: "flex",
+          gap: 6,
+          overflowX: "auto",
+          paddingBottom: 2,
+          flexShrink: 0,
+        }}
+      >
+        {files.map((sf) => (
+          <StagedThumbnail
+            key={sf.id}
+            file={sf}
+            onRemove={onRemove}
+            onRetry={onRetry}
+          />
+        ))}
+      </div>
     );
   }
 
-  // ── Sent mode ───────────────────────────────────────────────────────────────
   const { attachments } = props;
   if (attachments.length === 0) return null;
   const lbAtt = lightboxIdx !== null ? attachments[lightboxIdx] : null;
   const lbUrl = lbAtt
-    ? (lbAtt.contentUrl ?? (lbAtt.base64 ? `data:${lbAtt.mediaType};base64,${lbAtt.base64}` : null))
+    ? (lbAtt.contentUrl ??
+      (lbAtt.base64 ? `data:${lbAtt.mediaType};base64,${lbAtt.base64}` : null))
     : null;
 
   return (
@@ -83,29 +85,39 @@ export function AttachmentStrip(props: AttachmentStripProps) {
       >
         {attachments.map((att, idx) => {
           const isImage = att.mediaType.startsWith("image/");
-          const url = att.contentUrl ?? (att.base64 ? `data:${att.mediaType};base64,${att.base64}` : null);
-          // When an image attachment has no displayable URL (e.g. failed upload that
-          // slipped through, or a hydrated row whose content request already failed),
-          // show a small unavailable badge rather than silently dropping the chip.
-          // This preserves the attachment's visual presence and prevents the user
-          // from believing the file was never sent.
-          if (isImage && !url) return (
-            <div key={idx} role="listitem" style={{ position: "relative", flexShrink: 0 }}>
-              <UnavailableImageBadge name={att.name} />
-            </div>
-          );
+          const url =
+            att.contentUrl ??
+            (att.base64 ? `data:${att.mediaType};base64,${att.base64}` : null);
+          if (isImage && !url) {
+            return (
+              <div
+                key={idx}
+                role="listitem"
+                style={{ position: "relative", flexShrink: 0 }}
+              >
+                <UnavailableImageBadge name={att.name} />
+              </div>
+            );
+          }
           const solo = attachments.length === 1;
+          const unsupported =
+            att.processingStatus === "unsupported" ||
+            att.processingStatus === "failed";
           return (
             <div
               key={idx}
               role="listitem"
               style={{ position: "relative", flexShrink: 0 }}
             >
-              {isImage ? (
+              {isImage && !unsupported ? (
                 <button
                   type="button"
                   onClick={() => setLightboxIdx(idx)}
-                  aria-label={att.name ? `Expand ${att.name}` : `Expand attachment ${idx + 1}`}
+                  aria-label={
+                    att.name
+                      ? `Expand ${att.name}`
+                      : `Expand attachment ${idx + 1}`
+                  }
                   style={{
                     padding: 0,
                     border: "1px solid rgba(201,162,76,0.28)",
@@ -122,11 +134,24 @@ export function AttachmentStrip(props: AttachmentStripProps) {
                   <img
                     src={url!}
                     alt={att.name ?? "Attached image"}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
                   />
                 </button>
               ) : (
-                <NonImageBadge name={att.name ?? "File"} mimeType={att.mediaType} />
+                <NonImageBadge
+                  name={att.name ?? "File"}
+                  mimeType={att.mediaType}
+                  capabilityLabel={
+                    unsupported
+                      ? "Stored — Atlas can't read this file type yet"
+                      : undefined
+                  }
+                />
               )}
             </div>
           );
@@ -143,25 +168,36 @@ export function AttachmentStrip(props: AttachmentStripProps) {
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
 function StagedThumbnail({
   file,
   onRemove,
+  onRetry,
 }: {
-  file: StagedFile;
+  file: StagedAttachment;
   onRemove: (id: string) => void;
+  onRetry?: (id: string) => void;
 }) {
-  const isFailed = file.status === "failed";
-  const isConverting = file.status === "converting";
+  const isFailed = file.status === "failed" || file.status === "blocked";
+  const isUploading = file.status === "uploading";
   const errorMessage = file.error?.message ?? null;
+  const showCapability =
+    file.capability === "storage_only" || file.capability === "blocked";
+
   return (
     <div
       role="listitem"
-      title={isFailed ? (errorMessage ?? file.name) : file.name}
+      title={
+        isFailed
+          ? (errorMessage ?? file.name)
+          : showCapability
+            ? `${file.name} — ${file.statusLabel}`
+            : file.name
+      }
+      data-capability={file.capability}
+      data-upload-status={file.uploadStatus}
       style={{ position: "relative", flexShrink: 0 }}
     >
-      {file.previewUrl ? (
+      {file.previewUrl && file.kind === "image" ? (
         <img
           src={file.previewUrl}
           alt={file.name}
@@ -172,23 +208,30 @@ function StagedThumbnail({
             objectFit: "cover",
             border: `1px solid ${isFailed ? "rgba(239,68,68,0.4)" : "rgba(201,162,76,0.25)"}`,
             display: "block",
-            opacity: isFailed ? 0.45 : isConverting ? 0.6 : 1,
+            opacity: isFailed ? 0.45 : isUploading ? 0.6 : 1,
           }}
         />
       ) : (
-        <NonImageBadge name={file.name} mimeType={file.mimeType} error={isFailed} />
+        <NonImageBadge
+          name={file.name}
+          mimeType={file.mimeType}
+          error={isFailed}
+          capabilityLabel={showCapability ? file.statusLabel : undefined}
+        />
       )}
-      {/* Conversion spinner overlay */}
-      {isConverting && (
+
+      {isUploading && (
         <div
-          aria-label="Converting"
+          aria-label={`Uploading ${Math.round(file.uploadProgress * 100)}%`}
           style={{
             position: "absolute",
             inset: 0,
             borderRadius: 7,
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
+            gap: 4,
             background: "rgba(0,0,0,0.36)",
             pointerEvents: "none",
           }}
@@ -200,7 +243,13 @@ function StagedThumbnail({
             fill="none"
             style={{ animation: "spin 1s linear infinite" }}
           >
-            <circle cx="9" cy="9" r="7" stroke="rgba(212,175,55,0.3)" strokeWidth="2" />
+            <circle
+              cx="9"
+              cy="9"
+              r="7"
+              stroke="rgba(212,175,55,0.3)"
+              strokeWidth="2"
+            />
             <path
               d="M9 2a7 7 0 0 1 7 7"
               stroke="rgba(212,175,55,0.9)"
@@ -208,9 +257,29 @@ function StagedThumbnail({
               strokeLinecap="round"
             />
           </svg>
+          <div
+            style={{
+              position: "absolute",
+              left: 4,
+              right: 4,
+              bottom: 4,
+              height: 3,
+              borderRadius: 2,
+              background: "rgba(255,255,255,0.15)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: `${Math.round(file.uploadProgress * 100)}%`,
+                height: "100%",
+                background: "rgba(212,175,55,0.9)",
+              }}
+            />
+          </div>
         </div>
       )}
-      {/* Validation / conversion error badge */}
+
       {isFailed && errorMessage && (
         <div
           style={{
@@ -234,11 +303,37 @@ function StagedThumbnail({
           {errorMessage}
         </div>
       )}
+
+      {isFailed && file.error?.retryable && onRetry && (
+        <button
+          type="button"
+          onClick={() => onRetry(file.id)}
+          aria-label={`Retry ${file.name}`}
+          style={{
+            position: "absolute",
+            bottom: -6,
+            left: -6,
+            height: 18,
+            padding: "0 5px",
+            borderRadius: 9,
+            background: "rgba(8,8,10,0.92)",
+            border: "1px solid rgba(201,162,76,0.4)",
+            cursor: "pointer",
+            color: "var(--atlas-gold)",
+            fontSize: 8,
+            zIndex: 2,
+            fontFamily: "var(--app-font-mono)",
+          }}
+        >
+          Retry
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => onRemove(file.id)}
         aria-label={`Remove ${file.name}`}
-        disabled={isConverting}
+        disabled={isUploading}
         style={{
           position: "absolute",
           top: -6,
@@ -248,7 +343,7 @@ function StagedThumbnail({
           borderRadius: "50%",
           background: "rgba(8,8,10,0.92)",
           border: "1px solid rgba(201,162,76,0.32)",
-          cursor: isConverting ? "default" : "pointer",
+          cursor: isUploading ? "default" : "pointer",
           color: "var(--atlas-fg)",
           fontSize: 10,
           lineHeight: 1,
@@ -257,7 +352,7 @@ function StagedThumbnail({
           justifyContent: "center",
           padding: 0,
           zIndex: 2,
-          opacity: isConverting ? 0.4 : 1,
+          opacity: isUploading ? 0.4 : 1,
         }}
       >
         ×
@@ -284,21 +379,11 @@ function UnavailableImageBadge({ name }: { name?: string }) {
         overflow: "hidden",
       }}
     >
-      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-        <rect x="1" y="1" width="13" height="13" rx="2" stroke="rgba(239,68,68,0.55)" strokeWidth="1.2" />
-        <path d="M4 10.5l2.5-3L8 9.5l2-2.5 2 3.5" stroke="rgba(239,68,68,0.55)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="5.5" cy="5.5" r="1" fill="rgba(239,68,68,0.5)" />
-        <line x1="4" y1="4" x2="11" y2="11" stroke="rgba(239,68,68,0.4)" strokeWidth="1" strokeLinecap="round" />
-      </svg>
       <span
         style={{
           fontSize: 7,
           color: "rgba(239,68,68,0.65)",
           fontFamily: "var(--app-font-mono)",
-          letterSpacing: "0.04em",
-          textAlign: "center",
-          lineHeight: 1.3,
-          padding: "0 4px",
         }}
       >
         unavailable
@@ -311,10 +396,12 @@ function NonImageBadge({
   name,
   mimeType,
   error,
+  capabilityLabel,
 }: {
   name: string;
   mimeType: string;
   error?: boolean;
+  capabilityLabel?: string;
 }) {
   const ext =
     name.split(".").pop()?.toUpperCase() ??
@@ -322,6 +409,7 @@ function NonImageBadge({
     "FILE";
   return (
     <div
+      title={capabilityLabel ? `${name} — ${capabilityLabel}` : name}
       style={{
         width: 54,
         height: 54,
@@ -332,8 +420,9 @@ function NonImageBadge({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 3,
+        gap: 2,
         overflow: "hidden",
+        padding: 2,
       }}
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -347,18 +436,36 @@ function NonImageBadge({
       </svg>
       <span
         style={{
-          fontSize: 8,
-          color: error ? "rgba(239,68,68,0.8)" : "rgba(201,162,76,0.55)",
-          maxWidth: 46,
+          fontSize: 7.5,
+          color: "rgba(201,162,76,0.75)",
+          fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.04em",
+          maxWidth: "100%",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-          fontFamily: "var(--app-font-mono)",
-          letterSpacing: "0.06em",
         }}
       >
-        {ext}
+        {ext.slice(0, 5)}
       </span>
+      {capabilityLabel && (
+        <span
+          style={{
+            fontSize: 6,
+            color: "rgba(201,162,76,0.55)",
+            fontFamily: "var(--app-font-mono)",
+            textAlign: "center",
+            lineHeight: 1.2,
+            maxWidth: "100%",
+            overflow: "hidden",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+          }}
+        >
+          stored
+        </span>
+      )}
     </div>
   );
 }
@@ -375,57 +482,30 @@ function Lightbox({
   return (
     <div
       role="dialog"
-      aria-label={`Preview: ${name}`}
-      aria-modal
+      aria-label={name}
       onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.88)",
+        zIndex: 100000,
+        background: "rgba(0,0,0,0.85)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 9999,
-        cursor: "zoom-out",
+        padding: 24,
       }}
     >
       <img
         src={url}
         alt={name}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: "90vw",
-          maxHeight: "90vh",
+          maxWidth: "100%",
+          maxHeight: "100%",
           objectFit: "contain",
           borderRadius: 8,
-          boxShadow: "0 4px 48px rgba(0,0,0,0.7)",
-          cursor: "default",
         }}
       />
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close preview"
-        style={{
-          position: "absolute",
-          top: 16,
-          right: 16,
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          background: "rgba(255,255,255,0.1)",
-          border: "1px solid rgba(255,255,255,0.22)",
-          color: "#fff",
-          fontSize: 18,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          lineHeight: 1,
-        }}
-      >
-        ×
-      </button>
     </div>
   );
 }

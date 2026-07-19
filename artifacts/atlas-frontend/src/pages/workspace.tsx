@@ -449,6 +449,17 @@ type RightTab = "ledger" | "files" | "preview" | "runtime" | "memory" | "map" | 
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
+
+type OpeningAttachmentHandoff = {
+  attachmentIds: string[];
+  attachments: Array<{
+    attachmentId: string;
+    mediaType: string;
+    name: string;
+    contentUrl?: string;
+    processingStatus?: string;
+  }>;
+};
 const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id";
 const OPENING_CONVERSATION_STORAGE_KEY = "atlas-opening-conversation";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
@@ -4372,7 +4383,19 @@ export default function Workspace() {
   // Moved above its first use (greeting-fetch effect) to avoid a TDZ crash:
   // "Cannot access 'openingMessage' before initialization". Depends only on
   // `id` (declared just above) and module-level storage-key constants.
-  const [openingMessage, setOpeningMessage] = useState<{ message: string; projectId: string | null; attachments?: Array<{ base64: string; mediaType: string; name?: string }> } | null>(() => {
+  const [openingMessage, setOpeningMessage] = useState<{
+    message: string;
+    projectId: string | null;
+    attachmentIds?: string[];
+    attachments?: Array<{
+      attachmentId?: string;
+      base64?: string;
+      mediaType: string;
+      name?: string;
+      contentUrl?: string;
+      processingStatus?: string;
+    }>;
+  } | null>(() => {
     try {
       // Quick Action V2 handoff (resume=quickaction): consume the
       // sessionStorage payload, hoist {intent, prompt} into the existing
@@ -4423,12 +4446,37 @@ export default function Workspace() {
           sessionStorage.removeItem("atlas-opening-attachments");
           return null;
         }
-        let openingAttachments: Array<{ base64: string; mediaType: string; name?: string }> | undefined;
+        let attachmentIds: string[] | undefined;
+        let openingAttachments:
+          | Array<{
+              attachmentId?: string;
+              base64?: string;
+              mediaType: string;
+              name?: string;
+              contentUrl?: string;
+              processingStatus?: string;
+            }>
+          | undefined;
         try {
           const rawAtts = sessionStorage.getItem("atlas-opening-attachments");
-          if (rawAtts) openingAttachments = JSON.parse(rawAtts) as Array<{ base64: string; mediaType: string; name?: string }>;
+          if (rawAtts) {
+            const parsed = JSON.parse(rawAtts) as
+              | OpeningAttachmentHandoff
+              | Array<{ base64: string; mediaType: string; name?: string }>;
+            if (Array.isArray(parsed)) {
+              openingAttachments = parsed;
+            } else {
+              attachmentIds = parsed.attachmentIds;
+              openingAttachments = parsed.attachments;
+            }
+          }
         } catch {}
-        return { message: storedOpeningMessage, projectId: storedProjectId, attachments: openingAttachments };
+        return {
+          message: storedOpeningMessage,
+          projectId: storedProjectId,
+          attachmentIds,
+          attachments: openingAttachments,
+        };
       }
       return null;
     } catch {
@@ -4452,12 +4500,37 @@ export default function Workspace() {
         sessionStorage.removeItem("atlas-opening-attachments");
         return;
       }
-      let openingAttachments: Array<{ base64: string; mediaType: string; name?: string }> | undefined;
+      let attachmentIds: string[] | undefined;
+      let openingAttachments:
+        | Array<{
+            attachmentId?: string;
+            base64?: string;
+            mediaType: string;
+            name?: string;
+            contentUrl?: string;
+            processingStatus?: string;
+          }>
+        | undefined;
       try {
         const rawAtts = sessionStorage.getItem("atlas-opening-attachments");
-        if (rawAtts) openingAttachments = JSON.parse(rawAtts) as Array<{ base64: string; mediaType: string; name?: string }>;
+        if (rawAtts) {
+          const parsed = JSON.parse(rawAtts) as
+            | OpeningAttachmentHandoff
+            | Array<{ base64: string; mediaType: string; name?: string }>;
+          if (Array.isArray(parsed)) {
+            openingAttachments = parsed;
+          } else {
+            attachmentIds = parsed.attachmentIds;
+            openingAttachments = parsed.attachments;
+          }
+        }
       } catch {}
-      setOpeningMessage({ message: storedOpeningMessage, projectId: storedProjectId, attachments: openingAttachments });
+      setOpeningMessage({
+        message: storedOpeningMessage,
+        projectId: storedProjectId,
+        attachmentIds,
+        attachments: openingAttachments,
+      });
     } catch {}
   }, [id, openingMessage]);
   const searchParams = new URLSearchParams(window.location.search);
@@ -6832,7 +6905,8 @@ export default function Workspace() {
     }
     if (!priorLoadedState) return;
     const trimmedOpeningMessage = openingMessage.message.trim();
-    if (!trimmedOpeningMessage) {
+    const openingAttachmentIds = openingMessage.attachmentIds ?? [];
+    if (!trimmedOpeningMessage && openingAttachmentIds.length === 0) {
       try {
         sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
         sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
@@ -6873,10 +6947,13 @@ export default function Workspace() {
     if (isHandoffContinuation) {
       try { sessionStorage.setItem(`atlas-home-handoff-primed-${id}`, "1"); } catch {}
     }
-    // Pass messagesRef.current so transferred thread messages are included as history context.
-    // Pass attachments so images from the homepage (Ask Atlas) carry into the first workspace message.
+    // Shared attachmentIds handoff — same send payload as in-composer submits.
     if (useNexusWorkspaceChat) {
-      void atlasConv.submit({ text: trimmedOpeningMessage, attachments: openingMessage.attachments ?? undefined });
+      void atlasConv.submit({
+        text: trimmedOpeningMessage,
+        attachmentIds: openingAttachmentIds.length > 0 ? openingAttachmentIds : undefined,
+        attachments: openingMessage.attachments ?? undefined,
+      });
     } else {
       doSend(trimmedOpeningMessage, sessionId, messagesRef.current, undefined, openingMessage.attachments ?? undefined);
     }
@@ -7394,7 +7471,15 @@ export default function Workspace() {
     if (useNexusWorkspaceChat) {
       const text = input.trim();
       // Gate checked against canSend — draft is only cleared after this passes.
-      if (workspaceSendInFlightRef.current || (!text && staged.readyFiles.length === 0) || !atlasConv.canSend) return;
+      // Block while uploads are in flight so Send never races incomplete files.
+      if (
+        workspaceSendInFlightRef.current ||
+        staged.isUploading ||
+        (!text && staged.readyFiles.length === 0) ||
+        !atlasConv.canSend
+      ) {
+        return;
+      }
       workspaceSendInFlightRef.current = true;
       if (atlasGreeting) setAtlasGreeting(null);
       setShowHomeHandoffBanner(false);
@@ -9327,6 +9412,7 @@ export default function Workspace() {
               stagedFiles: staged.files,
               onAddFiles: staged.addFiles,
               onRemoveFile: staged.removeFile,
+              onRetryFile: staged.retryFile,
               // Legacy props kept for the non-Nexus doSend path.
               attachedFiles,
               setAttachedFiles,
