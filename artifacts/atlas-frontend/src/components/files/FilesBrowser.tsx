@@ -460,6 +460,8 @@ function FileRow({ file, selected, mode, onClick }: { file: UnifiedFile; selecte
 function FileTile({ file, selected, mode, onClick }: { file: UnifiedFile; selected: boolean; mode: "browse" | "attach"; onClick: () => void }) {
   return (
     <button
+      data-unified-file-id={file.id}
+      data-unified-file={JSON.stringify(file)}
       onClick={onClick}
       style={{
         display: "flex", flexDirection: "column", gap: 6,
