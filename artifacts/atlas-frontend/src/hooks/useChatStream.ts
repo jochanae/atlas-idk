@@ -169,6 +169,16 @@ function appendGithubAutoLinkStatus(content: string, status: string | null): str
 /**
  * Chat-stream hook — owns message state, session, pending/activity, memory chips,
  * doSend, handleRegenerate, and the per-session summarize effect.
+ *
+ * ARCHITECTURE — LIVE TRANSITIONAL
+ * This hook posts to POST /api/chat (legacy builder route).  In workspace.tsx,
+ * useNexusWorkspaceChat=true means nexusBridge.messages wins for display and
+ * atlasConv.submit() is the canonical user-facing send.  useChatStream is still
+ * instantiated because it owns sessionId, liveStep, chatPending, memoryChips,
+ * abortControllerRef, and doSend (used by automated side-paths).
+ * Do NOT instantiate this hook in a new surface — use useAtlasConversation.
+ * Do NOT add new user-facing sends through doSend — use atlasConv.submit().
+ * Ownership: docs/architecture/conversation-ownership.md § useChatStream
  */
 export function useChatStream(
   projectId: number,

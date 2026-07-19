@@ -313,6 +313,13 @@ async function _startRun(
     _patchRun(run.id, { status: "running", sessionId: session.id });
 
     // 2. Fire chat stream
+    // ── LEGACY DIRECT SENDER — /api/chat ─────────────────────────────────────
+    // ActiveRuns (Atlas Composer) bypasses useAtlasConversation / useNexusChatStream.
+    // This is a known LEGACY BUT REACHABLE path.  It skips: WhisperGate, Nexus
+    // features (CLARIFY, DECIDE, plan artifacts, memory chips), and the canonical
+    // useStagedAttachments attachment pipeline.
+    // Do NOT add new features here.  Migrate to atlasConv.submit() when possible.
+    // Architecture: docs/architecture/runtime-map.md § Surface 3 — ActiveRuns
     const modeFlags = intentToModeFlags(run.intent);
     const chatRes = await fetch("/api/chat", {
       method: "POST",

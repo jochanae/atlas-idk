@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "library:parity": "tsx ./src/library-parity.ts",
+    "check-direct-callers": "tsx ./src/check-direct-callers.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -373,6 +373,13 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
       const nodeContext = nodes.length > 0
         ? `Current canvas nodes:\n${nodes.map(n => `- [${n.type}] ${n.label}${n.strategicAnswer ? " (answered)" : " (unanswered)"}`).join("\n")}`
         : "Canvas is empty — no nodes yet.";
+      // ── LEGACY DIRECT SENDER — /api/chat ─────────────────────────────────────
+      // FlowPanel bypasses the canonical conversation stack (useAtlasConversation /
+      // useNexusChatStream).  This is a known LEGACY BUT REACHABLE path.
+      // It skips: useStagedAttachments, WhisperGate, Nexus features (CLARIFY,
+      // DECIDE, memory chips), and conversation persistence.
+      // Do NOT add new features here.  Migrate to atlasConv.submit() when possible.
+      // Architecture: docs/architecture/runtime-map.md § Surface 4 — FlowPanel
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -386,6 +393,11 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           projectMap: nodeContext,
           mode: "plan",
           ...(imageFile
+            // ── LEGACY ATTACHMENT CONVERSION ──────────────────────────────────
+            // Direct fileToBase64Safe call — bypasses useStagedAttachments state
+            // machine and the canonical useAtlasConversation conversion loop.
+            // Single image only.  Do NOT extend to non-image types here.
+            // Canonical path: docs/architecture/attachment-ownership.md
             ? await fileToBase64Safe(imageFile).then(r => ({ imageData: r.base64, imageMimeType: r.mediaType })).catch(() => ({ imageData: "", imageMimeType: "" }))
             : {}),
         }),

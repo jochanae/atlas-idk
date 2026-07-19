@@ -1,4 +1,27 @@
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARCHITECTURE BOUNDARY — read before editing this file
+//
+// This component simultaneously mounts TWO conversation hooks:
+//
+//   atlasConv  = useAtlasConversation(...)      ← CANONICAL send path
+//   nexusBridge = useNexusWorkspaceBridge(...)  ← CANONICAL message display / adapter
+//   useChatStream(...)                           ← LIVE TRANSITIONAL (session IDs,
+//                                                  doSend for automated paths)
+//
+// useNexusWorkspaceChat = true (hardcoded, line ~4715).  When true, nexusBridge.messages
+// and atlasConv.submit() WIN over useChatStream for display and user-initiated sends.
+// useChatStream is NOT dead — it still owns sessionId, liveStep, chatPending, memoryChips,
+// handleRegenerate, and doSend for automated side-sends.  Do NOT remove either hook
+// without completing the Phase 2 Nexus migration.
+//
+// Architecture documents:
+//   docs/architecture/runtime-map.md
+//   docs/architecture/conversation-ownership.md
+//   docs/architecture/attachment-ownership.md
+//   docs/architecture/agent-change-rules.md
+// ═══════════════════════════════════════════════════════════════════════════════
+
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject, Project, Entry, Session, useListSessions, getListSessionsQueryKey, createSession, useCreateSession, useDeleteSession, useListEntries, getListEntriesQueryKey, getListProjectsQueryKey, useDeleteProject, useCreateProject, useListProjects, createEntry, useCreateEntry, useListReadinessSnapshots, getListReadinessSnapshotsQueryKey, useRecordReadinessSnapshot } from "@workspace/api-client-react";
 import { toast } from "sonner";
@@ -4739,8 +4762,11 @@ export default function Workspace() {
   const [nexusConversationId, setNexusConversationId] = useState<string>(() =>
     (conversationId ?? null) || (id ? (deriveConversationId(id) ?? "") : "")
   );
-  // Canonical conversation controller — owns useNexusChatStream and all submission.
-  // submit({ text, attachments }) calls nexusChatStream.send directly; no field extraction.
+  // ── CANONICAL SEND PATH ──────────────────────────────────────────────────────
+  // useAtlasConversation owns useNexusChatStream and all user-initiated sends.
+  // All new sends must go through atlasConv.submit().  Do not add a new fetch()
+  // to /api/nexus/chat from this component.
+  // Ownership: docs/architecture/conversation-ownership.md § useAtlasConversation
   const atlasConv = useAtlasConversation({
     surface: "workspace",
     focusProjectId: id || null,
@@ -4748,8 +4774,11 @@ export default function Workspace() {
     conversationMode,
     mode: "workspace",
   });
-  // Side-effects bridge — converts NexusMessage → ChatMessage, manages history
-  // load / recovery / WRITE_FILE / run-completed. Never owns send.
+  // ── CANONICAL NEXUS BRIDGE ───────────────────────────────────────────────────
+  // useNexusWorkspaceBridge is the CANONICAL adapter: NexusMessage[] → ChatMessage[],
+  // WRITE_FILE side-effects, history load, conversationId storage.  It never sends.
+  // nexusBridge.messages is what the chat UI renders when useNexusWorkspaceChat=true.
+  // Ownership: docs/architecture/conversation-ownership.md § useNexusWorkspaceBridge
   const nexusBridge = useNexusWorkspaceBridge(id, atlasConv, {
     conversationId: nexusConversationId,
     setConversationId: setNexusConversationId,
@@ -4908,6 +4937,15 @@ export default function Workspace() {
     setMemoryChips,
     doSend,
     handleRegenerate,
+  // ── LIVE TRANSITIONAL — useChatStream ────────────────────────────────────────
+  // useChatStream is still instantiated but its messages and send path are
+  // superseded by nexusBridge / atlasConv when useNexusWorkspaceChat=true.
+  // It still owns: sessionId, ensureSessionId, chatPending, liveStep,
+  // memoryChips, activityStream, abortControllerRef, handleRegenerate, doSend.
+  // doSend is called by several automated side-paths (opening-message fallback,
+  // agentic iteration, import-greeting, axiom:chat-message event).
+  // Do NOT remove useChatStream until Phase 2 Nexus migration is complete.
+  // Ownership: docs/architecture/conversation-ownership.md § useChatStream
   } = useChatStream(effectiveId, {
     sessions: effectiveSessions,
     sessionsLoading: effectiveSessionsLoading,
