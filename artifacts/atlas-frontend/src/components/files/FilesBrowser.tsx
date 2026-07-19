@@ -428,7 +428,7 @@ function CategoryGlyph({ cat }: { cat: FilesTypeFilter }) {
 
 function FileRow({ file, selected, mode, onClick }: { file: UnifiedFile; selected: boolean; mode: "browse" | "attach"; onClick: () => void; currentConversationId: string | null }) {
   return (
-    <li>
+    <li data-unified-file-id={file.id} data-unified-file={JSON.stringify(file)}>
       <button
         onClick={onClick}
         style={{
