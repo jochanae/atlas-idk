@@ -22,6 +22,7 @@ import {
 import SketchComposerSheet from "./SketchComposerSheet";
 import { FilesBrowser, type UnifiedFile } from "@/components/files/FilesBrowser";
 import { resolveToFiles } from "@/components/files/resolveToFiles";
+import { recordAttachments } from "@/components/files/recentAttachments";
 import {
   clearPickerPending,
   installGhostClickShield,
