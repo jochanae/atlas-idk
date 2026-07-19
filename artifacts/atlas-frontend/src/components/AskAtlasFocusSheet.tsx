@@ -124,7 +124,7 @@ export function AskAtlasFocusSheet({
                   cursor: "pointer", marginBottom: -1,
                 }}
               >
-                {t === "projects" ? "Projects" : "Library"}
+                {t === "projects" ? "Projects" : "Files"}
               </button>
             ))}
           </div>
