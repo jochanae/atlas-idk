@@ -621,7 +621,23 @@ export function ComposerActions({
                   setFilesResolving(true);
                   try {
                     const { files, skipped } = await resolveToFiles(picks);
-                    if (files.length > 0) onFiles(files);
+                    if (files.length > 0) {
+                      onFiles(files);
+                      // Log successful attachments so Recent reflects real usage.
+                      const resolvedNames = new Set(files.map((f) => f.name));
+                      recordAttachments(
+                        picks
+                          .filter((p) => resolvedNames.has(p.name))
+                          .map((p) => ({
+                            id: p.id,
+                            name: p.name,
+                            category: p.category,
+                            section: p.section,
+                            projectLabel: p.projectLabel ?? null,
+                            thumbUrl: p.thumbUrl ?? null,
+                          })),
+                      );
+                    }
                     if (skipped.length > 0) {
                       toast.error(`Skipped ${skipped.length}: ${skipped.map((s) => s.name).slice(0, 2).join(", ")}${skipped.length > 2 ? "…" : ""}`);
                     }
