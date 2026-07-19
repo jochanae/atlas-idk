@@ -168,6 +168,8 @@ export function useStagedAttachments(opts?: {
       const gen = (uploadGenRef.current.get(id) ?? 0) + 1;
       uploadGenRef.current.set(id, gen);
 
+      _adbgLog("start_upload_begin", { id, gen, name: file.name, size: file.size });
+
       patchFile(id, {
         status: "uploading",
         uploadStatus: "uploading",
@@ -177,6 +179,7 @@ export function useStagedAttachments(opts?: {
 
       void (async () => {
         try {
+          _adbgLog("start_upload_request_upload", { id, gen });
           const result = await uploadAttachmentFile(file, {
             adapter,
             onProgress: (p) => {
@@ -184,7 +187,11 @@ export function useStagedAttachments(opts?: {
               patchFile(id, { uploadProgress: p, uploadStatus: "uploading" });
             },
           });
-          if (uploadGenRef.current.get(id) !== gen) return;
+          if (uploadGenRef.current.get(id) !== gen) {
+            _adbgLog("start_upload_gen_stale", { id, gen, current: uploadGenRef.current.get(id) });
+            return;
+          }
+          _adbgLog("start_upload_success", { id, gen, attachmentId: result.attachmentId });
           patchFile(id, {
             status: "ready",
             uploadStatus: "uploaded",
@@ -197,6 +204,7 @@ export function useStagedAttachments(opts?: {
           if (uploadGenRef.current.get(id) !== gen) return;
           const message =
             err instanceof Error ? err.message : "Upload failed";
+          _adbgLog("start_upload_error", { id, gen, message });
           patchFile(id, {
             status: "failed",
             uploadStatus: "failed",

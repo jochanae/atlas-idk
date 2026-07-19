@@ -48,6 +48,8 @@ function putWithProgress(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", uploadUrl);
+    // 2-minute timeout for large files — prevents infinite hung PUT.
+    xhr.timeout = 120_000;
     xhr.setRequestHeader(
       "Content-Type",
       file.type || "application/octet-stream",
@@ -71,6 +73,7 @@ function putWithProgress(
     };
     xhr.onerror = () => reject(new Error("Storage upload network error"));
     xhr.onabort = () => reject(new Error("Storage upload aborted"));
+    xhr.ontimeout = () => reject(new Error("Storage upload timed out"));
     xhr.send(file);
   });
 }
@@ -125,6 +128,7 @@ export async function uploadAttachmentFile(
   opts?.onProgress?.(1);
   return { attachmentId, persisted };
 }
+
 
 /**
  * Upload many files sequentially. Successful uploads are kept even when a

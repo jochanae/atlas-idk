@@ -194,27 +194,38 @@ export function createHttpAdapter(
     return (await res.json()) as T;
   };
 
+  /** Wrap a fetch call with an AbortController timeout. */
+  const withTimeout = <T>(
+    ms: number,
+    fn: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error(`Request timed out after ${ms}ms`)), ms);
+    return fn(controller.signal).finally(() => clearTimeout(timer));
+  };
+
   return {
     async requestUpload(file) {
-      return json(
-        await fetchImpl(`${baseUrl}/request-upload`, {
+      return withTimeout(30_000, (signal) =>
+        fetchImpl(`${baseUrl}/request-upload`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
+          signal,
           body: JSON.stringify({
             filename: file.name,
             mimeType: file.type || "application/octet-stream",
             sizeBytes: file.size,
           }),
-        }),
+        }).then((res) => json<RequestUploadResult>(res)),
       );
     },
     async finalizeUpload(attachmentId) {
-      return json(
-        await fetchImpl(
+      return withTimeout(15_000, (signal) =>
+        fetchImpl(
           `${baseUrl}/${encodeURIComponent(attachmentId)}/finalize`,
-          { method: "POST", credentials: "include" },
-        ),
+          { method: "POST", credentials: "include", signal },
+        ).then((res) => json<PersistedAttachment>(res)),
       );
     },
     async listForMessage(messageId) {
