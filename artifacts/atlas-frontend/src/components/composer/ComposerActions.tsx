@@ -399,20 +399,30 @@ export function ComposerActions({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 14,
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: 12,
                   margin: "4px 0",
                 }}
               >
                 <BigNode
                   label="Camera"
-                  icon={<Camera size={36} strokeWidth={1.4} />}
+                  icon={<Camera size={30} strokeWidth={1.4} />}
                   onClick={() => openNativePicker("camera", cameraRef.current)}
                 />
                 <BigNode
                   label="Attach"
-                  icon={<Paperclip size={36} strokeWidth={1.4} />}
+                  icon={<Paperclip size={30} strokeWidth={1.4} />}
                   onClick={() => openNativePicker("attach", attachRef.current)}
+                />
+                <BigNode
+                  label="Files"
+                  icon={<FolderClosed size={30} strokeWidth={1.4} />}
+                  onClick={() => {
+                    setShowPlus(false);
+                    setFilesSelected([]);
+                    setFilesPicks([]);
+                    setTimeout(() => setShowFiles(true), 40);
+                  }}
                 />
               </div>
 
