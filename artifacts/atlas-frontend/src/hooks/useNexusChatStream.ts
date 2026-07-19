@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { logEvent as _adbgLog } from "@/lib/attachDebugLog";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
@@ -518,6 +519,7 @@ export function useNexusChatStream(
     };
 
     try {
+      _adbgLog("post_nexus_chat_send", { hasAttachments: allFileAttachments.length > 0, attachmentCount: allFileAttachments.length, names: allFileAttachments.map((a) => (a as Record<string, unknown>).name ?? "(unnamed)") });
       await stream({
         endpoint: "/api/nexus/chat",
         body: {

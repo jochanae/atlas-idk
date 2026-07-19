@@ -3,6 +3,7 @@
 // This is installed once at app bootstrap so legacy call sites that use
 // `fetch("/api/...")` reach the real backend instead of the preview origin.
 import { API_BASE } from "./api";
+import { logEvent as _adbgLog } from "./attachDebugLog";
 
 declare global {
   interface Window {
@@ -116,19 +117,24 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
       if (urlStr.includes("/api/") && !urlStr.includes("/api/auth/")) {
         const isSilent = SILENT_401_PATTERNS.some((p) => urlStr.includes(p));
         const alreadyOnLogin = window.location.pathname.includes("/login");
+        _adbgLog("api_401", { url: urlStr.split("/api/")[1] ?? urlStr, silent: isSilent, alreadyOnLogin });
         if (!isSilent && !alreadyOnLogin && !_401redirectPending) {
           _401redirectPending = true;
           setTimeout(async () => {
             try {
               const baseUrl = API_BASE || window.location.origin;
+              _adbgLog("auth_me_recheck_start");
               const check = await originalFetch(`${baseUrl}/api/auth/me`, { credentials: "include" });
               if (check.status === 401) {
+                _adbgLog("auth_me_401_redirecting");
                 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 window.location.href = `${base}/login?reason=session_expired`;
               } else {
+                _adbgLog("auth_me_ok_no_redirect");
                 _401redirectPending = false;
               }
             } catch {
+              _adbgLog("auth_me_check_failed");
               _401redirectPending = false;
             }
           }, 1500);

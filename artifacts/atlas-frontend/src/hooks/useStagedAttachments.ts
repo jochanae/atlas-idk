@@ -17,6 +17,7 @@
  * controller or useAtlasConversation.
  */
 import { useCallback, useEffect, useState } from "react";
+import { logEvent as _adbgLog, setStagedCount as _setStagedCount } from "@/lib/attachDebugLog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -227,11 +228,18 @@ export function useStagedAttachments(opts?: {
     };
   }, []);
 
+  // Mirror staged-file count to module scope + sessionStorage so the
+  // pre-React inline script (visibility handler) can read it without React.
+  useEffect(() => {
+    _setStagedCount(files.length);
+  }, [files]);
+
   const addFiles = useCallback(
     (incoming: FileList | File[] | null | undefined) => {
       if (!incoming) return;
       const arr = Array.from(incoming);
       if (arr.length === 0) return;
+      _adbgLog("staged_files_add_called", { count: arr.length, files: arr.map((f) => ({ name: f.name, mime: f.type || "unknown", size: f.size })) });
 
       setFiles(prev => {
         const result: StagedFile[] = [...prev];

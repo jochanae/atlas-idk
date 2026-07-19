@@ -40,8 +40,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
   // Track the last time the page returned to foreground so we can suppress
   // spurious chunk-load reloads that happen right as the HMR WS reconnects.
   var lastVis=0;
+  function _adbg(ev,data){try{var K='atlas_adbg',arr=[];try{arr=JSON.parse(localStorage.getItem(K)||'[]');}catch(x){}var ts=new Date().toISOString().replace('T',' ').slice(0,23),sc=0;try{sc=Number(sessionStorage.getItem('atlas_sc')||0);}catch(x){}arr.push(Object.assign({t:Date.now(),ts:ts,event:ev,stagedCount:sc},data||{}));if(arr.length>300)arr.splice(0,arr.length-300);localStorage.setItem(K,JSON.stringify(arr));console.log('[AttachDebug '+ts+'] '+ev,data||'');}catch(x){}}
   document.addEventListener('visibilitychange',function(){
-    if(!document.hidden)lastVis=Date.now();
+    if(!document.hidden){lastVis=Date.now();_adbg('visibility_foreground');}
+    else{_adbg('visibility_background');}
   });
   function clearRuntimeCaches(){
     try{
@@ -67,6 +69,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       if(Date.now()-last<60000)return false;
       sessionStorage.setItem(KEY,String(Date.now()));
       clearRuntimeCaches();
+      _adbg('chunk_error_reload',{msg:String(msg).slice(0,120)});
       location.reload();
       return true;
     }catch(_){return false;}

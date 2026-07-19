@@ -15,6 +15,7 @@ import { useThemeMode } from "@/lib/theme";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
 import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
+import { logEvent as _adbgLog } from "@/lib/attachDebugLog";
 // CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
 
 
@@ -318,6 +319,12 @@ export function ChatComposer(props: ChatComposerProps) {
 
   
 
+
+  // Instrumentation: track ChatComposer mount/unmount for remount diagnosis.
+  useEffect(() => {
+    _adbgLog("ChatComposer_mounted");
+    return () => { _adbgLog("ChatComposer_unmounted"); };
+  }, []);
 
   // When the project is empty, focus the composer so Atlas feels "already in the room".
   // Skip on mobile to avoid yanking the keyboard up uninvited.
