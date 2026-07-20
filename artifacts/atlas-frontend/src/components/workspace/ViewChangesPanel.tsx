@@ -19,7 +19,10 @@ import {
   Lightbulb, Trash2, CheckCircle2,
   Dna, BookMarked, ListChecks, AlertOctagon, FileOutput, HelpCircle,
   Copy, Check,
+  Paperclip, Image as ImageIcon, FileText, AlertTriangle, MessageSquare,
 } from "lucide-react";
+import { useWorkspaceActivity, type ActivityItem } from "@/hooks/useWorkspaceActivity";
+
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
@@ -635,7 +638,11 @@ const TIMELINE_VERBS = new Set([
   // Conversational milestones (2026-07-09 handoff).
   "MILESTONE_REQUIREMENTS", "MILESTONE_DECISION",
   "MILESTONE_DESIGN", "MILESTONE_PLAN", "ARTIFACT_GENERATED",
+  // Attachment / turn lifecycle verbs (merged from workspace_activity).
+  "ATTACHMENT_RECEIVED", "IMAGE_ANALYZED", "DOCUMENT_ANALYZED",
+  "ATTACHMENT_UNSUPPORTED", "ATLAS_THINKING", "RESPONSE_GENERATED",
 ]);
+
 const EXPANDABLE_VERBS = new Set([
   "THOUGHT", "FILE_EDIT", "Writing", "Written", "Patching", "SUMMARY", "ERROR", "QUESTION_ASKED",
   "MILESTONE_REQUIREMENTS", "MILESTONE_DECISION",
@@ -667,6 +674,12 @@ function stepColor(verb: string): string {
     MILESTONE_DESIGN:       "rgba(170,130,230,0.90)",
     MILESTONE_PLAN:         "rgba(200,180,140,0.90)",
     ARTIFACT_GENERATED:     "rgba(180,200,120,0.90)",
+    ATTACHMENT_RECEIVED:    "rgba(140,180,220,0.85)",
+    IMAGE_ANALYZED:         "rgba(170,200,140,0.90)",
+    DOCUMENT_ANALYZED:      "rgba(170,200,140,0.90)",
+    ATTACHMENT_UNSUPPORTED: "rgba(220,140,90,0.90)",
+    ATLAS_THINKING:         "rgba(147,130,220,0.80)",
+    RESPONSE_GENERATED:     "rgba(100,200,120,0.90)",
   };
   return MAP[verb] ?? "rgba(180,180,180,0.75)";
 }
@@ -690,6 +703,12 @@ function stepLabel(verb: string, detail?: string | null): string {
     MILESTONE_DESIGN:       "Design milestone",
     MILESTONE_PLAN:         "Implementation plan",
     ARTIFACT_GENERATED:     "Artifact created",
+    ATTACHMENT_RECEIVED:    "Attachment received",
+    IMAGE_ANALYZED:         "Image analyzed",
+    DOCUMENT_ANALYZED:      "Document analyzed",
+    ATTACHMENT_UNSUPPORTED: "Unsupported attachment",
+    ATLAS_THINKING:         "Atlas thinking",
+    RESPONSE_GENERATED:     "Response generated",
   };
   return MAP[verb] ?? verb;
 }
@@ -718,6 +737,12 @@ function StepIcon({ verb }: { verb: string }) {
   if (verb === "MILESTONE_DESIGN")       return <Dna        {...p} />;
   if (verb === "MILESTONE_PLAN")         return <ListChecks {...p} />;
   if (verb === "ARTIFACT_GENERATED")     return <FileOutput {...p} />;
+  if (verb === "ATTACHMENT_RECEIVED")    return <Paperclip  {...p} />;
+  if (verb === "IMAGE_ANALYZED")         return <ImageIcon  {...p} />;
+  if (verb === "DOCUMENT_ANALYZED")      return <FileText   {...p} />;
+  if (verb === "ATTACHMENT_UNSUPPORTED") return <AlertTriangle {...p} />;
+  if (verb === "ATLAS_THINKING")         return <Lightbulb  {...p} />;
+  if (verb === "RESPONSE_GENERATED")     return <MessageSquare {...p} />;
   return null;
 }
 
@@ -967,13 +992,58 @@ function RunHeader({ run }: { run: ApiRun }) {
   );
 }
 
-function RunTimeline({ run }: { run: ApiRun }) {
-  const visible = run.steps.filter((s) => TIMELINE_VERBS.has(s.verb));
+const LIFECYCLE_ACTIVITY_TYPES = new Set<ActivityItem["type"]>([
+  "attachment_received", "image_analyzed", "document_analyzed",
+  "attachment_unsupported", "atlas_thinking", "response_generated",
+]);
+
+function activityToStep(item: ActivityItem, index: number): ApiRunStep {
+  const verbMap: Record<string, string> = {
+    attachment_received:    "ATTACHMENT_RECEIVED",
+    image_analyzed:         "IMAGE_ANALYZED",
+    document_analyzed:      "DOCUMENT_ANALYZED",
+    attachment_unsupported: "ATTACHMENT_UNSUPPORTED",
+    atlas_thinking:         "ATLAS_THINKING",
+    response_generated:     "RESPONSE_GENERATED",
+  };
+  return {
+    id: -1_000_000 - index, // negative synthetic ids to avoid collisions
+    verb: verbMap[item.type] ?? item.type.toUpperCase(),
+    target: item.attachmentName ?? null,
+    status: "completed",
+    detail: item.reason ?? item.subtitle ?? null,
+    content: item.reason ?? null,
+    beforeContent: null,
+    orderIndex: index,
+    createdAt: item.timestamp,
+  };
+}
+
+function RunTimeline({ run, activities }: { run: ApiRun; activities: ActivityItem[] }) {
+  const merged = useMemo<ApiRunStep[]>(() => {
+    // Scope activities to this run's time window (± 2 min buffer).
+    const start = new Date(run.startedAt).getTime() - 120_000;
+    const end = run.completedAt
+      ? new Date(run.completedAt).getTime() + 120_000
+      : Date.now() + 120_000;
+    const windowed = activities
+      .filter((a) => LIFECYCLE_ACTIVITY_TYPES.has(a.type))
+      .filter((a) => {
+        const t = new Date(a.timestamp).getTime();
+        return t >= start && t <= end;
+      })
+      .map((a, i) => activityToStep(a, i));
+
+    const steps = run.steps.filter((s) => TIMELINE_VERBS.has(s.verb));
+    return [...steps, ...windowed].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }, [run, activities]);
 
   return (
     <div>
       <RunHeader run={run} />
-      {visible.length === 0 ? (
+      {merged.length === 0 ? (
         <div style={{
           padding: "18px 16px", fontSize: 12,
           color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.65,
@@ -984,14 +1054,15 @@ function RunTimeline({ run }: { run: ApiRun }) {
         </div>
       ) : (
         <div style={{ padding: "16px 14px 18px", display: "flex", flexDirection: "column" }}>
-          {visible.map((step, i) => (
-            <RunTimelineItem key={`${step.id}-${i}`} step={step} isLast={i === visible.length - 1} />
+          {merged.map((step, i) => (
+            <RunTimelineItem key={`${step.id}-${i}`} step={step} isLast={i === merged.length - 1} />
           ))}
         </div>
       )}
     </div>
   );
 }
+
 
 
 // (WorkspaceRunReceipts removed — Timeline lists runs chronologically and the
@@ -1044,6 +1115,7 @@ export function ViewChangesPanel({
   }, []);
   const showLegend = !legendDismissed && (!!commitSha || lens === "changes");
   const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId, { conversationId });
+  const { items: activityItems } = useWorkspaceActivity(projectId);
 
   // Refresh run list immediately when a run completes — eliminates the 30s lag
   // before the Timeline and Changes lenses reflect the finished run.
@@ -1083,9 +1155,11 @@ export function ViewChangesPanel({
   useEffect(() => {
     if (!timelineRun || lensAutoSet) return;
     const hasAnyTimelineStep = timelineRun.steps.some((s) => TIMELINE_VERBS.has(s.verb));
-    if (!hasAnyTimelineStep) setLens("changes");
+    const hasLifecycleActivity = activityItems.some((a) => LIFECYCLE_ACTIVITY_TYPES.has(a.type));
+    if (!hasAnyTimelineStep && !hasLifecycleActivity) setLens("changes");
     setLensAutoSet(true);
-  }, [timelineRun, lensAutoSet]);
+  }, [timelineRun, lensAutoSet, activityItems]);
+
 
   // Reset auto-set when the viewed run changes.
   useEffect(() => {
@@ -1387,7 +1461,7 @@ export function ViewChangesPanel({
         )
       ) : lens === "timeline" ? (
         timelineRun ? (
-          <RunTimeline run={timelineRun} />
+          <RunTimeline run={timelineRun} activities={activityItems} />
         ) : (
           <div style={{
             padding: "18px 14px", fontSize: 12,
