@@ -60,7 +60,18 @@ describe("support matrix (explicit contract)", () => {
       (e) => e.capability === "model_use",
     ).map((e) => e.id);
     expect(model).toEqual(
-      expect.arrayContaining(["png", "jpeg", "webp", "pdf", "txt", "markdown"]),
+      expect.arrayContaining([
+        "png",
+        "jpeg",
+        "webp",
+        "pdf",
+        "txt",
+        "markdown",
+        "docx",
+        "pptx",
+        "xlsx",
+        "csv",
+      ]),
     );
   });
 
@@ -68,9 +79,8 @@ describe("support matrix (explicit contract)", () => {
     const storage = ATTACHMENT_SUPPORT_MATRIX.filter(
       (e) => e.capability === "storage_only",
     ).map((e) => e.id);
-    expect(storage).toEqual(
-      expect.arrayContaining(["docx", "pptx", "xlsx", "csv", "zip"]),
-    );
+    expect(storage).toEqual(expect.arrayContaining(["zip"]));
+    expect(storage).not.toEqual(expect.arrayContaining(["pptx", "docx"]));
   });
 
   it("never claims model understanding for storage_only", () => {
@@ -90,7 +100,13 @@ describe("support matrix (explicit contract)", () => {
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "deck.pptx",
       ).capability,
-    ).toBe("storage_only");
+    ).toBe("model_use");
+    expect(
+      resolveSupport(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "brief.docx",
+      ).capability,
+    ).toBe("model_use");
     expect(resolveSupport("application/zip", "src.zip").capability).toBe(
       "storage_only",
     );
@@ -121,7 +137,7 @@ describe("send gate (identical across surfaces)", () => {
 });
 
 describe("useStagedAttachments — upload, limits, retry", () => {
-  it("uploads mixed types and labels storage_only", async () => {
+  it("uploads mixed types and labels extractable Office as model_use", async () => {
     const adapter = createMockAdapter();
     const { result } = renderHook(() =>
       useStagedAttachments({ adapter, autoUpload: true }),
@@ -132,19 +148,25 @@ describe("useStagedAttachments — upload, limits, retry", () => {
         makeFile("shot.png", "image/png"),
         makeFile("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
         makeFile("notes.md", "text/markdown"),
+        makeFile("bundle.zip", "application/zip"),
       ]);
     });
 
     await waitFor(() => {
-      expect(result.current.readyFiles).toHaveLength(3);
+      expect(result.current.readyFiles).toHaveLength(4);
       expect(result.current.isUploading).toBe(false);
     });
 
     const pptx = result.current.files.find((f) => f.name === "deck.pptx")!;
-    expect(pptx.capability).toBe("storage_only");
-    expect(pptx.processingStatus).toBe("unsupported");
+    expect(pptx.capability).toBe("model_use");
+    expect(pptx.processingStatus).toBe("understood");
     expect(pptx.attachmentId).toBeTruthy();
-    expect(pptx.statusLabel).toMatch(/can't read/i);
+    expect(pptx.statusLabel).toMatch(/ready for atlas/i);
+
+    const zip = result.current.files.find((f) => f.name === "bundle.zip")!;
+    expect(zip.capability).toBe("storage_only");
+    expect(zip.processingStatus).toBe("unsupported");
+    expect(zip.statusLabel).toMatch(/can't read/i);
   });
 
   it("blocks unsupported types before send", async () => {
@@ -317,6 +339,7 @@ describe("AttachmentComposer — Ask Atlas & Workspace reference", () => {
             makeFile("a.png", "image/png"),
             makeFile("b.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             makeFile("c.pdf", "application/pdf"),
+            makeFile("d.zip", "application/zip"),
           ],
         },
       });
@@ -337,10 +360,12 @@ describe("AttachmentComposer — Ask Atlas & Workspace reference", () => {
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
     const payload = onSend.mock.calls[0]![0];
     expect(payload.text).toBe("Please review");
-    expect(payload.attachmentIds).toHaveLength(3);
+    expect(payload.attachmentIds).toHaveLength(4);
     expect(payload.capabilities).toEqual(
       expect.arrayContaining(["model_use", "storage_only"]),
     );
+    expect(payload.capabilities.filter((c: string) => c === "model_use")).toHaveLength(3);
+    expect(payload.capabilities.filter((c: string) => c === "storage_only")).toHaveLength(1);
   });
 
   it("renders support matrix on the reference surface", () => {

@@ -3193,6 +3193,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     name?: string;
     asText?: boolean;
     textContent?: string;
+    images?: Array<{ base64: string; mediaType: string; name?: string }>;
   };
   // Prefer attachmentIds (server-resolved). Legacy inline base64 remains for
   // transitional callers until fully retired.
@@ -3202,6 +3203,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       const { resolved } = await resolveAttachmentIdsForModel({
         userId,
         attachmentIds,
+        projectId: projectId > 0 ? projectId : null,
       });
       for (const r of resolved) {
         resolvedFromIds.push({
@@ -3210,6 +3212,7 @@ router.post("/chat", async (req, res): Promise<void> => {
           name: r.name,
           asText: r.asText,
           textContent: r.textContent,
+          images: r.images,
         });
       }
     } catch (err) {
@@ -5059,6 +5062,17 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   for (const att of allAttachments) {
     if (att.asText && att.textContent != null) {
       contentParts.push({ type: "text", text: `Attached file: ${att.name ?? "file"}\n\n${att.textContent}` });
+      for (const img of att.images ?? []) {
+        if (img.base64.length > MAX_USER_ATT_B64_SIZE) continue;
+        contentParts.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+            data: img.base64,
+          },
+        } as ImageBlock);
+      }
       continue;
     }
     if (!att.mediaType.startsWith("image/")) {
