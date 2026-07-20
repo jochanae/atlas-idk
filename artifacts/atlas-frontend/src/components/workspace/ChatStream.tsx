@@ -384,7 +384,7 @@ export function ChatStream(props: ChatStreamProps) {
     onWriteFile,
     commitCarryover,
     onBuildAnyway,
-    activityEvents,
+    activityEvents: activityEventsRaw,
     onSuggestionTap,
     onSuggestionPark,
     liveStep,
@@ -395,6 +395,16 @@ export function ChatStream(props: ChatStreamProps) {
     authorizeRun,
     floatingControlsEnabled = true,
   } = props;
+
+  // Attachment / turn lifecycle verbs belong to Changes → Timeline ONLY.
+  // The chat thread keeps only commit / decision / session receipts so they
+  // never leak into the "quiet updates" batch card.
+  const activityEvents = useMemo(
+    () => (activityEventsRaw ?? []).filter(
+      (ev) => ev.type === "commit" || ev.type === "decision" || ev.type === "session",
+    ),
+    [activityEventsRaw],
+  );
 
   // Suppress the streaming prose bubble when live build steps are actively
   // flowing — the WorkspaceRunCard owns that surface during a build.
@@ -587,7 +597,7 @@ export function ChatStream(props: ChatStreamProps) {
       events.push({
         role: "assistant",
         createdAt: ev.timestamp,
-        kind: ev.type,
+        kind: ev.type as "commit" | "decision" | "session",
         id: `${ev.type}-${ev.id ?? ev.sha ?? k}`,
         // Anchor index namespace kept disjoint from message indices.
         domIndex: 100_000 + k,
