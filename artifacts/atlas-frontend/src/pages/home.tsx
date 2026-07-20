@@ -5252,6 +5252,15 @@ export default function Home() {
             background: "transparent",
             maxWidth: askAtlasSurfaceVisible ? undefined : 680,
             margin: askAtlasSurfaceVisible ? 0 : undefined,
+            // When attachments are staged, cap the shell to available viewport
+            // so the internal region scrolls instead of pushing the action bar
+            // off-screen. No visual change when no attachments.
+            ...(hasAttachments && !askAtlasSurfaceVisible ? {
+              display: "flex",
+              flexDirection: "column" as const,
+              minHeight: 0,
+              maxHeight: "calc(100dvh - 64px - env(safe-area-inset-bottom, 0px) - 24px)",
+            } : {}),
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
@@ -5341,14 +5350,15 @@ export default function Home() {
               return (
             <>
             <div
-              style={{
-                maxHeight: "calc(100dvh - 220px)",
+              style={hasAttachments ? {
+                flex: "1 1 auto",
+                minHeight: 0,
                 overflowY: "auto",
                 overscrollBehavior: "contain",
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
-              }}
-              className="atlas-hide-scrollbar"
+              } : undefined}
+              className={hasAttachments ? "atlas-hide-scrollbar" : undefined}
             >
             {staged.files.length > 0 && (
               <div style={{ marginBottom: 8 }}>
@@ -5467,6 +5477,7 @@ export default function Home() {
             {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
             <div style={{
               display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative",
+              flexShrink: 0,
               opacity: (inputFocused || hasInput || hasAttachments || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? 1 : 0,
               pointerEvents: (inputFocused || hasInput || hasAttachments || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? "auto" : "none",
               transition: "opacity 200ms ease-in-out",
