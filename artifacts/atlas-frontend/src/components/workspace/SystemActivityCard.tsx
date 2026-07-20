@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ActivityItem } from "@/hooks/useWorkspaceActivity";
+
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
