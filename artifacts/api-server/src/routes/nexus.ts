@@ -2486,6 +2486,21 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         asText: att.asText,
         textContent: att.textContent,
       }));
+      logger.info(
+        {
+          userId,
+          requestedIds: attachmentIds.length,
+          resolvedCount: resolvedAttachmentIdPayloads.length,
+          skippedCount: skipped.length,
+          skippedReasons: skipped.map((s) => s.reason),
+          resolvedMediaTypes: resolvedAttachmentIdPayloads.map((a) => a.mediaType),
+          resolvedBytesApprox: resolvedAttachmentIdPayloads.reduce(
+            (n, a) => n + Math.floor((a.base64.length * 3) / 4),
+            0,
+          ),
+        },
+        "nexus: attachmentIds resolved for model injection",
+      );
     } catch (err) {
       logger.warn({ err, userId }, "nexus: failed to resolve attachmentIds");
       res.status(500).json({ error: "Failed to resolve attachments" });
@@ -5120,6 +5135,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     if (!visibleContent.trim()) {
       const hadTradeoff = !!tradeoff;
       const hadClarify = !!clarify;
+      const hadImageGen = imageGenTokens.length > 0;
       const hadMemoryChips = (aiMemoryChips?.length ?? 0) > 0;
       const hadRawContent = rawContent.trim().length > 0;
 
@@ -5127,6 +5143,8 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         ? "structured_blocks_only_tradeoff"
         : hadClarify
         ? "structured_blocks_only_clarify"
+        : hadImageGen
+        ? "structured_blocks_only_image_gen"
         : hadMemoryChips
         ? "memory_chips_only"
         : hadRawContent
@@ -5141,6 +5159,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
           failureReason,
           hadTradeoff,
           hadClarify,
+          hadImageGen,
           hadMemoryChips,
           rawContentLength: rawContent.length,
         },
@@ -5169,6 +5188,17 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         );
         writeStep({ verb: "Recovered", target: "response", detail: "Prose hook synthesized for clarify card", status: "ok" });
         // No return — continue to normal persist path.
+      } else if (hadImageGen) {
+        // ── Recovery: IMAGE_GEN-only turn ────────────────────────────────
+        // Model followed the "minimal prose before IMAGE_GEN" rule and left
+        // nothing after token strip. Keep a short anchor so done+image events
+        // still fire instead of empty_response aborting before runImageGen.
+        visibleContent = "Here's a visual:";
+        req.log.info(
+          { focusProjectId, intent, failureReason, imageGenCount: imageGenTokens.length },
+          "nexus: recovered empty response — synthesized prose hook for IMAGE_GEN",
+        );
+        writeStep({ verb: "Recovered", target: "response", detail: "Prose hook synthesized for IMAGE_GEN", status: "ok" });
       } else {
         // ── Failure: no recoverable structured output ─────────────────────
         // Log a durable failed execution record so this is queryable and not
@@ -6113,6 +6143,29 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     }
   }
 
+  // Preview whether Gemini output would survive finishStream scrubbing as a
+  // usable turn. Marker-only / fully-scrubbed Gemini output must NOT call
+  // finishStream (that sets streamDone and emits empty_response) — fall through
+  // to Claude instead. Tokens are buffered until we commit to Gemini.
+  const geminiOutputLooksUsable = (raw: string): boolean => {
+    if (!raw.trim()) return false;
+    if (/CLARIFY_START/i.test(raw) || /TRADEOFF_START/i.test(raw)) return true;
+    if (/^IMAGE_GEN:\s*\{/m.test(raw)) return true;
+    const stripped = raw
+      .replace(/\nPLAN_CONTINUATION_START[\s\S]*?PLAN_CONTINUATION_END(?:\n|$)/g, "\n")
+      .replace(/^IMAGE_GEN:\s*\{[^\n]+\}\s*$/gm, "")
+      .replace(/^DECISION_ARTIFACT:\s*\{[^\n]+\}\s*$/gm, "")
+      .replace(/^BROWSER_VISIT:\s*\{[^\n]+\}\s*$/gm, "")
+      .replace(/^CONV_STATE:\s*\{[^\n]+\}\s*$/gm, "")
+      .replace(/^THINKING_STABLE\s*$/gm, "")
+      .replace(/^PROJECT_READY:\s*\{[^\n]+\}\s*$/gm, "")
+      .replace(/^OPEN_PROJECT:\s*\{[^\n]+\}\s*$/gm, "")
+      .replace(/^\s*INTENT_TYPE:\s*\S+\s*$/gim, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    return stripped.length > 0;
+  };
+
   // Call the selected model
   if (activeModel === "gemini") {
     let rawContent = "";
@@ -6130,8 +6183,11 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     writeStep({ verb: geminiAtlasVerb, target: geminiAtlasTarget });
     modelStartedAt = performance.now();
     const geminiParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-      { text: combinedText },
+      { text: combinedText || (allAttachments.length > 0
+        ? "The user attached file(s). Analyze the attachment(s)."
+        : "Hello") },
     ];
+    let geminiInlineCount = 0;
     for (const att of allAttachments) {
       if (att.asText && att.textContent != null) {
         geminiParts.push({
@@ -6141,8 +6197,19 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
         geminiParts.push({
           inlineData: { mimeType: att.mediaType, data: att.base64 },
         });
+        geminiInlineCount += 1;
       }
     }
+    logger.info(
+      {
+        focusProjectId,
+        conversationId: effectiveConversationId,
+        attachmentCount: allAttachments.length,
+        geminiInlineCount,
+        geminiPartCount: geminiParts.length,
+      },
+      "nexus: invoking Gemini",
+    );
     const geminiContents = allAttachments.length > 0
       ? [{ role: "user" as const, parts: geminiParts }]
       : combinedText;
@@ -6153,13 +6220,12 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
         config: { systemInstruction: systemPrompt },
       });
       let usageMetadata: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } | undefined;
+      // Buffer tokens — only flush to the client if we commit to Gemini finish.
+      // Premature streaming blocks Claude fallthrough after marker-only/empty output.
       for await (const chunk of stream) {
         const text = chunk.text;
         if (text) {
           rawContent += text;
-          if (!res.writableEnded && !res.destroyed) {
-            res.write(`event: token\ndata: ${JSON.stringify(text)}\n\n`);
-          }
         }
         if ((chunk as any).usageMetadata) usageMetadata = (chunk as any).usageMetadata;
       }
@@ -6177,20 +6243,30 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
         { err: geminiErr, focusProjectId, conversationId: effectiveConversationId, attachmentCount: allAttachments.length },
         "Gemini stream failed in nexus — falling back to Claude",
       );
+      rawContent = "";
     }
 
-    if (rawContent.trim()) {
+    if (geminiOutputLooksUsable(rawContent)) {
+      if (!res.writableEnded && !res.destroyed && rawContent) {
+        res.write(`event: token\ndata: ${JSON.stringify(rawContent)}\n\n`);
+      }
       await finishStream(rawContent);
       return;
     }
 
     logger.warn(
-      { focusProjectId, conversationId: effectiveConversationId, attachmentCount: allAttachments.length },
-      "Gemini stream produced empty content — falling back to Claude",
+      {
+        focusProjectId,
+        conversationId: effectiveConversationId,
+        attachmentCount: allAttachments.length,
+        geminiRawLength: rawContent.length,
+        geminiPreview: rawContent.slice(0, 200),
+      },
+      "Gemini stream produced empty/unusable content — falling back to Claude",
     );
     // Fall through to the Claude path below. This prevents Workspace/Look image
-    // turns from completing with an empty `done` event and surfacing as
-    // “No response was generated” when Gemini returns no text.
+    // turns from completing with an empty `done` / empty_response when Gemini
+    // returns no prose (or marker-only output that finishStream would scrub).
   }
 
   // Build user content — plain text or vision block when an image is attached
@@ -6237,13 +6313,23 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     (s) =>
       s.reason === "processing_unsupported" ||
       s.reason === "processing_failed" ||
-      s.reason === "processing_not_ready",
+      s.reason === "processing_not_ready" ||
+      s.reason === "download_failed" ||
+      s.reason === "not_found_or_forbidden" ||
+      s.reason === "not_uploaded" ||
+      s.reason === "expired",
   );
   if (storageOnlySkips.length > 0) {
     const lines = storageOnlySkips.map((s) => {
       const name = s.filename || s.attachmentId;
       const mime = s.mimeType ? ` (${s.mimeType})` : "";
-      return `- ${name}${mime}: stored with the message, but Atlas cannot read this file type yet`;
+      const detail =
+        s.reason === "download_failed"
+          ? "uploaded but could not be loaded from storage for this turn"
+          : s.reason === "not_found_or_forbidden" || s.reason === "not_uploaded" || s.reason === "expired"
+            ? `unavailable (${s.reason})`
+            : "stored with the message, but Atlas cannot read this file type yet";
+      return `- ${name}${mime}: ${detail}`;
     });
     contentParts.push({
       type: "text",
@@ -6345,6 +6431,28 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     ...conversationHistory,
     { role: "user", content: userContent },
   ];
+
+  const contentPartSummary = Array.isArray(userContent)
+    ? userContent.map((p) => (typeof p === "object" && p && "type" in p ? String((p as { type: string }).type) : "unknown"))
+    : ["string"];
+  logger.info(
+    {
+      focusProjectId,
+      conversationId: effectiveConversationId,
+      activeModel,
+      surfaceContext,
+      intent,
+      attachmentIds: attachmentIds.length,
+      allAttachments: allAttachments.length,
+      skippedAttachments: skippedAttachmentIdPayloads.length,
+      contentPartTypes: contentPartSummary,
+      contentPartsCount: Array.isArray(userContent) ? userContent.length : 1,
+      messageLength: message.length,
+      vaultImages: vault.imageBlocks.length,
+      allowToolAccess,
+    },
+    "nexus: invoking Claude with assembled user content",
+  );
 
   modelStartedAt = performance.now();
   const claudeAtlasVerb = mode === "audit" ? "Auditing"
@@ -6911,13 +7019,29 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
       return;
     }
 
-    const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-6",
-      max_tokens: 8192,
-      system: systemPrompt,
-      messages: messagesForClaude,
-      ...(options.tools ? { tools: focusProjectId ? NEXUS_WORKSPACE_TOOLS : NEXUS_AGENT_TOOLS } : {}),
-    });
+    let stream: ReturnType<typeof anthropic.messages.stream>;
+    try {
+      stream = anthropic.messages.stream({
+        model: "claude-sonnet-4-6",
+        max_tokens: 8192,
+        system: systemPrompt,
+        messages: messagesForClaude,
+        ...(options.tools ? { tools: focusProjectId ? NEXUS_WORKSPACE_TOOLS : NEXUS_AGENT_TOOLS } : {}),
+      });
+    } catch (err) {
+      // Sync validation failures (e.g. invalid image media_type) throw before
+      // any event listeners can attach — without this, the SSE hang becomes an
+      // empty client bubble after timeout.
+      req.log.error(
+        { err, focusProjectId, conversationId: effectiveConversationId, attachmentCount: allAttachments.length },
+        "nexus: anthropic.messages.stream threw before start",
+      );
+      await failStream(
+        err instanceof Error ? err.message : "Atlas ran into an issue starting the model.",
+        "failed",
+      );
+      return;
+    }
 
     stream.on("text", (text) => {
       fullText += text;
@@ -6927,8 +7051,32 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     stream.on("error", (err) => {
       const cancelled = /\b(abort|cancel|cancelled|canceled)\b/i.test(err.message);
       writeStep({ verb: "Stream", target: "Claude", status: cancelled ? "warn" : "fail" });
+      req.log.warn(
+        {
+          err: err.message,
+          focusProjectId,
+          conversationId: effectiveConversationId,
+          attachmentCount: allAttachments.length,
+          cancelled,
+        },
+        "nexus: Claude stream error",
+      );
       void failStream(err.message || "Atlas ran into an issue.", cancelled ? "cancelled" : "failed");
     });
+
+    // Some SDK failures reject the stream promise without a clean finalMessage.
+    // failStream is idempotent via streamDone — safe alongside the error event.
+    void Promise.resolve(stream as unknown as PromiseLike<unknown>).then(
+      undefined,
+      (err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Atlas ran into an issue.";
+        req.log.warn(
+          { err: msg, focusProjectId, conversationId: effectiveConversationId },
+          "nexus: Claude stream promise rejected",
+        );
+        void failStream(msg, "failed");
+      },
+    );
 
     stream.on("finalMessage", async (finalMessage) => {
       try {

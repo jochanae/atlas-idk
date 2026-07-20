@@ -4845,6 +4845,10 @@ export default function Workspace() {
     focusProjectId: id || null,
     conversationId: nexusConversationId || null,
     conversationMode,
+    // Wire the Workspace model picker / Look lens. Without this, Look showed
+    // "Gemini" in the UI while /api/nexus/chat always received model:"claude",
+    // so the Gemini→Claude empty-response fallback never ran for image turns.
+    model: wsModel === "gemini" ? "gemini" : "claude",
     mode: "workspace",
   });
   // ── CANONICAL NEXUS BRIDGE ───────────────────────────────────────────────────

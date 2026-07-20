@@ -26,6 +26,7 @@ import { logger } from "../lib/logger";
 import {
   classifyAttachment,
   libraryKindForAttachment,
+  normalizeModelMediaType,
 } from "../lib/attachmentClassify";
 import {
   ATTACHMENT_MAX_BYTES,
@@ -227,6 +228,9 @@ router.post("/attachments/:id/finalize", async (req, res): Promise<void> => {
       row.mimeType,
       row.filename,
     );
+    // Persist provider-safe MIME (e.g. image/jpg → image/jpeg) so resolve/model
+    // injection never forwards a browser alias Anthropic/Gemini reject.
+    const normalizedMime = normalizeModelMediaType(row.mimeType, row.filename);
     const expiresAt = new Date(
       Date.now() + ATTACHMENT_PENDING_TTL_DAYS * 24 * 60 * 60 * 1000,
     );
@@ -236,6 +240,7 @@ router.post("/attachments/:id/finalize", async (req, res): Promise<void> => {
       .set({
         kind,
         processingStatus,
+        mimeType: normalizedMime,
         uploadStatus: "uploaded",
         availabilityStatus: "active",
         expiresAt,
