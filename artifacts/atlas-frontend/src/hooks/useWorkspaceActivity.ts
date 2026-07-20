@@ -31,10 +31,10 @@ export type ActivityItem = {
 export type Importance = "important" | "quiet";
 
 export function classifyActivity(item: ActivityItem): Importance {
-  // Commits and decisions are first-class receipts — render as full cards.
-  // Only sessions (opens, background pings) stay quiet/batched.
-  if (item.type === "session") return "quiet";
-  return "important";
+  // Commits and decisions are first-class receipts.
+  // Attachment/turn verbs are quiet by default — they batch into the transparency rail.
+  if (item.type === "commit" || item.type === "decision") return "important";
+  return "quiet";
 }
 
 const POLL_MS = 30_000;
