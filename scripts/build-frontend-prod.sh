@@ -55,3 +55,14 @@ if [ -n "$PNPM_STORE" ] && [ -d "$PNPM_STORE" ]; then
 else
   echo "[build-frontend] pnpm store not found, skipping."
 fi
+
+echo "[build-frontend] Removing git history (not needed at runtime)..."
+# .git is ~1 GB and grows with every checkpoint. The running server
+# (node artifacts/api-server/dist/index.mjs) and static frontend
+# have no dependency on version history at runtime.
+rm -rf .git
+
+echo "[build-frontend] Removing agent workspace files (not needed at runtime)..."
+# .local contains agent skills (~1.3 GB of markdown/scripts) used only
+# during development. They are not referenced by the production server.
+rm -rf .local
