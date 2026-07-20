@@ -384,7 +384,7 @@ export function ChatStream(props: ChatStreamProps) {
     onWriteFile,
     commitCarryover,
     onBuildAnyway,
-    activityEvents,
+    activityEvents: activityEventsRaw,
     onSuggestionTap,
     onSuggestionPark,
     liveStep,
