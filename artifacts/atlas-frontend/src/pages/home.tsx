@@ -1871,7 +1871,9 @@ export default function Home() {
   const [createError, setCreateError] = useState<string | null>(null);
   const backendReady = true;
   // Staged attachment controller — shared between the ambient home composer and AskAtlasSurface.
-  const staged = useStagedAttachments();
+  const staged = useStagedAttachments({
+    diagnosticContext: { surface: "ask-atlas" },
+  });
   // Seed from saved draft on first mount (Android Documents hard-reload hydration).
   // The main mount-time hydration effect below handles the async case.
   useEffect(() => {
@@ -1898,10 +1900,22 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Persist draft on membership / input only — NOT on uploadProgress ticks.
+  // Writing every File.arrayBuffer() into IndexedDB on each XHR progress event
+  // was crashing multi-file attaches (white screen → reload) on mobile.
+  const stagedMembershipKey = staged.files
+    .filter((sf) => sf.status !== "blocked")
+    .map((sf) => `${sf.id}:${sf.file.name}:${sf.file.size}:${sf.file.lastModified}`)
+    .join("|");
   useEffect(() => {
-    setAskAtlasComposerDraft({ input, files: staged.files.map(sf => sf.file) });
+    setAskAtlasComposerDraft({
+      input,
+      files: staged.files
+        .filter((sf) => sf.status !== "blocked")
+        .map((sf) => sf.file),
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, staged.files]);
+  }, [input, stagedMembershipKey]);
   const [showVault, setShowVault] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
