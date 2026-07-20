@@ -465,3 +465,68 @@ describe("Fixture F — mixed monorepo (web + API + Expo)", () => {
     expect(hasExpoWarning).toBe(true);
   });
 });
+
+// ── Scan truncation warning ───────────────────────────────────────────────────
+
+describe("scan truncation warning", () => {
+  it("emits a truncation warning when input.scanTruncated is true", () => {
+    const input: import("../types.js").RepositoryClassificationInput = {
+      sourceMode: "local-complete",
+      scanTruncated: true,
+      files: [
+        {
+          path: "package.json",
+          content: JSON.stringify({
+            name: "truncated-app",
+            scripts: { dev: "vite" },
+            devDependencies: { vite: "^6.0.0" },
+          }),
+        },
+        { path: "index.html", content: "<!DOCTYPE html><html><body><div id=root></div></body></html>" },
+      ],
+    };
+    const report = classifyRepository(input);
+    expect(report.warnings.some((w) => w.toLowerCase().includes("truncat"))).toBe(true);
+  });
+
+  it("does NOT emit a truncation warning when input.scanTruncated is absent", () => {
+    const input: import("../types.js").RepositoryClassificationInput = {
+      sourceMode: "local-complete",
+      files: [
+        {
+          path: "package.json",
+          content: JSON.stringify({
+            name: "normal-app",
+            scripts: { dev: "vite" },
+            devDependencies: { vite: "^6.0.0" },
+          }),
+        },
+      ],
+    };
+    const report = classifyRepository(input);
+    expect(report.warnings.some((w) => w.toLowerCase().includes("truncat"))).toBe(false);
+  });
+
+  it("truncation warning does not suppress other analysis — targets are still built", () => {
+    const input: import("../types.js").RepositoryClassificationInput = {
+      sourceMode: "local-complete",
+      scanTruncated: true,
+      files: [
+        {
+          path: "package.json",
+          content: JSON.stringify({
+            name: "truncated-app",
+            scripts: { dev: "vite" },
+            devDependencies: { vite: "^6.0.0" },
+          }),
+        },
+        { path: "index.html", content: "<!DOCTYPE html><html><body><div id=root></div></body></html>" },
+        { path: "vite.config.ts", content: "import { defineConfig } from 'vite'; export default defineConfig({});" },
+        { path: "src/main.ts", content: "console.log('hello');" },
+      ],
+    };
+    const report = classifyRepository(input);
+    expect(report.targets.length).toBeGreaterThan(0);
+    expect(report.warnings.some((w) => w.toLowerCase().includes("truncat"))).toBe(true);
+  });
+});

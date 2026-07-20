@@ -46,3 +46,22 @@ description: Pure static classifier lib that analyzes a repo's file tree and ret
 - `readdir(dir, { withFileTypes: true })` returns `Dirent<NonSharedBuffer>[]` without encoding spec
 - Must use `{ withFileTypes: true, encoding: "utf-8" }` to get `Dirent<string>[]` with `.name` as string
 - Also use `raw.indexOf(0) !== -1` not `raw.includes(0)` for null-byte binary detection
+
+## walkDir: files before subdirectories (critical ordering)
+
+- walkDir MUST process all files at a given level before recursing into any subdirectory
+- If directories are processed in readdir order (alphabetical), a `generated/` dir can exhaust the file cap before root `package.json` is read, leaving workspace.packages empty and crashing classifyRepository
+- Fix: collect subdirs in a separate array during the file pass, then recurse after all files at the current level are counted
+
+## scanTruncated propagation
+
+- `loadFromWorkspace` sets `scanTruncated: true` when `totals.count >= limits.maxFiles || totals.bytes >= limits.maxTotalBytes` after the walk
+- `loadFromGitHub` sets it when GitHub returns more blobs than `limits.maxFiles`
+- `classifyRepository` pushes a warning into `report.warnings` when `input.scanTruncated === true`
+- The classifier still builds all targets normally — truncation is advisory, not fatal
+
+## lib rebuild requirement
+
+- `lib/repo-classifier` is a composite lib compiled to `dist/`; api-server imports the compiled JS
+- Any change to lib types or logic requires `pnpm run typecheck:libs` before restarting the server
+- Without the rebuild, the server runs stale compiled code and new behaviour never takes effect

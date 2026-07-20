@@ -213,6 +213,13 @@ export function classifyRepository(
   // ── Build targets ─────────────────────────────────────────────────────────
   const targets: RunnableTarget[] = [];
   const warnings: string[] = [];
+
+  // Warn if the source adapter reported scan truncation
+  if (input.scanTruncated) {
+    warnings.push(
+      "Repository scan was truncated at the file limit — analysis may be incomplete for large repositories",
+    );
+  }
   const rootInstallCommand = detectInstallCommand(
     workspace.packages.find((p) => p.isRoot) ?? workspace.packages[0]!,
   );

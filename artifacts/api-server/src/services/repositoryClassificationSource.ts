@@ -78,10 +78,13 @@ async function walkDir(
     return;
   }
 
+  // Process files before subdirectories so critical root-level manifests
+  // (package.json, pnpm-workspace.yaml, etc.) are always captured even when
+  // the scan is truncated by a large generated/ or dist-like directory.
+  const subdirs: string[] = [];
+
   for (const entry of entries) {
-    if (totals.count >= limits.maxFiles || totals.bytes >= limits.maxTotalBytes) break;
     const name = String(entry.name);
-    // Skip hidden directories and common noise dirs
     if (entry.isDirectory()) {
       if (
         name.startsWith(".") ||
@@ -94,14 +97,14 @@ async function walkDir(
         name === "build" ||
         name === "coverage"
       ) continue;
-      await walkDir(path.join(dir, name), root, files, limits, totals);
+      subdirs.push(name);
     } else if (entry.isFile()) {
+      if (totals.count >= limits.maxFiles || totals.bytes >= limits.maxTotalBytes) break;
       const fullPath = path.join(dir, name);
       const relPath = path.relative(root, fullPath).replace(/\\/g, "/");
       let info: { size: number } | null = null;
       try { info = await stat(fullPath); } catch { continue; }
       if (info.size > limits.maxFileBytes) {
-        // Include path but omit content for oversized files
         files.push({ path: relPath });
         totals.count++;
         continue;
@@ -117,6 +120,12 @@ async function walkDir(
       files.push({ path: relPath, content });
       totals.count++;
     }
+  }
+
+  // Recurse into subdirectories after all files at this level are collected
+  for (const name of subdirs) {
+    if (totals.count >= limits.maxFiles || totals.bytes >= limits.maxTotalBytes) break;
+    await walkDir(path.join(dir, name), root, files, limits, totals);
   }
 }
 
@@ -141,10 +150,14 @@ export async function loadFromWorkspace(
     await walkDir(workspaceDir, workspaceDir, files, limits, totals);
   }
 
+  const scanTruncated =
+    totals.count >= limits.maxFiles || totals.bytes >= limits.maxTotalBytes;
+
   return {
     repositoryRoot: workspaceDir,
     files,
     sourceMode: "local-complete",
+    ...(scanTruncated ? { scanTruncated: true } : {}),
   };
 }
 
@@ -188,10 +201,10 @@ export async function loadFromGitHub(
     if (resp.status === 409) break; // empty repo
   }
 
-  // Collect all blob paths
-  const blobs = tree
-    .filter((item) => item.type === "blob" && !!item.path)
-    .slice(0, limits.maxFiles);
+  // Collect all blob paths; record whether we hit the file cap
+  const allBlobs = tree.filter((item) => item.type === "blob" && !!item.path);
+  const ghTruncated = allBlobs.length > limits.maxFiles;
+  const blobs = allBlobs.slice(0, limits.maxFiles);
 
   // Separate files to fetch content for vs path-only entries
   const toFetch = blobs.filter(
@@ -227,9 +240,12 @@ export async function loadFromGitHub(
     );
   }
 
+  const scanTruncated = ghTruncated;
+
   return {
     files,
     sourceMode: "github-partial",
+    ...(scanTruncated ? { scanTruncated: true } : {}),
   };
 }
 

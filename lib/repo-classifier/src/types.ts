@@ -24,6 +24,12 @@ export type RepositoryClassificationInput = {
    *                   Report confidence cannot exceed "medium" in this mode.
    */
   sourceMode: "local-complete" | "github-partial";
+  /**
+   * Set to true by the source adapter when the file scan was cut short by
+   * maxFiles or maxTotalBytes limits. The classifier emits a report-level warning
+   * when this is true so callers know the analysis may be incomplete.
+   */
+  scanTruncated?: boolean;
   metadata?: {
     /**
      * Optional commit activity per package directory (relative path from repo root).
