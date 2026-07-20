@@ -257,7 +257,17 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                 const ack = JSON.parse(evtData) as { id: string; clientAttachmentId: string | null; status: string; errorCode?: string };
                 callbacks.onAttachmentAck?.(ack);
               } else if (evtName === "error") {
-                const errMsg = JSON.parse(evtData) as string;
+                const parsed = JSON.parse(evtData) as unknown;
+                const errMsg = typeof parsed === "string"
+                  ? parsed
+                  : parsed && typeof parsed === "object"
+                    ? String(
+                        (parsed as { message?: unknown; error?: unknown; detail?: unknown }).message
+                          ?? (parsed as { message?: unknown; error?: unknown; detail?: unknown }).error
+                          ?? (parsed as { message?: unknown; error?: unknown; detail?: unknown }).detail
+                          ?? "Something went wrong.",
+                      )
+                    : "Something went wrong.";
                 callbacks.onError?.(errMsg || "Something went wrong.");
               }
             } catch {
