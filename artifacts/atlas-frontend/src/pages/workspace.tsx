@@ -7676,6 +7676,23 @@ export default function Workspace() {
     setPushHistory((prev) => prev.map((r) => r.id === record.id ? { ...r, rolledBack: true } : r));
   }, [linkedRepo, githubPushToken]);
 
+  // Listen for rollback requests dispatched from inline GitHub commit cards
+  // (SystemActivityCard) so the receipt-level rollback arrow reuses the same
+  // handler as the Changes tab.
+  useEffect(() => {
+    const onRollback = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ commitSha?: string; commitUrl?: string }>).detail ?? {};
+      const sha = detail.commitSha;
+      const url = detail.commitUrl;
+      const record = pushHistory.find((r) =>
+        (sha && r.commitUrl?.includes(sha)) || (url && r.commitUrl === url)
+      );
+      if (record) void handleRollbackPush(record);
+    };
+    window.addEventListener("axiom:rollback-commit", onRollback as EventListener);
+    return () => window.removeEventListener("axiom:rollback-commit", onRollback as EventListener);
+  }, [pushHistory, handleRollbackPush]);
+
   const handleVoiceTranscript = useCallback((text: string) => {
     setInput((prev) => (prev ? `${prev} ${text}` : text));
     setTimeout(() => autoResize(), 0);

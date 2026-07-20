@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ActivityItem } from "@/hooks/useWorkspaceActivity";
+
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -129,12 +130,23 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
   return (
     <div
       style={{
+        // Continue the assistant-message timeline rail visually so the card
+        // reads as an in-stream event, not a floating island.
+        alignSelf: "stretch",
+        width: "100%",
+        paddingLeft: 14,
+        borderLeft: "1.5px solid rgba(201,162,76,0.13)",
+        boxSizing: "border-box",
+      }}
+    >
+    <div
+      style={{
         display: "flex", flexDirection: "column",
         // Narrower card + horizontal inset so it sits as an object on the page
         // rather than edge-to-edge.
         width: "min(calc(100% - 24px), 380px)",
         alignSelf: "flex-start",
-        margin: "20px 12px 24px",
+        margin: "20px 12px 8px",
         background: "hsl(var(--card))",
         border,
         boxShadow: shadow,
@@ -209,8 +221,177 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
         </button>
       </div>
     </div>
+    {/* Overflow actions rail — matches the assistant message affordance below
+        each Atlas response: rollback arrow + more menu (Copy link, Preview). */}
+    <CommitCardActions
+      commitUrl={commitUrl}
+      commitSha={commitSha}
+      canOpenDetails={canOpenDetails}
+      onPreview={openDetails}
+    />
+    </div>
   );
 }
+
+function CommitCardActions({
+  commitUrl,
+  commitSha,
+  canOpenDetails,
+  onPreview,
+}: {
+  commitUrl?: string;
+  commitSha?: string;
+  canOpenDetails: boolean;
+  onPreview: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen]);
+
+  const rollback = () => {
+    if (!commitSha) return;
+    window.dispatchEvent(new CustomEvent("axiom:rollback-commit", {
+      detail: { commitSha, commitUrl },
+    }));
+  };
+
+  const copyLink = async () => {
+    if (!commitUrl) return;
+    try {
+      await navigator.clipboard.writeText(commitUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch { /* noop */ }
+    setMenuOpen(false);
+  };
+
+  const btnStyle: React.CSSProperties = {
+    width: 26, height: 26, borderRadius: 6,
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    background: "transparent", border: "none", padding: 0,
+    color: "hsl(var(--muted-foreground))", cursor: "pointer",
+    opacity: 0.7,
+  };
+
+  return (
+    <div
+      ref={wrapRef}
+      style={{
+        display: "flex", alignItems: "center", gap: 4,
+        margin: "0 12px 20px",
+        paddingLeft: 8,
+        position: "relative",
+      }}
+    >
+      <button
+        type="button"
+        onClick={rollback}
+        disabled={!commitSha}
+        title={commitSha ? "Roll back to this commit" : "No commit reference"}
+        aria-label="Roll back to this commit"
+        style={{ ...btnStyle, opacity: commitSha ? 0.7 : 0.3, cursor: commitSha ? "pointer" : "not-allowed" }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 14 4 9 9 4" />
+          <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        title="More actions"
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        style={btnStyle}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="1.6" />
+          <circle cx="12" cy="12" r="1.6" />
+          <circle cx="19" cy="12" r="1.6" />
+        </svg>
+      </button>
+      {copied && (
+        <span style={{
+          fontSize: 10, fontFamily: "var(--app-font-mono)",
+          color: "var(--atlas-gold, rgba(201,162,76,0.9))", opacity: 0.85,
+        }}>
+          link copied
+        </span>
+      )}
+      {menuOpen && (
+        <div
+          role="menu"
+          style={{
+            position: "absolute",
+            top: 30, left: 30,
+            minWidth: 180,
+            background: "hsl(var(--popover, var(--card)))",
+            border: "1px solid hsl(var(--border))",
+            borderRadius: 10,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+            padding: 4,
+            zIndex: 40,
+          }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={copyLink}
+            disabled={!commitUrl}
+            style={menuItemStyle(!!commitUrl)}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            Copy message link
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setMenuOpen(false); onPreview(); }}
+            disabled={!canOpenDetails}
+            style={menuItemStyle(canOpenDetails)}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14" />
+              <path d="M13 5l7 7-7 7" />
+            </svg>
+            Preview
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function menuItemStyle(enabled: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    display: "flex", alignItems: "center", gap: 8,
+    padding: "8px 10px",
+    background: "transparent",
+    border: "none",
+    borderRadius: 6,
+    fontSize: 12,
+    fontFamily: "inherit",
+    color: enabled ? "hsl(var(--card-foreground))" : "hsl(var(--muted-foreground))",
+    cursor: enabled ? "pointer" : "not-allowed",
+    textAlign: "left",
+  };
+}
+
 
 
 /** Single inline system event. Commit → full card, other → inline receipt. */
