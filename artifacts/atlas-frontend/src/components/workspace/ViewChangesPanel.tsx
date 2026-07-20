@@ -737,6 +737,12 @@ function StepIcon({ verb }: { verb: string }) {
   if (verb === "MILESTONE_DESIGN")       return <Dna        {...p} />;
   if (verb === "MILESTONE_PLAN")         return <ListChecks {...p} />;
   if (verb === "ARTIFACT_GENERATED")     return <FileOutput {...p} />;
+  if (verb === "ATTACHMENT_RECEIVED")    return <Paperclip  {...p} />;
+  if (verb === "IMAGE_ANALYZED")         return <ImageIcon  {...p} />;
+  if (verb === "DOCUMENT_ANALYZED")      return <FileText   {...p} />;
+  if (verb === "ATTACHMENT_UNSUPPORTED") return <AlertTriangle {...p} />;
+  if (verb === "ATLAS_THINKING")         return <Lightbulb  {...p} />;
+  if (verb === "RESPONSE_GENERATED")     return <MessageSquare {...p} />;
   return null;
 }
 
