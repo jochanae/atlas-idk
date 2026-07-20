@@ -42,53 +42,6 @@ export function useSmartAutoScroll(
     return () => el.removeEventListener("scroll", onScroll);
   }, [ref, enabled, threshold]);
 
-  // Mount-priming: when the surface (re)mounts, hold the reader at the
-  // bottom until content stops growing (images, streamed markdown, late
-  // hydration). Runs for ~1.2s from mount, then releases. This is what
-  // makes "return to Ask Atlas / Workspace and see the latest message"
-  // actually feel like return-to-bottom on mobile.
-  useEffect(() => {
-    if (!enabled) return;
-    const started = performance.now();
-    let lastHeight = -1;
-    let stableSince = 0;
-    let cancelled = false;
-    const scrollToEnd = () => {
-      const node = ref.current;
-      if (!node) return;
-      node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
-    };
-    const tick = () => {
-      if (cancelled) return;
-      const node = ref.current;
-      if (!node) {
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-      const h = node.scrollHeight;
-      if (h !== lastHeight) {
-        lastHeight = h;
-        stableSince = performance.now();
-      }
-      scrollToEnd();
-      const elapsed = performance.now() - started;
-      const stable = performance.now() - stableSince;
-      // Release once content has been stable for 250ms, or after 1.2s hard cap.
-      if (elapsed > 1200 || (elapsed > 200 && stable > 250)) {
-        primedRef.current = true;
-        stickRef.current = true;
-        return;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    let raf = requestAnimationFrame(tick);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
-
   // Auto-scroll on dep change if stuck to bottom.
   // First time the container reports real content, force-jump to bottom
   // (instant) so a returning reader sees the tail of the conversation
