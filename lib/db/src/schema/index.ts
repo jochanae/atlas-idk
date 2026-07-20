@@ -40,3 +40,4 @@ export * from "./project_sources";
 export * from "./deliveries";
 export * from "./library_items";
 export * from "./message_attachments";
+export * from "./workspace_activity";

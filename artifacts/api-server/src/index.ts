@@ -1516,6 +1516,39 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: message_attachments nexus_message_id FK failed — non-fatal");
   }
+
+  // Workspace timeline verbs (attachment + turn lifecycle) for GET /api/nexus/activity
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS workspace_activity (
+        id serial PRIMARY KEY,
+        user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        type text NOT NULL,
+        title text NOT NULL,
+        subtitle text,
+        attachment_name text,
+        reason text,
+        idempotency_key text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS workspace_activity_idempotency_uq
+        ON workspace_activity (idempotency_key)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS workspace_activity_project_created_idx
+        ON workspace_activity (project_id, created_at)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS workspace_activity_user_created_idx
+        ON workspace_activity (user_id, created_at)
+    `);
+    logger.info("ensureColumns: workspace_activity table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: workspace_activity failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

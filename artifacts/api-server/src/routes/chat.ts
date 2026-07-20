@@ -45,6 +45,12 @@ import {
   type ContractRunCtx,
 } from "../lib/chatContractBridge";
 import { resolveAttachmentIdsForModel } from "../lib/attachmentResolve";
+import {
+  documentAnalyzedSubtitle,
+  emitWorkspaceActivity,
+  responseGeneratedSubtitle,
+  unsupportedAttachmentReason,
+} from "../lib/workspaceActivity";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3193,16 +3199,24 @@ router.post("/chat", async (req, res): Promise<void> => {
     name?: string;
     asText?: boolean;
     textContent?: string;
+    attachmentId?: string;
   };
   // Prefer attachmentIds (server-resolved). Legacy inline base64 remains for
   // transitional callers until fully retired.
   const resolvedFromIds: ModelAttachment[] = [];
+  let skippedAttachmentIdPayloads: Array<{
+    attachmentId: string;
+    reason: string;
+    filename?: string;
+    mimeType?: string;
+  }> = [];
   if (attachmentIds.length > 0 && userId) {
     try {
-      const { resolved } = await resolveAttachmentIdsForModel({
+      const { resolved, skipped } = await resolveAttachmentIdsForModel({
         userId,
         attachmentIds,
       });
+      skippedAttachmentIdPayloads = skipped;
       for (const r of resolved) {
         resolvedFromIds.push({
           base64: r.base64,
@@ -3210,6 +3224,7 @@ router.post("/chat", async (req, res): Promise<void> => {
           name: r.name,
           asText: r.asText,
           textContent: r.textContent,
+          attachmentId: r.attachmentId,
         });
       }
     } catch (err) {
@@ -3227,6 +3242,9 @@ router.post("/chat", async (req, res): Promise<void> => {
     ...(legacyBase64 && legacyMimeType ? [{ base64: legacyBase64, mediaType: legacyMimeType }] : []),
   ];
   let savedUserMessageId: number | null = null;
+  const chatTurnActivityKeyRef = {
+    key: `chat-turn-${projectId || 0}-${Date.now()}`,
+  };
 
   // ── V1.2 Contract bridge — CHAT run lifecycle ────────────────────────────────
   // Best-effort: errors are caught inside beginContractRun and never propagate.
@@ -5075,6 +5093,66 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     } as ImageBlock);
   }
 
+  // Timeline verbs for this turn's attachments (idempotent via stable keys).
+  if (userId) {
+    const turnKey = savedUserMessageId != null
+      ? `chat-msg-${savedUserMessageId}`
+      : chatTurnActivityKeyRef.key;
+    chatTurnActivityKeyRef.key = turnKey;
+    const activityProjectId = projectId > 0 ? projectId : null;
+
+    for (const skipped of skippedAttachmentIdPayloads) {
+      const name = skipped.filename ?? "file";
+      const reason = unsupportedAttachmentReason(name, skipped.mimeType, skipped.reason);
+      void emitWorkspaceActivity({
+        userId,
+        projectId: activityProjectId,
+        type: "attachment_unsupported",
+        title: `Skipped ${name}`,
+        subtitle: reason,
+        attachmentName: name,
+        reason,
+        idempotencyKey: `attachment_unsupported:${skipped.attachmentId}`,
+      });
+    }
+
+    for (let i = 0; i < allAttachments.length; i++) {
+      const att = allAttachments[i]!;
+      const name = att.name ?? "file";
+      const idPart = att.attachmentId ?? `inline-${turnKey}-${i}`;
+      if (att.asText && att.textContent != null) {
+        void emitWorkspaceActivity({
+          userId,
+          projectId: activityProjectId,
+          type: "document_analyzed",
+          title: `Read ${name}`,
+          subtitle: documentAnalyzedSubtitle(att.textContent),
+          attachmentName: name,
+          idempotencyKey: `document_analyzed:${turnKey}:${idPart}`,
+        });
+      } else if (att.mediaType.startsWith("image/")) {
+        void emitWorkspaceActivity({
+          userId,
+          projectId: activityProjectId,
+          type: "image_analyzed",
+          title: `Analyzed ${name}`,
+          attachmentName: name,
+          idempotencyKey: `image_analyzed:${turnKey}:${idPart}`,
+        });
+      } else if (att.mediaType === "application/pdf") {
+        void emitWorkspaceActivity({
+          userId,
+          projectId: activityProjectId,
+          type: "document_analyzed",
+          title: `Read ${name}`,
+          subtitle: "PDF",
+          attachmentName: name,
+          idempotencyKey: `document_analyzed:${turnKey}:${idPart}`,
+        });
+      }
+    }
+  }
+
   // 3. User text (with optional build-verify result appended)
   contentParts.push({ type: "text", text: message + buildVerifyAppend });
 
@@ -5326,6 +5404,18 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   }
 
   writeStep(res, { verb: "Analyzing", target: "your request", phase: "analyze" });
+  if (userId) {
+    if (savedUserMessageId != null) {
+      chatTurnActivityKeyRef.key = `chat-msg-${savedUserMessageId}`;
+    }
+    void emitWorkspaceActivity({
+      userId,
+      projectId: projectId > 0 ? projectId : null,
+      type: "atlas_thinking",
+      title: "Thinking…",
+      idempotencyKey: `atlas_thinking:${chatTurnActivityKeyRef.key}`,
+    });
+  }
   let modelResult: Awaited<ReturnType<typeof callModel>>;
 
   try {
@@ -7353,6 +7443,20 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   }
 
   const inputTokenCount = assistantUsage.inputTokens;
+  if (userId) {
+    void emitWorkspaceActivity({
+      userId,
+      projectId: projectId > 0 ? projectId : null,
+      type: "response_generated",
+      title: "Responded",
+      subtitle: responseGeneratedSubtitle({
+        executionTimeMs: assistantUsage.executionTimeMs,
+        inputTokens: assistantUsage.inputTokens,
+        outputTokens: assistantUsage.outputTokens,
+      }),
+      idempotencyKey: `response_generated:${chatTurnActivityKeyRef.key}`,
+    });
+  }
   res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), ...(recordedRunId ? { runId: recordedRunId } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
   res.end();
 

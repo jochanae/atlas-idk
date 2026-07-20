@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, projectArtifactsTable, messageAttachmentsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
+import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, projectArtifactsTable, messageAttachmentsTable, workspaceActivityTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { checkAttachmentClaims, type ResolvedAttachmentInfo } from "../lib/attachmentOutputGuard";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
@@ -29,6 +29,12 @@ import { loadConversationLibraryContext } from "../lib/library";
 
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { extractOoxmlText } from "../lib/attachmentExtract";
+import {
+  documentAnalyzedSubtitle,
+  emitWorkspaceActivity,
+  responseGeneratedSubtitle,
+  unsupportedAttachmentReason,
+} from "../lib/workspaceActivity";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
@@ -3893,6 +3899,12 @@ WHAT YOU SHOULD NOT DO:
   // Hoisted above the pre-insert block so insertRunningExecutionRun and the
   // failure-record path in finishStream can both reference turnStartedAt.
   const turnStartedAt = new Date();
+  const turnActivityKey =
+    activeRunId
+    ?? (linkedNexusMessageId != null ? `nexus-msg-${linkedNexusMessageId}` : null)
+    ?? (linkedChatMessageId != null ? `chat-msg-${linkedChatMessageId}` : null)
+    ?? `turn-${effectiveConversationId ?? "na"}-${turnStartedAt.getTime()}`;
+  const activityProjectId = focusProjectId;
   const runActions: RunAction[] = [];
   let runPreInserted = false;
   let runTerminalized = false;
@@ -5883,6 +5895,20 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     // match chat.ts done-event field names exactly for frontend parity.
     const fileEditSummaries =
       responseFileEdits.length > 0 ? summarizeFileEdits(responseFileEdits) : undefined;
+
+    void emitWorkspaceActivity({
+      userId,
+      projectId: activityProjectId,
+      type: "response_generated",
+      title: "Responded",
+      subtitle: responseGeneratedSubtitle({
+        executionTimeMs: modelUsage.executionTimeMs,
+        inputTokens: modelUsage.inputTokens,
+        outputTokens: modelUsage.outputTokens,
+      }),
+      idempotencyKey: `response_generated:${turnActivityKey}`,
+    });
+
     res.write(`event: done\ndata: ${JSON.stringify({
       content: visibleContent,
       runId: activeRunId,
@@ -6253,6 +6279,90 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     }
   }
 
+  // ── Timeline verbs: attachment analyze / unsupported for this turn ─────────
+  {
+    const nameToId = new Map(
+      resolvedAttachmentMetaForGuard.map((m) => [m.name, m.attachmentId]),
+    );
+    const attKey = (name: string | undefined, fallback: string) =>
+      nameToId.get(name ?? "") ?? fallback;
+
+    for (const skipped of skippedAttachmentIdPayloads) {
+      const name = skipped.filename ?? "file";
+      const reason = unsupportedAttachmentReason(
+        name,
+        skipped.mimeType,
+        skipped.reason,
+      );
+      void emitWorkspaceActivity({
+        userId,
+        projectId: activityProjectId,
+        type: "attachment_unsupported",
+        title: `Skipped ${name}`,
+        subtitle: reason,
+        attachmentName: name,
+        reason,
+        idempotencyKey: `attachment_unsupported:${skipped.attachmentId}`,
+      });
+    }
+
+    for (let i = 0; i < allAttachments.length; i++) {
+      const att = allAttachments[i]!;
+      const name = att.name ?? "file";
+      const idPart = attKey(att.name, `inline-${turnActivityKey}-${i}`);
+      if (att.asText && att.textContent != null) {
+        void emitWorkspaceActivity({
+          userId,
+          projectId: activityProjectId,
+          type: "document_analyzed",
+          title: `Read ${name}`,
+          subtitle: documentAnalyzedSubtitle(att.textContent),
+          attachmentName: name,
+          idempotencyKey: `document_analyzed:${turnActivityKey}:${idPart}`,
+        });
+        continue;
+      }
+      if (att.mediaType === "application/pdf") {
+        void emitWorkspaceActivity({
+          userId,
+          projectId: activityProjectId,
+          type: "document_analyzed",
+          title: `Read ${name}`,
+          subtitle: "PDF",
+          attachmentName: name,
+          idempotencyKey: `document_analyzed:${turnActivityKey}:${idPart}`,
+        });
+        continue;
+      }
+      if (att.mediaType.startsWith("image/")) {
+        void emitWorkspaceActivity({
+          userId,
+          projectId: activityProjectId,
+          type: "image_analyzed",
+          title: `Analyzed ${name}`,
+          attachmentName: name,
+          idempotencyKey: `image_analyzed:${turnActivityKey}:${idPart}`,
+        });
+        continue;
+      }
+      // OOXML that failed extraction (still in allAttachments as binary).
+      const ext = (att.name ?? "").split(".").pop()?.toLowerCase() ?? "";
+      if (["docx", "doc", "pptx", "ppt", "xlsx", "xls"].includes(ext)) {
+        const reason = unsupportedAttachmentReason(name, att.mediaType);
+        void emitWorkspaceActivity({
+          userId,
+          projectId: activityProjectId,
+          type: "attachment_unsupported",
+          title: `Skipped ${name}`,
+          subtitle: reason,
+          attachmentName: name,
+          reason,
+          idempotencyKey: `attachment_unsupported:${idPart}`,
+        });
+      }
+    }
+  }
+
   // Preview whether Gemini output would survive finishStream scrubbing as a
   // usable turn. Marker-only / fully-scrubbed Gemini output must NOT call
   // finishStream (that sets streamDone and emits empty_response) — fall through
@@ -6338,6 +6448,15 @@ Do NOT claim to read, see, or describe any file not listed here.
     }
   }
   // ── END HARD ATTACHMENT GROUNDING ──────────────────────────────────────────
+
+  // Quiet turn verb — model stream is about to start (Gemini and/or Claude).
+  void emitWorkspaceActivity({
+    userId,
+    projectId: activityProjectId,
+    type: "atlas_thinking",
+    title: "Thinking…",
+    idempotencyKey: `atlas_thinking:${turnActivityKey}`,
+  });
 
   // Call the selected model
   if (activeModel === "gemini") {
@@ -8085,7 +8204,7 @@ router.post("/nexus/briefing", async (req, res): Promise<void> => {
   }
 });
 
-// GET /api/nexus/activity — unified activity feed (commits + decisions + sessions)
+// GET /api/nexus/activity — unified activity feed (commits + decisions + sessions + turn verbs)
 router.get("/nexus/activity", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
 
@@ -8100,7 +8219,17 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
   const projectNameById = new Map(projects.map(p => [p.id, p.name]));
 
   type ActivityItem = {
-    type: "commit" | "decision" | "session";
+    id?: number;
+    type:
+      | "commit"
+      | "decision"
+      | "session"
+      | "attachment_received"
+      | "image_analyzed"
+      | "document_analyzed"
+      | "attachment_unsupported"
+      | "atlas_thinking"
+      | "response_generated";
     projectId: number;
     projectName: string;
     title: string;
@@ -8108,6 +8237,8 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
     url?: string;
     sha?: string;
     timestamp: string;
+    attachmentName?: string;
+    reason?: string;
   };
 
   const items: ActivityItem[] = [];
@@ -8154,8 +8285,8 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
     }
   }
 
-  // Fetch decisions + sessions from DB in parallel
-  const [dbEntries, dbSessions] = await Promise.all([
+  // Fetch decisions + sessions + emitted turn/attachment verbs from DB in parallel
+  const [dbEntries, dbSessions, dbActivity] = await Promise.all([
     db
       .select({ id: entriesTable.id, projectId: entriesTable.projectId, title: entriesTable.title, summary: entriesTable.summary, createdAt: entriesTable.createdAt })
       .from(entriesTable)
@@ -8168,10 +8299,31 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
       .where(inArray(sessionsTable.projectId, projectIds))
       .orderBy(desc(sessionsTable.createdAt))
       .limit(20),
+    db
+      .select({
+        id: workspaceActivityTable.id,
+        type: workspaceActivityTable.type,
+        projectId: workspaceActivityTable.projectId,
+        title: workspaceActivityTable.title,
+        subtitle: workspaceActivityTable.subtitle,
+        attachmentName: workspaceActivityTable.attachmentName,
+        reason: workspaceActivityTable.reason,
+        createdAt: workspaceActivityTable.createdAt,
+      })
+      .from(workspaceActivityTable)
+      .where(
+        and(
+          eq(workspaceActivityTable.userId, userId),
+          inArray(workspaceActivityTable.projectId, projectIds),
+        ),
+      )
+      .orderBy(desc(workspaceActivityTable.createdAt))
+      .limit(60),
   ]);
 
   for (const e of dbEntries) {
     items.push({
+      id: e.id,
       type: "decision",
       projectId: e.projectId,
       projectName: projectNameById.get(e.projectId) ?? "Unknown",
@@ -8182,6 +8334,7 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
   }
   for (const s of dbSessions) {
     items.push({
+      id: s.id,
       type: "session",
       projectId: s.projectId,
       projectName: projectNameById.get(s.projectId) ?? "Unknown",
@@ -8190,9 +8343,22 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
       timestamp: s.createdAt.toISOString(),
     });
   }
+  for (const a of dbActivity) {
+    items.push({
+      id: a.id,
+      type: a.type,
+      projectId: a.projectId,
+      projectName: projectNameById.get(a.projectId) ?? "Unknown",
+      title: a.title,
+      subtitle: a.subtitle ?? undefined,
+      timestamp: a.createdAt.toISOString(),
+      ...(a.attachmentName ? { attachmentName: a.attachmentName } : {}),
+      ...(a.reason ? { reason: a.reason } : {}),
+    });
+  }
 
   items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  res.json({ items: items.slice(0, 40) });
+  res.json({ items: items.slice(0, 60) });
 });
 
 // GET /api/projects/:projectId/commits/:sha — external commit detail (files + patches)
