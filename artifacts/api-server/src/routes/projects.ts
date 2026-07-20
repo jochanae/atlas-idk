@@ -10,8 +10,10 @@ import { getProjectDNA, getOrCreateProjectDNA } from "../lib/projectDNA";
 import { encryptToken, decryptToken } from "../lib/tokenCrypto";
 import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } from "../lib/projectCreation";
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
-import { ensureProjectWorkspaceDir } from "../lib/projectWorkspace";
+import { ensureProjectWorkspaceDir, projectWorkspaceDir, assertProjectOwner } from "../lib/projectWorkspace";
 import { cloneRepoBackground } from "../lib/workspaceHydration";
+import { classifyRepository } from "@workspace/repo-classifier";
+import { loadClassificationInput } from "../services/repositoryClassificationSource";
 import { logger } from "../lib/logger";
 import {
   CreateProjectBody,
@@ -1835,6 +1837,64 @@ router.get("/projects/:projectId/latest-conversation", async (req, res): Promise
     );
   }
   res.json({ conversationId: resolved });
+});
+
+// POST /api/projects/:id/classify — static repository runability analysis
+router.post("/projects/:id/classify", async (req, res): Promise<void> => {
+  const projectId = parseInt(req.params.id, 10);
+  if (isNaN(projectId) || projectId <= 0) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const isOwner = await assertProjectOwner(projectId, userId);
+  if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const [project] = await db
+    .select({
+      linkedRepo: projectsTable.linkedRepo,
+      githubToken: projectsTable.githubToken,
+    })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+
+  if (!project) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const workspaceDir = projectWorkspaceDir(projectId);
+
+  // Resolve linked repo name
+  let linkedRepo: string | null = null;
+  if (project.linkedRepo) {
+    try {
+      const parsed = JSON.parse(project.linkedRepo as string);
+      linkedRepo = typeof parsed === "string" ? parsed : (parsed.fullName ?? null);
+    } catch {
+      linkedRepo = project.linkedRepo as string;
+    }
+  }
+
+  // Decrypt stored GitHub token
+  const githubToken = project.githubToken ? decryptToken(project.githubToken as string) : null;
+
+  const input = await loadClassificationInput({
+    workspaceDir,
+    linkedRepo,
+    githubToken,
+  });
+
+  if (!input) {
+    res.status(422).json({
+      error: "No file source available",
+      detail: "Project has no cloned workspace and no linked GitHub repository with a valid token.",
+    });
+    return;
+  }
+
+  const report = classifyRepository(input);
+  res.json({ report });
 });
 
 export default router;

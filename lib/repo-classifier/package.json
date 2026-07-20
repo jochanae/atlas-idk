@@ -1,0 +1,16 @@
+{
+  "name": "@workspace/repo-classifier",
+  "version": "0.1.0",
+  "description": "Static repository runability classifier — pure function, no I/O.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vitest": "^4.1.5"
+  }
+}
