@@ -452,7 +452,7 @@ export function ChatComposer(props: ChatComposerProps) {
           flexShrink: 0,
           position: "fixed",
           left: 0, right: 0, bottom: 0,
-          height: "60vh",
+          height: "60dvh",
           zIndex: 60,
           display: "flex", flexDirection: "column",
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
