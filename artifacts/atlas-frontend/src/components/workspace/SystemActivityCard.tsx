@@ -18,18 +18,36 @@ const ICON: Record<ActivityItem["type"], string> = {
   commit: "↗",
   decision: "◆",
   session: "·",
+  attachment_received: "↓",
+  image_analyzed: "◉",
+  document_analyzed: "▤",
+  attachment_unsupported: "⊘",
+  atlas_thinking: "∴",
+  response_generated: "✓",
 };
 
 const COLOR: Record<ActivityItem["type"], string> = {
   commit: "rgba(74,222,128,0.85)",
   decision: "rgba(201,162,76,0.9)",
   session: "rgba(148,163,184,0.7)",
+  attachment_received: "rgba(148,163,184,0.75)",
+  image_analyzed: "rgba(129,199,255,0.85)",
+  document_analyzed: "rgba(129,199,255,0.85)",
+  attachment_unsupported: "rgba(248,180,120,0.9)",
+  atlas_thinking: "rgba(148,163,184,0.6)",
+  response_generated: "rgba(148,163,184,0.7)",
 };
 
 const LABEL: Record<ActivityItem["type"], string> = {
   commit: "PUSH",
   decision: "DECISION",
   session: "SESSION",
+  attachment_received: "ATTACHED",
+  image_analyzed: "IMAGE READ",
+  document_analyzed: "DOC READ",
+  attachment_unsupported: "UNSUPPORTED",
+  atlas_thinking: "THINKING",
+  response_generated: "RESPONDED",
 };
 
 /** GitHub mark used in the commit card header. */
