@@ -452,7 +452,7 @@ export function ChatComposer(props: ChatComposerProps) {
           flexShrink: 0,
           position: "fixed",
           left: 0, right: 0, bottom: 0,
-          height: "60vh",
+          height: "60dvh",
           zIndex: 60,
           display: "flex", flexDirection: "column",
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
@@ -763,8 +763,15 @@ export function ChatComposer(props: ChatComposerProps) {
                   color: "var(--atlas-fg)", fontSize: isCompact ? 14 : 16, lineHeight: 1.55,
                   resize: "none", fontFamily: "var(--app-font-sans)",
                   position: "relative", zIndex: 1,
-                  minHeight: sheetVisible ? "calc(60vh - 160px)" : (isCompact ? 22 : 26),
-                  maxHeight: sheetVisible ? "calc(60vh - 160px)" : (isCompact ? 28 : (isMobile ? "25vh" : 180)),
+                  // Sheet mode reserve = grip + action row (~160px) + attachment strip (~104px when present)
+                  //                     + code-context banner (~40px when present). Keeps the action row
+                  //                     inside the 60vh clip so Send never hides below the viewport.
+                  minHeight: sheetVisible
+                    ? `calc(60dvh - 160px - ${(stagedFiles.length > 0 ? 104 : 0) + (codeContextStatus ? 40 : 0)}px)`
+                    : (isCompact ? 22 : 26),
+                  maxHeight: sheetVisible
+                    ? `calc(60dvh - 160px - ${(stagedFiles.length > 0 ? 104 : 0) + (codeContextStatus ? 40 : 0)}px)`
+                    : (isCompact ? 28 : (isMobile ? "25dvh" : 180)),
                   overflowY: "auto", overscrollBehavior: "contain", display: "block",
                   padding: "2px 2px",
                   transition: "min-height 320ms cubic-bezier(0.22, 1, 0.36, 1), max-height 320ms cubic-bezier(0.22, 1, 0.36, 1)",
