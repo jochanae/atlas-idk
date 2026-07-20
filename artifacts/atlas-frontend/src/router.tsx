@@ -10,6 +10,13 @@ if (typeof document !== "undefined") {
     if (!document.hidden) _lastBecameVisible = Date.now();
   });
 }
+if (typeof window !== "undefined") {
+  // Mobile browsers often don't fire visibilitychange when the native file
+  // picker returns — the composer dispatches this event on picker open/close.
+  window.addEventListener("atlas-picker-return", () => {
+    _lastBecameVisible = Date.now();
+  });
+}
 
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
@@ -44,8 +51,8 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
       error?.message ?? ""
     )
   ) {
-    if (Date.now() - _lastBecameVisible < 8000) {
-      // Returned from background — let the lazy retry recover silently.
+    if (Date.now() - _lastBecameVisible < 30000) {
+      // Returned from background or file picker — let the lazy retry recover silently.
       return null;
     }
     const key = "__atlas_chunk_reload__";

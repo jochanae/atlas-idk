@@ -309,10 +309,14 @@ export function ComposerActions({
         style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
         onChange={(e) => {
           e.stopPropagation();
+          try { window.dispatchEvent(new Event("atlas-picker-return")); } catch { /* noop */ }
           pickFiles(e.target.files);
           e.target.value = "";
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          try { window.dispatchEvent(new Event("atlas-picker-return")); } catch { /* noop */ }
+        }}
       />
       {/* Native camera capture */}
       <input
@@ -324,10 +328,14 @@ export function ComposerActions({
         style={{ position: "fixed", top: "-200%", left: "-200%", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
         onChange={(e) => {
           e.stopPropagation();
+          try { window.dispatchEvent(new Event("atlas-picker-return")); } catch { /* noop */ }
           pickFiles(e.target.files);
           e.target.value = "";
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          try { window.dispatchEvent(new Event("atlas-picker-return")); } catch { /* noop */ }
+        }}
       />
 
       <button
