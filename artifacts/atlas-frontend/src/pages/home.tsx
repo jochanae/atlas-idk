@@ -5278,17 +5278,8 @@ export default function Home() {
 
 
 
-            {/* Attached files preview strip — B2 shared renderer */}
-            {staged.files.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <AttachmentStrip
-                  mode="staged"
-                  files={staged.files}
-                  onRemove={staged.removeFile}
-                  onRetry={staged.retryFile}
-                />
-              </div>
-            )}
+
+
 
 
             {(() => {
