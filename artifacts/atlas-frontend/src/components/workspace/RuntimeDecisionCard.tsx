@@ -1,0 +1,640 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+
+export interface RuntimeCardData {
+  projectId: number;
+  report: {
+    overallStatus: string;
+    repositoryType: string;
+    targets: Array<{
+      id: string;
+      role: string;
+      framework: string;
+      workingDirectory: string;
+      installCommand: string;
+      startCommand: string;
+      expectedPort?: number;
+      status: string;
+      environmentVariables: string[];
+      externalServices: string[];
+      confidence: string;
+    }>;
+    recommendation?: {
+      targetId: string;
+      reasons: string[];
+    };
+    requirements: {
+      environmentVariables: Array<{
+        name: string;
+        classification: string;
+        sensitivity: string;
+        source: string[];
+        defaultValue?: string;
+      }>;
+      externalServices: Array<{
+        service: string;
+        evidence: string;
+        connectionSupport: string;
+      }>;
+    };
+  };
+}
+
+interface DevServerStatus {
+  status: string;
+  port?: number | null;
+  logs?: string[];
+  errorMsg?: string | null;
+  startedAt?: string | null;
+  verifiedTargetId?: string | null;
+  verifiedAt?: string | null;
+  lastVerifiedTargetId?: string | null;
+  lastVerifiedAt?: string | null;
+}
+
+type CardPhase = "decision" | "configuring" | "confirming" | "polling" | "connected" | "error";
+
+interface EnvFieldState {
+  name: string;
+  value: string;
+  classification: string;
+  sensitivity: string;
+  source: string[];
+  defaultValue?: string;
+}
+
+const CARD: React.CSSProperties = {
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 12,
+  padding: "16px 18px",
+  marginTop: 10,
+  fontFamily: "var(--app-font-sans, system-ui, sans-serif)",
+  maxWidth: 520,
+};
+
+const MONO: React.CSSProperties = {
+  fontFamily: "var(--app-font-mono, monospace)",
+  fontSize: 11,
+  letterSpacing: "0.04em",
+};
+
+const BADGE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  padding: "2px 8px",
+  borderRadius: 4,
+  fontSize: 11,
+  fontWeight: 500,
+  ...MONO,
+};
+
+const BTN_PRIMARY: React.CSSProperties = {
+  padding: "7px 14px",
+  background: "transparent",
+  border: "1px solid var(--atlas-gold, #d4a855)",
+  borderRadius: 7,
+  color: "var(--atlas-gold, #d4a855)",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 500,
+  letterSpacing: "0.03em",
+  transition: "opacity 0.15s",
+};
+
+const BTN_GHOST: React.CSSProperties = {
+  padding: "7px 12px",
+  background: "transparent",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 7,
+  color: "rgba(255,255,255,0.5)",
+  cursor: "pointer",
+  fontSize: 12,
+  transition: "border-color 0.15s, color 0.15s",
+};
+
+const BTN_DANGER: React.CSSProperties = {
+  ...BTN_GHOST,
+  color: "rgba(255,100,100,0.8)",
+  borderColor: "rgba(255,100,100,0.25)",
+};
+
+const LABEL_REQUIRED: React.CSSProperties = {
+  ...BADGE,
+  background: "rgba(220,80,80,0.12)",
+  color: "rgba(255,140,140,0.9)",
+  border: "1px solid rgba(220,80,80,0.2)",
+};
+
+const LABEL_OPTIONAL: React.CSSProperties = {
+  ...BADGE,
+  background: "rgba(255,255,255,0.05)",
+  color: "rgba(255,255,255,0.45)",
+  border: "1px solid rgba(255,255,255,0.1)",
+};
+
+function classificationLabel(c: string): React.ReactNode {
+  if (c === "required-to-boot") return <span style={LABEL_REQUIRED}>Required to boot</span>;
+  if (c === "required-for-feature") return <span style={LABEL_REQUIRED}>Required for feature</span>;
+  if (c === "has-default") return <span style={LABEL_OPTIONAL}>Has default</span>;
+  return <span style={LABEL_OPTIONAL}>Optional</span>;
+}
+
+function targetStatusLabel(status: string): { dot: string; text: string } {
+  switch (status) {
+    case "likely-runnable": return { dot: "#4ade80", text: "Ready to run" };
+    case "configuration-required": return { dot: "#facc15", text: "Configuration required" };
+    case "external-service-required": return { dot: "#fb923c", text: "External service required" };
+    case "likely-inactive": return { dot: "#94a3b8", text: "Likely inactive" };
+    case "unsupported": return { dot: "#f87171", text: "Unsupported" };
+    default: return { dot: "#94a3b8", text: status };
+  }
+}
+
+function relativeTime(isoStr: string | null | undefined): string {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  const diffMs = Date.now() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin === 1) return "1 min ago";
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr === 1) return "1 hour ago";
+  if (diffHr < 24) return `${diffHr} hours ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function StepList({ serverStatus, selectedTargetId }: { serverStatus: DevServerStatus | null; selectedTargetId: string }) {
+  const s = serverStatus?.status ?? "idle";
+  const verified = serverStatus?.verifiedTargetId === selectedTargetId;
+  const step = (done: boolean, active: boolean, label: string) => (
+    <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "3px 0" }}>
+      <span style={{ width: 16, textAlign: "center", fontSize: 13, color: done ? "#4ade80" : active ? "var(--atlas-gold, #d4a855)" : "rgba(255,255,255,0.25)" }}>
+        {done ? "✓" : active ? "◌" : "○"}
+      </span>
+      <span style={{ fontSize: 13, color: done ? "rgba(255,255,255,0.8)" : active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)" }}>
+        {label}
+      </span>
+    </div>
+  );
+
+  const installing = s === "installing";
+  const starting = s === "starting" || s === "running";
+  const checking = s === "running" && !verified;
+  const done = verified;
+
+  return (
+    <div style={{ margin: "12px 0", padding: "10px 12px", background: "rgba(0,0,0,0.2)", borderRadius: 8 }}>
+      {step(true, false, "Target selected")}
+      {step(true, false, "Configuration accepted")}
+      {step(done || starting, installing, "Installing dependencies")}
+      {step(done || checking, starting && !done, "Starting app")}
+      {step(done, checking, "Checking connection")}
+    </div>
+  );
+}
+
+export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData; projectId: number }) {
+  const { report } = data;
+  const effectiveProjectId = data.projectId || projectId;
+
+  const [selectedTargetId, setSelectedTargetId] = useState<string>(
+    report.recommendation?.targetId ?? report.targets[0]?.id ?? ""
+  );
+  const [phase, setPhase] = useState<CardPhase>("decision");
+  const [serverStatus, setServerStatus] = useState<DevServerStatus | null>(null);
+  const [envFields, setEnvFields] = useState<EnvFieldState[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+  const [showTechnical, setShowTechnical] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const selectedTarget = report.targets.find(t => t.id === selectedTargetId) ?? report.targets[0];
+  const otherTargets = report.targets.filter(t => t.id !== selectedTargetId && t.status !== "unsupported" && t.status !== "likely-inactive");
+
+  const targetEnvReqs = report.requirements.environmentVariables.filter(r =>
+    selectedTarget?.environmentVariables.includes(r.name)
+  );
+  const requiredVars = targetEnvReqs.filter(r =>
+    r.classification === "required-to-boot" || r.classification === "required-for-feature"
+  );
+  const hasRequiredConfig = requiredVars.length > 0;
+  const hasExternalServices = (selectedTarget?.externalServices?.length ?? 0) > 0;
+
+  const fetchStatus = useCallback(async (): Promise<DevServerStatus | null> => {
+    try {
+      const res = await fetch(`/api/devserver/workspace/${effectiveProjectId}/status`, { credentials: "include" });
+      if (!res.ok) return null;
+      const body = await res.json() as DevServerStatus;
+      if (mountedRef.current) setServerStatus(body);
+      return body;
+    } catch {
+      return null;
+    }
+  }, [effectiveProjectId]);
+
+  useEffect(() => {
+    fetchStatus().then(status => {
+      if (!status || !mountedRef.current) return;
+      if (status.status === "running" && status.verifiedTargetId === selectedTargetId) {
+        setPhase("connected");
+      } else if (status.status === "error") {
+        setPhase("error");
+      } else if (status.status === "installing" || status.status === "starting") {
+        setPhase("polling");
+      }
+    });
+  }, []); // mount only
+
+  useEffect(() => {
+    if (phase !== "polling") {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      return;
+    }
+    pollRef.current = setInterval(async () => {
+      const status = await fetchStatus();
+      if (!status || !mountedRef.current) return;
+      if (status.status === "running" && status.verifiedTargetId === selectedTargetId) {
+        setPhase("connected");
+      } else if (status.status === "error") {
+        setPhase("error");
+      }
+    }, 2500);
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  }, [phase, fetchStatus, selectedTargetId]);
+
+  useEffect(() => {
+    setEnvFields(requiredVars.map(r => ({
+      name: r.name,
+      value: r.sensitivity !== "secret" ? (r.defaultValue ?? "") : "",
+      classification: r.classification,
+      sensitivity: r.sensitivity,
+      source: r.source,
+      defaultValue: r.sensitivity !== "secret" ? r.defaultValue : undefined,
+    })));
+  }, [selectedTargetId]);
+
+  const handleRunClicked = () => {
+    setSubmitError(null);
+    if (hasExternalServices && !hasRequiredConfig) {
+      setPhase("confirming");
+    } else if (hasRequiredConfig) {
+      setPhase("configuring");
+    } else {
+      setPhase("confirming");
+    }
+  };
+
+  const handleConfigDone = () => {
+    const missing = envFields.filter(f => f.sensitivity === "secret" || f.classification === "required-to-boot").filter(f => !f.value.trim());
+    if (missing.length > 0) return;
+    setPhase("confirming");
+  };
+
+  const handleConfirmedRun = async () => {
+    const env: Record<string, string> = {};
+    for (const f of envFields) {
+      if (f.value.trim()) env[f.name] = f.value;
+    }
+    setEnvFields(prev => prev.map(f => ({ ...f, value: "" })));
+    setSubmitError(null);
+
+    try {
+      const res = await fetch(`/api/devserver/workspace/${effectiveProjectId}/run`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetId: selectedTargetId, env }),
+      });
+      if (res.status === 409) { setPhase("polling"); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as Record<string, string>;
+        setSubmitError(body.error ?? "Failed to start. Please try again.");
+        setPhase("decision");
+        return;
+      }
+      setPhase("polling");
+    } catch {
+      setSubmitError("Network error. Please try again.");
+      setPhase("decision");
+    }
+  };
+
+  const handleStop = async () => {
+    try {
+      await fetch(`/api/devserver/workspace/${effectiveProjectId}/stop`, { method: "POST", credentials: "include" });
+    } catch { /* non-fatal */ }
+    setPhase("decision");
+    setServerStatus(null);
+  };
+
+  const handleOpenPreview = () => {
+    window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "runtime" } }));
+  };
+
+  if (!selectedTarget) {
+    return (
+      <div style={CARD}>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", margin: 0 }}>
+          No runnable targets found in this repository.
+        </p>
+      </div>
+    );
+  }
+
+  const statusInfo = targetStatusLabel(selectedTarget.status);
+
+  return (
+    <div style={CARD}>
+      {phase === "decision" && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusInfo.dot, flexShrink: 0 }} />
+            <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              {statusInfo.text}
+            </span>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)", marginBottom: 3 }}>
+              {selectedTarget.role === "frontend" ? "Web app" : selectedTarget.role === "api" ? "API server" : selectedTarget.role === "fullstack" ? "Full-stack app" : "Application"}
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ ...BADGE, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)" }}>
+                {selectedTarget.framework}
+              </span>
+              <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                {selectedTarget.workingDirectory}
+              </span>
+            </div>
+          </div>
+
+          {report.recommendation && (
+            <div style={{ marginBottom: 12, padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 7, borderLeft: "2px solid rgba(255,255,255,0.12)" }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4, ...MONO, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Recommended because
+              </div>
+              {report.recommendation.reasons.slice(0, 2).map((r, i) => (
+                <div key={i} style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 2 }}>
+                  • {r}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedTarget.status === "likely-runnable" && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>Atlas will:</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>• Install this repository's dependencies</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>• Start the {selectedTarget.role === "frontend" ? "frontend" : selectedTarget.role === "api" ? "API server" : "application"}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>• Check that it accepts HTTP connections</div>
+            </div>
+          )}
+
+          {selectedTarget.status === "configuration-required" && requiredVars.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>Required before startup:</div>
+              {requiredVars.map(v => (
+                <div key={v.name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <span style={{ ...MONO, fontSize: 12, color: "rgba(255,255,255,0.75)" }}>{v.name}</span>
+                  {classificationLabel(v.classification)}
+                  {v.sensitivity === "secret" && <span style={{ ...MONO, fontSize: 10, color: "rgba(255,160,100,0.7)" }}>secret</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedTarget.status === "external-service-required" && selectedTarget.externalServices.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,200,100,0.8)", marginBottom: 6 }}>This target needs:</div>
+              {selectedTarget.externalServices.map(s => (
+                <div key={s} style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 2 }}>• {s}</div>
+              ))}
+              {selectedTarget.environmentVariables.length > 0 && (
+                <div style={{ marginTop: 4, fontSize: 11, color: "rgba(255,255,255,0.35)", ...MONO }}>
+                  Needs: {selectedTarget.environmentVariables.join(", ")}
+                </div>
+              )}
+              <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.35)", fontStyle: "italic" }}>
+                Atlas cannot confirm the API will start until the service is connected.
+              </div>
+            </div>
+          )}
+
+          {serverStatus?.lastVerifiedTargetId && !serverStatus.verifiedTargetId && (
+            <div style={{ marginBottom: 12, padding: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 6, fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+              Last connected {relativeTime(serverStatus.lastVerifiedAt)}. Not currently running.
+            </div>
+          )}
+
+          {submitError && (
+            <div style={{ marginBottom: 10, padding: "6px 10px", background: "rgba(220,80,80,0.1)", borderRadius: 6, fontSize: 12, color: "rgba(255,140,140,0.9)", border: "1px solid rgba(220,80,80,0.2)" }}>
+              {submitError}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: otherTargets.length > 0 ? 10 : 0 }}>
+            {(selectedTarget.status === "likely-runnable") && (
+              <button type="button" style={BTN_PRIMARY} onClick={handleRunClicked}>Run app</button>
+            )}
+            {(selectedTarget.status === "configuration-required") && (
+              <button type="button" style={BTN_PRIMARY} onClick={handleRunClicked}>Configure and run</button>
+            )}
+            {(selectedTarget.status === "external-service-required") && (
+              <button type="button" style={BTN_PRIMARY} onClick={handleRunClicked}>Configure target</button>
+            )}
+            <button type="button" style={BTN_GHOST} onClick={() => setShowTechnical(v => !v)}>
+              {showTechnical ? "Hide details" : "View technical details"}
+            </button>
+          </div>
+
+          {otherTargets.length > 0 && (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", ...MONO }}>
+              Other targets: {otherTargets.map(t => (
+                <button key={t.id} type="button" onClick={() => setSelectedTargetId(t.id)} style={{ ...MONO, background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", textDecoration: "underline", fontSize: 11, padding: "0 4px 0 0" }}>
+                  {t.workingDirectory}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {showTechnical && (
+            <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(0,0,0,0.25)", borderRadius: 8, ...MONO, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+              <div><span style={{ color: "rgba(255,255,255,0.25)" }}>id</span> {selectedTarget.id}</div>
+              <div><span style={{ color: "rgba(255,255,255,0.25)" }}>install</span> {selectedTarget.installCommand}</div>
+              <div><span style={{ color: "rgba(255,255,255,0.25)" }}>start</span> {selectedTarget.startCommand}</div>
+              {selectedTarget.expectedPort && <div><span style={{ color: "rgba(255,255,255,0.25)" }}>port</span> {selectedTarget.expectedPort}</div>}
+              <div><span style={{ color: "rgba(255,255,255,0.25)" }}>confidence</span> {selectedTarget.confidence}</div>
+            </div>
+          )}
+        </>
+      )}
+
+      {phase === "configuring" && (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
+            Configure {selectedTarget.workingDirectory}
+          </div>
+          {envFields.map((field, i) => (
+            <div key={field.name} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                <span style={{ ...MONO, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>{field.name}</span>
+                {classificationLabel(field.classification)}
+                {field.sensitivity === "secret" && (
+                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,160,100,0.7)" }}>secret</span>
+                )}
+              </div>
+              {field.source.length > 0 && (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 5, ...MONO }}>
+                  Used in: {field.source.slice(0, 2).join(", ")}
+                </div>
+              )}
+              {field.defaultValue && field.sensitivity !== "secret" && (
+                <div style={{ fontSize: 11, color: "rgba(100,200,100,0.7)", marginBottom: 5 }}>
+                  Safe default: <code style={{ ...MONO }}>{field.defaultValue}</code>
+                </div>
+              )}
+              <input
+                type={field.sensitivity === "secret" ? "password" : "text"}
+                value={field.value}
+                onChange={e => setEnvFields(prev => prev.map((f, j) => j === i ? { ...f, value: e.target.value } : f))}
+                placeholder={field.sensitivity === "secret" ? "Enter secret value" : field.defaultValue ? `Default: ${field.defaultValue}` : `Enter value`}
+                autoComplete="off"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "7px 10px",
+                  background: "rgba(0,0,0,0.3)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 6,
+                  color: "rgba(255,255,255,0.85)",
+                  ...MONO,
+                  fontSize: 12,
+                  outline: "none",
+                }}
+              />
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" style={BTN_PRIMARY} onClick={handleConfigDone}>Continue</button>
+            <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>Cancel</button>
+          </div>
+        </>
+      )}
+
+      {phase === "confirming" && (
+        <>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 16, lineHeight: 1.6 }}>
+            Atlas will install this repository's dependencies and run its declared development command inside the project workspace.
+          </div>
+          <div style={{ marginBottom: 14, padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 7, ...MONO, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+            <div>{selectedTarget.installCommand}</div>
+            <div>{selectedTarget.startCommand}</div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" style={BTN_PRIMARY} onClick={handleConfirmedRun}>Run this app</button>
+            <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>Cancel</button>
+          </div>
+        </>
+      )}
+
+      {phase === "polling" && (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>
+            Preparing {selectedTarget.workingDirectory}
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 4, ...MONO }}>
+            {serverStatus?.status === "installing" ? "Installing dependencies…" : serverStatus?.status === "starting" ? "Starting application…" : "Waiting for connection…"}
+          </div>
+          <StepList serverStatus={serverStatus} selectedTargetId={selectedTargetId} />
+          <button type="button" style={{ ...BTN_GHOST, marginTop: 6, fontSize: 11 }} onClick={handleStop}>
+            Cancel
+          </button>
+        </>
+      )}
+
+      {phase === "connected" && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", animation: "pulse 2s infinite", flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>
+              {selectedTarget.workingDirectory} is connected
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
+            <span style={{ ...BADGE, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.55)" }}>
+              {selectedTarget.framework}
+            </span>
+            {serverStatus?.port && (
+              <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Port {serverStatus.port}</span>
+            )}
+            <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+              Connected {relativeTime(serverStatus?.verifiedAt ?? null)}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" style={BTN_PRIMARY} onClick={handleOpenPreview}>Open preview</button>
+            <button type="button" style={BTN_GHOST} onClick={() => setShowLogs(v => !v)}>
+              {showLogs ? "Hide logs" : "View logs"}
+            </button>
+            <button type="button" style={BTN_DANGER} onClick={handleStop}>Stop</button>
+          </div>
+        </>
+      )}
+
+      {phase === "error" && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>
+              {selectedTarget.workingDirectory} could not start
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 10, lineHeight: 1.5 }}>
+            {serverStatus?.errorMsg ?? "The application exited before accepting an HTTP connection."}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {hasRequiredConfig && (
+              <button type="button" style={BTN_PRIMARY} onClick={() => setPhase("configuring")}>Add configuration</button>
+            )}
+            <button type="button" style={BTN_GHOST} onClick={() => setShowLogs(v => !v)}>
+              {showLogs ? "Hide logs" : "View logs"}
+            </button>
+            <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>Try again</button>
+          </div>
+        </>
+      )}
+
+      {showLogs && serverStatus?.logs && serverStatus.logs.length > 0 && (
+        <div style={{
+          marginTop: 12,
+          padding: "10px 12px",
+          background: "rgba(0,0,0,0.35)",
+          borderRadius: 8,
+          maxHeight: 200,
+          overflowY: "auto",
+          ...MONO,
+          fontSize: 11,
+          color: "rgba(255,255,255,0.5)",
+          lineHeight: 1.6,
+        }}>
+          {serverStatus.logs.map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+        </div>
+      )}
+      {showLogs && (!serverStatus?.logs || serverStatus.logs.length === 0) && (
+        <div style={{ marginTop: 10, ...MONO, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+          No logs available yet.
+        </div>
+      )}
+    </div>
+  );
+}

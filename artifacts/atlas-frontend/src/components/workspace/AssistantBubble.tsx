@@ -30,6 +30,7 @@ import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 // DecisionCatchCard removed — intelligence now surfaces inline in Atlas's prose.
 import { DecisionArtifactCard } from "./DecisionArtifactCard";
+import { RuntimeDecisionCard } from "./RuntimeDecisionCard";
 import { SpeakButton } from "./SpeakButton";
 import { detectPlanFromText } from "../../lib/plan";
 import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../../lib/plan";
@@ -2591,6 +2592,10 @@ function AssistantBubbleImpl({
         {!message.streaming && message.decisionArtifacts?.map((artifact) => (
           <DecisionArtifactCard key={`${artifact.type}-${artifact.id}`} artifact={artifact} />
         ))}
+
+        {!message.streaming && message.runtimeCard && (
+          <RuntimeDecisionCard data={message.runtimeCard} projectId={projectId} />
+        )}
 
         {hasImageClarify && (
           <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>

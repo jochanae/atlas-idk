@@ -427,6 +427,8 @@ export interface ChatMessage {
     summary?: string | null;
     preview?: { safe?: boolean; reasons?: string[]; html?: string } | null;
   }>;
+  /** Runtime decision card — populated by the classify_repository tool. Survives reload via message metadata. */
+  runtimeCard?: import("../components/workspace/RuntimeDecisionCard").RuntimeCardData | null;
 }
 
 export type MemoryChip = { label: string; insight?: string; tier?: 1 | 2 | 3 | 4 | 5 };

@@ -60,6 +60,8 @@ import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, synthesizeGlobalNarrative, synthesizeUserIdentity, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
 import { maybeEmitMilestones } from "../lib/milestoneClassifier";
 import { appendAtlasRunTrailer, hasAtlasRunTrailer } from "../lib/atlasRunTrailer";
+import { classifyRepository } from "@workspace/repo-classifier";
+import { loadClassificationInput } from "../services/repositoryClassificationSource";
 import {
   buildTier1BlockForNexusConversation,
   buildTier1StatusBlock,
@@ -809,10 +811,21 @@ const NEXUS_AGENT_TOOLS: Anthropic.Tool[] = [
 // NEXUS_AGENT_TOOLS, which includes CREATE_PROJECT_TOOL, causing Atlas to
 // try creating a new project mid-workspace and fail with the free-plan
 // project limit.)
+const CLASSIFY_REPOSITORY_TOOL: Anthropic.Tool = {
+  name: "classify_repository",
+  description: "Analyze the linked repository to determine what is runnable, what targets exist, and what environment configuration is needed. Call this when the user wants to preview, run, start, or launch their app. A structured runtime decision card will appear directly in the chat — write ONE short sentence describing what was found (e.g. 'I found your frontend — here's the runtime card.'), then stop. Do NOT enumerate targets, commands, or env vars in prose — the card displays all of that.",
+  input_schema: {
+    type: "object" as const,
+    properties: {},
+    required: [],
+  },
+};
+
 const NEXUS_WORKSPACE_TOOLS: Anthropic.Tool[] = [
   TIER1_UPSERT_FIELD_TOOL,
   TIER1_MARK_SKIPPED_TOOL,
   READ_FILE_TOOL,
+  CLASSIFY_REPOSITORY_TOOL,
   ...toAnthropicTools(SCHEMA_CTX, SHARED_WORKSPACE_TOOL_NAMES.filter((n) => n !== "read_file")),
 ];
 
@@ -2178,6 +2191,7 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
         imageGen: (m.metadata as any)?.imageGen ?? null,
         // Restore persisted decisionArtifacts so Decision Intelligence cards survive reload
         decisionArtifacts: (m.metadata as any)?.decisionArtifacts ?? null,
+        runtimeCard: (m.metadata as any)?.runtimeCard ?? null,
         // Restore generated artifact cards (ArtifactCreatedCard) so they survive reload
         generatedArtifacts: (m.metadata as any)?.generatedArtifacts ?? null,
         ...(executionOutcome ? { executionOutcome } : {}),
@@ -5903,6 +5917,7 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
       ...(sharedSideEffects.generatedArtifacts.length > 0
         ? { generatedArtifacts: sharedSideEffects.generatedArtifacts }
         : {}),
+      ...(runtimeCard ? { runtimeCard } : {}),
       ...(decisionDraft ? { decisionDraft } : {}),
       ...(nextSuggestions ? { nextSuggestions } : {}),
       ...(thinkingStable ? { thinkingStable: true } : {}),
@@ -6200,6 +6215,35 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
           }
         } catch (err: unknown) {
           logger.warn({ err }, "generatedArtifacts metadata persist failed — non-fatal");
+        }
+      })();
+    }
+
+    // Persist runtimeCard so the RuntimeDecisionCard survives thread reload.
+    if (runtimeCard && effectiveConversationId) {
+      const _card = runtimeCard;
+      (async () => {
+        try {
+          const [latest] = await db
+            .select({ id: nexusMessagesTable.id, metadata: nexusMessagesTable.metadata })
+            .from(nexusMessagesTable)
+            .where(
+              and(
+                eq(nexusMessagesTable.conversationId, effectiveConversationId!),
+                eq(nexusMessagesTable.role, "assistant"),
+                eq(nexusMessagesTable.userId, userId),
+              )
+            )
+            .orderBy(desc(nexusMessagesTable.createdAt))
+            .limit(1);
+          if (latest) {
+            await db
+              .update(nexusMessagesTable)
+              .set({ metadata: { ...(latest.metadata ?? {}), runtimeCard: _card } })
+              .where(eq(nexusMessagesTable.id, latest.id));
+          }
+        } catch (err: unknown) {
+          logger.warn({ err }, "runtimeCard metadata persist failed — non-fatal");
         }
       })();
     }
@@ -6753,6 +6797,9 @@ Do NOT claim to read, see, or describe any file not listed here.
   let fullText = "";
   let pendingNavProjectId: number | null = null;
   let pendingNavProjectName: string | null = null;
+  /** Populated by the classify_repository tool — sent in the done event so the
+   *  frontend can render a RuntimeDecisionCard with target info, env config, and run controls. */
+  let runtimeCard: { projectId: number; report: unknown } | null = null;
   // OPEN_PROJECT resolution state — set by the post-stream callback, read by the done event.
   // null means the signal was not emitted; array means multiple candidates were found;
   // string means no project matched the requested name.
@@ -7248,6 +7295,44 @@ Do NOT claim to read, see, or describe any file not listed here.
     "project_knowledge", "component_registry",
   ]);
 
+  const runClassifyRepositoryTool = async (): Promise<Record<string, unknown>> => {
+    if (!focusProjectId || !userId) {
+      return { ok: false, error: "classify_repository is only available inside a project workspace." };
+    }
+    try {
+      const [project] = await db
+        .select({ id: projectsTable.id, linkedRepo: projectsTable.linkedRepo })
+        .from(projectsTable)
+        .where(and(eq(projectsTable.id, focusProjectId), eq(projectsTable.userId, userId)))
+        .limit(1);
+      if (!project) return { ok: false, error: "Project not found." };
+      const workspaceDir = projectWorkspaceDir(focusProjectId);
+      const githubToken = project.linkedRepo
+        ? await getGithubTokenForUser(userId).catch(() => null)
+        : null;
+      const input = await loadClassificationInput({ workspaceDir, linkedRepo: project.linkedRepo ?? null, githubToken });
+      if (!input) {
+        return { ok: false, error: "No repository content found. Link a GitHub repository or clone content into the project workspace first." };
+      }
+      const report = classifyRepository(input);
+      runtimeCard = { projectId: focusProjectId, report };
+      const recTarget = report.targets.find((t) => t.id === report.recommendation?.targetId);
+      const summary = recTarget
+        ? `Found ${report.targets.length} runnable target${report.targets.length !== 1 ? "s" : ""}. Recommended: ${recTarget.framework} at ${recTarget.workingDirectory}. Status: ${recTarget.status}.`
+        : report.targets.length > 0
+          ? `Found ${report.targets.length} target${report.targets.length !== 1 ? "s" : ""}, none recommended automatically. Overall: ${report.overallStatus}.`
+          : "No runnable targets found in this repository.";
+      return {
+        ok: true,
+        summary,
+        instruction: "Write ONE short sentence describing what was found (e.g. 'Here's the runtime card for your repository.'). Do NOT list targets, commands, or env vars in prose — the card shows all of that. Stop after one sentence.",
+      };
+    } catch (err: unknown) {
+      req.log.error({ err, focusProjectId }, "classify_repository tool failed");
+      return { ok: false, error: "Classification failed. The repository may be too large or contain no recognizable entry points." };
+    }
+  };
+
   const runNexusTool = async (toolUse: Anthropic.ToolUseBlock): Promise<Record<string, unknown>> => {
     const startedAt = performance.now();
 
@@ -7274,6 +7359,8 @@ Do NOT claim to read, see, or describe any file not listed here.
           return runTier1MarkSkippedTool();
         case "read_file":
           return runReadFileTool(toolUse);
+        case "classify_repository":
+          return runClassifyRepositoryTool();
         default: {
           if (SHARED_TOOL_NAME_SET.has(toolUse.name)) {
             const ctx = await getSharedAgentCtx();

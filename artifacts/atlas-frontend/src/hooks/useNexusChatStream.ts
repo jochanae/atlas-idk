@@ -150,6 +150,8 @@ export interface NexusMessage {
   tradeoffMatrix?: { question: string; options: Array<{ label: string; pros: string[]; cons: string[]; atlas_leans?: boolean }>; context?: string } | null;
   /** Decision Intelligence artifacts (Tradeoff Matrix / Decision Tree / Deviation Log) generated this turn. */
   decisionArtifacts?: NexusDecisionArtifact[] | null;
+  /** Runtime decision card — populated when classify_repository tool runs. Shows target info, env config form, and progress. */
+  runtimeCard?: import("../components/workspace/RuntimeDecisionCard").RuntimeCardData | null;
   /**
    * Stable run ID for this turn — matches execution_runs.id.
    * Set from the backend done event so the Plan card can PATCH the run to
@@ -921,6 +923,7 @@ export function useNexusChatStream(
                     projectChoices: ((meta as any).projectChoices ?? null) as NexusMessage["projectChoices"],
                     projectNotFound: ((meta as any).projectNotFound ?? null) as NexusMessage["projectNotFound"],
                     generatedArtifacts: ((meta as any).generatedArtifacts ?? null) as NexusMessage["generatedArtifacts"],
+                    runtimeCard: ((meta as any).runtimeCard ?? null) as NexusMessage["runtimeCard"],
                     activeBuild: null, // clear stage stepper once the artifact card takes over
                     runId: ((meta as any).runId as string | undefined) ?? null,
                     executionOutcome: ((meta as any).executionOutcome ?? null) as NexusMessage["executionOutcome"],
