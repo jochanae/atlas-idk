@@ -2,7 +2,19 @@ import { useEffect, useRef, useState } from "react";
 
 export type ActivityItem = {
   id?: number;
-  type: "commit" | "decision" | "session";
+  type:
+    | "commit"
+    | "decision"
+    | "session"
+    // Attachment / turn lifecycle verbs. Backend will emit; frontend renders
+    // them the same way regardless of source. Keep names stable — they are
+    // the wire contract with the Replit worker (see 2026-07-20 handoff).
+    | "attachment_received"
+    | "image_analyzed"
+    | "document_analyzed"
+    | "attachment_unsupported"
+    | "atlas_thinking"
+    | "response_generated";
   projectId: number;
   projectName: string;
   title: string;
@@ -10,6 +22,10 @@ export type ActivityItem = {
   url?: string;
   sha?: string;
   timestamp: string;
+  /** Optional filename/attachment reference for attachment_* verbs. */
+  attachmentName?: string;
+  /** Reason string for attachment_unsupported ("PPTX not yet readable"). */
+  reason?: string;
 };
 
 export type Importance = "important" | "quiet";
