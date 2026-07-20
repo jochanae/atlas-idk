@@ -564,15 +564,37 @@ export function ChatStream(props: ChatStreamProps) {
 
   const historyBoundary = historyMsgCountRef.current ?? 0;
 
-  const timelineRailMessages = useMemo(
-    () => messages.map((m) => ({
+  const timelineRailMessages = useMemo(() => {
+    const events: Array<{
+      role: "user" | "assistant";
+      createdAt?: string;
+      hasSurfacedMemory?: boolean;
+      text?: string;
+      kind?: "message" | "commit" | "session" | "decision" | "run";
+      id?: string;
+      domIndex?: number;
+    }> = messages.map((m, i) => ({
       role: m.role as "user" | "assistant",
       createdAt: m.sentAt,
       hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0),
       text: m.content,
-    })),
-    [messages]
-  );
+      kind: "message" as const,
+      domIndex: i,
+    }));
+    // Include activity events (commits, sessions, decisions) so they receive
+    // their own date dots and participate in the shared chronological rail.
+    (activityEvents ?? []).forEach((ev, k) => {
+      events.push({
+        role: "assistant",
+        createdAt: ev.timestamp,
+        kind: ev.type,
+        id: `${ev.type}-${ev.id ?? ev.sha ?? k}`,
+        // Anchor index namespace kept disjoint from message indices.
+        domIndex: 100_000 + k,
+      });
+    });
+    return events;
+  }, [messages, activityEvents]);
 
   // ---- Inline activity interleaving -----------------------------------------
   // Assign each event to the index of the message AFTER which it should render
