@@ -638,7 +638,11 @@ const TIMELINE_VERBS = new Set([
   // Conversational milestones (2026-07-09 handoff).
   "MILESTONE_REQUIREMENTS", "MILESTONE_DECISION",
   "MILESTONE_DESIGN", "MILESTONE_PLAN", "ARTIFACT_GENERATED",
+  // Attachment / turn lifecycle verbs (merged from workspace_activity).
+  "ATTACHMENT_RECEIVED", "IMAGE_ANALYZED", "DOCUMENT_ANALYZED",
+  "ATTACHMENT_UNSUPPORTED", "ATLAS_THINKING", "RESPONSE_GENERATED",
 ]);
+
 const EXPANDABLE_VERBS = new Set([
   "THOUGHT", "FILE_EDIT", "Writing", "Written", "Patching", "SUMMARY", "ERROR", "QUESTION_ASKED",
   "MILESTONE_REQUIREMENTS", "MILESTONE_DECISION",
