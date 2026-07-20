@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { checkAttachmentClaims } from "../attachmentOutputGuard";
+import {
+  checkAttachmentClaims,
+  StreamingClaimGate,
+  findEarliestTrigger,
+  findSentenceBoundary,
+  CLAIM_LOOKAHEAD,
+} from "../attachmentOutputGuard";
 import type { AttachmentEvidence, ResolvedAttachmentInfo } from "../attachmentOutputGuard";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
@@ -410,5 +416,261 @@ describe("edge cases", () => {
     );
     // Even for named-file blocks, correction must include a re-attach instruction.
     expect(result.correction).toMatch(/re-attach the file in a new message/i);
+  });
+
+  it("named-file correction identifies which readable file Atlas CAN access", () => {
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeReadable("report.pdf", "application/pdf"),
+        makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    const result = checkAttachmentClaims(
+      "Based on deck.pptx, the roadmap shows three phases.",
+      evidence,
+    );
+    expect(result.clean).toBe(false);
+    expect(result.correction).toMatch(/deck\.pptx/i);
+    // Correction should also call out which file IS readable.
+    expect(result.correction).toMatch(/report\.pdf/i);
+  });
+});
+
+describe("mixed-capability ambiguity — generic singular language", () => {
+  it("'I can see the attachment' with several files but only one readable: passes (generic claim is supported)", () => {
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeReadable("report.pdf", "application/pdf"),
+        makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+        makeStorageOnly("data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    // Generic singular claim with no filename — authorised by the one readable file.
+    const result = checkAttachmentClaims(
+      "I can see the attachment — it looks like a financial report with several sections.",
+      evidence,
+    );
+    expect(result.clean).toBe(true);
+  });
+
+  it("'I can see the attachment' with zero readable files: blocks", () => {
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+        makeStorageOnly("data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    const result = checkAttachmentClaims(
+      "I can see the attachment — it looks like a financial report.",
+      evidence,
+    );
+    expect(result.clean).toBe(false);
+    // Generic zero-readable correction does not name a file (none are readable).
+    expect(result.correction).toMatch(/don't have access to any attachment/i);
+  });
+
+  it("storage-only PPTX named in claim while readable PDF also present: blocks and names both", () => {
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeReadable("report.pdf", "application/pdf"),
+        makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    const result = checkAttachmentClaims(
+      "Looking at deck.pptx, I can see the roadmap covers three phases.",
+      evidence,
+    );
+    expect(result.clean).toBe(false);
+    // Names the blocked file.
+    expect(result.correction).toMatch(/deck\.pptx/i);
+    // Also identifies the file Atlas CAN read so the user has actionable context.
+    expect(result.correction).toMatch(/report\.pdf/i);
+  });
+});
+
+describe("streaming claim gate — findEarliestTrigger", () => {
+  it("returns -1 for text with no trigger phrases", () => {
+    expect(findEarliestTrigger("Here is a plan for building the feature.")).toBe(-1);
+    expect(findEarliestTrigger("Let me know what you think.")).toBe(-1);
+    expect(findEarliestTrigger("The approach I recommend is modular design.")).toBe(-1);
+  });
+
+  it("detects 'I can see' at position 0", () => {
+    expect(findEarliestTrigger("I can see the appeal of this design.")).toBe(0);
+  });
+
+  it("detects 'the screenshot' trigger", () => {
+    const idx = findEarliestTrigger("Here, the screenshot shows a dashboard.");
+    expect(idx).toBeGreaterThanOrEqual(0);
+    expect("Here, the screenshot shows a dashboard.".slice(idx)).toMatch(/^the\s+screenshot/i);
+  });
+
+  it("detects 'the attached' trigger", () => {
+    expect(findEarliestTrigger("The attached file reveals a three-step plan.")).toBeGreaterThanOrEqual(0);
+  });
+
+  it("detects filename-direct trigger ('based on deck.pptx')", () => {
+    const text = "Based on deck.pptx, the roadmap shows Q2 milestones.";
+    const idx = findEarliestTrigger(text);
+    expect(idx).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns the EARLIEST trigger when multiple are present", () => {
+    const text = "I can see the screenshot which the attached file also shows.";
+    const idx = findEarliestTrigger(text);
+    // 'I can see' is at 0; should be earliest
+    expect(idx).toBe(0);
+  });
+
+  it("does NOT trigger on 'the screen is split' (not 'screenshot')", () => {
+    expect(findEarliestTrigger("The screen is split into two panels.")).toBe(-1);
+  });
+});
+
+describe("streaming claim gate — findSentenceBoundary", () => {
+  it("returns -1 for text with no boundary", () => {
+    expect(findSentenceBoundary("Based on deck.pptx, the roadmap")).toBe(-1);
+    expect(findSentenceBoundary("The screenshot shows a dashboard")).toBe(-1);
+  });
+
+  it("detects newline boundary", () => {
+    // No period before the newline — first boundary must be the '\n' itself.
+    const text = "The screenshot shows a dashboard\nNext sentence.";
+    const idx = findSentenceBoundary(text);
+    expect(idx).toBeGreaterThan(0);
+    expect(text[idx - 1]).toBe("\n");
+  });
+
+  it("detects period + space boundary", () => {
+    const text = "The screenshot shows four cards. Here are the details.";
+    const idx = findSentenceBoundary(text);
+    expect(idx).toBeGreaterThan(0);
+  });
+
+  it("does NOT treat deck.pptx period as a sentence boundary", () => {
+    const text = "Based on deck.pptx the roadmap has three phases";
+    expect(findSentenceBoundary(text)).toBe(-1);
+  });
+
+  it("detects '!' and '?' boundaries", () => {
+    expect(findSentenceBoundary("Great! Here is more.")).toBeGreaterThan(0);
+    expect(findSentenceBoundary("Is it correct? Let me check.")).toBeGreaterThan(0);
+  });
+});
+
+describe("streaming claim gate — CLAIM_LOOKAHEAD value", () => {
+  it("CLAIM_LOOKAHEAD is at least 28 (longer than any single trigger phrase)", () => {
+    expect(CLAIM_LOOKAHEAD).toBeGreaterThanOrEqual(28);
+  });
+});
+
+describe("streaming claim gate — StreamingClaimGate", () => {
+  function makeEvidence(attachments: ResolvedAttachmentInfo[]): AttachmentEvidence {
+    return { attachments, toolsExecutedThisTurn: new Set() };
+  }
+
+  it("emits normal text immediately (no hold) when no triggers present", () => {
+    const gate = new StreamingClaimGate(makeEvidence([]));
+    const fullText = "Here is a plan for building the feature. Let me know your thoughts.";
+    let emitted = "";
+    // Simulate the stream ending
+    const safeEnd = fullText.length;
+    const r1 = gate.process(fullText, 0, safeEnd);
+    emitted += r1.toEmit;
+    expect(r1.correctionContent).toBeNull();
+    // flush any tail
+    const r2 = gate.flush(fullText, r1.newEmitPtr);
+    emitted += r2.toEmit;
+    expect(emitted).toBe(fullText);
+  });
+
+  it("holds a claim sentence and releases it when evidence supports it (readable file)", () => {
+    const evidence = makeEvidence([makeReadable("report.pdf", "application/pdf")]);
+    const gate = new StreamingClaimGate(evidence);
+    const fullText = "Based on the attachment, I can summarise the key sections.\n";
+    const safeEnd = fullText.length;
+
+    const r1 = gate.process(fullText, 0, safeEnd);
+    // Trigger fires — may hold or emit prefix; no correction yet
+    expect(r1.correctionContent).toBeNull();
+
+    // Drive to completion
+    const r2 = gate.flush(fullText, r1.newEmitPtr);
+    expect(r2.correctionContent).toBeNull();
+    // All text should have been emitted across both steps
+    const total = r1.toEmit + r2.toEmit;
+    expect(total).toBe(fullText);
+  });
+
+  it("fires a correction and never emits the claim when no readable file exists", () => {
+    const evidence = makeEvidence([
+      makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+    ]);
+    const gate = new StreamingClaimGate(evidence);
+    // Simulate stream arriving in a single batch
+    const fullText = "The screenshot shows a dark-themed dashboard with four metric cards.\n";
+    const safeEnd = fullText.length;
+
+    // Accumulate through process + flush
+    const r1 = gate.process(fullText, 0, safeEnd);
+    const r2 = gate.flush(fullText, r1.newEmitPtr);
+
+    const correctionContent = r1.correctionContent ?? r2.correctionContent;
+    expect(correctionContent).not.toBeNull();
+    // The claim sentence itself should never appear in emitted text
+    const emitted = r1.toEmit + r2.toEmit;
+    expect(emitted).not.toMatch(/screenshot shows a dark/i);
+    expect(gate.hasFired).toBe(true);
+  });
+
+  it("emits text before the trigger, suppresses only the claim sentence", () => {
+    const evidence = makeEvidence([]);
+    const gate = new StreamingClaimGate(evidence);
+    const prefix = "Here is a summary of our strategy. ";
+    const claim = "The screenshot shows a dashboard with four cards.\n";
+    const fullText = prefix + claim;
+    const safeEnd = fullText.length;
+
+    const r1 = gate.process(fullText, 0, safeEnd);
+    const r2 = gate.flush(fullText, r1.newEmitPtr);
+
+    const emitted = r1.toEmit + r2.toEmit;
+    const correctionContent = r1.correctionContent ?? r2.correctionContent;
+    // The prefix (before the trigger) should be emitted
+    expect(emitted).toContain("Here is a summary of our strategy.");
+    // The claim sentence should not appear
+    expect(emitted).not.toMatch(/screenshot shows a dashboard/i);
+    expect(correctionContent).not.toBeNull();
+  });
+
+  it("hasFired stays false when all claims are clean", () => {
+    const evidence = makeEvidence([makeReadable("photo.jpg", "image/jpeg")]);
+    const gate = new StreamingClaimGate(evidence);
+    const fullText = "I can see the image — it shows a product mockup.\n";
+    gate.process(fullText, 0, fullText.length);
+    gate.flush(fullText, 0);
+    expect(gate.hasFired).toBe(false);
+  });
+
+  it("swallows all tokens after a correction fires (hasFired guard)", () => {
+    const evidence = makeEvidence([]);
+    const gate = new StreamingClaimGate(evidence);
+    const fullText = "The attached file contains sensitive data.\nMore text after.\n";
+    gate.process(fullText, 0, fullText.length);
+    const r2 = gate.flush(fullText, 0);
+
+    // Any subsequent process call after firing should emit nothing
+    const r3 = gate.process(fullText + " extra", 0, fullText.length + 6);
+    expect(r3.toEmit).toBe("");
+    expect(r3.correctionContent).toBeNull();
+    // hasFired should remain true
+    expect(gate.hasFired).toBe(true);
+
+    // r2 result should also be clean (correction fired in process or flush)
+    void r2;
   });
 });

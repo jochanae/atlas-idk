@@ -2,25 +2,32 @@
  * Narrow server-side output guard for unsupported attachment perception and
  * retrieval claims.
  *
- * Firing conditions (all must be true):
- *   1. The model made a claim that clearly references file/image/attachment content.
- *   2. The specific file named in the claim (by filename or MIME-type keyword) did NOT
- *      have its content supplied to the model this turn.
- *   3. No file-reading tool (read_file, read_reference_project_file,
- *      list_reference_project_dir) executed this turn.
+ * Two enforcement layers:
+ *
+ *   1. StreamingClaimGate — intercepts token emission in real-time.
+ *      When the in-progress sentence begins matching a trigger prefix, the gate
+ *      holds that sentence until it completes, then validates it.  If the claim
+ *      is unsupported the sentence is replaced by a correction SSE; otherwise
+ *      it is released normally.  Normal (non-claim) text streams immediately
+ *      after a CLAIM_LOOKAHEAD holdback window.
+ *
+ *   2. checkAttachmentClaims (post-stream) — runs in finishStream on the full
+ *      response.  Catches anything the streaming gate missed (e.g. a sentence
+ *      that straddled the end of the stream without a boundary, or a turn that
+ *      skipped the streaming path).
  *
  * Per-attachment granularity: a readable PDF cannot authorize claims about a
- * storage-only PPTX in the same message. Each violation is checked against the
- * specific attachment it appears to target.
+ * storage-only PPTX in the same message.
  */
+
+// ── Interfaces ────────────────────────────────────────────────────────────────
 
 export interface ResolvedAttachmentInfo {
   attachmentId: string;
   filename: string;
   mimeType: string;
   capability: "model_readable" | "storage_only" | "failed";
-  /** True only when the file's content (base64 / text block) was injected into
-   *  the model context for this turn. */
+  /** True only when the file's content was injected into the model context. */
   contentSuppliedToModel: boolean;
 }
 
@@ -39,18 +46,10 @@ export interface GuardResult {
   correction: string;
 }
 
-/**
- * Narrow perception/retrieval claim patterns.
- * Each pattern is anchored to file/image/attachment context to avoid
- * false-positives on unrelated prose.
- *
- * Covered claim types (per spec):
- *   - "I can see" + attachment context
- *   - "the screenshot shows"
- *   - "the attached file contains"
- *   - "I read/opened/pulled/checked the file"
- *   - direct filename references: "based on deck.pptx", "looking at slides.pptx"
- */
+// ── Post-stream patterns ───────────────────────────────────────────────────────
+// Each pattern is anchored to file/image/attachment context to avoid
+// false-positives on unrelated prose.
+
 const PERCEPTION_PATTERNS: RegExp[] = [
   // "I can see" followed by attachment context within 100 chars
   /\bI\s+can\s+see\b.{0,100}(?:attach(?:ment|ed)?|screenshot|the\s+image|the\s+photo|the\s+file|your\s+(?:image|photo|file|screenshot))/i,
@@ -58,14 +57,13 @@ const PERCEPTION_PATTERNS: RegExp[] = [
   // "the screenshot shows/reveals/displays/contains/looks like"
   /\bthe\s+screenshot\s+(?:shows?|reveals?|displays?|contains?|looks?\s+like|indicates?)\b/i,
 
-  // "the attached file/image/document shows/contains/reveals/says/includes"
+  // "the attached file/image/document shows/contains/…"
   /\bthe\s+attached?\s+(?:file|image|photo|document|screenshot)\s+(?:shows?|contains?|reveals?|says?|indicates?|has\b|includes?|displays?)/i,
 
-  // "your attached X shows/contains/reveals/looks"
+  // "your attached X shows/contains/…"
   /\byour\s+attached?\s+(?:file|image|photo|document|screenshot)\s+(?:shows?|contains?|reveals?|looks?|says?)/i,
 
-  // Explicit retrieval: "I read/opened/pulled/checked the file" — extended with
-  // common document-type nouns so "I read the spreadsheet" and "I opened the PDF" fire.
+  // Explicit retrieval — extended with document-type nouns
   /\bI\s+(?:read|open(?:ed)?|pull(?:ed)?|check(?:ed)?|review(?:ed)?|access(?:ed)?)\s+(?:the|your|this)\s+(?:file|attach\w*|screenshot|image|photo|document|spreadsheet|presentation|pdf|csv|slides?|deck)\b/i,
 
   // "I see/can see in the image/screenshot"
@@ -83,15 +81,231 @@ const PERCEPTION_PATTERNS: RegExp[] = [
   // "the image/photo shows/contains/reveals/appears to/indicates"
   /\bthe\s+(?:image|photo)\s+(?:shows?|contains?|reveals?|appears?\s+to|indicates?|looks?\s+like)\b/i,
 
-  // Direct filename reference: "based on deck.pptx", "looking at report.pdf",
-  // "from slides.pptx", "in data.xlsx" — any supported file extension.
+  // Direct filename reference: "based on deck.pptx", "looking at report.pdf"
   /\b(?:based\s+on|looking\s+at|from|in)\s+[\w][\w.()\- ]*\.(?:pdf|docx?|pptx?|xlsx?|xls|csv|png|jpe?g|gif|webp|txt|md)\b/i,
 ];
 
+// ── Streaming gate trigger patterns ───────────────────────────────────────────
+// BROADER than PERCEPTION_PATTERNS — fire early (on the trigger prefix) so we
+// can hold the rest of the sentence before validating.  False-positive holds are
+// validated away and released without any visible effect.
+
+const TRIGGER_PATTERNS: RegExp[] = [
+  /\bI\s+can\s+see\b/i,
+  /\bthe\s+screenshot\b/i,
+  /\bthe\s+attach\w*/i,
+  /\byour\s+attach\w*/i,
+  /\bI\s+(?:read|open(?:ed)?|pull(?:ed)?|check(?:ed)?|review(?:ed)?|access(?:ed)?)\s+(?:the|your|this)\b/i,
+  /\bI\s+(?:can\s+)?see\s+(?:in|on)\s+(?:the|your)\b/i,
+  /\bfrom\s+the\s+(?:file|image|screenshot|photo|attach\w*)\b/i,
+  /\blooking\s+at\s+(?:the|your)\b/i,
+  /\bbased\s+on\s+(?:the|your)\b/i,
+  /\bbased\s+on\s+[\w][\w.()\- ]*\.(?:pdf|docx?|pptx?|xlsx?|xls|csv|png|jpe?g|gif|webp)\b/i,
+  /\blooking\s+at\s+[\w][\w.()\- ]*\.(?:pdf|docx?|pptx?|xlsx?|xls|csv|png|jpe?g|gif|webp)\b/i,
+  /\bthe\s+(?:image|photo)\b/i,
+];
+
 /**
- * Tools whose execution constitutes file-reading evidence.
- * If any of these ran this turn, all file content claims are supportable.
+ * How many chars to hold back from the IMAGE_GEN-safe window when no trigger
+ * is found yet.  Must be ≥ the length of the longest trigger phrase so that a
+ * phrase arriving split across tokens is never emitted before detection.
  */
+export const CLAIM_LOOKAHEAD = 32;
+
+// ── Utility exports (used by nexus.ts gate integration) ──────────────────────
+
+/**
+ * Return the index of the earliest trigger-phrase match in `text`, or -1.
+ */
+export function findEarliestTrigger(text: string): number {
+  let earliest = -1;
+  for (const pattern of TRIGGER_PATTERNS) {
+    const match = pattern.exec(text);
+    if (match?.index !== undefined) {
+      if (earliest === -1 || match.index < earliest) {
+        earliest = match.index;
+      }
+    }
+  }
+  return earliest;
+}
+
+/**
+ * Find the first sentence-ending position in `text`.
+ * Returns the index AFTER the terminal character, or -1 if no boundary found.
+ *
+ * Excludes periods that look like file-extension boundaries (e.g. "deck.pptx ").
+ */
+export function findSentenceBoundary(text: string): number {
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\n") return i + 1;
+    if (ch === "!" || ch === "?") {
+      const next = text[i + 1] ?? "";
+      if (next === " " || next === "\n" || next === "") return i + 1;
+    }
+    if (ch === ".") {
+      const next = text[i + 1] ?? "";
+      if (next === " " || next === "\n" || next === "") {
+        // Skip extension-like patterns: "deck.pptx " → 2-4 alpha chars + space/end
+        if (/^\w{2,4}(?:\s|$)/.test(text.slice(i + 1))) continue;
+        return i + 1;
+      }
+    }
+  }
+  return -1;
+}
+
+// ── Streaming claim gate ──────────────────────────────────────────────────────
+
+export interface StreamingGateOutput {
+  /** Advance emitPtr to this position. */
+  newEmitPtr: number;
+  /** Characters to send to the client right now (may be empty). */
+  toEmit: string;
+  /** If non-null: emit a correction SSE and stop streaming further tokens. */
+  correctionContent: string | null;
+}
+
+/**
+ * Per-request streaming claim gate.  Instantiate once at the start of each
+ * response; call process() from flushNexusText on every token batch; call
+ * flush() when the stream ends to release any trailing held text.
+ *
+ * Evidence is passed by reference so toolsExecutedThisTurn stays live as tools
+ * run during streaming.
+ */
+export class StreamingClaimGate {
+  /** Position in fullText where holding started (-1 = not holding). */
+  private holdFrom = -1;
+  /** Start of the current sentence in fullText (for full-sentence validation). */
+  private sentenceStart = 0;
+  /** True once a mid-stream correction has been emitted. */
+  private correctionFired = false;
+
+  private readonly evidence: AttachmentEvidence;
+
+  constructor(evidence: AttachmentEvidence) {
+    this.evidence = evidence;
+  }
+
+  get hasFired(): boolean {
+    return this.correctionFired;
+  }
+
+  /**
+   * Process the current fullText against the IMAGE_GEN-safe window [emitPtr, safeEnd).
+   *
+   * NOT holding → scan for trigger phrases; hold from earliest trigger.
+   * Holding → wait for sentence boundary; validate; release or correct.
+   */
+  process(fullText: string, emitPtr: number, safeEnd: number): StreamingGateOutput {
+    // Once a correction has fired, swallow all remaining tokens silently.
+    if (this.correctionFired) {
+      return { newEmitPtr: safeEnd, toEmit: "", correctionContent: null };
+    }
+
+    // ── Not holding ──────────────────────────────────────────────────────────
+    if (this.holdFrom === -1) {
+      // Search the full unprocessed window (including IMAGE_GEN lookahead) for
+      // a trigger phrase so we never emit a trigger that arrived split.
+      const searchText = fullText.slice(emitPtr);
+      const triggerIdx = findEarliestTrigger(searchText);
+
+      if (triggerIdx !== -1) {
+        const absoluteTrigger = emitPtr + triggerIdx;
+        // Clamp to safeEnd so we never venture into the IMAGE_GEN lookahead zone.
+        const holdAt = Math.min(absoluteTrigger, safeEnd);
+        this.holdFrom = holdAt;
+        return {
+          newEmitPtr: holdAt,
+          toEmit: fullText.slice(emitPtr, holdAt),
+          correctionContent: null,
+        };
+      }
+
+      // No trigger — apply CLAIM_LOOKAHEAD holdback so split phrases never slip through.
+      const claimSafeEnd = Math.min(
+        safeEnd,
+        Math.max(emitPtr, fullText.length - CLAIM_LOOKAHEAD),
+      );
+      return {
+        newEmitPtr: claimSafeEnd,
+        toEmit: fullText.slice(emitPtr, claimSafeEnd),
+        correctionContent: null,
+      };
+    }
+
+    // ── Holding ───────────────────────────────────────────────────────────────
+    const heldText = fullText.slice(this.holdFrom);
+    const boundaryOffset = findSentenceBoundary(heldText);
+
+    if (boundaryOffset === -1) {
+      // Sentence not complete yet — keep accumulating.
+      return { newEmitPtr: emitPtr, toEmit: "", correctionContent: null };
+    }
+
+    const sentenceEnd = this.holdFrom + boundaryOffset;
+    const fullSentence = fullText.slice(this.sentenceStart, sentenceEnd);
+    const guardResult = checkAttachmentClaims(fullSentence, this.evidence);
+
+    const prevEmitPtr = emitPtr;
+    this.holdFrom = -1;
+    this.sentenceStart = sentenceEnd;
+
+    if (guardResult.clean) {
+      return {
+        newEmitPtr: sentenceEnd,
+        toEmit: fullText.slice(prevEmitPtr, sentenceEnd),
+        correctionContent: null,
+      };
+    }
+
+    this.correctionFired = true;
+    return {
+      newEmitPtr: sentenceEnd,
+      toEmit: "",
+      correctionContent: guardResult.correction,
+    };
+  }
+
+  /**
+   * Flush any remaining held text at stream end (called once before finishStream).
+   * finishStream re-validates the complete response independently.
+   */
+  flush(fullText: string, emitPtr: number): StreamingGateOutput {
+    if (this.correctionFired) {
+      return { newEmitPtr: fullText.length, toEmit: "", correctionContent: null };
+    }
+    if (this.holdFrom === -1) {
+      // Emit the IMAGE_GEN-lookahead tail (no trigger was active).
+      const tail = fullText.slice(emitPtr);
+      return { newEmitPtr: fullText.length, toEmit: tail, correctionContent: null };
+    }
+    // There is held text; treat stream end as a sentence boundary and validate.
+    const fullSentence = fullText.slice(this.sentenceStart);
+    const guardResult = checkAttachmentClaims(fullSentence, this.evidence);
+    this.holdFrom = -1;
+
+    if (guardResult.clean) {
+      return {
+        newEmitPtr: fullText.length,
+        toEmit: fullText.slice(emitPtr),
+        correctionContent: null,
+      };
+    }
+    this.correctionFired = true;
+    return {
+      newEmitPtr: fullText.length,
+      toEmit: "",
+      correctionContent: guardResult.correction,
+    };
+  }
+}
+
+// ── Per-attachment evidence helpers ──────────────────────────────────────────
+
+/** Tools whose execution constitutes file-reading evidence. */
 const FILE_READ_TOOLS = new Set([
   "read_file",
   "read_reference_project_file",
@@ -105,10 +319,7 @@ function hasFileReadEvidence(toolsExecutedThisTurn: ReadonlySet<string>): boolea
   return false;
 }
 
-/**
- * MIME-type keyword descriptors for identifying which attachment a claim targets.
- * Checked in order; first match wins.
- */
+/** MIME-type keyword descriptors for identifying a targeted attachment. */
 const MIME_KEYWORDS: Array<{
   pattern: RegExp;
   test: (mimeType: string, filename: string) => boolean;
@@ -125,16 +336,12 @@ const MIME_KEYWORDS: Array<{
   {
     pattern: /\bpptx\b|\.ppt\b|\bpowerpoint\b|\bpresentation\b|\bslides?\b/i,
     test: (m, n) =>
-      m.includes("presentationml") ||
-      n.endsWith(".pptx") ||
-      n.endsWith(".ppt"),
+      m.includes("presentationml") || n.endsWith(".pptx") || n.endsWith(".ppt"),
   },
   {
     pattern: /\bdocx?\b|\bword\s+doc(?:ument)?\b/i,
     test: (m, n) =>
-      m.includes("wordprocessingml") ||
-      n.endsWith(".docx") ||
-      n.endsWith(".doc"),
+      m.includes("wordprocessingml") || n.endsWith(".docx") || n.endsWith(".doc"),
   },
   {
     pattern: /\bpdf\b/i,
@@ -147,22 +354,15 @@ const MIME_KEYWORDS: Array<{
 ];
 
 /**
- * Try to identify which specific attachment a violated claim is about.
- *
- * Resolution order:
- *   1. Exact filename match (case-insensitive) in the matched text.
- *   2. Basename-without-extension match (≥4 chars) to catch "report" matching "report.pdf".
- *   3. MIME-type keyword match (spreadsheet, pptx, pdf, image, …).
- *
- * Returns `null` when the claim is generic ("the attachment", "the file") and
- * cannot be mapped to a specific entry in the list.
+ * Try to identify which specific attachment a violated claim targets.
+ * Returns null for generic claims ("the attachment", "the file") that cannot
+ * be mapped to a specific entry.
  */
 function findTargetedAttachment(
   matchedText: string,
   attachments: ResolvedAttachmentInfo[],
 ): ResolvedAttachmentInfo | null {
   if (attachments.length === 0) return null;
-
   const textLC = matchedText.toLowerCase();
 
   // 1. Exact filename
@@ -170,7 +370,7 @@ function findTargetedAttachment(
     if (textLC.includes(att.filename.toLowerCase())) return att;
   }
 
-  // 2. Basename (no extension), minimum 4 chars to avoid short false matches
+  // 2. Basename (no extension), minimum 4 chars
   for (const att of attachments) {
     const base = att.filename.toLowerCase().replace(/\.[^.]+$/, "");
     if (base.length >= 4 && textLC.includes(base)) return att;
@@ -189,7 +389,11 @@ function findTargetedAttachment(
   return null;
 }
 
-function buildCorrection(violations: string[], blockedFiles: string[]): string {
+function buildCorrection(
+  violations: string[],
+  blockedFiles: string[],
+  readableFiles: string[],
+): string {
   const firstViolation = violations[0];
   const followUp = `\n\nIf you'd like me to read the content, please re-attach the file in a new message and I'll work with it directly.`;
 
@@ -200,9 +404,15 @@ function buildCorrection(violations: string[], blockedFiles: string[]): string {
     const violationNote = firstViolation
       ? `\n\n*(I said: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — but that file's content was not available to me.)*`
       : "";
+    // Identify which file(s) Atlas CAN see when there are named readable files.
+    const readableNote =
+      readableFiles.length > 0
+        ? ` I can see ${readableFiles.map((f) => `**${f}**`).join(", ")} in this message.`
+        : "";
     return (
-      `I can see some files were included in this message, but ${named} ${isAre} stored without readable content reaching me — ` +
-      `I can't make claims about what's inside ${itThem}.` +
+      `I can see some files were included in this message, but ${named} ${isAre} stored without readable content reaching me —` +
+      readableNote +
+      ` I can't make claims about what's inside ${itThem}.` +
       violationNote +
       followUp
     );
@@ -218,27 +428,20 @@ function buildCorrection(violations: string[], blockedFiles: string[]): string {
   );
 }
 
+// ── Main post-stream validator ────────────────────────────────────────────────
+
 /**
  * Check model output for unsupported attachment perception or retrieval claims.
  *
- * Per-attachment logic: when the violated claim names a specific file (by filename
- * or MIME-type keyword), only that file's evidence is checked. A readable PDF does
- * not authorize claims about a storage-only PPTX in the same message.
- *
- * Returns `{ clean: true }` when:
- *   - A file-reading tool ran this turn (all claims are supportable), OR
- *   - No matching claim patterns are found, OR
- *   - Every matched claim is supported by the targeted file's evidence.
- *
- * Returns `{ clean: false, violations, correction }` when at least one
- * unsupported, file-specific claim is found.
+ * Per-attachment: when the claim names a specific file (by filename or MIME
+ * keyword), only that file's evidence is checked.  A readable PDF does NOT
+ * authorise claims about a storage-only PPTX in the same message.
  */
 export function checkAttachmentClaims(
   text: string,
   evidence: AttachmentEvidence,
 ): GuardResult {
-  // Fast path: file-read tools ran → all claims are supportable regardless of
-  // which attachment they mention.
+  // Fast path: any file-reading tool ran → all claims are supportable.
   if (hasFileReadEvidence(evidence.toolsExecutedThisTurn)) {
     return { clean: true, violations: [], correction: "" };
   }
@@ -254,7 +457,7 @@ export function checkAttachmentClaims(
     const targeted = findTargetedAttachment(matchedText, evidence.attachments);
 
     if (targeted !== null) {
-      // Specific file identified — block only if THAT file's content wasn't supplied.
+      // Specific file identified — block only if THAT file had no content.
       if (!targeted.contentSuppliedToModel) {
         violations.push(matchedText);
         if (!blockedFiles.includes(targeted.filename)) {
@@ -262,8 +465,7 @@ export function checkAttachmentClaims(
         }
       }
     } else {
-      // Generic claim (no specific file identified) — block if NO attachment
-      // has content available.
+      // Generic claim — block if NO attachment has content.
       if (!evidence.attachments.some((a) => a.contentSuppliedToModel)) {
         violations.push(matchedText);
       }
@@ -274,9 +476,19 @@ export function checkAttachmentClaims(
     return { clean: true, violations: [], correction: "" };
   }
 
+  // Collect readable (non-generic) files to name in the correction.
+  const readableFiles = evidence.attachments
+    .filter(
+      (a) =>
+        a.contentSuppliedToModel &&
+        !a.filename.match(/^vault_image_|^url_screenshot_/) &&
+        !blockedFiles.includes(a.filename),
+    )
+    .map((a) => a.filename);
+
   return {
     clean: false,
     violations,
-    correction: buildCorrection(violations, blockedFiles),
+    correction: buildCorrection(violations, blockedFiles, readableFiles),
   };
 }

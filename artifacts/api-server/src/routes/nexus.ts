@@ -6,7 +6,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, projectArtifactsTable, messageAttachmentsTable, workspaceActivityTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
-import { checkAttachmentClaims, type ResolvedAttachmentInfo } from "../lib/attachmentOutputGuard";
+import {
+  checkAttachmentClaims,
+  StreamingClaimGate,
+  type ResolvedAttachmentInfo,
+} from "../lib/attachmentOutputGuard";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
@@ -4248,50 +4252,9 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     // persisting, and emits a `correction` SSE event so the frontend can update
     // the already-streamed message.
     {
-      // Build per-attachment evidence: resolved (content supplied) + skipped
-      // (stored but not readable) + legacy inline + vault images + url screenshots.
-      const perAttachmentEvidence: ResolvedAttachmentInfo[] = [
-        // Persisted attachments that resolved with readable content
-        ...resolvedAttachmentMetaForGuard.map((a) => ({
-          attachmentId: a.attachmentId,
-          filename: a.name,
-          mimeType: a.mediaType,
-          capability: "model_readable" as const,
-          contentSuppliedToModel: true,
-        })),
-        // Persisted attachments that were skipped (storage-only / unsupported)
-        ...skippedAttachmentIdPayloads.map((s) => ({
-          attachmentId: s.attachmentId,
-          filename: s.filename ?? "unknown_file",
-          mimeType: s.mimeType ?? "application/octet-stream",
-          capability: "storage_only" as const,
-          contentSuppliedToModel: false,
-        })),
-        // Legacy inline base64 attachments (always readable)
-        ...legacyInlineModelAttachments.map((a, i) => ({
-          attachmentId: (a as { clientAttachmentId?: string }).clientAttachmentId ?? `legacy_${i}`,
-          filename: a.name ?? "inline_file",
-          mimeType: a.mediaType,
-          capability: "model_readable" as const,
-          contentSuppliedToModel: true,
-        })),
-        // Vault images (model_readable)
-        ...(vault?.imageBlocks ?? []).map((_: unknown, i: number) => ({
-          attachmentId: `vault_${i}`,
-          filename: `vault_image_${i}.jpg`,
-          mimeType: "image/jpeg",
-          capability: "model_readable" as const,
-          contentSuppliedToModel: true,
-        })),
-        // URL screenshot blocks (model_readable)
-        ...urlBlocks.map((_: unknown, i: number) => ({
-          attachmentId: `url_${i}`,
-          filename: `url_screenshot_${i}.jpg`,
-          mimeType: "image/jpeg",
-          capability: "model_readable" as const,
-          contentSuppliedToModel: true,
-        })),
-      ];
+      // Reuse the same evidence the streaming gate used above — built once,
+      // shared between the gate and the post-stream validator.
+      const perAttachmentEvidence = getPerAttachmentEvidence();
 
       const guardResult = checkAttachmentClaims(rawContent, {
         attachments: perAttachmentEvidence,
@@ -6807,6 +6770,56 @@ Do NOT claim to read, see, or describe any file not listed here.
   const IG_BOF = "IMAGE_GEN:"; // when the marker is the very first thing in the response
   const IG_LOOKAHEAD = IG_MARKER.length + 1;
 
+  // ── Streaming claim gate setup ─────────────────────────────────────────────
+  // perAttachmentEvidence is built lazily on first use so that vault/urlBlocks
+  // (which are populated just before streamClaude is called) are always ready.
+  let cachedPerAttachmentEvidence: ResolvedAttachmentInfo[] | null = null;
+  const getPerAttachmentEvidence = (): ResolvedAttachmentInfo[] => {
+    if (cachedPerAttachmentEvidence) return cachedPerAttachmentEvidence;
+    cachedPerAttachmentEvidence = [
+      ...resolvedAttachmentMetaForGuard.map((a) => ({
+        attachmentId: a.attachmentId,
+        filename: a.name,
+        mimeType: a.mediaType,
+        capability: "model_readable" as const,
+        contentSuppliedToModel: true,
+      })),
+      ...skippedAttachmentIdPayloads.map((s) => ({
+        attachmentId: s.attachmentId,
+        filename: s.filename ?? "unknown_file",
+        mimeType: s.mimeType ?? "application/octet-stream",
+        capability: "storage_only" as const,
+        contentSuppliedToModel: false,
+      })),
+      ...legacyInlineModelAttachments.map((a, i) => ({
+        attachmentId: (a as { clientAttachmentId?: string }).clientAttachmentId ?? `legacy_${i}`,
+        filename: a.name ?? "inline_file",
+        mimeType: a.mediaType,
+        capability: "model_readable" as const,
+        contentSuppliedToModel: true,
+      })),
+      ...(vault?.imageBlocks ?? []).map((_: unknown, i: number) => ({
+        attachmentId: `vault_${i}`,
+        filename: `vault_image_${i}.jpg`,
+        mimeType: "image/jpeg",
+        capability: "model_readable" as const,
+        contentSuppliedToModel: true,
+      })),
+      ...urlBlocks.map((_: unknown, i: number) => ({
+        attachmentId: `url_${i}`,
+        filename: `url_screenshot_${i}.jpg`,
+        mimeType: "image/jpeg",
+        capability: "model_readable" as const,
+        contentSuppliedToModel: true,
+      })),
+    ];
+    return cachedPerAttachmentEvidence;
+  };
+
+  // Initialized lazily on the first flushNexusText call so evidence is ready.
+  // toolsExecutedThisTurn is passed by reference — stays live as tools run.
+  let claimGate: StreamingClaimGate | null = null;
+
   const flushNexusText = () => {
     if (imagePendingSent) return;
 
@@ -6829,13 +6842,35 @@ Do NOT claim to read, see, or describe any file not listed here.
       return;
     }
 
-    // No marker found yet — emit everything except a tail long enough to hold
-    // a partial "\nIMAGE_GEN:" prefix that might still be arriving in pieces.
+    // No marker found yet — feed the IMAGE_GEN-safe window through the streaming
+    // claim gate.  The gate holds back CLAIM_LOOKAHEAD chars to catch split
+    // trigger phrases, accumulates each potentially-claim sentence, and emits a
+    // correction SSE instead of releasing any unsupported claim.
+    if (!claimGate) {
+      claimGate = new StreamingClaimGate({
+        attachments: getPerAttachmentEvidence(),
+        toolsExecutedThisTurn, // by reference — stays live as tools run
+      });
+    }
     const safeEnd = Math.max(emitPtr, fullText.length - IG_LOOKAHEAD);
-    if (safeEnd > emitPtr) {
-      const toEmit = fullText.slice(emitPtr, safeEnd);
-      res.write(`event: token\ndata: ${JSON.stringify(toEmit)}\n\n`);
-      emitPtr = safeEnd;
+    const gateResult = claimGate.process(fullText, emitPtr, safeEnd);
+    emitPtr = gateResult.newEmitPtr;
+    if (gateResult.correctionContent !== null) {
+      if (!res.writableEnded && !res.destroyed) {
+        res.write(
+          `event: correction\ndata: ${JSON.stringify({ content: gateResult.correctionContent })}\n\n`,
+        );
+      }
+      req.log.warn(
+        {
+          correctionPreview: gateResult.correctionContent.slice(0, 80),
+          focusProjectId,
+          conversationId: effectiveConversationId,
+        },
+        "nexus: streaming claim gate fired correction mid-stream",
+      );
+    } else if (gateResult.toEmit && !res.writableEnded && !res.destroyed) {
+      res.write(`event: token\ndata: ${JSON.stringify(gateResult.toEmit)}\n\n`);
     }
   };
 
