@@ -5477,6 +5477,7 @@ export default function Home() {
             {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
             <div style={{
               display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative",
+              flexShrink: 0,
               opacity: (inputFocused || hasInput || hasAttachments || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? 1 : 0,
               pointerEvents: (inputFocused || hasInput || hasAttachments || showFocusPicker || homeFocus !== null || askAtlasSurfaceOpen || askAtlasConversationActive) ? "auto" : "none",
               transition: "opacity 200ms ease-in-out",
