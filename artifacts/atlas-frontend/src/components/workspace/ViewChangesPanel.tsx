@@ -1115,6 +1115,7 @@ export function ViewChangesPanel({
   }, []);
   const showLegend = !legendDismissed && (!!commitSha || lens === "changes");
   const { runs: dbRuns, invalidate: invalidateDbRuns } = useProjectRuns(projectId, { conversationId });
+  const { items: activityItems } = useWorkspaceActivity(projectId);
 
   // Refresh run list immediately when a run completes — eliminates the 30s lag
   // before the Timeline and Changes lenses reflect the finished run.
