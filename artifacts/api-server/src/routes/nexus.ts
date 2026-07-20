@@ -6337,7 +6337,7 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
       ? (message || (attachmentIds.length > 0
           ? "The user attached file(s), but no attached file content is available to the model."
           : message))
-      : contentParts.length === 1 && contentParts[0].type === "text" && allAttachments.length === 0 && vault.imageBlocks.length === 0 && urlBlocks.length === 0
+      : contentParts.length === 1 && contentParts[0].type === "text" && allAttachments.length === 0 && attachmentIds.length === 0 && vault.imageBlocks.length === 0 && urlBlocks.length === 0
         ? message  // pure text-only: string shorthand (preserves existing behavior)
         : contentParts;
 
