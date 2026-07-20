@@ -10,6 +10,13 @@ if (typeof document !== "undefined") {
     if (!document.hidden) _lastBecameVisible = Date.now();
   });
 }
+if (typeof window !== "undefined") {
+  // Mobile browsers often don't fire visibilitychange when the native file
+  // picker returns — the composer dispatches this event on picker open/close.
+  window.addEventListener("atlas-picker-return", () => {
+    _lastBecameVisible = Date.now();
+  });
+}
 
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
