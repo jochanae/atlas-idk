@@ -992,13 +992,58 @@ function RunHeader({ run }: { run: ApiRun }) {
   );
 }
 
-function RunTimeline({ run }: { run: ApiRun }) {
-  const visible = run.steps.filter((s) => TIMELINE_VERBS.has(s.verb));
+const LIFECYCLE_ACTIVITY_TYPES = new Set<ActivityItem["type"]>([
+  "attachment_received", "image_analyzed", "document_analyzed",
+  "attachment_unsupported", "atlas_thinking", "response_generated",
+]);
+
+function activityToStep(item: ActivityItem, index: number): ApiRunStep {
+  const verbMap: Record<string, string> = {
+    attachment_received:    "ATTACHMENT_RECEIVED",
+    image_analyzed:         "IMAGE_ANALYZED",
+    document_analyzed:      "DOCUMENT_ANALYZED",
+    attachment_unsupported: "ATTACHMENT_UNSUPPORTED",
+    atlas_thinking:         "ATLAS_THINKING",
+    response_generated:     "RESPONSE_GENERATED",
+  };
+  return {
+    id: -1_000_000 - index, // negative synthetic ids to avoid collisions
+    verb: verbMap[item.type] ?? item.type.toUpperCase(),
+    target: item.attachmentName ?? null,
+    status: "completed",
+    detail: item.reason ?? item.subtitle ?? null,
+    content: item.reason ?? null,
+    beforeContent: null,
+    orderIndex: index,
+    createdAt: item.timestamp,
+  };
+}
+
+function RunTimeline({ run, activities }: { run: ApiRun; activities: ActivityItem[] }) {
+  const merged = useMemo<ApiRunStep[]>(() => {
+    // Scope activities to this run's time window (± 2 min buffer).
+    const start = new Date(run.startedAt).getTime() - 120_000;
+    const end = run.completedAt
+      ? new Date(run.completedAt).getTime() + 120_000
+      : Date.now() + 120_000;
+    const windowed = activities
+      .filter((a) => LIFECYCLE_ACTIVITY_TYPES.has(a.type))
+      .filter((a) => {
+        const t = new Date(a.timestamp).getTime();
+        return t >= start && t <= end;
+      })
+      .map((a, i) => activityToStep(a, i));
+
+    const steps = run.steps.filter((s) => TIMELINE_VERBS.has(s.verb));
+    return [...steps, ...windowed].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }, [run, activities]);
 
   return (
     <div>
       <RunHeader run={run} />
-      {visible.length === 0 ? (
+      {merged.length === 0 ? (
         <div style={{
           padding: "18px 16px", fontSize: 12,
           color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.65,
@@ -1009,14 +1054,15 @@ function RunTimeline({ run }: { run: ApiRun }) {
         </div>
       ) : (
         <div style={{ padding: "16px 14px 18px", display: "flex", flexDirection: "column" }}>
-          {visible.map((step, i) => (
-            <RunTimelineItem key={`${step.id}-${i}`} step={step} isLast={i === visible.length - 1} />
+          {merged.map((step, i) => (
+            <RunTimelineItem key={`${step.id}-${i}`} step={step} isLast={i === merged.length - 1} />
           ))}
         </div>
       )}
     </div>
   );
 }
+
 
 
 // (WorkspaceRunReceipts removed — Timeline lists runs chronologically and the
