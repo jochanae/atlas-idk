@@ -597,7 +597,7 @@ export function ChatStream(props: ChatStreamProps) {
       events.push({
         role: "assistant",
         createdAt: ev.timestamp,
-        kind: ev.type,
+        kind: ev.type as "commit" | "decision" | "session",
         id: `${ev.type}-${ev.id ?? ev.sha ?? k}`,
         // Anchor index namespace kept disjoint from message indices.
         domIndex: 100_000 + k,
