@@ -15,6 +15,7 @@ import {
   ATTACHMENT_RETENTION_DAYS,
   downloadAttachmentBytes,
 } from "./attachmentStorage";
+import { normalizeModelMediaType } from "./attachmentClassify";
 import { logger } from "./logger";
 
 export type ResolvedModelAttachment = {
@@ -131,13 +132,27 @@ export async function resolveAttachmentIdsForModel(params: {
         storageBucket: row.storageBucket,
         storagePath: row.storagePath,
       });
+      if (!buffer.byteLength) {
+        skipped.push({
+          attachmentId: id,
+          reason: "download_failed",
+          filename: row.filename,
+          mimeType: row.mimeType,
+        });
+        logger.warn(
+          { attachmentId: id, userId: params.userId, storagePath: row.storagePath },
+          "attachmentResolve: downloaded empty object",
+        );
+        continue;
+      }
       totalBytes += buffer.byteLength;
       const kind = row.kind;
+      const mediaType = normalizeModelMediaType(row.mimeType, row.filename);
       if (kind === "text" || kind === "code") {
         resolved.push({
           attachmentId: id,
           base64: buffer.toString("base64"),
-          mediaType: row.mimeType,
+          mediaType,
           name: row.filename,
           kind,
           asText: true,
@@ -147,12 +162,23 @@ export async function resolveAttachmentIdsForModel(params: {
         resolved.push({
           attachmentId: id,
           base64: buffer.toString("base64"),
-          mediaType: row.mimeType,
+          mediaType,
           name: row.filename,
           kind,
           asText: false,
         });
       }
+      logger.info(
+        {
+          attachmentId: id,
+          userId: params.userId,
+          kind,
+          mediaType,
+          bytes: buffer.byteLength,
+          asText: kind === "text" || kind === "code",
+        },
+        "attachmentResolve: resolved for model injection",
+      );
     } catch (err) {
       logger.warn(
         { err, attachmentId: id, userId: params.userId },

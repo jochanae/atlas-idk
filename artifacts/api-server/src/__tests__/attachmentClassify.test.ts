@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { classifyAttachment } from "../lib/attachmentClassify";
+import {
+  classifyAttachment,
+  normalizeModelMediaType,
+} from "../lib/attachmentClassify";
 
 describe("classifyAttachment", () => {
   it.each([
@@ -55,5 +58,14 @@ describe("classifyAttachment", () => {
       kind: "other",
       processingStatus: "unsupported",
     });
+  });
+
+  it("normalizes browser image/jpg alias to image/jpeg for model providers", () => {
+    expect(normalizeModelMediaType("image/jpg", "photo.jpg")).toBe("image/jpeg");
+    expect(normalizeModelMediaType("image/jpeg", "photo.jpg")).toBe("image/jpeg");
+    expect(normalizeModelMediaType("image/png", "shot.png")).toBe("image/png");
+    expect(normalizeModelMediaType("application/octet-stream", "photo.jpeg")).toBe(
+      "image/jpeg",
+    );
   });
 });

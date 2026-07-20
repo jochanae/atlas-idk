@@ -129,6 +129,27 @@ export function classifyAttachment(
   }
 }
 
+/**
+ * Normalize MIME types for model providers.
+ * Browsers often report `image/jpg`; Anthropic/Gemini accept `image/jpeg` only.
+ */
+export function normalizeModelMediaType(
+  mimeType: string,
+  filename?: string,
+): string {
+  const mime = (mimeType || "").trim().toLowerCase();
+  const name = filename || "";
+  if (mime === "image/jpg" || (mime === "application/octet-stream" && /\.jpe?g$/i.test(name))) {
+    return "image/jpeg";
+  }
+  if (!mime && /\.jpe?g$/i.test(name)) return "image/jpeg";
+  if (!mime && /\.png$/i.test(name)) return "image/png";
+  if (!mime && /\.webp$/i.test(name)) return "image/webp";
+  if (!mime && /\.gif$/i.test(name)) return "image/gif";
+  if (!mime && /\.pdf$/i.test(name)) return "application/pdf";
+  return mime || "application/octet-stream";
+}
+
 /** Map attachment kind to library_items.kind for promotion. */
 export function libraryKindForAttachment(kind: AttachmentKind): string {
   switch (kind) {
