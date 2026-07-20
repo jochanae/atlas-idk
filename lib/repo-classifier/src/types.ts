@@ -81,6 +81,7 @@ export type EnvironmentRequirement = {
 // ── External services ─────────────────────────────────────────────────────────
 
 export type ExternalServiceRequirement = {
+  /** Human-readable display name (e.g. "PostgreSQL"). Set by the classifier. */
   service: string;
   evidence: string;
   /**
@@ -89,13 +90,18 @@ export type ExternalServiceRequirement = {
    */
   connectionSupport: "environment-configurable" | "unknown";
   /**
-   * Phase 4 — product-capability fields.
-   * Set by the API layer after merging ATLAS_SERVICE_CAPABILITIES; never set by the classifier.
-   * Absent on raw classifier output; always present on API responses.
+   * Phase 4 — capability fields merged in by the API layer after classification.
+   * These are NEVER set by the static classifier — they belong to the product
+   * capability registry (capabilities.ts), not to repository evidence.
+   * Fields are absent on raw classifier output; always present on API responses.
    */
-  atlasCanProvide?: boolean;
-  atlasCanConnect?: boolean;
-  /** Human-readable label for the provider (e.g. "Replit PostgreSQL"). */
+  /** Canonical service identifier (e.g. "postgresql"). */
+  serviceId?: string;
+  /** How Atlas can help connect this service. See ProvisionMode in capabilities.ts. */
+  provisionMode?: string;
+  /** Env var names this service provides when provisioned (e.g. ["DATABASE_URL"]). */
+  knownEnvVars?: string[];
+  /** Human-readable label for the provider (e.g. "your PostgreSQL provider"). */
   providerLabel?: string;
 };
 

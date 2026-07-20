@@ -1549,6 +1549,31 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: workspace_activity failed — server will start anyway");
   }
+
+  // Phase 4: service bindings — owner-scoped, secret-encrypted, ON DELETE CASCADE
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS service_bindings (
+        id text PRIMARY KEY,
+        project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_id integer NOT NULL,
+        service_id text NOT NULL,
+        provision_mode text NOT NULL,
+        encrypted_secrets text,
+        env_var_names jsonb NOT NULL DEFAULT '[]',
+        provider_label text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        revoked_at timestamptz
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS service_bindings_project_user_idx
+        ON service_bindings (project_id, user_id)
+    `);
+    logger.info("ensureColumns: service_bindings table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: service_bindings failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

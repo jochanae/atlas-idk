@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 
 export interface RuntimeCardData {
   projectId: number;
@@ -34,8 +34,9 @@ export interface RuntimeCardData {
         service: string;
         evidence: string;
         connectionSupport: string;
-        atlasCanProvide?: boolean;
-        atlasCanConnect?: boolean;
+        serviceId?: string;
+        provisionMode?: string;
+        knownEnvVars?: string[];
         providerLabel?: string;
       }>;
     };
@@ -211,8 +212,10 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
   const [showLogs, setShowLogs] = useState(false);
   const [showTechnical, setShowTechnical] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [provisionedFields, setProvisionedFields] = useState<Set<string>>(new Set());
-  const [provisioningService, setProvisioningService] = useState<string | null>(null);
+  const [serviceBindings, setServiceBindings] = useState<Map<string, { bindingId: string; envVarNames: string[] }>>(new Map());
+  const [activeProvisionInput, setActiveProvisionInput] = useState<string | null>(null);
+  const [provisionInputValue, setProvisionInputValue] = useState("");
+  const [provisioningServiceId, setProvisioningServiceId] = useState<string | null>(null);
   const [provisionError, setProvisionError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
@@ -233,6 +236,21 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
   );
   const hasRequiredConfig = requiredVars.length > 0;
   const hasExternalServices = (selectedTarget?.externalServices?.length ?? 0) > 0;
+
+  // Env var names covered by active service bindings — excluded from the manual form.
+  // The server resolves these secrets server-side; the browser never holds their values.
+  const serviceProvidedVarNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const { envVarNames } of serviceBindings.values()) {
+      envVarNames.forEach(n => names.add(n));
+    }
+    return names;
+  }, [serviceBindings]);
+
+  const effectiveEnvFields = useMemo(
+    () => envFields.filter(f => !serviceProvidedVarNames.has(f.name)),
+    [envFields, serviceProvidedVarNames],
+  );
 
   const fetchStatus = useCallback(async (): Promise<DevServerStatus | null> => {
     try {
@@ -299,16 +317,19 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
   };
 
   const handleConfigDone = () => {
-    const missing = envFields.filter(f => f.sensitivity === "secret" || f.classification === "required-to-boot").filter(f => !f.value.trim());
+    const missing = effectiveEnvFields.filter(f => f.sensitivity === "secret" || f.classification === "required-to-boot").filter(f => !f.value.trim());
     if (missing.length > 0) return;
     setPhase("confirming");
   };
 
   const handleConfirmedRun = async () => {
+    // Only send env vars NOT covered by service bindings.
+    // Binding secrets are resolved entirely server-side; the browser never holds their values.
     const env: Record<string, string> = {};
-    for (const f of envFields) {
+    for (const f of effectiveEnvFields) {
       if (f.value.trim()) env[f.name] = f.value;
     }
+    const serviceBindingIds = Array.from(serviceBindings.values()).map(b => b.bindingId);
     setEnvFields(prev => prev.map(f => ({ ...f, value: "" })));
     setSubmitError(null);
 
@@ -317,7 +338,7 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetId: selectedTargetId, env }),
+        body: JSON.stringify({ targetId: selectedTargetId, env, serviceBindingIds }),
       });
       if (res.status === 409) { setPhase("polling"); return; }
       if (!res.ok) {
@@ -341,40 +362,55 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
     setServerStatus(null);
   };
 
-  const handleProvision = async (service: string) => {
-    setProvisioningService(service);
+  const handleProvision = async (serviceId: string, provisionMode: string | undefined) => {
+    setProvisioningServiceId(serviceId);
     setProvisionError(null);
     try {
+      const reqBody: Record<string, string> = { service: serviceId };
+      if (provisionMode === "existing-connection") {
+        if (!provisionInputValue.trim()) {
+          setProvisionError("Please enter a connection string.");
+          setProvisioningServiceId(null);
+          return;
+        }
+        reqBody.secret = provisionInputValue;
+      }
       const res = await fetch(`/api/projects/${effectiveProjectId}/provision-service`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ service }),
+        body: JSON.stringify(reqBody),
       });
-      const body = await res.json() as { ok?: boolean; envVars?: Record<string, string>; message?: string; error?: string; detail?: string };
-      if (!res.ok || !body.ok) {
-        setProvisionError(body.error ?? `Could not provision ${service}.`);
+      // Clear the secret from local state immediately — before reading the response —
+      // so it is not held in memory any longer than necessary.
+      setProvisionInputValue("");
+      setActiveProvisionInput(null);
+      const data = await res.json() as {
+        bindingId?: string;
+        environmentVariables?: string[];
+        provisionMode?: string;
+        providerLabel?: string;
+        generatedPath?: string;
+        error?: string;
+        detail?: string;
+      };
+      if (!res.ok || !data.bindingId) {
+        setProvisionError(data.error ?? `Could not connect ${serviceId}.`);
         return;
       }
-      const injected = body.envVars ?? {};
-      const injectedNames = Object.keys(injected);
-      if (injectedNames.length > 0) {
-        setEnvFields(prev => prev.map(f =>
-          injectedNames.includes(f.name) ? { ...f, value: injected[f.name] } : f
-        ));
-        setProvisionedFields(prev => {
-          const next = new Set(prev);
-          injectedNames.forEach(n => next.add(n));
-          return next;
+      // Store only the binding reference — never the secret value
+      setServiceBindings(prev => {
+        const next = new Map(prev);
+        next.set(serviceId, {
+          bindingId: data.bindingId!,
+          envVarNames: data.environmentVariables ?? [],
         });
-      } else {
-        // Service like SQLite that needs no env var — still mark it provided
-        setProvisionedFields(prev => new Set(prev).add(service));
-      }
+        return next;
+      });
     } catch {
-      setProvisionError(`Network error provisioning ${service}. Please try again.`);
+      setProvisionError(`Network error. Please try again.`);
     } finally {
-      if (mountedRef.current) setProvisioningService(null);
+      if (mountedRef.current) setProvisioningServiceId(null);
     }
   };
 
@@ -459,28 +495,75 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
               <div style={{ fontSize: 12, color: "rgba(255,200,100,0.8)", marginBottom: 8 }}>This target needs:</div>
               {selectedTarget.externalServices.map(svcName => {
                 const svcReq = report.requirements.externalServices.find(s => s.service === svcName);
-                const canProvide = svcReq?.atlasCanProvide ?? false;
-                const isProvisioned = provisionedFields.has(svcName) ||
-                  (svcReq?.provisionedEnvVars ?? []).some(v => provisionedFields.has(v));
-                const isProvisioning = provisioningService === svcName;
+                const svcId = svcReq?.serviceId ?? svcName.toLowerCase().trim();
+                const provisionMode = svcReq?.provisionMode;
+                const isProvisioned = serviceBindings.has(svcId);
+                const isProvisioning = provisioningServiceId === svcId;
+                const showInput = activeProvisionInput === svcId && !isProvisioned;
+                const canConnect = provisionMode === "existing-connection" || provisionMode === "local" || provisionMode === "atlas-managed";
                 return (
-                  <div key={svcName} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>• {svcName}</span>
-                    {isProvisioned ? (
-                      <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 4, background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.25)", color: "rgba(74,222,128,0.9)", ...MONO }}>
-                        ✓ {svcReq?.providerLabel ?? "provided by Atlas"}
-                      </span>
-                    ) : canProvide ? (
-                      <button
-                        type="button"
-                        disabled={isProvisioning}
-                        onClick={() => handleProvision(svcName)}
-                        style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,220,100,0.1)", border: "1px solid rgba(255,220,100,0.3)", color: "rgba(255,220,100,0.85)", cursor: isProvisioning ? "not-allowed" : "pointer", ...MONO, opacity: isProvisioning ? 0.6 : 1 }}
-                      >
-                        {isProvisioning ? "Connecting…" : `Connect via ${svcReq?.providerLabel ?? "Atlas"}`}
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>external — manual setup required</span>
+                  <div key={svcName} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>• {svcName}</span>
+                      {isProvisioned ? (
+                        <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 4, background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.25)", color: "rgba(74,222,128,0.9)", ...MONO }}>
+                          ✓ {svcReq?.providerLabel ?? "connected"}
+                        </span>
+                      ) : canConnect ? (
+                        provisionMode === "local" ? (
+                          <button
+                            type="button"
+                            disabled={isProvisioning}
+                            onClick={() => handleProvision(svcId, provisionMode)}
+                            style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,220,100,0.1)", border: "1px solid rgba(255,220,100,0.3)", color: "rgba(255,220,100,0.85)", cursor: isProvisioning ? "not-allowed" : "pointer", ...MONO, opacity: isProvisioning ? 0.6 : 1 }}
+                          >
+                            {isProvisioning ? "Configuring…" : "Configure local database"}
+                          </button>
+                        ) : showInput ? null : (
+                          <button
+                            type="button"
+                            onClick={() => { setActiveProvisionInput(svcId); setProvisionError(null); }}
+                            style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,220,100,0.1)", border: "1px solid rgba(255,220,100,0.3)", color: "rgba(255,220,100,0.85)", cursor: "pointer", ...MONO }}
+                          >
+                            Connect {svcName}
+                          </button>
+                        )
+                      ) : (
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>external — manual setup required</span>
+                      )}
+                    </div>
+                    {showInput && (
+                      <div style={{ marginTop: 6, padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 6, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", ...MONO }}>
+                          Connection string — sent once, encrypted at rest, never returned to browser
+                        </div>
+                        <input
+                          type="password"
+                          value={provisionInputValue}
+                          onChange={e => setProvisionInputValue(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter" && provisionInputValue.trim()) handleProvision(svcId, provisionMode); }}
+                          placeholder="postgres://user:pass@host:5432/dbname"
+                          autoComplete="off"
+                          style={{ width: "100%", boxSizing: "border-box", padding: "6px 9px", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 5, color: "rgba(255,255,255,0.85)", ...MONO, fontSize: 12, outline: "none" }}
+                        />
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            disabled={isProvisioning || !provisionInputValue.trim()}
+                            onClick={() => handleProvision(svcId, provisionMode)}
+                            style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", color: "rgba(74,222,128,0.9)", cursor: isProvisioning ? "not-allowed" : "pointer", ...MONO, opacity: isProvisioning || !provisionInputValue.trim() ? 0.5 : 1 }}
+                          >
+                            {isProvisioning ? "Connecting…" : "Connect"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setActiveProvisionInput(null); setProvisionInputValue(""); setProvisionError(null); }}
+                            style={{ fontSize: 11, padding: "3px 8px", borderRadius: 4, background: "none", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.4)", cursor: "pointer", ...MONO }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );
@@ -553,56 +636,64 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
           <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
             Configure {selectedTarget.workingDirectory}
           </div>
-          {envFields.map((field, i) => {
-            const isProvisioned = provisionedFields.has(field.name);
-            return (
-              <div key={field.name} style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                  <span style={{ ...MONO, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>{field.name}</span>
-                  {classificationLabel(field.classification)}
-                  {field.sensitivity === "secret" && !isProvisioned && (
-                    <span style={{ ...MONO, fontSize: 10, color: "rgba(255,160,100,0.7)" }}>secret</span>
-                  )}
-                  {isProvisioned && (
-                    <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.25)", color: "rgba(74,222,128,0.85)", ...MONO }}>
-                      ✓ provided by Atlas
-                    </span>
+          {serviceBindings.size > 0 && (
+            <div style={{ marginBottom: 14, padding: "8px 10px", background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.15)", borderRadius: 6 }}>
+              {Array.from(serviceBindings.entries()).map(([svcId, binding]) => (
+                <div key={svcId} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(74,222,128,0.8)", ...MONO }}>
+                  <span>✓</span>
+                  <span>{svcId}</span>
+                  {binding.envVarNames.length > 0 && (
+                    <span style={{ color: "rgba(255,255,255,0.3)" }}>→ {binding.envVarNames.join(", ")} provided server-side</span>
                   )}
                 </div>
-                {field.source.length > 0 && (
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 5, ...MONO }}>
-                    Used in: {field.source.slice(0, 2).join(", ")}
-                  </div>
+              ))}
+            </div>
+          )}
+          {effectiveEnvFields.map((field) => (
+            <div key={field.name} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                <span style={{ ...MONO, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>{field.name}</span>
+                {classificationLabel(field.classification)}
+                {field.sensitivity === "secret" && (
+                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,160,100,0.7)" }}>secret</span>
                 )}
-                {field.defaultValue && field.sensitivity !== "secret" && !isProvisioned && (
-                  <div style={{ fontSize: 11, color: "rgba(100,200,100,0.7)", marginBottom: 5 }}>
-                    Safe default: <code style={{ ...MONO }}>{field.defaultValue}</code>
-                  </div>
-                )}
-                <input
-                  type={field.sensitivity === "secret" && !isProvisioned ? "password" : "text"}
-                  value={isProvisioned ? "••••••••••••" : field.value}
-                  readOnly={isProvisioned}
-                  onChange={isProvisioned ? undefined : e => setEnvFields(prev => prev.map((f, j) => j === i ? { ...f, value: e.target.value } : f))}
-                  placeholder={field.sensitivity === "secret" ? "Enter secret value" : field.defaultValue ? `Default: ${field.defaultValue}` : `Enter value`}
-                  autoComplete="off"
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "7px 10px",
-                    background: isProvisioned ? "rgba(74,222,128,0.05)" : "rgba(0,0,0,0.3)",
-                    border: `1px solid ${isProvisioned ? "rgba(74,222,128,0.2)" : "rgba(255,255,255,0.12)"}`,
-                    borderRadius: 6,
-                    color: isProvisioned ? "rgba(74,222,128,0.7)" : "rgba(255,255,255,0.85)",
-                    ...MONO,
-                    fontSize: 12,
-                    outline: "none",
-                    cursor: isProvisioned ? "default" : "text",
-                  }}
-                />
               </div>
-            );
-          })}
+              {field.source.length > 0 && (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 5, ...MONO }}>
+                  Used in: {field.source.slice(0, 2).join(", ")}
+                </div>
+              )}
+              {field.defaultValue && field.sensitivity !== "secret" && (
+                <div style={{ fontSize: 11, color: "rgba(100,200,100,0.7)", marginBottom: 5 }}>
+                  Safe default: <code style={{ ...MONO }}>{field.defaultValue}</code>
+                </div>
+              )}
+              <input
+                type={field.sensitivity === "secret" ? "password" : "text"}
+                value={field.value}
+                onChange={e => setEnvFields(prev => prev.map(f => f.name === field.name ? { ...f, value: e.target.value } : f))}
+                placeholder={field.sensitivity === "secret" ? "Enter secret value" : field.defaultValue ? `Default: ${field.defaultValue}` : `Enter value`}
+                autoComplete="off"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "7px 10px",
+                  background: "rgba(0,0,0,0.3)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 6,
+                  color: "rgba(255,255,255,0.85)",
+                  ...MONO,
+                  fontSize: 12,
+                  outline: "none",
+                }}
+              />
+            </div>
+          ))}
+          {effectiveEnvFields.length === 0 && serviceBindings.size === 0 && (
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 14, fontStyle: "italic" }}>
+              No additional configuration required.
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" style={BTN_PRIMARY} onClick={handleConfigDone}>Continue</button>
             <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>Cancel</button>

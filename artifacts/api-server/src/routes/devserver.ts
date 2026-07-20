@@ -7,7 +7,7 @@ import path from "path";
 import { logger } from "../lib/logger";
 import { projectWorkspaceDir, assertProjectOwner } from "../lib/projectWorkspace";
 import { db, projectsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { logProjectArtifact } from "../lib/artifactLog";
 import { classifyRepository } from "@workspace/repo-classifier";
 import { loadClassificationInput } from "../services/repositoryClassificationSource";
@@ -1185,7 +1185,11 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
   // Reverted to "error" (with a message) if classification or target selection fails below.
   st.status = "installing";
 
-  const { targetId, env: rawUserEnv = {} } = req.body as { targetId?: string; env?: Record<string, string> };
+  const { targetId, env: rawUserEnv = {}, serviceBindingIds } = req.body as {
+    targetId?: string;
+    env?: Record<string, string>;
+    serviceBindingIds?: string[];
+  };
 
   // Load project for linkedRepo + githubToken
   const [project] = await db
@@ -1257,9 +1261,65 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
     logger.warn({ projectId, targetId: target.id, rejectedEnvKeys }, "Run route dropped undeclared env keys");
   }
 
+  // ── Service binding injection ────────────────────────────────────────────────
+  // Resolves server-side service bindings before spawning the process.
+  // Each bindingId is triple-verified: project_id + user_id must match, revoked_at
+  // must be NULL. Secrets are decrypted in-process — they never appear in HTTP
+  // request/response bodies or log output (redacted below).
+  // Only env vars the classifier declared in allowedEnvKeys are injected.
+  if (Array.isArray(serviceBindingIds) && serviceBindingIds.length > 0) {
+    const uniqueIds = [...new Set(
+      serviceBindingIds.filter((id): id is string => typeof id === "string"),
+    )].slice(0, 20); // cap defensively
+    for (const bindingId of uniqueIds) {
+      try {
+        const rows = await db.execute(sql`
+          SELECT service_id, provision_mode, encrypted_secrets, env_var_names
+          FROM service_bindings
+          WHERE id = ${bindingId}
+            AND project_id = ${projectId}
+            AND user_id = ${userId}
+            AND revoked_at IS NULL
+        `);
+        const binding = rows.rows[0] as {
+          service_id: string;
+          provision_mode: string;
+          encrypted_secrets: string | null;
+          env_var_names: string[];
+        } | undefined;
+        if (!binding) {
+          logger.warn({ bindingId, projectId }, "Run route: binding not found, not owned, or revoked — skipping");
+          continue;
+        }
+        if (!binding.encrypted_secrets) continue;
+        let secretMap: Record<string, string> = {};
+        try {
+          secretMap = JSON.parse(decryptToken(binding.encrypted_secrets)) as Record<string, string>;
+        } catch {
+          logger.warn({ bindingId, serviceId: binding.service_id }, "Run route: binding decrypt failed — skipping");
+          continue;
+        }
+        let injected = 0;
+        for (const [k, v] of Object.entries(secretMap)) {
+          if (typeof v !== "string") continue;
+          // Only inject vars the classifier declared — preserves the allowlist invariant
+          if (allowedEnvKeys.has(k)) {
+            safeEnv[k] = v;
+            injected++;
+          }
+        }
+        logger.info({ bindingId, serviceId: binding.service_id, injected },
+          "Run route: injected service binding env vars");
+      } catch (err) {
+        logger.warn({ err, bindingId, projectId }, "Run route: binding resolution error — skipping");
+      }
+    }
+  }
+
   // ── Secret scrubber ──────────────────────────────────────────────────────────
   // Replaces accepted env values (≥8 chars) in process output before logging.
   // Prevents DATABASE_URL, auth tokens, etc. from appearing in the status log.
+  // Runs AFTER binding injection so binding-provided secrets are also redacted.
   const redactValues = Object.values(safeEnv).filter(v => v.length >= 8);
   function scrubLine(raw: string): string {
     if (redactValues.length === 0) return raw;

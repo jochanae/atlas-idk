@@ -1,6 +1,6 @@
 export { classifyRepository } from "./staticClassifier.js";
-export { ATLAS_SERVICE_CAPABILITIES } from "./capabilities.js";
-export type { ServiceCapability } from "./capabilities.js";
+export { ATLAS_SERVICE_CAPABILITIES, normalizeServiceId } from "./capabilities.js";
+export type { ServiceCapability, ServiceId, ProvisionMode } from "./capabilities.js";
 export type {
   ClassificationLimits,
   EnvironmentRequirement,

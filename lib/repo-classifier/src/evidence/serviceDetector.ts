@@ -1,5 +1,6 @@
 import type { RepositoryFile, ExternalServiceRequirement } from "../types.js";
 import type { WorkspacePackage } from "./workspaceDiscovery.js";
+import { normalizeServiceId } from "../capabilities.js";
 
 type ServicePattern = {
   service: string;
@@ -56,6 +57,7 @@ export function detectExternalServices(
     if (matchedPkg) {
       detected.push({
         service: pattern.service,
+        serviceId: normalizeServiceId(pattern.service) ?? undefined,
         evidence: `${matchedPkg} found in package.json dependencies`,
         connectionSupport: pattern.connectionSupport,
       });
@@ -73,6 +75,7 @@ export function detectExternalServices(
         if (hit) {
           detected.push({
             service: pattern.service,
+            serviceId: normalizeServiceId(pattern.service) ?? undefined,
             evidence: `import detected in ${file.path}`,
             connectionSupport: pattern.connectionSupport,
           });
