@@ -456,6 +456,7 @@ export function useStagedAttachments(opts?: {
   const removeFile = useCallback((id: string) => {
     // Bump gen so a late resolve cannot resurrect the chip, then abort PUT.
     uploadGenRef.current.set(id, (uploadGenRef.current.get(id) ?? 0) + 1);
+    pendingUploadIdsRef.current.delete(id);
     abortUpload(id);
     uploadGenRef.current.delete(id);
     setFiles((prev) => {
@@ -552,7 +553,10 @@ export function useStagedAttachments(opts?: {
       // may still be rendering sf.previewUrl as contentUrl until the server
       // attachment_ack arrives with a persistent contentUrl. The browser
       // cleans up blob URLs on page unload.
-      for (const sf of removed) uploadGenRef.current.delete(sf.id);
+      for (const sf of removed) {
+        pendingUploadIdsRef.current.delete(sf.id);
+        uploadGenRef.current.delete(sf.id);
+      }
       return prev.filter((sf) => !idSet.has(sf.id));
     });
   }, []);
@@ -560,6 +564,7 @@ export function useStagedAttachments(opts?: {
   const clearFiles = useCallback(() => {
     setFiles((prev) => {
       revokeAll(prev);
+      pendingUploadIdsRef.current.clear();
       uploadGenRef.current.clear();
       return [];
     });
