@@ -507,7 +507,9 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
                       <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>• {svcName}</span>
                       {isProvisioned ? (
                         <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 4, background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.25)", color: "rgba(74,222,128,0.9)", ...MONO }}>
-                          ✓ {svcReq?.providerLabel ?? "connected"}
+                          {provisionMode === "local"
+                            ? "✓ Local SQLite configured"
+                            : "✓ Connected securely — credentials supplied server-side"}
                         </span>
                       ) : canConnect ? (
                         provisionMode === "local" ? (
@@ -517,7 +519,7 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
                             onClick={() => handleProvision(svcId, provisionMode)}
                             style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,220,100,0.1)", border: "1px solid rgba(255,220,100,0.3)", color: "rgba(255,220,100,0.85)", cursor: isProvisioning ? "not-allowed" : "pointer", ...MONO, opacity: isProvisioning ? 0.6 : 1 }}
                           >
-                            {isProvisioning ? "Configuring…" : "Configure local database"}
+                            {isProvisioning ? "Configuring…" : "Configure local SQLite"}
                           </button>
                         ) : showInput ? null : (
                           <button
@@ -529,7 +531,7 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
                           </button>
                         )
                       ) : (
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>external — manual setup required</span>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>Manual setup required — Atlas does not currently support this service</span>
                       )}
                     </div>
                     {showInput && (

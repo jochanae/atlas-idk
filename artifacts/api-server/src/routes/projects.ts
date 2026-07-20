@@ -7,7 +7,7 @@ import { computeProjectReadiness } from "./readiness";
 import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, nexusMessagesTable, applicationModelsTable, projectTier1MemoryTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { generateTier1AtlasContext, TIER1_META } from "../lib/thinkingReceiptExtract";
 import { getProjectDNA, getOrCreateProjectDNA } from "../lib/projectDNA";
-import { encryptToken, decryptToken } from "../lib/tokenCrypto";
+import { encryptToken, decryptToken, encryptBinding } from "../lib/tokenCrypto";
 import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } from "../lib/projectCreation";
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
 import { ensureProjectWorkspaceDir, projectWorkspaceDir, assertProjectOwner } from "../lib/projectWorkspace";
@@ -1992,7 +1992,7 @@ router.post("/projects/:id/provision-service", async (req, res): Promise<void> =
     const envVarNames = cap.knownEnvVars.slice(0, 1);
     const secretMap: Record<string, string> = {};
     if (envVarNames[0]) secretMap[envVarNames[0]] = secret;
-    const encryptedSecrets = encryptToken(JSON.stringify(secretMap));
+    const encryptedSecrets = encryptBinding(JSON.stringify(secretMap));
 
     const bindingId = randomUUID();
     try {
@@ -2030,7 +2030,7 @@ router.post("/projects/:id/provision-service", async (req, res): Promise<void> =
 
     // Encrypt for consistency (goes through the same binding inject path at /run)
     const encryptedSecrets = Object.keys(generatedMap).length > 0
-      ? encryptToken(JSON.stringify(generatedMap))
+      ? encryptBinding(JSON.stringify(generatedMap))
       : null;
 
     const bindingId = randomUUID();

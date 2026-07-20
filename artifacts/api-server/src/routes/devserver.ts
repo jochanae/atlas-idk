@@ -11,7 +11,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { logProjectArtifact } from "../lib/artifactLog";
 import { classifyRepository } from "@workspace/repo-classifier";
 import { loadClassificationInput } from "../services/repositoryClassificationSource";
-import { decryptToken } from "../lib/tokenCrypto";
+import { decryptToken, decryptBinding } from "../lib/tokenCrypto";
 
 // ── Build-check work dir (separate from live devserver) ───────────────────
 const BUILD_CHECK_DIR = "/tmp/atlas-build-check";
@@ -1247,12 +1247,20 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
   // Only accept variable names that the classifier declared for this target.
   // The server enforces this — the client cannot override PATH, HOME, PORT, etc.
   const allowedEnvKeys = new Set(target.environmentVariables);
-  const safeEnv: Record<string, string> = {};
+
+  // Collect the set of service IDs the target actually declares as requirements.
+  // Used below to reject bindings for services the target does not need.
+  const declaredServiceIds = new Set(
+    (target.externalServices ?? []).map(s => s.toLowerCase().trim()),
+  );
+
+  // Phase 1: user-supplied env vars (lower precedence than service bindings).
+  const safeUserEnv: Record<string, string> = {};
   const rejectedEnvKeys: string[] = [];
   for (const [k, v] of Object.entries(rawUserEnv)) {
     if (typeof v !== "string") continue;
     if (allowedEnvKeys.has(k)) {
-      safeEnv[k] = v;
+      safeUserEnv[k] = v;
     } else {
       rejectedEnvKeys.push(k);
     }
@@ -1262,11 +1270,13 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
   }
 
   // ── Service binding injection ────────────────────────────────────────────────
-  // Resolves server-side service bindings before spawning the process.
+  // Phase 2: service bindings (higher precedence than user-supplied values).
   // Each bindingId is triple-verified: project_id + user_id must match, revoked_at
   // must be NULL. Secrets are decrypted in-process — they never appear in HTTP
   // request/response bodies or log output (redacted below).
   // Only env vars the classifier declared in allowedEnvKeys are injected.
+  // Bindings whose service_id does not match a declared target requirement are rejected.
+  const resolvedBindingEnv: Record<string, string> = {};
   if (Array.isArray(serviceBindingIds) && serviceBindingIds.length > 0) {
     const uniqueIds = [...new Set(
       serviceBindingIds.filter((id): id is string => typeof id === "string"),
@@ -1287,26 +1297,54 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
           encrypted_secrets: string | null;
           env_var_names: string[];
         } | undefined;
+        // Identical rejection for not-found, cross-project, cross-user, and revoked.
+        // The response does not distinguish between these cases.
         if (!binding) {
           logger.warn({ bindingId, projectId }, "Run route: binding not found, not owned, or revoked — skipping");
           continue;
         }
+        // Binding-target compatibility: the binding's service must be one the target declared.
+        // Prevents a binding for ServiceA from being injected into a target that only needs ServiceB.
+        if (declaredServiceIds.size > 0 && !declaredServiceIds.has(binding.service_id)) {
+          logger.warn({ bindingId, serviceId: binding.service_id, targetId: target.id },
+            "Run route: binding service_id not in target's declared externalServices — skipping");
+          continue;
+        }
         if (!binding.encrypted_secrets) continue;
+        // decryptBinding returns null on AES-GCM auth failure (tampered ciphertext).
+        // We log only metadata — never the ciphertext, key material, or env var values.
+        const plaintext = decryptBinding(binding.encrypted_secrets);
+        if (plaintext === null) {
+          logger.warn({ bindingId, serviceId: binding.service_id },
+            "Run route: binding decrypt failed (tampered or key mismatch) — skipping");
+          continue;
+        }
         let secretMap: Record<string, string> = {};
         try {
-          secretMap = JSON.parse(decryptToken(binding.encrypted_secrets)) as Record<string, string>;
+          secretMap = JSON.parse(plaintext) as Record<string, string>;
         } catch {
-          logger.warn({ bindingId, serviceId: binding.service_id }, "Run route: binding decrypt failed — skipping");
+          logger.warn({ bindingId, serviceId: binding.service_id },
+            "Run route: binding payload not valid JSON — skipping");
           continue;
         }
         let injected = 0;
+        const overriddenKeys: string[] = [];
         for (const [k, v] of Object.entries(secretMap)) {
           if (typeof v !== "string") continue;
           // Only inject vars the classifier declared — preserves the allowlist invariant
           if (allowedEnvKeys.has(k)) {
-            safeEnv[k] = v;
+            if (k in safeUserEnv) {
+              // Binding wins over user-supplied value for the same key.
+              // Log the key name only — never either value.
+              overriddenKeys.push(k);
+            }
+            resolvedBindingEnv[k] = v;
             injected++;
           }
+        }
+        if (overriddenKeys.length > 0) {
+          logger.warn({ bindingId, serviceId: binding.service_id, overriddenKeys },
+            "Run route: service binding overrides user-supplied env var(s) — binding wins");
         }
         logger.info({ bindingId, serviceId: binding.service_id, injected },
           "Run route: injected service binding env vars");
@@ -1315,6 +1353,17 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
       }
     }
   }
+
+  // ── Final env assembly ───────────────────────────────────────────────────────
+  // Explicit precedence order — no accidental spread ordering:
+  //   1. User-supplied vars (classifier-approved, lower precedence)
+  //   2. Service binding vars (server-resolved, higher precedence — override user-supplied)
+  // Protected runtime keys (PORT, HOST, PATH, HOME, etc.) are set at spawn time and
+  // are never in safeUserEnv or resolvedBindingEnv because they are not in allowedEnvKeys.
+  const safeEnv: Record<string, string> = {
+    ...safeUserEnv,
+    ...resolvedBindingEnv, // bindings win on conflict
+  };
 
   // ── Secret scrubber ──────────────────────────────────────────────────────────
   // Replaces accepted env values (≥8 chars) in process output before logging.
@@ -1451,12 +1500,18 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
         shell: true,
         detached: true,
         env: {
+          // Deliberate precedence order — no accidental spread:
+          //   1. System base environment (PATH, HOME, etc.)
+          //   2. Forced/sanitized overrides
+          //   3. Classifier-approved user env (lower precedence)
+          //   4. Server-resolved binding env (higher precedence — overrides user-supplied)
+          //   5. Protected runtime keys that must never be overridden (PORT, HOST)
           ...process.env,
           FORCE_COLOR: "0",
           NO_COLOR: "1",
-          PORT: String(port),
-          HOST: "0.0.0.0",
-          ...safeEnv,           // only classifier-declared variable names
+          ...safeEnv,           // = safeUserEnv merged with resolvedBindingEnv (bindings win)
+          PORT: String(port),   // always server-controlled — must come after safeEnv
+          HOST: "0.0.0.0",      // always server-controlled — must come after safeEnv
         },
       });
       st.proc = proc;
