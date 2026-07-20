@@ -5339,6 +5339,17 @@ export default function Home() {
               // the exact same chip node without duplicating the JSX.
               focusLensChipRef.current = focusLensChipNode;
               return (
+            <>
+            {staged.files.length > 0 && (
+              <div style={{ marginBottom: 8, maxHeight: 84, overflowY: "hidden" }}>
+                <AttachmentStrip
+                  mode="staged"
+                  files={staged.files}
+                  onRemove={staged.removeFile}
+                  onRetry={staged.retryFile}
+                />
+              </div>
+            )}
             <div
               className="atlas-ambient-reveal-top"
               style={{
@@ -5359,20 +5370,6 @@ export default function Home() {
               backdropFilter: (inputFocused || hasInput || hasAttachments) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
-              {/* Attached files preview strip — rendered INSIDE the composer
-                  border so it doesn't push the greeting up or crop the action
-                  bar off-screen on mobile. */}
-              {staged.files.length > 0 && (
-                <div style={{ marginBottom: 8, maxHeight: 84, overflowY: "hidden" }}>
-                  <AttachmentStrip
-                    mode="staged"
-                    files={staged.files}
-                    onRemove={staged.removeFile}
-                    onRetry={staged.retryFile}
-                  />
-                </div>
-              )}
-
               {/* Focus lens — top-left inside the composer rectangle. Only
                   shows when the box is visually "open" (focused or has content)
                   so the ambient homepage stays clean. */}
@@ -5449,6 +5446,7 @@ export default function Home() {
                 }}
               />
             </div>
+            </>
               );
             })()}
 
