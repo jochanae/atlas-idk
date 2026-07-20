@@ -5373,6 +5373,17 @@ export default function Home() {
                 </div>
               )}
 
+              {/* Focus lens — top-left inside the composer rectangle. Only
+                  shows when the box is visually "open" (focused or has content)
+                  so the ambient homepage stays clean. */}
+              {(inputFocused || hasInput || hasAttachments) && (
+                <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 6 }}>
+                  {focusLensChipNode}
+                </div>
+              )}
+
+
+
 
 
               {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceVisible) && !askAtlasConversationActive && (
