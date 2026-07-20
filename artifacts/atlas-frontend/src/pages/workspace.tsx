@@ -7475,7 +7475,6 @@ export default function Workspace() {
       // Block while uploads are in flight so Send never races incomplete files.
       if (
         workspaceSendInFlightRef.current ||
-        (!text && staged.readyFiles.length === 0) ||
         !atlasConv.canSend
       ) {
         return;
@@ -7485,6 +7484,7 @@ export default function Workspace() {
         toast("Attachment is still uploading — sending when ready.");
         return;
       }
+      if (!text && staged.readyFiles.length === 0) return;
       workspaceSendInFlightRef.current = true;
       if (atlasGreeting) setAtlasGreeting(null);
       setShowHomeHandoffBanner(false);
