@@ -365,8 +365,15 @@ interface WsDevState {
   logs: string[];
   errorMsg: string | null;
   startedAt: Date | null;
+  /** Set when the current process has been verified; cleared on process exit. */
   verifiedTargetId: string | null;
   verifiedAt: Date | null;
+  /** Historical: the last target that was successfully verified — survives process exit. */
+  lastVerifiedTargetId: string | null;
+  lastVerifiedAt: Date | null;
+  /** Monotonic counter — incremented on each /run call to prevent stale callbacks
+   *  from a previous async IIFE from overwriting state owned by a newer run. */
+  runGen: number;
 }
 
 const wsStates = new Map<number, WsDevState>();
@@ -376,8 +383,8 @@ const wsStates = new Map<number, WsDevState>();
 const WS_PERSIST_DIR = "/tmp";
 function wsPersistPath(projectId: number) { return path.join(WS_PERSIST_DIR, `atlas-ws-${projectId}.json`); }
 
-function wsSaveState(projectId: number, port: number, pid?: number, verifiedTargetId?: string) {
-  try { writeFileSync(wsPersistPath(projectId), JSON.stringify({ port, pid, verifiedTargetId })); } catch {}
+function wsSaveState(projectId: number, port: number, pid?: number, verifiedTargetId?: string, lastVerifiedTargetId?: string) {
+  try { writeFileSync(wsPersistPath(projectId), JSON.stringify({ port, pid, verifiedTargetId, lastVerifiedTargetId })); } catch {}
 }
 function wsDeleteState(projectId: number) {
   try { unlinkSync(wsPersistPath(projectId)); } catch {}
@@ -390,8 +397,11 @@ function wsDeleteState(projectId: number) {
   for (const f of files) {
     try {
       const projectId = Number(f.replace("atlas-ws-", "").replace(".json", ""));
-      const { port, pid, verifiedTargetId } = JSON.parse(readFileSync(path.join(WS_PERSIST_DIR, f), "utf8")) as { port: number; pid?: number; verifiedTargetId?: string };
-      // Quick TCP probe — if something is listening on that port, re-adopt it.
+      const { port, pid, verifiedTargetId, lastVerifiedTargetId } = JSON.parse(
+        readFileSync(path.join(WS_PERSIST_DIR, f), "utf8")
+      ) as { port: number; pid?: number; verifiedTargetId?: string; lastVerifiedTargetId?: string };
+      // HTTP probe — only re-adopt if the process is actually responding.
+      // "Was verified before" and "is currently running" are different facts.
       const alive = await new Promise<boolean>((resolve) => {
         const req = http.request({ hostname: "localhost", port, path: "/", method: "HEAD", timeout: 800 }, () => { req.destroy(); resolve(true); });
         req.on("error", () => resolve(false));
@@ -402,9 +412,33 @@ function wsDeleteState(projectId: number) {
         const st = getWsState(projectId);
         st.port = port; st.status = "running";
         if (verifiedTargetId) { st.verifiedTargetId = verifiedTargetId; st.verifiedAt = new Date(); }
-        st.logs = [`[re-adopted] Dev server already running on port ${port}${pid ? ` (pid ${pid})` : ""}${verifiedTargetId ? ` · verified: ${verifiedTargetId}` : ""}`];
+        const lvt = lastVerifiedTargetId ?? verifiedTargetId;
+        if (lvt) { st.lastVerifiedTargetId = lvt; st.lastVerifiedAt = new Date(); }
+        st.logs = [`[re-adopted] Dev server accepted connections on port ${port}${pid ? ` (pid ${pid})` : ""}${verifiedTargetId ? ` · last-verified: ${verifiedTargetId}` : ""}`];
         logger.info({ projectId, port, verifiedTargetId }, "Re-adopted workspace dev server after API restart");
+        // Heartbeat: adopted processes have no proc reference to watch for exit.
+        // Re-probe every 30s and clear state if the port goes dark.
+        const hb = setInterval(async () => {
+          const cur = wsStates.get(projectId);
+          if (!cur || cur.proc !== null || cur.status !== "running") { clearInterval(hb); return; }
+          const still = await new Promise<boolean>((resolve) => {
+            const r = http.request({ hostname: "localhost", port: cur.port!, path: "/", method: "HEAD", timeout: 800 }, () => { r.destroy(); resolve(true); });
+            r.on("error", () => resolve(false));
+            r.on("timeout", () => { r.destroy(); resolve(false); });
+            r.end();
+          });
+          if (!still) {
+            clearInterval(hb);
+            cur.status = "idle";
+            cur.port = null;
+            cur.verifiedTargetId = null;
+            cur.verifiedAt = null;
+            wsDeleteState(projectId);
+            logger.info({ projectId }, "Adopted workspace dev server stopped — marked idle");
+          }
+        }, 30_000);
       } else {
+        // Port not alive — preserve lastVerified history but clear running state.
         wsDeleteState(projectId);
       }
     } catch {}
@@ -413,13 +447,13 @@ function wsDeleteState(projectId: number) {
 
 function getWsState(projectId: number): WsDevState {
   if (!wsStates.has(projectId)) {
-    wsStates.set(projectId, { status: "idle", port: null, proc: null, logs: [], errorMsg: null, startedAt: null, verifiedTargetId: null, verifiedAt: null });
+    wsStates.set(projectId, { status: "idle", port: null, proc: null, logs: [], errorMsg: null, startedAt: null, verifiedTargetId: null, verifiedAt: null, lastVerifiedTargetId: null, lastVerifiedAt: null, runGen: 0 });
   }
   return wsStates.get(projectId)!;
 }
 
 function addWsLog(st: WsDevState, line: string) {
-  const trimmed = line.trim();
+  const trimmed = line.trim().slice(0, 2048);
   if (!trimmed) return;
   st.logs.push(trimmed);
   if (st.logs.length > 300) st.logs.shift();
@@ -1095,14 +1129,23 @@ router.get("/devserver/workspace/:projectId/status", (req, res): void => {
     startedAt: st.startedAt ?? null,
     verifiedTargetId: st.verifiedTargetId ?? null,
     verifiedAt: st.verifiedAt ?? null,
+    lastVerifiedTargetId: st.lastVerifiedTargetId ?? null,
+    lastVerifiedAt: st.lastVerifiedAt ?? null,
   });
 });
 
 router.post("/devserver/workspace/:projectId/stop", (req, res): void => {
   const projectId = Number(req.params["projectId"]);
   const st = wsStates.get(projectId);
-  if (st?.proc) { try { st.proc.kill("SIGTERM"); } catch {} st.proc = null; }
-  if (st) { st.status = "idle"; st.port = null; st.logs = []; st.errorMsg = null; }
+  if (st?.proc) {
+    const pid = st.proc.pid;
+    try { if (pid) process.kill(-pid, "SIGTERM"); else st.proc.kill("SIGTERM"); } catch {}
+    st.proc = null;
+  }
+  if (st) {
+    st.status = "idle"; st.port = null; st.logs = []; st.errorMsg = null;
+    st.verifiedTargetId = null; st.verifiedAt = null;
+  }
   wsDeleteState(projectId);
   res.json({ status: "idle" });
 });
@@ -1128,7 +1171,21 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
   const isOwner = await assertProjectOwner(projectId, userId);
   if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
 
-  const { targetId, env: userEnv = {} } = req.body as { targetId?: string; env?: Record<string, string> };
+  // ── Concurrency gate ─────────────────────────────────────────────────────────
+  // Reserve the slot immediately — before any async DB/classify work — so a
+  // concurrent second /run arriving during classification sees "installing" and
+  // gets rejected. The monotonic runGen token (set below) additionally prevents
+  // stale callbacks from a previous IIFE overwriting state owned by a newer run.
+  const st = getWsState(projectId);
+  if (st.status === "installing" || st.status === "starting") {
+    res.status(409).json({ error: "A run is already in progress. Wait for it to complete or call /stop first.", status: st.status });
+    return;
+  }
+  // Reserve the slot synchronously so concurrent requests fail fast.
+  // Reverted to "error" (with a message) if classification or target selection fails below.
+  st.status = "installing";
+
+  const { targetId, env: rawUserEnv = {} } = req.body as { targetId?: string; env?: Record<string, string> };
 
   // Load project for linkedRepo + githubToken
   const [project] = await db
@@ -1155,6 +1212,7 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
   // Classify to find targets
   const input = await loadClassificationInput({ workspaceDir, linkedRepo, githubToken });
   if (!input) {
+    st.status = "error"; st.errorMsg = "No file source available";
     res.status(422).json({
       error: "No file source available",
       detail: "Project has no cloned workspace and no linked GitHub repository with a valid token.",
@@ -1168,27 +1226,68 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
   const chosenId = targetId ?? report.recommendation?.targetId;
   const target = report.targets.find(t => t.id === chosenId) ?? report.targets[0];
   if (!target) {
+    st.status = "error"; st.errorMsg = "No runnable targets found";
     res.status(422).json({ error: "No runnable targets found in this repository" });
     return;
   }
   if (target.status === "unsupported" || target.status === "likely-inactive") {
+    st.status = "error"; st.errorMsg = `Target "${target.id}" cannot be run (status: ${target.status})`;
     res.status(422).json({
-      error: `Target "${target.id}" cannot be run (status: ${target.status})`,
+      error: st.errorMsg,
       detail: target.inactivityReasons?.join("; ") ?? "Target was classified as not runnable.",
     });
     return;
   }
 
+  // ── Env var allowlist ────────────────────────────────────────────────────────
+  // Only accept variable names that the classifier declared for this target.
+  // The server enforces this — the client cannot override PATH, HOME, PORT, etc.
+  const allowedEnvKeys = new Set(target.environmentVariables);
+  const safeEnv: Record<string, string> = {};
+  const rejectedEnvKeys: string[] = [];
+  for (const [k, v] of Object.entries(rawUserEnv)) {
+    if (typeof v !== "string") continue;
+    if (allowedEnvKeys.has(k)) {
+      safeEnv[k] = v;
+    } else {
+      rejectedEnvKeys.push(k);
+    }
+  }
+  if (rejectedEnvKeys.length > 0) {
+    logger.warn({ projectId, targetId: target.id, rejectedEnvKeys }, "Run route dropped undeclared env keys");
+  }
+
+  // ── Secret scrubber ──────────────────────────────────────────────────────────
+  // Replaces accepted env values (≥8 chars) in process output before logging.
+  // Prevents DATABASE_URL, auth tokens, etc. from appearing in the status log.
+  const redactValues = Object.values(safeEnv).filter(v => v.length >= 8);
+  function scrubLine(raw: string): string {
+    if (redactValues.length === 0) return raw;
+    let out = raw;
+    for (const val of redactValues) {
+      if (out.includes(val)) out = out.replaceAll(val, "[REDACTED]");
+    }
+    return out;
+  }
+
   // Reset state and respond immediately — actual start is async
-  const st = getWsState(projectId);
-  if (st.proc) { try { st.proc.kill("SIGTERM"); } catch {} st.proc = null; }
-  st.status = "installing";
+  // (st was already grabbed and slot-reserved at the concurrency gate above)
+  if (st.proc) {
+    const pid = st.proc.pid;
+    try { if (pid) process.kill(-pid, "SIGTERM"); else st.proc.kill("SIGTERM"); } catch {}
+    st.proc = null;
+  }
+  // status is already "installing" (set at the gate); reconfirm and reset fields
   st.port = null;
   st.logs = [`Runtime verification: ${target.id} (${target.framework})`];
   st.errorMsg = null;
   st.verifiedTargetId = null;
   st.verifiedAt = null;
   st.startedAt = null;
+  // Increment generation token — all callbacks below close over myGen and check
+  // it before mutating state, preventing stale IIFEs from poisoning newer runs.
+  st.runGen = (st.runGen ?? 0) + 1;
+  const myGen = st.runGen;
 
   res.json({ status: st.status, targetId: target.id });
 
@@ -1199,7 +1298,15 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
         ? path.join(workspaceDir, target.workingDirectory)
         : workspaceDir;
 
-      // ── 1. Install dependencies ──────────────────────────────────────────
+      // ── Path traversal guard ─────────────────────────────────────────────────
+      // workDir must be the workspace root or a subdirectory of it.
+      // target.workingDirectory comes from the classifier (not client input),
+      // but validate defensively against any future code path changes.
+      if (workDir !== workspaceDir && !workDir.startsWith(workspaceDir + path.sep)) {
+        throw new Error("Target working directory escapes the project workspace. Aborting.");
+      }
+
+      // ── 1. Install dependencies ──────────────────────────────────────────────
       //
       // For monorepo sub-targets (workDir ≠ workspaceDir), install must run at
       // the repo root so workspace symlinks resolve correctly. For standalone
@@ -1222,36 +1329,53 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
       }
 
       if (needsInstall) {
+        if (st.runGen !== myGen) return;
         // Use the classified installCommand directly — it already encodes the
         // right package manager and flags (e.g. "pnpm install", "npm install").
         const installCmd = target.installCommand || `${detectPackageManager(installDir)} install`;
         addWsLog(st, `Installing: ${installCmd}…`);
 
-        const installResult = await new Promise<{ ok: boolean; output: string }>((resolve) => {
-          const chunks: string[] = [];
-          const proc = spawn(installCmd, [], {
-            cwd: installDir, shell: true,
-            env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
-          });
-          const onData = (d: Buffer) => { const s = d.toString(); chunks.push(s); addWsLog(st, s); };
-          proc.stdout?.on("data", onData);
-          proc.stderr?.on("data", onData);
-          proc.on("exit", (code) => resolve({ ok: code === 0, output: chunks.join("") }));
-          proc.on("error", (e) => resolve({ ok: false, output: e.message }));
-        });
+        // Race install against a 5-minute hard timeout
+        const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
+        const installResult = await Promise.race([
+          new Promise<{ ok: boolean; output: string }>((resolve) => {
+            const chunks: string[] = [];
+            const installProc = spawn(installCmd, [], {
+              cwd: installDir, shell: true,
+              env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
+            });
+            const onInstData = (d: Buffer) => {
+              const s = d.toString().slice(0, 2048);
+              chunks.push(s);
+              addWsLog(st, s);
+            };
+            installProc.stdout?.on("data", onInstData);
+            installProc.stderr?.on("data", onInstData);
+            installProc.on("exit", (code) => resolve({ ok: code === 0, output: chunks.join("") }));
+            installProc.on("error", (e) => resolve({ ok: false, output: e.message }));
+          }),
+          new Promise<{ ok: boolean; output: string }>((resolve) =>
+            setTimeout(() => resolve({ ok: false, output: "Installation timed out after 5 minutes" }), INSTALL_TIMEOUT_MS)
+          ),
+        ]);
 
+        if (st.runGen !== myGen) return;
         if (!installResult.ok) {
           throw new Error(`Dependency install failed.\nLast output:\n${installResult.output.slice(-600)}`);
         }
         addWsLog(st, "✓ Dependencies installed");
       }
 
-      // ── 2. Allocate a port and start the dev server ──────────────────────
+      if (st.runGen !== myGen) return;
+
+      // ── 2. Allocate a port and start the dev server ──────────────────────────
       st.status = "starting";
       const port = await allocateFreePort();
 
       // Build the command string — Vite needs --host + --port to bind to the
       // allocated port and accept proxied traffic from outside localhost.
+      // Only server-controlled values (port number from allocateFreePort) enter
+      // the command string — no client-provided strings are interpolated here.
       const isVite = /vite/i.test(target.framework) || target.startCommand.toLowerCase().includes("vite");
       const rawCmd = isVite
         ? `${target.startCommand} -- --host 0.0.0.0 --port ${port}`
@@ -1259,46 +1383,56 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
 
       addWsLog(st, `Starting: ${rawCmd} (port ${port})…`);
 
+      // Spawn with detached:true so the child leads its own process group.
+      // On kill we send SIGTERM to -pid (the entire group) rather than just
+      // the shell wrapper, ensuring child processes (e.g. Node) also exit.
       const proc = spawn(rawCmd, [], {
         cwd: workDir,
         shell: true,
+        detached: true,
         env: {
           ...process.env,
           FORCE_COLOR: "0",
           NO_COLOR: "1",
           PORT: String(port),
           HOST: "0.0.0.0",
-          ...userEnv,
+          ...safeEnv,           // only classifier-declared variable names
         },
       });
       st.proc = proc;
 
       // Convenience helper — call once when the port is confirmed live
       const markVerified = (livePort: number) => {
+        if (st.runGen !== myGen) return;
         clearTimeout(portFallbackTimer);
         st.port = livePort;
         st.status = "running";
         st.startedAt = new Date();
         st.verifiedTargetId = target.id;
         st.verifiedAt = new Date();
-        wsSaveState(projectId, livePort, st.proc?.pid ?? undefined, target.id);
-        addWsLog(st, `✓ Verified — ${target.id} running on port ${livePort} · ${target.framework}`);
+        // Persist historical verification — survives process exit
+        st.lastVerifiedTargetId = target.id;
+        st.lastVerifiedAt = st.verifiedAt;
+        wsSaveState(projectId, livePort, proc.pid ?? undefined, target.id, target.id);
+        // Label accurately: port accepted an HTTP connection, not a full health check
+        addWsLog(st, `✓ Connected — ${target.id} accepted HTTP on port ${livePort} · ${target.framework}`);
         logger.info({ projectId, port: livePort, targetId: target.id, framework: target.framework }, "Runtime verification complete");
       };
 
-      // ── 3. Port detection: watch stdout, fall back to probing ────────────
+      // ── 3. Port detection: watch stdout, fall back to probing ────────────────
       const portFallbackTimer = setTimeout(async () => {
-        if (st.status !== "starting" || !st.proc) return;
+        if (st.runGen !== myGen || st.status !== "starting" || !st.proc) return;
         addWsLog(st, "Port not announced in stdout — probing common ports…");
         const found = await pollForPort(
           [port, 5173, 3000, 4173, 8000, 4000].filter(p => p !== OWN_PORT)
         );
+        if (st.runGen !== myGen) return;
         if (found && st.status === "starting") {
           markVerified(found);
         } else if (st.status === "starting") {
           // One more attempt after an additional 30s
           setTimeout(async () => {
-            if (st.status !== "starting") return;
+            if (st.runGen !== myGen || st.status !== "starting") return;
             const found2 = await pollForPort([port, 3000, 5173].filter(p => p !== OWN_PORT));
             if (found2) {
               markVerified(found2);
@@ -1312,7 +1446,8 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
       }, 45_000);
 
       const onData = (d: Buffer) => {
-        const line = d.toString();
+        if (st.runGen !== myGen) return;
+        const line = scrubLine(d.toString());
         addWsLog(st, line);
         if (st.status !== "running") {
           const detected = detectPort(line);
@@ -1323,7 +1458,14 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
       proc.stderr?.on("data", onData);
 
       proc.on("exit", (code) => {
+        if (st.runGen !== myGen) return;
         clearTimeout(portFallbackTimer);
+        // Preserve historical verification across process exit so the UX can
+        // show "was last verified as X" even after the process has stopped.
+        if (st.verifiedTargetId) {
+          st.lastVerifiedTargetId = st.verifiedTargetId;
+          st.lastVerifiedAt = st.verifiedAt;
+        }
         if (st.status !== "idle") {
           if (code !== 0) {
             st.status = "error";
@@ -1333,10 +1475,13 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
             st.status = "idle";
           }
         }
+        st.verifiedTargetId = null;
+        st.verifiedAt = null;
         st.proc = null;
       });
 
     } catch (err: unknown) {
+      if (st.runGen !== myGen) return;
       const msg = err instanceof Error ? err.message : "Unknown error";
       st.status = "error";
       st.errorMsg = msg;
