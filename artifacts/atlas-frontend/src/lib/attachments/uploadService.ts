@@ -190,6 +190,14 @@ function is401Error(err: unknown): boolean {
   return err.message.includes("401");
 }
 
+/** True when the initial request-upload call likely died during picker/network resume. */
+function isTransientRequestUploadError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return /Failed to fetch|Load failed|NetworkError|Request timed out|Attachment API 5\d\d/i.test(
+    err.message,
+  );
+}
+
 /**
  * Upload one File through the attachment lifecycle.
  * Does not mutate staged state — the staging hook owns that.
@@ -222,9 +230,14 @@ export async function uploadAttachmentFile(
     if (opts?.signal?.aborted) {
       throw new Error("Storage upload aborted");
     }
-    if (is401Error(firstErr)) {
-      // Auth may still be settling after picker return — wait then retry once.
-      await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+    const retryDelay = is401Error(firstErr)
+      ? 1500
+      : isTransientRequestUploadError(firstErr)
+        ? 750
+        : 0;
+    if (retryDelay > 0) {
+      // Auth/network may still be settling after picker return — wait then retry once.
+      await new Promise<void>((resolve) => setTimeout(resolve, retryDelay));
       if (opts?.signal?.aborted) {
         throw new Error("Storage upload aborted");
       }
