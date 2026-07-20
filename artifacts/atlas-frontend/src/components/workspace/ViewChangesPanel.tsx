@@ -1459,7 +1459,7 @@ export function ViewChangesPanel({
         )
       ) : lens === "timeline" ? (
         timelineRun ? (
-          <RunTimeline run={timelineRun} />
+          <RunTimeline run={timelineRun} activities={activityItems} />
         ) : (
           <div style={{
             padding: "18px 14px", fontSize: 12,
