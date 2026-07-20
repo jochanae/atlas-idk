@@ -86,12 +86,17 @@ export type ExternalServiceRequirement = {
   /**
    * environment-configurable — can be supplied via env var; Atlas can prompt the user.
    * unknown                  — no known env-var pattern found for this service.
-   *
-   * Note: Atlas product-capability fields (atlasCanProvide, atlasCanConnect) are
-   * intentionally excluded. Those belong in a separate capability registry, not
-   * in repository evidence.
    */
   connectionSupport: "environment-configurable" | "unknown";
+  /**
+   * Phase 4 — product-capability fields.
+   * Set by the API layer after merging ATLAS_SERVICE_CAPABILITIES; never set by the classifier.
+   * Absent on raw classifier output; always present on API responses.
+   */
+  atlasCanProvide?: boolean;
+  atlasCanConnect?: boolean;
+  /** Human-readable label for the provider (e.g. "Replit PostgreSQL"). */
+  providerLabel?: string;
 };
 
 // ── System dependencies ────────────────────────────────────────────────────────

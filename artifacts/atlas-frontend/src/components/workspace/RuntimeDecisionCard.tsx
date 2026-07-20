@@ -34,6 +34,9 @@ export interface RuntimeCardData {
         service: string;
         evidence: string;
         connectionSupport: string;
+        atlasCanProvide?: boolean;
+        atlasCanConnect?: boolean;
+        providerLabel?: string;
       }>;
     };
   };
@@ -208,6 +211,9 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
   const [showLogs, setShowLogs] = useState(false);
   const [showTechnical, setShowTechnical] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [provisionedFields, setProvisionedFields] = useState<Set<string>>(new Set());
+  const [provisioningService, setProvisioningService] = useState<string | null>(null);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
@@ -335,6 +341,43 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
     setServerStatus(null);
   };
 
+  const handleProvision = async (service: string) => {
+    setProvisioningService(service);
+    setProvisionError(null);
+    try {
+      const res = await fetch(`/api/projects/${effectiveProjectId}/provision-service`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ service }),
+      });
+      const body = await res.json() as { ok?: boolean; envVars?: Record<string, string>; message?: string; error?: string; detail?: string };
+      if (!res.ok || !body.ok) {
+        setProvisionError(body.error ?? `Could not provision ${service}.`);
+        return;
+      }
+      const injected = body.envVars ?? {};
+      const injectedNames = Object.keys(injected);
+      if (injectedNames.length > 0) {
+        setEnvFields(prev => prev.map(f =>
+          injectedNames.includes(f.name) ? { ...f, value: injected[f.name] } : f
+        ));
+        setProvisionedFields(prev => {
+          const next = new Set(prev);
+          injectedNames.forEach(n => next.add(n));
+          return next;
+        });
+      } else {
+        // Service like SQLite that needs no env var — still mark it provided
+        setProvisionedFields(prev => new Set(prev).add(service));
+      }
+    } catch {
+      setProvisionError(`Network error provisioning ${service}. Please try again.`);
+    } finally {
+      if (mountedRef.current) setProvisioningService(null);
+    }
+  };
+
   const handleOpenPreview = () => {
     window.dispatchEvent(new CustomEvent("axiom:open-preview", { detail: { source: "runtime" } }));
   };
@@ -413,17 +456,45 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
 
           {selectedTarget.status === "external-service-required" && selectedTarget.externalServices.length > 0 && (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,200,100,0.8)", marginBottom: 6 }}>This target needs:</div>
-              {selectedTarget.externalServices.map(s => (
-                <div key={s} style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 2 }}>• {s}</div>
-              ))}
+              <div style={{ fontSize: 12, color: "rgba(255,200,100,0.8)", marginBottom: 8 }}>This target needs:</div>
+              {selectedTarget.externalServices.map(svcName => {
+                const svcReq = report.requirements.externalServices.find(s => s.service === svcName);
+                const canProvide = svcReq?.atlasCanProvide ?? false;
+                const isProvisioned = provisionedFields.has(svcName) ||
+                  (svcReq?.provisionedEnvVars ?? []).some(v => provisionedFields.has(v));
+                const isProvisioning = provisioningService === svcName;
+                return (
+                  <div key={svcName} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>• {svcName}</span>
+                    {isProvisioned ? (
+                      <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 4, background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.25)", color: "rgba(74,222,128,0.9)", ...MONO }}>
+                        ✓ {svcReq?.providerLabel ?? "provided by Atlas"}
+                      </span>
+                    ) : canProvide ? (
+                      <button
+                        type="button"
+                        disabled={isProvisioning}
+                        onClick={() => handleProvision(svcName)}
+                        style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,220,100,0.1)", border: "1px solid rgba(255,220,100,0.3)", color: "rgba(255,220,100,0.85)", cursor: isProvisioning ? "not-allowed" : "pointer", ...MONO, opacity: isProvisioning ? 0.6 : 1 }}
+                      >
+                        {isProvisioning ? "Connecting…" : `Connect via ${svcReq?.providerLabel ?? "Atlas"}`}
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>external — manual setup required</span>
+                    )}
+                  </div>
+                );
+              })}
+              {provisionError && (
+                <div style={{ marginTop: 4, fontSize: 11, color: "rgba(255,140,140,0.85)" }}>{provisionError}</div>
+              )}
               {selectedTarget.environmentVariables.length > 0 && (
-                <div style={{ marginTop: 4, fontSize: 11, color: "rgba(255,255,255,0.35)", ...MONO }}>
+                <div style={{ marginTop: 6, fontSize: 11, color: "rgba(255,255,255,0.3)", ...MONO }}>
                   Needs: {selectedTarget.environmentVariables.join(", ")}
                 </div>
               )}
-              <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.35)", fontStyle: "italic" }}>
-                Atlas cannot confirm the API will start until the service is connected.
+              <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>
+                Atlas cannot confirm the app will start until all services are connected.
               </div>
             </div>
           )}
@@ -482,46 +553,56 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
           <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
             Configure {selectedTarget.workingDirectory}
           </div>
-          {envFields.map((field, i) => (
-            <div key={field.name} style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                <span style={{ ...MONO, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>{field.name}</span>
-                {classificationLabel(field.classification)}
-                {field.sensitivity === "secret" && (
-                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,160,100,0.7)" }}>secret</span>
+          {envFields.map((field, i) => {
+            const isProvisioned = provisionedFields.has(field.name);
+            return (
+              <div key={field.name} style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                  <span style={{ ...MONO, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>{field.name}</span>
+                  {classificationLabel(field.classification)}
+                  {field.sensitivity === "secret" && !isProvisioned && (
+                    <span style={{ ...MONO, fontSize: 10, color: "rgba(255,160,100,0.7)" }}>secret</span>
+                  )}
+                  {isProvisioned && (
+                    <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.25)", color: "rgba(74,222,128,0.85)", ...MONO }}>
+                      ✓ provided by Atlas
+                    </span>
+                  )}
+                </div>
+                {field.source.length > 0 && (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 5, ...MONO }}>
+                    Used in: {field.source.slice(0, 2).join(", ")}
+                  </div>
                 )}
+                {field.defaultValue && field.sensitivity !== "secret" && !isProvisioned && (
+                  <div style={{ fontSize: 11, color: "rgba(100,200,100,0.7)", marginBottom: 5 }}>
+                    Safe default: <code style={{ ...MONO }}>{field.defaultValue}</code>
+                  </div>
+                )}
+                <input
+                  type={field.sensitivity === "secret" && !isProvisioned ? "password" : "text"}
+                  value={isProvisioned ? "••••••••••••" : field.value}
+                  readOnly={isProvisioned}
+                  onChange={isProvisioned ? undefined : e => setEnvFields(prev => prev.map((f, j) => j === i ? { ...f, value: e.target.value } : f))}
+                  placeholder={field.sensitivity === "secret" ? "Enter secret value" : field.defaultValue ? `Default: ${field.defaultValue}` : `Enter value`}
+                  autoComplete="off"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "7px 10px",
+                    background: isProvisioned ? "rgba(74,222,128,0.05)" : "rgba(0,0,0,0.3)",
+                    border: `1px solid ${isProvisioned ? "rgba(74,222,128,0.2)" : "rgba(255,255,255,0.12)"}`,
+                    borderRadius: 6,
+                    color: isProvisioned ? "rgba(74,222,128,0.7)" : "rgba(255,255,255,0.85)",
+                    ...MONO,
+                    fontSize: 12,
+                    outline: "none",
+                    cursor: isProvisioned ? "default" : "text",
+                  }}
+                />
               </div>
-              {field.source.length > 0 && (
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 5, ...MONO }}>
-                  Used in: {field.source.slice(0, 2).join(", ")}
-                </div>
-              )}
-              {field.defaultValue && field.sensitivity !== "secret" && (
-                <div style={{ fontSize: 11, color: "rgba(100,200,100,0.7)", marginBottom: 5 }}>
-                  Safe default: <code style={{ ...MONO }}>{field.defaultValue}</code>
-                </div>
-              )}
-              <input
-                type={field.sensitivity === "secret" ? "password" : "text"}
-                value={field.value}
-                onChange={e => setEnvFields(prev => prev.map((f, j) => j === i ? { ...f, value: e.target.value } : f))}
-                placeholder={field.sensitivity === "secret" ? "Enter secret value" : field.defaultValue ? `Default: ${field.defaultValue}` : `Enter value`}
-                autoComplete="off"
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "7px 10px",
-                  background: "rgba(0,0,0,0.3)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: 6,
-                  color: "rgba(255,255,255,0.85)",
-                  ...MONO,
-                  fontSize: 12,
-                  outline: "none",
-                }}
-              />
-            </div>
-          ))}
+            );
+          })}
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" style={BTN_PRIMARY} onClick={handleConfigDone}>Continue</button>
             <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>Cancel</button>

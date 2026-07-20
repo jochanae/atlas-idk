@@ -12,7 +12,7 @@ import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } f
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
 import { ensureProjectWorkspaceDir, projectWorkspaceDir, assertProjectOwner } from "../lib/projectWorkspace";
 import { cloneRepoBackground } from "../lib/workspaceHydration";
-import { classifyRepository } from "@workspace/repo-classifier";
+import { classifyRepository, ATLAS_SERVICE_CAPABILITIES } from "@workspace/repo-classifier";
 import { loadClassificationInput } from "../services/repositoryClassificationSource";
 import { logger } from "../lib/logger";
 import {
@@ -1894,7 +1894,88 @@ router.post("/projects/:id/classify", async (req, res): Promise<void> => {
   }
 
   const report = classifyRepository(input);
+
+  // Phase 4 — merge Atlas capability registry into each external service requirement.
+  // This is a product-capability annotation; it never affects classification logic.
+  report.requirements.externalServices = report.requirements.externalServices.map((svc) => {
+    const cap = ATLAS_SERVICE_CAPABILITIES[svc.service];
+    if (!cap) return svc;
+    return {
+      ...svc,
+      atlasCanProvide: cap.atlasCanProvide,
+      atlasCanConnect: cap.atlasCanConnect,
+      ...(cap.providerLabel ? { providerLabel: cap.providerLabel } : {}),
+    };
+  });
+
   res.json({ report });
+});
+
+// POST /api/projects/:id/provision-service — Phase 4 service provisioning
+// Resolves a connection string for a service Atlas can provide and returns the
+// env var name + value the caller should inject into the dev server environment.
+// Security: env var values are never logged server-side.
+router.post("/projects/:id/provision-service", async (req, res): Promise<void> => {
+  const projectId = parseInt(req.params.id, 10);
+  if (isNaN(projectId) || projectId <= 0) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const isOwner = await assertProjectOwner(projectId, userId);
+  if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const { service } = req.body as { service?: string };
+  if (!service || typeof service !== "string") {
+    res.status(400).json({ error: "service is required" });
+    return;
+  }
+
+  const cap = ATLAS_SERVICE_CAPABILITIES[service];
+  if (!cap?.atlasCanProvide) {
+    res.status(422).json({
+      error: `Atlas cannot provision ${service} yet.`,
+      detail: "This service requires an external account or manual connection string.",
+    });
+    return;
+  }
+
+  if (service === "SQLite") {
+    res.json({
+      ok: true,
+      envVars: {},
+      message: "SQLite uses local files — no connection string needed.",
+      providerLabel: cap.providerLabel ?? "local file",
+    });
+    return;
+  }
+
+  if (service === "PostgreSQL") {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      res.status(503).json({
+        error: "Replit PostgreSQL is not available in this environment.",
+        detail: "DATABASE_URL is not set. This usually resolves after the workspace is fully initialised.",
+      });
+      return;
+    }
+    // Return the connection string to the frontend (user's own session — safe).
+    // Never log the value.
+    res.json({
+      ok: true,
+      envVars: { DATABASE_URL: dbUrl },
+      message: "Replit PostgreSQL connected.",
+      providerLabel: cap.providerLabel ?? "Replit PostgreSQL",
+    });
+    return;
+  }
+
+  // Fallback for future services registered with atlasCanProvide: true
+  res.status(501).json({
+    error: `Provisioning for ${service} is not yet implemented.`,
+  });
 });
 
 export default router;
