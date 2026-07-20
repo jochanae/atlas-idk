@@ -38,5 +38,20 @@ rm -rf node_modules/.pnpm/@vitejs*/
 rm -rf node_modules/.pnpm/tailwindcss*/
 rm -rf node_modules/.pnpm/@tailwindcss*/
 rm -rf node_modules/.pnpm/lightningcss*/
+rm -rf node_modules/.pnpm/prettier*/
 
 echo "[build-frontend] node_modules size after cleanup: $(du -sh node_modules | cut -f1)"
+
+echo "[build-frontend] Pruning pnpm store..."
+# The pnpm content-addressable store lives inside the workspace at
+# .local/share/pnpm/store/v10 and is included in the deployment image.
+# It grows throughout dev sessions as new package versions are installed.
+# All builds are complete at this point so the store is no longer needed.
+PNPM_STORE="$(pnpm store path 2>/dev/null || echo '')"
+if [ -n "$PNPM_STORE" ] && [ -d "$PNPM_STORE" ]; then
+  echo "[build-frontend] Removing pnpm store at $PNPM_STORE..."
+  rm -rf "$PNPM_STORE"
+  echo "[build-frontend] pnpm store removed."
+else
+  echo "[build-frontend] pnpm store not found, skipping."
+fi
