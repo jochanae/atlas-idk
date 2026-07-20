@@ -5255,11 +5255,23 @@ export default function Home() {
             // When attachments are staged, cap the shell to available viewport
             // so the internal region scrolls instead of pushing the action bar
             // off-screen. No visual change when no attachments.
+            // When attachments exist, promote the shell to a fixed-position
+            // bounded flex column so parent flex chains (which don't propagate
+            // height reliably on mobile) can't push the action bar under the
+            // bottom nav. Only engages while hasAttachments — no visual change
+            // at rest.
             ...(hasAttachments && !askAtlasSurfaceVisible ? {
+              position: "fixed" as const,
+              left: 0,
+              right: 0,
+              bottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
+              margin: "0 auto",
+              maxWidth: 680,
               display: "flex",
               flexDirection: "column" as const,
               minHeight: 0,
               maxHeight: "calc(100dvh - 64px - env(safe-area-inset-bottom, 0px) - 24px)",
+              zIndex: 300,
             } : {}),
           }}>
   
