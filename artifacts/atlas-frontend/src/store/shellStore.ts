@@ -220,23 +220,16 @@ export const useShellStore = create<ShellStore>((set, get) => ({
     }),
   showComposerFromScroll: () =>
     set((state) => {
-      const prior = state.composerClaims.__scrollFollow__;
+      // Restore visibility from remaining claims + existing user pref.
+      // Do NOT mutate userComposerPreference here — dock scroll-follow and
+      // native picker/keyboard focus loss must not permanently collapse the
+      // composer. If the user hasn't explicitly chosen compact/docked, we
+      // return to whatever the claims resolve to (default: full).
       const next = { ...state.composerClaims };
       delete next.__scrollFollow__;
-      // Rule: restore to compact unless the user had explicitly opened full.
-      const wasFull = prior?.kind === 'scroll:full';
-      const userWantsFull = state.userComposerPreference === 'full';
-      let pref = state.userComposerPreference;
-      if (!(wasFull && userWantsFull)) {
-        pref = 'compact';
-        try {
-          if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('atlas-composer-pref', 'compact');
-        } catch {}
-      }
       return {
         composerClaims: next,
-        userComposerPreference: pref,
-        composerVisibility: resolveVisibility(next, pref),
+        composerVisibility: resolveVisibility(next, state.userComposerPreference),
       };
     }),
 
