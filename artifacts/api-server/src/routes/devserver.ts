@@ -389,9 +389,24 @@ interface RuntimeVerificationSnapshot {
   serviceBindingIds: string[];
   /** SHA-256[:16] of lockfile at last install — detects dep changes */
   installFingerprint: string;
-  /** Per-file SHA-256[:16] of structural config files */
+  /** Per-file SHA-256[:16] of structural config files (package.json, lock, etc.) */
   structuralFileHashes: Record<string, string>;
   verifiedAt: string;
+}
+
+/**
+ * Safe restart recipe — persisted server-side so Restart survives page refresh
+ * and workspace reopen. Never stores secret values; binding IDs are sufficient
+ * for server-managed credential resolution.
+ */
+interface RuntimeLaunchRecipe {
+  targetId: string;
+  serviceBindingIds: string[];
+  /** Only env var names declared by the classifier for this target — no secrets */
+  approvedPublicEnv: Record<string, string>;
+  classificationHash: string;
+  installFingerprint: string;
+  updatedAt: string;
 }
 
 const state: {
@@ -438,6 +453,11 @@ interface WsDevState {
   verificationSnapshot: RuntimeVerificationSnapshot | null;
   /** userId from the last authenticated /run or /stop — used for event logging. */
   runUserId: number | null;
+  /**
+   * Safe restart recipe — persisted so Restart works after page refresh.
+   * Written at markVerified time; read by POST /restart.
+   */
+  launchRecipe: RuntimeLaunchRecipe | null;
 }
 
 const wsStates = new Map<number, WsDevState>();
@@ -447,8 +467,20 @@ const wsStates = new Map<number, WsDevState>();
 const WS_PERSIST_DIR = "/tmp";
 function wsPersistPath(projectId: number) { return path.join(WS_PERSIST_DIR, `atlas-ws-${projectId}.json`); }
 
-function wsSaveState(projectId: number, port: number, pid?: number, verifiedTargetId?: string, lastVerifiedTargetId?: string) {
-  try { writeFileSync(wsPersistPath(projectId), JSON.stringify({ port, pid, verifiedTargetId, lastVerifiedTargetId })); } catch {}
+function wsSaveState(
+  projectId: number,
+  port: number,
+  pid?: number,
+  verifiedTargetId?: string,
+  lastVerifiedTargetId?: string,
+  launchRecipe?: RuntimeLaunchRecipe | null,
+) {
+  try {
+    writeFileSync(
+      wsPersistPath(projectId),
+      JSON.stringify({ port, pid, verifiedTargetId, lastVerifiedTargetId, launchRecipe: launchRecipe ?? null }),
+    );
+  } catch {}
 }
 function wsDeleteState(projectId: number) {
   try { unlinkSync(wsPersistPath(projectId)); } catch {}
@@ -461,9 +493,9 @@ function wsDeleteState(projectId: number) {
   for (const f of files) {
     try {
       const projectId = Number(f.replace("atlas-ws-", "").replace(".json", ""));
-      const { port, pid, verifiedTargetId, lastVerifiedTargetId } = JSON.parse(
+      const { port, pid, verifiedTargetId, lastVerifiedTargetId, launchRecipe } = JSON.parse(
         readFileSync(path.join(WS_PERSIST_DIR, f), "utf8")
-      ) as { port: number; pid?: number; verifiedTargetId?: string; lastVerifiedTargetId?: string };
+      ) as { port: number; pid?: number; verifiedTargetId?: string; lastVerifiedTargetId?: string; launchRecipe?: RuntimeLaunchRecipe | null };
       // HTTP probe — only re-adopt if the process is actually responding.
       // "Was verified before" and "is currently running" are different facts.
       const alive = await new Promise<boolean>((resolve) => {
@@ -478,6 +510,7 @@ function wsDeleteState(projectId: number) {
         if (verifiedTargetId) { st.verifiedTargetId = verifiedTargetId; st.verifiedAt = new Date(); }
         const lvt = lastVerifiedTargetId ?? verifiedTargetId;
         if (lvt) { st.lastVerifiedTargetId = lvt; st.lastVerifiedAt = new Date(); }
+        if (launchRecipe) { st.launchRecipe = launchRecipe; }
         st.logs = [`[re-adopted] Dev server accepted connections on port ${port}${pid ? ` (pid ${pid})` : ""}${verifiedTargetId ? ` · last-verified: ${verifiedTargetId}` : ""}`];
         logger.info({ projectId, port, verifiedTargetId }, "Re-adopted workspace dev server after API restart");
         // Heartbeat: adopted processes have no proc reference to watch for exit.
@@ -527,6 +560,7 @@ function getWsState(projectId: number): WsDevState {
       readiness: { configuration: "ready", dependencies: "ready", classification: "current" },
       verificationSnapshot: null,
       runUserId: null,
+      launchRecipe: null,
     });
   }
   return wsStates.get(projectId)!;
@@ -1286,6 +1320,7 @@ router.get("/devserver/workspace/:projectId/status", (req, res): void => {
     lastVerifiedTargetId: st.lastVerifiedTargetId ?? null,
     lastVerifiedAt: st.lastVerifiedAt ?? null,
     readiness: st.readiness,
+    launchRecipe: st.launchRecipe,
   });
 });
 
@@ -1302,7 +1337,7 @@ router.get("/devserver/workspace/:projectId/events", async (req, res): Promise<v
       SELECT id, event_type, target_id, detail, created_at
       FROM runtime_events
       WHERE project_id = ${projectId}
-      ORDER BY created_at DESC
+      ORDER BY created_at DESC, id DESC
       LIMIT 50
     `);
     res.json({ events: result.rows });
@@ -1347,6 +1382,192 @@ router.post("/devserver/workspace/:projectId/stop", async (req, res): Promise<vo
   }
   wsDeleteState(projectId);
   res.json({ status: "stopped" });
+});
+
+// ── Server-authoritative restart (Phase 5B) ───────────────────────────────
+// Browser should never orchestrate restart timing with arbitrary delays.
+// This endpoint:
+//   1. Sets pendingStopReason = "restart"
+//   2. Terminates the current process tree (SIGTERM → bounded wait → SIGKILL)
+//   3. Increments the generation counter
+//   4. Reads the stored launch recipe
+//   5. Fires a new /run cycle using recipe args
+//
+router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise<void> => {
+  const projectId = Number(req.params["projectId"]);
+  if (!projectId) { res.status(400).json({ error: "Invalid projectId" }); return; }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const isOwner = await assertProjectOwner(projectId, userId);
+  if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const st = wsStates.get(projectId);
+  if (!st) { res.status(409).json({ error: "No runtime to restart" }); return; }
+
+  const recipe = st.launchRecipe;
+  if (!recipe) {
+    res.status(409).json({ error: "No restart recipe available. Run the app first." });
+    return;
+  }
+
+  // If another run is already in progress, reject.
+  if (st.status === "installing" || st.status === "starting" || st.status === "restarting") {
+    res.status(409).json({ error: "A run is already in progress", status: st.status });
+    return;
+  }
+
+  st.runUserId = userId;
+  st.pendingStopReason = "restart";
+  transitionRuntime(projectId, st, {
+    status: "restarting",
+    eventType: "restart_requested",
+    targetId: st.verifiedTargetId ?? recipe.targetId,
+    detail: { reason: "user-restart" },
+  });
+  addWsLog(st, "↺ Restart requested — stopping current process…");
+
+  // Terminate and wait for clean exit (bounded)
+  if (st.proc) {
+    const pid = st.proc.pid;
+    const dyingProc = st.proc;
+    const exitPromise = new Promise<void>(resolve => dyingProc.once("exit", () => resolve()));
+    try { if (pid) process.kill(-pid, "SIGTERM"); else dyingProc.kill("SIGTERM"); } catch {}
+    // Wait up to 8s for clean exit, then force-kill
+    const cleanExit = await Promise.race([
+      exitPromise.then(() => true),
+      new Promise<false>(r => setTimeout(() => r(false), 8_000)),
+    ]);
+    if (!cleanExit && st.proc === dyingProc) {
+      try { if (pid) process.kill(-pid, "SIGKILL"); else dyingProc.kill("SIGKILL"); } catch {}
+      await Promise.race([exitPromise, new Promise(r => setTimeout(r, 2_000))]);
+    }
+    st.proc = null;
+    st.pendingStopReason = null; // consumed — exit handler will fire but runGen will mismatch
+  }
+
+  // Respond immediately — client polls /status
+  res.status(202).json({ status: "restarting" });
+
+  // Increment generation so stale callbacks from the killed process are ignored
+  st.runGen = (st.runGen ?? 0) + 1;
+
+  // Re-run using the stored recipe (proxied through the run route handler logic).
+  // We do this by forwarding a synthetic /run request to the same Express handler.
+  // To avoid duplicating the entire /run implementation, we mutate req.body and
+  // forward via router.handle — but simpler: just re-POST /run server-side via http.
+  // Actually the cleanest approach is to directly invoke the run logic via a loopback
+  // call on localhost:80 so it goes through the same auth and classification path.
+  const loopbackPort = OWN_PORT;
+  const runPayload = JSON.stringify({
+    targetId: recipe.targetId,
+    env: recipe.approvedPublicEnv,
+    serviceBindingIds: recipe.serviceBindingIds,
+  });
+  const loopReq = http.request(
+    {
+      hostname: "localhost",
+      port: loopbackPort,
+      path: `/api/devserver/workspace/${projectId}/run`,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(runPayload),
+        // Forward a minimal session cookie from the original request so auth passes.
+        "Cookie": req.headers["cookie"] ?? "",
+      },
+    },
+    (loopRes) => {
+      loopRes.resume(); // drain response body
+      if (loopRes.statusCode && loopRes.statusCode >= 400) {
+        logger.warn({ projectId, statusCode: loopRes.statusCode }, "Restart loopback /run rejected");
+        transitionRuntime(projectId, st, {
+          status: "error",
+          eventType: "runtime_error",
+          targetId: recipe.targetId,
+          detail: { reason: "restart-loopback-rejected", statusCode: loopRes.statusCode },
+        });
+        st.errorMsg = "Restart failed — the new run was rejected by the server.";
+      }
+    },
+  );
+  loopReq.on("error", (err) => {
+    logger.warn({ err, projectId }, "Restart loopback /run network error");
+    transitionRuntime(projectId, st, {
+      status: "error",
+      eventType: "runtime_error",
+      targetId: recipe.targetId,
+      detail: { reason: "restart-loopback-error", message: (err as Error).message },
+    });
+    st.errorMsg = "Restart failed — could not reach the run endpoint.";
+  });
+  loopReq.write(runPayload);
+  loopReq.end();
+});
+
+// ── Readiness check (Phase 5C) — evaluate drift against stored snapshot ──
+// Call this on workspace reopen / status restoration so readiness warnings
+// appear before the user clicks Run, not after.
+//
+router.post("/devserver/workspace/:projectId/check-readiness", async (req, res): Promise<void> => {
+  const projectId = Number(req.params["projectId"]);
+  if (!projectId) { res.status(400).json({ error: "Invalid projectId" }); return; }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const isOwner = await assertProjectOwner(projectId, userId);
+  if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const st = wsStates.get(projectId);
+  if (!st?.verificationSnapshot) {
+    // No snapshot means no prior run — readiness is always "ready" (no baseline to drift from)
+    res.json({ readiness: { configuration: "ready", dependencies: "ready", classification: "current" } });
+    return;
+  }
+
+  // Respond immediately with current cached readiness, then recompute in background
+  res.json({ readiness: st.readiness });
+
+  const snap = st.verificationSnapshot;
+  const workDir = projectWorkspaceDir(projectId);
+
+  // Recompute structural hashes in background — updates st.readiness for next /status poll
+  computeStructuralFileHashes(workDir).then((currentHashes) => {
+    if (!st.verificationSnapshot) return; // snapshot cleared (new run started)
+
+    // Dependency drift: compare all structural files, not just lockfile
+    const snapHashes = snap.structuralFileHashes;
+    let depDrift = false;
+    for (const key of Object.keys(snapHashes)) {
+      if (currentHashes[key] && currentHashes[key] !== snapHashes[key]) {
+        depDrift = true;
+        break;
+      }
+    }
+    // Also check if a previously-missing lockfile now exists or vice versa
+    const lockKeys = ["pnpm-lock.yaml", "package-lock.json", "yarn.lock"];
+    const snapLock = lockKeys.find(k => snap.installFingerprint && snapHashes[k] === snap.installFingerprint);
+    const currLock = lockKeys.find(k => currentHashes[k]);
+    if (snapLock !== currLock) depDrift = true;
+
+    if (depDrift && st.readiness.dependencies === "ready") {
+      st.readiness.dependencies = "reinstall-required";
+      logger.info({ projectId }, "check-readiness: dependency drift detected");
+    }
+
+    // Classification drift: re-check structural files that affect classifier behavior
+    // (package.json changes can alter framework/target detection)
+    if (
+      (currentHashes["package.json"] && snapHashes["package.json"] && currentHashes["package.json"] !== snapHashes["package.json"]) ||
+      (currentHashes["vite.config.ts"] && snapHashes["vite.config.ts"] && currentHashes["vite.config.ts"] !== snapHashes["vite.config.ts"]) ||
+      (currentHashes["next.config.js"] && snapHashes["next.config.js"] && currentHashes["next.config.js"] !== snapHashes["next.config.js"])
+    ) {
+      if (st.readiness.classification === "current") {
+        st.readiness.classification = "stale";
+        logger.info({ projectId }, "check-readiness: classification drift detected");
+      }
+    }
+  }).catch((err: unknown) => {
+    logger.warn({ err, projectId }, "check-readiness: hash computation failed");
+  });
 });
 
 // ── Runtime verification — run an imported target and health-check it ────────
@@ -1814,27 +2035,43 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
           targetId: target.id,
           detail: { port: livePort, framework: target.framework },
         });
-        wsSaveState(projectId, livePort, proc.pid ?? undefined, target.id, target.id);
         addWsLog(st, `✓ Connected — ${target.id} accepted HTTP on port ${livePort} · ${target.framework}`);
         logger.info({ projectId, port: livePort, targetId: target.id, framework: target.framework }, "Runtime verification complete");
-        // Build and store the verification snapshot asynchronously (Phase 5C).
+        // Build and store the verification snapshot + launch recipe asynchronously (Phase 5C).
         // Does not block the "running" signal — fires after status is already set.
         computeStructuralFileHashes(workDir).then((structuralHashes) => {
           if (st.runGen !== myGen || st.verifiedTargetId !== target.id) return;
+          const classificationHash = computeClassificationHash(target);
+          const installFingerprint =
+            structuralHashes["pnpm-lock.yaml"] ??
+            structuralHashes["package-lock.json"] ??
+            structuralHashes["yarn.lock"] ??
+            "";
           st.verificationSnapshot = {
             targetId: target.id,
-            classificationHash: computeClassificationHash(target),
+            classificationHash,
             requiredEnvKeys: Object.keys(safeEnv),
             serviceBindingIds: serviceBindingIds ?? [],
-            installFingerprint:
-              structuralHashes["pnpm-lock.yaml"] ??
-              structuralHashes["package-lock.json"] ??
-              structuralHashes["yarn.lock"] ??
-              "",
+            installFingerprint,
             structuralFileHashes: structuralHashes,
             verifiedAt: (st.verifiedAt ?? new Date()).toISOString(),
           };
-        }).catch(() => {});
+          // Safe restart recipe — no secrets; binding IDs used for server-resolved creds.
+          // approvedPublicEnv stores only env var names the classifier declared
+          // for this target (values already accepted by the allowlist filter).
+          st.launchRecipe = {
+            targetId: target.id,
+            serviceBindingIds: serviceBindingIds ?? [],
+            approvedPublicEnv: { ...safeEnv },
+            classificationHash,
+            installFingerprint,
+            updatedAt: new Date().toISOString(),
+          };
+          // Persist recipe alongside port/pid so it survives API server restarts.
+          wsSaveState(projectId, livePort, proc.pid ?? undefined, target.id, target.id, st.launchRecipe);
+        }).catch((err: unknown) => {
+          logger.warn({ err, projectId }, "markVerified: snapshot/recipe computation failed — recipe not persisted");
+        });
       };
 
       // ── 3. Port detection: watch stdout, fall back to probing ────────────────
@@ -1912,19 +2149,40 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
           // Old process killed because a new /run call was made — new IIFE owns state
           // No log needed — new run will emit its own events
         } else {
-          // No intent recorded — process exited on its own: this is a crash.
-          // Exit code 0 can also be unexpected (server should not self-terminate).
-          const crashMsg = signal
-            ? `App crashed (signal ${signal}). Check logs for details.`
-            : `App exited unexpectedly (code ${code ?? "unknown"}). Check logs for details.`;
-          transitionRuntime(projectId, st, {
-            status: "crashed",
-            eventType: "runtime_crashed",
-            targetId: target.id,
-            detail: { exitCode: code, signal, wasVerified: st.verifiedTargetId === target.id },
-          });
-          st.errorMsg = crashMsg;
-          addWsLog(st, `✗ Crashed (${signal ?? `code ${code}`})`);
+          // No intent recorded — process exited on its own.
+          // Distinguish startup failure (never connected) from runtime crash (was connected).
+          //   - wasConnected = true  → crash: "App crashed"
+          //   - wasConnected = false → error: "App could not start"
+          // A process that exits with code 0 without having connected is also a startup error.
+          const wasConnected = st.verifiedTargetId === target.id;
+          if (wasConnected) {
+            const crashMsg = signal
+              ? `App crashed (signal ${signal}). Check logs for details.`
+              : `App exited unexpectedly (code ${code ?? "unknown"}). Check logs for details.`;
+            transitionRuntime(projectId, st, {
+              status: "crashed",
+              eventType: "runtime_crashed",
+              targetId: target.id,
+              detail: { exitCode: code, signal, wasConnected: true },
+            });
+            st.errorMsg = crashMsg;
+            addWsLog(st, `✗ Crashed (${signal ?? `code ${code}`})`);
+          } else {
+            // Never reached the connected state — startup failure, not a crash.
+            const errMsg = signal
+              ? `App exited before accepting connections (signal ${signal}).`
+              : code === 0
+                ? "App exited cleanly before accepting connections. Missing start script?"
+                : `App failed to start (exit code ${code ?? "unknown"}).`;
+            transitionRuntime(projectId, st, {
+              status: "error",
+              eventType: "runtime_error",
+              targetId: target.id,
+              detail: { exitCode: code, signal, wasConnected: false, reason: "startup-failure" },
+            });
+            st.errorMsg = errMsg;
+            addWsLog(st, `✗ Startup failure (${signal ?? `code ${code}`})`);
+          }
           wsDeleteState(projectId);
         }
 

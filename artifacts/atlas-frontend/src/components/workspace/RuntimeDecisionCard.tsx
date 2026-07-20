@@ -43,6 +43,15 @@ export interface RuntimeCardData {
   };
 }
 
+interface RuntimeLaunchRecipe {
+  targetId: string;
+  serviceBindingIds: string[];
+  approvedPublicEnv: Record<string, string>;
+  classificationHash: string;
+  installFingerprint: string;
+  updatedAt: string;
+}
+
 interface DevServerStatus {
   status: string;
   port?: number | null;
@@ -58,6 +67,7 @@ interface DevServerStatus {
     dependencies: "ready" | "reinstall-required";
     classification: "current" | "stale";
   };
+  launchRecipe?: RuntimeLaunchRecipe | null;
 }
 
 interface RuntimeEvent {
@@ -269,7 +279,6 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
   const [provisionError, setProvisionError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
-  const lastRunArgsRef = useRef<{ env: Record<string, string>; serviceBindingIds: string[]; targetId: string } | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -331,8 +340,18 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       if (!status || !mountedRef.current) return;
       if (status.status === "running" && status.verifiedTargetId === selectedTargetId) {
         setPhase("connected"); fetchEvents();
+        // Trigger a background drift evaluation so readiness warnings appear without waiting for /run.
+        // Response is ignored here — the result updates st.readiness on the server; next poll picks it up.
+        fetch(`/api/devserver/workspace/${effectiveProjectId}/check-readiness`, {
+          method: "POST", credentials: "include",
+        }).catch(() => {});
       } else if (status.status === "crashed") {
         setPhase("crashed"); fetchEvents();
+      } else if (status.status === "stopped" || status.status === "idle") {
+        // Fire check-readiness so the decision phase can show drift warnings before next run
+        fetch(`/api/devserver/workspace/${effectiveProjectId}/check-readiness`, {
+          method: "POST", credentials: "include",
+        }).catch(() => {});
       } else if (status.status === "error") {
         setPhase("error");
       } else if (status.status === "installing" || status.status === "starting" || status.status === "restarting") {
@@ -398,8 +417,6 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       if (f.value.trim()) env[f.name] = f.value;
     }
     const serviceBindingIds = Array.from(serviceBindings.values()).map(b => b.bindingId);
-    // Store the run args so handleRestart can replay them without re-entering config
-    lastRunArgsRef.current = { env, serviceBindingIds, targetId: selectedTargetId };
     setEnvFields(prev => prev.map(f => ({ ...f, value: "" })));
     setSubmitError(null);
 
@@ -433,30 +450,29 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
   };
 
   const handleRestart = async () => {
-    const args = lastRunArgsRef.current ?? { env: {}, serviceBindingIds: [], targetId: selectedTargetId };
-    setPhase("polling");
-    setServerStatus(null);
-    // Stop first so the exit listener classifies this as "restart" not "crash"
+    setSubmitError(null);
+    // POST /restart — server owns lifecycle timing (SIGTERM → bounded wait → SIGKILL → new run).
+    // No client-side delays or stop-then-run sequencing.
     try {
-      await fetch(`/api/devserver/workspace/${effectiveProjectId}/stop`, { method: "POST", credentials: "include" });
-    } catch { /* proceed regardless */ }
-    // Small gap to let the stop propagate before the new /run reserves the slot
-    await new Promise(r => setTimeout(r, 300));
-    try {
-      const res = await fetch(`/api/devserver/workspace/${effectiveProjectId}/run`, {
+      const res = await fetch(`/api/devserver/workspace/${effectiveProjectId}/restart`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...args, targetId: selectedTargetId }),
       });
-      if (!res.ok) {
+      if (res.status === 409) {
+        // Already running or no recipe — fall through to polling so the UI stays in sync
+        const body = await res.json().catch(() => ({})) as Record<string, string>;
+        if (body.error?.includes("recipe")) {
+          setSubmitError("No restart recipe available. Please run the app manually.");
+          return;
+        }
+      } else if (!res.ok) {
         const body = await res.json().catch(() => ({})) as Record<string, string>;
         setSubmitError(body.error ?? "Restart failed. Try running again.");
-        setPhase("error");
+        return;
       }
+      setPhase("polling");
     } catch {
       setSubmitError("Network error during restart.");
-      setPhase("error");
     }
   };
 
