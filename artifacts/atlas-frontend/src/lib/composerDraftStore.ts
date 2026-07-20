@@ -34,6 +34,14 @@ let draft: AskAtlasComposerDraft = {
 let hydratedFromStorage = false;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let persistChain: Promise<void> = Promise.resolve();
+/** Skip redundant IDB arrayBuffer rewrites when the file set has not changed. */
+let lastPersistedFileSig = "";
+
+function fileSetSignature(files: File[]): string {
+  return files
+    .map((f) => `${f.name}:${f.size}:${f.lastModified}`)
+    .join("|");
+}
 
 function safeSessionGet(key: string): string | null {
   try {
@@ -175,10 +183,19 @@ async function persistAskAtlasComposerDraft(): Promise<void> {
     }),
   );
   if (!PERSIST_FILE_BLOBS || draft.files.length === 0) {
+    lastPersistedFileSig = "";
     await idbClearFiles();
-  } else {
-    await idbWriteFiles(draft.files);
+    return;
   }
+  const sig = fileSetSignature(draft.files);
+  if (sig === lastPersistedFileSig) {
+    // Membership unchanged — do not re-read every File into ArrayBuffer.
+    // Multi-file upload progress used to trigger this path dozens of times/sec
+    // and OOM the WebView (white screen + hard reload).
+    return;
+  }
+  lastPersistedFileSig = sig;
+  await idbWriteFiles(draft.files);
 }
 
 /** Sync read — module memory, with sessionStorage input fallback. */
@@ -208,6 +225,7 @@ export function setAskAtlasComposerDraft(
 
 export function clearAskAtlasComposerDraft(): void {
   draft = { input: "", files: [], conversationId: null, updatedAt: Date.now() };
+  lastPersistedFileSig = "";
   safeSessionRemove(INPUT_KEY);
   safeSessionRemove(META_KEY);
   if (persistTimer) {
@@ -251,6 +269,7 @@ export function __resetComposerDraftStoreForTests() {
     persistTimer = null;
   }
   draft = { input: "", files: [], conversationId: null, updatedAt: 0 };
+  lastPersistedFileSig = "";
   hydratedFromStorage = false;
 }
 
