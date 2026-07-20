@@ -5340,8 +5340,18 @@ export default function Home() {
               focusLensChipRef.current = focusLensChipNode;
               return (
             <>
+            <div
+              style={{
+                maxHeight: "calc(100dvh - 220px)",
+                overflowY: "auto",
+                overscrollBehavior: "contain",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+              }}
+              className="atlas-hide-scrollbar"
+            >
             {staged.files.length > 0 && (
-              <div style={{ marginBottom: 8, maxHeight: 84, overflowY: "hidden" }}>
+              <div style={{ marginBottom: 8 }}>
                 <AttachmentStrip
                   mode="staged"
                   files={staged.files}
@@ -5350,6 +5360,7 @@ export default function Home() {
                 />
               </div>
             )}
+
             <div
               className="atlas-ambient-reveal-top"
               style={{
