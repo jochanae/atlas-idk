@@ -61,6 +61,197 @@ interface DevServerStatus {
   hasLaunchRecipe?: boolean;
 }
 
+// ── Runtime recommendation resolver ──────────────────────────────────────────
+// Pure logic — no JSX. Consumes backend facts and returns one recommendation
+// the card renders. The card never makes this decision itself.
+interface RuntimeRecommendation {
+  tone: "success" | "warning" | "danger" | "neutral";
+  title: string;
+  explanation: string;
+  action: "restart" | "reinstall-restart" | "reconfigure" | "reclassify" | "view-logs" | null;
+  actionLabel: string;
+}
+
+function resolveRuntimeRecommendation(
+  status: string | undefined,
+  readiness: DevServerStatus["readiness"] | undefined,
+  hasLaunchRecipe: boolean | undefined,
+  latestEvent: RuntimeEvent | undefined,
+): RuntimeRecommendation {
+  // Extract restart_blocked reason from the latest event if present
+  const blockedReason =
+    latestEvent?.event_type === "restart_blocked"
+      ? ((latestEvent.detail as Record<string, unknown>)["reason"] as string | undefined) ?? ""
+      : null;
+
+  // Running — readiness may have degraded since connection
+  if (status === "running") {
+    if (readiness?.configuration === "missing") {
+      return {
+        tone: "warning",
+        title: "A required connection is unavailable",
+        explanation:
+          "The app is running, but a service it depends on is no longer connected. It may fail on the next request.",
+        action: "reconfigure",
+        actionLabel: "Reconnect service",
+      };
+    }
+    if (readiness?.dependencies === "reinstall-required") {
+      return {
+        tone: "warning",
+        title: "Dependencies changed",
+        explanation:
+          "package.json or the lockfile changed after the last successful run. Atlas will reinstall before the next restart.",
+        action: "restart",
+        actionLabel: "Restart",
+      };
+    }
+    if (readiness?.classification === "stale") {
+      return {
+        tone: "warning",
+        title: "Atlas needs to inspect this target again",
+        explanation:
+          "The repository's runtime structure changed after the last successful run. Reclassify before restarting.",
+        action: "reclassify",
+        actionLabel: "Inspect repository again",
+      };
+    }
+    return { tone: "success", title: "App is connected", explanation: "", action: "restart", actionLabel: "Restart" };
+  }
+
+  // Stopped with a valid recipe — determine the right next action
+  if ((status === "stopped" || status === "idle") && hasLaunchRecipe) {
+    if (blockedReason === "binding-invalid") {
+      return {
+        tone: "danger",
+        title: "A required service connection is no longer available",
+        explanation:
+          "One or more service bindings were revoked or removed. Reconnect them before restarting.",
+        action: "reconfigure",
+        actionLabel: "Reconnect service",
+      };
+    }
+    if (blockedReason === "target-changed") {
+      return {
+        tone: "warning",
+        title: "Atlas needs to inspect this target again",
+        explanation:
+          "The repository's runtime structure changed after the last successful run.",
+        action: "reclassify",
+        actionLabel: "Inspect repository again",
+      };
+    }
+    if (readiness?.configuration === "missing") {
+      return {
+        tone: "danger",
+        title: "Required configuration is unavailable",
+        explanation: "A service binding or required environment variable is no longer available.",
+        action: "reconfigure",
+        actionLabel: "Reconnect",
+      };
+    }
+    if (readiness?.dependencies === "reinstall-required") {
+      return {
+        tone: "warning",
+        title: "Dependencies changed",
+        explanation:
+          "package.json or the lockfile changed after the last successful run. Atlas will reinstall before restarting.",
+        action: "reinstall-restart",
+        actionLabel: "Reinstall and restart",
+      };
+    }
+    if (readiness?.classification === "stale") {
+      return {
+        tone: "warning",
+        title: "Atlas needs to inspect this target again",
+        explanation: "The repository's runtime structure changed after the last successful run.",
+        action: "reclassify",
+        actionLabel: "Inspect repository again",
+      };
+    }
+    return {
+      tone: "neutral",
+      title: "App is ready to restart",
+      explanation: "Source code may have changed. A normal restart is enough.",
+      action: "restart",
+      actionLabel: "Restart",
+    };
+  }
+
+  // Crashed (was connected, then exited unexpectedly)
+  if (status === "crashed") {
+    return {
+      tone: "danger",
+      title: "App stopped unexpectedly",
+      explanation:
+        "The application exited after it was connected. Check the logs for the exit reason.",
+      action: "restart",
+      actionLabel: "Restart",
+    };
+  }
+
+  // Error — unexpected failure (not a policy block)
+  if (status === "error") {
+    return {
+      tone: "danger",
+      title: "Atlas could not start the app",
+      explanation: "An unexpected error occurred. Review the logs and try again.",
+      action: "view-logs",
+      actionLabel: "View logs",
+    };
+  }
+
+  return { tone: "neutral", title: "Ready to run", explanation: "", action: null, actionLabel: "" };
+}
+
+// Returns the most recent event worth surfacing to the user.
+// Skips purely procedural events (requested/started) that are only noise without context.
+function latestMeaningfulEvent(events: RuntimeEvent[]): RuntimeEvent | undefined {
+  const meaningful = new Set([
+    "runtime_connected",
+    "runtime_crashed",
+    "runtime_stopped",
+    "restart_blocked",
+    "restart_failed",
+    "runtime_error",
+    "install_completed",
+    "drift_detected",
+    "reinstall_required",
+  ]);
+  return events.find((e) => meaningful.has(e.event_type));
+}
+
+// Short human-readable summary of an event, safe for inline display.
+function eventSummaryLabel(event: RuntimeEvent): string {
+  const reason = ((event.detail as Record<string, unknown>)["reason"] as string | undefined) ?? "";
+  switch (event.event_type) {
+    case "restart_blocked":
+      if (reason === "target-changed") return "Restart blocked · runtime structure changed";
+      if (reason === "binding-invalid") return "Restart blocked · service connection unavailable";
+      if (reason === "reinstall-required") return "Restart blocked · reinstall required";
+      if (reason === "configuration-missing") return "Restart blocked · configuration missing";
+      return "Restart blocked";
+    case "runtime_crashed":
+      return "App stopped unexpectedly";
+    case "runtime_connected":
+      return "App connected successfully";
+    case "restart_failed":
+      return "Restart failed unexpectedly";
+    case "runtime_stopped":
+      return "App stopped";
+    case "runtime_error":
+      return "Runtime error";
+    case "install_completed":
+      return "Dependencies installed";
+    case "drift_detected":
+      return "Drift detected";
+    case "reinstall_required":
+      return "Reinstall required";
+    default:
+      return event.event_type.replace(/_/g, " ");
+  }
+}
+
 interface RuntimeEvent {
   id: number;
   event_type: string;
@@ -69,7 +260,7 @@ interface RuntimeEvent {
   created_at: string;
 }
 
-type CardPhase = "decision" | "configuring" | "confirming" | "polling" | "connected" | "crashed" | "error";
+type CardPhase = "decision" | "configuring" | "confirming" | "polling" | "stopped" | "connected" | "crashed" | "error";
 
 interface EnvFieldState {
   name: string;
@@ -303,6 +494,20 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
     [envFields, serviceProvidedVarNames],
   );
 
+  const latestMeaningful = useMemo(
+    () => latestMeaningfulEvent(runtimeEvents),
+    [runtimeEvents],
+  );
+  const recommendation = useMemo(
+    () => resolveRuntimeRecommendation(
+      serverStatus?.status,
+      serverStatus?.readiness,
+      serverStatus?.hasLaunchRecipe,
+      latestMeaningful,
+    ),
+    [serverStatus, latestMeaningful],
+  );
+
   const fetchStatus = useCallback(async (): Promise<DevServerStatus | null> => {
     try {
       const res = await fetch(`/api/devserver/workspace/${effectiveProjectId}/status`, { credentials: "include" });
@@ -339,10 +544,13 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       } else if (status.status === "crashed") {
         setPhase("crashed"); fetchEvents();
       } else if (status.status === "stopped" || status.status === "idle") {
-        // Fire check-readiness so the decision phase can show drift warnings before next run
+        // Fire check-readiness so readiness warnings appear before next run
         fetch(`/api/devserver/workspace/${effectiveProjectId}/check-readiness`, {
           method: "POST", credentials: "include",
         }).catch(() => {});
+        if (status.hasLaunchRecipe) {
+          fetchEvents().then(() => { if (mountedRef.current) setPhase("stopped"); });
+        }
       } else if (status.status === "error") {
         setPhase("error");
       } else if (status.status === "installing" || status.status === "starting" || status.status === "restarting") {
@@ -366,7 +574,12 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       } else if (status.status === "error") {
         setPhase("error");
       } else if (status.status === "stopped" || status.status === "idle") {
-        setPhase("decision");
+        if (status.hasLaunchRecipe) {
+          fetchEvents();
+          setPhase("stopped");
+        } else {
+          setPhase("decision");
+        }
       }
     }, 2500);
     return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
@@ -464,6 +677,24 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       setPhase("polling");
     } catch {
       setSubmitError("Network error during restart.");
+    }
+  };
+
+  const handleRecommendedAction = () => {
+    switch (recommendation.action) {
+      case "restart":
+      case "reinstall-restart":
+        void handleRestart();
+        break;
+      case "reconfigure":
+        setPhase("configuring");
+        break;
+      case "reclassify":
+        setPhase("decision");
+        break;
+      case "view-logs":
+        setShowLogs(true);
+        break;
     }
   };
 
@@ -824,6 +1055,68 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
         </>
       )}
 
+      {phase === "stopped" && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+              background: recommendation.tone === "danger" ? "#f87171" : recommendation.tone === "warning" ? "#fbbf24" : "rgba(255,255,255,0.25)",
+            }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>
+              {recommendation.title}
+            </span>
+          </div>
+          {recommendation.explanation && (
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12, lineHeight: 1.6 }}>
+              {recommendation.explanation}
+            </div>
+          )}
+          {latestMeaningful && (
+            <div style={{ marginBottom: 12, padding: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                {eventSummaryLabel(latestMeaningful)}
+              </span>
+              <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>
+                {relativeTime(latestMeaningful.created_at)}
+              </span>
+            </div>
+          )}
+          {submitError && (
+            <div style={{ marginBottom: 10, padding: "6px 10px", background: "rgba(220,80,80,0.1)", borderRadius: 6, fontSize: 12, color: "rgba(255,140,140,0.9)", border: "1px solid rgba(220,80,80,0.2)" }}>
+              {submitError}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+            {recommendation.action && (
+              <button type="button" style={BTN_PRIMARY} onClick={handleRecommendedAction}>
+                {recommendation.actionLabel}
+              </button>
+            )}
+            <button type="button" style={BTN_GHOST} onClick={() => setShowLogs(v => !v)}>
+              {showLogs ? "Hide logs" : "Logs"}
+            </button>
+            {runtimeEvents.length > 0 && (
+              <button type="button" style={BTN_GHOST} onClick={() => setShowHistory(v => !v)}>
+                {showHistory ? "Hide history" : "History"}
+              </button>
+            )}
+            <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>
+              Run new
+            </button>
+          </div>
+          {showHistory && runtimeEvents.length > 0 && (
+            <div style={{ marginBottom: 8, padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+              {runtimeEvents.slice(0, 8).map((ev) => (
+                <div key={ev.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{eventTypeLabel(ev.event_type)}</span>
+                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{relativeTime(ev.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {phase === "polling" && (
         <>
           <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>
@@ -865,6 +1158,22 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
             </span>
           </div>
           <ReadinessBadges readiness={serverStatus?.readiness} />
+          {serverStatus?.readiness && (
+            serverStatus.readiness.configuration !== "ready" ||
+            serverStatus.readiness.dependencies !== "ready" ||
+            serverStatus.readiness.classification !== "current"
+          ) && (
+            <div style={{ marginBottom: 10, padding: "8px 10px", background: "rgba(255,200,100,0.05)", borderRadius: 6, borderLeft: "2px solid rgba(255,200,100,0.3)" }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,200,100,0.85)", marginBottom: 3 }}>
+                {recommendation.title}
+              </div>
+              {recommendation.explanation && (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
+                  {recommendation.explanation}
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: runtimeEvents.length > 0 ? 10 : 0 }}>
             <button type="button" style={BTN_PRIMARY} onClick={handleOpenPreview}>Open preview</button>
             <button type="button" style={BTN_GHOST} onClick={handleRestart}>Restart</button>
@@ -894,20 +1203,16 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f97316", flexShrink: 0 }} />
             <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>
-              {selectedTarget.workingDirectory} crashed
+              {recommendation.title}
             </span>
           </div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 12, lineHeight: 1.5 }}>
-            {serverStatus?.errorMsg ?? "The app exited unexpectedly. It was running when it stopped."}
+            {serverStatus?.errorMsg ?? recommendation.explanation}
           </div>
-          {runtimeEvents.length > 0 && (
-            <div style={{ marginBottom: 12, padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 7, display: "flex", flexDirection: "column", gap: 4 }}>
-              {runtimeEvents.slice(0, 5).map((ev) => (
-                <div key={ev.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{eventTypeLabel(ev.event_type)}</span>
-                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{relativeTime(ev.created_at)}</span>
-                </div>
-              ))}
+          {latestMeaningful && (
+            <div style={{ marginBottom: 12, padding: "6px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{eventSummaryLabel(latestMeaningful)}</span>
+              <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{relativeTime(latestMeaningful.created_at)}</span>
             </div>
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -918,8 +1223,22 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
             <button type="button" style={BTN_GHOST} onClick={() => setShowLogs(v => !v)}>
               {showLogs ? "Hide logs" : "View logs"}
             </button>
-            <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>Back</button>
+            {runtimeEvents.length > 0 && (
+              <button type="button" style={BTN_GHOST} onClick={() => setShowHistory(v => !v)}>
+                {showHistory ? "Hide history" : "History"}
+              </button>
+            )}
           </div>
+          {showHistory && runtimeEvents.length > 0 && (
+            <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+              {runtimeEvents.slice(0, 8).map((ev) => (
+                <div key={ev.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{eventTypeLabel(ev.event_type)}</span>
+                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{relativeTime(ev.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -928,12 +1247,18 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", flexShrink: 0 }} />
             <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>
-              {selectedTarget.workingDirectory} could not start
+              {recommendation.title}
             </span>
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 10, lineHeight: 1.5 }}>
-            {serverStatus?.errorMsg ?? "The application exited before accepting an HTTP connection."}
+            {serverStatus?.errorMsg ?? recommendation.explanation}
           </div>
+          {latestMeaningful && (
+            <div style={{ marginBottom: 10, padding: "6px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{eventSummaryLabel(latestMeaningful)}</span>
+              <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{relativeTime(latestMeaningful.created_at)}</span>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {hasRequiredConfig && (
               <button type="button" style={BTN_PRIMARY} onClick={() => setPhase("configuring")}>Add configuration</button>
@@ -941,8 +1266,23 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
             <button type="button" style={BTN_GHOST} onClick={() => setShowLogs(v => !v)}>
               {showLogs ? "Hide logs" : "View logs"}
             </button>
+            {runtimeEvents.length > 0 && (
+              <button type="button" style={BTN_GHOST} onClick={() => setShowHistory(v => !v)}>
+                {showHistory ? "Hide history" : "History"}
+              </button>
+            )}
             <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>Try again</button>
           </div>
+          {showHistory && runtimeEvents.length > 0 && (
+            <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+              {runtimeEvents.slice(0, 8).map((ev) => (
+                <div key={ev.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{eventTypeLabel(ev.event_type)}</span>
+                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{relativeTime(ev.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
