@@ -1574,6 +1574,28 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: service_bindings failed — server will start anyway");
   }
+
+  // Phase 5A: runtime_events — one row per lifecycle transition, used for history + drift detection
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS runtime_events (
+        id bigserial PRIMARY KEY,
+        project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_id integer NOT NULL,
+        event_type text NOT NULL,
+        target_id text,
+        detail jsonb NOT NULL DEFAULT '{}',
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS runtime_events_project_created_idx
+        ON runtime_events (project_id, created_at DESC)
+    `);
+    logger.info("ensureColumns: runtime_events table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: runtime_events failed — server will start anyway");
+  }
 }
 
 async function runMigrations(): Promise<void> {

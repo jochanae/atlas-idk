@@ -53,9 +53,22 @@ interface DevServerStatus {
   verifiedAt?: string | null;
   lastVerifiedTargetId?: string | null;
   lastVerifiedAt?: string | null;
+  readiness?: {
+    configuration: "ready" | "changed" | "missing";
+    dependencies: "ready" | "reinstall-required";
+    classification: "current" | "stale";
+  };
 }
 
-type CardPhase = "decision" | "configuring" | "confirming" | "polling" | "connected" | "error";
+interface RuntimeEvent {
+  id: number;
+  event_type: string;
+  target_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+type CardPhase = "decision" | "configuring" | "confirming" | "polling" | "connected" | "crashed" | "error";
 
 interface EnvFieldState {
   name: string;
@@ -169,6 +182,41 @@ function relativeTime(isoStr: string | null | undefined): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function eventTypeLabel(type: string): string {
+  const map: Record<string, string> = {
+    runtime_connected:  "✓ Connected",
+    runtime_stopped:    "■ Stopped",
+    runtime_crashed:    "✗ Crashed",
+    install_started:    "↓ Installing",
+    install_completed:  "✓ Installed",
+    start_requested:    "→ Starting",
+    stop_requested:     "■ Stop requested",
+    restart_requested:  "↺ Restart requested",
+    drift_detected:     "⚠ Drift detected",
+    reinstall_required: "⚠ Reinstall needed",
+    runtime_error:      "✗ Error",
+  };
+  return map[type] ?? type;
+}
+
+function ReadinessBadges({ readiness }: { readiness: DevServerStatus["readiness"] }) {
+  if (!readiness) return null;
+  const WARN: React.CSSProperties = { ...({ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 7px", borderRadius: 4, fontSize: 11, fontWeight: 500 } as React.CSSProperties), background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.25)", color: "#fbbf24" };
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+      {readiness.configuration !== "ready" && (
+        <span style={WARN}>⚠ {readiness.configuration === "missing" ? "config missing" : "config changed"}</span>
+      )}
+      {readiness.dependencies === "reinstall-required" && (
+        <span style={WARN}>⚠ reinstall needed</span>
+      )}
+      {readiness.classification === "stale" && (
+        <span style={WARN}>⚠ target changed</span>
+      )}
+    </div>
+  );
+}
+
 function StepList({ serverStatus, selectedTargetId }: { serverStatus: DevServerStatus | null; selectedTargetId: string }) {
   const s = serverStatus?.status ?? "idle";
   const verified = serverStatus?.verifiedTargetId === selectedTargetId;
@@ -208,8 +256,10 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
   );
   const [phase, setPhase] = useState<CardPhase>("decision");
   const [serverStatus, setServerStatus] = useState<DevServerStatus | null>(null);
+  const [runtimeEvents, setRuntimeEvents] = useState<RuntimeEvent[]>([]);
   const [envFields, setEnvFields] = useState<EnvFieldState[]>([]);
   const [showLogs, setShowLogs] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [showTechnical, setShowTechnical] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [serviceBindings, setServiceBindings] = useState<Map<string, { bindingId: string; envVarNames: string[] }>>(new Map());
@@ -219,6 +269,7 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
   const [provisionError, setProvisionError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
+  const lastRunArgsRef = useRef<{ env: Record<string, string>; serviceBindingIds: string[]; targetId: string } | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -264,14 +315,27 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
     }
   }, [effectiveProjectId]);
 
+  const fetchEvents = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/devserver/workspace/${effectiveProjectId}/events`, { credentials: "include" });
+      if (!res.ok || !mountedRef.current) return;
+      const body = await res.json() as { events: RuntimeEvent[] };
+      if (mountedRef.current) setRuntimeEvents(body.events ?? []);
+    } catch {
+      // non-fatal — history is decorative
+    }
+  }, [effectiveProjectId]);
+
   useEffect(() => {
     fetchStatus().then(status => {
       if (!status || !mountedRef.current) return;
       if (status.status === "running" && status.verifiedTargetId === selectedTargetId) {
-        setPhase("connected");
+        setPhase("connected"); fetchEvents();
+      } else if (status.status === "crashed") {
+        setPhase("crashed"); fetchEvents();
       } else if (status.status === "error") {
         setPhase("error");
-      } else if (status.status === "installing" || status.status === "starting") {
+      } else if (status.status === "installing" || status.status === "starting" || status.status === "restarting") {
         setPhase("polling");
       }
     });
@@ -286,13 +350,17 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       const status = await fetchStatus();
       if (!status || !mountedRef.current) return;
       if (status.status === "running" && status.verifiedTargetId === selectedTargetId) {
-        setPhase("connected");
+        setPhase("connected"); fetchEvents();
+      } else if (status.status === "crashed") {
+        setPhase("crashed"); fetchEvents();
       } else if (status.status === "error") {
         setPhase("error");
+      } else if (status.status === "stopped" || status.status === "idle") {
+        setPhase("decision");
       }
     }, 2500);
     return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
-  }, [phase, fetchStatus, selectedTargetId]);
+  }, [phase, fetchStatus, fetchEvents, selectedTargetId]);
 
   useEffect(() => {
     setEnvFields(requiredVars.map(r => ({
@@ -330,6 +398,8 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       if (f.value.trim()) env[f.name] = f.value;
     }
     const serviceBindingIds = Array.from(serviceBindings.values()).map(b => b.bindingId);
+    // Store the run args so handleRestart can replay them without re-entering config
+    lastRunArgsRef.current = { env, serviceBindingIds, targetId: selectedTargetId };
     setEnvFields(prev => prev.map(f => ({ ...f, value: "" })));
     setSubmitError(null);
 
@@ -360,6 +430,34 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
     } catch { /* non-fatal */ }
     setPhase("decision");
     setServerStatus(null);
+  };
+
+  const handleRestart = async () => {
+    const args = lastRunArgsRef.current ?? { env: {}, serviceBindingIds: [], targetId: selectedTargetId };
+    setPhase("polling");
+    setServerStatus(null);
+    // Stop first so the exit listener classifies this as "restart" not "crash"
+    try {
+      await fetch(`/api/devserver/workspace/${effectiveProjectId}/stop`, { method: "POST", credentials: "include" });
+    } catch { /* proceed regardless */ }
+    // Small gap to let the stop propagate before the new /run reserves the slot
+    await new Promise(r => setTimeout(r, 300));
+    try {
+      const res = await fetch(`/api/devserver/workspace/${effectiveProjectId}/run`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...args, targetId: selectedTargetId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as Record<string, string>;
+        setSubmitError(body.error ?? "Restart failed. Try running again.");
+        setPhase("error");
+      }
+    } catch {
+      setSubmitError("Network error during restart.");
+      setPhase("error");
+    }
   };
 
   const handleProvision = async (serviceId: string, provisionMode: string | undefined) => {
@@ -722,10 +820,16 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       {phase === "polling" && (
         <>
           <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>
-            Preparing {selectedTarget.workingDirectory}
+            {serverStatus?.status === "restarting" ? "Restarting" : "Preparing"} {selectedTarget.workingDirectory}
           </div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 4, ...MONO }}>
-            {serverStatus?.status === "installing" ? "Installing dependencies…" : serverStatus?.status === "starting" ? "Starting application…" : "Waiting for connection…"}
+            {serverStatus?.status === "installing"
+              ? "Installing dependencies…"
+              : serverStatus?.status === "starting"
+                ? "Starting application…"
+                : serverStatus?.status === "restarting"
+                  ? "Restarting — waiting for connection…"
+                  : "Waiting for connection…"}
           </div>
           <StepList serverStatus={serverStatus} selectedTargetId={selectedTargetId} />
           <button type="button" style={{ ...BTN_GHOST, marginTop: 6, fontSize: 11 }} onClick={handleStop}>
@@ -736,29 +840,78 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
 
       {phase === "connected" && (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", animation: "pulse 2s infinite", flexShrink: 0 }} />
             <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>
-              {selectedTarget.workingDirectory} is connected
+              {selectedTarget.workingDirectory} is running
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
             <span style={{ ...BADGE, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.55)" }}>
               {selectedTarget.framework}
             </span>
             {serverStatus?.port && (
-              <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Port {serverStatus.port}</span>
+              <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.4)" }}>port {serverStatus.port}</span>
             )}
             <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-              Connected {relativeTime(serverStatus?.verifiedAt ?? null)}
+              {relativeTime(serverStatus?.verifiedAt ?? null)}
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ReadinessBadges readiness={serverStatus?.readiness} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: runtimeEvents.length > 0 ? 10 : 0 }}>
             <button type="button" style={BTN_PRIMARY} onClick={handleOpenPreview}>Open preview</button>
+            <button type="button" style={BTN_GHOST} onClick={handleRestart}>Restart</button>
+            <button type="button" style={BTN_GHOST} onClick={() => setShowLogs(v => !v)}>
+              {showLogs ? "Hide logs" : "Logs"}
+            </button>
+            <button type="button" style={BTN_GHOST} onClick={() => setShowHistory(v => !v)}>
+              {showHistory ? "Hide history" : "History"}
+            </button>
+            <button type="button" style={BTN_DANGER} onClick={handleStop}>Stop</button>
+          </div>
+          {showHistory && runtimeEvents.length > 0 && (
+            <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+              {runtimeEvents.slice(0, 8).map((ev) => (
+                <div key={ev.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{eventTypeLabel(ev.event_type)}</span>
+                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{relativeTime(ev.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {phase === "crashed" && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f97316", flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>
+              {selectedTarget.workingDirectory} crashed
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 12, lineHeight: 1.5 }}>
+            {serverStatus?.errorMsg ?? "The app exited unexpectedly. It was running when it stopped."}
+          </div>
+          {runtimeEvents.length > 0 && (
+            <div style={{ marginBottom: 12, padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+              {runtimeEvents.slice(0, 5).map((ev) => (
+                <div key={ev.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ ...MONO, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{eventTypeLabel(ev.event_type)}</span>
+                  <span style={{ ...MONO, fontSize: 10, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{relativeTime(ev.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" style={BTN_PRIMARY} onClick={handleRestart}>Restart</button>
+            {hasRequiredConfig && (
+              <button type="button" style={BTN_GHOST} onClick={() => setPhase("configuring")}>Reconfigure</button>
+            )}
             <button type="button" style={BTN_GHOST} onClick={() => setShowLogs(v => !v)}>
               {showLogs ? "Hide logs" : "View logs"}
             </button>
-            <button type="button" style={BTN_DANGER} onClick={handleStop}>Stop</button>
+            <button type="button" style={BTN_GHOST} onClick={() => setPhase("decision")}>Back</button>
           </div>
         </>
       )}
