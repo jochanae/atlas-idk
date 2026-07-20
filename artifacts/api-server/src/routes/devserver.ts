@@ -368,6 +368,7 @@ type RuntimeEventType =
   | "reinstall_required"
   | "runtime_starting"
   | "restart_failed"
+  | "restart_blocked"
   | "runtime_error";
 
 /** Two orthogonal dimensions — never collapsed into a single status string. */
@@ -1456,8 +1457,24 @@ router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise
   st.runGen = restartGen;
 
   // Re-classify and resolve bindings in-process — no loopback HTTP, no cookie forwarding.
-  // If any step fails, emit restart_failed and leave st.status = "error".
+  // Decision table enforced before execution; unexpected errors surface as restart_failed.
   (async () => {
+    // ── Intentional refusal helper ────────────────────────────────────────────
+    // Use this when Atlas deliberately blocks restart (not an unexpected error).
+    // The old process is already dead so status transitions to "stopped", not "error".
+    // Reason codes: target-changed | binding-invalid | reinstall-required | configuration-missing
+    const emitBlocked = (reason: string, message: string) => {
+      transitionRuntime(projectId, st, {
+        status: "stopped",
+        eventType: "restart_blocked",
+        targetId: recipe.targetId,
+        detail: { reason, message: message.slice(0, 300) },
+      });
+      st.errorMsg = message;
+      addWsLog(st, `⊘ Restart blocked [${reason}]: ${message}`);
+      logger.info({ projectId, reason }, "Restart blocked by policy");
+    };
+
     try {
       // Load project for linkedRepo + githubToken (same as /run)
       const [project] = await db
@@ -1466,7 +1483,7 @@ router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise
         .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
         .limit(1);
       if (!project) throw new Error("Project not found during restart");
-      if (st.runGen !== restartGen) return; // newer run started
+      if (st.runGen !== restartGen) return;
 
       const workspaceDir = projectWorkspaceDir(projectId);
       let linkedRepo: string | null = null;
@@ -1483,21 +1500,50 @@ router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise
       if (st.runGen !== restartGen) return;
 
       const report = classifyRepository(input);
-      // Find the originally-used target; fall back to first if renamed or removed.
-      const target = report.targets.find(t => t.id === recipe.targetId) ?? report.targets[0];
+
+      // ── Decision Rule 1: Target identity ─────────────────────────────────────
+      // No fallback to report.targets[0] — that would silently run the wrong target.
+      // If the originally-run target was renamed or removed, block and require explicit reclassification.
+      const target = report.targets.find(t => t.id === recipe.targetId);
       if (!target) {
-        throw new Error(`Target "${recipe.targetId}" no longer exists in this repository. Run from scratch to reconfigure.`);
-      }
-      if (target.status === "unsupported" || target.status === "likely-inactive") {
-        throw new Error(`Target "${target.id}" is no longer runnable (status: ${target.status}).`);
+        emitBlocked(
+          "target-changed",
+          `Target "${recipe.targetId}" no longer exists in this repository. Reclassify before restarting.`,
+        );
+        return;
       }
       if (st.runGen !== restartGen) return;
 
-      // ── Re-validate and re-resolve service bindings ───────────────────────────
+      // ── Decision Rule 2: Target viability ────────────────────────────────────
+      if (target.status === "unsupported" || target.status === "likely-inactive") {
+        emitBlocked(
+          "target-changed",
+          `Target "${target.id}" is no longer runnable (classifier status: ${target.status}). Reclassify before restarting.`,
+        );
+        return;
+      }
+
+      // ── Decision Rule 3: Classification hash ─────────────────────────────────
+      // Hash covers id + framework + startCommand + sorted(environmentVariables).
+      // Any of these changing means the runtime shape is different — block and require reclassification.
+      // "Classification changed, target still compatible" — still block per policy; the user must
+      // explicitly go through the decision flow again rather than silently running with a new shape.
+      const currentClassHash = computeClassificationHash(target);
+      if (currentClassHash !== recipe.classificationHash) {
+        emitBlocked(
+          "target-changed",
+          `Runtime configuration changed since last run (framework, start command, or required environment variables differ). Reclassify before restarting.`,
+        );
+        return;
+      }
+      if (st.runGen !== restartGen) return;
+
+      // ── Decision Rule 4: Service binding validation ───────────────────────────
       // Binding IDs come from the recipe; secrets are decrypted fresh (never stored in recipe).
-      // Any binding that is revoked, cross-project, or cross-user blocks restart.
+      // Collect ALL invalid bindings before blocking so the error message is complete.
       const declaredServiceIds = new Set((target.externalServices ?? []).map((s: string) => s.toLowerCase().trim()));
       const resolvedBindingEnv: Record<string, string> = {};
+      const invalidBindingIds: string[] = [];
       for (const bindingId of recipe.serviceBindingIds) {
         try {
           const rows = await db.execute(sql`
@@ -1510,16 +1556,17 @@ router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise
           `);
           const binding = rows.rows[0] as { service_id: string; encrypted_secrets: string | null } | undefined;
           if (!binding) {
-            // Revoked, cross-project, or cross-user — treat as configuration missing
-            st.readiness.configuration = "missing";
-            logger.warn({ bindingId, projectId }, "Restart: binding not found, revoked, or cross-project");
+            invalidBindingIds.push(bindingId);
+            logger.warn({ bindingId, projectId }, "Restart: binding revoked, not found, or cross-project");
             continue;
           }
           if (declaredServiceIds.size > 0 && !declaredServiceIds.has(binding.service_id)) continue;
           if (!binding.encrypted_secrets) continue;
           const plaintext = decryptBinding(binding.encrypted_secrets);
           if (plaintext === null) {
-            logger.warn({ bindingId }, "Restart: binding decrypt failed — skipping");
+            // Decrypt failure — treat as invalid; don't leak internal detail
+            invalidBindingIds.push(bindingId);
+            logger.warn({ bindingId }, "Restart: binding decrypt failed");
             continue;
           }
           let secretMap: Record<string, string> = {};
@@ -1529,17 +1576,39 @@ router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise
             if (typeof v === "string" && allowedKeys.has(k)) resolvedBindingEnv[k] = v;
           }
         } catch (err) {
-          logger.warn({ err, bindingId: bindingId, projectId }, "Restart: binding resolution error — skipping");
+          logger.warn({ err, bindingId, projectId }, "Restart: binding resolution error — skipping");
         }
       }
 
-      // Block restart if any required binding is unavailable
-      if (st.readiness.configuration === "missing") {
-        throw new Error("Required service binding(s) are no longer available. Re-configure and run again.");
+      if (invalidBindingIds.length > 0) {
+        st.readiness.configuration = "missing";
+        emitBlocked(
+          "binding-invalid",
+          `${invalidBindingIds.length} service binding(s) are no longer available (revoked or removed). Reconnect them before restarting.`,
+        );
+        return;
       }
       if (st.runGen !== restartGen) return;
 
-      // safeEnv: public env from recipe + freshly-decrypted binding secrets (bindings win)
+      // ── Decision Rule 5: Install fingerprint (informational, not blocking) ────
+      // Dependency changes are auto-handled by executeWorkspaceRuntime (it always installs).
+      // We detect the change here so we can log it and update readiness state before starting.
+      const currentHashes = await computeStructuralFileHashes(workspaceDir).catch(() => ({}) as Record<string, string>);
+      const currentInstallFp =
+        currentHashes["pnpm-lock.yaml"] ??
+        currentHashes["package-lock.json"] ??
+        currentHashes["yarn.lock"] ??
+        "";
+      const needsReinstall = currentInstallFp !== "" && currentInstallFp !== recipe.installFingerprint;
+      if (needsReinstall) {
+        st.readiness.dependencies = "reinstall-required";
+        addWsLog(st, "⚠ Dependency changes detected — will reinstall before starting.");
+        logger.info({ projectId }, "Restart: install fingerprint changed, will reinstall");
+        // Not blocking — executeWorkspaceRuntime runs install unconditionally.
+      }
+
+      // ── All decision rules passed — proceed ───────────────────────────────────
+      // safeEnv: public env from recipe + freshly-decrypted binding secrets (bindings win on collision)
       const safeEnv: Record<string, string> = { ...recipe.approvedPublicEnv, ...resolvedBindingEnv };
 
       // Reset transient state for the new run
@@ -1559,8 +1628,9 @@ router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise
         requestedBy: "restart",
       });
     } catch (err: unknown) {
-      if (st.runGen !== restartGen) return; // newer run started — abandon
-      const msg = err instanceof Error ? err.message : "Restart failed";
+      if (st.runGen !== restartGen) return; // newer generation started — abandon silently
+      // Unexpected error (DB failure, filesystem error, etc.) — not a policy block.
+      const msg = err instanceof Error ? err.message : "Restart failed due to an unexpected error";
       transitionRuntime(projectId, st, {
         status: "error",
         eventType: "restart_failed",
@@ -1569,7 +1639,7 @@ router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise
       });
       st.errorMsg = msg;
       addWsLog(st, `✗ Restart failed: ${msg}`);
-      logger.error({ err, projectId }, "Restart: re-classification or binding resolution failed");
+      logger.error({ err, projectId }, "Restart: unexpected error during re-classification or binding resolution");
     }
   })();
 });
