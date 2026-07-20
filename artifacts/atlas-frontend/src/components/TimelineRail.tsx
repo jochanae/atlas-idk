@@ -281,18 +281,19 @@ export function TimelineRail({
     messages.forEach((m, i) => {
       const t = m.createdAt ? new Date(m.createdAt).getTime() : now;
       const key = dayKey(t);
+      const idx = m.domIndex ?? i;
       const existing = groups.get(key);
       if (existing) {
-        existing.lastIdx = i;
-        existing.msgIdxs.push(i);
+        existing.lastIdx = idx;
+        existing.msgIdxs.push(idx);
         if (m.hasSurfacedMemory) existing.hasMemory = true;
       } else {
         groups.set(key, {
           key,
           label: dayLabel(t, now),
-          firstIdx: i,
-          lastIdx: i,
-          msgIdxs: [i],
+          firstIdx: idx,
+          lastIdx: idx,
+          msgIdxs: [idx],
           hasMemory: !!m.hasSurfacedMemory,
           timestamp: t,
         });
