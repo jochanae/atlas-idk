@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, projectArtifactsTable, messageAttachmentsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
-import { checkAttachmentClaims } from "../lib/attachmentOutputGuard";
+import { checkAttachmentClaims, type ResolvedAttachmentInfo } from "../lib/attachmentOutputGuard";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
@@ -2467,6 +2467,13 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     filename?: string;
     mimeType?: string;
   }> = [];
+  /** Full metadata for the output guard — preserves attachmentId/name/mediaType
+   *  from ResolvedModelAttachment before it is narrowed to ModelAttachment. */
+  let resolvedAttachmentMetaForGuard: Array<{
+    attachmentId: string;
+    name: string;
+    mediaType: string;
+  }> = [];
   if (attachmentIds.length > 0) {
     try {
       const { resolved, skipped } = await resolveAttachmentIdsForModel({
@@ -2486,6 +2493,13 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         name: att.name,
         asText: att.asText,
         textContent: att.textContent,
+      }));
+      // Preserve full metadata (including attachmentId) for the per-attachment
+      // output guard. ModelAttachment intentionally drops attachmentId.
+      resolvedAttachmentMetaForGuard = resolved.map((att) => ({
+        attachmentId: att.attachmentId,
+        name: att.name,
+        mediaType: att.mediaType,
       }));
       logger.info(
         {
@@ -4213,13 +4227,53 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     // persisting, and emits a `correction` SSE event so the frontend can update
     // the already-streamed message.
     {
-      const resolvedThisTurn =
-        (allAttachments?.length ?? 0) +
-        (vault?.imageBlocks?.length ?? 0) +
-        (urlBlocks?.length ?? 0);
+      // Build per-attachment evidence: resolved (content supplied) + skipped
+      // (stored but not readable) + legacy inline + vault images + url screenshots.
+      const perAttachmentEvidence: ResolvedAttachmentInfo[] = [
+        // Persisted attachments that resolved with readable content
+        ...resolvedAttachmentMetaForGuard.map((a) => ({
+          attachmentId: a.attachmentId,
+          filename: a.name,
+          mimeType: a.mediaType,
+          capability: "model_readable" as const,
+          contentSuppliedToModel: true,
+        })),
+        // Persisted attachments that were skipped (storage-only / unsupported)
+        ...skippedAttachmentIdPayloads.map((s) => ({
+          attachmentId: s.attachmentId,
+          filename: s.filename ?? "unknown_file",
+          mimeType: s.mimeType ?? "application/octet-stream",
+          capability: "storage_only" as const,
+          contentSuppliedToModel: false,
+        })),
+        // Legacy inline base64 attachments (always readable)
+        ...legacyInlineModelAttachments.map((a, i) => ({
+          attachmentId: (a as { clientAttachmentId?: string }).clientAttachmentId ?? `legacy_${i}`,
+          filename: a.name ?? "inline_file",
+          mimeType: a.mediaType,
+          capability: "model_readable" as const,
+          contentSuppliedToModel: true,
+        })),
+        // Vault images (model_readable)
+        ...(vault?.imageBlocks ?? []).map((_: unknown, i: number) => ({
+          attachmentId: `vault_${i}`,
+          filename: `vault_image_${i}.jpg`,
+          mimeType: "image/jpeg",
+          capability: "model_readable" as const,
+          contentSuppliedToModel: true,
+        })),
+        // URL screenshot blocks (model_readable)
+        ...urlBlocks.map((_: unknown, i: number) => ({
+          attachmentId: `url_${i}`,
+          filename: `url_screenshot_${i}.jpg`,
+          mimeType: "image/jpeg",
+          capability: "model_readable" as const,
+          contentSuppliedToModel: true,
+        })),
+      ];
 
       const guardResult = checkAttachmentClaims(rawContent, {
-        resolvedAttachmentCount: resolvedThisTurn,
+        attachments: perAttachmentEvidence,
         toolsExecutedThisTurn,
       });
 
@@ -4227,7 +4281,11 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         req.log.warn(
           {
             violations: guardResult.violations,
-            resolvedThisTurn,
+            perAttachmentEvidence: perAttachmentEvidence.map((a) => ({
+              filename: a.filename,
+              mimeType: a.mimeType,
+              contentSuppliedToModel: a.contentSuppliedToModel,
+            })),
             toolsExecutedThisTurn: [...toolsExecutedThisTurn],
             focusProjectId,
             conversationId: effectiveConversationId,

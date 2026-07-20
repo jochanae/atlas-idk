@@ -1,24 +1,49 @@
 import { describe, it, expect } from "vitest";
 import { checkAttachmentClaims } from "../attachmentOutputGuard";
-import type { AttachmentEvidence } from "../attachmentOutputGuard";
+import type { AttachmentEvidence, ResolvedAttachmentInfo } from "../attachmentOutputGuard";
+
+// ── Test fixtures ─────────────────────────────────────────────────────────────
+
+function makeReadable(filename: string, mimeType: string): ResolvedAttachmentInfo {
+  return {
+    attachmentId: `att-${filename}`,
+    filename,
+    mimeType,
+    capability: "model_readable",
+    contentSuppliedToModel: true,
+  };
+}
+
+function makeStorageOnly(filename: string, mimeType: string): ResolvedAttachmentInfo {
+  return {
+    attachmentId: `att-${filename}`,
+    filename,
+    mimeType,
+    capability: "storage_only",
+    contentSuppliedToModel: false,
+  };
+}
 
 const noEvidence: AttachmentEvidence = {
-  resolvedAttachmentCount: 0,
+  attachments: [],
   toolsExecutedThisTurn: new Set(),
 };
 
 const withAttachment: AttachmentEvidence = {
-  resolvedAttachmentCount: 1,
+  attachments: [makeReadable("report.pdf", "application/pdf")],
   toolsExecutedThisTurn: new Set(),
 };
 
 const withFileRead: AttachmentEvidence = {
-  resolvedAttachmentCount: 0,
+  attachments: [],
   toolsExecutedThisTurn: new Set(["read_file"]),
 };
 
 const mixed: AttachmentEvidence = {
-  resolvedAttachmentCount: 2,
+  attachments: [
+    makeReadable("screenshot.png", "image/png"),
+    makeReadable("brief.pdf", "application/pdf"),
+  ],
   toolsExecutedThisTurn: new Set(["read_file", "search_codebase"]),
 };
 
@@ -154,7 +179,7 @@ describe("zero current-turn attachments", () => {
 });
 
 // ── CASE 2: Prior-message attachment — no current-turn attachment ─────────────
-// The key invariant: resolvedAttachmentCount covers CURRENT TURN only.
+// The key invariant: attachments covers CURRENT TURN only.
 // If the user referenced an image from a prior message but didn't re-attach it,
 // the guard should still fire (the model cannot actually re-read past attachments).
 
@@ -162,12 +187,12 @@ describe("prior-message attachment reference (no current-turn attachment)", () =
   it("blocks claims about content from a prior attachment", () => {
     const result = checkAttachmentClaims(
       "Based on the screenshot you sent earlier, the layout looks good.",
-      noEvidence, // resolvedAttachmentCount=0 for THIS turn
+      noEvidence,
     );
     expect(result.clean).toBe(false);
   });
 
-  it("passes when re-attached in this turn (resolvedCount > 0)", () => {
+  it("passes when re-attached in this turn (some resolved)", () => {
     const result = checkAttachmentClaims(
       "Based on the screenshot you sent, the layout looks good.",
       withAttachment,
@@ -176,15 +201,14 @@ describe("prior-message attachment reference (no current-turn attachment)", () =
   });
 });
 
-// ── CASE 3: Mixed readable / unreadable attachments ──────────────────────────
-// If at least one file resolved, all claims are treated as supported.
-// The model received real content; it can reference what it saw.
+// ── CASE 3: Mixed readable / unreadable attachments (coarse) ──────────────────
+// Generic claims (no specific file named) pass when any resolved attachment exists.
 
 describe("mixed readable/unreadable attachments", () => {
   it("passes when at least one attachment resolved (even if others were skipped)", () => {
     const result = checkAttachmentClaims(
       "The attached file contains the user requirements I was expecting.",
-      withAttachment, // resolvedAttachmentCount=1
+      withAttachment,
     );
     expect(result.clean).toBe(true);
   });
@@ -197,9 +221,11 @@ describe("mixed readable/unreadable attachments", () => {
     expect(result.clean).toBe(true);
   });
 
-  it("blocks when resolvedCount=0 even if attachments were requested (all skipped)", () => {
+  it("blocks when all attachments are storage-only (none have content)", () => {
     const allSkipped: AttachmentEvidence = {
-      resolvedAttachmentCount: 0,
+      attachments: [
+        makeStorageOnly("report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+      ],
       toolsExecutedThisTurn: new Set(),
     };
     const result = checkAttachmentClaims(
@@ -225,7 +251,7 @@ describe("tool-claim truth (file-reading tool executed)", () => {
 
   it("passes when read_reference_project_file ran", () => {
     const evidence: AttachmentEvidence = {
-      resolvedAttachmentCount: 0,
+      attachments: [],
       toolsExecutedThisTurn: new Set(["read_reference_project_file"]),
     };
     const result = checkAttachmentClaims(
@@ -237,7 +263,7 @@ describe("tool-claim truth (file-reading tool executed)", () => {
 
   it("does NOT pass for non-file tools (search_codebase alone is not file-read evidence)", () => {
     const evidence: AttachmentEvidence = {
-      resolvedAttachmentCount: 0,
+      attachments: [],
       toolsExecutedThisTurn: new Set(["search_codebase", "architecture_diff"]),
     };
     const result = checkAttachmentClaims(
@@ -249,11 +275,87 @@ describe("tool-claim truth (file-reading tool executed)", () => {
 
   it("passes for list_reference_project_dir", () => {
     const evidence: AttachmentEvidence = {
-      resolvedAttachmentCount: 0,
+      attachments: [],
       toolsExecutedThisTurn: new Set(["list_reference_project_dir"]),
     };
     const result = checkAttachmentClaims(
       "Looking at the file structure, the routes are well organised.",
+      evidence,
+    );
+    expect(result.clean).toBe(true);
+  });
+});
+
+// ── CASE 5: Per-attachment evidence — readable file ≠ authorisation for unreadable file ──
+// The key invariant: a readable PDF must NOT authorize claims about an
+// unreadable PPTX in the same message. Each claim is checked against the
+// specific attachment it targets (by filename or MIME-type keyword).
+
+describe("per-attachment evidence — readable file does not authorize claims about unreadable file", () => {
+  it("readable PDF + storage-only PPTX: blocks claim that names the PPTX by filename", () => {
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeReadable("quarterly_report.pdf", "application/pdf"),
+        makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    const result = checkAttachmentClaims(
+      "Based on deck.pptx, I can see the quarterly projections are up 20%.",
+      evidence,
+    );
+    expect(result.clean).toBe(false);
+    expect(result.violations.length).toBeGreaterThan(0);
+    // Correction must name the blocked file so the user knows which one was unreadable.
+    expect(result.correction).toMatch(/deck\.pptx/i);
+  });
+
+  it("image + unreadable spreadsheet: blocks 'I read the spreadsheet'", () => {
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeReadable("screenshot.png", "image/png"),
+        makeStorageOnly("data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    const result = checkAttachmentClaims(
+      "I read the spreadsheet and found 42 entries in column A.",
+      evidence,
+    );
+    expect(result.clean).toBe(false);
+    // Correction names the blocked file (matched via MIME keyword "spreadsheet" → data.xlsx).
+    expect(result.correction).toMatch(/data\.xlsx/i);
+  });
+
+  it("readable PDF + storage-only PPTX: blocks claim naming the storage-only file by filename", () => {
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeReadable("brief.pdf", "application/pdf"),
+        makeStorageOnly("slides.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    const result = checkAttachmentClaims(
+      "Looking at slides.pptx, the roadmap section shows three phases.",
+      evidence,
+    );
+    expect(result.clean).toBe(false);
+    expect(result.correction).toMatch(/slides\.pptx/i);
+  });
+
+  it("generic 'I can see the attachment' with multiple files, one resolved: passes", () => {
+    // Generic claim (no specific file named) — the guard checks whether ANY
+    // attachment has content. Since report.pdf is readable, the claim is allowed.
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeReadable("report.pdf", "application/pdf"),
+        makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+        makeStorageOnly("notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    const result = checkAttachmentClaims(
+      "I can see the attachment — it looks like a quarterly financial report.",
       evidence,
     );
     expect(result.clean).toBe(true);
@@ -292,5 +394,21 @@ describe("edge cases", () => {
     for (const v of result.violations) {
       expect(v.length).toBeLessThanOrEqual(120);
     }
+  });
+
+  it("named-file correction instructs re-attachment", () => {
+    const evidence: AttachmentEvidence = {
+      attachments: [
+        makeReadable("report.pdf", "application/pdf"),
+        makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+      ],
+      toolsExecutedThisTurn: new Set(),
+    };
+    const result = checkAttachmentClaims(
+      "Looking at slides.pptx, the roadmap shows three phases.",
+      evidence,
+    );
+    // Even for named-file blocks, correction must include a re-attach instruction.
+    expect(result.correction).toMatch(/re-attach the file in a new message/i);
   });
 });
