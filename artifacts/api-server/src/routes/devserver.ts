@@ -5,10 +5,13 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, unlinkSync,
 import fsPromises from "fs/promises";
 import path from "path";
 import { logger } from "../lib/logger";
-import { projectWorkspaceDir } from "../lib/projectWorkspace";
+import { projectWorkspaceDir, assertProjectOwner } from "../lib/projectWorkspace";
 import { db, projectsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { logProjectArtifact } from "../lib/artifactLog";
+import { classifyRepository } from "@workspace/repo-classifier";
+import { loadClassificationInput } from "../services/repositoryClassificationSource";
+import { decryptToken } from "../lib/tokenCrypto";
 
 // ── Build-check work dir (separate from live devserver) ───────────────────
 const BUILD_CHECK_DIR = "/tmp/atlas-build-check";
@@ -362,6 +365,8 @@ interface WsDevState {
   logs: string[];
   errorMsg: string | null;
   startedAt: Date | null;
+  verifiedTargetId: string | null;
+  verifiedAt: Date | null;
 }
 
 const wsStates = new Map<number, WsDevState>();
@@ -371,8 +376,8 @@ const wsStates = new Map<number, WsDevState>();
 const WS_PERSIST_DIR = "/tmp";
 function wsPersistPath(projectId: number) { return path.join(WS_PERSIST_DIR, `atlas-ws-${projectId}.json`); }
 
-function wsSaveState(projectId: number, port: number, pid?: number) {
-  try { writeFileSync(wsPersistPath(projectId), JSON.stringify({ port, pid })); } catch {}
+function wsSaveState(projectId: number, port: number, pid?: number, verifiedTargetId?: string) {
+  try { writeFileSync(wsPersistPath(projectId), JSON.stringify({ port, pid, verifiedTargetId })); } catch {}
 }
 function wsDeleteState(projectId: number) {
   try { unlinkSync(wsPersistPath(projectId)); } catch {}
@@ -385,7 +390,7 @@ function wsDeleteState(projectId: number) {
   for (const f of files) {
     try {
       const projectId = Number(f.replace("atlas-ws-", "").replace(".json", ""));
-      const { port, pid } = JSON.parse(readFileSync(path.join(WS_PERSIST_DIR, f), "utf8")) as { port: number; pid?: number };
+      const { port, pid, verifiedTargetId } = JSON.parse(readFileSync(path.join(WS_PERSIST_DIR, f), "utf8")) as { port: number; pid?: number; verifiedTargetId?: string };
       // Quick TCP probe — if something is listening on that port, re-adopt it.
       const alive = await new Promise<boolean>((resolve) => {
         const req = http.request({ hostname: "localhost", port, path: "/", method: "HEAD", timeout: 800 }, () => { req.destroy(); resolve(true); });
@@ -396,8 +401,9 @@ function wsDeleteState(projectId: number) {
       if (alive) {
         const st = getWsState(projectId);
         st.port = port; st.status = "running";
-        st.logs = [`[re-adopted] Dev server already running on port ${port}${pid ? ` (pid ${pid})` : ""}`];
-        logger.info({ projectId, port }, "Re-adopted workspace dev server after API restart");
+        if (verifiedTargetId) { st.verifiedTargetId = verifiedTargetId; st.verifiedAt = new Date(); }
+        st.logs = [`[re-adopted] Dev server already running on port ${port}${pid ? ` (pid ${pid})` : ""}${verifiedTargetId ? ` · verified: ${verifiedTargetId}` : ""}`];
+        logger.info({ projectId, port, verifiedTargetId }, "Re-adopted workspace dev server after API restart");
       } else {
         wsDeleteState(projectId);
       }
@@ -407,7 +413,7 @@ function wsDeleteState(projectId: number) {
 
 function getWsState(projectId: number): WsDevState {
   if (!wsStates.has(projectId)) {
-    wsStates.set(projectId, { status: "idle", port: null, proc: null, logs: [], errorMsg: null, startedAt: null });
+    wsStates.set(projectId, { status: "idle", port: null, proc: null, logs: [], errorMsg: null, startedAt: null, verifiedTargetId: null, verifiedAt: null });
   }
   return wsStates.get(projectId)!;
 }
@@ -1080,7 +1086,16 @@ router.get("/devserver/workspace/:projectId/status", (req, res): void => {
   const st = getWsState(projectId);
   const wsDir = projectWorkspaceDir(projectId);
   const hasScaffold = existsSync(path.join(wsDir, "package.json"));
-  res.json({ status: st.status, port: st.port, logs: st.logs.slice(-50), errorMsg: st.errorMsg, hasScaffold, startedAt: st.startedAt ?? null });
+  res.json({
+    status: st.status,
+    port: st.port,
+    logs: st.logs.slice(-50),
+    errorMsg: st.errorMsg,
+    hasScaffold,
+    startedAt: st.startedAt ?? null,
+    verifiedTargetId: st.verifiedTargetId ?? null,
+    verifiedAt: st.verifiedAt ?? null,
+  });
 });
 
 router.post("/devserver/workspace/:projectId/stop", (req, res): void => {
@@ -1090,6 +1105,245 @@ router.post("/devserver/workspace/:projectId/stop", (req, res): void => {
   if (st) { st.status = "idle"; st.port = null; st.logs = []; st.errorMsg = null; }
   wsDeleteState(projectId);
   res.json({ status: "idle" });
+});
+
+// ── Runtime verification — run an imported target and health-check it ────────
+//
+// Unlike the legacy /start route (which builds and statically serves an
+// Atlas-generated app), this route:
+//   1. Classifies the project to locate the target's workingDirectory + startCommand
+//   2. Installs deps inside that working directory
+//   3. Spawns the startCommand as a live process with a free port injected
+//   4. Detects the port from stdout (reusing detectPort) with a fallback probe
+//   5. Marks the target verified-runnable once the port responds
+//   6. The existing /proxy route then transparently forwards preview traffic
+//
+router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<void> => {
+  const projectId = Number(req.params["projectId"]);
+  if (!projectId) { res.status(400).json({ error: "Invalid projectId" }); return; }
+
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const isOwner = await assertProjectOwner(projectId, userId);
+  if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const { targetId, env: userEnv = {} } = req.body as { targetId?: string; env?: Record<string, string> };
+
+  // Load project for linkedRepo + githubToken
+  const [project] = await db
+    .select({ linkedRepo: projectsTable.linkedRepo, githubToken: projectsTable.githubToken })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+
+  if (!project) { res.status(404).json({ error: "Project not found" }); return; }
+
+  // Resolve linked repo and token (same pattern as classify route)
+  const workspaceDir = projectWorkspaceDir(projectId);
+  let linkedRepo: string | null = null;
+  if (project.linkedRepo) {
+    try {
+      const parsed = JSON.parse(project.linkedRepo as string);
+      linkedRepo = typeof parsed === "string" ? parsed : ((parsed as Record<string, unknown>).fullName as string ?? null);
+    } catch {
+      linkedRepo = project.linkedRepo as string;
+    }
+  }
+  const githubToken = project.githubToken ? decryptToken(project.githubToken as string) : null;
+
+  // Classify to find targets
+  const input = await loadClassificationInput({ workspaceDir, linkedRepo, githubToken });
+  if (!input) {
+    res.status(422).json({
+      error: "No file source available",
+      detail: "Project has no cloned workspace and no linked GitHub repository with a valid token.",
+    });
+    return;
+  }
+
+  const report = classifyRepository(input);
+
+  // Pick the requested target, fall back to recommended, fall back to first
+  const chosenId = targetId ?? report.recommendation?.targetId;
+  const target = report.targets.find(t => t.id === chosenId) ?? report.targets[0];
+  if (!target) {
+    res.status(422).json({ error: "No runnable targets found in this repository" });
+    return;
+  }
+  if (target.status === "unsupported" || target.status === "likely-inactive") {
+    res.status(422).json({
+      error: `Target "${target.id}" cannot be run (status: ${target.status})`,
+      detail: target.inactivityReasons?.join("; ") ?? "Target was classified as not runnable.",
+    });
+    return;
+  }
+
+  // Reset state and respond immediately — actual start is async
+  const st = getWsState(projectId);
+  if (st.proc) { try { st.proc.kill("SIGTERM"); } catch {} st.proc = null; }
+  st.status = "installing";
+  st.port = null;
+  st.logs = [`Runtime verification: ${target.id} (${target.framework})`];
+  st.errorMsg = null;
+  st.verifiedTargetId = null;
+  st.verifiedAt = null;
+  st.startedAt = null;
+
+  res.json({ status: st.status, targetId: target.id });
+
+  (async () => {
+    try {
+      // Resolve the working directory for this target
+      const workDir = (target.workingDirectory && target.workingDirectory !== ".")
+        ? path.join(workspaceDir, target.workingDirectory)
+        : workspaceDir;
+
+      // ── 1. Install dependencies ──────────────────────────────────────────
+      //
+      // For monorepo sub-targets (workDir ≠ workspaceDir), install must run at
+      // the repo root so workspace symlinks resolve correctly. For standalone
+      // targets (workingDirectory is "."), install directly in workDir.
+      const installDir = (workDir !== workspaceDir) ? workspaceDir : workDir;
+      const nmPath = path.join(installDir, "node_modules");
+      const pkgJsonPath = path.join(installDir, "package.json");
+      let needsInstall = !existsSync(nmPath);
+      if (!needsInstall) {
+        try {
+          const [pkgStat, nmStat] = await Promise.all([
+            fsPromises.stat(pkgJsonPath),
+            fsPromises.stat(nmPath),
+          ]);
+          if (pkgStat.mtimeMs > nmStat.mtimeMs) {
+            needsInstall = true;
+            addWsLog(st, "package.json updated — reinstalling dependencies…");
+          }
+        } catch { /* stat failure — proceed without reinstall */ }
+      }
+
+      if (needsInstall) {
+        // Use the classified installCommand directly — it already encodes the
+        // right package manager and flags (e.g. "pnpm install", "npm install").
+        const installCmd = target.installCommand || `${detectPackageManager(installDir)} install`;
+        addWsLog(st, `Installing: ${installCmd}…`);
+
+        const installResult = await new Promise<{ ok: boolean; output: string }>((resolve) => {
+          const chunks: string[] = [];
+          const proc = spawn(installCmd, [], {
+            cwd: installDir, shell: true,
+            env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
+          });
+          const onData = (d: Buffer) => { const s = d.toString(); chunks.push(s); addWsLog(st, s); };
+          proc.stdout?.on("data", onData);
+          proc.stderr?.on("data", onData);
+          proc.on("exit", (code) => resolve({ ok: code === 0, output: chunks.join("") }));
+          proc.on("error", (e) => resolve({ ok: false, output: e.message }));
+        });
+
+        if (!installResult.ok) {
+          throw new Error(`Dependency install failed.\nLast output:\n${installResult.output.slice(-600)}`);
+        }
+        addWsLog(st, "✓ Dependencies installed");
+      }
+
+      // ── 2. Allocate a port and start the dev server ──────────────────────
+      st.status = "starting";
+      const port = await allocateFreePort();
+
+      // Build the command string — Vite needs --host + --port to bind to the
+      // allocated port and accept proxied traffic from outside localhost.
+      const isVite = /vite/i.test(target.framework) || target.startCommand.toLowerCase().includes("vite");
+      const rawCmd = isVite
+        ? `${target.startCommand} -- --host 0.0.0.0 --port ${port}`
+        : target.startCommand;
+
+      addWsLog(st, `Starting: ${rawCmd} (port ${port})…`);
+
+      const proc = spawn(rawCmd, [], {
+        cwd: workDir,
+        shell: true,
+        env: {
+          ...process.env,
+          FORCE_COLOR: "0",
+          NO_COLOR: "1",
+          PORT: String(port),
+          HOST: "0.0.0.0",
+          ...userEnv,
+        },
+      });
+      st.proc = proc;
+
+      // Convenience helper — call once when the port is confirmed live
+      const markVerified = (livePort: number) => {
+        clearTimeout(portFallbackTimer);
+        st.port = livePort;
+        st.status = "running";
+        st.startedAt = new Date();
+        st.verifiedTargetId = target.id;
+        st.verifiedAt = new Date();
+        wsSaveState(projectId, livePort, st.proc?.pid ?? undefined, target.id);
+        addWsLog(st, `✓ Verified — ${target.id} running on port ${livePort} · ${target.framework}`);
+        logger.info({ projectId, port: livePort, targetId: target.id, framework: target.framework }, "Runtime verification complete");
+      };
+
+      // ── 3. Port detection: watch stdout, fall back to probing ────────────
+      const portFallbackTimer = setTimeout(async () => {
+        if (st.status !== "starting" || !st.proc) return;
+        addWsLog(st, "Port not announced in stdout — probing common ports…");
+        const found = await pollForPort(
+          [port, 5173, 3000, 4173, 8000, 4000].filter(p => p !== OWN_PORT)
+        );
+        if (found && st.status === "starting") {
+          markVerified(found);
+        } else if (st.status === "starting") {
+          // One more attempt after an additional 30s
+          setTimeout(async () => {
+            if (st.status !== "starting") return;
+            const found2 = await pollForPort([port, 3000, 5173].filter(p => p !== OWN_PORT));
+            if (found2) {
+              markVerified(found2);
+            } else {
+              st.status = "error";
+              st.errorMsg = `Dev server started but no port responded after 75s. Check if required environment variables are missing (e.g. DATABASE_URL, auth keys).`;
+              addWsLog(st, "✗ No running port found after timeout");
+            }
+          }, 30_000);
+        }
+      }, 45_000);
+
+      const onData = (d: Buffer) => {
+        const line = d.toString();
+        addWsLog(st, line);
+        if (st.status !== "running") {
+          const detected = detectPort(line);
+          if (detected) markVerified(detected);
+        }
+      };
+      proc.stdout?.on("data", onData);
+      proc.stderr?.on("data", onData);
+
+      proc.on("exit", (code) => {
+        clearTimeout(portFallbackTimer);
+        if (st.status !== "idle") {
+          if (code !== 0) {
+            st.status = "error";
+            st.errorMsg = `Dev server exited (code ${code}). If the app requires env vars (DATABASE_URL, API keys) add them via the env parameter and relaunch.`;
+            addWsLog(st, `✗ Process exited with code ${code}`);
+          } else {
+            st.status = "idle";
+          }
+        }
+        st.proc = null;
+      });
+
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      st.status = "error";
+      st.errorMsg = msg;
+      addWsLog(st, `Error: ${msg}`);
+      logger.error({ err, projectId }, "Runtime verification failed");
+    }
+  })();
 });
 
 router.use("/devserver/workspace/:projectId/proxy", (req, res): void => {
