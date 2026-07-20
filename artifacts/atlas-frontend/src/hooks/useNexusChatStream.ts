@@ -972,6 +972,15 @@ export function useNexusChatStream(
             ));
             resetStreamState();
           },
+          onCorrection: (correctedContent) => {
+            // Attachment output guard fired server-side: snap the streaming
+            // message to the grounded correction before done arrives.
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? { ...m, content: correctedContent }
+                : m
+            ));
+          },
           onAttachmentAck: (ack) => {
             // Store attachment acks on the USER message (id = `user-${streamingId}`)
             // so B3.3 can look up the durable row id by clientAttachmentId and

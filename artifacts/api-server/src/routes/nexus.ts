@@ -6,6 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { db, nexusMessagesTable, chatMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable, imageVersionsTable, galleryImagesTable, userResumeSnapshotsTable, designPlansTable, projectArtifactsTable, messageAttachmentsTable, TIER1_FIELD_KEYS, type Tier1FieldKey } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
+import { checkAttachmentClaims } from "../lib/attachmentOutputGuard";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
@@ -4188,6 +4189,10 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     }
   };
 
+  // Tracks every tool name that actually ran during this turn.
+  // Populated in runNexusTool; read by the attachment output guard in finishStream.
+  const toolsExecutedThisTurn = new Set<string>();
+
   const finishStream = async (rawContentIn: string) => {
     streamDone = true;
     let rawContent = rawContentIn;
@@ -4199,6 +4204,45 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
       .replace(/\nPLAN_CONTINUATION_START[\s\S]*?PLAN_CONTINUATION_END(?:\n|$)/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
+
+    // ── ATTACHMENT OUTPUT GUARD ───────────────────────────────────────────────
+    // Narrow post-stream validator: checks for unsupported perception/retrieval
+    // claims (e.g. "the screenshot shows", "I read the file") against hard
+    // evidence from this turn (resolved attachments + file-read tool calls).
+    // When triggered: replaces rawContent with a grounded correction before
+    // persisting, and emits a `correction` SSE event so the frontend can update
+    // the already-streamed message.
+    {
+      const resolvedThisTurn =
+        (allAttachments?.length ?? 0) +
+        (vault?.imageBlocks?.length ?? 0) +
+        (urlBlocks?.length ?? 0);
+
+      const guardResult = checkAttachmentClaims(rawContent, {
+        resolvedAttachmentCount: resolvedThisTurn,
+        toolsExecutedThisTurn,
+      });
+
+      if (!guardResult.clean) {
+        req.log.warn(
+          {
+            violations: guardResult.violations,
+            resolvedThisTurn,
+            toolsExecutedThisTurn: [...toolsExecutedThisTurn],
+            focusProjectId,
+            conversationId: effectiveConversationId,
+          },
+          "nexus: attachment output guard fired — replacing hallucinated claim",
+        );
+        rawContent = guardResult.correction;
+        // Emit correction event before done so the frontend can snap the
+        // already-streamed message to the grounded response.
+        if (!res.writableEnded && !res.destroyed) {
+          res.write(`event: correction\ndata: ${JSON.stringify({ content: guardResult.correction })}\n\n`);
+        }
+      }
+    }
+    // ── END ATTACHMENT OUTPUT GUARD ───────────────────────────────────────────
 
     // ── BUILD_CONTRACT detection ─────────────────────────────────────────────
     // When Atlas emits BUILD_CONTRACT_START/END on a BUILD turn, the server:
@@ -7013,6 +7057,7 @@ Do NOT claim to read, see, or describe any file not listed here.
     // to distinguish "the model called the tool and got an empty result"
     // from "the model never called the tool at all" — a real diagnostic gap
     // uncovered when DECIDE-turn tool access was widened.
+    toolsExecutedThisTurn.add(toolUse.name);
     req.log.info(
       { tool: toolUse.name, ok: result.ok !== false, ms: Math.round(performance.now() - startedAt), focusProjectId },
       "nexus: tool executed",

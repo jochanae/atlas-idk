@@ -57,6 +57,13 @@ export interface AtlasStreamCallbacks {
    * once at uploaded | failed (upload complete). Always arrives before done.
    */
   onAttachmentAck?: (ack: { id: string; clientAttachmentId: string | null; status: string; errorCode?: string }) => void;
+  /**
+   * Called when the attachment output guard fires: the model made an unsupported
+   * perception/retrieval claim (e.g. "I can see the screenshot") and the server
+   * replaced it with a grounded correction. Arrives BEFORE `done` so the UI can
+   * snap the already-streamed message to the corrected text immediately.
+   */
+  onCorrection?: (correctedContent: string) => void;
   /** Called on stream error */
   onError?: (message: string) => void;
 }
@@ -253,6 +260,15 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                 callbacks.onImage?.(imgPayload);
               } else if (evtName === "image_pending") {
                 callbacks.onImagePending?.();
+              } else if (evtName === "correction") {
+                const corrData = JSON.parse(evtData) as { content: string };
+                if (typeof corrData.content === "string") {
+                  // Snap the pacer to the corrected text so in-flight tokens
+                  // are replaced, not appended to.
+                  streamedText = corrData.content;
+                  pacer.setTarget(corrData.content);
+                  callbacks.onCorrection?.(corrData.content);
+                }
               } else if (evtName === "attachment_ack") {
                 const ack = JSON.parse(evtData) as { id: string; clientAttachmentId: string | null; status: string; errorCode?: string };
                 callbacks.onAttachmentAck?.(ack);
