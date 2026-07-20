@@ -26,6 +26,7 @@
         "@workspace/api-zod": "workspace:*",
         "@workspace/db": "workspace:*",
         "@workspace/integrations-openai-ai-server": "workspace:*",
+        "@workspace/repo-classifier": "workspace:*",
         "@workspace/run-contract": "workspace:*",
         "@workspace/source-index": "workspace:*",
         "ai": "^7.0.14",
@@ -220,6 +221,14 @@
       },
       "devDependencies": {
         "@types/node": "catalog:",
+      },
+    },
+    "lib/repo-classifier": {
+      "name": "@workspace/repo-classifier",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/node": "catalog:",
+        "vitest": "^4.1.5",
       },
     },
     "lib/run-contract": {
@@ -1027,6 +1036,8 @@
     "@workspace/db": ["@workspace/db@workspace:lib/db"],
 
     "@workspace/integrations-openai-ai-server": ["@workspace/integrations-openai-ai-server@workspace:lib/integrations-openai-ai-server"],
+
+    "@workspace/repo-classifier": ["@workspace/repo-classifier@workspace:lib/repo-classifier"],
 
     "@workspace/run-contract": ["@workspace/run-contract@workspace:lib/run-contract"],
 
