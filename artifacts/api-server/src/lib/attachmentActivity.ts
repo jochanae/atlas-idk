@@ -1,18 +1,16 @@
 /**
- * Lightweight ring buffer for attachment / turn activity verbs.
+ * Attachment / turn activity verbs for the workspace rail.
  *
- * The companion timeline-verbs handoff will harden persistence; this module
- * lets resolve/extract emit `attachment_unsupported` (and related) events that
- * `/api/nexus/activity` can already surface to the frontend rail.
+ * Keeps a process-local ring buffer for immediate same-process reads, and
+ * dual-writes to durable `workspace_activity` so polls survive restarts.
  */
 
-export type AttachmentActivityType =
-  | "attachment_received"
-  | "image_analyzed"
-  | "document_analyzed"
-  | "attachment_unsupported"
-  | "atlas_thinking"
-  | "response_generated";
+import {
+  emitWorkspaceActivityAsync,
+  type WorkspaceActivityType,
+} from "./workspaceActivity";
+
+export type AttachmentActivityType = WorkspaceActivityType;
 
 export type AttachmentActivityEvent = {
   id: string;
@@ -59,6 +57,19 @@ export function recordAttachmentActivity(
     events.push(full);
     while (events.length > MAX_EVENTS) events.shift();
   }
+
+  // Durable persistence — same idempotency key as the ring-buffer id.
+  emitWorkspaceActivityAsync({
+    userId: full.userId,
+    projectId: full.projectId,
+    type: full.type,
+    title: full.title,
+    subtitle: full.subtitle,
+    attachmentName: full.attachmentName,
+    reason: full.reason,
+    idempotencyKey: full.id,
+  });
+
   return full;
 }
 

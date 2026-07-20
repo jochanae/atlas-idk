@@ -37,6 +37,12 @@ import {
   signAttachmentReadUrl,
   signAttachmentUploadUrl,
 } from "../lib/attachmentStorage";
+import {
+  attachmentExtLabel,
+  emitWorkspaceActivity,
+  formatAttachmentSize,
+  unsupportedAttachmentReason,
+} from "../lib/workspaceActivity";
 
 const router: IRouter = Router();
 
@@ -261,7 +267,41 @@ router.post("/attachments/:id/finalize", async (req, res): Promise<void> => {
       outcome: "ok",
       extra: { kind, processingStatus },
     });
-    res.json(toPersisted(updated!));
+
+    // Timeline verbs: attachment_received always; attachment_unsupported when
+    // the classifier marks the file storage-only.
+    const finalized = updated!;
+    const name = finalized.filename;
+    const sizeLabel = formatAttachmentSize(Number(finalized.sizeBytes));
+    const ext = attachmentExtLabel(name, finalized.mimeType);
+    await emitWorkspaceActivity({
+      userId,
+      projectId: finalized.projectId,
+      type: "attachment_received",
+      title: `Attached ${name}`,
+      subtitle: `${sizeLabel} · ${ext}`,
+      attachmentName: name,
+      idempotencyKey: `attachment_received:${finalized.id}`,
+    });
+    if (processingStatus === "unsupported" || processingStatus === "failed") {
+      const reason = unsupportedAttachmentReason(
+        name,
+        finalized.mimeType,
+        processingStatus === "failed" ? "processing_failed" : undefined,
+      );
+      await emitWorkspaceActivity({
+        userId,
+        projectId: finalized.projectId,
+        type: "attachment_unsupported",
+        title: `Skipped ${name}`,
+        subtitle: reason,
+        attachmentName: name,
+        reason,
+        idempotencyKey: `attachment_unsupported:${finalized.id}`,
+      });
+    }
+
+    res.json(toPersisted(finalized));
   } catch (err) {
     try {
       const [failed] = await db
@@ -288,6 +328,30 @@ router.post("/attachments/:id/finalize", async (req, res): Promise<void> => {
           userId,
           route: "finalize",
           outcome: "processing_failed",
+        });
+        const failReason = unsupportedAttachmentReason(
+          failed.filename,
+          failed.mimeType,
+          "processing_failed",
+        );
+        await emitWorkspaceActivity({
+          userId,
+          projectId: failed.projectId,
+          type: "attachment_received",
+          title: `Attached ${failed.filename}`,
+          subtitle: `${formatAttachmentSize(Number(failed.sizeBytes))} · ${attachmentExtLabel(failed.filename, failed.mimeType)}`,
+          attachmentName: failed.filename,
+          idempotencyKey: `attachment_received:${failed.id}`,
+        });
+        await emitWorkspaceActivity({
+          userId,
+          projectId: failed.projectId,
+          type: "attachment_unsupported",
+          title: `Skipped ${failed.filename}`,
+          subtitle: failReason,
+          attachmentName: failed.filename,
+          reason: failReason,
+          idempotencyKey: `attachment_unsupported:${failed.id}`,
         });
         res.json(toPersisted(failed));
         return;
