@@ -1899,9 +1899,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    setAskAtlasComposerDraft({ input, files: staged.readyFiles.map(sf => sf.file) });
+    setAskAtlasComposerDraft({ input, files: staged.files.map(sf => sf.file) });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, staged.readyFiles]);
+  }, [input, staged.files]);
   const [showVault, setShowVault] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
