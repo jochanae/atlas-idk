@@ -5350,14 +5350,15 @@ export default function Home() {
               return (
             <>
             <div
-              style={{
-                maxHeight: "calc(100dvh - 220px)",
+              style={hasAttachments ? {
+                flex: "1 1 auto",
+                minHeight: 0,
                 overflowY: "auto",
                 overscrollBehavior: "contain",
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
-              }}
-              className="atlas-hide-scrollbar"
+              } : undefined}
+              className={hasAttachments ? "atlas-hide-scrollbar" : undefined}
             >
             {staged.files.length > 0 && (
               <div style={{ marginBottom: 8 }}>
