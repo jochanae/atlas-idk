@@ -10,6 +10,8 @@ type RailMessage = {
   kind?: "message" | "commit" | "session" | "decision" | "run";
   /** Optional stable id for the underlying event. */
   id?: string;
+  /** DOM anchor index for scrollTo/visibility. Defaults to array position. */
+  domIndex?: number;
 };
 
 // Prefer the shared timeline anchor selector; fall back to legacy msg-idx so
