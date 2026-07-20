@@ -66,3 +66,18 @@ echo "[build-frontend] Removing agent workspace files (not needed at runtime)...
 # .local contains agent skills (~1.3 GB of markdown/scripts) used only
 # during development. They are not referenced by the production server.
 rm -rf .local
+
+echo "[build-frontend] Removing build cache..."
+# .cache accumulates Vite/esbuild/turbo cache entries throughout dev sessions.
+# All builds are complete — safe to remove.
+rm -rf .cache
+
+echo "[build-frontend] Removing attached_assets (agent screenshots, not needed at runtime)..."
+# attached_assets contains screenshots taken by the dev agent (~700 MB+).
+# Not referenced by the production server or frontend.
+rm -rf attached_assets
+
+echo "[build-frontend] Removing other dev-only workspace directories..."
+rm -rf .agents        # agent memory files
+rm -rf .project-workspaces  # dev workspace state
+rm -rf docs handoffs supabase local .lovable .upm
