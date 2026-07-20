@@ -5,7 +5,26 @@ type RailMessage = {
   createdAt?: string;
   hasSurfacedMemory?: boolean;
   text?: string;
+  /** Shared event kind. Defaults to "message". Non-message events (commit,
+   *  session, decision, run) also participate in the same chronological rail. */
+  kind?: "message" | "commit" | "session" | "decision" | "run";
+  /** Optional stable id for the underlying event. */
+  id?: string;
 };
+
+// Prefer the shared timeline anchor selector; fall back to legacy msg-idx so
+// pre-migration surfaces (Ask Atlas, home) keep working during the rollout.
+const ANCHOR_SELECTOR = "[data-timeline-index],[data-msg-idx]";
+function anchorIndex(el: HTMLElement): number {
+  const v = el.getAttribute("data-timeline-index") ?? el.getAttribute("data-msg-idx");
+  return v == null ? -1 : Number(v);
+}
+function findAnchor(idx: number): HTMLElement | null {
+  return (
+    document.querySelector<HTMLElement>(`[data-timeline-index="${idx}"]`) ??
+    document.querySelector<HTMLElement>(`[data-msg-idx="${idx}"]`)
+  );
+}
 
 function dayLabel(t: number, now: number): string {
   const startOfDay = (ms: number) => {
