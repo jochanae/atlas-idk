@@ -703,10 +703,14 @@ export default function Admin() {
 
   return (
     <div style={{
-      minHeight: "100dvh",
+      height: "100dvh",
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch",
+      overscrollBehavior: "contain",
       background: "var(--atlas-bg)",
       paddingBottom: "env(safe-area-inset-bottom, 0px)",
     }}>
+
       <style>{`
         @keyframes admin-spin { to { transform: rotate(360deg); } }
       `}</style>
