@@ -210,11 +210,12 @@ export function TimelineRail({
       let best = -1;
       let bestDist = Infinity;
       const visible = new Set<number>();
-      const nodes = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
+      const nodes = document.querySelectorAll<HTMLElement>(ANCHOR_SELECTOR);
       nodes.forEach((n) => {
         const r = n.getBoundingClientRect();
         if (r.bottom < viewportTop || r.top > viewportBottom) return;
-        const idx = Number(n.getAttribute("data-msg-idx"));
+        const idx = anchorIndex(n);
+        if (idx < 0) return;
         visible.add(idx);
         const mid = (r.top + r.bottom) / 2;
         const d = Math.abs(mid - centerY);
