@@ -6173,12 +6173,24 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
         costUsd: calculateModelCostUsd("gemini-2.5-pro", inputTokens, outputTokens),
       };
     } catch (geminiErr) {
-      logger.warn({ err: geminiErr }, "Gemini stream failed in nexus — falling through to error");
-      await failStream("Atlas ran into an issue with Gemini. Try switching to Claude.");
+      logger.warn(
+        { err: geminiErr, focusProjectId, conversationId: effectiveConversationId, attachmentCount: allAttachments.length },
+        "Gemini stream failed in nexus — falling back to Claude",
+      );
+    }
+
+    if (rawContent.trim()) {
+      await finishStream(rawContent);
       return;
     }
-    await finishStream(rawContent);
-    return;
+
+    logger.warn(
+      { focusProjectId, conversationId: effectiveConversationId, attachmentCount: allAttachments.length },
+      "Gemini stream produced empty content — falling back to Claude",
+    );
+    // Fall through to the Claude path below. This prevents Workspace/Look image
+    // turns from completing with an empty `done` event and surfacing as
+    // “No response was generated” when Gemini returns no text.
   }
 
   // Build user content — plain text or vision block when an image is attached
@@ -6325,7 +6337,7 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
       ? (message || (attachmentIds.length > 0
           ? "The user attached file(s), but no attached file content is available to the model."
           : message))
-      : contentParts.length === 1 && contentParts[0].type === "text" && allAttachments.length === 0 && vault.imageBlocks.length === 0 && urlBlocks.length === 0
+      : contentParts.length === 1 && contentParts[0].type === "text" && allAttachments.length === 0 && attachmentIds.length === 0 && vault.imageBlocks.length === 0 && urlBlocks.length === 0
         ? message  // pure text-only: string shorthand (preserves existing behavior)
         : contentParts;
 
