@@ -81,3 +81,17 @@ echo "[build-frontend] Removing other dev-only workspace directories..."
 rm -rf .agents        # agent memory files
 rm -rf .project-workspaces  # dev workspace state
 rm -rf docs handoffs supabase local .lovable .upm
+
+echo "[build-frontend] Writing production API launcher..."
+# The production container runs commands without the Replit nix profile PATH,
+# so bare "node" is not found. Capture the absolute path to node right now
+# (while the build environment has PATH set correctly) and bake it into a
+# tiny launcher script that /bin/sh — which IS stable in the base container
+# at /bin/sh — can execute directly without needing PATH at all.
+NODE_BIN="$(which node)"
+cat > run-api.sh << EOF
+#!/bin/sh
+exec $NODE_BIN artifacts/api-server/dist/index.mjs
+EOF
+chmod +x run-api.sh
+echo "[build-frontend] Launcher written: exec $NODE_BIN"
