@@ -2459,12 +2459,20 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   };
 
   let resolvedAttachmentIdPayloads: ModelAttachment[] = [];
+  /** Skipped persisted IDs (storage-only / failed / etc.) — used for model honesty notes. */
+  let skippedAttachmentIdPayloads: Array<{
+    attachmentId: string;
+    reason: string;
+    filename?: string;
+    mimeType?: string;
+  }> = [];
   if (attachmentIds.length > 0) {
     try {
       const { resolved, skipped } = await resolveAttachmentIdsForModel({
         userId,
         attachmentIds,
       });
+      skippedAttachmentIdPayloads = skipped;
       if (skipped.length > 0) {
         logger.info(
           { userId, skipped },
@@ -6210,8 +6218,32 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     } as VaultBlock);
   }
 
-  // 3. User-attached files (images + PDFs + text/code). Unsupported kinds are
-  // filtered out earlier in resolveAttachmentIdsForModel.
+  // 3a. Storage-only / skipped persisted attachments — tell the model they exist
+  // but were not injected. Prevents "I only received one file" when the user
+  // attached DOCX+PDF and only PDF is model-readable.
+  const storageOnlySkips = skippedAttachmentIdPayloads.filter(
+    (s) =>
+      s.reason === "processing_unsupported" ||
+      s.reason === "processing_failed" ||
+      s.reason === "processing_not_ready",
+  );
+  if (storageOnlySkips.length > 0) {
+    const lines = storageOnlySkips.map((s) => {
+      const name = s.filename || s.attachmentId;
+      const mime = s.mimeType ? ` (${s.mimeType})` : "";
+      return `- ${name}${mime}: stored with the message, but Atlas cannot read this file type yet`;
+    });
+    contentParts.push({
+      type: "text",
+      text:
+        `The user also attached ${storageOnlySkips.length} file(s) that are stored but not readable by the model:\n` +
+        `${lines.join("\n")}\n` +
+        `Do not claim you read their contents. Acknowledge them as stored-only.`,
+    });
+  }
+
+  // 3b. User-attached files (images + PDFs + text/code). Unsupported kinds are
+  // filtered out earlier in resolveAttachmentIdsForModel (noted above).
   for (const att of allAttachments) {
     if (att.asText && att.textContent != null) {
       contentParts.push({

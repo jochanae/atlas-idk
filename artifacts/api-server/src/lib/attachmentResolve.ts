@@ -28,12 +28,19 @@ export type ResolvedModelAttachment = {
   textContent?: string;
 };
 
+export type SkippedAttachment = {
+  attachmentId: string;
+  reason: string;
+  filename?: string;
+  mimeType?: string;
+};
+
 export async function resolveAttachmentIdsForModel(params: {
   userId: number;
   attachmentIds: string[];
 }): Promise<{
   resolved: ResolvedModelAttachment[];
-  skipped: Array<{ attachmentId: string; reason: string }>;
+  skipped: SkippedAttachment[];
 }> {
   const ids = [...new Set(params.attachmentIds.filter(Boolean))];
   if (ids.length === 0) {
@@ -61,7 +68,7 @@ export async function resolveAttachmentIdsForModel(params: {
 
   const byId = new Map<string, MessageAttachment>(rows.map((r) => [r.id, r]));
   const resolved: ResolvedModelAttachment[] = [];
-  const skipped: Array<{ attachmentId: string; reason: string }> = [];
+  const skipped: SkippedAttachment[] = [];
   let totalBytes = 0;
 
   for (const id of ids) {
@@ -71,11 +78,21 @@ export async function resolveAttachmentIdsForModel(params: {
       continue;
     }
     if (row.uploadStatus !== "uploaded") {
-      skipped.push({ attachmentId: id, reason: "not_uploaded" });
+      skipped.push({
+        attachmentId: id,
+        reason: "not_uploaded",
+        filename: row.filename,
+        mimeType: row.mimeType,
+      });
       continue;
     }
     if (row.availabilityStatus === "expired") {
-      skipped.push({ attachmentId: id, reason: "expired" });
+      skipped.push({
+        attachmentId: id,
+        reason: "expired",
+        filename: row.filename,
+        mimeType: row.mimeType,
+      });
       continue;
     }
     if (
@@ -85,15 +102,27 @@ export async function resolveAttachmentIdsForModel(params: {
       skipped.push({
         attachmentId: id,
         reason: `processing_${row.processingStatus}`,
+        filename: row.filename,
+        mimeType: row.mimeType,
       });
       continue;
     }
     if (row.processingStatus !== "understood") {
-      skipped.push({ attachmentId: id, reason: "processing_not_ready" });
+      skipped.push({
+        attachmentId: id,
+        reason: "processing_not_ready",
+        filename: row.filename,
+        mimeType: row.mimeType,
+      });
       continue;
     }
     if (totalBytes + Number(row.sizeBytes) > ATTACHMENT_MAX_MESSAGE_BYTES) {
-      skipped.push({ attachmentId: id, reason: "message_attachment_bytes_exceeded" });
+      skipped.push({
+        attachmentId: id,
+        reason: "message_attachment_bytes_exceeded",
+        filename: row.filename,
+        mimeType: row.mimeType,
+      });
       continue;
     }
 
@@ -129,7 +158,12 @@ export async function resolveAttachmentIdsForModel(params: {
         { err, attachmentId: id, userId: params.userId },
         "attachmentResolve: download failed",
       );
-      skipped.push({ attachmentId: id, reason: "download_failed" });
+      skipped.push({
+        attachmentId: id,
+        reason: "download_failed",
+        filename: row.filename,
+        mimeType: row.mimeType,
+      });
     }
   }
 

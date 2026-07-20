@@ -7,7 +7,7 @@
  *
  * Non-image files NEVER route through the image renderer.
  */
-import { useState } from "react";
+import { useState, type MouseEvent, type PointerEvent } from "react";
 import type { StagedAttachment } from "@/hooks/useStagedAttachments";
 
 export interface AttachmentStripStagedProps {
@@ -168,6 +168,12 @@ export function AttachmentStrip(props: AttachmentStripProps) {
   );
 }
 
+/** Keep composer sheet from collapsing (textarea blur) before click fires. */
+function preserveComposerFocus(e: PointerEvent | MouseEvent) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
 function StagedThumbnail({
   file,
   onRemove,
@@ -195,7 +201,15 @@ function StagedThumbnail({
       }
       data-capability={file.capability}
       data-upload-status={file.uploadStatus}
-      style={{ position: "relative", flexShrink: 0 }}
+      style={{
+        position: "relative",
+        flexShrink: 0,
+        // Room for oversized Retry/X hit targets without clipping.
+        paddingTop: 10,
+        paddingRight: 10,
+        paddingBottom: isFailed ? 22 : 4,
+        paddingLeft: isFailed ? 10 : 0,
+      }}
     >
       {file.previewUrl && file.kind === "image" ? (
         <img
@@ -307,22 +321,31 @@ function StagedThumbnail({
       {isFailed && file.error?.retryable && onRetry && (
         <button
           type="button"
-          onClick={() => onRetry(file.id)}
+          onPointerDown={preserveComposerFocus}
+          onMouseDown={preserveComposerFocus}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRetry(file.id);
+          }}
           aria-label={`Retry ${file.name}`}
           style={{
             position: "absolute",
-            bottom: -6,
-            left: -6,
-            height: 18,
-            padding: "0 5px",
-            borderRadius: 9,
-            background: "rgba(8,8,10,0.92)",
-            border: "1px solid rgba(201,162,76,0.4)",
+            bottom: 0,
+            left: 0,
+            minWidth: 44,
+            minHeight: 32,
+            height: 32,
+            padding: "0 10px",
+            borderRadius: 10,
+            background: "rgba(8,8,10,0.96)",
+            border: "1px solid rgba(201,162,76,0.5)",
             cursor: "pointer",
             color: "var(--atlas-gold)",
-            fontSize: 8,
-            zIndex: 2,
+            fontSize: 11,
+            zIndex: 5,
             fontFamily: "var(--app-font-mono)",
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
           }}
         >
           Retry
@@ -331,29 +354,38 @@ function StagedThumbnail({
 
       <button
         type="button"
-        onClick={() => onRemove(file.id)}
+        onPointerDown={preserveComposerFocus}
+        onMouseDown={preserveComposerFocus}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(file.id);
+        }}
         aria-label={
           isUploading ? `Cancel upload ${file.name}` : `Remove ${file.name}`
         }
         title={isUploading ? "Cancel upload" : "Remove"}
         style={{
           position: "absolute",
-          top: -6,
-          right: -6,
-          width: 18,
-          height: 18,
+          top: 0,
+          right: 0,
+          width: 32,
+          height: 32,
+          minWidth: 32,
+          minHeight: 32,
           borderRadius: "50%",
-          background: "rgba(8,8,10,0.92)",
-          border: "1px solid rgba(201,162,76,0.32)",
+          background: "rgba(8,8,10,0.96)",
+          border: "1px solid rgba(201,162,76,0.4)",
           cursor: "pointer",
           color: "var(--atlas-fg)",
-          fontSize: 10,
+          fontSize: 16,
           lineHeight: 1,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: 0,
-          zIndex: 2,
+          zIndex: 5,
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "transparent",
         }}
       >
         ×
