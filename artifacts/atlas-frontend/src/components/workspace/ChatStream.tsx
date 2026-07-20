@@ -396,6 +396,16 @@ export function ChatStream(props: ChatStreamProps) {
     floatingControlsEnabled = true,
   } = props;
 
+  // Attachment / turn lifecycle verbs belong to Changes → Timeline ONLY.
+  // The chat thread keeps only commit / decision / session receipts so they
+  // never leak into the "quiet updates" batch card.
+  const activityEvents = useMemo(
+    () => (activityEventsRaw ?? []).filter(
+      (ev) => ev.type === "commit" || ev.type === "decision" || ev.type === "session",
+    ),
+    [activityEventsRaw],
+  );
+
   // Suppress the streaming prose bubble when live build steps are actively
   // flowing — the WorkspaceRunCard owns that surface during a build.
   // Also suppress during the gap between agentic turns (chatPending=true but
