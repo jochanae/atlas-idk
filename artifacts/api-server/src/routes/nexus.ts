@@ -6174,6 +6174,69 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     return stripped.length > 0;
   };
 
+  // ── HARD ATTACHMENT GROUNDING ──────────────────────────────────────────────
+  // Inject authoritative runtime truth about what is actually attached to THIS
+  // turn. The model must NEVER infer attachment presence from project context,
+  // conversation history, or pattern matching. These are hard facts, not hints.
+  {
+    const resolvedThisTurn = allAttachments.length + vault.imageBlocks.length + urlBlocks.length;
+    const requestedThisTurn = attachmentIds.length;
+
+    if (resolvedThisTurn === 0 && requestedThisTurn === 0) {
+      // Nothing attached at all.
+      systemPrompt += `\n\n--- CURRENT TURN: ATTACHMENT STATE (AUTHORITATIVE RUNTIME TRUTH) ---
+attachmentCount: 0
+resolvedAttachmentCount: 0
+
+HARD RULE — NO ATTACHMENT WAS PROVIDED WITH THIS MESSAGE.
+You have NOT received any file, image, or screenshot in this turn.
+Do NOT claim to see, identify, inspect, read, or describe any attachment.
+Do NOT infer attachment presence from project context or conversation history.
+If the user asks "can you see this?" or "are you able to see this?" — respond EXACTLY:
+  "I don't see an attachment on this message — can you drop it in?"
+Nothing more. Do not guess what the attachment might be.
+
+PROJECT CONTEXT NOTE: Any file names or images referenced in project context or prior
+conversation history are HISTORICAL EVIDENCE, not files attached to this message.
+Do not say "I pulled the files" or "I can see the file" unless a tool retrieval actually ran.
+--- END ATTACHMENT STATE ---`;
+    } else if (resolvedThisTurn === 0 && requestedThisTurn > 0) {
+      // Files were sent but none resolved for model reading.
+      const skippedSummary = skippedAttachmentIdPayloads
+        .map(a => `  - ${a.filename ?? "file"} (${a.mimeType ?? "unknown"}) — ${a.reason}`)
+        .join("\n");
+      systemPrompt += `\n\n--- CURRENT TURN: ATTACHMENT STATE (AUTHORITATIVE RUNTIME TRUTH) ---
+attachmentCount: ${requestedThisTurn}
+resolvedAttachmentCount: 0
+skipped:
+${skippedSummary}
+
+HARD RULE: Files were attached but NONE could be resolved for reading.
+You may acknowledge that file(s) were attached but tell the user you cannot read them.
+Suggest they export as PDF or plain text. Do NOT describe or guess the content.
+--- END ATTACHMENT STATE ---`;
+    } else {
+      // Some or all files resolved.
+      const resolvedLines = [
+        ...allAttachments.map(a => `  - ${a.name ?? "file"} (${a.mediaType}) — model_readable`),
+        ...vault.imageBlocks.map((_, i) => `  - vault image ${i + 1} — model_readable`),
+        ...urlBlocks.map((_, i) => `  - url screenshot ${i + 1} — model_readable`),
+        ...skippedAttachmentIdPayloads.map(a => `  - ${a.filename ?? "file"} (${a.mimeType ?? "unknown"}) — storage_only: cannot read content`),
+      ].join("\n");
+      systemPrompt += `\n\n--- CURRENT TURN: ATTACHMENT STATE (AUTHORITATIVE RUNTIME TRUTH) ---
+attachmentCount: ${requestedThisTurn || resolvedThisTurn}
+resolvedAttachmentCount: ${resolvedThisTurn}
+attachments:
+${resolvedLines}
+
+HARD RULE: You can ONLY reference content from files marked model_readable above.
+For any file marked storage_only: acknowledge it exists but state clearly you cannot read its contents.
+Do NOT claim to read, see, or describe any file not listed here.
+--- END ATTACHMENT STATE ---`;
+    }
+  }
+  // ── END HARD ATTACHMENT GROUNDING ──────────────────────────────────────────
+
   // Call the selected model
   if (activeModel === "gemini") {
     let rawContent = "";
