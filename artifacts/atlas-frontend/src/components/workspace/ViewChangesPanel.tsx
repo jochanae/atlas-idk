@@ -19,7 +19,10 @@ import {
   Lightbulb, Trash2, CheckCircle2,
   Dna, BookMarked, ListChecks, AlertOctagon, FileOutput, HelpCircle,
   Copy, Check,
+  Paperclip, Image as ImageIcon, FileText, AlertTriangle, MessageSquare,
 } from "lucide-react";
+import { useWorkspaceActivity, type ActivityItem } from "@/hooks/useWorkspaceActivity";
+
 import type { TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { useProjectRuns, type ApiRun, type ApiRunStep } from "@/hooks/useProjectRuns";
 import type { PushRecord, LinkedRepo } from "@/pages/workspace";
