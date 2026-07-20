@@ -262,6 +262,19 @@ export function useStagedAttachments(opts?: {
     [abortUpload, adapter, autoUpload, patchFile],
   );
 
+  const pendingUploadIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!autoUpload || pendingUploadIdsRef.current.size === 0) return;
+    for (const sf of files) {
+      if (!pendingUploadIdsRef.current.has(sf.id)) continue;
+      pendingUploadIdsRef.current.delete(sf.id);
+      if (sf.status === "uploading" && !sf.attachmentId) {
+        startUpload(sf.id, sf.file);
+      }
+    }
+  }, [autoUpload, files, startUpload]);
+
   const addFiles = useCallback(
     (incoming: FileList | File[] | null | undefined) => {
       if (!incoming) return;
@@ -275,8 +288,6 @@ export function useStagedAttachments(opts?: {
           size: f.size,
         })),
       });
-
-      const toUpload: Array<{ id: string; file: File }> = [];
 
       setFiles((prev) => {
         const result: StagedAttachment[] = [...prev];
@@ -428,26 +439,24 @@ export function useStagedAttachments(opts?: {
             error: null,
           };
           result.push(staged);
-          if (autoUpload) toUpload.push({ id, file });
+          if (autoUpload) pendingUploadIdsRef.current.add(id);
         }
 
         return result;
       });
 
       _adbgLog("add_files_to_upload_queue", {
-        count: toUpload.length,
-        ids: toUpload.map((i) => i.id),
+        count: pendingUploadIdsRef.current.size,
+        ids: [...pendingUploadIdsRef.current],
       });
-      for (const item of toUpload) {
-        startUpload(item.id, item.file);
-      }
     },
-    [autoUpload, maxCount, maxMessage, maxSize, startUpload],
+    [autoUpload, maxCount, maxMessage, maxSize],
   );
 
   const removeFile = useCallback((id: string) => {
     // Bump gen so a late resolve cannot resurrect the chip, then abort PUT.
     uploadGenRef.current.set(id, (uploadGenRef.current.get(id) ?? 0) + 1);
+    pendingUploadIdsRef.current.delete(id);
     abortUpload(id);
     uploadGenRef.current.delete(id);
     setFiles((prev) => {
@@ -544,7 +553,10 @@ export function useStagedAttachments(opts?: {
       // may still be rendering sf.previewUrl as contentUrl until the server
       // attachment_ack arrives with a persistent contentUrl. The browser
       // cleans up blob URLs on page unload.
-      for (const sf of removed) uploadGenRef.current.delete(sf.id);
+      for (const sf of removed) {
+        pendingUploadIdsRef.current.delete(sf.id);
+        uploadGenRef.current.delete(sf.id);
+      }
       return prev.filter((sf) => !idSet.has(sf.id));
     });
   }, []);
@@ -552,6 +564,7 @@ export function useStagedAttachments(opts?: {
   const clearFiles = useCallback(() => {
     setFiles((prev) => {
       revokeAll(prev);
+      pendingUploadIdsRef.current.clear();
       uploadGenRef.current.clear();
       return [];
     });
