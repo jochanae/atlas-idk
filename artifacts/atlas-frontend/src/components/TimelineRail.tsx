@@ -5,7 +5,28 @@ type RailMessage = {
   createdAt?: string;
   hasSurfacedMemory?: boolean;
   text?: string;
+  /** Shared event kind. Defaults to "message". Non-message events (commit,
+   *  session, decision, run) also participate in the same chronological rail. */
+  kind?: "message" | "commit" | "session" | "decision" | "run";
+  /** Optional stable id for the underlying event. */
+  id?: string;
+  /** DOM anchor index for scrollTo/visibility. Defaults to array position. */
+  domIndex?: number;
 };
+
+// Prefer the shared timeline anchor selector; fall back to legacy msg-idx so
+// pre-migration surfaces (Ask Atlas, home) keep working during the rollout.
+const ANCHOR_SELECTOR = "[data-timeline-index],[data-msg-idx]";
+function anchorIndex(el: HTMLElement): number {
+  const v = el.getAttribute("data-timeline-index") ?? el.getAttribute("data-msg-idx");
+  return v == null ? -1 : Number(v);
+}
+function findAnchor(idx: number): HTMLElement | null {
+  return (
+    document.querySelector<HTMLElement>(`[data-timeline-index="${idx}"]`) ??
+    document.querySelector<HTMLElement>(`[data-msg-idx="${idx}"]`)
+  );
+}
 
 function dayLabel(t: number, now: number): string {
   const startOfDay = (ms: number) => {
@@ -191,11 +212,12 @@ export function TimelineRail({
       let best = -1;
       let bestDist = Infinity;
       const visible = new Set<number>();
-      const nodes = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
+      const nodes = document.querySelectorAll<HTMLElement>(ANCHOR_SELECTOR);
       nodes.forEach((n) => {
         const r = n.getBoundingClientRect();
         if (r.bottom < viewportTop || r.top > viewportBottom) return;
-        const idx = Number(n.getAttribute("data-msg-idx"));
+        const idx = anchorIndex(n);
+        if (idx < 0) return;
         visible.add(idx);
         const mid = (r.top + r.bottom) / 2;
         const d = Math.abs(mid - centerY);
@@ -259,18 +281,19 @@ export function TimelineRail({
     messages.forEach((m, i) => {
       const t = m.createdAt ? new Date(m.createdAt).getTime() : now;
       const key = dayKey(t);
+      const idx = m.domIndex ?? i;
       const existing = groups.get(key);
       if (existing) {
-        existing.lastIdx = i;
-        existing.msgIdxs.push(i);
+        existing.lastIdx = idx;
+        existing.msgIdxs.push(idx);
         if (m.hasSurfacedMemory) existing.hasMemory = true;
       } else {
         groups.set(key, {
           key,
           label: dayLabel(t, now),
-          firstIdx: i,
-          lastIdx: i,
-          msgIdxs: [i],
+          firstIdx: idx,
+          lastIdx: idx,
+          msgIdxs: [idx],
           hasMemory: !!m.hasSurfacedMemory,
           timestamp: t,
         });
@@ -280,8 +303,7 @@ export function TimelineRail({
   }, [messages]);
 
   const scrollTo = (idx: number) => {
-    const el = document.querySelector<HTMLElement>(`[data-msg-idx="${idx}"]`);
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    findAnchor(idx)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const matchedDateKeys = new Set<string>();
