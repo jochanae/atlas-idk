@@ -366,6 +366,8 @@ type RuntimeEventType =
   | "restart_requested"
   | "drift_detected"
   | "reinstall_required"
+  | "runtime_starting"
+  | "restart_failed"
   | "runtime_error";
 
 /** Two orthogonal dimensions — never collapsed into a single status string. */
@@ -1320,7 +1322,7 @@ router.get("/devserver/workspace/:projectId/status", (req, res): void => {
     lastVerifiedTargetId: st.lastVerifiedTargetId ?? null,
     lastVerifiedAt: st.lastVerifiedAt ?? null,
     readiness: st.readiness,
-    launchRecipe: st.launchRecipe,
+    hasLaunchRecipe: st.launchRecipe !== null,
   });
 });
 
@@ -1390,8 +1392,9 @@ router.post("/devserver/workspace/:projectId/stop", async (req, res): Promise<vo
 //   1. Sets pendingStopReason = "restart"
 //   2. Terminates the current process tree (SIGTERM → bounded wait → SIGKILL)
 //   3. Increments the generation counter
-//   4. Reads the stored launch recipe
-//   5. Fires a new /run cycle using recipe args
+//   4. Re-classifies the repository to find the current target shape
+//   5. Re-resolves and re-validates service bindings (decrypts fresh, no loopback)
+//   6. Calls executeWorkspaceRuntime() directly — no loopback HTTP, no cookie forwarding
 //
 router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise<void> => {
   const projectId = Number(req.params["projectId"]);
@@ -1445,63 +1448,130 @@ router.post("/devserver/workspace/:projectId/restart", async (req, res): Promise
     st.pendingStopReason = null; // consumed — exit handler will fire but runGen will mismatch
   }
 
-  // Respond immediately — client polls /status
+  // Respond immediately — client polls /status.
+  // Generation must be incremented AFTER exitPromise resolves so the old process's
+  // exit handler fires with the stale gen and correctly emits runtime_stopped.
   res.status(202).json({ status: "restarting" });
+  const restartGen = (st.runGen ?? 0) + 1;
+  st.runGen = restartGen;
 
-  // Increment generation so stale callbacks from the killed process are ignored
-  st.runGen = (st.runGen ?? 0) + 1;
+  // Re-classify and resolve bindings in-process — no loopback HTTP, no cookie forwarding.
+  // If any step fails, emit restart_failed and leave st.status = "error".
+  (async () => {
+    try {
+      // Load project for linkedRepo + githubToken (same as /run)
+      const [project] = await db
+        .select({ linkedRepo: projectsTable.linkedRepo, githubToken: projectsTable.githubToken })
+        .from(projectsTable)
+        .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+        .limit(1);
+      if (!project) throw new Error("Project not found during restart");
+      if (st.runGen !== restartGen) return; // newer run started
 
-  // Re-run using the stored recipe (proxied through the run route handler logic).
-  // We do this by forwarding a synthetic /run request to the same Express handler.
-  // To avoid duplicating the entire /run implementation, we mutate req.body and
-  // forward via router.handle — but simpler: just re-POST /run server-side via http.
-  // Actually the cleanest approach is to directly invoke the run logic via a loopback
-  // call on localhost:80 so it goes through the same auth and classification path.
-  const loopbackPort = OWN_PORT;
-  const runPayload = JSON.stringify({
-    targetId: recipe.targetId,
-    env: recipe.approvedPublicEnv,
-    serviceBindingIds: recipe.serviceBindingIds,
-  });
-  const loopReq = http.request(
-    {
-      hostname: "localhost",
-      port: loopbackPort,
-      path: `/api/devserver/workspace/${projectId}/run`,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(runPayload),
-        // Forward a minimal session cookie from the original request so auth passes.
-        "Cookie": req.headers["cookie"] ?? "",
-      },
-    },
-    (loopRes) => {
-      loopRes.resume(); // drain response body
-      if (loopRes.statusCode && loopRes.statusCode >= 400) {
-        logger.warn({ projectId, statusCode: loopRes.statusCode }, "Restart loopback /run rejected");
-        transitionRuntime(projectId, st, {
-          status: "error",
-          eventType: "runtime_error",
-          targetId: recipe.targetId,
-          detail: { reason: "restart-loopback-rejected", statusCode: loopRes.statusCode },
-        });
-        st.errorMsg = "Restart failed — the new run was rejected by the server.";
+      const workspaceDir = projectWorkspaceDir(projectId);
+      let linkedRepo: string | null = null;
+      if (project.linkedRepo) {
+        try {
+          const parsed = JSON.parse(project.linkedRepo as string);
+          linkedRepo = typeof parsed === "string" ? parsed : ((parsed as Record<string, unknown>).fullName as string ?? null);
+        } catch { linkedRepo = project.linkedRepo as string; }
       }
-    },
-  );
-  loopReq.on("error", (err) => {
-    logger.warn({ err, projectId }, "Restart loopback /run network error");
-    transitionRuntime(projectId, st, {
-      status: "error",
-      eventType: "runtime_error",
-      targetId: recipe.targetId,
-      detail: { reason: "restart-loopback-error", message: (err as Error).message },
-    });
-    st.errorMsg = "Restart failed — could not reach the run endpoint.";
-  });
-  loopReq.write(runPayload);
-  loopReq.end();
+      const githubToken = project.githubToken ? decryptToken(project.githubToken as string) : null;
+
+      const input = await loadClassificationInput({ workspaceDir, linkedRepo, githubToken });
+      if (!input) throw new Error("No file source available for restart");
+      if (st.runGen !== restartGen) return;
+
+      const report = classifyRepository(input);
+      // Find the originally-used target; fall back to first if renamed or removed.
+      const target = report.targets.find(t => t.id === recipe.targetId) ?? report.targets[0];
+      if (!target) {
+        throw new Error(`Target "${recipe.targetId}" no longer exists in this repository. Run from scratch to reconfigure.`);
+      }
+      if (target.status === "unsupported" || target.status === "likely-inactive") {
+        throw new Error(`Target "${target.id}" is no longer runnable (status: ${target.status}).`);
+      }
+      if (st.runGen !== restartGen) return;
+
+      // ── Re-validate and re-resolve service bindings ───────────────────────────
+      // Binding IDs come from the recipe; secrets are decrypted fresh (never stored in recipe).
+      // Any binding that is revoked, cross-project, or cross-user blocks restart.
+      const declaredServiceIds = new Set((target.externalServices ?? []).map((s: string) => s.toLowerCase().trim()));
+      const resolvedBindingEnv: Record<string, string> = {};
+      for (const bindingId of recipe.serviceBindingIds) {
+        try {
+          const rows = await db.execute(sql`
+            SELECT service_id, encrypted_secrets
+            FROM service_bindings
+            WHERE id = ${bindingId}
+              AND project_id = ${projectId}
+              AND user_id = ${userId}
+              AND revoked_at IS NULL
+          `);
+          const binding = rows.rows[0] as { service_id: string; encrypted_secrets: string | null } | undefined;
+          if (!binding) {
+            // Revoked, cross-project, or cross-user — treat as configuration missing
+            st.readiness.configuration = "missing";
+            logger.warn({ bindingId, projectId }, "Restart: binding not found, revoked, or cross-project");
+            continue;
+          }
+          if (declaredServiceIds.size > 0 && !declaredServiceIds.has(binding.service_id)) continue;
+          if (!binding.encrypted_secrets) continue;
+          const plaintext = decryptBinding(binding.encrypted_secrets);
+          if (plaintext === null) {
+            logger.warn({ bindingId }, "Restart: binding decrypt failed — skipping");
+            continue;
+          }
+          let secretMap: Record<string, string> = {};
+          try { secretMap = JSON.parse(plaintext) as Record<string, string>; } catch { continue; }
+          const allowedKeys = new Set(target.environmentVariables);
+          for (const [k, v] of Object.entries(secretMap)) {
+            if (typeof v === "string" && allowedKeys.has(k)) resolvedBindingEnv[k] = v;
+          }
+        } catch (err) {
+          logger.warn({ err, bindingId: bindingId, projectId }, "Restart: binding resolution error — skipping");
+        }
+      }
+
+      // Block restart if any required binding is unavailable
+      if (st.readiness.configuration === "missing") {
+        throw new Error("Required service binding(s) are no longer available. Re-configure and run again.");
+      }
+      if (st.runGen !== restartGen) return;
+
+      // safeEnv: public env from recipe + freshly-decrypted binding secrets (bindings win)
+      const safeEnv: Record<string, string> = { ...recipe.approvedPublicEnv, ...resolvedBindingEnv };
+
+      // Reset transient state for the new run
+      st.port = null;
+      st.logs = [`↺ Restarting: ${target.id} (${target.framework})`];
+      st.errorMsg = null;
+      st.verifiedTargetId = null;
+      st.verifiedAt = null;
+      st.startedAt = null;
+      st.status = "installing";
+
+      // Fire-and-forget — executeWorkspaceRuntime captures st.runGen (= restartGen) at entry
+      executeWorkspaceRuntime({
+        projectId, userId, st, target, workspaceDir,
+        safeEnv,
+        serviceBindingIds: recipe.serviceBindingIds,
+        requestedBy: "restart",
+      });
+    } catch (err: unknown) {
+      if (st.runGen !== restartGen) return; // newer run started — abandon
+      const msg = err instanceof Error ? err.message : "Restart failed";
+      transitionRuntime(projectId, st, {
+        status: "error",
+        eventType: "restart_failed",
+        targetId: recipe.targetId,
+        detail: { message: msg.slice(0, 300) },
+      });
+      st.errorMsg = msg;
+      addWsLog(st, `✗ Restart failed: ${msg}`);
+      logger.error({ err, projectId }, "Restart: re-classification or binding resolution failed");
+    }
+  })();
 });
 
 // ── Readiness check (Phase 5C) — evaluate drift against stored snapshot ──
@@ -1528,6 +1598,37 @@ router.post("/devserver/workspace/:projectId/check-readiness", async (req, res):
 
   const snap = st.verificationSnapshot;
   const workDir = projectWorkspaceDir(projectId);
+
+  // ── Binding state validation ─────────────────────────────────────────────────
+  // Run synchronously before structural hashes to surface credential problems fast.
+  // Re-validates every stored binding ID: must exist, not be revoked, and belong
+  // to this exact project + user. A matching ID in the recipe is not sufficient —
+  // bindings can be revoked independently of the recipe.
+  const recipe = st.launchRecipe;
+  if (recipe && recipe.serviceBindingIds.length > 0) {
+    (async () => {
+      for (const bindingId of recipe.serviceBindingIds) {
+        try {
+          const rows = await db.execute(sql`
+            SELECT id FROM service_bindings
+            WHERE id = ${bindingId}
+              AND project_id = ${projectId}
+              AND user_id = ${userId}
+              AND revoked_at IS NULL
+          `);
+          if (!rows.rows[0]) {
+            // Revoked, cross-project, cross-user, or deleted
+            if (st.readiness.configuration !== "missing") {
+              st.readiness.configuration = "missing";
+              logger.info({ bindingId, projectId }, "check-readiness: binding revoked or unavailable");
+            }
+          }
+        } catch (err) {
+          logger.warn({ err, bindingId, projectId }, "check-readiness: binding validation error");
+        }
+      }
+    })().catch(() => {});
+  }
 
   // Recompute structural hashes in background — updates st.readiness for next /status poll
   computeStructuralFileHashes(workDir).then((currentHashes) => {
@@ -1569,6 +1670,417 @@ router.post("/devserver/workspace/:projectId/check-readiness", async (req, res):
     logger.warn({ err, projectId }, "check-readiness: hash computation failed");
   });
 });
+
+// ── Shared runtime execution engine ──────────────────────────────────────────
+// Called by both /run (after env validation) and /restart (after re-classification).
+// Caller must have already:
+//   - Incremented st.runGen
+//   - Set st.status = "installing"
+//   - Reset transient state (port, logs, errorMsg, verifiedTargetId, etc.)
+// Fire-and-forget: do NOT await this function.
+//
+interface RuntimeTarget {
+  id: string;
+  framework: string;
+  workingDirectory: string;
+  startCommand: string;
+  installCommand: string;
+  environmentVariables: string[];
+  externalServices?: string[];
+}
+async function executeWorkspaceRuntime({
+  projectId,
+  userId: _userId,
+  st,
+  target,
+  workspaceDir,
+  safeEnv,
+  serviceBindingIds,
+  requestedBy,
+}: {
+  projectId: number;
+  userId: number;
+  st: WsDevState;
+  target: RuntimeTarget;
+  workspaceDir: string;
+  safeEnv: Record<string, string>;
+  serviceBindingIds: string[];
+  requestedBy: "run" | "restart";
+}): Promise<void> {
+  // Snapshot the generation counter at function entry.
+  // All async callbacks check this before mutating state.
+  const myGen = st.runGen;
+
+  // ── Secret scrubber ──────────────────────────────────────────────────────────
+  // Replaces accepted env values (≥8 chars) in process output before logging.
+  // Runs after binding injection so binding-provided secrets are also redacted.
+  const redactValues = Object.values(safeEnv).filter(v => v.length >= 8);
+  function scrubLine(raw: string): string {
+    if (redactValues.length === 0) return raw;
+    let out = raw;
+    for (const val of redactValues) {
+      if (out.includes(val)) out = out.replaceAll(val, "[REDACTED]");
+    }
+    return out;
+  }
+
+  try {
+    // Resolve the working directory for this target
+    const workDir = (target.workingDirectory && target.workingDirectory !== ".")
+      ? path.join(workspaceDir, target.workingDirectory)
+      : workspaceDir;
+
+    // ── Path traversal guard ─────────────────────────────────────────────────
+    if (workDir !== workspaceDir && !workDir.startsWith(workspaceDir + path.sep)) {
+      throw new Error("Target working directory escapes the project workspace. Aborting.");
+    }
+
+    // ── Emit install_started ──────────────────────────────────────────────────
+    transitionRuntime(projectId, st, {
+      status: "installing",
+      eventType: "install_started",
+      targetId: target.id,
+      detail: { framework: target.framework, workingDirectory: target.workingDirectory, requestedBy },
+    });
+
+    // ── 5C: Drift detection ──────────────────────────────────────────────────
+    if (st.verificationSnapshot) {
+      const snap = st.verificationSnapshot;
+      const currentClassHash = computeClassificationHash(target);
+      const currentEnvKeys = [...Object.keys(safeEnv)].sort().join(",");
+      const snapEnvKeys = [...snap.requiredEnvKeys].sort().join(",");
+      const currentBindingIds = serviceBindingIds.slice().sort().join(",");
+      const snapBindingIds = snap.serviceBindingIds.slice().sort().join(",");
+
+      if (currentClassHash !== snap.classificationHash) {
+        st.readiness.classification = "stale";
+        transitionRuntime(projectId, st, {
+          status: "installing",
+          eventType: "drift_detected",
+          targetId: target.id,
+          detail: { type: "classification", prev: snap.classificationHash, curr: currentClassHash },
+        });
+        addWsLog(st, "⚠ Classifier target changed since last verified run");
+      }
+      if (currentEnvKeys !== snapEnvKeys || currentBindingIds !== snapBindingIds) {
+        st.readiness.configuration = "changed";
+        transitionRuntime(projectId, st, {
+          status: "installing",
+          eventType: "drift_detected",
+          targetId: target.id,
+          detail: { type: "configuration" },
+        });
+        addWsLog(st, "⚠ Configuration changed since last verified run");
+      }
+      const snapLockHash = snap.installFingerprint;
+      if (snapLockHash) {
+        const currentHashes = await computeStructuralFileHashes(workDir);
+        const currentLockHash = currentHashes["pnpm-lock.yaml"] ?? currentHashes["package-lock.json"] ?? currentHashes["yarn.lock"] ?? "";
+        if (currentLockHash && currentLockHash !== snapLockHash) {
+          st.readiness.dependencies = "reinstall-required";
+          transitionRuntime(projectId, st, {
+            status: "installing",
+            eventType: "reinstall_required",
+            targetId: target.id,
+            detail: { reason: "lockfile-changed" },
+          });
+          addWsLog(st, "⚠ Lockfile changed — reinstalling dependencies");
+        }
+      }
+    } else {
+      // No snapshot yet — first run, readiness is clean
+      st.readiness = { configuration: "ready", dependencies: "ready", classification: "current" };
+    }
+
+    // ── 1. Install dependencies ──────────────────────────────────────────────
+    const installDir = (workDir !== workspaceDir) ? workspaceDir : workDir;
+    const nmPath = path.join(installDir, "node_modules");
+    const pkgJsonPath = path.join(installDir, "package.json");
+    let needsInstall = !existsSync(nmPath);
+    if (!needsInstall) {
+      try {
+        const [pkgStat, nmStat] = await Promise.all([
+          fsPromises.stat(pkgJsonPath),
+          fsPromises.stat(nmPath),
+        ]);
+        if (pkgStat.mtimeMs > nmStat.mtimeMs) {
+          needsInstall = true;
+          addWsLog(st, "package.json updated — reinstalling dependencies…");
+        }
+      } catch { /* stat failure — proceed without reinstall */ }
+    }
+
+    if (needsInstall) {
+      if (st.runGen !== myGen) return;
+      const installCmd = target.installCommand || `${detectPackageManager(installDir)} install`;
+      addWsLog(st, `Installing: ${installCmd}…`);
+      const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
+      const installResult = await Promise.race([
+        new Promise<{ ok: boolean; output: string }>((resolve) => {
+          const chunks: string[] = [];
+          const installProc = spawn(installCmd, [], {
+            cwd: installDir, shell: true,
+            env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
+          });
+          const onInstData = (d: Buffer) => {
+            const s = d.toString().slice(0, 2048);
+            chunks.push(s);
+            addWsLog(st, s);
+          };
+          installProc.stdout?.on("data", onInstData);
+          installProc.stderr?.on("data", onInstData);
+          installProc.on("exit", (code) => resolve({ ok: code === 0, output: chunks.join("") }));
+          installProc.on("error", (e) => resolve({ ok: false, output: e.message }));
+        }),
+        new Promise<{ ok: boolean; output: string }>((resolve) =>
+          setTimeout(() => resolve({ ok: false, output: "Installation timed out after 5 minutes" }), INSTALL_TIMEOUT_MS)
+        ),
+      ]);
+
+      if (st.runGen !== myGen) return;
+      if (!installResult.ok) {
+        throw new Error(`Dependency install failed.\nLast output:\n${installResult.output.slice(-600)}`);
+      }
+      addWsLog(st, "✓ Dependencies installed");
+      st.readiness.dependencies = "ready";
+      transitionRuntime(projectId, st, {
+        status: "installing",
+        eventType: "install_completed",
+        targetId: target.id,
+        detail: {},
+      });
+    }
+
+    if (st.runGen !== myGen) return;
+
+    // ── 2. Allocate a port and start the dev server ──────────────────────────
+    transitionRuntime(projectId, st, {
+      status: "starting",
+      eventType: "start_requested",
+      targetId: target.id,
+      detail: { framework: target.framework },
+    });
+    const port = await allocateFreePort();
+
+    // Build the command string — Vite needs --host + --port to bind to the
+    // allocated port and accept proxied traffic from outside localhost.
+    const isVite = /vite/i.test(target.framework) || target.startCommand.toLowerCase().includes("vite");
+    const rawCmd = isVite
+      ? `${target.startCommand} -- --host 0.0.0.0 --port ${port}`
+      : target.startCommand;
+
+    addWsLog(st, `Starting: ${rawCmd} (port ${port})…`);
+
+    // Spawn with detached:true so the child leads its own process group.
+    const proc = spawn(rawCmd, [], {
+      cwd: workDir,
+      shell: true,
+      detached: true,
+      env: {
+        ...process.env,
+        FORCE_COLOR: "0",
+        NO_COLOR: "1",
+        ...safeEnv,
+        PORT: String(port),
+        HOST: "0.0.0.0",
+      },
+    });
+    st.proc = proc;
+
+    // Emit runtime_starting now that the OS process exists and we have a PID.
+    transitionRuntime(projectId, st, {
+      status: "starting",
+      eventType: "runtime_starting",
+      targetId: target.id,
+      detail: { port, pid: proc.pid ?? null },
+    });
+
+    // ── markVerified: called once when the port accepts an HTTP connection ─────
+    const markVerified = (livePort: number) => {
+      if (st.runGen !== myGen) return;
+      clearTimeout(portFallbackTimer);
+      st.port = livePort;
+      st.startedAt = new Date();
+      st.verifiedTargetId = target.id;
+      st.verifiedAt = new Date();
+      st.lastVerifiedTargetId = target.id;
+      st.lastVerifiedAt = st.verifiedAt;
+      st.readiness.configuration = "ready";
+      st.readiness.classification = "current";
+      transitionRuntime(projectId, st, {
+        status: "running",
+        eventType: "runtime_connected",
+        targetId: target.id,
+        detail: { port: livePort, framework: target.framework },
+      });
+      addWsLog(st, `✓ Connected — ${target.id} accepted HTTP on port ${livePort} · ${target.framework}`);
+      logger.info({ projectId, port: livePort, targetId: target.id, framework: target.framework }, "Runtime verification complete");
+      // Build and store the verification snapshot + launch recipe asynchronously.
+      computeStructuralFileHashes(workDir).then((structuralHashes) => {
+        if (st.runGen !== myGen || st.verifiedTargetId !== target.id) return;
+        const classificationHash = computeClassificationHash(target);
+        const installFingerprint =
+          structuralHashes["pnpm-lock.yaml"] ??
+          structuralHashes["package-lock.json"] ??
+          structuralHashes["yarn.lock"] ??
+          "";
+        st.verificationSnapshot = {
+          targetId: target.id,
+          classificationHash,
+          requiredEnvKeys: Object.keys(safeEnv),
+          serviceBindingIds,
+          installFingerprint,
+          structuralFileHashes: structuralHashes,
+          verifiedAt: (st.verifiedAt ?? new Date()).toISOString(),
+        };
+        // Restart-persistent recipe — no secrets; binding IDs used for server-resolved creds.
+        st.launchRecipe = {
+          targetId: target.id,
+          serviceBindingIds,
+          approvedPublicEnv: { ...safeEnv },
+          classificationHash,
+          installFingerprint,
+          updatedAt: new Date().toISOString(),
+        };
+        wsSaveState(projectId, livePort, proc.pid ?? undefined, target.id, target.id, st.launchRecipe);
+      }).catch((err: unknown) => {
+        logger.warn({ err, projectId }, "markVerified: snapshot/recipe computation failed — recipe not persisted");
+      });
+    };
+
+    // ── 3. Port detection: watch stdout, fall back to probing ────────────────
+    const portFallbackTimer = setTimeout(async () => {
+      if (st.runGen !== myGen || st.status !== "starting" || !st.proc) return;
+      addWsLog(st, "Port not announced in stdout — probing common ports…");
+      const found = await pollForPort(
+        [port, 5173, 3000, 4173, 8000, 4000].filter(p => p !== OWN_PORT)
+      );
+      if (st.runGen !== myGen) return;
+      if (found && st.status === "starting") {
+        markVerified(found);
+      } else if (st.status === "starting") {
+        setTimeout(async () => {
+          if (st.runGen !== myGen || st.status !== "starting") return;
+          const found2 = await pollForPort([port, 3000, 5173].filter(p => p !== OWN_PORT));
+          if (found2) {
+            markVerified(found2);
+          } else {
+            const timeoutMsg = "Dev server started but no port responded after 75s. Check if required environment variables are missing (e.g. DATABASE_URL, auth keys).";
+            transitionRuntime(projectId, st, {
+              status: "error",
+              eventType: "runtime_error",
+              targetId: target.id,
+              detail: { reason: "port-timeout", durationMs: 75_000 },
+            });
+            st.errorMsg = timeoutMsg;
+            addWsLog(st, "✗ No running port found after timeout");
+          }
+        }, 30_000);
+      }
+    }, 45_000);
+
+    const onData = (d: Buffer) => {
+      if (st.runGen !== myGen) return;
+      const line = scrubLine(d.toString());
+      addWsLog(st, line);
+      if (st.status !== "running") {
+        const detected = detectPort(line);
+        if (detected) markVerified(detected);
+      }
+    };
+    proc.stdout?.on("data", onData);
+    proc.stderr?.on("data", onData);
+
+    // ── 5B: Intent-aware exit handler ─────────────────────────────────────────
+    // The primary question is: did Atlas request this process to stop?
+    // Exit code and signal are supporting evidence, not the primary signal.
+    proc.on("exit", (code, signal) => {
+      if (st.runGen !== myGen) return;
+      clearTimeout(portFallbackTimer);
+      const reason = st.pendingStopReason;
+      st.pendingStopReason = null;
+      // Preserve historical verification before clearing current state
+      if (st.verifiedTargetId) {
+        st.lastVerifiedTargetId = st.verifiedTargetId;
+        st.lastVerifiedAt = st.verifiedAt;
+      }
+
+      if (reason === "user") {
+        // Explicit user-initiated stop — always "stopped"
+        transitionRuntime(projectId, st, {
+          status: "stopped",
+          eventType: "runtime_stopped",
+          targetId: target.id,
+          detail: { exitCode: code, signal, reason: "user" },
+        });
+        addWsLog(st, "■ Stopped by user");
+        wsDeleteState(projectId);
+      } else if (reason === "restart") {
+        // Atlas-initiated restart — emit runtime_stopped so history is complete,
+        // but keep status as "restarting" (new executeWorkspaceRuntime call takes over).
+        // Never emit runtime_crashed for a process killed intentionally for restart.
+        transitionRuntime(projectId, st, {
+          status: "restarting",
+          eventType: "runtime_stopped",
+          targetId: target.id,
+          detail: { exitCode: code, signal, reason: "restart" },
+        });
+        addWsLog(st, "↺ Old process stopped — launching new run…");
+      } else if (reason === "replacement") {
+        // Old process killed because a new /run call was made — new execution owns state
+      } else {
+        // No intent recorded — process exited on its own.
+        // Distinguish startup failure (never connected) from runtime crash (was connected).
+        const wasConnected = st.verifiedTargetId === target.id;
+        if (wasConnected) {
+          const crashMsg = signal
+            ? `App crashed (signal ${signal}). Check logs for details.`
+            : `App exited unexpectedly (code ${code ?? "unknown"}). Check logs for details.`;
+          transitionRuntime(projectId, st, {
+            status: "crashed",
+            eventType: "runtime_crashed",
+            targetId: target.id,
+            detail: { exitCode: code, signal, wasConnected: true },
+          });
+          st.errorMsg = crashMsg;
+          addWsLog(st, `✗ Crashed (${signal ?? `code ${code}`})`);
+        } else {
+          const errMsg = signal
+            ? `App exited before accepting connections (signal ${signal}).`
+            : code === 0
+              ? "App exited cleanly before accepting connections. Missing start script?"
+              : `App failed to start (exit code ${code ?? "unknown"}).`;
+          transitionRuntime(projectId, st, {
+            status: "error",
+            eventType: "runtime_error",
+            targetId: target.id,
+            detail: { exitCode: code, signal, wasConnected: false, reason: "startup-failure" },
+          });
+          st.errorMsg = errMsg;
+          addWsLog(st, `✗ Startup failure (${signal ?? `code ${code}`})`);
+        }
+        wsDeleteState(projectId);
+      }
+
+      st.verifiedTargetId = null;
+      st.verifiedAt = null;
+      st.proc = null;
+    });
+
+  } catch (err: unknown) {
+    if (st.runGen !== myGen) return;
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    transitionRuntime(projectId, st, {
+      status: "error",
+      eventType: requestedBy === "restart" ? "restart_failed" : "runtime_error",
+      targetId: target.id,
+      detail: { message: msg.slice(0, 500) },
+    });
+    st.errorMsg = msg;
+    addWsLog(st, `Error: ${msg}`);
+    logger.error({ err, projectId }, `Runtime ${requestedBy} failed`);
+  }
+}
 
 // ── Runtime verification — run an imported target and health-check it ────────
 //
@@ -1796,415 +2308,26 @@ router.post("/devserver/workspace/:projectId/run", async (req, res): Promise<voi
     ...resolvedBindingEnv, // bindings win on conflict
   };
 
-  // ── Secret scrubber ──────────────────────────────────────────────────────────
-  // Replaces accepted env values (≥8 chars) in process output before logging.
-  // Prevents DATABASE_URL, auth tokens, etc. from appearing in the status log.
-  // Runs AFTER binding injection so binding-provided secrets are also redacted.
-  const redactValues = Object.values(safeEnv).filter(v => v.length >= 8);
-  function scrubLine(raw: string): string {
-    if (redactValues.length === 0) return raw;
-    let out = raw;
-    for (const val of redactValues) {
-      if (out.includes(val)) out = out.replaceAll(val, "[REDACTED]");
-    }
-    return out;
-  }
-
   // status is already "installing" (set at the gate); reconfirm and reset fields
   // (proc was already cleared at the concurrency gate — no second kill needed here)
   st.port = null;
-  st.logs = [`Runtime verification: ${target.id} (${target.framework})`];
+  st.logs = [`Run: ${target.id} (${target.framework})`];
   st.errorMsg = null;
   st.verifiedTargetId = null;
   st.verifiedAt = null;
   st.startedAt = null;
-  // Increment generation token — all callbacks below close over myGen and check
-  // it before mutating state, preventing stale IIFEs from poisoning newer runs.
+  // Increment generation before calling executeWorkspaceRuntime — the function
+  // captures st.runGen at entry; all its internal callbacks close over that snapshot.
   st.runGen = (st.runGen ?? 0) + 1;
-  const myGen = st.runGen;
 
   res.json({ status: st.status, targetId: target.id });
-
-  (async () => {
-    try {
-      // Resolve the working directory for this target
-      const workDir = (target.workingDirectory && target.workingDirectory !== ".")
-        ? path.join(workspaceDir, target.workingDirectory)
-        : workspaceDir;
-
-      // ── Path traversal guard ─────────────────────────────────────────────────
-      // workDir must be the workspace root or a subdirectory of it.
-      // target.workingDirectory comes from the classifier (not client input),
-      // but validate defensively against any future code path changes.
-      if (workDir !== workspaceDir && !workDir.startsWith(workspaceDir + path.sep)) {
-        throw new Error("Target working directory escapes the project workspace. Aborting.");
-      }
-
-      // ── 5A: Emit install_started event now that we have the resolved targetId ─
-      transitionRuntime(projectId, st, {
-        status: "installing",
-        eventType: "install_started",
-        targetId: target.id,
-        detail: { framework: target.framework, workingDirectory: target.workingDirectory },
-      });
-
-      // ── 5C: Drift detection ──────────────────────────────────────────────────
-      // Compare current run configuration against the last verified snapshot.
-      // Updates st.readiness to signal config-changed or reinstall-required
-      // before the install step so forced reinstalls can happen immediately.
-      if (st.verificationSnapshot) {
-        const snap = st.verificationSnapshot;
-        const currentClassHash = computeClassificationHash(target);
-        const currentEnvKeys = [...Object.keys(safeEnv)].sort().join(",");
-        const snapEnvKeys = [...snap.requiredEnvKeys].sort().join(",");
-        const currentBindingIds = (serviceBindingIds ?? []).slice().sort().join(",");
-        const snapBindingIds = snap.serviceBindingIds.slice().sort().join(",");
-
-        if (currentClassHash !== snap.classificationHash) {
-          st.readiness.classification = "stale";
-          transitionRuntime(projectId, st, {
-            status: "installing",
-            eventType: "drift_detected",
-            targetId: target.id,
-            detail: { type: "classification", prev: snap.classificationHash, curr: currentClassHash },
-          });
-          addWsLog(st, "⚠ Classifier target changed since last verified run");
-        }
-        if (currentEnvKeys !== snapEnvKeys || currentBindingIds !== snapBindingIds) {
-          st.readiness.configuration = "changed";
-          transitionRuntime(projectId, st, {
-            status: "installing",
-            eventType: "drift_detected",
-            targetId: target.id,
-            detail: { type: "configuration" },
-          });
-          addWsLog(st, "⚠ Configuration changed since last verified run");
-        }
-        // Structural file hashes already in snapshot — check if lockfile changed
-        const snapLockHash = snap.installFingerprint;
-        if (snapLockHash) {
-          const currentHashes = await computeStructuralFileHashes(workDir);
-          const currentLockHash = currentHashes["pnpm-lock.yaml"] ?? currentHashes["package-lock.json"] ?? currentHashes["yarn.lock"] ?? "";
-          if (currentLockHash && currentLockHash !== snapLockHash) {
-            st.readiness.dependencies = "reinstall-required";
-            transitionRuntime(projectId, st, {
-              status: "installing",
-              eventType: "reinstall_required",
-              targetId: target.id,
-              detail: { reason: "lockfile-changed" },
-            });
-            addWsLog(st, "⚠ Lockfile changed — reinstalling dependencies");
-          }
-        }
-      } else {
-        // No snapshot yet — first run, readiness is clean
-        st.readiness = { configuration: "ready", dependencies: "ready", classification: "current" };
-      }
-
-      // ── 1. Install dependencies ──────────────────────────────────────────────
-      //
-      // For monorepo sub-targets (workDir ≠ workspaceDir), install must run at
-      // the repo root so workspace symlinks resolve correctly. For standalone
-      // targets (workingDirectory is "."), install directly in workDir.
-      const installDir = (workDir !== workspaceDir) ? workspaceDir : workDir;
-      const nmPath = path.join(installDir, "node_modules");
-      const pkgJsonPath = path.join(installDir, "package.json");
-      let needsInstall = !existsSync(nmPath);
-      if (!needsInstall) {
-        try {
-          const [pkgStat, nmStat] = await Promise.all([
-            fsPromises.stat(pkgJsonPath),
-            fsPromises.stat(nmPath),
-          ]);
-          if (pkgStat.mtimeMs > nmStat.mtimeMs) {
-            needsInstall = true;
-            addWsLog(st, "package.json updated — reinstalling dependencies…");
-          }
-        } catch { /* stat failure — proceed without reinstall */ }
-      }
-
-      if (needsInstall) {
-        if (st.runGen !== myGen) return;
-        // Use the classified installCommand directly — it already encodes the
-        // right package manager and flags (e.g. "pnpm install", "npm install").
-        const installCmd = target.installCommand || `${detectPackageManager(installDir)} install`;
-        addWsLog(st, `Installing: ${installCmd}…`);
-
-        // Race install against a 5-minute hard timeout
-        const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
-        const installResult = await Promise.race([
-          new Promise<{ ok: boolean; output: string }>((resolve) => {
-            const chunks: string[] = [];
-            const installProc = spawn(installCmd, [], {
-              cwd: installDir, shell: true,
-              env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
-            });
-            const onInstData = (d: Buffer) => {
-              const s = d.toString().slice(0, 2048);
-              chunks.push(s);
-              addWsLog(st, s);
-            };
-            installProc.stdout?.on("data", onInstData);
-            installProc.stderr?.on("data", onInstData);
-            installProc.on("exit", (code) => resolve({ ok: code === 0, output: chunks.join("") }));
-            installProc.on("error", (e) => resolve({ ok: false, output: e.message }));
-          }),
-          new Promise<{ ok: boolean; output: string }>((resolve) =>
-            setTimeout(() => resolve({ ok: false, output: "Installation timed out after 5 minutes" }), INSTALL_TIMEOUT_MS)
-          ),
-        ]);
-
-        if (st.runGen !== myGen) return;
-        if (!installResult.ok) {
-          throw new Error(`Dependency install failed.\nLast output:\n${installResult.output.slice(-600)}`);
-        }
-        addWsLog(st, "✓ Dependencies installed");
-        // Readiness: dependencies are fresh after a completed install
-        st.readiness.dependencies = "ready";
-        transitionRuntime(projectId, st, {
-          status: "installing",
-          eventType: "install_completed",
-          targetId: target.id,
-          detail: {},
-        });
-      }
-
-      if (st.runGen !== myGen) return;
-
-      // ── 2. Allocate a port and start the dev server ──────────────────────────
-      transitionRuntime(projectId, st, {
-        status: "starting",
-        eventType: "start_requested",
-        targetId: target.id,
-        detail: { framework: target.framework },
-      });
-      const port = await allocateFreePort();
-
-      // Build the command string — Vite needs --host + --port to bind to the
-      // allocated port and accept proxied traffic from outside localhost.
-      // Only server-controlled values (port number from allocateFreePort) enter
-      // the command string — no client-provided strings are interpolated here.
-      const isVite = /vite/i.test(target.framework) || target.startCommand.toLowerCase().includes("vite");
-      const rawCmd = isVite
-        ? `${target.startCommand} -- --host 0.0.0.0 --port ${port}`
-        : target.startCommand;
-
-      addWsLog(st, `Starting: ${rawCmd} (port ${port})…`);
-
-      // Spawn with detached:true so the child leads its own process group.
-      // On kill we send SIGTERM to -pid (the entire group) rather than just
-      // the shell wrapper, ensuring child processes (e.g. Node) also exit.
-      const proc = spawn(rawCmd, [], {
-        cwd: workDir,
-        shell: true,
-        detached: true,
-        env: {
-          // Deliberate precedence order — no accidental spread:
-          //   1. System base environment (PATH, HOME, etc.)
-          //   2. Forced/sanitized overrides
-          //   3. Classifier-approved user env (lower precedence)
-          //   4. Server-resolved binding env (higher precedence — overrides user-supplied)
-          //   5. Protected runtime keys that must never be overridden (PORT, HOST)
-          ...process.env,
-          FORCE_COLOR: "0",
-          NO_COLOR: "1",
-          ...safeEnv,           // = safeUserEnv merged with resolvedBindingEnv (bindings win)
-          PORT: String(port),   // always server-controlled — must come after safeEnv
-          HOST: "0.0.0.0",      // always server-controlled — must come after safeEnv
-        },
-      });
-      st.proc = proc;
-
-      // ── markVerified: called once when the port accepts an HTTP connection ─────
-      // Status transitions synchronously; snapshot computation is fire-and-forget
-      // so it never delays the "running" signal the frontend polls for.
-      const markVerified = (livePort: number) => {
-        if (st.runGen !== myGen) return;
-        clearTimeout(portFallbackTimer);
-        st.port = livePort;
-        st.startedAt = new Date();
-        st.verifiedTargetId = target.id;
-        st.verifiedAt = new Date();
-        st.lastVerifiedTargetId = target.id;
-        st.lastVerifiedAt = st.verifiedAt;
-        st.readiness.configuration = "ready";
-        st.readiness.classification = "current";
-        transitionRuntime(projectId, st, {
-          status: "running",
-          eventType: "runtime_connected",
-          targetId: target.id,
-          detail: { port: livePort, framework: target.framework },
-        });
-        addWsLog(st, `✓ Connected — ${target.id} accepted HTTP on port ${livePort} · ${target.framework}`);
-        logger.info({ projectId, port: livePort, targetId: target.id, framework: target.framework }, "Runtime verification complete");
-        // Build and store the verification snapshot + launch recipe asynchronously (Phase 5C).
-        // Does not block the "running" signal — fires after status is already set.
-        computeStructuralFileHashes(workDir).then((structuralHashes) => {
-          if (st.runGen !== myGen || st.verifiedTargetId !== target.id) return;
-          const classificationHash = computeClassificationHash(target);
-          const installFingerprint =
-            structuralHashes["pnpm-lock.yaml"] ??
-            structuralHashes["package-lock.json"] ??
-            structuralHashes["yarn.lock"] ??
-            "";
-          st.verificationSnapshot = {
-            targetId: target.id,
-            classificationHash,
-            requiredEnvKeys: Object.keys(safeEnv),
-            serviceBindingIds: serviceBindingIds ?? [],
-            installFingerprint,
-            structuralFileHashes: structuralHashes,
-            verifiedAt: (st.verifiedAt ?? new Date()).toISOString(),
-          };
-          // Safe restart recipe — no secrets; binding IDs used for server-resolved creds.
-          // approvedPublicEnv stores only env var names the classifier declared
-          // for this target (values already accepted by the allowlist filter).
-          st.launchRecipe = {
-            targetId: target.id,
-            serviceBindingIds: serviceBindingIds ?? [],
-            approvedPublicEnv: { ...safeEnv },
-            classificationHash,
-            installFingerprint,
-            updatedAt: new Date().toISOString(),
-          };
-          // Persist recipe alongside port/pid so it survives API server restarts.
-          wsSaveState(projectId, livePort, proc.pid ?? undefined, target.id, target.id, st.launchRecipe);
-        }).catch((err: unknown) => {
-          logger.warn({ err, projectId }, "markVerified: snapshot/recipe computation failed — recipe not persisted");
-        });
-      };
-
-      // ── 3. Port detection: watch stdout, fall back to probing ────────────────
-      const portFallbackTimer = setTimeout(async () => {
-        if (st.runGen !== myGen || st.status !== "starting" || !st.proc) return;
-        addWsLog(st, "Port not announced in stdout — probing common ports…");
-        const found = await pollForPort(
-          [port, 5173, 3000, 4173, 8000, 4000].filter(p => p !== OWN_PORT)
-        );
-        if (st.runGen !== myGen) return;
-        if (found && st.status === "starting") {
-          markVerified(found);
-        } else if (st.status === "starting") {
-          // One more attempt after an additional 30s
-          setTimeout(async () => {
-            if (st.runGen !== myGen || st.status !== "starting") return;
-            const found2 = await pollForPort([port, 3000, 5173].filter(p => p !== OWN_PORT));
-            if (found2) {
-              markVerified(found2);
-            } else {
-              const timeoutMsg = "Dev server started but no port responded after 75s. Check if required environment variables are missing (e.g. DATABASE_URL, auth keys).";
-              transitionRuntime(projectId, st, {
-                status: "error",
-                eventType: "runtime_error",
-                targetId: target.id,
-                detail: { reason: "port-timeout", durationMs: 75_000 },
-              });
-              st.errorMsg = timeoutMsg;
-              addWsLog(st, "✗ No running port found after timeout");
-            }
-          }, 30_000);
-        }
-      }, 45_000);
-
-      const onData = (d: Buffer) => {
-        if (st.runGen !== myGen) return;
-        const line = scrubLine(d.toString());
-        addWsLog(st, line);
-        if (st.status !== "running") {
-          const detected = detectPort(line);
-          if (detected) markVerified(detected);
-        }
-      };
-      proc.stdout?.on("data", onData);
-      proc.stderr?.on("data", onData);
-
-      // ── 5B: Intent-aware exit handler ─────────────────────────────────────────
-      // The primary question is: did Atlas request this process to stop?
-      // Exit code and signal are supporting evidence, not the primary signal.
-      proc.on("exit", (code, signal) => {
-        if (st.runGen !== myGen) return;
-        clearTimeout(portFallbackTimer);
-        const reason = st.pendingStopReason;
-        st.pendingStopReason = null;
-        // Preserve historical verification before clearing current state
-        if (st.verifiedTargetId) {
-          st.lastVerifiedTargetId = st.verifiedTargetId;
-          st.lastVerifiedAt = st.verifiedAt;
-        }
-
-        if (reason === "user") {
-          // Explicit user-initiated stop — always "stopped"
-          transitionRuntime(projectId, st, {
-            status: "stopped",
-            eventType: "runtime_stopped",
-            targetId: target.id,
-            detail: { exitCode: code, signal, reason: "user" },
-          });
-          addWsLog(st, "■ Stopped by user");
-          wsDeleteState(projectId);
-        } else if (reason === "restart") {
-          // Atlas-initiated restart — new run IIFE takes over; leave state to it
-          addWsLog(st, "↺ Restarting…");
-        } else if (reason === "replacement") {
-          // Old process killed because a new /run call was made — new IIFE owns state
-          // No log needed — new run will emit its own events
-        } else {
-          // No intent recorded — process exited on its own.
-          // Distinguish startup failure (never connected) from runtime crash (was connected).
-          //   - wasConnected = true  → crash: "App crashed"
-          //   - wasConnected = false → error: "App could not start"
-          // A process that exits with code 0 without having connected is also a startup error.
-          const wasConnected = st.verifiedTargetId === target.id;
-          if (wasConnected) {
-            const crashMsg = signal
-              ? `App crashed (signal ${signal}). Check logs for details.`
-              : `App exited unexpectedly (code ${code ?? "unknown"}). Check logs for details.`;
-            transitionRuntime(projectId, st, {
-              status: "crashed",
-              eventType: "runtime_crashed",
-              targetId: target.id,
-              detail: { exitCode: code, signal, wasConnected: true },
-            });
-            st.errorMsg = crashMsg;
-            addWsLog(st, `✗ Crashed (${signal ?? `code ${code}`})`);
-          } else {
-            // Never reached the connected state — startup failure, not a crash.
-            const errMsg = signal
-              ? `App exited before accepting connections (signal ${signal}).`
-              : code === 0
-                ? "App exited cleanly before accepting connections. Missing start script?"
-                : `App failed to start (exit code ${code ?? "unknown"}).`;
-            transitionRuntime(projectId, st, {
-              status: "error",
-              eventType: "runtime_error",
-              targetId: target.id,
-              detail: { exitCode: code, signal, wasConnected: false, reason: "startup-failure" },
-            });
-            st.errorMsg = errMsg;
-            addWsLog(st, `✗ Startup failure (${signal ?? `code ${code}`})`);
-          }
-          wsDeleteState(projectId);
-        }
-
-        st.verifiedTargetId = null;
-        st.verifiedAt = null;
-        st.proc = null;
-      });
-
-    } catch (err: unknown) {
-      if (st.runGen !== myGen) return;
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      transitionRuntime(projectId, st, {
-        status: "error",
-        eventType: "runtime_error",
-        targetId: target?.id ?? null,
-        detail: { message: msg.slice(0, 500) },
-      });
-      st.errorMsg = msg;
-      addWsLog(st, `Error: ${msg}`);
-      logger.error({ err, projectId }, "Runtime verification failed");
-    }
-  })();
+  // Fire-and-forget — response already sent; client polls /status.
+  executeWorkspaceRuntime({
+    projectId, userId, st, target, workspaceDir,
+    safeEnv,
+    serviceBindingIds: serviceBindingIds ?? [],
+    requestedBy: "run",
+  });
 });
 
 router.use("/devserver/workspace/:projectId/proxy", (req, res): void => {

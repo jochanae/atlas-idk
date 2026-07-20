@@ -43,15 +43,6 @@ export interface RuntimeCardData {
   };
 }
 
-interface RuntimeLaunchRecipe {
-  targetId: string;
-  serviceBindingIds: string[];
-  approvedPublicEnv: Record<string, string>;
-  classificationHash: string;
-  installFingerprint: string;
-  updatedAt: string;
-}
-
 interface DevServerStatus {
   status: string;
   port?: number | null;
@@ -67,7 +58,7 @@ interface DevServerStatus {
     dependencies: "ready" | "reinstall-required";
     classification: "current" | "stale";
   };
-  launchRecipe?: RuntimeLaunchRecipe | null;
+  hasLaunchRecipe?: boolean;
 }
 
 interface RuntimeEvent {
