@@ -674,6 +674,12 @@ function stepColor(verb: string): string {
     MILESTONE_DESIGN:       "rgba(170,130,230,0.90)",
     MILESTONE_PLAN:         "rgba(200,180,140,0.90)",
     ARTIFACT_GENERATED:     "rgba(180,200,120,0.90)",
+    ATTACHMENT_RECEIVED:    "rgba(140,180,220,0.85)",
+    IMAGE_ANALYZED:         "rgba(170,200,140,0.90)",
+    DOCUMENT_ANALYZED:      "rgba(170,200,140,0.90)",
+    ATTACHMENT_UNSUPPORTED: "rgba(220,140,90,0.90)",
+    ATLAS_THINKING:         "rgba(147,130,220,0.80)",
+    RESPONSE_GENERATED:     "rgba(100,200,120,0.90)",
   };
   return MAP[verb] ?? "rgba(180,180,180,0.75)";
 }
