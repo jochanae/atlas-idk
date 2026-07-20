@@ -5386,7 +5386,7 @@ export default function Home() {
 
 
 
-              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceVisible) && !askAtlasConversationActive && (
+              {!hasInput && !inputFocused && !hasAttachments && !showOverviewSheet && (nexusChat.messages.length === 0 || askAtlasSurfaceVisible) && !askAtlasConversationActive && (
                 <div
                   className="atlas-prompt-settle"
                   style={{
