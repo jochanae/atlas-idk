@@ -4,6 +4,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 import "../styles.css";
 import NotFound from "@/pages/not-found";
@@ -27,6 +29,18 @@ export const Route = createRootRoute({
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const msg = (e as CustomEvent<{ msg: string }>).detail?.msg ?? "";
+      toast("A module failed to load — retrying automatically.", {
+        description: msg ? `Module: ${msg.slice(0, 80)}` : undefined,
+        duration: 5000,
+      });
+    };
+    window.addEventListener("atlas-chunk-error", handler);
+    return () => window.removeEventListener("atlas-chunk-error", handler);
+  }, []);
+
   return (
     <html lang="en" style={{ background: "#0D0B09" }}>
       <head>
@@ -36,7 +50,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
           dangerouslySetInnerHTML={{
             __html: `(function(){
   var KEY='__atlas_chunk_reload__';
-  var RX=/Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Unable to preload CSS|Loading chunk \\\\d+ failed|Loading CSS chunk/i;
+  var RX=/Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Unable to preload CSS|Loading chunk \\d+ failed|Loading CSS chunk/i;
   // Track the last time the page returned to foreground so we can suppress
   // spurious chunk-load reloads that happen right as the HMR WS reconnects.
   var lastVis=0;
@@ -59,29 +73,29 @@ function RootShell({ children }: { children: React.ReactNode }) {
       }
     }catch(_){ }
   }
-  function reload(msg){
+  function handleChunkError(msg){
     try{
       if(!msg||!RX.test(String(msg)))return false;
-      // Suppress for 8 s after returning from a background tab — HMR WS needs
+      // Suppress for 30 s after returning from a background tab — HMR WS needs
       // time to reconnect; the lazy retry in App.tsx will recover without a reload.
       if(Date.now()-lastVis<30000)return false;
-      var last=Number(sessionStorage.getItem(KEY)||0);
-      if(Date.now()-last<60000)return false;
-      sessionStorage.setItem(KEY,String(Date.now()));
       clearRuntimeCaches();
       _adbg('chunk_error_reload',{msg:String(msg).slice(0,120)});
-      location.reload();
+      // Dispatch to React layer so a toast is shown instead of a hard reload.
+      // A hard reload during an active file upload kills the upload — the lazy
+      // retry mechanism in App.tsx handles module recovery silently.
+      window.dispatchEvent(new CustomEvent('atlas-chunk-error',{detail:{msg:String(msg).slice(0,80)}}));
       return true;
     }catch(_){return false;}
   }
   window.addEventListener('error',function(e){
     var m=e&&(e.message||(e.error&&e.error.message));
-    if(reload(m)){e.preventDefault&&e.preventDefault();}
+    if(handleChunkError(m)){e.preventDefault&&e.preventDefault();}
   },true);
   window.addEventListener('unhandledrejection',function(e){
     var r=e&&e.reason;
     var m=r&&(r.message||String(r));
-    if(reload(m)){e.preventDefault&&e.preventDefault();}
+    if(handleChunkError(m)){e.preventDefault&&e.preventDefault();}
   });
   // beforeunload fires for EVERY reload and navigation — even Vite HMR's own
   // location.reload().  Logged to localStorage so the NEXT page load can read it.

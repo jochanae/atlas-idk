@@ -7482,10 +7482,11 @@ export default function Workspace() {
       const text = input.trim();
       // Gate checked against canSend — draft is only cleared after this passes.
       // Block while uploads are in flight so Send never races incomplete files.
-      if (
-        workspaceSendInFlightRef.current ||
-        !atlasConv.canSend
-      ) {
+      if (workspaceSendInFlightRef.current) {
+        return;
+      }
+      if (!atlasConv.canSend) {
+        toast("Atlas is still working on your last message.");
         return;
       }
       if (staged.isUploading) {
@@ -7505,7 +7506,7 @@ export default function Workspace() {
       // Files remain "converting" during async work; transition to "sending" once send() returns
       // (optimistic message owns the data), then cleared on confirmed stream success (onClearSent)
       // or restored to "ready" on transport failure (onRestoreToReady).
-      void atlasConv.submit({
+      atlasConv.submit({
         text,
         stagedAttachments: staged.readyFiles,
         onMarkConverting: staged.markConverting,
@@ -7513,6 +7514,11 @@ export default function Workspace() {
         onMarkFailed: staged.markFailed,
         onRestoreToReady: staged.restoreToReady,
         onClearSent: staged.clearSent,
+      }).then((result) => {
+        if (!result.ok && result.error?.code !== "STREAM_BUSY") {
+          const msg = result.error?.message ?? "Couldn't send — tap again to retry.";
+          toast.error(msg);
+        }
       }).finally(() => {
         workspaceSendInFlightRef.current = false;
       });
