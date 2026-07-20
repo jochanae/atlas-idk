@@ -6106,6 +6106,7 @@ export default function Workspace() {
   // Subscribers (WorkspaceRunCard, ViewChangesPanel) invalidate their own queries.
   const chatPendingRef = useRef(chatPending);
   const workspaceSendInFlightRef = useRef(false);
+  const workspaceSendAfterUploadRef = useRef(false);
   useEffect(() => {
     const prev = chatPendingRef.current;
     chatPendingRef.current = chatPending;
@@ -7474,10 +7475,14 @@ export default function Workspace() {
       // Block while uploads are in flight so Send never races incomplete files.
       if (
         workspaceSendInFlightRef.current ||
-        staged.isUploading ||
         (!text && staged.readyFiles.length === 0) ||
         !atlasConv.canSend
       ) {
+        return;
+      }
+      if (staged.isUploading) {
+        workspaceSendAfterUploadRef.current = true;
+        toast("Attachment is still uploading — sending when ready.");
         return;
       }
       workspaceSendInFlightRef.current = true;
@@ -7570,6 +7575,23 @@ export default function Workspace() {
 
     doSend(fullText, sid, current, combinedCtx, urlAttachment ? [urlAttachment] : undefined, sendOpts);
   };
+
+  useEffect(() => {
+    if (!useNexusWorkspaceChat) return;
+    if (!workspaceSendAfterUploadRef.current) return;
+    if (staged.isUploading) return;
+
+    workspaceSendAfterUploadRef.current = false;
+    if (input.trim() || staged.readyFiles.length > 0) {
+      void handleSend();
+      return;
+    }
+
+    if (staged.failedFiles.length > 0) {
+      toast.error("Attachment upload failed. Tap Retry on the file chip.");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useNexusWorkspaceChat, staged.isUploading, staged.readyFiles.length, staged.failedFiles.length, input]);
 
   const doSendFromComposer = useCallback((...args: Parameters<typeof doSend>) => {
     if (atlasGreeting) setAtlasGreeting(null);
