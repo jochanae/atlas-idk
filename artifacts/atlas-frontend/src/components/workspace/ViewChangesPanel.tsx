@@ -703,6 +703,12 @@ function stepLabel(verb: string, detail?: string | null): string {
     MILESTONE_DESIGN:       "Design milestone",
     MILESTONE_PLAN:         "Implementation plan",
     ARTIFACT_GENERATED:     "Artifact created",
+    ATTACHMENT_RECEIVED:    "Attachment received",
+    IMAGE_ANALYZED:         "Image analyzed",
+    DOCUMENT_ANALYZED:      "Document analyzed",
+    ATTACHMENT_UNSUPPORTED: "Unsupported attachment",
+    ATLAS_THINKING:         "Atlas thinking",
+    RESPONSE_GENERATED:     "Response generated",
   };
   return MAP[verb] ?? verb;
 }
