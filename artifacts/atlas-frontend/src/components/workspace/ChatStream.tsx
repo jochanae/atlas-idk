@@ -633,13 +633,39 @@ export function ChatStream(props: ChatStreamProps) {
     return (best as { ts: number; key: string } | null)?.key ?? null;
   }, [activityByAnchor]);
 
+  // Global index for each activity event — matches the tlIndex domain used by
+  // the TimelineRail (offset by 100_000) so commit/session cards receive their
+  // own date dots and participate in the shared chronological rail.
+  const activityGlobalIdx = useMemo(() => {
+    const m = new Map<WorkspaceActivityItem, number>();
+    (activityEvents ?? []).forEach((ev, i) => m.set(ev, i));
+    return m;
+  }, [activityEvents]);
+
+  const anchorAttrs = (ev: WorkspaceActivityItem) => {
+    const g = activityGlobalIdx.get(ev) ?? -1;
+    return {
+      "data-timeline-index": g >= 0 ? String(100_000 + g) : undefined,
+      "data-timeline-kind": ev.type,
+      "data-timeline-id": ev.id != null ? String(ev.id) : ev.sha ?? undefined,
+      "data-timeline-timestamp": ev.timestamp,
+      "data-timeline-project-id": String(ev.projectId),
+    } as Record<string, string | undefined>;
+  };
+
+  const wrapAnchor = (ev: WorkspaceActivityItem, key: string, node: ReactNode) => (
+    <div key={key} {...anchorAttrs(ev)}>{node}</div>
+  );
+
   const renderActivityForAnchor = (anchor: number) => {
     const evs = activityByAnchor.get(anchor);
     if (!evs || evs.length === 0) return null;
     const latestFor = (k: number) => latestCommitKey === `${anchor}:${k}`;
     if (!isMobile) {
-      return evs.map((ev, k) => (
-        <SystemActivityCard key={`act-${anchor}-${k}`} item={ev} isLatest={latestFor(k)} />
+      return evs.map((ev, k) => wrapAnchor(
+        ev,
+        `act-${anchor}-${k}`,
+        <SystemActivityCard item={ev} isLatest={latestFor(k)} />,
       ));
     }
     // Mobile: render important immediately, batch consecutive quiet.
@@ -647,14 +673,14 @@ export function ChatStream(props: ChatStreamProps) {
     let buf: WorkspaceActivityItem[] = [];
     const flush = (key: string) => {
       if (buf.length === 0) return;
-      if (buf.length === 1) out.push(<SystemActivityCard key={key} item={buf[0]} />);
+      if (buf.length === 1) out.push(wrapAnchor(buf[0], key, <SystemActivityCard item={buf[0]} />));
       else out.push(<BatchedActivityCard key={key} items={buf} />);
       buf = [];
     };
     evs.forEach((ev, k) => {
       if (classifyActivity(ev) === "important") {
         flush(`act-${anchor}-b-${k}`);
-        out.push(<SystemActivityCard key={`act-${anchor}-${k}`} item={ev} isLatest={latestFor(k)} />);
+        out.push(wrapAnchor(ev, `act-${anchor}-${k}`, <SystemActivityCard item={ev} isLatest={latestFor(k)} />));
       } else {
         buf.push(ev);
       }
