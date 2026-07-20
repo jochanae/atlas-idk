@@ -366,6 +366,28 @@ export function ChatComposer(props: ChatComposerProps) {
   const isParchment = useThemeMode() === "parchment";
   const composerShellRef = useRef<HTMLDivElement | null>(null);
 
+  // Mobile keyboard inset — lifts the expanded sheet above the on-screen
+  // keyboard so the action bar (attach/mic/send) stays visible while typing.
+  // `position: fixed; bottom: 0` anchors to the layout viewport, which the
+  // keyboard slides over; visualViewport gives us the true visible bottom.
+  const [kbInset, setKbInset] = useState(0);
+  useEffect(() => {
+    if (!isMobile) return;
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const update = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKbInset(inset);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [isMobile]);
+
   useEffect(() => {
     const root = document.documentElement;
     const apply = () => {
@@ -451,8 +473,8 @@ export function ChatComposer(props: ChatComposerProps) {
           padding: "18px 16px 20px",
           flexShrink: 0,
           position: "fixed",
-          left: 0, right: 0, bottom: 0,
-          height: "60vh",
+          left: 0, right: 0, bottom: kbInset,
+          height: kbInset > 0 ? `min(60vh, calc(100dvh - ${kbInset}px - 16px))` : "60vh",
           zIndex: 60,
           display: "flex", flexDirection: "column",
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
