@@ -300,8 +300,7 @@ export function TimelineRail({
   }, [messages]);
 
   const scrollTo = (idx: number) => {
-    const el = document.querySelector<HTMLElement>(`[data-msg-idx="${idx}"]`);
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    findAnchor(idx)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const matchedDateKeys = new Set<string>();
