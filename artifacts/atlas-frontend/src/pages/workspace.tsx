@@ -7401,6 +7401,7 @@ export default function Workspace() {
   useSmartAutoScroll(chatPanelScrollRef, [messages.length, chatPending], {
     forceDeps: [userMsgCount],
     behavior: "auto",
+    primeKey: project?.id ?? null,
   });
   useEffect(() => {
     if (!chatPending && streamingContentLength === 0) return;
