@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 export type ActivityItem = {
-  id?: number;
+  /** Durable rows are numeric; in-memory ring-buffer verbs may be strings. */
+  id?: number | string;
   type:
     | "commit"
     | "decision"

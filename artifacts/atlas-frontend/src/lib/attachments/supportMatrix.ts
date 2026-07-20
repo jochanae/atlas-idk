@@ -105,8 +105,8 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ],
     kind: "document",
-    capability: "storage_only",
-    statusLabel: "Stored — Atlas can't read this file type yet",
+    capability: "model_use",
+    statusLabel: "Ready for Atlas",
   },
   {
     id: "pptx",
@@ -116,8 +116,8 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ],
     kind: "presentation",
-    capability: "storage_only",
-    statusLabel: "Stored — Atlas can't read this file type yet",
+    capability: "model_use",
+    statusLabel: "Ready for Atlas",
   },
   {
     id: "xlsx",
@@ -127,8 +127,8 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ],
     kind: "spreadsheet",
-    capability: "storage_only",
-    statusLabel: "Stored — Atlas can't read this file type yet",
+    capability: "model_use",
+    statusLabel: "Ready for Atlas",
   },
   {
     id: "csv",
@@ -136,8 +136,8 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     extensions: ["csv"],
     mimeTypes: ["text/csv", "application/csv"],
     kind: "spreadsheet",
-    capability: "storage_only",
-    statusLabel: "Stored — Atlas can't read this file type yet",
+    capability: "model_use",
+    statusLabel: "Ready for Atlas",
   },
   {
     id: "zip",

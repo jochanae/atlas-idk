@@ -35,6 +35,7 @@ import {
   responseGeneratedSubtitle,
   unsupportedAttachmentReason,
 } from "../lib/workspaceActivity";
+import { listAttachmentActivitiesForProjects } from "../lib/attachmentActivity";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
@@ -2459,6 +2460,8 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     name?: string;
     asText?: boolean;
     textContent?: string;
+    /** Extracted/rasterized images (e.g. PPTX slide PNGs) to inject alongside text. */
+    images?: Array<{ base64: string; mediaType: string; name?: string }>;
     /** Propagated from the client for B3.2 durable persistence idempotency. */
     clientAttachmentId?: string;
     /** Propagated from the client for accurate storage sizing. */
@@ -2482,9 +2485,14 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   }> = [];
   if (attachmentIds.length > 0) {
     try {
+      const resolveProjectId =
+        Number.isInteger(body.projectId) && Number(body.projectId) > 0
+          ? Number(body.projectId)
+          : null;
       const { resolved, skipped } = await resolveAttachmentIdsForModel({
         userId,
         attachmentIds,
+        projectId: resolveProjectId,
       });
       skippedAttachmentIdPayloads = skipped;
       if (skipped.length > 0) {
@@ -2499,6 +2507,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         name: att.name,
         asText: att.asText,
         textContent: att.textContent,
+        images: att.images,
       }));
       // Preserve full metadata (including attachmentId) for the per-attachment
       // output guard. ModelAttachment intentionally drops attachmentId.
@@ -6485,6 +6494,12 @@ Do NOT claim to read, see, or describe any file not listed here.
         geminiParts.push({
           text: `\n\nAttached file: ${att.name ?? "file"}\n\n${att.textContent}`,
         });
+        for (const img of att.images ?? []) {
+          geminiParts.push({
+            inlineData: { mimeType: img.mediaType, data: img.base64 },
+          });
+          geminiInlineCount += 1;
+        }
       } else if (att.mediaType.startsWith("image/") || att.mediaType === "application/pdf") {
         geminiParts.push({
           inlineData: { mimeType: att.mediaType, data: att.base64 },
@@ -6609,7 +6624,8 @@ Do NOT claim to read, see, or describe any file not listed here.
       s.reason === "download_failed" ||
       s.reason === "not_found_or_forbidden" ||
       s.reason === "not_uploaded" ||
-      s.reason === "expired",
+      s.reason === "expired" ||
+      s.reason.startsWith("extraction_failed"),
   );
   if (storageOnlySkips.length > 0) {
     const lines = storageOnlySkips.map((s) => {
@@ -6620,7 +6636,9 @@ Do NOT claim to read, see, or describe any file not listed here.
           ? "uploaded but could not be loaded from storage for this turn"
           : s.reason === "not_found_or_forbidden" || s.reason === "not_uploaded" || s.reason === "expired"
             ? `unavailable (${s.reason})`
-            : "stored with the message, but Atlas cannot read this file type yet";
+            : s.reason.startsWith("extraction_failed")
+              ? `attached, but extraction failed (${s.reason.replace(/^extraction_failed:\s*/, "")})`
+              : "stored with the message, but Atlas cannot read this file type yet";
       return `- ${name}${mime}: ${detail}`;
     });
     contentParts.push({
@@ -6640,6 +6658,17 @@ Do NOT claim to read, see, or describe any file not listed here.
         type: "text",
         text: `Attached file: ${att.name ?? "file"}\n\n${att.textContent}`,
       });
+      for (const img of att.images ?? []) {
+        if (img.base64.length > MAX_USER_ATT_B64_SIZE) continue;
+        contentParts.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+            data: img.base64,
+          },
+        } as VaultBlock);
+      }
       continue;
     }
     if (att.base64.length > MAX_USER_ATT_B64_SIZE) {
@@ -8219,7 +8248,8 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
   const projectNameById = new Map(projects.map(p => [p.id, p.name]));
 
   type ActivityItem = {
-    id?: number;
+    /** Durable rows use numeric ids; in-memory ring-buffer verbs use string ids. */
+    id?: number | string;
     type:
       | "commit"
       | "decision"
@@ -8355,6 +8385,38 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
       ...(a.attachmentName ? { attachmentName: a.attachmentName } : {}),
       ...(a.reason ? { reason: a.reason } : {}),
     });
+  }
+
+  // Same-process ring buffer (resolve/extract may have just written; durable
+  // dual-write is async). Dedupe by id against durable numeric rows and prior
+  // ring ids already pushed.
+  const seenIds = new Set(
+    items.map((it) => (it.id != null ? String(it.id) : "")).filter(Boolean),
+  );
+  // Also key durable events by type+attachmentName so ring-buffer string ids
+  // that dual-wrote under the same logical key don't appear twice.
+  const seenLogical = new Set(
+    items
+      .filter((it) => it.attachmentName)
+      .map((it) => `${it.type}:${it.attachmentName}`),
+  );
+  for (const a of listAttachmentActivitiesForProjects(userId, projectIds)) {
+    if (seenIds.has(a.id)) continue;
+    const logical = a.attachmentName ? `${a.type}:${a.attachmentName}` : null;
+    if (logical && seenLogical.has(logical)) continue;
+    items.push({
+      type: a.type,
+      projectId: a.projectId,
+      projectName: a.projectName ?? projectNameById.get(a.projectId) ?? "Unknown",
+      title: a.title,
+      subtitle: a.subtitle,
+      timestamp: a.timestamp,
+      id: a.id,
+      attachmentName: a.attachmentName,
+      reason: a.reason,
+    });
+    seenIds.add(a.id);
+    if (logical) seenLogical.add(logical);
   }
 
   items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());

@@ -14,14 +14,6 @@ describe("classifyAttachment", () => {
     ["text/plain", "notes.txt", "text"],
     ["text/markdown", "readme.md", "text"],
     ["application/octet-stream", "readme.markdown", "text"],
-  ])("marks %s/%s understood", (mimeType, filename, kind) => {
-    expect(classifyAttachment(mimeType, filename)).toEqual({
-      kind,
-      processingStatus: "understood",
-    });
-  });
-
-  it.each([
     [
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "doc.docx",
@@ -39,6 +31,14 @@ describe("classifyAttachment", () => {
     ],
     ["text/csv", "data.csv", "spreadsheet"],
     ["text/plain", "data.csv", "spreadsheet"],
+  ])("marks %s/%s understood", (mimeType, filename, kind) => {
+    expect(classifyAttachment(mimeType, filename)).toEqual({
+      kind,
+      processingStatus: "understood",
+    });
+  });
+
+  it.each([
     ["application/zip", "bundle.zip", "other"],
   ])("stores but does not understand %s/%s", (mimeType, filename, kind) => {
     expect(classifyAttachment(mimeType, filename)).toEqual({

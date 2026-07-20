@@ -78,6 +78,21 @@ export function classifyAttachmentKind(
   return "other";
 }
 
+/**
+ * Formats that are model_use via send-turn extraction (see
+ * services/attachmentExtract). Must stay in lockstep with frontend
+ * supportMatrix.ts capability = "model_use".
+ */
+function isExtractableModelUse(mime: string, name: string): boolean {
+  return (
+    DOCX_MIME.test(mime) ||
+    PPTX_MIME.test(mime) ||
+    XLSX_MIME.test(mime) ||
+    CSV_MIME.test(mime) ||
+    /\.(docx|pptx|xlsx|csv)$/i.test(name)
+  );
+}
+
 export function classifyProcessingStatus(
   kind: AttachmentKind,
   mimeType: string,
@@ -86,15 +101,16 @@ export function classifyProcessingStatus(
   const mime = (mimeType || "").trim().toLowerCase();
   const name = filename || "";
 
-  if (
-    DOCX_MIME.test(mime) ||
-    PPTX_MIME.test(mime) ||
-    XLSX_MIME.test(mime) ||
-    CSV_MIME.test(mime) ||
-    ZIP_MIME.test(mime) ||
-    /\.(docx|pptx|xlsx|csv|zip)$/i.test(name)
-  ) {
+  // ZIP remains storage-only until a nested-extract policy exists.
+  if (ZIP_MIME.test(mime) || /\.zip$/i.test(name)) {
     return "unsupported";
+  }
+
+  // PPTX / DOCX / XLSX / CSV: understood because resolve extracts text
+  // (and optional slide PNGs) before model injection. Extraction failure at
+  // send-turn downgrades the row to "failed".
+  if (isExtractableModelUse(mime, name)) {
+    return "understood";
   }
 
   if (
