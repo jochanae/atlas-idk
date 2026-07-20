@@ -1155,9 +1155,11 @@ export function ViewChangesPanel({
   useEffect(() => {
     if (!timelineRun || lensAutoSet) return;
     const hasAnyTimelineStep = timelineRun.steps.some((s) => TIMELINE_VERBS.has(s.verb));
-    if (!hasAnyTimelineStep) setLens("changes");
+    const hasLifecycleActivity = activityItems.some((a) => LIFECYCLE_ACTIVITY_TYPES.has(a.type));
+    if (!hasAnyTimelineStep && !hasLifecycleActivity) setLens("changes");
     setLensAutoSet(true);
-  }, [timelineRun, lensAutoSet]);
+  }, [timelineRun, lensAutoSet, activityItems]);
+
 
   // Reset auto-set when the viewed run changes.
   useEffect(() => {
