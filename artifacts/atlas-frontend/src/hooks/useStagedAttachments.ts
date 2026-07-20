@@ -262,6 +262,19 @@ export function useStagedAttachments(opts?: {
     [abortUpload, adapter, autoUpload, patchFile],
   );
 
+  const pendingUploadIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!autoUpload || pendingUploadIdsRef.current.size === 0) return;
+    for (const sf of files) {
+      if (!pendingUploadIdsRef.current.has(sf.id)) continue;
+      pendingUploadIdsRef.current.delete(sf.id);
+      if (sf.status === "uploading" && !sf.attachmentId) {
+        startUpload(sf.id, sf.file);
+      }
+    }
+  }, [autoUpload, files, startUpload]);
+
   const addFiles = useCallback(
     (incoming: FileList | File[] | null | undefined) => {
       if (!incoming) return;
@@ -275,8 +288,6 @@ export function useStagedAttachments(opts?: {
           size: f.size,
         })),
       });
-
-      const toUpload: Array<{ id: string; file: File }> = [];
 
       setFiles((prev) => {
         const result: StagedAttachment[] = [...prev];
@@ -428,21 +439,18 @@ export function useStagedAttachments(opts?: {
             error: null,
           };
           result.push(staged);
-          if (autoUpload) toUpload.push({ id, file });
+          if (autoUpload) pendingUploadIdsRef.current.add(id);
         }
 
         return result;
       });
 
       _adbgLog("add_files_to_upload_queue", {
-        count: toUpload.length,
-        ids: toUpload.map((i) => i.id),
+        count: pendingUploadIdsRef.current.size,
+        ids: [...pendingUploadIdsRef.current],
       });
-      for (const item of toUpload) {
-        startUpload(item.id, item.file);
-      }
     },
-    [autoUpload, maxCount, maxMessage, maxSize, startUpload],
+    [autoUpload, maxCount, maxMessage, maxSize],
   );
 
   const removeFile = useCallback((id: string) => {
