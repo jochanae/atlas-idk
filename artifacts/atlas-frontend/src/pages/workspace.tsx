@@ -4566,7 +4566,12 @@ export default function Workspace() {
   } = useComposerDraft();
   // Staged attachment controller for the Nexus send path.
   // attachedFiles is derived from staged.readyFiles so both paths share one source of truth.
-  const staged = useStagedAttachments();
+  const staged = useStagedAttachments({
+    diagnosticContext: {
+      surface: "workspace",
+      projectId: id != null ? String(id) : undefined,
+    },
+  });
   const attachedFiles = staged.readyFiles.map(sf => sf.file);
 
 

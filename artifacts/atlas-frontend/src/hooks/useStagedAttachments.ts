@@ -119,6 +119,12 @@ function revokeAll(files: StagedAttachment[]): void {
   for (const sf of files) revokeUrl(sf);
 }
 
+/** Cap parallel PUTs — 10 concurrent image uploads + IDB rewrites OOM mobile WebViews. */
+const MAX_CONCURRENT_UPLOADS = 3;
+/** Ignore progress ticks denser than this unless they jump meaningfully. */
+const PROGRESS_MIN_INTERVAL_MS = 250;
+const PROGRESS_MIN_DELTA = 0.08;
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useStagedAttachments(opts?: {
@@ -144,8 +150,12 @@ export function useStagedAttachments(opts?: {
   filesRef.current = files;
   const uploadGenRef = useRef(new Map<string, number>());
   const uploadAbortRef = useRef(new Map<string, AbortController>());
+  const uploadQueueRef = useRef<string[]>([]);
+  const activeUploadsRef = useRef(0);
+  const pumpQueueRef = useRef<() => void>(() => {});
 
   const abortUpload = useCallback((id: string) => {
+    uploadQueueRef.current = uploadQueueRef.current.filter((qid) => qid !== id);
     const controller = uploadAbortRef.current.get(id);
     if (controller) {
       try {
@@ -159,6 +169,8 @@ export function useStagedAttachments(opts?: {
 
   useEffect(() => {
     return () => {
+      uploadQueueRef.current = [];
+      activeUploadsRef.current = 0;
       for (const id of [...uploadAbortRef.current.keys()]) {
         abortUpload(id);
       }
@@ -182,14 +194,21 @@ export function useStagedAttachments(opts?: {
     [],
   );
 
-  const startUpload = useCallback(
-    (id: string, file: File) => {
-      if (!autoUpload) return;
+  const runUpload = useCallback(
+    (id: string, file: File): Promise<void> => {
+      if (!autoUpload) return Promise.resolve();
       const gen = (uploadGenRef.current.get(id) ?? 0) + 1;
       uploadGenRef.current.set(id, gen);
 
       // Cancel any in-flight PUT for this chip (retry / remount).
-      abortUpload(id);
+      const existing = uploadAbortRef.current.get(id);
+      if (existing) {
+        try {
+          existing.abort();
+        } catch {
+          /* ignore */
+        }
+      }
       const controller = new AbortController();
       uploadAbortRef.current.set(id, controller);
 
@@ -201,6 +220,8 @@ export function useStagedAttachments(opts?: {
         surface: diagCtxRef.current?.surface,
         projectId: diagCtxRef.current?.projectId,
         conversationId: diagCtxRef.current?.conversationId,
+        activeUploads: activeUploadsRef.current,
+        queued: uploadQueueRef.current.length,
       });
 
       patchFile(id, {
@@ -210,7 +231,10 @@ export function useStagedAttachments(opts?: {
         error: null,
       });
 
-      void (async () => {
+      let lastProgress = -1;
+      let lastProgressAt = 0;
+
+      return (async () => {
         try {
           _adbgLog("start_upload_request_upload", { id, gen });
           const result = await uploadAttachmentFile(file, {
@@ -218,6 +242,12 @@ export function useStagedAttachments(opts?: {
             signal: controller.signal,
             onProgress: (p) => {
               if (uploadGenRef.current.get(id) !== gen) return;
+              const now = Date.now();
+              const jumped = p - lastProgress >= PROGRESS_MIN_DELTA;
+              const due = now - lastProgressAt >= PROGRESS_MIN_INTERVAL_MS;
+              if (p < 1 && !jumped && !due) return;
+              lastProgress = p;
+              lastProgressAt = now;
               patchFile(id, { uploadProgress: p, uploadStatus: "uploading" });
             },
           });
@@ -259,7 +289,44 @@ export function useStagedAttachments(opts?: {
         }
       })();
     },
-    [abortUpload, adapter, autoUpload, patchFile],
+    [adapter, autoUpload, patchFile],
+  );
+
+  const pumpQueue = useCallback(() => {
+    if (!autoUpload) return;
+    while (
+      activeUploadsRef.current < MAX_CONCURRENT_UPLOADS &&
+      uploadQueueRef.current.length > 0
+    ) {
+      const id = uploadQueueRef.current.shift()!;
+      const sf = filesRef.current.find((f) => f.id === id);
+      if (!sf || sf.attachmentId || sf.status === "blocked") continue;
+      activeUploadsRef.current += 1;
+      void runUpload(id, sf.file).finally(() => {
+        activeUploadsRef.current = Math.max(0, activeUploadsRef.current - 1);
+        pumpQueueRef.current();
+      });
+    }
+  }, [autoUpload, runUpload]);
+  pumpQueueRef.current = pumpQueue;
+
+  const enqueueUpload = useCallback(
+    (id: string) => {
+      if (!autoUpload) return;
+      if (!uploadQueueRef.current.includes(id)) {
+        uploadQueueRef.current.push(id);
+      }
+      pumpQueue();
+    },
+    [autoUpload, pumpQueue],
+  );
+
+  const startUpload = useCallback(
+    (id: string, _file: File) => {
+      // Public entry (retry) — go through the concurrency queue.
+      enqueueUpload(id);
+    },
+    [enqueueUpload],
   );
 
   const pendingUploadIdsRef = useRef<Set<string>>(new Set());
@@ -270,10 +337,10 @@ export function useStagedAttachments(opts?: {
       if (!pendingUploadIdsRef.current.has(sf.id)) continue;
       pendingUploadIdsRef.current.delete(sf.id);
       if (sf.status === "uploading" && !sf.attachmentId) {
-        startUpload(sf.id, sf.file);
+        enqueueUpload(sf.id);
       }
     }
-  }, [autoUpload, files, startUpload]);
+  }, [autoUpload, files, enqueueUpload]);
 
   const addFiles = useCallback(
     (incoming: FileList | File[] | null | undefined) => {

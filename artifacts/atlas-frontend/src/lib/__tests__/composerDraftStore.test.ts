@@ -72,4 +72,27 @@ describe("composerDraftStore", () => {
     expect(restored.files[0]?.name).toBe("pitch.pptx");
     expect(await restored.files[0]!.text()).toBe("pptx-bytes");
   });
+
+  it("does not re-read File.arrayBuffer into IDB when membership is unchanged", async () => {
+    const file = new File(["same-bytes"], "deck.pptx", {
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      lastModified: 1_700_000_000_000,
+    });
+    const originalArrayBuffer = file.arrayBuffer.bind(file);
+    let arrayBufferCalls = 0;
+    file.arrayBuffer = async () => {
+      arrayBufferCalls += 1;
+      return originalArrayBuffer();
+    };
+
+    setAskAtlasComposerDraft({ input: "v1", files: [file] });
+    await __flushComposerDraftPersistForTests();
+    expect(arrayBufferCalls).toBe(1);
+
+    // Same membership (progress-style re-set) must not rewrite IDB blobs.
+    setAskAtlasComposerDraft({ input: "v2", files: [file] });
+    await __flushComposerDraftPersistForTests();
+    expect(arrayBufferCalls).toBe(1);
+    expect(getAskAtlasComposerDraft().input).toBe("v2");
+  });
 });

@@ -7,8 +7,51 @@
  *
  * Non-image files NEVER route through the image renderer.
  */
-import { useState, type MouseEvent, type PointerEvent } from "react";
+import {
+  Component,
+  useState,
+  type ErrorInfo,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import type { StagedAttachment } from "@/hooks/useStagedAttachments";
+
+/** Keep strip failures from blanking the whole Ask Atlas / Workspace tree. */
+class AttachmentStripBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+  componentDidCatch(err: unknown, info: ErrorInfo) {
+    try {
+      console.error("[AttachmentStrip]", err, info.componentStack);
+    } catch {
+      /* ignore */
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          role="alert"
+          style={{
+            fontSize: 11,
+            opacity: 0.65,
+            padding: "4px 0",
+            color: "var(--atlas-muted, #a8a29e)",
+          }}
+        >
+          Attachments temporarily unavailable — try removing and re-adding.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export interface AttachmentStripStagedProps {
   mode: "staged";
@@ -34,6 +77,14 @@ export type AttachmentStripProps =
   | AttachmentStripSentProps;
 
 export function AttachmentStrip(props: AttachmentStripProps) {
+  return (
+    <AttachmentStripBoundary>
+      <AttachmentStripInner {...props} />
+    </AttachmentStripBoundary>
+  );
+}
+
+function AttachmentStripInner(props: AttachmentStripProps) {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   if (props.mode === "staged") {
