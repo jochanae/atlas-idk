@@ -2805,10 +2805,18 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   const historySource = dbMessages.length > 0
     ? dbMessages.slice(-40)
     : (isInProjectAskAtlas ? [] : (conversationId ? requestHistory.slice(-40) : []));
-  const conversationHistory = historySource.map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
+  const conversationHistory = historySource
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      // Anthropic rejects user messages with empty content (e.g. image-only sends
+      // where no text was typed). Replace with a placeholder so history structure
+      // and role alternation are preserved.
+      content: (m.role === "user" && (!m.content || m.content.trim().length === 0))
+        ? "[attachment]"
+        : m.content,
+    }))
+    // Also drop any assistant messages with empty content to avoid API errors.
+    .filter((m) => m.role !== "assistant" || (m.content && m.content.trim().length > 0));
 
   // ── WhisperGate / Just-Talk — classify BEFORE prompt assembly & side effects ──
   // Must run before project-state briefing injection so greetings stay silent.
