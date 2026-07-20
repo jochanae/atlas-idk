@@ -21,13 +21,28 @@ export function useSmartAutoScroll(
     /** Set false to disable entirely (e.g. surface not open). */
     enabled?: boolean;
     behavior?: ScrollBehavior;
+    /**
+     * When this key changes, the "first-time prime to bottom" resets so the
+     * hook re-jumps to the tail (e.g. switching between projects/threads
+     * without remounting the container).
+     */
+    primeKey?: string | number | null;
   },
 ) {
   const threshold = options?.threshold ?? 80;
   const enabled = options?.enabled ?? true;
   const behavior = options?.behavior ?? "smooth";
+  const primeKey = options?.primeKey;
   const stickRef = useRef(true);
   const primedRef = useRef(false);
+  const lastPrimeKeyRef = useRef<string | number | null | undefined>(primeKey);
+
+  // Reset priming when the primeKey changes (project/thread switch).
+  if (lastPrimeKeyRef.current !== primeKey) {
+    lastPrimeKeyRef.current = primeKey;
+    primedRef.current = false;
+    stickRef.current = true;
+  }
 
   // Track user scroll position to maintain the stick flag.
   useEffect(() => {
