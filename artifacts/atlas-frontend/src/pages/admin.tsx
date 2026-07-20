@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { AttachmentDiagnosticsPanel } from "@/components/admin/AttachmentDiagnosticsPanel";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (path: string) => `${BASE}${path}`;
 
-type Tab = "overview" | "users" | "notes" | "errors";
+type Tab = "overview" | "users" | "notes" | "errors" | "devtools";
 
 interface StatsData {
   users: number;
@@ -656,7 +657,11 @@ export default function Admin() {
 
   const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+    const valid: Tab[] = ["overview", "users", "notes", "errors", "devtools"];
+    return valid.includes(hash as Tab) ? (hash as Tab) : "overview";
+  });
   const [stats, setStats] = useState<StatsData | null>(null);
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [notes, setNotes] = useState<AdminNote[] | null>(null);
@@ -691,6 +696,7 @@ export default function Admin() {
     { id: "users", label: "Users", badge: stats?.users },
     { id: "notes", label: "Notes", badge: stats?.notes },
     { id: "errors", label: "Errors", badge: stats?.unresolvedErrors },
+    { id: "devtools", label: "Dev Tools" },
   ];
 
   if (isLoading || !user) return null;
@@ -778,6 +784,7 @@ export default function Admin() {
         {tab === "users" && <UsersTab users={users} onRefresh={refresh} />}
         {tab === "notes" && <NotesTab notes={notes} onRefresh={refresh} />}
         {tab === "errors" && <ErrorsTab errors={errors} onRefresh={refresh} />}
+        {tab === "devtools" && <AttachmentDiagnosticsPanel />}
       </div>
     </div>
   );

@@ -128,12 +128,16 @@ export function useStagedAttachments(opts?: {
   adapter?: AttachmentAdapter;
   /** When false, stage only — tests that assert validation without network. */
   autoUpload?: boolean;
+  /** Diagnostic metadata injected into log events — no effect on upload behaviour. */
+  diagnosticContext?: { surface: string; projectId?: string; conversationId?: string };
 }): UseStagedAttachmentsReturn {
   const maxCount = opts?.maxCount ?? ATTACHMENT_MAX_COUNT;
   const maxSize = opts?.maxSizeBytes ?? ATTACHMENT_MAX_BYTES;
   const maxMessage = opts?.maxMessageBytes ?? ATTACHMENT_MAX_MESSAGE_BYTES;
   const adapter = opts?.adapter ?? httpAttachmentAdapter;
   const autoUpload = opts?.autoUpload !== false;
+  const diagCtxRef = useRef(opts?.diagnosticContext);
+  diagCtxRef.current = opts?.diagnosticContext;
 
   const [files, setFiles] = useState<StagedAttachment[]>([]);
   const filesRef = useRef(files);
@@ -189,7 +193,15 @@ export function useStagedAttachments(opts?: {
       const controller = new AbortController();
       uploadAbortRef.current.set(id, controller);
 
-      _adbgLog("start_upload_begin", { id, gen, name: file.name, size: file.size });
+      const _sf = filesRef.current.find((sf) => sf.id === id);
+      _adbgLog("start_upload_begin", {
+        id, gen, name: file.name, size: file.size,
+        mimeType: _sf?.mimeType ?? file.type ?? "unknown",
+        support: _sf?.capability ?? "unknown",
+        surface: diagCtxRef.current?.surface,
+        projectId: diagCtxRef.current?.projectId,
+        conversationId: diagCtxRef.current?.conversationId,
+      });
 
       patchFile(id, {
         status: "uploading",

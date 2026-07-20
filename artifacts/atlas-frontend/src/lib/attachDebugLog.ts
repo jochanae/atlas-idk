@@ -190,6 +190,166 @@ function showDebugPanel(): void {
   }
 }
 
+// ── Attempt grouping for diagnostics panel ──────────────────────────────────
+
+export type AttachmentAttempt = {
+  stagedId: string;
+  surface?: string;
+  projectId?: string;
+  conversationId?: string;
+  filename?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  supportCapability?: string;
+  requestUploadStart?: number;
+  requestUploadResult?: "ok" | "error";
+  putStart?: number;
+  putProgressLast?: number;
+  putResult?: "ok" | "error";
+  putError?: string;
+  finalizeStart?: number;
+  finalizeResult?: "ok" | "error";
+  finalizeError?: string;
+  attachmentId?: string;
+  messageSubmitTs?: number;
+  attachmentIdsCount?: number;
+  messageLinkage?: boolean;
+  modelResolutionCount?: number;
+  failureCode?: string;
+  failureMessage?: string;
+  status: "uploading" | "uploaded" | "failed" | "aborted" | "stale";
+  startTs?: string;
+  lastTs?: string;
+  durationMs?: number;
+  events: DebugEntry[];
+};
+
+export function groupAttempts(entries: DebugEntry[]): AttachmentAttempt[] {
+  const map = new Map<string, AttachmentAttempt>();
+  const order: string[] = [];
+
+  for (const entry of entries) {
+    const id = typeof entry.id === "string" ? entry.id : null;
+    if (!id) continue;
+
+    if (!map.has(id)) {
+      map.set(id, { stagedId: id, status: "uploading", events: [] });
+      order.push(id);
+    }
+
+    const a = map.get(id)!;
+    a.events.push(entry);
+    if (!a.startTs) a.startTs = entry.ts;
+    a.lastTs = entry.ts;
+
+    switch (entry.event) {
+      case "start_upload_begin":
+        if (typeof entry.name === "string") a.filename = entry.name;
+        if (typeof entry.size === "number") a.sizeBytes = entry.size;
+        if (typeof entry.mimeType === "string") a.mimeType = entry.mimeType;
+        if (typeof entry.support === "string") a.supportCapability = entry.support;
+        if (typeof entry.surface === "string") a.surface = entry.surface;
+        if (typeof entry.projectId === "string") a.projectId = entry.projectId;
+        if (typeof entry.conversationId === "string") a.conversationId = entry.conversationId;
+        break;
+      case "start_upload_request_upload":
+        a.requestUploadStart = entry.t;
+        break;
+      case "put_start":
+        a.putStart = entry.t;
+        break;
+      case "put_progress":
+        if (typeof entry.progress === "number") a.putProgressLast = entry.progress;
+        break;
+      case "put_success":
+        a.putResult = "ok";
+        if (!a.requestUploadResult) a.requestUploadResult = "ok";
+        break;
+      case "put_error":
+        a.putResult = "error";
+        if (typeof entry.message === "string") a.putError = entry.message;
+        break;
+      case "finalize_start":
+        a.finalizeStart = entry.t;
+        break;
+      case "finalize_success":
+        a.finalizeResult = "ok";
+        break;
+      case "finalize_error":
+        a.finalizeResult = "error";
+        if (typeof entry.message === "string") a.finalizeError = entry.message;
+        break;
+      case "start_upload_success":
+        if (typeof entry.attachmentId === "string") a.attachmentId = entry.attachmentId;
+        a.status = "uploaded";
+        a.requestUploadResult = "ok";
+        break;
+      case "start_upload_error":
+        if (typeof entry.message === "string") { a.failureMessage = entry.message; a.failureCode = "UPLOAD_FAILED"; }
+        a.status = "failed";
+        a.requestUploadResult = "error";
+        break;
+      case "start_upload_aborted":
+        a.status = "aborted";
+        break;
+      case "start_upload_gen_stale":
+        a.status = "stale";
+        break;
+      case "message_submit":
+        a.messageSubmitTs = entry.t;
+        if (typeof entry.attachmentIdsCount === "number") a.attachmentIdsCount = entry.attachmentIdsCount;
+        break;
+      case "message_link":
+        a.messageLinkage = true;
+        break;
+      case "model_resolve":
+        a.modelResolutionCount = (a.modelResolutionCount ?? 0) + 1;
+        break;
+    }
+  }
+
+  for (const a of map.values()) {
+    if (a.events.length >= 2) {
+      a.durationMs = (a.events[a.events.length - 1]?.t ?? 0) - (a.events[0]?.t ?? 0);
+    }
+  }
+
+  return order.map(id => map.get(id)!).reverse();
+}
+
+export function exportRedacted(attempts: AttachmentAttempt[]): string {
+  const redacted = attempts.map(a => ({
+    stagedId: a.stagedId,
+    surface: a.surface ?? null,
+    projectId: a.projectId ?? null,
+    conversationId: a.conversationId ?? null,
+    filename: a.filename ?? null,
+    mimeType: a.mimeType ?? null,
+    sizeBytes: a.sizeBytes ?? null,
+    supportCapability: a.supportCapability ?? null,
+    status: a.status,
+    requestUploadResult: a.requestUploadResult ?? null,
+    putResult: a.putResult ?? null,
+    putError: a.putError ?? null,
+    finalizeResult: a.finalizeResult ?? null,
+    finalizeError: a.finalizeError ?? null,
+    attachmentId: a.attachmentId ? "[ID REDACTED]" : null,
+    messageLinkage: a.messageLinkage ?? null,
+    modelResolutionCount: a.modelResolutionCount ?? null,
+    failureCode: a.failureCode ?? null,
+    failureMessage: a.failureMessage ?? null,
+    durationMs: a.durationMs ?? null,
+    startTs: a.startTs ?? null,
+    lastTs: a.lastTs ?? null,
+    eventCount: a.events.length,
+  }));
+  return JSON.stringify(
+    { exportedAt: new Date().toISOString(), schemaVersion: "1.0", attempts: redacted },
+    null,
+    2,
+  );
+}
+
 /** Install global console helpers so the log can be read from DevTools
  *  and trigger the on-screen panel via URL hash or direct call. */
 export function installDebugGlobals(): void {

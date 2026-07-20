@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation } from "wouter";
 import { logEvent as _adbgLog, signalPickerReturn } from "@/lib/attachDebugLog";
 import { createPortal } from "react-dom";
 import {
@@ -198,6 +199,7 @@ export function ComposerActions({
   compact = false,
   filesContext,
 }: ComposerActionsProps) {
+  const [, navigate] = useLocation();
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [moreExpanded, setMoreExpanded] = useState(false);
@@ -417,6 +419,7 @@ export function ComposerActions({
                   label="Attach"
                   icon={<Paperclip size={30} strokeWidth={1.4} />}
                   onClick={() => openNativePicker("attach", attachRef.current)}
+                  onLongPress={() => { setShowPlus(false); navigate("/admin#devtools"); }}
                 />
                 <BigNode
                   label="Files"
@@ -718,15 +721,29 @@ function BigNode({
   label,
   icon,
   onClick,
+  onLongPress,
 }: {
   label: string;
   icon: ReactNode;
   onClick: () => void;
+  onLongPress?: () => void;
 }) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const longTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longFiredRef = useRef(false);
+
+  const clearLong = () => {
+    if (longTimerRef.current) { clearTimeout(longTimerRef.current); longTimerRef.current = null; }
+  };
+
   return (
     <button
+      ref={btnRef}
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        if (longFiredRef.current) { longFiredRef.current = false; return; }
+        onClick();
+      }}
       style={{
         aspectRatio: "1 / 1",
         display: "flex",
@@ -747,12 +764,22 @@ function BigNode({
       }}
       onPointerDown={(e) => {
         e.currentTarget.style.transform = "scale(0.97)";
+        if (onLongPress) {
+          longFiredRef.current = false;
+          longTimerRef.current = setTimeout(() => {
+            longFiredRef.current = true;
+            if (btnRef.current) btnRef.current.style.transform = "scale(1)";
+            onLongPress();
+          }, 800);
+        }
       }}
       onPointerUp={(e) => {
         e.currentTarget.style.transform = "scale(1)";
+        clearLong();
       }}
       onPointerLeave={(e) => {
         e.currentTarget.style.transform = "scale(1)";
+        clearLong();
       }}
     >
       <span

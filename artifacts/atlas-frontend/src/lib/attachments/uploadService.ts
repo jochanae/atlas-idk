@@ -8,6 +8,7 @@
 import type { AttachmentAdapter } from "./adapter";
 import { httpAttachmentAdapter } from "./adapter";
 import type { PersistedAttachment } from "./types";
+import { logEvent as _adbgLog } from "@/lib/attachDebugLog";
 
 export type UploadProgressCallback = (progress: number) => void;
 
@@ -235,17 +236,35 @@ export async function uploadAttachmentFile(
 
   const { attachmentId, uploadUrl, headers } = requestResult;
   opts?.onProgress?.(0.05);
-  await putWithProgress(uploadUrl, file, headers, {
-    onProgress: (p) => {
-      // Map PUT progress into 5%..95%; finalize owns the last 5%.
-      opts?.onProgress?.(0.05 + p * 0.9);
-    },
-    signal: opts?.signal,
-  });
+  _adbgLog("put_start", { id: attachmentId });
+  try {
+    await putWithProgress(uploadUrl, file, headers, {
+      onProgress: (p) => {
+        // Map PUT progress into 5%..95%; finalize owns the last 5%.
+        opts?.onProgress?.(0.05 + p * 0.9);
+        if (p === 1 || p >= 0.5) _adbgLog("put_progress", { id: attachmentId, progress: Math.round(p * 100) / 100 });
+      },
+      signal: opts?.signal,
+    });
+  } catch (putErr) {
+    const putMsg = putErr instanceof Error ? putErr.message : "PUT failed";
+    _adbgLog("put_error", { id: attachmentId, message: putMsg });
+    throw putErr;
+  }
+  _adbgLog("put_success", { id: attachmentId });
   if (opts?.signal?.aborted) {
     throw new Error("Storage upload aborted");
   }
-  const persisted = await adapter.finalizeUpload(attachmentId);
+  _adbgLog("finalize_start", { id: attachmentId });
+  let persisted: PersistedAttachment;
+  try {
+    persisted = await adapter.finalizeUpload(attachmentId);
+  } catch (finalizeErr) {
+    const finalizeMsg = finalizeErr instanceof Error ? finalizeErr.message : "Finalize failed";
+    _adbgLog("finalize_error", { id: attachmentId, message: finalizeMsg });
+    throw finalizeErr;
+  }
+  _adbgLog("finalize_success", { id: attachmentId });
   opts?.onProgress?.(1);
   return { attachmentId, persisted };
 }
