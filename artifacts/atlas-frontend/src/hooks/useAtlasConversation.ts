@@ -61,6 +61,7 @@ import {
 } from "./useNexusChatStream";
 import type { StagedAttachment, StagedFileError } from "./useStagedAttachments";
 import { shouldIncludeAttachmentsOnSend } from "@/lib/attachments/types";
+import { logEvent as _adbgLog } from "@/lib/attachDebugLog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -276,6 +277,14 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
       ];
 
       submitInFlightRef.current = true;
+      for (const sf of readyStaged) {
+        _adbgLog("message_submit", {
+          id: sf.id,
+          attachmentIdsCount: attachmentIds.length,
+          attachmentId: sf.attachmentId,
+          name: sf.name,
+        });
+      }
       const sendResult = nexusChatStream.send({
         text: trimmed,
         attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
@@ -298,6 +307,13 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
 
       try {
         await sendAccepted;
+        for (const sf of readyStaged) {
+          _adbgLog("message_link", {
+            id: sf.id,
+            attachmentId: sf.attachmentId,
+            clientMessageId,
+          });
+        }
         if (readyIds.length > 0) submission.onClearSent?.(readyIds);
         return {
           ok: true,
