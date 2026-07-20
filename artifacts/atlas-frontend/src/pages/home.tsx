@@ -5252,6 +5252,15 @@ export default function Home() {
             background: "transparent",
             maxWidth: askAtlasSurfaceVisible ? undefined : 680,
             margin: askAtlasSurfaceVisible ? 0 : undefined,
+            // When attachments are staged, cap the shell to available viewport
+            // so the internal region scrolls instead of pushing the action bar
+            // off-screen. No visual change when no attachments.
+            ...(hasAttachments && !askAtlasSurfaceVisible ? {
+              display: "flex",
+              flexDirection: "column" as const,
+              minHeight: 0,
+              maxHeight: "calc(100dvh - 64px - env(safe-area-inset-bottom, 0px) - 24px)",
+            } : {}),
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
