@@ -25,13 +25,13 @@ describe("composerDraftStore", () => {
     __resetComposerDraftStoreForTests();
   });
 
-  it("retains staged files across get/set (soft remount survival)", () => {
+  it("keeps input and conversationId but does not hold File blobs in draft memory", () => {
     const file = new File(["x"], "shot.png", { type: "image/png" });
     setAskAtlasComposerDraft({ input: "hello", files: [file], conversationId: "c1" });
     const again = getAskAtlasComposerDraft();
     expect(again.input).toBe("hello");
-    expect(again.files).toHaveLength(1);
-    expect(again.files[0]?.name).toBe("shot.png");
+    // File blobs live in useStagedAttachments soft memory — never draft IDB.
+    expect(again.files).toEqual([]);
     expect(again.conversationId).toBe("c1");
   });
 
@@ -55,25 +55,23 @@ describe("composerDraftStore", () => {
     expect(getAskAtlasComposerDraft().input).toBe("about this deck");
   });
 
-  it("hydrates staged PowerPoint bytes from IndexedDB after reload", async () => {
+  it("hard reload restores typed input but not staged File blobs", async () => {
     const pptx = new File(["pptx-bytes"], "pitch.pptx", {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     });
     setAskAtlasComposerDraft({ input: "review slides", files: [pptx] });
     await __flushComposerDraftPersistForTests();
 
-    // Simulate hard reload — wipe module memory, keep IDB + sessionStorage.
+    // Simulate hard reload — wipe module memory, keep sessionStorage.
     __resetComposerDraftStoreForTests();
     expect(getAskAtlasComposerDraft().files).toHaveLength(0);
 
     const restored = await hydrateAskAtlasComposerDraft();
     expect(restored.input).toBe("review slides");
-    expect(restored.files).toHaveLength(1);
-    expect(restored.files[0]?.name).toBe("pitch.pptx");
-    expect(await restored.files[0]!.text()).toBe("pptx-bytes");
+    expect(restored.files).toEqual([]);
   });
 
-  it("does not re-read File.arrayBuffer into IDB when membership is unchanged", async () => {
+  it("never calls File.arrayBuffer when staging (IDB blob persist disabled)", async () => {
     const file = new File(["same-bytes"], "deck.pptx", {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       lastModified: 1_700_000_000_000,
@@ -87,12 +85,12 @@ describe("composerDraftStore", () => {
 
     setAskAtlasComposerDraft({ input: "v1", files: [file] });
     await __flushComposerDraftPersistForTests();
-    expect(arrayBufferCalls).toBe(1);
+    expect(arrayBufferCalls).toBe(0);
 
-    // Same membership (progress-style re-set) must not rewrite IDB blobs.
     setAskAtlasComposerDraft({ input: "v2", files: [file] });
     await __flushComposerDraftPersistForTests();
-    expect(arrayBufferCalls).toBe(1);
+    expect(arrayBufferCalls).toBe(0);
     expect(getAskAtlasComposerDraft().input).toBe("v2");
+    expect(getAskAtlasComposerDraft().files).toEqual([]);
   });
 });
