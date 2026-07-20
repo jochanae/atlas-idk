@@ -1900,22 +1900,12 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist draft on membership / input only — NOT on uploadProgress ticks.
-  // Writing every File.arrayBuffer() into IndexedDB on each XHR progress event
-  // was crashing multi-file attaches (white screen → reload) on mobile.
-  const stagedMembershipKey = staged.files
-    .filter((sf) => sf.status !== "blocked")
-    .map((sf) => `${sf.id}:${sf.file.name}:${sf.file.size}:${sf.file.lastModified}`)
-    .join("|");
+  // Persist typed input only. Never push File blobs into the draft store —
+  // even one arrayBuffer() + concurrent PUT white-screened mobile WebViews.
+  // Soft remount survival for chips lives in useStagedAttachments module memory.
   useEffect(() => {
-    setAskAtlasComposerDraft({
-      input,
-      files: staged.files
-        .filter((sf) => sf.status !== "blocked")
-        .map((sf) => sf.file),
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, stagedMembershipKey]);
+    setAskAtlasComposerDraft({ input, files: [] });
+  }, [input]);
   const [showVault, setShowVault] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);

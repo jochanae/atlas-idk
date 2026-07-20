@@ -119,11 +119,32 @@ function revokeAll(files: StagedAttachment[]): void {
   for (const sf of files) revokeUrl(sf);
 }
 
-/** Cap parallel PUTs — 10 concurrent image uploads + IDB rewrites OOM mobile WebViews. */
+/** Cap parallel PUTs — concurrent image uploads + memory pressure OOM mobile WebViews. */
 const MAX_CONCURRENT_UPLOADS = 3;
 /** Ignore progress ticks denser than this unless they jump meaningfully. */
 const PROGRESS_MIN_INTERVAL_MS = 250;
 const PROGRESS_MIN_DELTA = 0.08;
+
+/**
+ * Soft-remount survival (ErrorBoundary auto-reset / surface flip).
+ * Full page reloads clear this — that is intentional (no File blob IDB).
+ */
+const softMemoryBySurface = new Map<string, StagedAttachment[]>();
+
+function surfaceMemoryKey(ctx?: {
+  surface?: string;
+  projectId?: string;
+}): string {
+  return `${ctx?.surface ?? "default"}:${ctx?.projectId ?? ""}`;
+}
+
+/** Test helper — drop soft-remount survival state between cases. */
+export function __resetStagedAttachmentsSoftMemoryForTests() {
+  for (const files of softMemoryBySurface.values()) {
+    revokeAll(files);
+  }
+  softMemoryBySurface.clear();
+}
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -144,8 +165,13 @@ export function useStagedAttachments(opts?: {
   const autoUpload = opts?.autoUpload !== false;
   const diagCtxRef = useRef(opts?.diagnosticContext);
   diagCtxRef.current = opts?.diagnosticContext;
+  const memoryKey = surfaceMemoryKey(opts?.diagnosticContext);
+  const memoryKeyRef = useRef(memoryKey);
+  memoryKeyRef.current = memoryKey;
 
-  const [files, setFiles] = useState<StagedAttachment[]>([]);
+  const [files, setFiles] = useState<StagedAttachment[]>(
+    () => softMemoryBySurface.get(memoryKey) ?? [],
+  );
   const filesRef = useRef(files);
   filesRef.current = files;
   const uploadGenRef = useRef(new Map<string, number>());
@@ -153,6 +179,7 @@ export function useStagedAttachments(opts?: {
   const uploadQueueRef = useRef<string[]>([]);
   const activeUploadsRef = useRef(0);
   const pumpQueueRef = useRef<() => void>(() => {});
+  const mountedRef = useRef(true);
 
   const abortUpload = useCallback((id: string) => {
     uploadQueueRef.current = uploadQueueRef.current.filter((qid) => qid !== id);
@@ -167,19 +194,42 @@ export function useStagedAttachments(opts?: {
     }
   }, []);
 
-  useEffect(() => {
-    return () => {
-      uploadQueueRef.current = [];
-      activeUploadsRef.current = 0;
-      for (const id of [...uploadAbortRef.current.keys()]) {
-        abortUpload(id);
+  const commitFiles = useCallback(
+    (next: StagedAttachment[] | ((prev: StagedAttachment[]) => StagedAttachment[])) => {
+      const key = memoryKeyRef.current;
+      // Soft remount keeps the map entry so in-flight PUTs can finish off-screen.
+      // If the entry was cleared (tests / intentional wipe), do not resurrect it.
+      if (!mountedRef.current && !softMemoryBySurface.has(key)) {
+        const prev = filesRef.current;
+        return typeof next === "function" ? next(prev) : next;
       }
-      setFiles((prev) => {
-        revokeAll(prev);
-        return prev;
-      });
+      const prev = softMemoryBySurface.get(key) ?? filesRef.current;
+      const resolved = typeof next === "function" ? next(prev) : next;
+      softMemoryBySurface.set(key, resolved);
+      filesRef.current = resolved;
+      if (mountedRef.current) {
+        setFiles(resolved);
+      }
+      return resolved;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    // Re-hydrate if an upload finished while we were unmounted.
+    const mem = softMemoryBySurface.get(memoryKey);
+    if (mem && mem !== filesRef.current) {
+      filesRef.current = mem;
+      setFiles(mem);
+    }
+    return () => {
+      mountedRef.current = false;
+      // Soft remount: keep chips + in-flight uploads alive in module memory.
+      // Do NOT abort PUTs or revoke preview URLs — ErrorBoundary auto-reset
+      // used to wipe the composer mid-upload and look like a white-screen reload.
     };
-  }, [abortUpload]);
+  }, [memoryKey]);
 
   useEffect(() => {
     _setStagedCount(files.length);
@@ -187,11 +237,11 @@ export function useStagedAttachments(opts?: {
 
   const patchFile = useCallback(
     (id: string, patch: Partial<StagedAttachment>) => {
-      setFiles((prev) =>
+      commitFiles((prev) =>
         prev.map((sf) => (sf.id === id ? { ...sf, ...patch } : sf)),
       );
     },
-    [],
+    [commitFiles],
   );
 
   const runUpload = useCallback(
@@ -356,7 +406,7 @@ export function useStagedAttachments(opts?: {
         })),
       });
 
-      setFiles((prev) => {
+      commitFiles((prev) => {
         const result: StagedAttachment[] = [...prev];
         let runningTotal = result
           .filter((sf) => sf.status !== "blocked")
@@ -517,7 +567,7 @@ export function useStagedAttachments(opts?: {
         ids: [...pendingUploadIdsRef.current],
       });
     },
-    [autoUpload, maxCount, maxMessage, maxSize],
+    [autoUpload, commitFiles, maxCount, maxMessage, maxSize],
   );
 
   const removeFile = useCallback((id: string) => {
@@ -526,12 +576,12 @@ export function useStagedAttachments(opts?: {
     pendingUploadIdsRef.current.delete(id);
     abortUpload(id);
     uploadGenRef.current.delete(id);
-    setFiles((prev) => {
+    commitFiles((prev) => {
       const target = prev.find((sf) => sf.id === id);
       if (target) revokeUrl(target);
       return prev.filter((sf) => sf.id !== id);
     });
-  }, [abortUpload]);
+  }, [abortUpload, commitFiles]);
 
   const retryFile = useCallback(
     (id: string) => {
@@ -558,17 +608,17 @@ export function useStagedAttachments(opts?: {
   const markSending = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    setFiles((prev) =>
+    commitFiles((prev) =>
       prev.map((sf) =>
         idSet.has(sf.id) && sf.status === "ready"
           ? { ...sf, status: "sending" as StagedFileStatus }
           : sf,
       ),
     );
-  }, []);
+  }, [commitFiles]);
 
   const markFailed = useCallback((id: string, error: StagedFileError) => {
-    setFiles((prev) =>
+    commitFiles((prev) =>
       prev.map((sf) =>
         sf.id === id
           ? {
@@ -580,12 +630,12 @@ export function useStagedAttachments(opts?: {
           : sf,
       ),
     );
-  }, []);
+  }, [commitFiles]);
 
   const restoreToReady = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    setFiles((prev) =>
+    commitFiles((prev) =>
       prev.map((sf) =>
         idSet.has(sf.id) &&
         (sf.status === "sending" || sf.status === "uploading") &&
@@ -609,12 +659,12 @@ export function useStagedAttachments(opts?: {
             : sf,
       ),
     );
-  }, []);
+  }, [commitFiles]);
 
   const clearSent = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    setFiles((prev) => {
+    commitFiles((prev) => {
       const removed = prev.filter((sf) => idSet.has(sf.id));
       // Do not revoke blob URLs here — the optimistic chip in the chat stream
       // may still be rendering sf.previewUrl as contentUrl until the server
@@ -626,16 +676,20 @@ export function useStagedAttachments(opts?: {
       }
       return prev.filter((sf) => !idSet.has(sf.id));
     });
-  }, []);
+  }, [commitFiles]);
 
   const clearFiles = useCallback(() => {
-    setFiles((prev) => {
+    commitFiles((prev) => {
       revokeAll(prev);
       pendingUploadIdsRef.current.clear();
       uploadGenRef.current.clear();
+      uploadQueueRef.current = [];
+      for (const id of [...uploadAbortRef.current.keys()]) {
+        abortUpload(id);
+      }
       return [];
     });
-  }, []);
+  }, [abortUpload, commitFiles]);
 
   const readyFiles = files.filter(
     (sf) => sf.status === "ready" && !!sf.attachmentId,

@@ -33,7 +33,10 @@ import {
   shouldIncludeAttachmentsOnSend,
 } from "@/lib/attachments/types";
 import { createMockAdapter } from "@/lib/attachments/adapter";
-import { useStagedAttachments } from "@/hooks/useStagedAttachments";
+import {
+  __resetStagedAttachmentsSoftMemoryForTests,
+  useStagedAttachments,
+} from "@/hooks/useStagedAttachments";
 import { AttachmentComposer } from "@/components/attachments/AttachmentComposer";
 
 function makeFile(name: string, type: string, size = 1024): File {
@@ -42,8 +45,13 @@ function makeFile(name: string, type: string, size = 1024): File {
   return f;
 }
 
+beforeEach(() => {
+  __resetStagedAttachmentsSoftMemoryForTests();
+});
+
 afterEach(() => {
   cleanup();
+  __resetStagedAttachmentsSoftMemoryForTests();
 });
 
 describe("support matrix (explicit contract)", () => {

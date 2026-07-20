@@ -4,9 +4,10 @@
  * - Module memory survives soft React remounts (ErrorBoundary / surface flip).
  * - sessionStorage keeps the typed input across hard reloads (Documents/PPTX
  *   pickers on Android often kill the WebView).
- * - File blobs are intentionally not persisted while attachment transport is
- *   stabilized. Restoring stale blobs after a picker-triggered reload caused
- *   duplicate sends and repeated conversion crashes.
+ * - File blobs are NOT written to IndexedDB. Copying File.arrayBuffer() on
+ *   stage raced the upload PUT and white-screened mobile WebViews (even for
+ *   a single attachment). Staged files survive soft remounts via
+ *   useStagedAttachments module memory; hard reloads require re-attach.
  */
 
 export type AskAtlasComposerDraft = {
@@ -21,8 +22,11 @@ const META_KEY = "atlas-ask-atlas-composer-meta";
 const IDB_NAME = "atlas-ask-atlas-composer";
 const IDB_STORE = "files";
 const IDB_KEY = "staged";
-/** Persist staged blobs across refresh so reopen restores composer files. */
-const PERSIST_FILE_BLOBS = true;
+/**
+ * Disabled: IDB blob writes OOM / kill the WebView during attach.
+ * Keep false unless a non-blocking, post-upload metadata restore ships.
+ */
+const PERSIST_FILE_BLOBS = false;
 
 let draft: AskAtlasComposerDraft = {
   input: "",
@@ -236,8 +240,8 @@ export function clearAskAtlasComposerDraft(): void {
 }
 
 /**
- * Hydrate File blobs from IndexedDB after a hard reload. Safe to call once on
- * mount; returns the draft (possibly with restored files).
+ * Hydrate typed input (and optionally File blobs when PERSIST_FILE_BLOBS) after
+ * a hard reload. Safe to call once on mount.
  */
 export async function hydrateAskAtlasComposerDraft(): Promise<AskAtlasComposerDraft> {
   if (hydratedFromStorage) return draft;
@@ -245,6 +249,15 @@ export async function hydrateAskAtlasComposerDraft(): Promise<AskAtlasComposerDr
   const storedInput = safeSessionGet(INPUT_KEY);
   if (storedInput && !draft.input) {
     draft = { ...draft, input: storedInput };
+  }
+  if (!PERSIST_FILE_BLOBS) {
+    // Purge legacy blob entries from older builds that wrote File.arrayBuffer.
+    try {
+      await idbClearFiles();
+    } catch {
+      /* ignore */
+    }
+    return draft;
   }
   if (draft.files.length === 0) {
     try {
