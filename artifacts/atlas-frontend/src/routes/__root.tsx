@@ -64,7 +64,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       if(!msg||!RX.test(String(msg)))return false;
       // Suppress for 8 s after returning from a background tab — HMR WS needs
       // time to reconnect; the lazy retry in App.tsx will recover without a reload.
-      if(Date.now()-lastVis<8000)return false;
+      if(Date.now()-lastVis<30000)return false;
       var last=Number(sessionStorage.getItem(KEY)||0);
       if(Date.now()-last<60000)return false;
       sessionStorage.setItem(KEY,String(Date.now()));
