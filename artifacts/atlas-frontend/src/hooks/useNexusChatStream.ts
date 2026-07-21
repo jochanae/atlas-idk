@@ -562,6 +562,8 @@ export function useNexusChatStream(
           conversationId: activeConversationIdRef.current ?? undefined,
           focusProjectId: resolvedFocusProjectId ?? undefined,
           runId: turnRunId,
+          // Lifecycle idempotency key (user persist → link → run → assistant → done).
+          clientMessageId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
           ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
           ...(resolvedAttachmentIds.length > 0

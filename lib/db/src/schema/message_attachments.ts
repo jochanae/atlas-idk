@@ -127,6 +127,11 @@ export const messageAttachmentsTable = pgTable(
     uploadAttemptCount: integer("upload_attempt_count").notNull().default(0),
     /** Timestamp of the most recent upload attempt. */
     lastUploadAttemptAt: timestamp("last_upload_attempt_at", { withTimezone: true }),
+    /**
+     * Set when the model successfully received this attachment's content on a
+     * send turn. Null means the row may exist without proven model ingestion.
+     */
+    modelInjectedAt: timestamp("model_injected_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

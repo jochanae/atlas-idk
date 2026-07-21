@@ -146,7 +146,7 @@ describe("zero current-turn attachments", () => {
       noEvidence,
     );
     expect(result.clean).toBe(false);
-    expect(result.correction).toMatch(/I said:/i);
+    expect(result.correction).toMatch(/I started to claim:|I said:/i);
     expect(result.correction).toMatch(/screenshot/i);
   });
 

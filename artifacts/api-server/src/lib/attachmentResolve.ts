@@ -13,7 +13,7 @@ import {
   messageAttachmentsTable,
   type MessageAttachment,
 } from "@workspace/db";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   ATTACHMENT_MAX_COUNT,
   ATTACHMENT_MAX_MESSAGE_BYTES,
@@ -29,6 +29,30 @@ import {
   EXTRACT_IMAGE_BLOCK_CAP,
 } from "../services/attachmentExtract";
 import { recordAttachmentActivity } from "./attachmentActivity";
+import {
+  EXTRACT_VERSION,
+  labelExtractForModel,
+} from "./attachmentExtractStore";
+import { isAttachmentContinuityV2Enabled } from "./attachmentGrounding";
+
+async function markModelInjected(attachmentId: string): Promise<void> {
+  try {
+    await db
+      .update(messageAttachmentsTable)
+      .set({ modelInjectedAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(messageAttachmentsTable.id, attachmentId),
+          isNull(messageAttachmentsTable.modelInjectedAt),
+        ),
+      );
+  } catch (err) {
+    logger.warn(
+      { err, attachmentId },
+      "attachmentResolve: failed to mark model_injected_at",
+    );
+  }
+}
 
 export type ResolvedModelAttachment = {
   attachmentId: string;
@@ -276,10 +300,19 @@ export async function resolveAttachmentIdsForModel(params: {
             name: row.filename,
             kind,
             asText: true,
-            textContent: extracted.text,
+            textContent: isAttachmentContinuityV2Enabled()
+              ? labelExtractForModel({
+                  text: extracted.text,
+                  extractVersion: EXTRACT_VERSION,
+                  truncated: false,
+                  format: "extractable",
+                })
+              : extracted.text,
             ...(images.length > 0 ? { images } : {}),
             ...(warnings.length > 0 ? { warnings } : {}),
           });
+
+          await markModelInjected(id);
 
           const stats = extracted.stats;
           const subtitleParts: string[] = [];
@@ -378,6 +411,7 @@ export async function resolveAttachmentIdsForModel(params: {
           asText: false,
         });
       }
+      await markModelInjected(id);
       logger.info(
         {
           attachmentId: id,
@@ -417,11 +451,27 @@ export async function resolveAttachmentIdsForModel(params: {
     const { texts, truncatedNames } = applyExtractedTextByteCap(
       textItems.map((t) => ({ name: t.name, text: t.text })),
     );
+    const truncatedSet = new Set(truncatedNames);
     for (let i = 0; i < textItems.length; i++) {
       const item = textItems[i]!;
+      let nextText = texts[i] ?? "";
+      if (isAttachmentContinuityV2Enabled() && truncatedSet.has(item.name)) {
+        // Strip any prior label then re-label as truncated.
+        const stripped = nextText.replace(
+          /^\[attachment extract v\d+[^\]]*\]\n?/,
+          "",
+        );
+        nextText = labelExtractForModel({
+          text: stripped,
+          extractVersion: EXTRACT_VERSION,
+          truncated: true,
+          format: "extractable",
+          truncationReason: "per_turn_budget",
+        });
+      }
       resolved[item.index] = {
         ...resolved[item.index]!,
-        textContent: texts[i],
+        textContent: nextText,
       };
     }
     if (truncatedNames.length > 0) {

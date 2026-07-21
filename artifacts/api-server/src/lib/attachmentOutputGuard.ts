@@ -31,9 +31,31 @@ export interface ResolvedAttachmentInfo {
   contentSuppliedToModel: boolean;
 }
 
+/** Prior-turn provenance for the guard (no requirement that content is reopened). */
+export interface PriorAttachmentGuardInfo {
+  publicRef: string;
+  filename: string;
+  mimeType: string;
+  existed: boolean;
+  /** Model successfully ingested content on the originating turn. */
+  priorAttachmentWasModelReceived: boolean;
+  /** True when this turn re-injected that prior file's content. */
+  contentAvailableThisTurn: boolean;
+}
+
 export interface AttachmentEvidence {
   /** Per-attachment evidence for this turn only — resolved + skipped. */
   attachments: ResolvedAttachmentInfo[];
+  /**
+   * Prior-turn attachment provenance in this conversation.
+   * Optional for backward compatibility; treat missing as [].
+   */
+  priorAttachments?: PriorAttachmentGuardInfo[];
+  /**
+   * Backend attachment IDs whose content was reopened/injected this turn
+   * (historical reopen). Optional; treat missing as empty.
+   */
+  contentReopenedAttachmentIds?: ReadonlySet<string>;
   /** Names of tools that actually ran this turn (populated by runNexusTool). */
   toolsExecutedThisTurn: ReadonlySet<string>;
 }
@@ -393,18 +415,25 @@ function buildCorrection(
   violations: string[],
   blockedFiles: string[],
   readableFiles: string[],
+  priorAttachments: PriorAttachmentGuardInfo[],
 ): string {
   const firstViolation = violations[0];
   const followUp = `\n\nIf you'd like me to read the content, please re-attach the file in a new message and I'll work with it directly.`;
+  const priorNames = priorAttachments
+    .filter((p) => p.existed)
+    .map((p) => p.filename);
+  const priorNote =
+    priorNames.length > 0
+      ? ` You did attach ${priorNames.map((n) => `**${n}**`).join(", ")} earlier in this conversation, but I cannot reopen ${priorNames.length === 1 ? "its" : "their"} original contents in this turn.`
+      : "";
 
   if (blockedFiles.length > 0) {
     const named = blockedFiles.map((f) => `**${f}**`).join(", ");
     const isAre = blockedFiles.length === 1 ? "was" : "were";
     const itThem = blockedFiles.length === 1 ? "it" : "them";
     const violationNote = firstViolation
-      ? `\n\n*(I said: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — but that file's content was not available to me.)*`
+      ? `\n\n*(I started to claim: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — that file's content is not available to me in this turn.)*`
       : "";
-    // Identify which file(s) Atlas CAN see when there are named readable files.
     const readableNote =
       readableFiles.length > 0
         ? ` I can see ${readableFiles.map((f) => `**${f}**`).join(", ")} in this message.`
@@ -413,19 +442,57 @@ function buildCorrection(
       `I can see some files were included in this message, but ${named} ${isAre} stored without readable content reaching me —` +
       readableNote +
       ` I can't make claims about what's inside ${itThem}.` +
+      priorNote +
+      violationNote +
+      followUp
+    );
+  }
+
+  if (priorNames.length > 0) {
+    const violationNote = firstViolation
+      ? `\n\n*(I started to claim: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — I cannot reopen that file's contents in this turn.)*`
+      : "";
+    return (
+      `I cannot reopen the original file contents in this turn.` +
+      priorNote +
       violationNote +
       followUp
     );
   }
 
   const violationNote = firstViolation
-    ? `\n\n*(I said: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — but no attachment was present or readable in this message.)*`
+    ? `\n\n*(I started to claim: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — but no attachment was present or readable in this message.)*`
     : "";
   return (
     `I don't have access to any attachment in this message — nothing was attached or readable in this turn.` +
     violationNote +
     `\n\nIf you meant to include a file, please drop it into the next message and I'll work with it directly.`
   );
+}
+
+/** Provenance / availability disclosures that are allowed without current-turn bytes. */
+const PROVENANCE_ALLOW_PATTERNS: RegExp[] = [
+  /\byou\s+attached\b/i,
+  /\battached\s+(?:a|an|the)\s+.+\s+earlier\b/i,
+  /\bin\s+the\s+previous\s+turn\b/i,
+  /\bI\s+analyzed\s+that\b/i,
+  /\bcannot\s+reopen\b/i,
+  /\bcan'?t\s+reopen\b/i,
+  /\boriginal\s+contents\s+in\s+this\s+turn\b/i,
+];
+
+function isAllowedProvenanceClaim(
+  text: string,
+  priorAttachments: PriorAttachmentGuardInfo[],
+): boolean {
+  if (priorAttachments.length === 0) return false;
+  if (!PROVENANCE_ALLOW_PATTERNS.some((p) => p.test(text))) return false;
+
+  // Analysis-recall requires successful model ingestion on the origin turn.
+  if (/\bI\s+analyzed\b/i.test(text)) {
+    return priorAttachments.some((p) => p.priorAttachmentWasModelReceived);
+  }
+  return priorAttachments.some((p) => p.existed);
 }
 
 // ── Main post-stream validator ────────────────────────────────────────────────
@@ -446,8 +513,40 @@ export function checkAttachmentClaims(
     return { clean: true, violations: [], correction: "" };
   }
 
+  const priorAttachments = evidence.priorAttachments ?? [];
+  const reopened = evidence.contentReopenedAttachmentIds ?? new Set<string>();
+
+  // Provenance / non-reopen disclosures are allowed when prior rows exist.
+  if (isAllowedProvenanceClaim(text, priorAttachments)) {
+    return { clean: true, violations: [], correction: "" };
+  }
+
+  // Explicit false analysis-recall: file existed but was never model-ingested.
+  if (
+    /\bI\s+analyzed\b/i.test(text) &&
+    priorAttachments.some((p) => p.existed) &&
+    !priorAttachments.some((p) => p.priorAttachmentWasModelReceived) &&
+    !hasFileReadEvidence(evidence.toolsExecutedThisTurn)
+  ) {
+    return {
+      clean: false,
+      violations: ["I analyzed"],
+      correction: buildCorrection(
+        ["I analyzed"],
+        [],
+        [],
+        priorAttachments,
+      ),
+    };
+  }
+
   const violations: string[] = [];
   const blockedFiles: string[] = [];
+
+  const hasCurrentContent =
+    evidence.attachments.some((a) => a.contentSuppliedToModel) ||
+    priorAttachments.some((p) => p.contentAvailableThisTurn) ||
+    reopened.size > 0;
 
   for (const pattern of PERCEPTION_PATTERNS) {
     const match = text.match(pattern);
@@ -457,16 +556,16 @@ export function checkAttachmentClaims(
     const targeted = findTargetedAttachment(matchedText, evidence.attachments);
 
     if (targeted !== null) {
-      // Specific file identified — block only if THAT file had no content.
-      if (!targeted.contentSuppliedToModel) {
+      // Specific current-turn file — block only if THAT file had no content.
+      if (!targeted.contentSuppliedToModel && !reopened.has(targeted.attachmentId)) {
         violations.push(matchedText);
         if (!blockedFiles.includes(targeted.filename)) {
           blockedFiles.push(targeted.filename);
         }
       }
     } else {
-      // Generic claim — block if NO attachment has content.
-      if (!evidence.attachments.some((a) => a.contentSuppliedToModel)) {
+      // Generic / prior-oriented perception claim.
+      if (!hasCurrentContent) {
         violations.push(matchedText);
       }
     }
@@ -476,7 +575,6 @@ export function checkAttachmentClaims(
     return { clean: true, violations: [], correction: "" };
   }
 
-  // Collect readable (non-generic) files to name in the correction.
   const readableFiles = evidence.attachments
     .filter(
       (a) =>
@@ -489,6 +587,11 @@ export function checkAttachmentClaims(
   return {
     clean: false,
     violations,
-    correction: buildCorrection(violations, blockedFiles, readableFiles),
+    correction: buildCorrection(
+      violations,
+      blockedFiles,
+      readableFiles,
+      priorAttachments,
+    ),
   };
 }
