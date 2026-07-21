@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { and, asc, desc, eq } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { db, generatedFiles, generationRuns, projectFlowCanvasTable, projectsTable } from "@workspace/db";
+import { logger } from "../lib/logger";
 import { createAutoCheckpointOnce } from "./checkpoints";
 
 const router: IRouter = Router();
@@ -202,49 +203,62 @@ function buildForgeSyncPrompt(args: {
 }
 
 router.get("/projects/:projectId/generation-runs", async (req, res): Promise<void> => {
-  const projectId = Number(req.params.projectId);
-  if (!Number.isInteger(projectId) || projectId <= 0) { res.status(400).json({ error: "Invalid project id" }); return; }
+  try {
+    const projectId = Number(req.params.projectId);
+    if (!Number.isInteger(projectId) || projectId <= 0) { res.status(400).json({ error: "Invalid project id" }); return; }
 
-  const userId = (req as any).authUser?.id as number | undefined;
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (!(await projectBelongsToUser(projectId, userId))) {
-    res.status(404).json({ error: "Project not found" }); return;
+    const userId = (req as any).authUser?.id as number | undefined;
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (!(await projectBelongsToUser(projectId, userId))) {
+      res.status(404).json({ error: "Project not found" }); return;
+    }
+
+    const rows = await db
+      .select(generationRunColumns)
+      .from(generationRuns)
+      .where(eq(generationRuns.projectId, projectId))
+      .orderBy(desc(generationRuns.startedAt))
+      .limit(20);
+
+    res.json(rows.map(serializeGenerationRun));
+  } catch (err) {
+    logger.error({ err, projectId: req.params.projectId }, "GET /projects/:projectId/generation-runs failed");
+    res.status(500).json({ error: "Failed to fetch generation runs" });
   }
-
-  const rows = await db
-    .select(generationRunColumns)
-    .from(generationRuns)
-    .where(eq(generationRuns.projectId, projectId))
-    .orderBy(desc(generationRuns.startedAt))
-    .limit(20);
-
-  res.json(rows.map(serializeGenerationRun));
 });
 
 router.get("/projects/:projectId/generation-runs/:runId/files", async (req, res): Promise<void> => {
-  const projectId = Number(req.params.projectId);
-  if (!Number.isInteger(projectId) || projectId <= 0) { res.status(400).json({ error: "Invalid project id" }); return; }
+  try {
+    const projectId = Number(req.params.projectId);
+    if (!Number.isInteger(projectId) || projectId <= 0) { res.status(400).json({ error: "Invalid project id" }); return; }
 
-  const userId = (req as any).authUser?.id as number | undefined;
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  if (!(await projectBelongsToUser(projectId, userId))) {
-    res.status(404).json({ error: "Project not found" }); return;
+    const userId = (req as any).authUser?.id as number | undefined;
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (!(await projectBelongsToUser(projectId, userId))) {
+      res.status(404).json({ error: "Project not found" }); return;
+    }
+
+    const [run] = await db
+      .select({ id: generationRuns.id })
+      .from(generationRuns)
+      .where(and(eq(generationRuns.id, req.params.runId), eq(generationRuns.projectId, projectId)))
+      .limit(1);
+    if (!run) { res.status(404).json({ error: "Generation run not found" }); return; }
+
+    const rows = await db
+      .select()
+      .from(generatedFiles)
+      .where(eq(generatedFiles.runId, req.params.runId))
+      .orderBy(asc(generatedFiles.path));
+
+    res.json(rows.map(serializeGeneratedFile));
+  } catch (err) {
+    logger.error(
+      { err, projectId: req.params.projectId, runId: req.params.runId },
+      "GET /projects/:projectId/generation-runs/:runId/files failed",
+    );
+    res.status(500).json({ error: "Failed to fetch generation run files" });
   }
-
-  const [run] = await db
-    .select({ id: generationRuns.id })
-    .from(generationRuns)
-    .where(and(eq(generationRuns.id, req.params.runId), eq(generationRuns.projectId, projectId)))
-    .limit(1);
-  if (!run) { res.status(404).json({ error: "Generation run not found" }); return; }
-
-  const rows = await db
-    .select()
-    .from(generatedFiles)
-    .where(eq(generatedFiles.runId, req.params.runId))
-    .orderBy(asc(generatedFiles.path));
-
-  res.json(rows.map(serializeGeneratedFile));
 });
 
 router.post("/projects/:projectId/forge-sync", async (req, res): Promise<void> => {
