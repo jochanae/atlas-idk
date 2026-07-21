@@ -4,11 +4,18 @@
 **Date:** 2026-07-21  
 **Scope:** Conversation lifecycle, attachment lifecycle, interruption inventory, acceptance criteria, repair order  
 **Repo HEAD at audit:** `86e7b309` (`main`)  
-**Status:** Audit complete. Phase B (Repair) must not begin until this document is reviewed.
+**Status:** Audit complete + product-principle prioritization applied. Phase B (Repair) must not begin until this document is reviewed.  
+**Gate:** Do **not** start Milestone 2 (Atlas intelligence) until Wave 0 and Wave 1 of this milestone are complete and verified.
 
 > A user should be able to spend an hour with Atlas—sharing text, screenshots, PDFs, PowerPoints, code, and ideas—without Atlas ever interrupting the flow of thought.
 
+**Product principle for prioritization:**
+
+> The conversation should never be interrupted by the platform.
+
 This milestone is **not** about fixing isolated bugs. It is about understanding and restoring the **entire conversation lifecycle** so future fixes are systematic instead of reactive.
+
+**Do not fix all 34 interruptions at once.** Repair by product-principle severity (Conversation Killer → Conversation Break → Conversation Friction), not by technical complexity.
 
 ---
 
@@ -18,12 +25,14 @@ This milestone is **not** about fixing isolated bugs. It is about understanding 
 2. [Conversation lifecycle](#2-conversation-lifecycle)
 3. [Attachment lifecycle inventory](#3-attachment-lifecycle-inventory)
 4. [Complete interruption inventory](#4-complete-interruption-inventory)
-5. [Root causes (systemic)](#5-root-causes-systemic)
-6. [Evidence index](#6-evidence-index)
-7. [Acceptance criteria — “conversation restored”](#7-acceptance-criteria--conversation-restored)
-8. [Recommended repair order (Phase B)](#8-recommended-repair-order-phase-b)
-9. [Out of scope / explicitly deferred](#9-out-of-scope--explicitly-deferred)
-10. [Phase A constraints checklist](#10-phase-a-constraints-checklist)
+5. [Product-principle severity classification](#5-product-principle-severity-classification)
+6. [Interruption → Severity → Acceptance Test](#6-interruption--severity--acceptance-test)
+7. [Root causes (systemic)](#7-root-causes-systemic)
+8. [Evidence index](#8-evidence-index)
+9. [Acceptance criteria — “conversation restored”](#9-acceptance-criteria--conversation-restored)
+10. [Recommended repair order (Phase B)](#10-recommended-repair-order-phase-b)
+11. [Out of scope / explicitly deferred](#11-out-of-scope--explicitly-deferred)
+12. [Phase A constraints checklist](#12-phase-a-constraints-checklist)
 
 ---
 
@@ -397,18 +406,22 @@ Confidence legend:
 - **Mitigated** — historical failure with active guards; residual risk may remain  
 - **Dead** — code exists but is not on the live mount path  
 
-### Critical
+**Product-principle severity** for each INT is authoritative in §5–§6 (Conversation Killer / Break / Friction). The Critical/High/Medium labels below are the original technical triage and remain for engineering context only.
+
+### Critical (technical)
 
 #### INT-01 — Confirmed API 401 → hard login redirect
 
 | Field | Detail |
 |-------|--------|
+| **Product severity** | **Conversation Killer** — Wave 0 #1 |
 | **File** | `artifacts/atlas-frontend/src/lib/install-api-fetch.ts` |
 | **Function** | Global `window.fetch` patch |
 | **Cause** | Non-silent API `401` → recheck `/api/auth/me` → `window.location.href = …/login?reason=session_expired` |
 | **Runtime evidence** | Comments document attach 401s silenced so login never wipes composer mid-attach; other routes still redirect |
 | **Confidence** | Verified |
 | **Impact** | Full navigation; drafts, staged files, in-flight SSE lost |
+| **Acceptance test** | §6 INT-01 — start typing, expire session, verify no unexpected login redirect while work is in progress |
 
 Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/briefing`, `/api/stripe/`, `/api/connections`.
 
@@ -451,11 +464,13 @@ Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/br
 
 | Field | Detail |
 |-------|--------|
+| **Product severity** | **Conversation Killer / Break** — Wave 1 #1 |
 | **Files** | `composerDraftStore.ts`, `useStagedAttachments.ts`, home hydration |
 | **Cause** | Android Documents/PPTX picker often kills WebView; `PERSIST_FILE_BLOBS = false` |
 | **Runtime evidence** | Explicit comments: IDB blob writes OOM’d WebViews; soft map cleared on full reload |
 | **Confidence** | Verified |
 | **Impact** | Staged attachments + upload controllers lost; typed Ask Atlas input may survive |
+| **Acceptance test** | §6 INT-05 — PPTX/PDF attach survives picker return / hard-reload recovery without silent re-upload of finalized files |
 
 #### INT-06 — Workspace composer text draft not persisted
 
@@ -514,33 +529,39 @@ Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/br
 
 | Field | Detail |
 |-------|--------|
+| **Product severity** | **Conversation Killer** — Wave 0 #3 |
 | **File** | `artifacts/atlas-frontend/src/pages/home.tsx` |
 | **Function** | `handleHandoff`, `performCreateProjectFromConversation`, Crystallize handlers |
 | **Cause** | Ask Atlas open clears `nexusChat`; those paths still snapshot `nexusChat.messages` |
 | **Runtime evidence** | Clear-on-open effect ~2333–2337; crystallize maps `nexusChat.messages`; AskAtlasSurface CommitPill uses prop messages (exception) |
 | **Confidence** | Verified |
 | **Impact** | Handoff can create project without the conversation the user just had |
+| **Acceptance test** | §6 INT-11 — multi-turn Ask Atlas → Crystallize/Commit → Workspace shows that transcript, never empty |
 
 #### INT-12 — Attachment continuity / OutputGuard (semantic interrupt)
 
 | Field | Detail |
 |-------|--------|
+| **Product severity** | **Conversation Break** — Wave 1 #2 (*chat vs collaboration*) |
 | **Files** | `artifacts/api-server/src/routes/nexus.ts` HARD RULE; `attachmentOutputGuard.ts`; client `onCorrection` in `useNexusChatStream` |
 | **Cause** | Next turn resolves only current `attachmentIds` unless V2 reopen; HARD RULE denies prior files; guard may rewrite assistant text |
 | **Runtime evidence** | Continuity investigation handoff 2026-07-21; V2 flag-gated reopen |
 | **Confidence** | Verified (behavior flag-dependent) |
 | **Impact** | User must re-attach or re-explain — unbroken thought broken without UI remount |
+| **Acceptance test** | §6 INT-12 — upload PPTX, discuss, later ask “Look at slide 5 again” with no re-upload; Atlas retains file context |
 
 #### INT-13 — Handoff continuation suppressed (quiet workspace)
 
 | Field | Detail |
 |-------|--------|
+| **Product severity** | **Conversation Killer** — Wave 0 #2 (*Navigation is not the end of thought.*) |
 | **File** | `artifacts/atlas-frontend/src/pages/workspace.tsx` |
 | **Function** | Opening-message effect |
 | **Cause** | Thread already loaded + missing `atlas-handoff-continuation=1` → drop opening message |
 | **Runtime evidence** | Explicit exception comment + early return |
 | **Confidence** | Verified |
 | **Impact** | Ask Atlas → Workspace feels dead; user repeats themselves |
+| **Acceptance test** | §6 INT-13 — create Workspace from Ask Atlas; Atlas continues thought after navigation without another user message |
 
 ### Medium
 
@@ -676,7 +697,154 @@ Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/br
 
 ---
 
-## 5. Root causes (systemic)
+## 5. Product-principle severity classification
+
+Technical severity (Critical / High / Medium / Low) describes **how the platform fails**.  
+Product-principle severity describes **what the user experiences**.
+
+| Bucket | Meaning | Repair posture |
+|--------|---------|----------------|
+| **Conversation Killer** | Conversation stops or the user loses work. Platform ends the thread of thought. | Fix first. No Milestone 2 until done. |
+| **Conversation Break** | User can keep talking, but continuity is lost (re-attach, re-explain, empty handoff, quiet landing). Collaboration becomes artificial chat. | Fix next. Wave 1 of Milestone 1. |
+| **Conversation Friction** | Conversation continues, but feels awkward (flashes, blocked sends, weaker legacy paths, intentional clears). | Fix after Killers and Breaks. Do not let these distract from Wave 0/1. |
+
+**Principle test for every INT:**
+
+> Does this violate *“The conversation should never be interrupted by the platform”*?
+
+If yes → Killer or Break. If it only makes the conversation feel clumsy → Friction.
+
+### 5.1 Conversation Killers
+
+| ID | Interruption | Why it kills the conversation |
+|----|--------------|-------------------------------|
+| **INT-01** | Auth hard redirect (401 → login) | User is typing / attaching / thinking → suddenly on login. Conversation over. Work in flight lost. |
+| **INT-02** | `useRequireAuth` soft redirect to login | Same user experience via route navigate when auth becomes null. |
+| **INT-11** | Dual controller empty handoff | Atlas “hands off” while Workspace receives an empty history. Trust broken; conversation broken. |
+| **INT-13** | Quiet Workspace (missing `atlas-handoff-continuation`) | Navigation becomes the end of thought. Workspace sits silent; user must restart momentum. |
+| **INT-04** *(accidental)* | Exit / toggle clear via ghost click | Accidental wipe during attach looks like a refresh; local thread gone. |
+| **INT-05** *(mid-attach hard kill)* | WebView / Documents hard reload | Staged files vanish mid-“let me show you this”; often coupled with lost upload controllers. |
+| **INT-09** | `NAVIGATE_TO` hard `window.location.href` | Hard reload-style nav mid-stream ends the live thought without soft continuation. |
+| **INT-10** *(mid-compose)* | Hard navigations (OAuth / logout / reload) | Leaves conversation surface abruptly while composing. |
+
+> **Wave 0 focus (must-fix first):** INT-01, INT-13, INT-11.  
+> These three were explicitly called out as conversation killers that violate the product principle. INT-02 is the sibling of INT-01 and rides with it. INT-04/05/09/10 are Killers when they fire mid-thought; their full repair may continue into Wave 1/2 but they are classified as Killers, not Friction.
+
+### 5.2 Conversation Breaks
+
+| ID | Interruption | Why it breaks continuity |
+|----|--------------|--------------------------|
+| **INT-05** *(recovery)* | Documents/PPTX File blobs not durable | “Let me show you this” → “Let me upload it again.” |
+| **INT-12** | Prior-turn attachments not reinjected | “Look at slide 5 again” fails; chat instead of collaboration. |
+| **INT-03** | ErrorBoundary soft remount | Stream/message React state wiped; user may need to reorient even if draft soft-memory survives. |
+| **INT-06** | Workspace typed draft not persisted | Remount/nav forces retyping. |
+| **INT-07** | Project switch clears messages | Blank until rehydrate; continuity flash-break. |
+| **INT-08** | Route unmount `/home` ↔ Workspace | In-flight stream/draft dies with the tree. |
+| **INT-14** | SSE disconnect / timeout / no resume | Turn interrupted; context may recover only after refetch. |
+| **INT-15** | Ghost click residual | Residual risk of Ask Atlas wipe after picker. |
+| **INT-17** | Opening Ask Atlas clears ambient `nexusChat` | Feeds INT-11 empty-handoff; ambient continuity lost. |
+| **INT-21** | Auth remount refetch race | Can cascade into Killer (login) after picker return. |
+| **INT-24** | Upload failure / strip crash | Continuity of the attach act breaks; send blocked. |
+| **INT-25** | Send while upload incomplete | Thought stalled at send boundary. |
+| **INT-26** | Code files blocked on canonical matrix | Product promise (“share code”) cannot continue on the main path. |
+
+> **Wave 1 focus:** INT-05 (durable attach recovery) and INT-12 (prior-turn reinjection). These are the attachment-continuity Breaks that define collaboration vs chat.
+
+### 5.3 Conversation Friction
+
+| ID | Interruption | Why it is friction (not a kill) |
+|----|--------------|--------------------------------|
+| **INT-16** | New / switch / archive / home-reset | Intentional clears are OK when deliberate; awkward when unexpected. |
+| **INT-18** | Blanket query invalidation | Loading flashes; chat usually survives. |
+| **INT-19** | Page transition overlay | Visual interrupt; skipped inside unified shell. |
+| **INT-20** | Lazy Workspace chunk retry | Suspense spinner; recoverable. |
+| **INT-22** | Account / Stripe / GitHub redirects | Awkward if opened mid-chat; usually user-initiated. |
+| **INT-23** | Duplicate send (mostly guarded) | Rare double-turn friction. |
+| **INT-27** | Visibility summarize | Non-destructive. |
+| **INT-28** | Refetch-on-focus (mitigated) | Historical; fixed. |
+| **INT-29** | beforeunload handlers | Warn/persist only. |
+| **INT-30** | TanStack hard reload | Dead path. |
+| **INT-31** | StrictMode double effects | Removed. |
+| **INT-32** | Vite HMR full-reload | Dev only. |
+| **INT-33** | Form full-page submit on chat | Not present on composers. |
+| **INT-34** | Token refresh loop | Covered by INT-01. |
+
+Legacy parallel paths (FlowPanel / ActiveRuns) are **Friction** for Milestone 1 until they claim to be the conversation — then they become Breaks. Quarantine or migrate in Wave 2.
+
+### 5.4 Classification summary counts
+
+| Bucket | Count | IDs |
+|--------|------:|-----|
+| Conversation Killer | 8 | INT-01, INT-02, INT-04*, INT-05*, INT-09, INT-10*, INT-11, INT-13 |
+| Conversation Break | 13 | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26 |
+| Conversation Friction | 13 | INT-16, INT-18–20, INT-22–23, INT-27–34 |
+
+\* Killer when accidental / mid-compose.  
+† INT-05 appears in both Killer (hard kill mid-attach) and Break (durable recovery / re-upload tax) — same root cause, two user faces.
+
+---
+
+## 6. Interruption → Severity → Acceptance Test
+
+Every repair ends with a **measurable test**, not “it should be fixed.”
+
+| ID | Interruption | Severity | Acceptance Test |
+|----|--------------|----------|-----------------|
+| INT-01 | Auth hard redirect (401 → login) | **Conversation Killer** | Start typing (and optionally staging a file). Expire/force a non-silent API 401. Verify the user is **not** unexpectedly hard-redirected to login while work is in progress; prefer soft banner / pause with draft + staged files preserved. |
+| INT-02 | `useRequireAuth` → login | **Conversation Killer** | With an active Ask Atlas or Workspace composer draft, null out auth via remount/refetch race. Verify no silent navigate-away that destroys the in-progress conversation without recovery. |
+| INT-03 | ErrorBoundary soft remount | **Conversation Break** | Force a recoverable child render error (&lt;3/10s). Verify conversation id remains, messages rehydrate from `/api/nexus/thread` (or soft-memory), and composer draft is not blanked. |
+| INT-04 | Exit / toggle clears thread | **Conversation Killer** *(accidental)* | Open file picker on Ask Atlas; synthesize/allow ghost return. Verify Exit/toggle does **not** clear messages while picker-pending. Intentional Exit with messages either confirms or soft-archives with restore. |
+| INT-05 | Documents/PPTX WebView kill / lost File blobs | **Conversation Killer / Break** | Upload a PPTX (and PDF). Simulate Documents picker hard reload after finalize (and mid-upload). Verify conversation history intact; finalized attachments reappear as chips or clear recoverable state — user is not forced to silently start over. |
+| INT-06 | Workspace draft not persisted | **Conversation Break** | Type a long Workspace draft; trigger soft remount / navigate-within-shell return. Verify text draft restored. |
+| INT-07 | Project switch clears messages | **Conversation Break** | Switch projects and back (or land with resolving pid). Verify no permanent blank thread; history rehydrates to the correct conversation without user re-prompt. |
+| INT-08 | Route unmount home ↔ workspace | **Conversation Break** | Start a stream or draft on Ask Atlas; navigate to Workspace via **handoff contract** (not hard kill). Verify prior turns visible and continuation fires per INT-13. Mid-stream abort recovers to persisted messages. |
+| INT-09 | `NAVIGATE_TO` hard redirect | **Conversation Killer** | Trigger assistant `NAVIGATE_TO` to a project. Verify in-app navigation (not `window.location.href` reload) and handoff continuation still runs. |
+| INT-10 | Explicit hard navigations mid-compose | **Conversation Killer** *(mid-compose)* | From an active composer, trigger OAuth/account paths. Verify either blocked with save, or draft/attachments survive return; no unexplained conversation wipe. |
+| INT-11 | Dual controller empty handoff | **Conversation Killer** | Have a multi-turn Ask Atlas thread. Crystallize / Commit / create-from-conversation. Verify Workspace receives **that** transcript (non-empty), not an empty `nexusChat` snapshot. |
+| INT-12 | Prior-turn attachments not reinjected | **Conversation Break** | Upload a PowerPoint, discuss it, send a later turn with **no** new attach (“Look at slide 5 again”). Verify Atlas still has file context (Continuity V2 or equivalent) and does not claim no attachment was provided. |
+| INT-13 | Quiet Workspace / missing continuation | **Conversation Killer** | Create/enter Workspace from Ask Atlas. Verify Atlas **automatically continues its thought** after navigation without requiring another user message. Quiet landing = fail. |
+| INT-14 | SSE disconnect / timeout | **Conversation Break** | Kill network mid-stream; restore. Verify user sees a recoverable error, persisted turns remain, and a retry/continue path exists without wiping history. |
+| INT-15 | Ghost click after picker | **Conversation Break** | Attach image, PDF, PPTX on Ask Atlas and Workspace. On picker return, verify no Exit/toggle/home-reset; draft + chips remain. |
+| INT-16 | New / switch / archive / home-reset | **Conversation Friction** | Invoke New Conversation deliberately. Verify clear is intentional (confirm or obvious CTA). Accidental wordmark `home-reset` during active thread does not wipe without affordance. |
+| INT-17 | Ask Atlas open clears ambient nexus | **Conversation Break** | With dual-controller still present: open Ask Atlas after ambient messages; verify handoff paths do not depend on cleared ambient store (ties to INT-11). |
+| INT-18 | Blanket `invalidateQueries` | **Conversation Friction** | Trigger shaping auto-promote / refresh. Verify chat transcript does not blank or remount into empty state. |
+| INT-19 | Page transition overlay | **Conversation Friction** | Navigate within unified shell; verify no full-screen spinner covering an active conversation. |
+| INT-20 | Lazy Workspace chunk failure | **Conversation Friction** | Fail first workspace chunk load once; verify retry succeeds without losing handoff continuation keys. |
+| INT-21 | Auth remount refetch race | **Conversation Break** | Return from file picker; verify `/api/auth/me` remount refetch does not cascade into login redirect (INT-01/02). |
+| INT-22 | Account / Stripe / GitHub redirects | **Conversation Friction** | Open billing/OAuth from Workspace with a draft present; verify draft survival policy is defined and held. |
+| INT-23 | Duplicate send | **Conversation Friction** | Double-tap Send during in-flight turn; verify single user message / single assistant reply. |
+| INT-24 | Upload failure / strip crash | **Conversation Break** | Fail one of multi-file uploads. Verify thread intact, failed chip retryable, successful IDs still sendable. Crash AttachmentStrip preview; verify full conversation UI does not blank. |
+| INT-25 | Send while upload incomplete | **Conversation Break** | Hit Send during upload. Verify no silent text-only send that drops files; either wait/queue or clear blocked state with draft preserved. |
+| INT-26 | Code files blocked | **Conversation Break** | Attach a `.ts` / `.js` (or documented code path) on Ask Atlas / Workspace. Verify supported share path exists — not silent `other` reject without guidance. |
+| INT-27 | Visibility summarize | **Conversation Friction** | Background tab during session; verify messages not cleared (regression lock). |
+| INT-28 | Refetch-on-focus | **Conversation Friction** | Return focus after picker; verify no projects-list “reload feel” and no conversation wipe (already mitigated — keep regression). |
+| INT-29 | beforeunload | **Conversation Friction** | Refresh with dirty scenario; verify warn/persist behavior only — no forced navigation. |
+| INT-30 | TanStack chunk reload (dead) | **Conversation Friction** | Confirm dead path stays unmounted; if rewired, must not `location.reload()` on chunk error during chat. |
+| INT-31 | StrictMode | **Conversation Friction** | Confirm StrictMode remains off in production mount (regression). |
+| INT-32 | Vite HMR reload | **Conversation Friction** | Dev-only; document as non-prod. |
+| INT-33 | Form full-page submit | **Conversation Friction** | Enter in composer never full-page posts. |
+| INT-34 | Token refresh | **Conversation Friction** | Covered by INT-01 acceptance; no separate hard redirect path. |
+
+### 6.1 Wave 0 acceptance gate (must pass before Wave 1 closes as “done”)
+
+| Gate | INT | Pass condition |
+|------|-----|----------------|
+| G0-1 | INT-01 (+ INT-02) | Active composer session never hard-lands on login solely due to background 401 / auth race; work preserved or softly paused. |
+| G0-2 | INT-13 | Ask Atlas → Workspace always continues thought without requiring a fresh user message. |
+| G0-3 | INT-11 | Handoff / Crystallize / Commit never delivers an empty transcript when Ask Atlas had messages. |
+
+### 6.2 Wave 1 acceptance gate (attachment continuity)
+
+| Gate | INT | Pass condition |
+|------|-----|----------------|
+| G1-1 | INT-05 | PPTX/PDF/image attach survives picker return and hard-reload recovery path without forcing silent re-upload of already-finalized files. |
+| G1-2 | INT-12 | After discussing an attached deck/doc, later turns can reference it without re-upload (“Look at slide 5 again”). |
+
+**Milestone 2 may not start until G0-1…G0-3 and G1-1…G1-2 are verified.**
+
+---
+
+## 7. Root causes (systemic)
 
 These are the **systems** behind the interruption inventory — not individual bugs.
 
@@ -714,7 +882,7 @@ Agents and future Phase B work will reintroduce base64 / wrong-controller bugs i
 
 ---
 
-## 6. Evidence index
+## 8. Evidence index
 
 ### Primary code
 
@@ -765,13 +933,13 @@ Phase A did **not** restart services or run E2E. Existing harnesses that Phase B
 
 ---
 
-## 7. Acceptance criteria — “conversation restored”
+## 9. Acceptance criteria — “conversation restored”
 
-### 7.1 Definition
+### 9.1 Definition
 
 **Conversation restored** means a user can spend an extended session (text + screenshots + PDFs + PPTX + code + ideas) across Ask Atlas and Workspace **without the platform forcing them to restart, re-attach, or re-explain** because of remounts, redirects, lost drafts, empty handoffs, or model amnesia of files already shared in-thread.
 
-### 7.2 Must-pass criteria (Milestone 1)
+### 9.2 Must-pass criteria (Milestone 1)
 
 #### Attachments never “refresh” the conversation
 
@@ -827,7 +995,7 @@ Phase A did **not** restart services or run E2E. Existing harnesses that Phase B
 | AC-P1 | Code files (or an explicit supported code path) can be shared in the canonical Ask Atlas / Workspace composer without being silently blocked as `other`. |
 | AC-P2 | FlowPanel / ActiveRuns either migrate to the canonical stack or are clearly non-conversation surfaces with no claim of unbroken chat. |
 
-### 7.3 Recommended additional acceptance criteria
+### 9.3 Recommended additional acceptance criteria
 
 | # | Criterion | Why |
 |---|-----------|-----|
@@ -839,7 +1007,7 @@ Phase A did **not** restart services or run E2E. Existing harnesses that Phase B
 | AC-X6 | Hour-long soak E2E (or scripted) covering: text → image → PDF → PPTX → follow-up without re-attach → handoff → continue in Workspace. | Matches the milestone objective literally. |
 | AC-X7 | Non-silent 401 during an active composer session prefers soft banner + pause over hard login redirect when recovery is possible. | Auth should interrupt politely, not erase thought. |
 
-### 7.4 Explicit non-goals for “restored”
+### 9.4 Explicit non-goals for “restored”
 
 - Perfect survival of **unfinalized** File blobs across WebView process death without any recovery UX (may remain constrained by mobile memory).  
 - Migrating every legacy `/api/chat` side-effect in `useChatStream` (larger than Milestone 1; must not block conversation continuity).  
@@ -847,61 +1015,101 @@ Phase A did **not** restart services or run E2E. Existing harnesses that Phase B
 
 ---
 
-## 8. Recommended repair order (Phase B)
+## 10. Recommended repair order (Phase B)
 
-Order is **dependency-first**: fix ownership and identity before polishing chips.
+**Prioritize by product principle, not technical complexity.**
 
-### Wave 0 — Guardrails (docs + invariants)
+> The conversation should never be interrupted by the platform.
 
-1. Update `conversation-ownership.md` and `attachment-ownership.md` to match **current** `attachmentIds` + `useStagedAttachments` truth.  
-2. Add a short “Unbroken Conversation invariants” checklist referenced by agent change rules.  
-3. Freeze Phase B scope to the acceptance criteria above.
+Do **not** attempt all 34 interruptions in one sweep. Complete and verify each wave’s acceptance gates before expanding scope.  
+**Do not start Milestone 2 until Wave 0 and Wave 1 are complete and verified** (§6.1–6.2).
 
-### Wave 1 — Single source of conversation truth on `/home`
-
-4. Eliminate dual-controller handoff bugs: crystallize / `handleHandoff` / create-from-conversation must read **`askAtlasConv.messages`** (or collapse ambient `nexusChat` entirely).  
-5. Decide: ambient home chat is deleted, or it is the only home controller — not both for the same continuity path.  
-6. Soften Exit/toggle clear: do not wipe server-backed conversation id on accidental close; refuse Exit while picker pending (complete the ghost-click story).
-
-### Wave 2 — Handoff continuity contract
-
-7. Make `seedHandoffContinuation` (or successor) mandatory on every Workspace entry from Ask Atlas.  
-8. Prefer `/workspace/{conversationId}` navigation; deprecate quiet `/project/:id` landings without pinned conversation.  
-9. Replace hard `NAVIGATE_TO` `window.location.href` with in-app navigation + continuation seed.  
-10. Verify adoption backend still reassigns orphan messages; add regression coverage for empty-transcript crystallize.
-
-### Wave 3 — Draft + attach survival
-
-11. Persist Workspace typed draft (parity with Ask Atlas `composerDraftStore`).  
-12. Survive Documents hard reload for **finalized** attachment IDs (rehydrate chips from server metadata; do not revive File blobs via IDB if OOM risk remains).  
-13. Keep / harden ghost click shield; add E2E for image, PDF, PPTX on Ask Atlas and Workspace.  
-14. Ensure ErrorBoundary soft remount rehydrates messages from `/api/nexus/thread` when local stream state is empty but conversation id exists.
-
-### Wave 4 — Auth without erasing thought
-
-15. Expand silent/soft 401 handling for endpoints commonly hit during an active session (or add “composer session pause” instead of hard redirect).  
-16. Audit `useRequireAuth` + remount refetch races after picker return.
-
-### Wave 5 — Model continuity (same hour)
-
-17. Enable Continuity V2 (or equivalent) for restored conversations by default; lock with acceptance tests.  
-18. Ensure OutputGuard cannot gaslight the user about files present earlier in-thread.  
-19. Multi-file partial failure: never drop successfully finalized IDs on send.
-
-### Wave 6 — Consolidate parallel paths
-
-20. Migrate FlowPanel / ActiveRuns attachment sends to `useAtlasConversation` + staged pipeline, **or** quarantine them as non-conversation tools.  
-21. Resolve code-file support on the canonical matrix (or provide an explicit supported code-share path).  
-22. Align ZIP drop with staged attachments vs code-context so drop intent is unambiguous.
-
-### Wave 7 — Soak + acceptance lock
-
-23. Implement AC soak harness (AC-X6).  
-24. Gate Milestone 1 “done” on must-pass criteria in §7.2, not on individual bug tickets.
+Docs/invariants updates may land alongside Wave 0 (ownership docs must match `attachmentIds` truth) but must not delay Killer fixes.
 
 ---
 
-## 9. Out of scope / explicitly deferred
+### Wave 0 — Conversation Killers (fix first)
+
+These literally break the conversation.
+
+| Priority | INT | Work | Acceptance gate |
+|---------:|-----|------|-----------------|
+| 1 | **INT-01** (+ **INT-02**) | Auth hard redirect: replace hard login navigation during active composer sessions with soft pause / banner; preserve draft + staged files; keep attachment silent-401; extend soft handling to endpoints hit mid-session | G0-1 |
+| 2 | **INT-13** | Quiet Workspace: make continuation mandatory on every Ask Atlas → Workspace entry; prefer `/workspace/{cid}`; no quiet landing when history already loaded | G0-2 |
+| 3 | **INT-11** (+ **INT-17**) | Empty handoff: crystallize / Commit / create-from-conversation must read the live Ask Atlas transcript (`askAtlasConv`), not cleared `nexusChat`; collapse or quarantine dual controller | G0-3 |
+
+**Also treat as Killers when they fire mid-thought (start mitigation in Wave 0, finish as needed):**
+
+| INT | Minimum Wave 0 mitigation |
+|-----|---------------------------|
+| INT-04 | Refuse Exit/toggle while picker-pending (complete ghost-click story) |
+| INT-09 | Stop using `window.location.href` for in-product `NAVIGATE_TO`; use in-app nav + continuation seed |
+| INT-10 | Soften mid-compose OAuth/logout paths so they do not silently erase drafts |
+
+**Wave 0 exit criteria:** G0-1, G0-2, G0-3 all pass with automated or scripted acceptance tests from §6.
+
+---
+
+### Wave 1 — Attachment Continuity
+
+Turns “chat” back into “collaboration.”
+
+| Priority | INT | Work | Acceptance gate |
+|---------:|-----|------|-----------------|
+| 1 | **INT-05** | Documents/PPTX WebView kill: survive hard reload for **finalized** attachment IDs (rehydrate chips from server metadata). Do not revive raw File blobs via IDB if OOM risk remains. Harden picker-return path. | G1-1 |
+| 2 | **INT-12** | Prior-turn attachments: enable Continuity V2 (or equivalent) for restored conversations by default; OutputGuard must not claim “no attachment” when prior file remains available | G1-2 |
+
+**Supporting Breaks that usually ship with Wave 1 (same theme):**
+
+| INT | Work |
+|-----|------|
+| INT-15 | Ghost-click residual E2E for image / PDF / PPTX on Ask Atlas and Workspace |
+| INT-24 / INT-25 | Upload failure + send-while-uploading: never drop successful IDs; never silent text-only send |
+| INT-03 | Soft remount rehydrates thread from server when local stream empty but conversation id exists |
+| INT-06 | Workspace typed draft persistence (parity with Ask Atlas) |
+
+**Wave 1 exit criteria:** G1-1 and G1-2 pass. User can upload a deck, discuss it, navigate within the conversation, and ask about it again without re-uploading.
+
+---
+
+### Wave 2 — Everything else (Breaks then Friction)
+
+Work remaining interruptions in Cursor’s dependency order **within** the product-principle buckets — Breaks before Friction.
+
+#### Wave 2a — Remaining Conversation Breaks
+
+1. INT-07 / INT-08 — Project switch + route unmount: rehydrate without blanking; handoff-safe navigation  
+2. INT-14 — SSE disconnect recovery path  
+3. INT-21 — Auth remount refetch races after picker (reinforces Wave 0)  
+4. INT-26 — Code-file support on canonical matrix (or explicit supported path)  
+5. Multi-file partial-failure locks already started in Wave 1  
+
+#### Wave 2b — Conversation Friction + consolidation
+
+6. INT-16 — Intentional clears: confirm / soft-archive when messages exist  
+7. INT-18 / INT-19 / INT-20 — Invalidate / transition / lazy-load polish  
+8. INT-22 / INT-23 — Account redirects + duplicate-send guards  
+9. Migrate or quarantine FlowPanel / ActiveRuns (legacy `/api/chat`)  
+10. Align ZIP drop vs staged attach intent  
+11. Update ownership docs + unbroken-conversation invariants in agent rules  
+12. Regression locks for mitigated/dead items (INT-27–34)  
+13. Hour-long soak harness (AC-X6): text → image → PDF → PPTX → follow-up without re-attach → handoff → continue in Workspace  
+
+**Wave 2 exit criteria:** Remaining §9.2 must-pass criteria green; soak harness passes; Milestone 1 can be declared complete.
+
+---
+
+### Explicit non-order
+
+| Do not | Why |
+|--------|-----|
+| Fix all 34 in parallel | Dilutes focus; Friction work will delay Killers |
+| Start Milestone 2 after “a few” fixes | Wave 0 + Wave 1 gates are the bar |
+| Optimize technical elegance over G0/G1 | Product principle outranks architecture purity for this milestone |
+
+---
+
+## 11. Out of scope / explicitly deferred
 
 | Item | Why deferred |
 |------|----------------|
@@ -910,10 +1118,11 @@ Order is **dependency-first**: fix ownership and identity before polishing chips
 | Re-enabling IDB File blob persistence | Previously OOM’d WebViews; needs a different design |
 | TanStack router resurrection | Dead path; leave dead unless product rewires mounts |
 | Non-conversation pickers (VisualVault, avatar) | Out of conversation interrupt scope |
+| Milestone 2 — Atlas intelligence | **Blocked** until Wave 0 and Wave 1 verified |
 
 ---
 
-## 10. Phase A constraints checklist
+## 12. Phase A constraints checklist
 
 | Constraint | Status |
 |------------|--------|
@@ -923,23 +1132,28 @@ Order is **dependency-first**: fix ownership and identity before polishing chips
 | No dependency updates | **Honored** |
 | Complete interruption inventory | **Delivered** (§4) |
 | Attachment path inventory | **Delivered** (§3) |
-| Acceptance criteria before repair | **Delivered** (§7) |
-| Recommended repair order | **Delivered** (§8) |
+| Product-principle severity buckets | **Delivered** (§5) |
+| Interruption → Severity → Acceptance Test | **Delivered** (§6) |
+| Acceptance criteria before repair | **Delivered** (§9) |
+| Recommended repair order | **Delivered** (§10) — principle-first Waves 0/1/2 |
 
 ---
 
-## Appendix A — Severity summary
+## Appendix A — Severity summary (product principle)
 
-| Severity | IDs |
-|----------|-----|
-| **Critical** | INT-01, INT-02 |
-| **High** | INT-03–13 |
-| **Medium** | INT-14–26 |
-| **Low / mitigated / dead** | INT-27–34 |
+| Bucket | IDs | Wave |
+|--------|-----|------|
+| **Conversation Killer** | INT-01, INT-02, INT-04*, INT-05*, INT-09, INT-10*, INT-11, INT-13 | **Wave 0** (INT-01, INT-13, INT-11 first) |
+| **Conversation Break** | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26 | **Wave 1** (INT-05, INT-12 first) then Wave 2a |
+| **Conversation Friction** | INT-16, INT-18–20, INT-22–23, INT-27–34 | **Wave 2b** |
 
-**Highest live risks for mid-conversation interruption:** confirmed API 401 → login (INT-01), ErrorBoundary remount (INT-03), Exit/toggle/clear around file pickers (INT-04/15), Documents hard reload during attach (INT-05), dual-controller empty handoff (INT-11), quiet workspace after handoff (INT-13), hard `NAVIGATE_TO` / OAuth navigations (INT-09/10).
+\* Killer when accidental / mid-compose.  
+† INT-05: Killer face (hard kill) + Break face (re-upload tax).
 
-**Highest continuity risk without UI remount:** attachment HARD RULE / Continuity V2 off (INT-12).
+**Wave 0 must-fix trio:** INT-01 (auth hard redirect), INT-13 (quiet Workspace), INT-11 (empty handoff).  
+**Wave 1 must-fix duo:** INT-05 (PPTX/Documents survival), INT-12 (prior-turn reinjection).
+
+Technical Critical/High/Medium labels in §4 remain useful for engineering triage; **product-principle buckets decide repair order.**
 
 ---
 
@@ -957,4 +1171,20 @@ Anything that breaks that narrative is in scope for Milestone 1 Phase B.
 
 ---
 
-*End of Phase A audit. Await review before Phase B: Repair.*
+## Appendix C — Stabilization program status
+
+| Artifact | Status |
+|----------|--------|
+| Definition of “conversation restored” | §9 |
+| System map / audit | §§1–4 |
+| 34 interruption vectors | §4 |
+| Product-principle classification | §5 |
+| Acceptance test per interruption | §6 |
+| Repair roadmap (Waves 0/1/2) | §10 |
+| Milestone 2 gate | Wave 0 + Wave 1 verified |
+
+This is a structured stabilization program, not a bug chase.
+
+---
+
+*End of Phase A audit (with product-principle prioritization). Await review before Phase B: Repair.*
