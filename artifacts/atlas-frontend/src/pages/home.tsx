@@ -5293,7 +5293,7 @@ export default function Home() {
                 staged.addFiles(incoming);
                 e.target.value = "";
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); markPickerPending("home_add_asset"); }}
             />
 
 
