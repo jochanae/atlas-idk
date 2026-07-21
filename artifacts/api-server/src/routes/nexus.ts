@@ -2901,9 +2901,16 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // If the DB returns no messages but the client sent a conversationId + history,
   // use the client history as a safety net (handles edge cases like first-turn race
   // conditions or schema migration gaps where the row hasn't been committed yet).
+  // INT-13: also honor client history on workspace handoff when focusProjectId is
+  // present even if conversationId was briefly missing — kickoff must not run with
+  // an empty model context when the client already has the transcript.
   const historySource = dbMessages.length > 0
     ? dbMessages.slice(-40)
-    : (isInProjectAskAtlas ? [] : (conversationId ? requestHistory.slice(-40) : []));
+    : (isInProjectAskAtlas
+        ? []
+        : ((conversationId || (focusProjectId != null && requestHistory.length > 0))
+            ? requestHistory.slice(-40)
+            : []));
 
   // Continuity v2: load prior attachment provenance for history + grounding.
   // Real DB UUIDs stay server-side; model-visible blocks use publicRef.

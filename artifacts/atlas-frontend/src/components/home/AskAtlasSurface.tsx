@@ -369,8 +369,11 @@ export function AskAtlasSurface({
       projectId,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
     });
-    // INT-13: never land quiet — seed continuation before navigate.
-    navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
+    // INT-13: never land quiet — seed continuation and pin conversation id when known.
+    navigateAfterAskAtlasHandoff(projectId, setLocation, {
+      source: "home-handoff",
+      conversationId: conversationId ?? null,
+    });
   };
 
   const handleCopy = (content: string, idx: number) => {
@@ -669,6 +672,7 @@ export function AskAtlasSurface({
                         if (pid) {
                           navigateAfterAskAtlasHandoff(pid, setLocation, {
                             source: "home-handoff",
+                            conversationId: conversationId ?? null,
                           });
                         } else {
                           setLocation(msg.navigateTo!.route);
@@ -730,6 +734,7 @@ export function AskAtlasSurface({
                           onClick={() =>
                             navigateAfterAskAtlasHandoff(choice.id, setLocation, {
                               source: "home-handoff",
+                              conversationId: conversationId ?? null,
                             })
                           }
                           style={{

@@ -10,11 +10,12 @@
  * Conversation submission goes through useAtlasConversation.submit() — not
  * through this bridge. The bridge is purely a side-effect and adapter layer.
  */
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type React from "react";
 import { type NexusMessage, type NexusLiveStep } from "./useNexusChatStream";
 import type { ChatMessage } from "@/pages/workspace";
 import { workspaceEventBus } from "@/lib/workspaceEventBus";
+import { isHandoffContinuationMessage } from "@/lib/handoffKickoff";
 
 type ThreadMessage = {
   id: number;
@@ -163,6 +164,11 @@ export interface NexusWorkspaceBridge {
   activeRunId: string | null;
   abort: () => void;
   authorizeRun: (runId: string, decision: "approve" | "reject") => void;
+  /**
+   * INT-13: true after the Nexus thread fetch for the current conversationId
+   * has settled (empty or populated). Kickoff must wait for this.
+   */
+  historyReady: boolean;
 }
 
 export function useNexusWorkspaceBridge(
@@ -190,6 +196,7 @@ export function useNexusWorkspaceBridge(
 
   const historyLoadedRef = useRef(false);
   const recoveryAttemptedRef = useRef(false);
+  const [historyReady, setHistoryReady] = useState(false);
 
   // Reset conversation id + wipe in-memory messages when the project changes.
   //
@@ -213,6 +220,7 @@ export function useNexusWorkspaceBridge(
       clearMessages();
       historyLoadedRef.current = false;
       recoveryAttemptedRef.current = false;
+      setHistoryReady(false);
     }
   }, [pid, opts?.initialConversationId, clearMessages, setConversationId]);
 
@@ -223,6 +231,7 @@ export function useNexusWorkspaceBridge(
     if (conversationId === opts.initialConversationId) return;
     setConversationId(opts.initialConversationId);
     historyLoadedRef.current = false;
+    setHistoryReady(false);
     storeConversationId(pid, opts.initialConversationId);
   }, [pid, opts?.initialConversationId, conversationId, setConversationId]);
 
@@ -258,6 +267,7 @@ export function useNexusWorkspaceBridge(
   useEffect(() => {
     if (!pid || !conversationId || historyLoadedRef.current) return;
     historyLoadedRef.current = true;
+    setHistoryReady(false);
     fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(conversationId)}&focusProjectId=${pid}`, {
       credentials: "include",
     })
@@ -274,17 +284,34 @@ export function useNexusWorkspaceBridge(
                 if (data.conversationId && data.conversationId !== conversationId) {
                   storeConversationId(pid, data.conversationId);
                   historyLoadedRef.current = false;
+                  setHistoryReady(false);
                   setConversationId(data.conversationId);
+                } else {
+                  setHistoryReady(true);
                 }
               })
-              .catch(() => { /* non-fatal */ });
+              .catch(() => {
+                setHistoryReady(true);
+              });
+          } else {
+            setHistoryReady(true);
           }
           return;
         }
-        const real = msgs.filter((m) => !m.isBriefing && (m.role === "user" || m.role === "assistant"));
-        if (real.length === 0) return;
+        const real = msgs.filter(
+          (m) =>
+            !m.isBriefing &&
+            (m.role === "user" || m.role === "assistant") &&
+            // INT-13: never re-surface the internal home-handoff kickoff as chat.
+            !isHandoffContinuationMessage(m.content),
+        );
+        if (real.length === 0) {
+          setHistoryReady(true);
+          return;
+        }
         const nexusMsgs: NexusMessage[] = real.map(threadMessageToNexus);
         setMessages(nexusMsgs);
+        setHistoryReady(true);
 
         if (opts?.initialConversationId && real.length === 1 && real[0].role === "user") {
           let attempts = 0;
@@ -302,7 +329,12 @@ export function useNexusWorkspaceBridge(
                 .then((r) => (r.ok ? (r.json() as Promise<ThreadMessage[]>) : null))
                 .then((newMsgs) => {
                   if (!newMsgs) { poll(); return; }
-                  const newReal = newMsgs.filter((m) => !m.isBriefing && (m.role === "user" || m.role === "assistant"));
+                  const newReal = newMsgs.filter(
+                    (m) =>
+                      !m.isBriefing &&
+                      (m.role === "user" || m.role === "assistant") &&
+                      !isHandoffContinuationMessage(m.content),
+                  );
                   if (newReal.length > 1) {
                     setMessages(newReal.map(threadMessageToNexus));
                   } else {
@@ -315,7 +347,10 @@ export function useNexusWorkspaceBridge(
           poll();
         }
       })
-      .catch(() => { /* non-fatal — just starts with empty history */ });
+      .catch(() => {
+        // Non-fatal — start with empty history, but mark ready so kickoff can decide.
+        setHistoryReady(true);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pid, conversationId]);
 
@@ -369,8 +404,10 @@ export function useNexusWorkspaceBridge(
     }
   }, [isPending, isStreaming, pid]);
 
-  const chatMessages: ChatMessage[] = messages.map(toChatMessage);
+  const chatMessages: ChatMessage[] = messages
+    .filter((m) => !m.hiddenFromUi && !isHandoffContinuationMessage(m.content))
+    .map(toChatMessage);
   const chatPending = isPending || isStreaming;
 
-  return { messages: chatMessages, chatPending, liveStep, activeRunId, abort, authorizeRun };
+  return { messages: chatMessages, chatPending, liveStep, activeRunId, abort, authorizeRun, historyReady };
 }

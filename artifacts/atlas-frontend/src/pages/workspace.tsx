@@ -115,6 +115,7 @@ import { getAuthHeaders } from "@/lib/api";
 
 import { reportError } from "../lib/errorReporter";
 import { askAtlasSession } from "@/lib/askAtlasSession";
+import { shouldFireHandoffKickoff } from "@/lib/handoffKickoff";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
 import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../lib/plan";
@@ -6931,36 +6932,28 @@ export default function Workspace() {
     // background first-turn task in POST /api/conversations. The bridge will
     // have the user message (and possibly the assistant response) from history
     // by the time this effect fires. Sending again would create a duplicate.
-    // Exception: handoff continuations (Ask Atlas → Workspace) set
-    // atlas-handoff-continuation=1 so the opening message fires even though
-    // the Ask Atlas conversation is already loaded into bridge messages.
-    // Important: do NOT set initialSent before this check — a suppressed
-    // opening message must leave room for the homeHandoffPrimed backup.
+    // INT-13: detect continuation WITHOUT consuming the flag until we actually fire.
+    // Consuming early caused retries to lose the continuation after a history race.
     const isHandoffContinuation = (() => {
       try {
-        const v = sessionStorage.getItem("atlas-handoff-continuation");
-        if (v === "1") {
-          sessionStorage.removeItem("atlas-handoff-continuation");
-          return true;
-        }
+        if (sessionStorage.getItem("atlas-handoff-continuation") === "1") return true;
       } catch {}
-      // INT-13 backup: URL markers from Ask Atlas handoff even if flag was lost.
       try {
         const params = new URLSearchParams(window.location.search);
         const source = params.get("source") ?? "";
         const from = params.get("from");
-        const handoffSource =
+        return (
           from === "home" ||
           source === "home-handoff" ||
           source === "commit-carryover" ||
           source === "commit-handoff" ||
-          source === "home-append";
-        if (handoffSource && sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY)) {
-          return true;
-        }
+          source === "home-append"
+        );
       } catch {}
       return false;
     })();
+
+    // Non-continuation opening messages still suppress when history already exists.
     if (useNexusWorkspaceChat && nexusBridge.messages.length > 0 && !isHandoffContinuation) {
       try {
         sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
@@ -6970,6 +6963,26 @@ export default function Workspace() {
       setOpeningMessage(null);
       return;
     }
+
+    // INT-13: never fire "continue from where we left off" into an empty model context.
+    if (useNexusWorkspaceChat) {
+      const gate = shouldFireHandoffKickoff({
+        nexusConversationId,
+        historyReady: nexusBridge.historyReady,
+        bridgeMessageCount: nexusBridge.messages.length,
+        isHandoffContinuation,
+      });
+      if (!gate.ok) {
+        // Keep openingMessage queued; re-run when cid / history / transcript arrives.
+        return;
+      }
+    }
+
+    // Consume continuation flag only when we are about to submit.
+    try {
+      sessionStorage.removeItem("atlas-handoff-continuation");
+    } catch {}
+
     initialSent.current = true;
     if (isHandoffContinuation) {
       try { sessionStorage.setItem(`atlas-home-handoff-primed-${id}`, "1"); } catch {}
@@ -6980,6 +6993,8 @@ export default function Workspace() {
         text: trimmedOpeningMessage,
         attachmentIds: openingAttachmentIds.length > 0 ? openingAttachmentIds : undefined,
         attachments: openingMessage.attachments ?? undefined,
+        // Internal kickoff must not appear as a user bubble (manual INT-13 finding).
+        hiddenFromUi: isHandoffContinuation,
       });
     } else {
       doSend(trimmedOpeningMessage, sessionId, messagesRef.current, undefined, openingMessage.attachments ?? undefined);
@@ -6990,7 +7005,7 @@ export default function Workspace() {
       sessionStorage.removeItem("atlas-opening-attachments");
     } catch {}
     setOpeningMessage(null);
-  }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef, ensureSessionId, useNexusWorkspaceChat, atlasConv.submit]);
+  }, [openingMessage, id, sessionId, sessionsLoading, priorLoadedState, doSend, setInput, messagesRef, ensureSessionId, useNexusWorkspaceChat, atlasConv.submit, nexusConversationId, nexusBridge.historyReady, nexusBridge.messages.length]);
 
   useEffect(() => {
     // Same gate: don't fire until session AND prior messages are fully ready.
@@ -7067,7 +7082,7 @@ export default function Workspace() {
     } catch {}
 
     const threadLen = useNexusWorkspaceChat ? nexusBridge.messages.length : messages.length;
-    const primeHomeHandoff = (prompt: string) => {
+    const primeHomeHandoff = (prompt: string, opts?: { hiddenFromUi?: boolean }) => {
       homeHandoffPrimed.current = true;
       initialSent.current = true;
       try { sessionStorage.setItem(primedKey, "1"); } catch {}
@@ -7079,7 +7094,10 @@ export default function Workspace() {
       }).catch(() => {});
       setTimeout(() => {
         if (useNexusWorkspaceChat) {
-          void atlasConv.submit({ text: prompt });
+          void atlasConv.submit({
+            text: prompt,
+            hiddenFromUi: opts?.hiddenFromUi === true,
+          });
         } else {
           doSend(prompt, sessionId, messagesRef.current);
         }
@@ -7090,8 +7108,19 @@ export default function Workspace() {
     // loaded. That used to abort this prime entirely — which is why Atlas
     // stayed silent until the user typed again. Kick a continuation instead.
     if (threadLen > 0) {
+      // INT-13: same gate as opening-message pipeline — need pinned cid + history.
+      if (useNexusWorkspaceChat) {
+        const gate = shouldFireHandoffKickoff({
+          nexusConversationId,
+          historyReady: nexusBridge.historyReady,
+          bridgeMessageCount: nexusBridge.messages.length,
+          isHandoffContinuation: true,
+        });
+        if (!gate.ok) return;
+      }
       primeHomeHandoff(
         "Continue from where we left off — acknowledge the handoff and propose the next concrete step.",
+        { hiddenFromUi: true },
       );
       return;
     }
@@ -7113,7 +7142,7 @@ export default function Workspace() {
       const briefText = (briefEntry.text as string).replace("Project brief from home conversation: ", "");
       primeHomeHandoff(`I've just arrived from our home conversation. You have my project brief in memory: "${briefText}". Acknowledge what we discussed and where we're starting — then ask what's first.`);
     } catch { primeHomeHandoff(fallbackPrompt); }
-  }, [sessionId, messages.length, project, doSend, openingMessage, useNexusWorkspaceChat, nexusBridge.messages.length, atlasConv.submit, messagesRef, id]);
+  }, [sessionId, messages.length, project, doSend, openingMessage, useNexusWorkspaceChat, nexusBridge.messages.length, nexusBridge.historyReady, nexusConversationId, atlasConv.submit, messagesRef, id]);
 
   // Auto-generate blueprint on handoff — ONLY when the source conversation
   // explicitly requested build/planning output (requestBuild flag on the
