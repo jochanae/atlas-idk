@@ -319,6 +319,8 @@ type HomeMessage = {
   visualLoading?: boolean;
   visualImageBase64?: string | null;
   visualCaption?: string | null;
+  /** Suggestion pills from NEXT_SUGGESTIONS — restored from thread metadata. */
+  nextSuggestions?: string[];
 };
 
 const NAVIGATE_TO_RE = /\bNAVIGATE_TO:\s*(\{[^\n]+\})/;
@@ -397,6 +399,11 @@ function normalizeLoadedHomeMessages(
     const runSummary = m.runSummary ?? m.run_summary ?? null;
     // Restore persisted imageGen from thread response (P3 — sketches survive reload)
     const imageGen = m.imageGen ?? (m.metadata as any)?.imageGen ?? null;
+    // Restore suggestion pills from thread metadata / top-level field
+    const nextSuggestionsRaw = m.nextSuggestions ?? (m.metadata as any)?.nextSuggestions;
+    const nextSuggestions = Array.isArray(nextSuggestionsRaw)
+      ? nextSuggestionsRaw.filter((s: unknown): s is string => typeof s === "string" && s.trim().length > 0)
+      : undefined;
 
     const shouldMock = demoRunSummary && m.role === "assistant" && !runStatus;
     return {
@@ -446,6 +453,7 @@ function normalizeLoadedHomeMessages(
           ? m.surfacedMemories.length
           : 0,
       ...(imageGen ? { imageGen } : {}),
+      ...(nextSuggestions?.length ? { nextSuggestions } : {}),
     };
   };
   return mapMessage

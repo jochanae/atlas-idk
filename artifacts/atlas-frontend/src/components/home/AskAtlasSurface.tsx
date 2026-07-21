@@ -88,6 +88,7 @@ function formatMsgDate(iso: string): string {
 import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { AskAtlasRenderer } from "./AskAtlasRenderer";
+import { SuggestionChipRail } from "@/components/workspace/SuggestionChipRail";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 // ComposerDock removed — footer center "A" is the single composer anchor.
 import { ensureComposerAuraCSS, getAuraVars } from "@/lib/composerAura";
@@ -128,6 +129,8 @@ import { formatSketchUserPromptDisplay, SKETCH_PROMPT_MARKER_RE } from "@/lib/sk
 export type AskAtlasMessage = {
   role: "user" | "assistant";
   content: string;
+  /** Client or server message id — used to skip ephemeral resume greetings for chips. */
+  id?: string | number;
   kind?: "genesis";
   genesisData?: { projectName: string; timestamp: string };
   streaming?: boolean;
@@ -160,6 +163,8 @@ export type AskAtlasMessage = {
     downloadUrl: string;
     summary?: string | null;
   }> | null;
+  /** Suggestion pills from NEXT_SUGGESTIONS — one-tap continuations. */
+  nextSuggestions?: string[] | null;
 };
 
 export type { LiveStep as AskAtlasLiveStep } from "@/components/workspace/StepProgress";
@@ -924,6 +929,42 @@ export function AskAtlasSurface({
             />
           </div>
         )}
+
+        {/* Suggestion pills — same NEXT_SUGGESTIONS rail as workspace. Shown when
+            the turn is idle; hidden while Thinking / streaming. */}
+        {(() => {
+          if (isSending || isStreaming) return null;
+          let chipMsg: AskAtlasMessage | null = null;
+          for (let i = messages.length - 1; i >= 0; i--) {
+            const m = messages[i];
+            if (m.role !== "assistant" || m.streaming) continue;
+            // Skip ephemeral "Welcome back" resume greetings so reload keeps real chips.
+            if (String(m.id ?? "").startsWith("aa-resume-")) continue;
+            chipMsg = m;
+            break;
+          }
+          if (!chipMsg) return null;
+          return (
+            <SuggestionChipRail
+              lastAssistantText={chipMsg.content ?? ""}
+              nextSuggestions={chipMsg.nextSuggestions ?? undefined}
+              onTap={(text) => {
+                // One-tap continuation — send immediately when possible.
+                if (onSend) {
+                  onSend(text);
+                  return;
+                }
+                setInput(input.trim() ? `${input.trim()} ${text}` : text);
+                setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
+              }}
+              onLongPress={(text) => {
+                // Long-press parks into the composer for edit before send.
+                setInput(input.trim() ? `${input.trim()} ${text}` : text);
+                setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
+              }}
+            />
+          );
+        })()}
 
         {/* Thinking receipts removed from the inline conversation flow —
             they belong in a dismissible floating HUD, not interrupting

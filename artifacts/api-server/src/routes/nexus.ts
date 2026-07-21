@@ -2209,6 +2209,10 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
         runtimeCard: (m.metadata as any)?.runtimeCard ?? null,
         // Restore generated artifact cards (ArtifactCreatedCard) so they survive reload
         generatedArtifacts: (m.metadata as any)?.generatedArtifacts ?? null,
+        // Restore suggestion pills so chips survive hard refresh
+        nextSuggestions: Array.isArray((m.metadata as any)?.nextSuggestions)
+          ? ((m.metadata as any).nextSuggestions as string[])
+          : null,
         ...(executionOutcome ? { executionOutcome } : {}),
         ...(fileEdits.length > 0 ? { fileEdits, fileEdit: fileEdits[0] } : {}),
         ...(linePatches.length > 0 ? { linePatches } : {}),
@@ -5776,6 +5780,8 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
         sessionId,
         conversationId: effectiveConversationId,
         ...(hasMessageType ? { messageType: "message" } : {}),
+        // Persist suggestion pills so they survive refresh (Ask Atlas + workspace).
+        ...(nextSuggestions?.length ? { metadata: { nextSuggestions } } : {}),
       }).returning({ id: nexusMessagesTable.id });
       nexusMsgId = nexusMsg?.id ?? null;
     } catch (dbErr: any) {
@@ -6367,7 +6373,7 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
         (async () => {
           try {
             const [latest] = await db
-              .select({ id: nexusMessagesTable.id })
+              .select({ id: nexusMessagesTable.id, metadata: nexusMessagesTable.metadata })
               .from(nexusMessagesTable)
               .where(
                 and(
@@ -6381,7 +6387,12 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
             if (latest) {
               await db
                 .update(nexusMessagesTable)
-                .set({ metadata: { imageGen: nexusImageGenResult } })
+                .set({
+                  metadata: {
+                    ...(latest.metadata ?? {}),
+                    imageGen: nexusImageGenResult,
+                  },
+                })
                 .where(eq(nexusMessagesTable.id, latest.id));
             }
           } catch (err: unknown) {
