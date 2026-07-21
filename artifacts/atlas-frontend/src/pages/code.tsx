@@ -1620,13 +1620,22 @@ export default function CodePage() {
                 onClick={() => { void handleDownloadZip(); }}
                 disabled={isDownloadingZip}
               />
-              <ToolButton
-                icon={<Github size={13} />}
-                label={isPushingGithub ? "Pushing…" : linkedRepo ? "Push to GitHub" : "Push to GitHub"}
-                onClick={() => { void handlePushToGithub(); }}
-                disabled={isPushingGithub || !linkedRepo}
-                primary={!!linkedRepo}
-              />
+              {!linkedRepo && githubPushToken ? (
+                <ToolButton
+                  icon={<Github size={13} />}
+                  label={isCreatingRepo ? "Creating…" : "Create repo"}
+                  onClick={() => { void handleCreateRepoForProject(); }}
+                  disabled={isCreatingRepo}
+                />
+              ) : (
+                <ToolButton
+                  icon={<Github size={13} />}
+                  label={isPushingGithub ? "Pushing…" : "Push to GitHub"}
+                  onClick={() => { void handlePushToGithub(); }}
+                  disabled={isPushingGithub || !linkedRepo}
+                  primary={!!linkedRepo}
+                />
+              )}
             </div>
           </div>
         </div>
