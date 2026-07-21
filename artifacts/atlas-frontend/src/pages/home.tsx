@@ -3280,8 +3280,12 @@ export default function Home() {
     // When it's open, EVERY send goes through askAtlasChat regardless of how
     // the surface was opened (composer pill, resume, radial, history). This
     // eliminates the old split where entry point determined data source.
+    //
+    // Exception: when files are staged, bypass Ask Atlas entirely and go through
+    // the project-creation path. Files signal serious intent — the user should
+    // land in a real workspace conversation, not the homepage overlay.
     const hasAskAtlasContent = !!text || readyStagedFiles.length > 0;
-    if (askAtlasSurfaceOpen && hasAskAtlasContent) {
+    if (askAtlasSurfaceOpen && hasAskAtlasContent && !hasFiles) {
       if (
         askAtlasSurfaceSendInFlightRef.current ||
         askAtlasConv.isStreaming ||
