@@ -358,6 +358,10 @@ export function FilesBrowser({
   const isLoading = librarySavedQ.isLoading || generatedQ.isLoading || (workspaceProjectId != null && workspaceTreeQ.isLoading);
   const anyError = librarySavedQ.error || generatedQ.error || workspaceTreeQ.error;
   const isNarrow = useIsNarrow(720);
+  const [, setLocation] = useLocation();
+  const openProjectTree = () => {
+    if (workspaceProjectId != null) setLocation(`/project/${workspaceProjectId}`);
+  };
   const [previewFile, setPreviewFile] = useState<UnifiedFile | null>(null);
 
   const openPreview = (f: UnifiedFile) => setPreviewFile(f);
