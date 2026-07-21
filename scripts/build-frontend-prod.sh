@@ -84,24 +84,15 @@ rm -rf docs handoffs supabase local .lovable .upm
 
 echo "[build-frontend] Writing production API launcher..."
 # The production container runs without the Replit nix profile PATH, so bare
-# "node" is not found at runtime. We capture the node path now (build time,
-# when PATH is correctly set) and bake it into a launcher that /bin/sh can
-# execute — /bin/sh is stable in the base container at /bin/sh.
+# "node" is not found at runtime. Hardcoding a specific nix store hash also
+# fails because the production nix layer is built from a different nixpkgs
+# closure than the dev environment (different hashes for the same package).
 #
-# IMPORTANT: in the dev environment `which node` resolves to a Replit-specific
-# wrapper (nodejs-24.13.0-wrapped) that does NOT exist in the production nix
-# layer. The production layer only contains the standard NixOS binary
-# (nodejs-24.13.0, no -wrapped suffix). Extract the real binary path from
-# inside the wrapper's exec line instead of using the wrapper path directly.
-NODE_WRAPPED="$(which node)"
-NODE_BIN=$(grep -o '"/nix/store/[^"]*/bin/node"' "$NODE_WRAPPED" 2>/dev/null | tail -1 | tr -d '"')
-if [ -z "$NODE_BIN" ] || [ ! -f "$NODE_BIN" ]; then
-  # Not a wrapper (e.g. already unwrapped in this environment) — use as-is.
-  NODE_BIN="$NODE_WRAPPED"
-fi
-cat > run-api.sh << EOF
-#!/bin/sh
-exec $NODE_BIN artifacts/api-server/dist/index.mjs
-EOF
+# Instead, discover node at *runtime* via a package-name glob. The glob
+# /nix/store/*nodejs-24*/bin/node matches the node binary in whatever
+# hash the production container happens to use, without needing to know
+# the hash at build time. /bin/sh at /bin/sh is stable in the base container.
+# run-api.sh is committed to the repo with full discovery logic.
+# Ensure it is executable in the image (git may not preserve the bit).
 chmod +x run-api.sh
-echo "[build-frontend] Launcher written: exec $NODE_BIN"
+echo "[build-frontend] run-api.sh ready (runtime discovery mode)"
