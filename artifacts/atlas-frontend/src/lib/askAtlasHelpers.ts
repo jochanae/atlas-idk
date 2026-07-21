@@ -146,8 +146,57 @@ export function redirectAfterHandoff(
   setLocation: (path: string) => void,
   extraParams?: Record<string, string>,
 ): void {
+  // INT-13: every handoff navigation must seed continuation before navigate.
+  seedHandoffContinuation(projectId);
   const params = new URLSearchParams({ source: "home-handoff", ...(extraParams ?? {}) });
   setLocation(`/project/${projectId}?${params.toString()}`);
+}
+
+/**
+ * Navigate into a project/workspace after Ask Atlas handoff.
+ * Always seeds continuation so Workspace is never quiet (INT-13).
+ */
+export function navigateAfterAskAtlasHandoff(
+  projectId: number,
+  setLocation: (path: string) => void,
+  opts?: {
+    conversationId?: string | null;
+    source?: string;
+    extraParams?: Record<string, string>;
+    message?: string;
+  },
+): void {
+  seedHandoffContinuation(projectId, opts?.message);
+  const source = opts?.source ?? "home-handoff";
+  const params = new URLSearchParams({
+    from: "home",
+    source,
+    ...(opts?.extraParams ?? {}),
+  });
+  if (opts?.conversationId) {
+    setLocation(`/workspace/${opts.conversationId}?${params.toString()}`);
+    return;
+  }
+  setLocation(`/project/${projectId}?${params.toString()}`);
+}
+
+/**
+ * INT-11: pick the live transcript for handoff / crystallize.
+ * When Ask Atlas is open (or holds messages), never snapshot the cleared ambient nexusChat.
+ */
+export function selectHandoffMessages<T>(opts: {
+  preferAskAtlas: boolean;
+  askAtlasMessages: T[];
+  ambientMessages: T[];
+}): T[] {
+  if (opts.preferAskAtlas) {
+    return opts.askAtlasMessages.length > 0
+      ? opts.askAtlasMessages
+      : opts.ambientMessages;
+  }
+  return opts.ambientMessages.length > 0
+    ? opts.ambientMessages
+    : opts.askAtlasMessages;
 }
 
 /** Default kickoff Atlas receives on workspace arrival after a home/Ask Atlas handoff. */

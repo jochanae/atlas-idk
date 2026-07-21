@@ -93,7 +93,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff, resolveConversationDestination } from "@/lib/askAtlasHelpers";
+import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff, resolveConversationDestination, selectHandoffMessages, navigateAfterAskAtlasHandoff } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
@@ -2234,7 +2234,11 @@ export default function Home() {
   const setPendingWorkspace = useShellStore((s) => s.setPendingWorkspace);
   const setShellHandoffStage = useShellStore((s) => s.setHandoffStage);
   const shapingStatus = useShellStore((s) => s.shapingStatus);
-  const userMsgCount = (nexusChat.messages as HomeMessage[]).filter(m => m.role === "user").length;
+  const userMsgCount = (
+    askAtlasConv.messages.length > 0
+      ? (askAtlasConv.messages as HomeMessage[])
+      : (nexusChat.messages as HomeMessage[])
+  ).filter(m => m.role === "user").length;
   useEffect(() => {
     // Project-focus mode: arm CommitPill only when Atlas signals structured work (SHAPE/COMMIT).
     // THINK = exploring — pill stays idle, no prompt to commit.
@@ -2253,10 +2257,12 @@ export default function Home() {
       return;
     }
     // All-Projects mode: handoffSignal drives the pill.
-    if (nexusChat.handoffSignal?.readyToHandoff === true) {
+    // INT-11: prefer Ask Atlas signal when that surface owns the live thread.
+    const liveSignal = askAtlasConv.handoffSignal ?? nexusChat.handoffSignal;
+    if (liveSignal?.readyToHandoff === true) {
       setIsHandoffReady(true);
     }
-    const suggestedName = nexusChat.handoffSignal?.projectName?.trim();
+    const suggestedName = liveSignal?.projectName?.trim();
     if (suggestedName) {
       pushHudEvent("PROJECT", suggestedName, { projectName: suggestedName });
     }
@@ -2274,7 +2280,7 @@ export default function Home() {
       // No active conversation — ambient home state. Reset any stale pill.
       setShapingStatus("idle");
     }
-  }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, lastConvState, setShapingStatus, setPendingWorkspace,
+  }, [nexusChat.handoffSignal, askAtlasConv.handoffSignal, askAtlasConv.messages, userMsgCount, shapingStatus, lastConvState, setShapingStatus, setPendingWorkspace,
       resolvedPortfolioFocus, homeFocus, projects, setIsHandoffReady]);
   const focusProjectId = homeFocus;
   useEffect(() => {
@@ -2316,6 +2322,18 @@ export default function Home() {
   // visible even before the first message lands (messages.length === 0 after clear).
   const [askAtlasNewConvMode, setAskAtlasNewConvMode] = useState(false);
   const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasConv.messages.length > 0 || isAskAtlasRestoring || askAtlasNewConvMode);
+  // INT-11: live handoff transcript — Ask Atlas owns messages when open (ambient nexusChat is cleared).
+  const getHandoffMessages = useCallback((): HomeMessage[] => {
+    return selectHandoffMessages({
+      preferAskAtlas: askAtlasSurfaceOpen || askAtlasConv.messages.length > 0,
+      askAtlasMessages: askAtlasConv.messages as HomeMessage[],
+      ambientMessages: nexusChat.messages as HomeMessage[],
+    });
+  }, [askAtlasSurfaceOpen, askAtlasConv.messages, nexusChat.messages]);
+  const liveHandoffSignal =
+    askAtlasSurfaceOpen || askAtlasConv.handoffSignal
+      ? askAtlasConv.handoffSignal
+      : nexusChat.handoffSignal;
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -2567,7 +2585,7 @@ export default function Home() {
   }, [askAtlasSurfaceOpen, vibrate, callAskAtlasMode, nexusChat.setMessages, askAtlasConv.clearMessages, setDepth]);
 
   const handleKeepIt = useCallback(async () => {
-    const messagesToKeep = nexusChat.messages;
+    const messagesToKeep = getHandoffMessages();
     vibrate([50, 50, 50]);
     void callAskAtlasMode(false);
     setAskAtlasSurfaceOpen(false);
@@ -2603,7 +2621,7 @@ export default function Home() {
       void triggerNexusHandoff({
         conversationId: effectiveConversationId,
         projectId,
-        messages: nexusChat.messages.map((m) => ({ role: m.role, content: m.content })),
+        messages: messagesToKeep.map((m) => ({ role: m.role, content: m.content })),
         authToken,
       });
       try {
@@ -2611,7 +2629,7 @@ export default function Home() {
       } catch {}
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setActiveProjectId(projectId);
-      setLocation(`/project/${projectId}`);
+      navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
     } catch (err) {
       const msg =
         extractApiErrorMessage(err) ??
@@ -2628,7 +2646,7 @@ export default function Home() {
   }, [
     activeConversationId,
     callAskAtlasMode,
-    nexusChat.messages,
+    getHandoffMessages,
     queryClient,
     setActiveProjectId,
     setLocation,
@@ -3466,7 +3484,7 @@ export default function Home() {
   ]);
 
   const performCreateProjectFromConversation = useCallback(async () => {
-    const conversationMessages = nexusChat.messages as HomeMessage[];
+    const conversationMessages = getHandoffMessages();
     if (conversationMessages.length === 0 || isSending) return;
     if (!backendReady) {
       setCreateError(
@@ -3594,9 +3612,9 @@ export default function Home() {
     }
   }, [
     backendReady,
+    getHandoffMessages,
     isFree,
     isSending,
-    nexusChat.messages,
     nexusChat.setMessages,
     projects,
     queryClient,
@@ -3647,7 +3665,8 @@ export default function Home() {
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
-    if (!nexusChat.messages.length) return;
+    const conversationMessagesLive = getHandoffMessages();
+    if (!conversationMessagesLive.length) return;
     if (isFree && (projects?.length ?? 0) >= 1) {
       setShowUpgrade(true);
       return;
@@ -3659,7 +3678,7 @@ export default function Home() {
       let name = (projectNameOverride || signal?.projectName || "").trim();
       const DEFAULT_PROJECT_NAMES = new Set(["New Project", "New Idea", "My Project", "Untitled", ""]);
       if (DEFAULT_PROJECT_NAMES.has(name)) {
-        const conversationMessages = (nexusChat.messages as HomeMessage[])
+        const conversationMessages = conversationMessagesLive
           .slice(-14)
           .filter(m => m.role === "user" || m.role === "assistant")
           .map(m => ({ role: m.role as string, content: typeof m.content === "string" ? m.content : "" }))
@@ -3695,7 +3714,7 @@ export default function Home() {
       if (!createRes.ok || !project.id) throw new Error(project?.error ?? "Project creation failed");
       const projectId = Number(project.id);
       setActiveProjectId(projectId);
-      const transcriptMessages = (nexusChat.messages as HomeMessage[]).slice(-20).map(({ role, content }) => ({ role, content }));
+      const transcriptMessages = conversationMessagesLive.slice(-20).map(({ role, content }) => ({ role, content }));
       const transcript = transcriptMessages.map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`).join("\n\n");
       const summary = signal?.reason || transcriptMessages.map(m => m.content).join(" ").slice(0, 800);
 
@@ -3777,7 +3796,7 @@ export default function Home() {
         }
         // Snapshot the conversation so the workspace chat shows the full thread
         // (visual layer — workspace normalizeThinkFreelyThread reads this on mount)
-        const conversationSnapshot = (nexusChat.messages as HomeMessage[]).map(({ role, content }) => ({ role, content }));
+        const conversationSnapshot = conversationMessagesLive.map(({ role, content }) => ({ role, content }));
         sessionStorage.setItem(OPENING_CONVERSATION_STORAGE_KEY, JSON.stringify(conversationSnapshot));
         sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
         // Kick Atlas on arrival: transcript transfer alone leaves the workspace
@@ -3797,7 +3816,7 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
 
       setShapingStatus("opening");
-      setLocation(`/project/${projectId}?source=home-handoff`);
+      navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
       return;
     } catch {
       setShapingStatus("ready");
@@ -3806,7 +3825,7 @@ export default function Home() {
       setHandoffLoading(false);
       setHandoffStage("");
     }
-  }, [isFree, nexusChat.messages, projects, queryClient, setActiveProjectId, setLocation, setShapingStatus, setShowUpgrade]);
+  }, [getHandoffMessages, isFree, projects, queryClient, setActiveProjectId, setLocation, setShapingStatus, setShowUpgrade]);
 
   const handledProjectReadyAutoHandoffRef = useRef(0);
   useEffect(() => {
@@ -4121,21 +4140,21 @@ export default function Home() {
       showWorkspaceMenu
       showLaunchWhenNoProject
       onLaunch={handleHomeLaunchWorkspace}
-      hasConversation={nexusChat.messages.length > 0}
+      hasConversation={getHandoffMessages().length > 0}
     />
   );
 
   const handleAskAtlasCreateProject = useCallback((nameOverride?: string) => {
     setIsHandoffReady(false);
     // Pill-stored name (from handoffSignal) wins over tapped bold text.
-    const pillName = nexusChat.handoffSignal?.projectName?.trim();
+    const pillName = liveHandoffSignal?.projectName?.trim();
     const suggestedName = pillName || nameOverride?.trim();
     if (suggestedName) {
-      void handleHandoff((nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined, suggestedName);
+      void handleHandoff((liveHandoffSignal ?? undefined) as HomeHandoffSignal | undefined, suggestedName);
     } else {
       performCreateProjectFromConversation();
     }
-  }, [handleHandoff, nexusChat.handoffSignal, performCreateProjectFromConversation]);
+  }, [handleHandoff, liveHandoffSignal, performCreateProjectFromConversation]);
 
   const [crystallizeSheetOpen, setCrystallizeSheetOpen] = useState(false);
 
@@ -4143,12 +4162,12 @@ export default function Home() {
   // actually produced a BUILD-intent turn. Otherwise the handoff stays a pure
   // thinking capture and workspace opens quiet (no forced planning noise).
   const conversationHasBuildIntent = useMemo(
-    () => (nexusChat.messages as HomeMessage[]).some((m) => m.intentType === "BUILD"),
-    [nexusChat.messages],
+    () => getHandoffMessages().some((m) => m.intentType === "BUILD"),
+    [getHandoffMessages],
   );
 
   const handleCrystallizeToExisting = useCallback(async (projectId: number, _projectName: string) => {
-    const conversationMessages = nexusChat.messages.map((m) => ({
+    const conversationMessages = getHandoffMessages().map((m) => ({
       role: m.role as string,
       content: typeof m.content === "string" ? m.content : "",
     })).filter(m => m.content.trim());
@@ -4166,11 +4185,11 @@ export default function Home() {
     if (!res.ok) throw new Error("Handoff failed");
     queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     setActiveProjectId(projectId);
-    setLocation(`/project/${projectId}`);
-  }, [nexusChat.messages, askAtlasConversationId, queryClient, setActiveProjectId, setLocation, conversationHasBuildIntent]);
+    navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
+  }, [getHandoffMessages, askAtlasConversationId, queryClient, setActiveProjectId, setLocation, conversationHasBuildIntent]);
 
   const handleCrystallizePortfolioNote = useCallback(async () => {
-    const conversationMessages = nexusChat.messages.map((m) => ({
+    const conversationMessages = getHandoffMessages().map((m) => ({
       role: m.role as string,
       content: typeof m.content === "string" ? m.content : "",
     })).filter(m => m.content.trim());
@@ -4187,7 +4206,7 @@ export default function Home() {
     });
     if (!res.ok) throw new Error("Handoff failed");
     queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-  }, [nexusChat.messages, askAtlasConversationId, queryClient]);
+  }, [getHandoffMessages, askAtlasConversationId, queryClient]);
 
   return (
     <div
@@ -6024,7 +6043,7 @@ export default function Home() {
             handleAskAtlasCreateProject(name);
           } else if (id === "open-project") {
             const projectId = typeof payload?.projectId === "number" ? payload.projectId : undefined;
-            if (projectId) setLocation(`/project/${projectId}`);
+            if (projectId) navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
           }
         }}
         stagedFiles={staged.files}
@@ -6320,8 +6339,8 @@ export default function Home() {
         open={crystallizeSheetOpen}
         onClose={() => setCrystallizeSheetOpen(false)}
         projects={projects ?? []}
-        handoffSignal={nexusChat.handoffSignal}
-        hasConversation={(nexusChat.messages?.length ?? 0) > 0}
+        handoffSignal={liveHandoffSignal}
+        hasConversation={getHandoffMessages().length > 0}
         onNewWorkspace={() => { setCrystallizeSheetOpen(false); handleAskAtlasCreateProject(); }}
         onExistingProject={handleCrystallizeToExisting}
         onPortfolioNote={handleCrystallizePortfolioNote}

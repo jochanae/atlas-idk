@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
+import { navigateAfterAskAtlasHandoff } from "@/lib/askAtlasHelpers";
 
 /**
  * CommitPill — the "door you walk through" at the end of a shaped thread.
@@ -82,7 +83,9 @@ function InlineCommitPill({
     setStatus("transitioning");
     try {
       if (onArm) await onArm();
-      else navigate(`/project/${projectId}`);
+      // INT-13: door always opens with continuation seeded.
+      // onArm may already navigate; wouter handles a second navigate fine.
+      navigateAfterAskAtlasHandoff(projectId, navigate, { source: "home-handoff" });
     } catch (err) {
       setStatus("error");
       setErrorMsg(err instanceof Error ? err.message : "Handoff failed");

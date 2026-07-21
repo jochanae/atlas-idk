@@ -1,6 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import {
+  isActiveComposerSession,
+  markSoftAuthPause,
+} from "@/lib/composerSessionGuard";
+import { toast } from "sonner";
 
 export interface AuthUser {
   id: number;
@@ -60,7 +65,8 @@ export function useAuth() {
   // - Do NOT use staleTime: Infinity + refetchOnMount: false: that permanently
   //   masks expired/revoked sessions until a hard reload.
   // - Keep a finite staleTime so remounts / route changes can revalidate.
-  // - install-api-fetch still hard-redirects on confirmed API 401 + /auth/me 401.
+  // - install-api-fetch hard-redirects on confirmed API 401 + /auth/me 401
+  //   only when no active composer session (INT-01 soft-pause otherwise).
   const { data: user, isLoading } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: fetchMe,
@@ -80,6 +86,15 @@ export function useRequireAuth() {
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!isLoading && !user) {
+      // INT-01 / INT-02: do not yank the user to login mid-compose.
+      if (isActiveComposerSession()) {
+        markSoftAuthPause("session_expired", "useRequireAuth");
+        toast.message("Session expired", {
+          description: "Your draft is still here. Sign in again when you’re ready — the conversation stays.",
+          duration: 8000,
+        });
+        return;
+      }
       navigate("/login");
     }
   }, [user, isLoading, navigate]);
