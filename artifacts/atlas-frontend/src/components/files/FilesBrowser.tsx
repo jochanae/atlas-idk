@@ -15,7 +15,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X } from "lucide-react";
+import { useLocation } from "wouter";
+import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X, FolderTree } from "lucide-react";
 import { useListProjects } from "@workspace/api-client-react";
 import { fetchLibraryItems, type LibraryItem } from "@/lib/library";
 import {
