@@ -83,12 +83,22 @@ rm -rf .project-workspaces  # dev workspace state
 rm -rf docs handoffs supabase local .lovable .upm
 
 echo "[build-frontend] Writing production API launcher..."
-# The production container runs commands without the Replit nix profile PATH,
-# so bare "node" is not found. Capture the absolute path to node right now
-# (while the build environment has PATH set correctly) and bake it into a
-# tiny launcher script that /bin/sh — which IS stable in the base container
-# at /bin/sh — can execute directly without needing PATH at all.
-NODE_BIN="$(which node)"
+# The production container runs without the Replit nix profile PATH, so bare
+# "node" is not found at runtime. We capture the node path now (build time,
+# when PATH is correctly set) and bake it into a launcher that /bin/sh can
+# execute — /bin/sh is stable in the base container at /bin/sh.
+#
+# IMPORTANT: in the dev environment `which node` resolves to a Replit-specific
+# wrapper (nodejs-24.13.0-wrapped) that does NOT exist in the production nix
+# layer. The production layer only contains the standard NixOS binary
+# (nodejs-24.13.0, no -wrapped suffix). Extract the real binary path from
+# inside the wrapper's exec line instead of using the wrapper path directly.
+NODE_WRAPPED="$(which node)"
+NODE_BIN=$(grep -o '"/nix/store/[^"]*/bin/node"' "$NODE_WRAPPED" 2>/dev/null | tail -1 | tr -d '"')
+if [ -z "$NODE_BIN" ] || [ ! -f "$NODE_BIN" ]; then
+  # Not a wrapper (e.g. already unwrapped in this environment) — use as-is.
+  NODE_BIN="$NODE_WRAPPED"
+fi
 cat > run-api.sh << EOF
 #!/bin/sh
 exec $NODE_BIN artifacts/api-server/dist/index.mjs
