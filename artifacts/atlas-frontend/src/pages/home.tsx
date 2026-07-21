@@ -2668,6 +2668,7 @@ export default function Home() {
     },
     !isAtlasStreaming && staged.files.length === 0,
     ptrContainerRef,
+    isPickerPending,
   );
 
   // Atlas Core center-button → restore composer + focus

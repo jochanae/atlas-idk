@@ -7,6 +7,8 @@ export function usePullToRefresh(
   onRefresh: () => Promise<void> | void,
   enabled = true,
   containerRef?: React.RefObject<HTMLElement | null>,
+  /** Optional: return true to suppress PTR for the current touch (e.g. picker pending). */
+  suppressCheck?: () => boolean,
 ) {
   const [distance, setDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,6 +43,10 @@ export function usePullToRefresh(
     const onTouchStart = (e: TouchEvent) => {
       if (refreshingRef.current) return;
       if (document.body.dataset.voiceActive === "true") return;
+      // Suppress during file picker lifecycle — document pickers (PPTX, etc.)
+      // run as a separate OS activity and fire synthetic touch events on return
+      // that look like a downward pull to this hook.
+      if (suppressCheck?.()) return;
       // Don't engage if the touch originates inside any scrollable child element
       const container = containerRef?.current ?? document.documentElement;
       let el = e.target as HTMLElement | null;
@@ -85,7 +91,7 @@ export function usePullToRefresh(
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [enabled, handleRefresh, containerRef]);
+  }, [enabled, handleRefresh, containerRef, suppressCheck]);
 
   return { pulling, distance, refreshing, threshold: THRESHOLD };
 }
