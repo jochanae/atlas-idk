@@ -2666,7 +2666,7 @@ export default function Home() {
       setResumeBustSignal((s) => s + 1);
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     },
-    !isAtlasStreaming,
+    !isAtlasStreaming && staged.files.length === 0,
     ptrContainerRef,
   );
 
@@ -5741,7 +5741,7 @@ export default function Home() {
 
           {/* Intent row — soft orientation under the input. Permission, not features. */}
 
-          {!askAtlasSurfaceVisible && !askAtlasConversationActive && nexusChat.messages.length === 0 && (() => {
+          {!askAtlasSurfaceVisible && !askAtlasConversationActive && nexusChat.messages.length === 0 && !hasAttachments && (() => {
             const pickStarter = (starter: string, inlineOnHome = false) => {
               thinkOutLoudInlineRef.current = inlineOnHome;
               setInput(starter);
