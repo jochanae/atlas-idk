@@ -1322,6 +1322,35 @@ export default function CodePage() {
     }
   };
 
+  const [isCreatingRepo, setIsCreatingRepo] = useState(false);
+  const handleCreateRepoForProject = async () => {
+    if (projectId == null) return;
+    if (!githubPushToken) {
+      toast.error("Connect GitHub in Account Settings first.", { duration: 4000 });
+      return;
+    }
+    setIsCreatingRepo(true);
+    try {
+      const res = await fetch("/api/github/bootstrap-repo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          projectId,
+          projectName: projectQ.data?.name ?? `atlas-project-${projectId}`,
+        }),
+      });
+      const body = await res.json().catch(() => ({})) as { error?: string; htmlUrl?: string; repoName?: string };
+      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      toast.success(`Created ${body.repoName ?? "repo"} and linked it to this project.`);
+      await projectQ.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? `Couldn't create repo: ${e.message}` : "Couldn't create repo.");
+    } finally {
+      setIsCreatingRepo(false);
+    }
+  };
+
   const handleOpenForgeSync = () => {
     if (projectId == null) {
       toast.error("Select a project before opening Forge Sync.");
