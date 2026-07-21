@@ -7,6 +7,12 @@
 **Status:** Audit complete + product-principle prioritization applied. Phase B (Repair) must not begin until this document is reviewed.  
 **Gate:** Do **not** start Milestone 2 (Atlas intelligence) until Wave 0 and Wave 1 of this milestone are complete and verified.
 
+**Hard rule (Phase B):**
+
+> No repair may close an interruption without passing its acceptance test.
+
+An INT is not “fixed” when the code looks right. It is fixed when the acceptance test in §6 for that INT passes. PRs that claim to close an INT must include (or update) that test and show it green.
+
 > A user should be able to spend an hour with Atlas—sharing text, screenshots, PDFs, PowerPoints, code, and ideas—without Atlas ever interrupting the flow of thought.
 
 **Product principle for prioritization:**
@@ -1021,6 +1027,8 @@ Phase A did **not** restart services or run E2E. Existing harnesses that Phase B
 
 > The conversation should never be interrupted by the platform.
 
+**Hard rule:** No repair may close an interruption without passing its acceptance test (§6). Code without a green acceptance test does not close the INT.
+
 Do **not** attempt all 34 interruptions in one sweep. Complete and verify each wave’s acceptance gates before expanding scope.  
 **Do not start Milestone 2 until Wave 0 and Wave 1 are complete and verified** (§6.1–6.2).
 
@@ -1181,10 +1189,19 @@ Anything that breaks that narrative is in scope for Milestone 1 Phase B.
 | Product-principle classification | §5 |
 | Acceptance test per interruption | §6 |
 | Repair roadmap (Waves 0/1/2) | §10 |
+| **Hard rule: no INT closed without passing its acceptance test** | Locked |
 | Milestone 2 gate | Wave 0 + Wave 1 verified |
+
+### Wave 0 repair status (Phase B started)
+
+| Gate | INT | Acceptance test | Status |
+|------|-----|-----------------|--------|
+| G0-1 | INT-01 (+ INT-02) | Soft-pause when composer session active; no hard login redirect mid-thought | **Passing** — `composerSessionGuard.test.ts` |
+| G0-2 | INT-13 | Seed continuation on every Ask Atlas → Workspace entry | **Passing** — `askAtlasHelpers.handoff.test.ts` + nav call-site wiring |
+| G0-3 | INT-11 | Handoff/crystallize uses live Ask Atlas transcript | **Passing** — `selectHandoffMessages` tests + home.tsx wiring |
 
 This is a structured stabilization program, not a bug chase.
 
 ---
 
-*End of Phase A audit (with product-principle prioritization). Await review before Phase B: Repair.*
+*Phase A complete. Phase B Wave 0 in progress — Killers only close when §6 acceptance tests are green.*

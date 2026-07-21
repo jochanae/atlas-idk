@@ -6944,6 +6944,21 @@ export default function Workspace() {
           return true;
         }
       } catch {}
+      // INT-13 backup: URL markers from Ask Atlas handoff even if flag was lost.
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const source = params.get("source") ?? "";
+        const from = params.get("from");
+        const handoffSource =
+          from === "home" ||
+          source === "home-handoff" ||
+          source === "commit-carryover" ||
+          source === "commit-handoff" ||
+          source === "home-append";
+        if (handoffSource && sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY)) {
+          return true;
+        }
+      } catch {}
       return false;
     })();
     if (useNexusWorkspaceChat && nexusBridge.messages.length > 0 && !isHandoffContinuation) {

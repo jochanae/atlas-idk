@@ -108,7 +108,7 @@ import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
-import { seedHandoffContinuation, triggerNexusHandoff } from "@/lib/askAtlasHelpers";
+import { triggerNexusHandoff, navigateAfterAskAtlasHandoff } from "@/lib/askAtlasHelpers";
 import { useActiveProjectContext } from "@/lib/activeProjectContext";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
@@ -364,13 +364,13 @@ export function AskAtlasSurface({
   };
 
   const handleProjectOpen = async (projectId: number) => {
-    const route = `/project/${projectId}`;
     await triggerNexusHandoff({
       conversationId,
       projectId,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
     });
-    setLocation(route);
+    // INT-13: never land quiet — seed continuation before navigate.
+    navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
   };
 
   const handleCopy = (content: string, idx: number) => {
@@ -650,7 +650,8 @@ export function AskAtlasSurface({
                         projectId: tokenTarget.projectId,
                         projectTitle: tokenTarget.projectName,
                       });
-                      // Best-effort handoff sync — never blocks navigation.
+                      // Best-effort handoff sync — CommitPill navigates after onArm
+                      // with INT-13 continuation seeded.
                       await triggerNexusHandoff({
                         conversationId,
                         projectId: tokenTarget.projectId,
@@ -665,8 +666,13 @@ export function AskAtlasSurface({
                       type="button"
                       onClick={() => {
                         const pid = msg.navigateTo!.projectId;
-                        if (pid) seedHandoffContinuation(pid);
-                        setLocation(msg.navigateTo!.route);
+                        if (pid) {
+                          navigateAfterAskAtlasHandoff(pid, setLocation, {
+                            source: "home-handoff",
+                          });
+                        } else {
+                          setLocation(msg.navigateTo!.route);
+                        }
                       }}
                       style={{
                         background: "transparent",
@@ -721,7 +727,11 @@ export function AskAtlasSurface({
                         <button
                           key={choice.id}
                           type="button"
-                          onClick={() => setLocation(`/project/${choice.id}`)}
+                          onClick={() =>
+                            navigateAfterAskAtlasHandoff(choice.id, setLocation, {
+                              source: "home-handoff",
+                            })
+                          }
                           style={{
                             background: "transparent",
                             border: "1px solid var(--atlas-gold)",

@@ -4,6 +4,10 @@
 // `fetch("/api/...")` reach the real backend instead of the preview origin.
 import { API_BASE } from "./api";
 import { logEvent as _adbgLog } from "./attachDebugLog";
+import {
+  markSoftAuthPause,
+  shouldHardRedirectOnConfirmedAuthExpiry,
+} from "./composerSessionGuard";
 
 declare global {
   interface Window {
@@ -139,6 +143,23 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
               _adbgLog("auth_me_recheck_start");
               const check = await originalFetch(`${baseUrl}/api/auth/me`, { credentials: "include" });
               if (check.status === 401) {
+                // INT-01: never wipe an active composer session with a hard login redirect.
+                if (!shouldHardRedirectOnConfirmedAuthExpiry()) {
+                  _adbgLog("auth_me_401_soft_pause");
+                  markSoftAuthPause("session_expired", "install-api-fetch");
+                  try {
+                    // Soft signal for UI; do not navigate away mid-thought.
+                    window.dispatchEvent(
+                      new CustomEvent("atlas:soft-auth-pause", {
+                        detail: { reason: "session_expired" },
+                      }),
+                    );
+                  } catch {
+                    /* ignore */
+                  }
+                  _401redirectPending = false;
+                  return;
+                }
                 _adbgLog("auth_me_401_redirecting");
                 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 window.location.href = `${base}/login?reason=session_expired`;
