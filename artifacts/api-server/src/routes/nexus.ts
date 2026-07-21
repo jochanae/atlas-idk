@@ -3531,8 +3531,8 @@ When the user uses strong or colorful language (including profanity) to describe
         // Reuse already-loaded committedEntries — filter to this project.
         const chatLedgerLines = committedEntries
           .filter(e => e.projectId === focusProjectId)
-          .slice(0, 8)
-          .map(e => `  • ${e.title}${e.summary ? ` — ${e.summary.slice(0, 80)}` : ""}`)
+          .slice(0, 20)
+          .map(e => `  • ${e.title}${e.summary ? ` — ${e.summary.slice(0, 120)}` : ""}`)
           .join("\n");
 
         const chatDnaLines: string[] = [];
@@ -3809,10 +3809,10 @@ The user has ${ledgerGroups.parked.length} parked item${ledgerGroups.parked.leng
         if (amPages.length > 0 || amComponents.length > 0 || amEntities.length > 0) {
           let amBlock = `\n\n--- APPLICATION MODEL: ${focusProject.name.toUpperCase()} ---`;
           if (amPages.length > 0) {
-            amBlock += `\nPages (${amPages.length}): ${amPages.map(p => `${p.name ?? "?"}${p.route ? ` (${p.route})` : ""}${p.purpose ? ` — ${p.purpose.slice(0, 60)}` : ""}`).join("; ")}`;
+            amBlock += `\nPages (${amPages.length}): ${amPages.map(p => `${p.name ?? "?"}${p.route ? ` (${p.route})` : ""}${p.purpose ? ` — ${p.purpose.slice(0, 100)}` : ""}`).join("; ")}`;
           }
           if (amComponents.length > 0) {
-            amBlock += `\nComponents (${amComponents.length}): ${amComponents.slice(0, 12).map(c => `${c.name ?? "?"}${c.type ? ` [${c.type}]` : ""}`).join(", ")}`;
+            amBlock += `\nComponents (${amComponents.length}): ${amComponents.slice(0, 30).map(c => `${c.name ?? "?"}${c.type ? ` [${c.type}]` : ""}`).join(", ")}`;
           }
           if (amEntities.length > 0) {
             amBlock += `\nData entities (${amEntities.length}): ${amEntities.map(e => e.name ?? "?").join(", ")}`;
