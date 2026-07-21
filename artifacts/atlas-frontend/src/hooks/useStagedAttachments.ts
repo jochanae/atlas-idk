@@ -315,6 +315,24 @@ export function useStagedAttachments(opts?: {
             processingStatus: result.persisted.processingStatus,
             error: null,
           });
+          try {
+            const { upsertStagingAttachmentMeta } = await import(
+              "@/lib/attachments/stagingPersistence"
+            );
+            upsertStagingAttachmentMeta({
+              clientAttachmentId: id,
+              attachmentId: result.attachmentId,
+              filename: file.name,
+              mimeType: file.type || "application/octet-stream",
+              sizeBytes: file.size,
+              uploadStatus: "uploaded",
+              conversationId: diagCtxRef.current?.conversationId ?? null,
+              surface: diagCtxRef.current?.surface ?? "default",
+              updatedAt: Date.now(),
+            });
+          } catch {
+            /* staging persistence is best-effort */
+          }
         } catch (err) {
           if (uploadGenRef.current.get(id) !== gen) return;
           uploadAbortRef.current.delete(id);

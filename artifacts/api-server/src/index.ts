@@ -1479,6 +1479,17 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: message_attachments.message_position column failed — server will start anyway");
   }
 
+  // Continuity — distinguish existence from successful model ingestion.
+  try {
+    await db.execute(sql`
+      ALTER TABLE message_attachments
+        ADD COLUMN IF NOT EXISTS model_injected_at timestamptz
+    `);
+    logger.info("ensureColumns: message_attachments.model_injected_at column verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: message_attachments.model_injected_at column failed — server will start anyway");
+  }
+
   try {
     // Partial unique index: only covers rows where both nexus_message_id and
     // message_position are set (excludes pre-B3.2 rows where position is NULL).

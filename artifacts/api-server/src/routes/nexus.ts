@@ -10,7 +10,22 @@ import {
   checkAttachmentClaims,
   StreamingClaimGate,
   type ResolvedAttachmentInfo,
+  type PriorAttachmentGuardInfo,
 } from "../lib/attachmentOutputGuard";
+import {
+  buildAttachmentGroundingState,
+  formatGroundingPromptBlock,
+  formatHistoryProvenanceBlock,
+  isAttachmentContinuityV2Enabled,
+  type PriorAttachmentRecord,
+} from "../lib/attachmentGrounding";
+import { loadPriorAttachmentsForMessages } from "../lib/attachmentProvenanceQuery";
+import { selectRelevantPriorAttachments } from "../lib/attachmentRelevance";
+import {
+  beginTurnIdempotency,
+  completeTurnIdempotency,
+  processTurnIdempotencyStore,
+} from "../lib/attachmentTurnIdempotency";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
@@ -2408,6 +2423,11 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     attachmentIds?: string[];
     conversationId?: string;
     sessionId?: number;
+    /**
+     * Client-minted idempotency key for the full turn lifecycle
+     * (user persist → link → run → assistant persist → done).
+     */
+    clientMessageId?: string;
     askAtlasContextSeed?: string;
     userType?: HomeUserType;
     conversationMode?: boolean;
@@ -2567,10 +2587,37 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // Normalise: preferred attachmentIds (already persisted) + legacy inline-base64
   // attachments + single-image fields. Unsupported persisted attachments are not
   // included here, so the model injection loops below never see them.
-  const allAttachments: ModelAttachment[] = [
+  // Continuity v2 may append relevance-selected historical resolves later in-turn
+  // (same array — no parallel pipeline).
+  let allAttachments: ModelAttachment[] = [
     ...resolvedAttachmentIdPayloads,
     ...legacyInlineModelAttachments,
   ];
+  /** Historical attachment IDs reopened this turn (continuity v2). */
+  const historicalReopenedAttachmentIds = new Set<string>();
+  let priorAttachmentRecords: PriorAttachmentRecord[] = [];
+  let referencedPriorPublicRefs: string[] = [];
+  const continuityV2 = isAttachmentContinuityV2Enabled();
+  const clientMessageId =
+    typeof body.clientMessageId === "string" && body.clientMessageId.trim().length > 0
+      ? body.clientMessageId.trim().slice(0, 128)
+      : null;
+  if (continuityV2 && clientMessageId) {
+    const idem = beginTurnIdempotency(processTurnIdempotencyStore, {
+      userId,
+      clientMessageId,
+      conversationId: conversationId ?? null,
+      phase: "accepted",
+    });
+    if (!idem.created && idem.record.phase === "done") {
+      res.status(409).json({
+        error: "Duplicate clientMessageId — turn already completed",
+        clientMessageId,
+        phase: idem.record.phase,
+      });
+      return;
+    }
+  }
   // Always store messages under a conversation ID so they appear in the
   // conversations list. If the frontend doesn't send one (new thread), we
   // generate a UUID here and return it in the `done` event so the client can
@@ -2853,18 +2900,110 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   const historySource = dbMessages.length > 0
     ? dbMessages.slice(-40)
     : (isInProjectAskAtlas ? [] : (conversationId ? requestHistory.slice(-40) : []));
-  const conversationHistory = historySource
-    .map((m) => ({
-      role: m.role as "user" | "assistant",
-      // Anthropic rejects user messages with empty content (e.g. image-only sends
-      // where no text was typed). Replace with a placeholder so history structure
-      // and role alternation are preserved.
-      content: (m.role === "user" && (!m.content || m.content.trim().length === 0))
-        ? "[attachment]"
-        : m.content,
-    }))
+
+  // Continuity v2: load prior attachment provenance for history + grounding.
+  // Real DB UUIDs stay server-side; model-visible blocks use publicRef.
+  if (continuityV2 && dbMessages.length > 0) {
+    try {
+      const nexusIds = dbMessages
+        .filter((m) => m.role === "user" && typeof (m as { id?: number }).id === "number")
+        .map((m) => (m as { id: number }).id);
+      priorAttachmentRecords = await loadPriorAttachmentsForMessages({
+        userId,
+        nexusMessageIds: isInProjectAskAtlas ? [] : nexusIds,
+        chatMessageIds: isInProjectAskAtlas ? nexusIds : [],
+      });
+    } catch (err) {
+      logger.warn({ err, userId }, "nexus: failed to load prior attachment provenance");
+      priorAttachmentRecords = [];
+    }
+  }
+
+  const priorsByMessageId = new Map<number, PriorAttachmentRecord[]>();
+  for (const p of priorAttachmentRecords) {
+    const list = priorsByMessageId.get(p.originatingMessageId) ?? [];
+    list.push(p);
+    priorsByMessageId.set(p.originatingMessageId, list);
+  }
+
+  let conversationHistory = historySource
+    .map((m) => {
+      const role = m.role as "user" | "assistant";
+      let content = m.content;
+      if (role === "user" && (!content || content.trim().length === 0)) {
+        if (continuityV2) {
+          const msgId = typeof (m as { id?: number }).id === "number" ? (m as { id: number }).id : null;
+          const priors = msgId != null ? priorsByMessageId.get(msgId) ?? [] : [];
+          content = formatHistoryProvenanceBlock(priors);
+        } else {
+          content = "[attachment]";
+        }
+      }
+      return { role, content };
+    })
     // Also drop any assistant messages with empty content to avoid API errors.
     .filter((m) => m.role !== "assistant" || (m.content && m.content.trim().length > 0));
+
+  // Continuity v2: relevance-gated historical reopen (same resolve helper).
+  if (continuityV2 && priorAttachmentRecords.length > 0) {
+    const relevance = selectRelevantPriorAttachments({
+      userMessage: message,
+      priorAttachments: priorAttachmentRecords.map((p) => ({
+        publicRef: p.publicRef,
+        attachmentId: p.attachmentId,
+        filename: p.filename,
+        mimeType: p.mimeType,
+        kind: p.kind,
+      })),
+      maxCount: 2,
+    });
+    referencedPriorPublicRefs = relevance.selectedPublicRefs;
+    const already = new Set(attachmentIds);
+    const toReopen = relevance.selectedAttachmentIds.filter((id) => !already.has(id));
+    if (toReopen.length > 0) {
+      try {
+        const resolveProjectId =
+          Number.isInteger(body.projectId) && Number(body.projectId) > 0
+            ? Number(body.projectId)
+            : null;
+        const { resolved, skipped } = await resolveAttachmentIdsForModel({
+          userId,
+          attachmentIds: toReopen,
+          projectId: resolveProjectId,
+        });
+        for (const s of skipped) {
+          skippedAttachmentIdPayloads.push(s);
+        }
+        for (const att of resolved) {
+          historicalReopenedAttachmentIds.add(att.attachmentId);
+          resolvedAttachmentMetaForGuard.push({
+            attachmentId: att.attachmentId,
+            name: att.name,
+            mediaType: att.mediaType,
+          });
+          allAttachments.push({
+            base64: att.base64,
+            mediaType: att.mediaType,
+            name: att.name,
+            asText: att.asText,
+            textContent: att.textContent,
+            images: att.images,
+          });
+        }
+        logger.info(
+          {
+            userId,
+            reopened: resolved.map((a) => a.attachmentId),
+            skipped: skipped.map((s) => s.reason),
+            reasons: relevance.reasons,
+          },
+          "nexus: historical attachments reopened via relevance",
+        );
+      } catch (err) {
+        logger.warn({ err, userId }, "nexus: historical attachment reopen failed");
+      }
+    }
+  }
 
   // ── WhisperGate / Just-Talk — classify BEFORE prompt assembly & side effects ──
   // Must run before project-state briefing injection so greetings stay silent.
@@ -3867,6 +4006,14 @@ WHAT YOU SHOULD NOT DO:
     });
   }
 
+  if (continuityV2 && clientMessageId) {
+    completeTurnIdempotency(processTurnIdempotencyStore, { userId, clientMessageId }, {
+      phase: attachmentIds.length > 0 ? "attachments_linked" : "user_persisted",
+      userMessageId: linkedNexusMessageId ?? linkedChatMessageId ?? undefined,
+      conversationId: effectiveConversationId,
+    });
+  }
+
   // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -4270,22 +4417,19 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
     {
       // Reuse the same evidence the streaming gate used above — built once,
       // shared between the gate and the post-stream validator.
-      const perAttachmentEvidence = getPerAttachmentEvidence();
-
-      const guardResult = checkAttachmentClaims(rawContent, {
-        attachments: perAttachmentEvidence,
-        toolsExecutedThisTurn,
-      });
+      const guardResult = checkAttachmentClaims(rawContent, buildGuardEvidence());
 
       if (!guardResult.clean) {
         req.log.warn(
           {
             violations: guardResult.violations,
-            perAttachmentEvidence: perAttachmentEvidence.map((a) => ({
+            perAttachmentEvidence: getPerAttachmentEvidence().map((a) => ({
               filename: a.filename,
               mimeType: a.mimeType,
               contentSuppliedToModel: a.contentSuppliedToModel,
             })),
+            priorAttachmentCount: priorAttachmentRecords.length,
+            historicalReopened: [...historicalReopenedAttachmentIds],
             toolsExecutedThisTurn: [...toolsExecutedThisTurn],
             focusProjectId,
             conversationId: effectiveConversationId,
@@ -5897,6 +6041,13 @@ HARD RULE: You may describe and plan here. You may NEVER start building here. Th
       idempotencyKey: `response_generated:${turnActivityKey}`,
     });
 
+    if (continuityV2 && clientMessageId) {
+      completeTurnIdempotency(processTurnIdempotencyStore, { userId, clientMessageId }, {
+        phase: "done",
+        runId: activeRunId ?? undefined,
+      });
+    }
+
     res.write(`event: done\ndata: ${JSON.stringify({
       content: visibleContent,
       runId: activeRunId,
@@ -6405,15 +6556,32 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
   };
 
   // ── HARD ATTACHMENT GROUNDING ──────────────────────────────────────────────
-  // Inject authoritative runtime truth about what is actually attached to THIS
-  // turn. The model must NEVER infer attachment presence from project context,
-  // conversation history, or pattern matching. These are hard facts, not hints.
+  // Inject authoritative runtime truth about attachments. Continuity v2 keeps
+  // current-turn presence, prior provenance, and content availability distinct.
   {
     const resolvedThisTurn = allAttachments.length + vault.imageBlocks.length + urlBlocks.length;
     const requestedThisTurn = attachmentIds.length;
 
-    if (resolvedThisTurn === 0 && requestedThisTurn === 0) {
-      // Nothing attached at all.
+    if (continuityV2) {
+      const contentReopenedPublicRefs = priorAttachmentRecords
+        .filter((p) => historicalReopenedAttachmentIds.has(p.attachmentId))
+        .map((p) => p.publicRef);
+      const grounding = buildAttachmentGroundingState({
+        currentAttachmentIds: attachmentIds,
+        currentResolvedCount: resolvedAttachmentIdPayloads.length + vault.imageBlocks.length + urlBlocks.length,
+        priorAttachments: priorAttachmentRecords,
+        referencedPublicRefs: referencedPriorPublicRefs,
+        contentReopenedPublicRefs,
+      });
+      systemPrompt += `\n\n${formatGroundingPromptBlock(grounding)}`;
+      if (resolvedThisTurn === 0 && requestedThisTurn > 0) {
+        const skippedSummary = skippedAttachmentIdPayloads
+          .map(a => `  - ${a.filename ?? "file"} (${a.mimeType ?? "unknown"}) — ${a.reason}`)
+          .join("\n");
+        systemPrompt += `\n\n--- CURRENT TURN RESOLVE FAILURES ---\n${skippedSummary}\n--- END ---`;
+      }
+    } else if (resolvedThisTurn === 0 && requestedThisTurn === 0) {
+      // Legacy path (flag off) — preserved for rollback only.
       systemPrompt += `\n\n--- CURRENT TURN: ATTACHMENT STATE (AUTHORITATIVE RUNTIME TRUTH) ---
 attachmentCount: 0
 resolvedAttachmentCount: 0
@@ -6865,6 +7033,23 @@ Do NOT claim to read, see, or describe any file not listed here.
     return cachedPerAttachmentEvidence;
   };
 
+  const getPriorGuardInfo = (): PriorAttachmentGuardInfo[] =>
+    priorAttachmentRecords.map((p) => ({
+      publicRef: p.publicRef,
+      filename: p.filename,
+      mimeType: p.mimeType,
+      existed: p.existed,
+      priorAttachmentWasModelReceived: p.priorAttachmentWasModelReceived,
+      contentAvailableThisTurn: historicalReopenedAttachmentIds.has(p.attachmentId),
+    }));
+
+  const buildGuardEvidence = () => ({
+    attachments: getPerAttachmentEvidence(),
+    priorAttachments: continuityV2 ? getPriorGuardInfo() : [],
+    contentReopenedAttachmentIds: historicalReopenedAttachmentIds,
+    toolsExecutedThisTurn,
+  });
+
   // Initialized lazily on the first flushNexusText call so evidence is ready.
   // toolsExecutedThisTurn is passed by reference — stays live as tools run.
   let claimGate: StreamingClaimGate | null = null;
@@ -6896,10 +7081,7 @@ Do NOT claim to read, see, or describe any file not listed here.
     // trigger phrases, accumulates each potentially-claim sentence, and emits a
     // correction SSE instead of releasing any unsupported claim.
     if (!claimGate) {
-      claimGate = new StreamingClaimGate({
-        attachments: getPerAttachmentEvidence(),
-        toolsExecutedThisTurn, // by reference — stays live as tools run
-      });
+      claimGate = new StreamingClaimGate(buildGuardEvidence());
     }
     const safeEnd = Math.max(emitPtr, fullText.length - IG_LOOKAHEAD);
     const gateResult = claimGate.process(fullText, emitPtr, safeEnd);
