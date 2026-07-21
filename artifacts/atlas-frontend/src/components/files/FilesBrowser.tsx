@@ -565,6 +565,51 @@ function ViewToggleBtn({ active, onClick, label, children }: { active: boolean; 
   );
 }
 
+/** Toggle beside the project dropdown: Cards view (current FilesBrowser) vs
+ *  Tree view (jumps to /project/:id workspace filesystem). */
+function ViewSourceToggle({ onOpenTree, disabled }: { onOpenTree: () => void; disabled?: boolean }) {
+  return (
+    <div
+      role="group"
+      aria-label="File view source"
+      style={{
+        display: "flex", gap: 2, padding: 2, borderRadius: 6,
+        background: "hsl(var(--muted) / 0.35)", border: "1px solid hsl(var(--border))",
+        flexShrink: 0,
+      }}
+    >
+      <button
+        type="button"
+        aria-pressed="true"
+        title="Cards — unified files"
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 28, height: 24, borderRadius: 4, cursor: "default",
+          background: "hsl(var(--primary) / 0.14)",
+          color: "hsl(var(--primary))",
+          border: "none",
+        }}
+      ><LayoutGrid size={12} /></button>
+      <button
+        type="button"
+        onClick={onOpenTree}
+        disabled={disabled}
+        aria-pressed="false"
+        title="Project workspace tree"
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 28, height: 24, borderRadius: 4,
+          cursor: disabled ? "not-allowed" : "pointer",
+          background: "transparent",
+          color: "hsl(var(--muted-foreground))",
+          border: "none",
+          opacity: disabled ? 0.4 : 1,
+        }}
+      ><FolderTree size={12} /></button>
+    </div>
+  );
+}
+
 function RailGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
