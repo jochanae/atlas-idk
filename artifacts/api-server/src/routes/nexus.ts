@@ -2945,7 +2945,49 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     .filter((m) => m.role !== "assistant" || (m.content && m.content.trim().length > 0));
 
   // Continuity v2: relevance-gated historical reopen (same resolve helper).
+  let continuityDiag: {
+    continuityV2Enabled: boolean;
+    conversationIdPresent: boolean;
+    priorCandidateCount: number;
+    priorModelReceivedCount: number;
+    priorBytesRetrievableCount: number;
+    relevanceSelectedCount: number;
+    relevanceReasons: string[];
+    historicalReopenAttempted: boolean;
+    historicalReopenResolvedCount: number;
+    historicalReopenSkippedCount: number;
+    historicalReopenSkipReasons: string[];
+    failureReasonCode: string | null;
+  } = {
+    continuityV2Enabled: continuityV2,
+    conversationIdPresent: typeof conversationId === "string" && conversationId.length > 0,
+    priorCandidateCount: 0,
+    priorModelReceivedCount: 0,
+    priorBytesRetrievableCount: 0,
+    relevanceSelectedCount: 0,
+    relevanceReasons: [],
+    historicalReopenAttempted: false,
+    historicalReopenResolvedCount: 0,
+    historicalReopenSkippedCount: 0,
+    historicalReopenSkipReasons: [],
+    failureReasonCode: null,
+  };
+
+  if (!continuityV2) {
+    continuityDiag.failureReasonCode = "flag_disabled";
+  } else if (!conversationId) {
+    continuityDiag.failureReasonCode = "missing_conversation_id";
+  }
+
   if (continuityV2 && priorAttachmentRecords.length > 0) {
+    continuityDiag.priorCandidateCount = priorAttachmentRecords.length;
+    continuityDiag.priorModelReceivedCount = priorAttachmentRecords.filter(
+      (p) => p.priorAttachmentWasModelReceived,
+    ).length;
+    continuityDiag.priorBytesRetrievableCount = priorAttachmentRecords.filter(
+      (p) => p.bytesRetrievable,
+    ).length;
+
     const relevance = selectRelevantPriorAttachments({
       userMessage: message,
       priorAttachments: priorAttachmentRecords.map((p) => ({
@@ -2958,9 +3000,18 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       maxCount: 2,
     });
     referencedPriorPublicRefs = relevance.selectedPublicRefs;
+    continuityDiag.relevanceSelectedCount = relevance.selectedPublicRefs.length;
+    // Reasons already use publicRef prefixes — safe to log.
+    continuityDiag.relevanceReasons = relevance.reasons;
+
+    if (relevance.selectedPublicRefs.length === 0) {
+      continuityDiag.failureReasonCode = "relevance_selected_none";
+    }
+
     const already = new Set(attachmentIds);
     const toReopen = relevance.selectedAttachmentIds.filter((id) => !already.has(id));
     if (toReopen.length > 0) {
+      continuityDiag.historicalReopenAttempted = true;
       try {
         const resolveProjectId =
           Number.isInteger(body.projectId) && Number(body.projectId) > 0
@@ -2990,20 +3041,46 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
             images: att.images,
           });
         }
+        continuityDiag.historicalReopenResolvedCount = resolved.length;
+        continuityDiag.historicalReopenSkippedCount = skipped.length;
+        continuityDiag.historicalReopenSkipReasons = skipped.map((s) => s.reason);
+        if (resolved.length === 0) {
+          continuityDiag.failureReasonCode =
+            skipped[0]?.reason ?? "historical_reopen_resolved_zero";
+        } else {
+          continuityDiag.failureReasonCode = null;
+        }
         logger.info(
           {
-            userId,
-            reopened: resolved.map((a) => a.attachmentId),
-            skipped: skipped.map((s) => s.reason),
-            reasons: relevance.reasons,
+            event: "nexus.continuity.historical_reopen",
+            selectedPublicRefs: relevance.selectedPublicRefs,
+            resolvedCount: resolved.length,
+            skippedReasons: skipped.map((s) => s.reason),
+            relevanceReasons: relevance.reasons,
           },
           "nexus: historical attachments reopened via relevance",
         );
       } catch (err) {
+        continuityDiag.failureReasonCode = "historical_reopen_threw";
         logger.warn({ err, userId }, "nexus: historical attachment reopen failed");
       }
     }
+  } else if (continuityV2 && priorAttachmentRecords.length === 0) {
+    continuityDiag.failureReasonCode = continuityDiag.failureReasonCode ?? "prior_candidates_zero";
   }
+
+  // Temporary request-level proof for Founder Continuity V2 verification.
+  // Safe fields only — no file contents, storage paths, secrets, or DB UUIDs.
+  logger.info(
+    {
+      event: "nexus.continuity.diag",
+      ...continuityDiag,
+      currentTurnAttachmentRequestCount: attachmentIds.length,
+      userMessageLen: message.length,
+      slideQuestionLikely: /\bslide\s*\d+\b/i.test(message),
+    },
+    "nexus: attachment continuity diagnostic",
+  );
 
   // ── WhisperGate / Just-Talk — classify BEFORE prompt assembly & side effects ──
   // Must run before project-state briefing injection so greetings stay silent.

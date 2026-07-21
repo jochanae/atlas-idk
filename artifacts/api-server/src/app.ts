@@ -251,9 +251,16 @@ app.use("/api/shell", shellRouter);
 // authenticated /api router so requireAuth middleware cannot intercept it.
 // Note: attachmentPersistence is advisory only. ATTACHMENTS_PERSISTENCE does
 // not gate /api/attachments/* or nexus/chat attachmentIds acceptance.
+// attachmentContinuityV2 mirrors ATTACHMENT_CONTINUITY_V2===1 on THIS process.
+const API_PROCESS_STARTED_AT = new Date().toISOString();
+
 app.get("/api/capabilities", (_req, res) => {
   res.json({
     attachmentPersistence: process.env.ATTACHMENTS_PERSISTENCE === "true",
+    attachmentContinuityV2: process.env.ATTACHMENT_CONTINUITY_V2 === "1",
+    /** ISO timestamp when this Node process booted — use to confirm redeploy/restart. */
+    apiProcessStartedAt: API_PROCESS_STARTED_AT,
+    apiProcessUptimeSec: Math.floor(process.uptime()),
   });
 });
 
