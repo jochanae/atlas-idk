@@ -427,13 +427,16 @@ export function FilesBrowser({
             scrollbarWidth: "none",
           }}>{typeButtons}</div>
           {(section === "workspace" || section === "all") && !pinnedProjectId && projects.length > 0 && (
-            <select
-              value={workspaceProjectId ?? ""}
-              onChange={(e) => setWorkspaceProjectId(parseInt(e.target.value, 10))}
-              style={{ width: "100%", padding: "6px 8px", borderRadius: 6, fontSize: 12, background: "hsl(var(--muted) / 0.35)", border: "1px solid hsl(var(--border))", color: "inherit", fontFamily: "var(--app-font-sans)" }}
-            >
-              {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
-            </select>
+            <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+              <select
+                value={workspaceProjectId ?? ""}
+                onChange={(e) => setWorkspaceProjectId(parseInt(e.target.value, 10))}
+                style={{ flex: 1, minWidth: 0, padding: "6px 8px", borderRadius: 6, fontSize: 12, background: "hsl(var(--muted) / 0.35)", border: "1px solid hsl(var(--border))", color: "inherit", fontFamily: "var(--app-font-sans)" }}
+              >
+                {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+              </select>
+              <ViewSourceToggle onOpenTree={openProjectTree} disabled={workspaceProjectId == null} />
+            </div>
           )}
         </div>
       )}
