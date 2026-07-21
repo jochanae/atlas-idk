@@ -1477,13 +1477,22 @@ export default function CodePage() {
               onClick={() => { void handleDownloadZip(); }}
               disabled={isDownloadingZip}
             />
-            <ToolButton
-              icon={<Github size={13} />}
-              label={isPushingGithub ? "Pushing…" : "Push to GitHub"}
-              onClick={() => { void handlePushToGithub(); }}
-              disabled={isPushingGithub}
-              primary={!!linkedRepo}
-            />
+            {!linkedRepo && githubPushToken ? (
+              <ToolButton
+                icon={<Github size={13} />}
+                label={isCreatingRepo ? "Creating repo…" : "Create repo"}
+                onClick={() => { void handleCreateRepoForProject(); }}
+                disabled={isCreatingRepo}
+              />
+            ) : (
+              <ToolButton
+                icon={<Github size={13} />}
+                label={isPushingGithub ? "Pushing…" : "Push to GitHub"}
+                onClick={() => { void handlePushToGithub(); }}
+                disabled={isPushingGithub}
+                primary={!!linkedRepo}
+              />
+            )}
             <button
               onClick={() => setShowRail((v) => !v)}
               title="Toggle activity rail"
