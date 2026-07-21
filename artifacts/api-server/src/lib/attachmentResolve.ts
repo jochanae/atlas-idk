@@ -13,7 +13,7 @@ import {
   messageAttachmentsTable,
   type MessageAttachment,
 } from "@workspace/db";
-import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import {
   ATTACHMENT_MAX_COUNT,
   ATTACHMENT_MAX_MESSAGE_BYTES,
