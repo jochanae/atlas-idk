@@ -442,12 +442,62 @@ const INITIAL_EDGES: ArchEdge[] = [
   { id: "e-goal-must-2",     from: "goal", to: "must-2" },
 ];
 
+// Minimum center-to-center spacing enforced by the collision relax pass.
+// Node visuals are ~90px wide; a 110px gate gives clear breathing room.
+const NODE_MIN_DIST = 110;
+
+/**
+ * Force-directed relax pass. After radial (or any) placement, nodes that
+ * landed too close repel each other while every non-pinned node is softly
+ * tethered to its original anchor so the ring shape survives. Goal and any
+ * user-moved node stay pinned. Fixed iteration count — deterministic, no
+ * animation, no d3 dependency. Scoped to the Designer canvas layout engine.
+ */
+export function relaxNodePositions(nodes: ArchNode[]): ArchNode[] {
+  if (nodes.length < 2) return nodes;
+  const pts = nodes.map(n => ({
+    x: n.x,
+    y: n.y,
+    ax: n.x,
+    ay: n.y,
+    pinned: n.type === "goal" || !!n.moved,
+  }));
+  const ITER = 60;
+  const REPEL = NODE_MIN_DIST;
+  const TETHER = 0.04;
+  for (let it = 0; it < ITER; it++) {
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      if (a.pinned) continue;
+      let fx = 0;
+      let fy = 0;
+      for (let j = 0; j < pts.length; j++) {
+        if (i === j) continue;
+        const b = pts[j];
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= REPEL * REPEL || d2 === 0) continue;
+        const d = Math.sqrt(d2) || 0.01;
+        const overlap = (REPEL - d) / d;
+        fx += dx * overlap * 0.5;
+        fy += dy * overlap * 0.5;
+      }
+      fx += (a.ax - a.x) * TETHER;
+      fy += (a.ay - a.y) * TETHER;
+      a.x += fx;
+      a.y += fy;
+    }
+  }
+  return nodes.map((n, i) => (pts[i].pinned ? n : { ...n, x: pts[i].x, y: pts[i].y }));
+}
+
 export function layoutRadial(nodes: ArchNode[]): ArchNode[] {
   const layoutableNodes = nodes.filter(n => n.type !== "goal" && !n.moved);
   const count = layoutableNodes.length;
   let ringIndex = 0;
 
-  return nodes.map(node => {
+  const placed = nodes.map(node => {
     if (node.moved) return node;
     if (node.type === "goal") {
       return { ...node, x: RADIAL_CENTER_X, y: RADIAL_CENTER_Y };
@@ -460,6 +510,8 @@ export function layoutRadial(nodes: ArchNode[]): ArchNode[] {
       y: RADIAL_CENTER_Y + Math.sin(angle) * RADIAL_RADIUS,
     };
   });
+
+  return relaxNodePositions(placed);
 }
 
 // Guards against stray "top-left" nodes: any node whose persisted x/y is
