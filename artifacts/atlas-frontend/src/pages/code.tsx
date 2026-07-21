@@ -1529,6 +1529,32 @@ export default function CodePage() {
                 </span>
               )}
             </div>
+          ) : githubPushToken ? (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "6px 10px", borderRadius: 7,
+              background: "rgba(230,198,135,0.06)",
+              border: "1px solid rgba(230,198,135,0.20)",
+            }}>
+              <Github size={11} style={{ color: "var(--atlas-gold)", flexShrink: 0 }} />
+              <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)", flex: 1 }}>
+                No repo linked yet — your GitHub account is connected.
+              </span>
+              <button
+                onClick={() => { void handleCreateRepoForProject(); }}
+                disabled={isCreatingRepo}
+                style={{
+                  ...MONO, fontSize: 10, color: "var(--atlas-gold)",
+                  background: "rgba(230,198,135,0.10)",
+                  border: "1px solid rgba(230,198,135,0.35)",
+                  borderRadius: 6, padding: "4px 8px",
+                  cursor: isCreatingRepo ? "wait" : "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {isCreatingRepo ? "Creating…" : "Create repo"}
+              </button>
+            </div>
           ) : (
             <div style={{
               display: "flex", alignItems: "center", gap: 6,
@@ -1538,7 +1564,7 @@ export default function CodePage() {
             }}>
               <AlertTriangle size={11} style={{ color: "rgba(255,138,138,0.7)", flexShrink: 0 }} />
               <span style={{ ...MONO, fontSize: 10, color: "rgba(255,138,138,0.7)" }}>
-                No GitHub repository connected — link one in Project Settings to enable Push to GitHub.
+                Connect GitHub in Account Settings to enable Push to GitHub.
               </span>
             </div>
           )}
