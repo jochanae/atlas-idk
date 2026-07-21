@@ -1197,11 +1197,25 @@ Anything that breaks that narrative is in scope for Milestone 1 Phase B.
 | Gate | INT | Acceptance test | Status |
 |------|-----|-----------------|--------|
 | G0-1 | INT-01 (+ INT-02) | Soft-pause when composer session active; no hard login redirect mid-thought | **Passing** — `composerSessionGuard.test.ts` |
-| G0-2 | INT-13 | Seed continuation on every Ask Atlas → Workspace entry | **Passing** — `askAtlasHelpers.handoff.test.ts` + nav call-site wiring |
+| G0-2 | INT-13 | Seed continuation on every Ask Atlas → Workspace entry | **OPEN — manual FAILED** (see below) |
 | G0-3 | INT-11 | Handoff/crystallize uses live Ask Atlas transcript | **Passing** — `selectHandoffMessages` tests + home.tsx wiring |
+
+#### INT-13 manual failure (2026-07-21) — do not close
+
+**Observed:** Workspace created, navigation OK, transcript visible / exportable, but first Atlas reply said it had no prior session. Internal home-handoff kickoff text was user-visible. Scroll jumped on arrival.
+
+**Root cause (verified):** Kickoff fired before Nexus `conversationId` + Living Thread history were ready. Model received only `HANDOFF_CONTINUATION_MESSAGE`. UI history loaded later via bridge — display and first inference were decoupled.
+
+**Repair in progress (still OPEN until manual retest):**
+- Gate kickoff with `shouldFireHandoffKickoff` (cid + `historyReady` + non-empty transcript)
+- Prefer `/workspace/{cid}` navigation; await `append-thread` before navigate on Commit path
+- Hide internal kickoff via `hiddenFromUi` + content filter
+- Server honors client `history` when `focusProjectId` is set even if cid briefly missing
+
+**Acceptance remains:** Create Workspace from Ask Atlas → Atlas continues prior thought without claiming no prior session → kickoff not shown as a user bubble.
 
 This is a structured stabilization program, not a bug chase.
 
 ---
 
-*Phase A complete. Phase B Wave 0 in progress — Killers only close when §6 acceptance tests are green.*
+*Phase A complete. Phase B Wave 0 — INT-13 remains open until manual acceptance passes.*

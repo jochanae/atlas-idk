@@ -76,6 +76,11 @@ export interface NexusMessage {
   id?: string;
   role: "user" | "assistant";
   content: string;
+  /**
+   * INT-13: internal kickoff / system turns that must stay in model history
+   * but never render as user-visible chat bubbles.
+   */
+  hiddenFromUi?: boolean;
   kind?: "genesis";
   genesisData?: { projectName: string; timestamp: string };
   imageUrl?: string;
@@ -386,6 +391,7 @@ export function useNexusChatStream(
     attachmentIds,
     overrideOptions,
     extraBody,
+    hiddenFromUi,
   }: {
     text: string;
     imageBase64?: string;
@@ -404,6 +410,8 @@ export function useNexusChatStream(
     attachmentIds?: string[];
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
     extraBody?: Record<string, unknown>;
+    /** INT-13: hide internal handoff kickoff from the chat transcript UI. */
+    hiddenFromUi?: boolean;
   }): { clientMessageId: string; accepted: Promise<void>; completed: Promise<void> } | undefined => {
     const resolvedAttachmentIds = [
       ...new Set((attachmentIds ?? []).filter((id): id is string => typeof id === "string" && id.length > 0)),
@@ -492,6 +500,7 @@ export function useNexusChatStream(
       role: "user",
       content: text,
       createdAt: new Date().toISOString(),
+      ...(hiddenFromUi ? { hiddenFromUi: true } : {}),
       ...(allFileAttachments.length > 0
         ? {
             attachments: allFileAttachments,

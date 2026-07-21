@@ -2629,7 +2629,10 @@ export default function Home() {
       } catch {}
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setActiveProjectId(projectId);
-      navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
+      navigateAfterAskAtlasHandoff(projectId, setLocation, {
+        source: "home-handoff",
+        conversationId: askAtlasConversationId ?? activeConversationId ?? null,
+      });
     } catch (err) {
       const msg =
         extractApiErrorMessage(err) ??
@@ -2645,6 +2648,7 @@ export default function Home() {
     }
   }, [
     activeConversationId,
+    askAtlasConversationId,
     callAskAtlasMode,
     getHandoffMessages,
     queryClient,
@@ -3805,18 +3809,38 @@ export default function Home() {
         seedHandoffContinuation(projectId);
       } catch {}
 
-      // Fire-and-forget Resume brief generation (persistence layer + AI context)
-      fetch(`/api/projects/${projectId}/append-thread`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ messages: transcriptMessages }),
-      }).catch(() => {});
+      // Await adoption so Workspace can pin /workspace/{cid} with history ready.
+      let adoptedConvId: string | null =
+        (typeof askAtlasConversationId === "string" && askAtlasConversationId) ||
+        (typeof activeConversationId === "string" && activeConversationId) ||
+        null;
+      try {
+        const snapRes = await fetch(`/api/projects/${projectId}/append-thread`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ messages: transcriptMessages }),
+        });
+        if (snapRes.ok) {
+          const snapData = (await snapRes.json().catch(() => null)) as {
+            conversationId?: string | null;
+          } | null;
+          if (snapData?.conversationId) {
+            adoptedConvId = snapData.conversationId;
+            try {
+              sessionStorage.setItem(`atlas-adopted-conv-${projectId}`, snapData.conversationId);
+            } catch {}
+          }
+        }
+      } catch {}
 
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
 
       setShapingStatus("opening");
-      navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
+      navigateAfterAskAtlasHandoff(projectId, setLocation, {
+        source: "home-handoff",
+        conversationId: adoptedConvId,
+      });
       return;
     } catch {
       setShapingStatus("ready");
@@ -3825,7 +3849,7 @@ export default function Home() {
       setHandoffLoading(false);
       setHandoffStage("");
     }
-  }, [getHandoffMessages, isFree, projects, queryClient, setActiveProjectId, setLocation, setShapingStatus, setShowUpgrade]);
+  }, [activeConversationId, askAtlasConversationId, getHandoffMessages, isFree, projects, queryClient, setActiveProjectId, setLocation, setShapingStatus, setShowUpgrade]);
 
   const handledProjectReadyAutoHandoffRef = useRef(0);
   useEffect(() => {
@@ -4185,7 +4209,10 @@ export default function Home() {
     if (!res.ok) throw new Error("Handoff failed");
     queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     setActiveProjectId(projectId);
-    navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
+    navigateAfterAskAtlasHandoff(projectId, setLocation, {
+      source: "home-handoff",
+      conversationId: askAtlasConversationId ?? null,
+    });
   }, [getHandoffMessages, askAtlasConversationId, queryClient, setActiveProjectId, setLocation, conversationHasBuildIntent]);
 
   const handleCrystallizePortfolioNote = useCallback(async () => {
@@ -6043,7 +6070,12 @@ export default function Home() {
             handleAskAtlasCreateProject(name);
           } else if (id === "open-project") {
             const projectId = typeof payload?.projectId === "number" ? payload.projectId : undefined;
-            if (projectId) navigateAfterAskAtlasHandoff(projectId, setLocation, { source: "home-handoff" });
+            if (projectId) {
+              navigateAfterAskAtlasHandoff(projectId, setLocation, {
+                source: "home-handoff",
+                conversationId: askAtlasConversationId ?? null,
+              });
+            }
           }
         }}
         stagedFiles={staged.files}

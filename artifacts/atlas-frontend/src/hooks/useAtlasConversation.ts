@@ -134,6 +134,11 @@ export type AtlasConversationSubmission = {
    * Never sent as inline base64 to the server when attachmentIds are present.
    */
   attachments?: AtlasConversationAttachment[];
+  /**
+   * INT-13: hide internal handoff kickoff from the visible Workspace transcript
+   * while still sending it (with prior history) to the model.
+   */
+  hiddenFromUi?: boolean;
 
   onMarkConverting?: (ids: string[]) => void;
   onMarkFailed?: (id: string, error: StagedFileError) => void;
@@ -290,6 +295,7 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
         attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
         attachments:
           displayAttachments.length > 0 ? displayAttachments : undefined,
+        hiddenFromUi: submission.hiddenFromUi === true,
       });
 
       if (sendResult === undefined) {
