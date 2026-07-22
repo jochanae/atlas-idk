@@ -984,9 +984,10 @@ export function AskAtlasSurface({
                 setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
               }}
               onLongPress={(text) => {
-                // Long-press parks into the composer for edit before send.
-                setInput(input.trim() ? `${input.trim()} ${text}` : text);
-                setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
+                // Long-press parks the suggestion. ParkSheet handles project pick
+                // (defaults to first project; user can switch via its selector).
+                setParkPrefill(text);
+                setShowParkSheet(true);
               }}
             />
           );
