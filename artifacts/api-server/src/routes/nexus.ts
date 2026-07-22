@@ -3715,7 +3715,10 @@ When the user uses strong or colorful language (including profanity) to describe
           supersedesId: entriesTable.supersedesId,
         })
         .from(entriesTable)
-        .where(eq(entriesTable.projectId, focusProjectId));
+        .where(and(
+          eq(entriesTable.projectId, focusProjectId),
+          eq(entriesTable.type, "Decision"),
+        ));
       const ledgerGroups = groupLedgerEntries(focusLedgerEntries);
       const flowNodes = extractFlowMapNodes(focusProject.nodeState);
       const answeredFlowNodes = flowNodes.filter((node) => node.answered);
@@ -8750,9 +8753,21 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
   // Fetch decisions + sessions + emitted turn/attachment verbs from DB in parallel
   const [dbEntries, dbSessions, dbActivity] = await Promise.all([
     db
-      .select({ id: entriesTable.id, projectId: entriesTable.projectId, title: entriesTable.title, summary: entriesTable.summary, createdAt: entriesTable.createdAt })
+      .select({
+        id: entriesTable.id,
+        projectId: entriesTable.projectId,
+        title: entriesTable.title,
+        summary: entriesTable.summary,
+        type: entriesTable.type,
+        createdAt: entriesTable.createdAt,
+      })
       .from(entriesTable)
-      .where(and(inArray(entriesTable.projectId, projectIds), eq(entriesTable.status, "committed")))
+      .where(and(
+        inArray(entriesTable.projectId, projectIds),
+        eq(entriesTable.status, "committed"),
+        // Activity feed: Decisions + Engineering Events only (not Ideas/Insights noise)
+        inArray(entriesTable.type, ["Decision", "EngineeringEvent"]),
+      ))
       .orderBy(desc(entriesTable.createdAt))
       .limit(30),
     db
@@ -8786,7 +8801,7 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
   for (const e of dbEntries) {
     items.push({
       id: e.id,
-      type: "decision",
+      type: e.type === "EngineeringEvent" ? "engineering_event" : "decision",
       projectId: e.projectId,
       projectName: projectNameById.get(e.projectId) ?? "Unknown",
       title: e.title,

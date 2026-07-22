@@ -265,6 +265,15 @@ export const GetProjectIntelligenceResponse = zod.object({
   "severity": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })),
+  "insights": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "status": zod.string(),
+  "type": zod.string().nullish(),
+  "severity": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
   "openQuestionEntries": zod.array(zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -389,6 +398,15 @@ export const GetPortfolioIntelligenceResponseItem = zod.object({
   "severity": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })),
+  "insights": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "status": zod.string(),
+  "type": zod.string().nullish(),
+  "severity": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
   "openQuestionEntries": zod.array(zod.object({
   "id": zod.number(),
   "title": zod.string(),

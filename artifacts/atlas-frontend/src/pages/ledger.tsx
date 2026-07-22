@@ -172,6 +172,8 @@ export default function Ledger() {
     const now = Date.now();
     return entries.filter((e: Entry) => {
       if (e.status !== "committed") return false;
+      // Surface Integrity S2: Ledger = Decisions only
+      if (e.type != null && e.type !== "Decision") return false;
       if (categoryFilter !== "all" && inferCategory(e) !== categoryFilter) return false;
       if (severityFilter !== "all" && e.severity !== severityFilter) return false;
       if (verbFilter !== "all" && e.verb !== verbFilter) return false;

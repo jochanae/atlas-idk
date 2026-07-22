@@ -184,18 +184,21 @@ Rules:
         `);
       }
 
-      // Auto-promote high-confidence Decision receipts → Ledger (workspace turns only, where projectId is known)
+      // M2.2 K2/K6: do NOT silently auto-commit Decision receipts to Ledger.
+      // High-confidence Decision receipts stay as receipts until the user
+      // explicitly promotes via WorkspaceReceiptsBar / promote endpoint.
       if (opts.projectId) {
-        const toPromote = receipts.filter(r => r.category === "Decision" && r.confidence >= 90);
-        for (const r of toPromote) {
+        const parkedCandidates = receipts.filter(r => r.category === "Decision" && r.confidence >= 90);
+        for (const r of parkedCandidates) {
           try {
             await db.insert(entriesTable).values({
               projectId: opts.projectId,
+              type: "Decision",
               title: r.headline,
               summary: r.body,
               details: r.body,
-              status: "committed",
-              severity: "committed",
+              status: "parked",
+              severity: "parked",
               mode: "decide",
               amField: "intent",
               ...(opts.messageId != null ? { sourceMessageId: opts.messageId } : {}),
@@ -204,10 +207,10 @@ Rules:
             });
             logger.info(
               { userId: opts.userId, projectId: opts.projectId, headline: r.headline },
-              "thinking receipt auto-promoted to Ledger",
+              "thinking receipt parked as Decision draft (explicit commit required)",
             );
           } catch (err) {
-            logger.warn({ err }, "auto-promote to Ledger failed — non-fatal");
+            logger.warn({ err }, "park Decision receipt failed — non-fatal");
           }
         }
       }

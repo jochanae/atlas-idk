@@ -312,6 +312,11 @@ router.get("/projects/:id/objects", async (req, res): Promise<void> => {
 
     const typeFilter = req.query.type as string | undefined;
 
+    // Engineering Events belong in Activity, not the Objects board (M2.2 S5)
+    const baseWhere = typeFilter && OBJECT_TYPES.includes(typeFilter as (typeof OBJECT_TYPES)[number])
+      ? and(eq(entriesTable.projectId, projectId), eq(entriesTable.type, typeFilter as (typeof OBJECT_TYPES)[number]))
+      : and(eq(entriesTable.projectId, projectId), ne(entriesTable.type, "EngineeringEvent"));
+
     const rows = await db
       .select({
         id: entriesTable.id,
@@ -322,11 +327,7 @@ router.get("/projects/:id/objects", async (req, res): Promise<void> => {
         createdAt: entriesTable.createdAt,
       })
       .from(entriesTable)
-      .where(
-        typeFilter && OBJECT_TYPES.includes(typeFilter as (typeof OBJECT_TYPES)[number])
-          ? and(eq(entriesTable.projectId, projectId), eq(entriesTable.type, typeFilter as (typeof OBJECT_TYPES)[number]))
-          : eq(entriesTable.projectId, projectId),
-      )
+      .where(baseWhere)
       .orderBy(desc(entriesTable.createdAt))
       .limit(100);
 

@@ -62,6 +62,7 @@ export type ProjectIntelligence = {
     ideas: IntelligenceEntry[];
     features: IntelligenceEntry[];
     risks: IntelligenceEntry[];
+    insights?: IntelligenceEntry[];
     openQuestionEntries: (IntelligenceEntry & { type: string })[];
   };
   computedAt: string;

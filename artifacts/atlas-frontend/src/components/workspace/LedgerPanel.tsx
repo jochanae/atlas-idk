@@ -181,7 +181,10 @@ export function LedgerPanel({
   entries: Entry[];
 }) {
 
-  const allCommitted = entries.filter((e) => e.status === "committed");
+  // Surface Integrity S2: Ledger owns Decisions only
+  const allCommitted = entries.filter(
+    (e) => e.status === "committed" && (e.type == null || e.type === "Decision"),
+  );
   const inTension = allCommitted.filter((e) => isVerificationFailed(e));
   const committedCleanDisplay = allCommitted.filter((e) => !e.deviation && !isVerificationFailed(e));
   const overridden = allCommitted.filter((e) => e.deviation);

@@ -6,6 +6,7 @@ export type ActivityItem = {
   type:
     | "commit"
     | "decision"
+    | "engineering_event"
     | "session"
     // Attachment / turn lifecycle verbs. Backend will emit; frontend renders
     // them the same way regardless of source. Keep names stable — they are
@@ -35,6 +36,8 @@ export function classifyActivity(item: ActivityItem): Importance {
   // Commits and decisions are first-class receipts.
   // Attachment/turn verbs are quiet by default — they batch into the transparency rail.
   if (item.type === "commit" || item.type === "decision") return "important";
+  // Engineering events belong in Activity (S5) but stay quiet vs Decisions
+  if (item.type === "engineering_event") return "quiet";
   return "quiet";
 }
 

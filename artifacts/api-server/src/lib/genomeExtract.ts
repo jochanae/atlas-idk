@@ -176,8 +176,13 @@ async function upsertObjects(
   for (const obj of objects) {
     if (!obj.title?.trim()) continue;
     const objType = validObjectType(obj.type);
+    // Never auto-write Engineering Events from genome DNA extraction
+    if (objType === "EngineeringEvent") continue;
     const title = obj.title.trim().slice(0, 500);
     const summary = obj.summary?.trim() ?? null;
+    // K1/K2: Decisions & Questions stay parked until explicit commit/promote
+    const status = objType === "Decision" || objType === "Question" ? "parked" : "committed";
+    const severity = status === "parked" ? "parked" : "committed";
 
     // Check for existing entry with same type + title (case-insensitive)
     const [existing] = await db
@@ -200,8 +205,8 @@ async function upsertObjects(
         type: objType,
         title,
         summary,
-        status: "committed",
-        severity: "committed",
+        status,
+        severity,
         mode: "auto",
         ...(sourceMessageId != null ? { sourceMessageId } : {}),
       });
@@ -249,7 +254,7 @@ Extract the following and return ONLY valid JSON (no markdown, no preamble):
   "stage": "Think | Shape | Decide | Workspace | Strategize | Build | Operate | Evolve",
   "confidenceScore": 0-100,
   "objects": [
-    { "type": "Idea | Goal | Blocker | Decision | Audience | Feature | Risk | Insight", "title": "short label", "summary": "one sentence" }
+    { "type": "Idea | Goal | Blocker | Decision | Audience | Feature | Risk | Insight | Question", "title": "short label", "summary": "one sentence" }
   ]
 }
 
@@ -259,7 +264,8 @@ Rules:
 - wedge: this is the irreducible core — not a feature list, not the product category — the one thing that would make someone choose this over nothing
 - differentiator: be specific, not generic ("the only X that does Y" not "better UX")
 - objects: extract 3-8 distinct objects not already in the committed objects list. Skip duplicates.
-- constraints and openQuestions: max 5 each, only real ones from the conversation
+- Knowledge classification: Idea = hypothesis/concept; Decision = only if the user explicitly committed; Insight = synthesized non-obvious understanding; Question = unresolved uncertainty. Do NOT invent Decisions from brainstorming. Do NOT use EngineeringEvent.
+- constraints and openQuestions: max 5 each, only real ones from the conversation — also emit matching Question objects when unresolved
 - All string values must be concise (under 200 chars)
 - Return null for fields that cannot be extracted confidently`,
     }],

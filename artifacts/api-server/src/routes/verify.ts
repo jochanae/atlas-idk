@@ -139,7 +139,7 @@ async function persistVerificationEntry({
   try {
     const [entry] = await db.insert(entriesTable).values({
       projectId,
-      type: "Decision",
+      type: "EngineeringEvent",
       status: "committed",
       severity: status === "passed" ? "committed" : "blocker",
       mode: "verification",

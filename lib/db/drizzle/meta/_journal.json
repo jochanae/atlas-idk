@@ -57,6 +57,13 @@
       "when": 1784294400000,
       "tag": "0010_message_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784745600000,
+      "tag": "0012_knowledge_classification",
+      "breakpoints": true
     }
   ]
 }

@@ -6,8 +6,45 @@ import { projectsTable } from "./projects";
 export const GENOME_STAGES = ["Think", "Shape", "Decide", "Workspace", "Strategize", "Build", "Operate", "Evolve"] as const;
 export type GenomeStage = (typeof GENOME_STAGES)[number];
 
-export const OBJECT_TYPES = ["Idea", "Goal", "Blocker", "Decision", "Audience", "Feature", "Risk", "Insight"] as const;
+/** All persisted entry/object types (PG enum `object_type`). */
+export const OBJECT_TYPES = [
+  "Idea",
+  "Goal",
+  "Blocker",
+  "Decision",
+  "Audience",
+  "Feature",
+  "Risk",
+  "Insight",
+  "Question",
+  "EngineeringEvent",
+] as const;
 export type ObjectType = (typeof OBJECT_TYPES)[number];
+
+/**
+ * Milestone 2.2 first-class knowledge kinds.
+ * Secondary types (Goal, Blocker, Audience, Feature, Risk) remain valid
+ * but must not silently drift into Decision without explicit promotion.
+ */
+export const KNOWLEDGE_TYPES = [
+  "Idea",
+  "Decision",
+  "Insight",
+  "Question",
+  "EngineeringEvent",
+] as const;
+export type KnowledgeType = (typeof KNOWLEDGE_TYPES)[number];
+
+/** Types that may be explicitly promoted to Decision (K6). */
+export const PROMOTABLE_TO_DECISION = [
+  "Idea",
+  "Insight",
+  "Question",
+  "Goal",
+  "Feature",
+  "Risk",
+] as const;
+export type PromotableToDecision = (typeof PROMOTABLE_TO_DECISION)[number];
 
 export const genomeStagePgEnum = pgEnum("genome_stage", [...GENOME_STAGES]);
 export const objectTypePgEnum = pgEnum("object_type", [...OBJECT_TYPES]);

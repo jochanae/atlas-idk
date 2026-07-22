@@ -195,7 +195,7 @@ export async function computeProjectIntelligence(projectId: number) {
 
   const entryGroups = {
     decisions: recentEntries
-      .filter(e => e.type === "Decision")
+      .filter(e => e.type === "Decision" && e.status === "committed")
       .map(e => ({ id: e.id, title: e.title, summary: e.summary, status: e.status, createdAt: e.createdAt.toISOString() })),
     blockers: recentEntries
       .filter(e => e.type === "Blocker")
@@ -212,8 +212,12 @@ export async function computeProjectIntelligence(projectId: number) {
     risks: recentEntries
       .filter(e => e.type === "Risk")
       .map(e => ({ id: e.id, title: e.title, summary: e.summary, status: e.status, createdAt: e.createdAt.toISOString() })),
+    insights: recentEntries
+      .filter(e => e.type === "Insight")
+      .map(e => ({ id: e.id, title: e.title, summary: e.summary, status: e.status, createdAt: e.createdAt.toISOString() })),
+    // K4: Questions are first-class — not every parked draft
     openQuestionEntries: recentEntries
-      .filter(e => e.status === "parked")
+      .filter(e => e.type === "Question")
       .map(e => ({ id: e.id, title: e.title, summary: e.summary, type: e.type, createdAt: e.createdAt.toISOString() })),
   };
 

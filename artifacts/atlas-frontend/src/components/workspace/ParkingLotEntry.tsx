@@ -29,13 +29,28 @@ export function ParkingLotEntry({ entry, projectName }: { entry: Entry; projectN
     navigate(`/project/${entry.projectId}`);
   };
 
-  const handlePromote = (_type: string) => {
+  const handlePromote = (toType: string) => {
     if (done) return;
     haptic.short();
     setShowPromote(false);
+    const onSuccess = () => {
+      setDone(true);
+      queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) });
+    };
+    // M2.2 K6: Decision promotion must go through the explicit promote path
+    if (toType === "Decision") {
+      void fetch(`/api/entries/${entry.id}/promote`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toType: "Decision" }),
+      }).then((res) => { if (res.ok) onSuccess(); });
+      return;
+    }
+    // Non-Decision commit keeps existing type (type changes only via promote)
     updateEntry.mutate(
       { id: entry.id, data: { status: "committed", severity: "committed" } },
-      { onSuccess: () => { setDone(true); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) }); } }
+      { onSuccess },
     );
   };
 

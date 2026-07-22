@@ -1561,6 +1561,15 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: workspace_activity failed — server will start anyway");
   }
 
+  // Milestone 2.2 — Knowledge Classification enum values (Question, EngineeringEvent)
+  try {
+    await db.execute(sql.raw(`ALTER TYPE object_type ADD VALUE IF NOT EXISTS 'Question'`));
+    await db.execute(sql.raw(`ALTER TYPE object_type ADD VALUE IF NOT EXISTS 'EngineeringEvent'`));
+    logger.info("ensureColumns: object_type Question + EngineeringEvent verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: object_type enum extend failed — server will start anyway");
+  }
+
   // Phase 4: service bindings — owner-scoped, secret-encrypted, ON DELETE CASCADE
   try {
     await db.execute(sql`

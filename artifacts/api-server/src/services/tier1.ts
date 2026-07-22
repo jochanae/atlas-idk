@@ -46,12 +46,14 @@ export async function appendTier1LedgerEntry(
   } else if (meta?.source === "nexus_handoff") {
     title = `Tier 1 memory set (nexus handoff: ${meta.fields.join(", ")})`;
   }
+  // Engineering Event — not a product Decision (M2.2 K5 / S5)
   await db.insert(entriesTable).values({
     projectId,
-    type: "Decision",
+    type: "EngineeringEvent",
     status: "committed",
     title,
     mode: opts?.mode ?? "auto",
+    verb: "tier1_update",
     sourceMessageId: opts?.sourceMessageId ?? null,
   });
 }

@@ -276,10 +276,11 @@ async function linkLedgerEntry(params: {
       .values({
         projectId,
         sessionId,
-        type: "Decision",
+        type: "EngineeringEvent",
         status: "committed",
         severity: "neutral",
         mode: "artifact-engine",
+        verb: "artifact_generated",
         title: rendered.title,
         summary: rendered.summary ?? `Generated ${renderer.category}: ${rendered.title}`,
         details: JSON.stringify({ preview: rendered.preview }),
