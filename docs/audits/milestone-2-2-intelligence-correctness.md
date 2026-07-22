@@ -534,9 +534,10 @@ After those land: **one final regression pass** to close Milestone 2.2.
 
 **Root cause:** `deliverableOutputGuard` treated bare `\bopen it\b` as a false file-generation claim and emitted SSE `correction`, replacing the entire streamed discovery response. No file was requested.
 
-**Fix:** tighten patterns — keep `download it` / `open the file|spreadsheet|…`; remove bare `open it`. Regression tests cover discovery prose.
+**Fix (#211):** tighten patterns — remove bare `open it`.  
+**Follow-up (PulseDesk):** #211 alone was insufficient while envs lagged / residual matches remained. Harden: **full response replace only when `generate_deliverable` was actually invoked this turn.** Otherwise keep original prose. Also suppress BUILD READY cards whose summary is the honesty-fallback text.
 
-**Implication for R1:** Do not score DNA/Objects FAIL from a run whose assistant turn was corrupted by this guard. Re-run R1 after the guard fix is deployed.
+**Implication for R1:** Do not score DNA/Objects FAIL from a run whose assistant turn was corrupted by this guard. Re-run R1 only after this harden lands on the testing host (confirm `apiProcessStartedAt` is post-merge).
 
 ### P1 — Verify Flow (PASS)
 

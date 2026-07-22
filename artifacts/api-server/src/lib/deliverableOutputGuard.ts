@@ -3,6 +3,11 @@
  * generate_deliverable actually produced generatedArtifacts this turn.
  *
  * Mirrors the attachment output-guard pattern (replace + correction SSE).
+ *
+ * CRITICAL: Full-response replacement is ONLY allowed when the model actually
+ * invoked generate_deliverable this turn. Otherwise discovery / DECIDE / BUILD
+ * prose gets wiped by false positives (e.g. "open it", "file is ready") and
+ * surfaces as the honesty fallback inside BUILD READY cards — blocking R1.
  */
 
 export interface DeliverableGuardEvidence {
@@ -21,17 +26,13 @@ export interface DeliverableGuardResult {
 /**
  * Success / readiness claims that require a real artifact.
  *
- * IMPORTANT: Do NOT match bare "open it" — discovery/architecture prose
- * routinely says things like "open it in Workspace" or "when you open it,"
- * and a full-response replacement (SSE `correction`) would wipe the turn.
- * Require an explicit file/deliverable noun (or "download it").
+ * Do NOT match bare "open it" — discovery prose routinely uses that phrase.
  */
 const DELIVERABLE_SUCCESS_PATTERNS: RegExp[] = [
   /\bI(?:'ve| have)\s+(?:created|generated|made|built|produced|prepared)\s+(?:a\s+|an\s+|your\s+|the\s+)?(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|slides?|presentation|document|docx|pdf|diagram|chart|file|download)\b/i,
   /\bhere(?:'s| is)\s+your\s+(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|slides?|presentation|document|docx|pdf|diagram|chart|file)\b/i,
   /\b(?:the\s+)?(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|presentation|document|docx|pdf|diagram|chart|file)\s+(?:is|are)\s+ready\b/i,
   /\bit(?:'s| is)\s+in\s+Outputs\b/i,
-  // "download it" is deliverable-specific; bare "open it" is NOT (false-positive hazard).
   /\bdownload\s+(?:it|the\s+file|the\s+spreadsheet|the\s+deck|the\s+document)\b/i,
   /\bopen\s+(?:the\s+)?(?:file|spreadsheet|deck|document|download|pptx|xlsx|docx|pdf)\b/i,
   /\bI(?:'ve| have)\s+put\s+(?:it|the\s+file)\s+in\s+(?:Outputs|your\s+workspace|the\s+project)\b/i,
@@ -48,7 +49,7 @@ function findViolations(content: string): string[] {
   return hits;
 }
 
-function buildCorrection(violations: string[], attempted: boolean): string {
+function buildFullReplacement(violations: string[], attempted: boolean): string {
   const claim =
     violations[0] != null
       ? `\n\n*(I started to claim: "${violations[0]}${violations[0].length >= 120 ? "…" : ""}" — no file was actually produced this turn.)*`
@@ -70,8 +71,9 @@ function buildCorrection(violations: string[], attempted: boolean): string {
 }
 
 /**
- * When prose claims a deliverable is ready but no artifact was produced,
- * replace the response with an honest failure note.
+ * When prose claims a deliverable is ready but no artifact was produced:
+ * - Tool was attempted → full replace (honesty for failed generation)
+ * - Tool was NOT attempted → keep original prose (never wipe discovery/DECIDE)
  */
 export function checkDeliverableClaims(
   content: string,
@@ -86,12 +88,18 @@ export function checkDeliverableClaims(
     return { clean: true, violations: [], correction: content };
   }
 
+  const attempted = evidence.generateDeliverableAttempted === true;
+
+  // No generate_deliverable call this turn → never nuke the response.
+  // False-positive matches on architectural prose were wiping PulseDesk/Aura
+  // discovery turns and poisoning BUILD READY cards.
+  if (!attempted) {
+    return { clean: true, violations: [], correction: content };
+  }
+
   return {
     clean: false,
     violations,
-    correction: buildCorrection(
-      violations,
-      evidence.generateDeliverableAttempted === true,
-    ),
+    correction: buildFullReplacement(violations, true),
   };
 }
