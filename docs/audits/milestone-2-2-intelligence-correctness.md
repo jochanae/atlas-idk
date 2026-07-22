@@ -3,7 +3,7 @@
 **Phase:** Evaluation audit (quality of understanding — **not** infrastructure)  
 **Date:** 2026-07-22  
 **Repo HEAD at commission:** `d0b923d1` (`main`, post PR #208)  
-**Status:** **OPEN** — evaluation board commissioned  
+**Status:** **OPEN** — Round 1 evaluation in progress (founding-principles conversation)  
 **Board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Prerequisite:** Milestone 2.1 deliverable contract landed (PR #208)
 

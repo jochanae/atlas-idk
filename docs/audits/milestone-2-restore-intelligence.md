@@ -11,7 +11,7 @@
 | # | Track | Mode | Status |
 |---|-------|------|--------|
 | **2.1** | Artifact Generation and Delivery | Audit → contract fix | **CLOSED** — PR #208 merged (`d0b923d1`) — [`milestone-2-1-artifact-generation-delivery-audit.md`](./milestone-2-1-artifact-generation-delivery-audit.md) |
-| **2.2** | Workspace intelligence correctness | Quality evaluation — *right* information, not mere population | **OPEN** — [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) |
+| **2.2** | Workspace intelligence correctness | Quality evaluation — *right* information, not mere population | **OPEN — Round 1 underway** — [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) |
 | **2.3** | Intelligence differentiation | Builder, Storyteller, Designer, and other lenses — meaningfully different thinking | After 2.2 accuracy bar |
 | **2.4** | Natural conversation | Fewer unnecessary briefs, better intent recognition, appropriate follow-ups, less mechanical workspace behavior | After 2.3 |
 
