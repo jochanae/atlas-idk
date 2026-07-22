@@ -301,6 +301,7 @@ Project / conversation:
 Date:
 Evaluator:
 
+Knowledge:  K1_ K2_ K3_ K4_ K5_   Notes:
 Blueprint:  B1_ B2_ B3_ B4_ B5_   Notes:
 Decisions:  D1_ D2_ D3_ D4_ D5_   Notes:
 Insights:   I1_ I2_ I3_ I4_ I5_ I6_   Notes:

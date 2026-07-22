@@ -1,6 +1,6 @@
 # Milestone 2 — Restore Intelligence
 
-**Status:** **OPEN** — 2.1 closed (PR #208 → `main`); **2.2 commissioned**  
+**Status:** **OPEN** — 2.1 closed (PR #208 → `main`); **2.2 Round 1 scored**  
 **Prerequisite:** [Milestone 1 — Restore the Conversation](./milestone-1-unbroken-conversation.md) **CLOSED**  
 **Principle:** Do **not** start by debating whether Ask Atlas should exist. Validate capabilities Atlas was designed to support — first delivery (2.1), then understanding (2.2).
 
@@ -11,7 +11,7 @@
 | # | Track | Mode | Status |
 |---|-------|------|--------|
 | **2.1** | Artifact Generation and Delivery | Audit → contract fix | **CLOSED** — PR #208 merged (`d0b923d1`) — [`milestone-2-1-artifact-generation-delivery-audit.md`](./milestone-2-1-artifact-generation-delivery-audit.md) |
-| **2.2** | Workspace intelligence correctness | Quality evaluation — *right* information, not mere population | **OPEN — Round 1 underway** — [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) |
+| **2.2** | Workspace intelligence correctness | Quality evaluation — *right* information, not mere population | **OPEN — Round 1 scored** (Blueprint PASS; Ledger/Insights PARTIAL; Flow unverified; **Knowledge Classification** added) — [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) |
 | **2.3** | Intelligence differentiation | Builder, Storyteller, Designer, and other lenses — meaningfully different thinking | After 2.2 accuracy bar |
 | **2.4** | Natural conversation | Fewer unnecessary briefs, better intent recognition, appropriate follow-ups, less mechanical workspace behavior | After 2.3 |
 
@@ -32,10 +32,24 @@
 
 > Atlas reliably extracts knowledge from the conversation in a way that is accurate, useful, and meaningfully different across its intelligence surfaces.
 
-Evaluate independently: **Blueprint · Decisions · Insights · Flow · Lenses** (Objects / Satellite / Ledger as supporting views).
+**Round 1 addition — Knowledge Classification:**
+
+> Atlas must distinguish between Ideas, Decisions, Insights, Questions, and Engineering Events. A product architect shouldn't have to mentally separate those after the fact—the system should do it automatically.
+
+Evaluate independently: **Blueprint · Decisions · Insights · Flow · Lenses**, plus cross-cutting **Knowledge Classification** (Objects / Satellite / Ledger as supporting views).
 
 Protocol: rich conversations → inspect each surface → five questions (understood / missed / invented / helpful / would use).  
 See the [2.2 board](./milestone-2-2-intelligence-correctness.md).
+
+### Round 1 snapshot
+
+| Surface | Result |
+|---------|--------|
+| Blueprint | **PASS** |
+| Ledger | **PARTIAL** (architecture + engineering noise mixed) |
+| Insights | **PARTIAL** (procedural; missing persistence-boundary insight) |
+| Flow | **NOT VERIFIED** |
+| Knowledge Classification | **FAIL** — primary finding |
 
 ---
 
