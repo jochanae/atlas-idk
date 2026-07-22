@@ -500,7 +500,27 @@ After those land: **one final regression pass** to close Milestone 2.2.
 | **Round 2** validation | Validation | ✅ **COMPLETE** |
 | **P2** Knowledge Classification | Correction / implementation | ✅ **Implemented** — awaiting regression |
 | **P3** Surface Integrity | Correction / implementation | ✅ **Implemented** (incl. desktop Flow tab) — awaiting regression |
-| Final regression | Validation | ⏸ **Your pass** to close 2.2 |
+| Final regression | Validation | 🟡 **IN PROGRESS** — R1 FAIL on intelligence seed (fix landing) |
+
+### Final regression — Scenario R1 (2026-07-22)
+
+**Ask Atlas → Workspace Continuity (CommunityBridge)**
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Discovery conversation | ✅ PASS | Six foundational dimensions locked; architectural quality strong |
+| Handoff (project create + Open Workspace) | ⚠️ PARTIAL | Project created; chat continued in Workspace (session 312) |
+| Knowledge → Insights DNA | ❌ FAIL | Purpose/Audience/Wedge/Stack all “Not captured yet” |
+| Knowledge → Objects | ❌ FAIL | 0 objects |
+| Knowledge → Ledger | ❌ FAIL (expected under P3 until seed) | Empty Activity — committed Decisions only by design |
+| Outputs | N/A | Empty is fine for exploratory discovery (no deliverable) |
+| Progress | 3% | Consistent with empty DNA + no committed entries |
+
+**Root cause (code):** Handoff preserved **transcript + Resume** only. Canonical Open Workspace path (`handleHandoff` → `append-thread`) did **not** flush Tier1 → DNA, did **not** run genome extraction, and Nexus Workspace never called AM extract. Continuity ≠ intelligence projection.
+
+**Fix:** `seedIntelligenceAfterHandoff` on `append-thread`, `create_project`, and `/nexus/handoff` — Tier1 flush + DNA seed + forced genome extraction. Client now passes Ask Atlas `conversationId` into `append-thread`.
+
+**Re-test after deploy:** Open Workspace from a rich Ask Atlas thread → within ~10s Insights DNA and Objects should populate. Ledger stays Decisions-only (P3) until explicit commits.
 
 ### P1 — Verify Flow (PASS)
 
@@ -556,7 +576,7 @@ Desktop Flow tab: right-rail no longer filters out `map`.
 3. ~~Round 2 validation (reversal + lens surfaces)~~ — **COMPLETE**.  
 4. ~~Implement P2~~ — Knowledge Classification (K1–K6).  
 5. ~~Implement P3~~ — Surface Integrity (S1–S5) + desktop Flow discoverability.  
-6. **One final regression pass** — then close Milestone 2.2.  
+6. **Final regression** — 🟡 R1 FAIL (handoff intelligence seed) — fix in flight; re-test after deploy.  
 7. After 2.2 closes, deepen lens differentiation under **2.3** only if still needed beyond Round 2 lens passes.
 
 ---

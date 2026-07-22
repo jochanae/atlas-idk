@@ -3567,7 +3567,10 @@ export default function Home() {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: snapshotMessages }),
+          body: JSON.stringify({
+            messages: snapshotMessages,
+            conversationId: activeConversationId ?? undefined,
+          }),
         });
         if (snapRes.ok) {
           const snapData = await snapRes.json() as { brief?: { threadSummary?: string }; conversationId?: string | null };
@@ -3823,7 +3826,13 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ messages: transcriptMessages }),
+          body: JSON.stringify({
+            messages: transcriptMessages,
+            conversationId:
+              (typeof askAtlasConversationId === "string" && askAtlasConversationId) ||
+              (typeof activeConversationId === "string" && activeConversationId) ||
+              undefined,
+          }),
         });
         if (snapRes.ok) {
           const snapData = (await snapRes.json().catch(() => null)) as {
