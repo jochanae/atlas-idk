@@ -106,9 +106,19 @@ export function useSmartAutoScroll(
     jump();
     // Cover late-arriving layout (images, streamed markdown) with a rAF pass.
     const raf = requestAnimationFrame(jump);
-    return () => cancelAnimationFrame(raf);
+    // Also cover async content hydration that lands after the initial paint
+    // (e.g. returning to a workspace where messages are already in memory but
+    // the container just re-mounted).
+    const t1 = window.setTimeout(jump, 120);
+    const t2 = window.setTimeout(jump, 320);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, primeKey]);
+
 
 
   // Force-scroll on user send / explicit triggers — bypasses the freeze.
