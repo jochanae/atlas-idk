@@ -230,6 +230,8 @@ export interface NexusProjectReadyDoneData {
     reason: string | null;
   };
   convState?: "THINK" | "SHAPE" | "COMMIT";
+  /** Deliverable-only / artifact turns — do not arm CommitPill or auto-handoff. */
+  suppressProjectReady?: boolean;
 }
 
 export interface NexusShapingPayload {
@@ -885,17 +887,25 @@ export function useNexusChatStream(
 
             // Parse explicit PROJECT_READY token from stream text and synthesize
             // a handoff signal if backend didn't already include one in meta.
-            const projectReady = parseProjectReady(displayText);
-            if (projectReady) {
+            // Deliverable turns must not promote into project mode.
+            const generatedArtifactsMeta = ((meta as any).generatedArtifacts ?? null) as NexusMessage["generatedArtifacts"];
+            const suppressProjectReadyHandoff =
+              !!(meta as any).suppressProjectReady ||
+              (Array.isArray(generatedArtifactsMeta) && generatedArtifactsMeta.length > 0);
+            const streamedProjectReady = parseProjectReady(displayText);
+            if (streamedProjectReady) {
               displayText = stripProjectReady(displayText);
             }
+            const projectReady = suppressProjectReadyHandoff ? null : streamedProjectReady;
             if (hasBareProjectReady(displayText)) {
-              notifyProjectReady();
+              if (!suppressProjectReadyHandoff) notifyProjectReady();
               displayText = stripBareProjectReady(displayText).trim();
             }
 
             let handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
-            if (projectReady && !handoff) {
+            if (suppressProjectReadyHandoff) {
+              handoff = undefined;
+            } else if (projectReady && !handoff) {
               handoff = {
                 readyToHandoff: true,
                 confidence: "high",

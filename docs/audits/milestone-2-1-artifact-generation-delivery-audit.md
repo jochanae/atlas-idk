@@ -32,11 +32,11 @@ Atlas offered a spreadsheet from Ask Atlas. The user was sent toward a project /
 
 **Still open after `56eae70c` (fix targets):**
 
-1. **Hard `projectId` gate** — tool still returns “No active project…” when `focusProjectId` is missing (`generate-deliverable.ts`); unfocused Ask Atlas can *call* the tool and still fail.  
-2. **No prose↔tool consistency check** — model can still claim success without `generatedArtifacts`.  
-3. **Open / project link routing** — Ask Atlas → project still seeds generic handoff continuation; `axiom:open-output` is a no-op until Workspace is mounted.  
-4. **Presentation** — Outputs default collapsed; XLSX in All Outputs only (`includedInArtifacts: false`).  
-5. **Handoff contract conflict** — same block still says “MUST emit PROJECT_READY” alongside the deliverable EXCEPTION.
+1. ~~**Hard `projectId` gate**~~ — addressed via Atlas Files bucket in this PR.  
+2. ~~**No prose↔tool consistency check**~~ — `deliverableOutputGuard` in this PR.  
+3. ~~**Open / project link routing**~~ — `navigateToProjectOutput` + Workspace mount in this PR.  
+4. ~~**Presentation**~~ — Open forces **All Outputs** sub-tab (where file-backed types are visible).  
+5. ~~**Handoff contract conflict / PROJECT_READY on deliverable turns**~~ — `isDeliverableOnlyRequest` + server/client suppress in this PR.
 
 `56eae70c` is a **prompt + tool-schema partial remediation**, not a complete generation/delivery fix.
 

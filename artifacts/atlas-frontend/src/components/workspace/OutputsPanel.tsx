@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArtifactsGallery } from "./ArtifactsGallery";
 import { OutputsGallery } from "./OutputsGallery";
 
@@ -9,6 +9,18 @@ const SUB_TABS: Array<{ id: "outputs" | "artifacts"; label: string }> = [
 
 export function OutputsPanel({ projectId }: { projectId: number }) {
   const [subTab, setSubTab] = useState<"outputs" | "artifacts">("outputs");
+
+  // File-backed deliverables (xlsx/pptx/docx/pdf) live in All Outputs, not the
+  // Artifacts sub-tab. When Open / focus-output fires, force the visible gallery.
+  useEffect(() => {
+    const forceAllOutputs = () => setSubTab("outputs");
+    window.addEventListener("axiom:open-output", forceAllOutputs);
+    window.addEventListener("axiom:focus-output", forceAllOutputs);
+    return () => {
+      window.removeEventListener("axiom:open-output", forceAllOutputs);
+      window.removeEventListener("axiom:focus-output", forceAllOutputs);
+    };
+  }, []);
 
   const subTabBar = (
     <div style={{ display: "flex", gap: 0, padding: "0 14px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
