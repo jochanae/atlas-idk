@@ -16,10 +16,11 @@ interface ParkSheetProps {
   onClose: () => void;
   onOpenFull: () => void;
   onParked?: (content: string) => void;
+  initialContent?: string;
 }
 
-export function ParkSheet({ projectId: initialProjectId, projects, onClose, onOpenFull, onParked }: ParkSheetProps) {
-  const [content, setContent] = useState("");
+export function ParkSheet({ projectId: initialProjectId, projects, onClose, onOpenFull, onParked, initialContent }: ParkSheetProps) {
+  const [content, setContent] = useState(initialContent ?? "");
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
     initialProjectId ?? projects[0]?.id ?? null
   );
