@@ -8943,60 +8943,70 @@ export default function Workspace() {
         <ConversationViewSwitcher hidden={isMobile} conversationMode={conversationMode} onToggle={toggleConversationMode} />
       </div>
 
-      {/* ── Axiom handoff banner ── */}
+      {/* ── Axiom handoff pill ── */}
       {showAxiomBanner && (
         <div
+          onMouseEnter={() => setHandoffBannerPaused(true)}
+          onMouseLeave={() => setHandoffBannerPaused(false)}
           style={{
-            display: "flex",
+            position: "fixed",
+            top: "calc(var(--atlas-header-height, 48px) + 10px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 45,
+            display: "inline-flex",
             alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            padding: "9px 18px",
-            background: "rgba(201,162,76,0.07)",
-            borderBottom: "1px solid rgba(201,162,76,0.18)",
-            flexShrink: 0,
-            animation: "atlas-spec-banner-drop 520ms cubic-bezier(0.22, 1, 0.36, 1) both",
-            position: "relative",
-            overflow: "hidden",
+            gap: 10,
+            padding: "7px 14px 7px 12px",
+            maxWidth: "min(88vw, 520px)",
+            background: "rgba(13,11,9,0.92)",
+            border: "1px solid rgba(201,162,76,0.35)",
+            borderRadius: 999,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,162,76,0.08)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            animation: showAxiomBanner
+              ? "atlas-spec-pill-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both, atlas-spec-pill-out 420ms cubic-bezier(0.4,0,0.6,1) 4080ms both"
+              : undefined,
+            animationPlayState: handoffBannerPaused ? "paused" : "running",
+            pointerEvents: "auto",
           }}
         >
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, boxShadow: "0 0 8px rgba(201,162,76,0.7)" }} />
           <span
-            aria-hidden
             style={{
-              position: "absolute",
-              inset: 0,
-              background: "linear-gradient(90deg, transparent, rgba(201,162,76,0.18), transparent)",
-              transform: "translateX(-100%)",
-              animation: "atlas-spec-banner-shimmer 1.4s ease-out 280ms 1 forwards",
-              pointerEvents: "none",
+              fontSize: "var(--ts-label)",
+              color: "var(--atlas-gold)",
+              fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.02em",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
-          />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, display: "inline-block", boxShadow: "0 0 8px rgba(201,162,76,0.7)" }} />
-            <span style={{ fontSize: "var(--ts-label)", color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em" }}>
-              Spec loaded from {importSourceLabel ?? "external source"} — your architecture decisions are committed.
-            </span>
-          </div>
+          >
+            Spec loaded from {importSourceLabel ?? "external source"}
+          </span>
           <button
             onClick={dismissAxiomBanner}
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0, position: "relative" }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.55)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "0 2px", flexShrink: 0 }}
             title="Dismiss"
             aria-label="Dismiss"
           >
             ×
           </button>
           <style>{`
-            @keyframes atlas-spec-banner-drop {
-              from { transform: translateY(-100%); opacity: 0; }
-              to   { transform: translateY(0); opacity: 1; }
+            @keyframes atlas-spec-pill-in {
+              from { transform: translate(-50%, -12px); opacity: 0; }
+              to   { transform: translate(-50%, 0); opacity: 1; }
             }
-            @keyframes atlas-spec-banner-shimmer {
-              from { transform: translateX(-100%); }
-              to   { transform: translateX(100%); }
+            @keyframes atlas-spec-pill-out {
+              from { transform: translate(-50%, 0); opacity: 1; }
+              to   { transform: translate(-50%, -8px); opacity: 0; }
             }
           `}</style>
         </div>
       )}
+
 
       {homeHandoffDataSettled && (showHomeHandoffBanner || showHomeHandoffDrawer) && (
         <style>{`
