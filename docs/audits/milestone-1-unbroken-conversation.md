@@ -4,8 +4,8 @@
 **Date:** 2026-07-21  
 **Scope:** Conversation lifecycle, attachment lifecycle, interruption inventory, acceptance criteria, repair order  
 **Repo HEAD at audit:** `86e7b309` (`main`)  
-**Status:** Phase B — **Wave 0 CLOSED** (2026-07-22); **Wave 1 CLOSED** (2026-07-22 — G1-1 + G1-2 verified). Wave 2 started (INT-35).  
-**Gate:** Do **not** start Milestone 2 (Atlas intelligence) until Wave 0 and Wave 1 of this milestone are complete and verified. **Wave 0 + Wave 1 gates met** — Milestone 2 unblocked on attachment/auth continuity; remaining Wave 2 Breaks/Friction should still land before treating Milestone 1 as fully complete.
+**Status:** Phase B — **Wave 0 CLOSED**; **Wave 1 CLOSED**; **Wave 2 in progress** — G2-1 (INT-35) **passed** (2026-07-22); G2-2 (INT-39 slide-order reopen) in progress.  
+**Gate:** Wave 0 + Wave 1 gates met. Remaining Wave 2 Breaks/Friction should still land before treating Milestone 1 as fully complete.
 
 **Hard rule (Phase B):**
 
@@ -711,6 +711,24 @@ Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/br
 | **Impact** | **Conversation Break** — user must catch Atlas’s false success and re-ask; trust in tool/action grounding broken |
 | **Acceptance test** | §6 INT-35 — explicit “create the workspace” creates a project (or Open Workspace is armed without creation claims); Atlas must not claim created/opening unless `create_project` succeeded this turn |
 
+#### INT-39 — Unsupported slide-order claim without PPTX reopen
+
+| Field | Detail |
+|-------|--------|
+| **Files** | `attachmentRelevance.ts`, `attachmentProvenanceQuery.ts`, `attachmentOutputGuard.ts`, `nexus.ts` Continuity V2 reopen |
+| **Cause** | Relevance selected **whole files**, not slides — but section-order follow-ups (“does pricing come after the challenge?”) lacked slide/deck cues → `relevance_selected_none` → no reopen. OutputGuard did not gate freeform slide-order prose. Ask Atlas → Workspace prior discovery could also miss rows when only `conversation_id` / project linkage remained. Ending slides 15–19 are **not** omitted by relevance; if reopen succeeds, extract cap is 20 slides (prefix budget truncate is a separate rare path). |
+| **Confidence** | **Verified** (manual 2026-07-22 — Workspace claimed pricing after challenge; deck order is pricing 15 → takeaway 16 → challenge 17 → journey 18 → closing 19; Ask Atlas earlier had correct order) |
+| **Impact** | **Conversation Break** — collaboration false confidence; user must catch wrong deck structure |
+| **Acceptance test** | §6 INT-39 — after PPTX discuss + Workspace handoff, ask a section-order question without saying “slide”; verify Continuity V2 reopens the deck and answer matches ending-slide order (or OutputGuard refuses without reopen) |
+
+#### INT-40 — Broken inline attachment preview + late composer clear
+
+| Field | Detail |
+|-------|--------|
+| **Cause** | Valid PPTX card followed by a broken inline image/filename preview; composer attachment chip clears late |
+| **Confidence** | Observed (manual 2026-07-22) |
+| **Impact** | **Conversation Friction** — non-blocking vs INT-39; polish after reopen grounding |
+
 #### INT-36 — Thinking Thread z-index / stacking
 
 | Field | Detail |
@@ -788,9 +806,10 @@ If yes → Killer or Break. If it only makes the conversation feel clumsy → Fr
 | **INT-25** | Send while upload incomplete | Thought stalled at send boundary. |
 | **INT-26** | Code files blocked on canonical matrix | Product promise (“share code”) cannot continue on the main path. |
 | **INT-35** | Workspace create false confirmation | Atlas says creating/created while nothing was created; user must re-ask. |
+| **INT-39** | Unsupported slide-order without PPTX reopen | Workspace invents deck order after handoff; Ask Atlas had been correct. |
 
 > **Wave 1 focus (closed):** INT-05 (durable attach recovery) and INT-12 (prior-turn reinjection).  
-> **Wave 2a lead:** INT-35 (action grounding — never claim create/open without execution).
+> **Wave 2a:** INT-35 closed; **INT-39** next (reopen grounding for section-order claims).
 
 ### 5.3 Conversation Friction
 
@@ -821,8 +840,8 @@ Legacy parallel paths (FlowPanel / ActiveRuns) are **Friction** for Milestone 1 
 | Bucket | Count | IDs |
 |--------|------:|-----|
 | Conversation Killer | 8 | INT-01, INT-02, INT-04*, INT-05*, INT-09, INT-10*, INT-11, INT-13 |
-| Conversation Break | 14 | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26, **INT-35** |
-| Conversation Friction | 16 | INT-16, INT-18–20, INT-22–23, INT-27–34, INT-36–38 |
+| Conversation Break | 15 | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26, INT-35, **INT-39** |
+| Conversation Friction | 17 | INT-16, INT-18–20, INT-22–23, INT-27–34, INT-36–38, **INT-40** |
 
 \* Killer when accidental / mid-compose.  
 † INT-05 appears in both Killer (hard kill mid-attach) and Break (durable recovery / re-upload tax) — same root cause, two user faces.
@@ -848,6 +867,8 @@ Every repair ends with a **measurable test**, not “it should be fixed.”
 | INT-11 | Dual controller empty handoff | **Conversation Killer** | Have a multi-turn Ask Atlas thread. Crystallize / Commit / create-from-conversation. Verify Workspace receives **that** transcript (non-empty), not an empty `nexusChat` snapshot. |
 | INT-12 | Prior-turn attachments not reinjected | **Conversation Break** | Upload a PowerPoint, discuss it, send a later turn with **no** new attach (“Look at slide 5 again”). Verify Atlas still has file context (Continuity V2 or equivalent) and does not claim no attachment was provided. |
 | INT-35 | Workspace create false confirmation | **Conversation Break** | After a long Ask Atlas thread, ask Atlas to create the workspace. Verify either (a) a project row is created via `create_project` on explicit create phrasing, or (b) Open Workspace is armed via `PROJECT_READY` **without** Atlas claiming creation/opening already happened. First-attempt false success fails the test. |
+| INT-39 | Unsupported slide-order without reopen | **Conversation Break** | Upload PPTX, discuss slides, hand off to Workspace, ask “Does pricing come after the challenge?” (no “slide” word). Verify `nexus.continuity.diag` shows reopen (`historicalReopenResolvedCount > 0`) and answer matches deck order (pricing before challenge), **or** OutputGuard refuses order claims when reopen did not run. |
+| INT-40 | Broken inline attach preview / late clear | **Conversation Friction** | Attach PPTX; verify a single valid card (no broken secondary image/filename preview) and composer staging clears promptly after send. |
 | INT-36 | Thinking Thread stacking | **Conversation Friction** | Open Thinking Thread during chat; verify it is not obscured behind message content (z-index). |
 | INT-37 | Composer jump on handoff/scroll | **Conversation Friction** | Trigger handoff / scroll near composer; verify no large jump (UnifiedContextDock / auto-scroll). |
 | INT-38 | Home-handoff banner weight | **Conversation Friction** | After Ask Atlas → Workspace handoff, verify banner is readable without dominating the first viewport (polish bar). |
@@ -1129,7 +1150,8 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 
 #### Wave 2a — Remaining Conversation Breaks
 
-0. **INT-35** — Workspace create false confirmation: never narrate create/open unless tool succeeded; force `create_project` on explicit create phrasing on Ask Atlas  
+0. **INT-35** — Workspace create false confirmation — **Closed** (manual 2026-07-22)  
+0b. **INT-39** — Slide-order / section-order claims require PPTX reopen after Workspace handoff (relevance + OutputGuard + conversation-scoped prior load)  
 1. INT-07 / INT-08 — Project switch + route unmount: rehydrate without blanking; handoff-safe navigation  
 2. INT-14 — SSE disconnect recovery path  
 3. INT-21 — Auth remount refetch races after picker (reinforces Wave 0)  
@@ -1147,6 +1169,7 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 12. Regression locks for mitigated/dead items (INT-27–34)  
 13. Hour-long soak harness (AC-X6): text → image → PDF → PPTX → follow-up without re-attach → handoff → continue in Workspace  
 14. **INT-36 / INT-37 / INT-38** — Thinking Thread z-index; composer jump on handoff/scroll; home-handoff banner weight (observed 2026-07-22, non-blocking)  
+15. **INT-40** — Broken inline PPTX/image preview + late composer attachment clear (observed 2026-07-22, non-blocking vs INT-39)  
 
 **Wave 2 exit criteria:** Remaining §9.2 must-pass criteria green; soak harness passes; Milestone 1 can be declared complete.
 
@@ -1197,8 +1220,8 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 | Bucket | IDs | Wave |
 |--------|-----|------|
 | **Conversation Killer** | INT-01, INT-02, INT-04*, INT-05*, INT-09, INT-10*, INT-11, INT-13 | **Wave 0** (INT-01, INT-13, INT-11 first) |
-| **Conversation Break** | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26, **INT-35** | **Wave 1** (INT-05, INT-12) done; **Wave 2a** starts with INT-35 |
-| **Conversation Friction** | INT-16, INT-18–20, INT-22–23, INT-27–34, INT-36–38 | **Wave 2b** |
+| **Conversation Break** | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26, INT-35, **INT-39** | **Wave 2a** (INT-35 closed; INT-39 next) |
+| **Conversation Friction** | INT-16, INT-18–20, INT-22–23, INT-27–34, INT-36–38, INT-40 | **Wave 2b** |
 
 \* Killer when accidental / mid-compose.  
 † INT-05: Killer face (hard kill) + Break face (re-upload tax).
@@ -1276,15 +1299,20 @@ Wave 1 exit criteria met. **Milestone 2 attachment/auth continuity gate is satis
 
 ---
 
-### Wave 2 repair status (Phase B — started)
+### Wave 2 repair status (Phase B — in progress)
 
 | Gate | INT | Acceptance test | Status |
 |------|-----|-----------------|--------|
-| G2-1 | INT-35 | Explicit workspace create does not falsely succeed; PROJECT_READY does not claim creation | **In progress** |
-| — | INT-36–38 | Thinking Thread z-index; composer jump; handoff banner weight | Logged (non-blocking) |
+| G2-1 | INT-35 | Explicit workspace create does not falsely succeed; PROJECT_READY does not claim creation | **Closed** (manual 2026-07-22) |
+| G2-2 | INT-39 | Section-order follow-up reopens PPTX (or refuses order claims); ending-slide order correct | **In progress** |
+| — | INT-36–38, INT-40 | Thinking Thread z-index; composer jump; handoff banner; broken inline attach preview / late clear | Logged (non-blocking) |
+
+**G2-1 manual acceptance (2026-07-22):** First explicit create request created **Empower Me Session 1** and armed Open Workspace. Transcript and PPTX carried into Workspace.
+
+**INT-39 finding (2026-07-22):** Workspace answer claimed pricing comes after the challenge; deck order is pricing 15 → takeaway 16 → challenge 17 → journey 18 → closing 19. Relevance is whole-file (not per-slide) — ending slides were not “deselected”; the turn likely failed to reopen (section-order phrasing missed relevance) and OutputGuard allowed freeform order prose. Fix: conversation/project-scoped prior load + deck section-order relevance + OutputGuard gate.
 
 This is a structured stabilization program, not a bug chase.
 
 ---
 
-*Phase A complete. Phase B Wave 0 + Wave 1 closed. Phase B Wave 2 started with INT-35 (workspace create false confirmation).*
+*Phase A complete. Phase B Wave 0 + Wave 1 closed. Wave 2: INT-35 closed; INT-39 (slide-order reopen grounding) in progress.*

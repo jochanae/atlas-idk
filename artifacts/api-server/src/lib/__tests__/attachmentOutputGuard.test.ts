@@ -674,3 +674,40 @@ describe("streaming claim gate — StreamingClaimGate", () => {
     void r2;
   });
 });
+
+describe("INT-39 slide-order claims require reopened deck content", () => {
+  const priorDeck = {
+    publicRef: "prior-1",
+    filename: "deck.pptx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    existed: true,
+    priorAttachmentWasModelReceived: true,
+    contentAvailableThisTurn: false,
+  };
+
+  it("blocks pricing-after-challenge claim without reopen", () => {
+    const result = checkAttachmentClaims(
+      "Pricing comes after the challenge, then the journey.",
+      {
+        attachments: [],
+        priorAttachments: [priorDeck],
+        toolsExecutedThisTurn: new Set(),
+      },
+    );
+    expect(result.clean).toBe(false);
+  });
+
+  it("allows the same claim when content was reopened", () => {
+    const result = checkAttachmentClaims(
+      "Pricing comes after the challenge, then the journey.",
+      {
+        attachments: [],
+        priorAttachments: [{ ...priorDeck, contentAvailableThisTurn: true }],
+        contentReopenedAttachmentIds: new Set(["att-deck"]),
+        toolsExecutedThisTurn: new Set(),
+      },
+    );
+    expect(result.clean).toBe(true);
+  });
+});

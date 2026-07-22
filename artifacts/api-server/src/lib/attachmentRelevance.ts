@@ -25,6 +25,13 @@ const TEMPORAL =
 const SLIDE_OR_DECK =
   /\b(?:slide\s*\d+|slides?|deck|powerpoint|pptx|presentation)\b/i;
 
+/** INT-39: section/order follow-ups that imply the prior deck without saying "slide". */
+const DECK_SECTION_OR_ORDER =
+  /\b(?:pricing|takeaway|challenge|journey|closing|agenda|title\s+slide|appendix)\b/i;
+
+const DECK_ORDER_RELATION =
+  /\b(?:before|after|comes?\s+before|comes?\s+after|follow(?:s|ing)?|precedes?|order|sequence|between)\b/i;
+
 const INVOICE_OR_PDF =
   /\b(?:invoice|total\s+on\s+the|pdf)\b/i;
 
@@ -33,6 +40,20 @@ const SPREADSHEET =
 
 const GENERIC_PRIOR_FILE =
   /\b(?:the\s+(?:file|attachment|document)\s+(?:i\s+)?(?:attached|sent|shared|uploaded)|attached\s+(?:above|earlier)|still\s+access\s+the\s+file)\b/i;
+
+function isDeckCandidate(c: PriorAttachmentCandidate): boolean {
+  const name = c.filename.toLowerCase();
+  return (
+    c.kind === "doc" ||
+    name.endsWith(".pptx") ||
+    name.endsWith(".ppt") ||
+    c.mimeType.includes("presentation")
+  );
+}
+
+export function hasDeckOrderFollowUpIntent(message: string): boolean {
+  return DECK_SECTION_OR_ORDER.test(message) && DECK_ORDER_RELATION.test(message);
+}
 
 function scoreCandidate(
   message: string,
@@ -50,13 +71,18 @@ function scoreCandidate(
   }
 
   const wantsDeck = SLIDE_OR_DECK.test(message);
+  const wantsDeckOrder = hasDeckOrderFollowUpIntent(message);
   const wantsInvoice = INVOICE_OR_PDF.test(message);
   const wantsSheet = SPREADSHEET.test(message);
   const temporal = TEMPORAL.test(message) || GENERIC_PRIOR_FILE.test(message);
 
-  if (wantsDeck && (c.kind === "doc" || name.endsWith(".pptx") || name.endsWith(".ppt") || c.mimeType.includes("presentation"))) {
+  if (wantsDeck && isDeckCandidate(c)) {
     score += 50;
     reasons.push("deck_or_slide_intent");
+  }
+  if (wantsDeckOrder && isDeckCandidate(c)) {
+    score += 55;
+    reasons.push("deck_section_order_intent");
   }
   if (wantsInvoice && (c.kind === "pdf" || name.endsWith(".pdf") || c.mimeType === "application/pdf" || name.includes("invoice"))) {
     score += 50;
@@ -112,8 +138,11 @@ export function selectRelevantPriorAttachments(params: {
 
   // Require a meaningful signal: temporal/generic alone (score ~5-8) is enough
   // only when the message clearly references a prior file; pure chat stays empty.
+  // INT-39: section/order follow-ups ("does pricing come after the challenge?")
+  // must reopen the prior deck — relevance is whole-file, not per-slide.
   const hasStrongIntent =
     SLIDE_OR_DECK.test(message) ||
+    hasDeckOrderFollowUpIntent(message) ||
     INVOICE_OR_PDF.test(message) ||
     SPREADSHEET.test(message) ||
     GENERIC_PRIOR_FILE.test(message) ||
