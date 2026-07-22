@@ -590,10 +590,20 @@ export function AskAtlasSurface({
                   )}
                   {msg.role === "assistant" && msg.streaming ? (
                     <>
-                      <span className="atlas-live-stream-text" style={{ whiteSpace: "pre-wrap" }}>
-                        {sanitizeForStreaming(displayContent)}
-                        <span className="atlas-cursor" aria-hidden />
-                      </span>
+                      {/* Progressive markdown during streaming — same shared renderer
+                          as the final state so tables/lists/code resolve as tokens
+                          close. Matches workspace AssistantBubble (no typography
+                          swap on stream end). */}
+                      <AskAtlasRenderer
+                        content={displayContent}
+                        projects={projects}
+                        onNavigate={(id) => void handleProjectOpen(id)}
+                        isParchment={isParchment}
+                        onCreateProject={onCreateProject}
+                        onSend={onSend}
+                        onAction={onAction}
+                      />
+                      <span className="atlas-cursor" aria-hidden style={{ marginLeft: 2 }} />
                       {visibleLiveStep && displayContent.trim().length > 0 && (
                         <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, opacity: 0.5 }}>
                           <span style={{
