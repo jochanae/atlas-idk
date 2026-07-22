@@ -36,4 +36,32 @@ describe("checkDeliverableClaims", () => {
     );
     expect(result.clean).toBe(true);
   });
+
+  // Regression: Aura Focus / CommunityBridge R1 — discovery conclusion wiped
+  // because bare "open it" matched the old deliverable pattern.
+  it("does not replace discovery prose that says 'open it' without a file claim", () => {
+    const discovery = [
+      "All six foundational dimensions are locked.",
+      "Purpose, audience, identity, and wedge are clear.",
+      "Ready to open it in Workspace and shape the MVP,",
+      "or keep refining the core organization experience here first?",
+    ].join(" ");
+    const result = checkDeliverableClaims(discovery, { generatedArtifactsCount: 0 });
+    expect(result.clean).toBe(true);
+    expect(result.correction).toBe(discovery);
+    expect(result.correction).not.toMatch(/haven't generated a downloadable file/i);
+  });
+
+  it("still catches 'open the file' / 'download it' false claims", () => {
+    expect(
+      checkDeliverableClaims("Open the file from the card when you're ready.", {
+        generatedArtifactsCount: 0,
+      }).clean,
+    ).toBe(false);
+    expect(
+      checkDeliverableClaims("Download it whenever you need the deck.", {
+        generatedArtifactsCount: 0,
+      }).clean,
+    ).toBe(false);
+  });
 });

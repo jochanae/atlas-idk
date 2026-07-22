@@ -522,6 +522,22 @@ After those land: **one final regression pass** to close Milestone 2.2.
 
 **Re-test after deploy:** Open Workspace from a rich Ask Atlas thread → within ~10s Insights DNA and Objects should populate. Ledger stays Decisions-only (P3) until explicit commits.
 
+### Final regression — Workspace response replacement (2026-07-22, post #210)
+
+**Separate from handoff seed.** Observed on Workspace DECIDE turn (Aura Focus Timer):
+
+1. Atlas streamed a correct discovery conclusion (“foundation locked”).
+2. That content vanished from live chat.
+3. Persisted/exported assistant message became the deliverable honesty fallback:  
+   `I haven't generated a downloadable file in this turn yet…` with claim excerpt `"open it"`.
+4. DNA/Objects stayed empty afterward; Changes timeline still showed the turn.
+
+**Root cause:** `deliverableOutputGuard` treated bare `\bopen it\b` as a false file-generation claim and emitted SSE `correction`, replacing the entire streamed discovery response. No file was requested.
+
+**Fix:** tighten patterns — keep `download it` / `open the file|spreadsheet|…`; remove bare `open it`. Regression tests cover discovery prose.
+
+**Implication for R1:** Do not score DNA/Objects FAIL from a run whose assistant turn was corrupted by this guard. Re-run R1 after the guard fix is deployed.
+
 ### P1 — Verify Flow (PASS)
 
 Confirmed:
