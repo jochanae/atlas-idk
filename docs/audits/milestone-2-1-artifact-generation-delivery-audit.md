@@ -298,13 +298,15 @@ Ask Atlas turn
 ## Recommended / in-progress fix order
 
 1. ~~Tool availability on Ask Atlas (home list + WhisperGate)~~ — **done in `56eae70c`**.  
-2. **Persistence when `projectId <= 0`** — idempotent per-user deliverable bucket (do not only delete the gate).  
-3. **Open deep-link** — seed `atlas-open-output-*`, navigate with `source=open-output`, **no** `seedHandoffContinuation`; Workspace opens Outputs + focus.  
-4. Deliverable vs handoff prompt conflict + suppress `PROJECT_READY` when `generatedArtifacts` non-empty.  
-5. Prose honesty guard when claims succeed with empty `generatedArtifacts`.  
-6. Clarify All Outputs vs Artifacts for file-backed types.
+2. ~~**Persistence when `projectId <= 0`**~~ — Atlas Files bucket (`ensureUserDeliverableBucketProject`).  
+3. ~~**Open deep-link**~~ — `source=open-output`, no handoff continuation; Outputs + focus.  
+4. ~~**Deliverable vs handoff**~~ — suppress `PROJECT_READY` / force-create for deliverable-only turns.  
+5. ~~**Prose honesty**~~ — `checkDeliverableClaims` when success prose and `generatedArtifacts.length === 0`.  
+6. ~~**Open lands where file is visible**~~ — force All Outputs sub-tab on open/focus.
 
-Then proceed to Milestone 2.2 (intelligence correctness).
+**Contract this PR enforces:** If Atlas says it generated something, the user should immediately receive it and be able to open it.
+
+Next after merge: **Milestone 2.2 — Workspace intelligence correctness** (Blueprint, Decisions, Insights, Objects, Flow, Satellite, Ledger — quality, not mere population).
 
 ---
 
