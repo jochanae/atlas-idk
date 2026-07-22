@@ -359,11 +359,10 @@ export function FilesBrowser({
   const anyError = librarySavedQ.error || generatedQ.error || workspaceTreeQ.error;
   const isNarrow = useIsNarrow(720);
   const [, setLocation] = useLocation();
-  const openProjectTree = () => {
-    if (workspaceProjectId != null) {
-      try { sessionStorage.setItem("atlas-open-files-sheet", "1"); } catch {}
-      setLocation(`/project/${workspaceProjectId}`);
-    }
+  // Cards vs Tree — inline switch for the workspace project pane.
+  const [sourceView, setSourceView] = useState<"cards" | "tree">("cards");
+  const openProjectWorkspace = () => {
+    if (workspaceProjectId != null) setLocation(`/project/${workspaceProjectId}`);
   };
   const [previewFile, setPreviewFile] = useState<UnifiedFile | null>(null);
 
