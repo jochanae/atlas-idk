@@ -154,6 +154,7 @@ import { ParkSheet } from "@/components/ParkSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import { useComposerVisibility } from "@/hooks/useComposerVisibility";
 import { useShellStore } from "@/store/shellStore";
+import { dockVisibility } from "@/hooks/useDockVisibility";
 
 
 import { MemoryTab } from "@/components/workspace/MemoryTab";
