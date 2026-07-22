@@ -310,10 +310,21 @@ export function AskAtlasSurface({
   // Force-jump ONLY when the user sends a new message (not on each assistant turn),
   // so incoming Atlas replies never rip the reader away from mid-conversation.
   const userMessageCount = messages.filter(m => m.role === "user").length;
+  // Bump a token whenever the surface opens so the auto-scroll hook re-primes
+  // to the bottom on every return — not just the first mount.
+  const openTokenRef = useRef(0);
+  const [openToken, setOpenToken] = useState(0);
+  useEffect(() => {
+    if (open) {
+      openTokenRef.current += 1;
+      setOpenToken(openTokenRef.current);
+    }
+  }, [open]);
   useSmartAutoScroll(scrollRef, [messages.length, isStreaming], {
     enabled: open,
     threshold: 160,
     forceDeps: [userMessageCount],
+    primeKey: open ? `ask:${openToken}` : null,
   });
 
   // Follow scroll during streaming — fires on every token so the view tracks
