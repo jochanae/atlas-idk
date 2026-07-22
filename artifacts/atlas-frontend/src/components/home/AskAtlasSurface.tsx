@@ -277,6 +277,7 @@ export function AskAtlasSurface({
   const [savedIdxSet, setSavedIdxSet] = useState<Set<number>>(new Set());
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
+  const [parkPrefill, setParkPrefill] = useState<string>("");
   
   const isParchment = useThemeMode() === "parchment";
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -983,9 +984,10 @@ export function AskAtlasSurface({
                 setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
               }}
               onLongPress={(text) => {
-                // Long-press parks into the composer for edit before send.
-                setInput(input.trim() ? `${input.trim()} ${text}` : text);
-                setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
+                // Long-press parks the suggestion. ParkSheet handles project pick
+                // (defaults to first project; user can switch via its selector).
+                setParkPrefill(text);
+                setShowParkSheet(true);
               }}
             />
           );
@@ -1434,8 +1436,9 @@ export function AskAtlasSurface({
         <ParkSheet
           projectId={null}
           projects={projects}
-          onClose={() => setShowParkSheet(false)}
-          onOpenFull={() => { setShowParkSheet(false); setLocation("/parking"); }}
+          initialContent={parkPrefill || undefined}
+          onClose={() => { setShowParkSheet(false); setParkPrefill(""); }}
+          onOpenFull={() => { setShowParkSheet(false); setParkPrefill(""); setLocation("/parking"); }}
         />
       )}
 
