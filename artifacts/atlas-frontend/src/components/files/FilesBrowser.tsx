@@ -359,11 +359,10 @@ export function FilesBrowser({
   const anyError = librarySavedQ.error || generatedQ.error || workspaceTreeQ.error;
   const isNarrow = useIsNarrow(720);
   const [, setLocation] = useLocation();
-  const openProjectTree = () => {
-    if (workspaceProjectId != null) {
-      try { sessionStorage.setItem("atlas-open-files-sheet", "1"); } catch {}
-      setLocation(`/project/${workspaceProjectId}`);
-    }
+  // Cards vs Tree — inline switch for the workspace project pane.
+  const [sourceView, setSourceView] = useState<"cards" | "tree">("cards");
+  const openProjectWorkspace = () => {
+    if (workspaceProjectId != null) setLocation(`/project/${workspaceProjectId}`);
   };
   const [previewFile, setPreviewFile] = useState<UnifiedFile | null>(null);
 
@@ -438,7 +437,7 @@ export function FilesBrowser({
               >
                 {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
               </select>
-              <ViewSourceToggle onOpenTree={openProjectTree} disabled={workspaceProjectId == null} />
+              <ViewSourceToggle value={sourceView} onChange={setSourceView} onOpenWorkspace={openProjectWorkspace} disabled={workspaceProjectId == null} />
             </div>
           )}
         </div>
@@ -460,7 +459,7 @@ export function FilesBrowser({
                   >
                     {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
                   </select>
-                  <ViewSourceToggle onOpenTree={openProjectTree} disabled={workspaceProjectId == null} />
+                  <ViewSourceToggle value={sourceView} onChange={setSourceView} onOpenWorkspace={openProjectWorkspace} disabled={workspaceProjectId == null} />
                 </div>
               </RailGroup>
             )}
@@ -483,12 +482,18 @@ export function FilesBrowser({
           )}
           {isLoading && <EmptyPane title="Loading…" body="Fetching your files." />}
           {!isLoading && anyError && <EmptyPane title="Couldn't load files" body={String((anyError as Error).message ?? anyError)} />}
-          {!isLoading && !anyError && visible.length === 0 && (
+          {!isLoading && !anyError && section === "workspace" && sourceView === "tree" && workspaceProjectId != null && (
+            <WorkspaceTreePane
+              tree={workspaceTreeQ.data}
+              onOpenWorkspace={openProjectWorkspace}
+            />
+          )}
+          {!isLoading && !anyError && !(section === "workspace" && sourceView === "tree") && visible.length === 0 && (
             section === "recent"
               ? <EmptyPane title="No recent attachments" body="Files you attach to messages will appear here." />
               : <EmptyPane title="No files match" body="Try a different section or clear the search." />
           )}
-          {!isLoading && !anyError && visible.length > 0 && (
+          {!isLoading && !anyError && !(section === "workspace" && sourceView === "tree") && visible.length > 0 && (
             view === "list" ? (
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>
                 {visible.map((f) => (
@@ -568,9 +573,32 @@ function ViewToggleBtn({ active, onClick, label, children }: { active: boolean; 
   );
 }
 
-/** Toggle beside the project dropdown: Cards view (current FilesBrowser) vs
- *  Tree view (jumps to /project/:id workspace filesystem). */
-function ViewSourceToggle({ onOpenTree, disabled }: { onOpenTree: () => void; disabled?: boolean }) {
+/** Toggle beside the project dropdown: Cards (unified files) vs Tree (project workspace filesystem, inline). */
+function ViewSourceToggle({
+  value, onChange, onOpenWorkspace, disabled,
+}: {
+  value: "cards" | "tree";
+  onChange: (v: "cards" | "tree") => void;
+  onOpenWorkspace: () => void;
+  disabled?: boolean;
+}) {
+  const btn = (active: boolean, onClick: () => void, title: string, icon: React.ReactNode, isDisabled?: boolean) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isDisabled}
+      aria-pressed={active}
+      title={title}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 28, height: 24, borderRadius: 4,
+        cursor: isDisabled ? "not-allowed" : "pointer",
+        background: active ? "hsl(var(--primary) / 0.14)" : "transparent",
+        color: active ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+        border: "none", opacity: isDisabled ? 0.4 : 1,
+      }}
+    >{icon}</button>
+  );
   return (
     <div
       role="group"
@@ -581,35 +609,93 @@ function ViewSourceToggle({ onOpenTree, disabled }: { onOpenTree: () => void; di
         flexShrink: 0,
       }}
     >
+      {btn(value === "cards", () => onChange("cards"), "Cards — unified files", <Folder size={12} />)}
+      {btn(value === "tree", () => { if (!disabled) onChange("tree"); }, "Tree — project workspace", <FolderTree size={12} />, disabled)}
       <button
         type="button"
-        aria-pressed="true"
-        title="Cards — unified files"
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          width: 28, height: 24, borderRadius: 4, cursor: "default",
-          background: "hsl(var(--primary) / 0.14)",
-          color: "hsl(var(--primary))",
-          border: "none",
-        }}
-      ><LayoutGrid size={12} /></button>
-      <button
-        type="button"
-        onClick={onOpenTree}
+        onClick={onOpenWorkspace}
         disabled={disabled}
-        aria-pressed="false"
-        title="Project workspace tree"
+        title="Open project workspace"
+        aria-label="Open project workspace"
         style={{
           display: "flex", alignItems: "center", justifyContent: "center",
           width: 28, height: 24, borderRadius: 4,
           cursor: disabled ? "not-allowed" : "pointer",
           background: "transparent",
           color: "hsl(var(--muted-foreground))",
-          border: "none",
-          opacity: disabled ? 0.4 : 1,
+          border: "none", opacity: disabled ? 0.4 : 1,
+          fontSize: 14, lineHeight: 1,
         }}
-      ><FolderTree size={12} /></button>
+      >↗</button>
     </div>
+  );
+}
+
+/** Inline workspace tree view (drop-in for the results pane). */
+function WorkspaceTreePane({
+  tree, onOpenWorkspace,
+}: {
+  tree: TreeResponse | undefined;
+  onOpenWorkspace: () => void;
+}) {
+  const children = tree?.children ?? [];
+  if (children.length === 0) {
+    return <EmptyPane title="No files yet" body="This project workspace is empty." />;
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", color: "hsl(var(--muted-foreground))" }}>
+          Workspace tree
+        </div>
+        <button
+          type="button"
+          onClick={onOpenWorkspace}
+          style={{
+            padding: "5px 10px", borderRadius: 6, cursor: "pointer",
+            background: "transparent", border: "1px solid rgba(212,175,55,0.4)",
+            color: "var(--atlas-gold, #D4AF37)",
+            fontFamily: "var(--app-font-mono)", fontSize: 9.5, fontWeight: 600,
+            letterSpacing: "0.14em", textTransform: "uppercase",
+          }}
+        >Open in workspace →</button>
+      </div>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 2 }}>
+        {children.map((n) => <FsTreeNode key={n.path || n.name} node={n} depth={0} />)}
+      </ul>
+    </div>
+  );
+}
+
+function FsTreeNode({ node, depth }: { node: FsNode; depth: number }) {
+  const [expanded, setExpanded] = useState(depth < 1);
+  const isDir = node.type === "dir";
+  return (
+    <li>
+      <div
+        onClick={() => isDir && setExpanded((v) => !v)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "5px 8px", paddingLeft: 8 + depth * 14, borderRadius: 6,
+          cursor: isDir ? "pointer" : "default",
+          color: isDir ? "hsl(var(--popover-foreground))" : "hsl(var(--popover-foreground) / 0.75)",
+          fontFamily: "var(--app-font-mono)", fontSize: 12, background: "transparent",
+        }}
+      >
+        <span style={{ width: 12, color: "hsl(var(--muted-foreground))", fontSize: 10 }}>
+          {isDir ? (expanded ? "▾" : "▸") : ""}
+        </span>
+        <span style={{ color: isDir ? "var(--atlas-gold, #D4AF37)" : "hsl(var(--primary))", fontSize: 11 }}>
+          {isDir ? "▣" : "·"}
+        </span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.name}</span>
+      </div>
+      {isDir && expanded && node.children && node.children.length > 0 && (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {node.children.map((c) => <FsTreeNode key={c.path || c.name} node={c} depth={depth + 1} />)}
+        </ul>
+      )}
+    </li>
   );
 }
 
