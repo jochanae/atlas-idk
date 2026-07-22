@@ -360,7 +360,10 @@ export function FilesBrowser({
   const isNarrow = useIsNarrow(720);
   const [, setLocation] = useLocation();
   const openProjectTree = () => {
-    if (workspaceProjectId != null) setLocation(`/project/${workspaceProjectId}`);
+    if (workspaceProjectId != null) {
+      try { sessionStorage.setItem("atlas-open-files-sheet", "1"); } catch {}
+      setLocation(`/project/${workspaceProjectId}`);
+    }
   };
   const [previewFile, setPreviewFile] = useState<UnifiedFile | null>(null);
 
