@@ -446,11 +446,38 @@ Progress the board in this order only.
 
 | | |
 |--|--|
-| **Status** | **NOT VERIFIED** |
+| **Status** | **NOT VERIFIED** — and **hard to find in current desktop Workspace UI** |
 | **Mode** | Observation |
 | **Goal** | Confirm Atlas is building a **reasoning graph**, not a conversation graph |
 
-**Pass criteria:**
+#### Does Flow exist?
+
+**Yes.** It is a real user-facing surface, not an internal-only structure.
+
+| Layer | What |
+|-------|------|
+| UI | `FlowPanel` → `AxiomFlow` (Designer spatial graph + Builder schema + Storyteller chapters) |
+| Persistence | `projects.nodeState` (strategic graph). Separate AM projection: `project_flow_canvas` |
+| Code | `workspace.tsx` right-tab id `"map"` label **"Flow"**; `FlowPanel.tsx` |
+
+**Naming traps:**
+
+1. Chat lens **“Flow”** (“Think it through”) ≠ Flow **Map** tab.  
+2. Route **`/map`** = portfolio **Master Map** ≠ in-project Flow graph.  
+3. On **desktop**, Flow is **intentionally omitted** from the right-rail tab bar: `tabs.filter(t => t.id !== "map")` — so Blueprint / Insights / Ledger appear, but **Flow does not**. That is why Round 1 screenshots never showed it.
+
+**How to inspect today:**
+
+| Path | Works? |
+|------|--------|
+| Desktop right tabs (Blueprint, Insights, …) | **No** — Flow filtered out |
+| Mobile bottom tab **Flow** | Yes → mounts `FlowPanel` |
+| Insights → “Open the Flow Map” | Yes → `setTab("map")` |
+| URL `?view=flow` on the project/workspace | Yes |
+| Forge / hydrate paths that `setDesktopForceTab("map")` | Yes |
+| Mobile dock **Map** | **No for P1** — currently `setLocation("/map")` (portfolio), not workspace Flow |
+
+**Pass criteria** (once the Designer graph is open):
 
 - Founding promise appears as a **root** concept  
 - Principles **branch from** the promise  
@@ -458,7 +485,13 @@ Progress the board in this order only.
 - No fabricated nodes  
 - No duplicate concepts  
 
-**Inspect:** Map → Designer on the Round 1 project. Score F1–F5 + S4.
+**Board decision:** Do **not** defer P1 or replace it with “verify the underlying model only.” The product claim is a **reasoning graph people can see**. For Round 1 closeout:
+
+1. Open Flow via `?view=flow` or Insights → Open the Flow Map.  
+2. Score the Designer graph against the pass criteria.  
+3. Log **desktop discoverability** as a separate finding (Flow hidden from the tab bar) — fix under Surface Integrity / product chrome if needed, but don’t skip the graph check.
+
+If the graph is empty until Generate/Hydrate/Forge: run hydrate once, then score — invented satellites still fail F4.
 
 ---
 
