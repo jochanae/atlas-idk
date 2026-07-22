@@ -482,7 +482,13 @@ export function FilesBrowser({
           )}
           {isLoading && <EmptyPane title="Loading…" body="Fetching your files." />}
           {!isLoading && anyError && <EmptyPane title="Couldn't load files" body={String((anyError as Error).message ?? anyError)} />}
-          {!isLoading && !anyError && visible.length === 0 && (
+          {!isLoading && !anyError && section === "workspace" && sourceView === "tree" && workspaceProjectId != null && (
+            <WorkspaceTreePane
+              tree={workspaceTreeQ.data}
+              onOpenWorkspace={openProjectWorkspace}
+            />
+          )}
+          {!isLoading && !anyError && !(section === "workspace" && sourceView === "tree") && visible.length === 0 && (
             section === "recent"
               ? <EmptyPane title="No recent attachments" body="Files you attach to messages will appear here." />
               : <EmptyPane title="No files match" body="Try a different section or clear the search." />
