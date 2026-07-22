@@ -1,8 +1,8 @@
 # Milestone 2 — Restore Intelligence
 
-**Status:** **OPEN** — commissioned 2026-07-22 after Milestone 1 close  
+**Status:** **OPEN** — 2.1 closed (PR #208 → `main`); **2.2 commissioned**  
 **Prerequisite:** [Milestone 1 — Restore the Conversation](./milestone-1-unbroken-conversation.md) **CLOSED**  
-**Principle:** First determine why a capability Atlas was already designed to support failed to execute. Do **not** start by debating whether Ask Atlas should exist.
+**Principle:** Do **not** start by debating whether Ask Atlas should exist. Validate capabilities Atlas was designed to support — first delivery (2.1), then understanding (2.2).
 
 ---
 
@@ -10,25 +10,36 @@
 
 | # | Track | Mode | Status |
 |---|-------|------|--------|
-| **2.1** | Artifact Generation and Delivery | Read-only audit → then fix proven path | **Contract fix complete on PR #208** — ready for merge; next is 2.2 |
-| **2.2** | Workspace intelligence correctness | Evaluate Blueprint, Decisions, Insights, Objects, Flow, Satellite, Ledger for *right* information — not merely whether they populate | Blocked on 2.1 review |
-| **2.3** | Intelligence differentiation | Determine whether Builder, Storyteller, Designer, and other lenses provide meaningfully different and useful thinking | After 2.2 |
+| **2.1** | Artifact Generation and Delivery | Audit → contract fix | **CLOSED** — PR #208 merged (`d0b923d1`) — [`milestone-2-1-artifact-generation-delivery-audit.md`](./milestone-2-1-artifact-generation-delivery-audit.md) |
+| **2.2** | Workspace intelligence correctness | Quality evaluation — *right* information, not mere population | **OPEN** — [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) |
+| **2.3** | Intelligence differentiation | Builder, Storyteller, Designer, and other lenses — meaningfully different thinking | After 2.2 accuracy bar |
 | **2.4** | Natural conversation | Fewer unnecessary briefs, better intent recognition, appropriate follow-ups, less mechanical workspace behavior | After 2.3 |
 
 ---
 
-## Today’s clean path
+## Mindset by track
 
-1. Finish PR #207 handoff acceptance (Milestone 1 closeout checklist).  
-2. Mark **Restore the Conversation** complete.  
-3. Commission **read-only** Artifact Generation & Delivery Audit (2.1).  
-4. Review findings.  
-5. Fix the proven generation/delivery path.  
-6. Begin intelligence-quality testing (2.2+).
+| Track | Question |
+|-------|----------|
+| 2.1 | If Atlas says it generated something, did the user receive and open it? |
+| **2.2** | **Did Atlas actually understand the conversation?** |
+| 2.3 | Do lenses provide unique, useful perspectives? |
+| 2.4 | Does the conversation feel natural rather than mechanical? |
 
 ---
 
-## Governing requirements (2.1)
+## 2.2 success metric
+
+> Atlas reliably extracts knowledge from the conversation in a way that is accurate, useful, and meaningfully different across its intelligence surfaces.
+
+Evaluate independently: **Blueprint · Decisions · Insights · Flow · Lenses** (Objects / Satellite / Ledger as supporting views).
+
+Protocol: rich conversations → inspect each surface → five questions (understood / missed / invented / helpful / would use).  
+See the [2.2 board](./milestone-2-2-intelligence-correctness.md).
+
+---
+
+## Closed: 2.1 governing requirements
 
 > When Atlas generates an artifact in Ask Atlas, the artifact must appear in that conversation first. Storage in Global Files or a related Workspace is additional persistence—not a substitute for delivery.
 
@@ -36,15 +47,9 @@
 
 ---
 
-## 2.1 scope reminder
+## Explicit non-goals (2.2)
 
-Make PPTX, XLSX, DOCX, image, and HTML creation **reliable and visible** from both conversation surfaces — after the audit proves where generation vs delivery vs routing fails.
-
----
-
-## Explicit non-goals (for the 2.1 audit phase)
-
-- No immediate product fixes during the read-only audit.  
+- No infrastructure rabbit holes (SSE survival, auth, scale).  
+- No reopen of deliverable pipeline work unless a regression breaks the 2.1 contract.  
 - No debate on retiring Ask Atlas.  
-- No detour into Continuity telemetry (`historicalReopenResolvedCount`).  
-- No intelligence-quality work (2.2–2.4) before the artifact audit is reviewed.
+- Do not treat “panel populated” as success.
