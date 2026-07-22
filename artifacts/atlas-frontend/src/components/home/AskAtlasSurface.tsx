@@ -1436,8 +1436,9 @@ export function AskAtlasSurface({
         <ParkSheet
           projectId={null}
           projects={projects}
-          onClose={() => setShowParkSheet(false)}
-          onOpenFull={() => { setShowParkSheet(false); setLocation("/parking"); }}
+          initialContent={parkPrefill || undefined}
+          onClose={() => { setShowParkSheet(false); setParkPrefill(""); }}
+          onOpenFull={() => { setShowParkSheet(false); setParkPrefill(""); setLocation("/parking"); }}
         />
       )}
 
