@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { generateArtifact, listArtifactRendererTypes } from "../artifactEngine";
 import { captureDeliverableToLibrary } from "../library";
+import { ensureUserDeliverableBucketProject } from "../projectCreation";
 import type { AgentToolContext, GeneratedArtifactMeta } from "./context";
 import { db, projectArtifactsTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
@@ -82,22 +83,42 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           return { ok: false, error: `No renderer registered for type "${type}". Available: ${available.join(", ")}` };
         }
 
-        if (!ctx.projectId || ctx.projectId <= 0) {
-          const ms = Math.round(performance.now() - started);
-          ctx.emitToolResult("generate_deliverable", false, ms);
-          return { ok: false, error: "No active project — open a project workspace before generating Outputs." };
+        // Prefer the focused Workspace project; otherwise persist into the
+        // per-user Atlas Files bucket so Ask Atlas can still deliver a card.
+        let projectId = ctx.projectId > 0 ? ctx.projectId : 0;
+        if (projectId <= 0) {
+          if (!ctx.userId || ctx.userId <= 0) {
+            const ms = Math.round(performance.now() - started);
+            ctx.emitToolResult("generate_deliverable", false, ms);
+            return {
+              ok: false,
+              error: "Cannot generate a file without a signed-in user.",
+            };
+          }
+          try {
+            const bucket = await ensureUserDeliverableBucketProject(ctx.userId);
+            projectId = bucket.id;
+            ctx.projectId = bucket.id;
+          } catch (err) {
+            const ms = Math.round(performance.now() - started);
+            ctx.emitToolResult("generate_deliverable", false, ms);
+            return {
+              ok: false,
+              error: `Could not create a place to store the file: ${String(err)}`,
+            };
+          }
         }
 
         // ── Design contract lookup (html-app only) ────────────────────────────
         let resolvedStyle = style;
-        if (type === "html-app" && !resolvedStyle && ctx.projectId > 0) {
+        if (type === "html-app" && !resolvedStyle && projectId > 0) {
           try {
             const [contractRow] = await db
               .select({ payload: projectArtifactsTable.payload })
               .from(projectArtifactsTable)
               .where(
                 and(
-                  eq(projectArtifactsTable.projectId, ctx.projectId),
+                  eq(projectArtifactsTable.projectId, projectId),
                   eq(projectArtifactsTable.type, "design-contract"),
                 )
               )
@@ -142,7 +163,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           : undefined;
 
         const artifact = await generateArtifact({
-          projectId: ctx.projectId,
+          projectId,
           sessionId: null,
           type,
           sourceMessageId: ctx.messageId ?? null,
@@ -150,7 +171,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
             context,
             title,
             docType,
-            projectId: ctx.projectId,
+            projectId,
             styleOverride: resolvedStyle,
             onStage,
             // Renderer-specific hints (ignored by renderers that don't use them)
@@ -192,7 +213,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
 
         void captureDeliverableToLibrary({
           userId: ctx.userId,
-          projectId: ctx.projectId,
+          projectId,
           conversationId: ctx.conversationId ?? null,
           artifactId: artifact.id,
           type: artifact.type,
@@ -222,7 +243,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
         return {
           ...meta,
           version: artifact.version,
-          summary: `Generated ${artifact.type.toUpperCase()} "${artifact.title}" — it's in Outputs.`,
+          summary: `Generated ${artifact.type.toUpperCase()} "${artifact.title}" — ready as a downloadable card in this conversation.`,
         };
       } catch (err) {
         const ms = Math.round(performance.now() - started);

@@ -5955,7 +5955,10 @@ export default function Workspace() {
   // unlock transition. Not tied to axiom-banner timers or incidental touchmove.
   const [handoffChromeActive, setHandoffChromeActive] = useState(() => {
     try {
-      if (new URLSearchParams(window.location.search).get("source")) return true;
+      const source = new URLSearchParams(window.location.search).get("source");
+      // Open-output deep-links skip conversation handoff hydration — no chrome lock.
+      if (source === "open-output") return false;
+      if (source) return true;
       if (sessionStorage.getItem("atlas-handoff-continuation") === "1") return true;
       if (sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY)) return true;
       return false;
@@ -6995,6 +6998,8 @@ export default function Workspace() {
         const params = new URLSearchParams(window.location.search);
         const source = params.get("source") ?? "";
         const from = params.get("from");
+        // Artifact Open deep-link — open Outputs, do not auto-continue the conversation.
+        if (source === "open-output") return false;
         return (
           from === "home" ||
           source === "home-handoff" ||
@@ -7298,6 +7303,37 @@ export default function Workspace() {
     };
     window.addEventListener("axiom:open-output", handler);
     return () => window.removeEventListener("axiom:open-output", handler);
+  }, [id, isMobile]);
+
+  // Ask Atlas (or other surfaces) may navigate here with source=open-output and
+  // atlas-open-output-{projectId} seeded — open Outputs + focus without handoff kickoff.
+  useEffect(() => {
+    if (!id || !Number.isFinite(id) || id <= 0) return;
+    let artifactId: string | null = null;
+    let fromQuery = false;
+    try {
+      fromQuery = new URLSearchParams(window.location.search).get("source") === "open-output";
+      artifactId = sessionStorage.getItem(`atlas-open-output-${id}`);
+    } catch {
+      artifactId = null;
+    }
+    if (!fromQuery && !artifactId) return;
+
+    setLeftTab("artifacts");
+    setSubheaderOpen(true);
+    if (isMobile) {
+      setMobileTab("artifacts");
+      setRightOpen(true);
+    }
+    const focusedId = artifactId;
+    const t = window.setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("axiom:focus-output", {
+          detail: { projectId: id, artifactId: focusedId ?? undefined },
+        }),
+      );
+    }, 80);
+    return () => window.clearTimeout(t);
   }, [id, isMobile]);
 
   // "axiom:open-preview" — dispatched from WorkspaceRunCard "Preview" button.

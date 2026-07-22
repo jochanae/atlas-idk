@@ -1,9 +1,10 @@
 # Milestone 2.1 — Artifact Generation & Delivery Audit
 
-**Phase:** Read-only audit (**NO CODE CHANGES** in this document’s scope)  
+**Phase:** Read-only audit → **partial remediation landed** → remaining fixes in progress  
 **Date:** 2026-07-22  
 **Repo HEAD at audit:** `95e6f309` (`main`)  
-**Status:** **Findings ready for review** — do not implement fixes until findings are accepted  
+**Partial remediation on main:** `56eae70c` (2026-07-22) — see §Partial remediation  
+**Status:** Findings accepted; fix wave started (persistence when unfocused + Open deep-link)  
 **Board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)
 
 ### Incident under audit
@@ -18,16 +19,39 @@ Atlas offered a spreadsheet from Ask Atlas. The user was sent toward a project /
 
 ---
 
+## Partial remediation — `56eae70c` (main, 2026-07-22)
+
+**Commit:** `56eae70c` — *Enable users to generate files directly in conversations* (Replit Agent)
+
+| Change | Audit impact |
+|--------|----------------|
+| `generate_deliverable` added to `SHARED_HOME_TOOL_NAMES` | **Supersedes** “home tool list omits generate_deliverable” (A.1) |
+| `allowToolAccess = !justTalk && !conversationModeActive` | **Supersedes** “tools only on BUILD/DECIDE” (A.1) |
+| Tool description + capability / BUILD prompts emphasize **inline card** in the current conversation; Ask Atlas must not say “put it in workspace / Outputs” | Softens Outputs-first prose steering (A.2 / B) |
+| Handoff contract EXCEPTION: call `generate_deliverable` this turn; do **not** emit `PROJECT_READY` for deliverable requests | Softens forced-handoff pressure for deliverables (D.3) — **prompt-only**, not server-enforced |
+
+**Still open after `56eae70c` (fix targets):**
+
+1. **Hard `projectId` gate** — tool still returns “No active project…” when `focusProjectId` is missing (`generate-deliverable.ts`); unfocused Ask Atlas can *call* the tool and still fail.  
+2. **No prose↔tool consistency check** — model can still claim success without `generatedArtifacts`.  
+3. **Open / project link routing** — Ask Atlas → project still seeds generic handoff continuation; `axiom:open-output` is a no-op until Workspace is mounted.  
+4. **Presentation** — Outputs default collapsed; XLSX in All Outputs only (`includedInArtifacts: false`).  
+5. **Handoff contract conflict** — same block still says “MUST emit PROJECT_READY” alongside the deliverable EXCEPTION.
+
+`56eae70c` is a **prompt + tool-schema partial remediation**, not a complete generation/delivery fix.
+
+---
+
 ## Executive summary
 
-Spreadsheet generation is a **real** server capability (`generate_deliverable` → Artifact Engine → object storage + `project_artifacts`). It is **not** available on unfocused Ask Atlas turns, and success prose is **not** gated on a successful tool result.
+Spreadsheet generation is a **real** server capability (`generate_deliverable` → Artifact Engine → object storage + `project_artifacts`). As of `56eae70c`, the tool is on the **home** tool list and WhisperGate no longer limits tools to BUILD/DECIDE — but success still requires a positive `projectId`, and success prose is **not** gated on a successful tool result.
 
-The most likely failure chain for the observed spreadsheet incident is a **delivery / routing / presentation gap**, not a missing XLSX renderer:
+The most likely failure chain for the observed spreadsheet incident remains a **delivery / routing / presentation gap**, with generation access only partially repaired:
 
-1. **Prose can claim “it’s in Outputs” without a successful tool call** (capability prompt always present; tools often absent or WhisperGate-disabled; no prose↔artifact consistency check).  
-2. **Without `focusProjectId`, the tool hard-fails** — “No active project” — so nothing lands in Outputs.  
-3. **Ask Atlas → project navigation always seeds a full handoff continuation** (`seedHandoffContinuation`) and lands on Chat with Outputs collapsed — it never seeds `atlas-open-output-*`.  
-4. **`axiom:open-output` only works while Workspace is mounted** — Open from an Ask Atlas card is effectively a no-op for navigation.  
+1. **Prose can claim success without a successful tool call** (capability prompt always present; no prose↔artifact consistency check). ~~Tools absent on home / CHAT~~ — **partially addressed by `56eae70c`**.  
+2. **Without `focusProjectId`, the tool hard-fails** — “No active project” — so nothing lands anywhere. (**Still open.**)  
+3. **Ask Atlas → project navigation always seeds a full handoff continuation** (`seedHandoffContinuation`) and lands on Chat with Outputs collapsed — it never seeds `atlas-open-output-*`. (**Still open.**)  
+4. **`axiom:open-output` only works while Workspace is mounted** — Open from an Ask Atlas card is effectively a no-op for navigation. (**Still open.**)  
 5. **XLSX lives in All Outputs, not the Artifacts sub-tab** (`includedInArtifacts: false`) — easy to look in the wrong place even when the file exists.
 
 True tool success writes bytes **before** the DB row and before the model continues, so empty Outputs after a *real* success usually means wrong project, wrong sub-tab, or panel never opened.
@@ -44,12 +68,12 @@ True tool success writes bytes **before** the DB row and before the model contin
 |-------|----------|
 | Tool definition + seven types | `artifacts/api-server/src/lib/agent-tools/generate-deliverable.ts:21–37` |
 | Registered in shared agent tools | `artifacts/api-server/src/lib/agent-tools/index.ts` (via `generateDeliverableTool`) |
-| In workspace tool name list | `anthropic-adapter.ts:72–83` (`SHARED_WORKSPACE_TOOL_NAMES` includes `generate_deliverable`) |
-| **Not** in home tool name list | `anthropic-adapter.ts:64–70` (`SHARED_HOME_TOOL_NAMES`) |
-| Nexus selects tools by focus | `nexus.ts:7749` — `focusProjectId ? NEXUS_WORKSPACE_TOOLS : NEXUS_AGENT_TOOLS` |
-| WhisperGate: tools only when BUILD/DECIDE and not justTalk/conversationMode | `nexus.ts` (~3213, ~8037) |
+| In workspace tool name list | `anthropic-adapter.ts` (`SHARED_WORKSPACE_TOOL_NAMES` includes `generate_deliverable`) |
+| In home tool name list | **`56eae70c`** — also in `SHARED_HOME_TOOL_NAMES` |
+| Nexus selects tools by focus | `nexus.ts:7749` — `focusProjectId ? NEXUS_WORKSPACE_TOOLS : NEXUS_AGENT_TOOLS` (both lists now include `generate_deliverable`) |
+| WhisperGate: tools when not justTalk/conversationMode | **`56eae70c`** — no longer BUILD/DECIDE-only |
 
-**Ask Atlas vs Workspace:** Same tool implementation. Ask Atlas only receives it when `focusProjectId` is set **and** intent allows tools. Unfocused Ask Atlas cannot call it.
+**Ask Atlas vs Workspace:** Same tool implementation. After `56eae70c`, Ask Atlas can *invoke* the tool without BUILD/DECIDE. **Unfocused Ask Atlas still fails at execute** until a project (or deliverable-bucket shim) supplies `projectId > 0`.
 
 **Runtime answer for a specific turn** requires logs: `nexus: tool executed` with `tool: "generate_deliverable"` and result `ok`.
 
@@ -271,14 +295,14 @@ Ask Atlas turn
 
 ---
 
-## Recommended next step (after review — not part of this audit)
+## Recommended / in-progress fix order
 
-Do **not** implement in this PR. After findings acceptance, fix the **proven** generation/delivery path in priority order suggested by evidence:
-
-1. Constrain Ask Atlas success claims to real tool results (and/or ensure focused BUILD/DECIDE turns actually call the tool).  
-2. Deliver the artifact in the Ask Atlas conversation first (card + download) whenever generation succeeds.  
-3. Make “open this output” deep-link to Outputs + focus, instead of a generic handoff continuation.  
-4. Clarify All Outputs vs Artifacts for file-backed types.
+1. ~~Tool availability on Ask Atlas (home list + WhisperGate)~~ — **done in `56eae70c`**.  
+2. **Persistence when `projectId <= 0`** — idempotent per-user deliverable bucket (do not only delete the gate).  
+3. **Open deep-link** — seed `atlas-open-output-*`, navigate with `source=open-output`, **no** `seedHandoffContinuation`; Workspace opens Outputs + focus.  
+4. Deliverable vs handoff prompt conflict + suppress `PROJECT_READY` when `generatedArtifacts` non-empty.  
+5. Prose honesty guard when claims succeed with empty `generatedArtifacts`.  
+6. Clarify All Outputs vs Artifacts for file-backed types.
 
 Then proceed to Milestone 2.2 (intelligence correctness).
 
@@ -288,8 +312,9 @@ Then proceed to Milestone 2.2 (intelligence correctness).
 
 | Constraint | Status |
 |------------|--------|
-| Read-only — no application code changes for this audit | **Honored** |
+| Read-only audit initially | **Honored** at `95e6f309` |
 | Trace A–E for spreadsheet offer | **Delivered** |
 | Governing requirements recorded | **Delivered** |
 | No debate on Ask Atlas existence | **Honored** |
-| Findings ready before fix work | **Ready for review** |
+| Stamp `56eae70c` as partial remediation | **Done** |
+| Findings ready before fix work | **Accepted — fix wave started** |

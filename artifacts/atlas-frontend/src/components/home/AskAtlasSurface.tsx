@@ -108,7 +108,7 @@ import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 import { useIsTinyMobile } from "@/hooks/use-mobile";
-import { triggerNexusHandoff, navigateAfterAskAtlasHandoff } from "@/lib/askAtlasHelpers";
+import { triggerNexusHandoff, navigateAfterAskAtlasHandoff, navigateToProjectOutput } from "@/lib/askAtlasHelpers";
 import { useActiveProjectContext } from "@/lib/activeProjectContext";
 import { AskAtlasTier1Chip } from "./AskAtlasTier1Chip";
 import { AskAtlasUtilityButton } from "./AskAtlasUtilityButton";
@@ -680,6 +680,13 @@ export function AskAtlasSurface({
                           key={artifact.artifactId}
                           artifact={artifact}
                           projectId={artifact.projectId ?? 0}
+                          onOpen={(opened) => {
+                            const pid = opened.projectId ?? artifact.projectId ?? 0;
+                            if (!pid) return;
+                            navigateToProjectOutput(pid, opened.artifactId, setLocation, {
+                              conversationId: conversationId ?? null,
+                            });
+                          }}
                         />
                       ))}
                     </div>

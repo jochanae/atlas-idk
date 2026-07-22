@@ -10,7 +10,7 @@
 
 | # | Track | Mode | Status |
 |---|-------|------|--------|
-| **2.1** | Artifact Generation and Delivery | Read-only audit → then fix proven path | **Audit commissioned** — see [`milestone-2-1-artifact-generation-delivery-audit.md`](./milestone-2-1-artifact-generation-delivery-audit.md) |
+| **2.1** | Artifact Generation and Delivery | Read-only audit → then fix proven path | **Audit accepted**; `56eae70c` partial remediation on main; **fix wave started** (bucket persistence + Open deep-link) — [`milestone-2-1-artifact-generation-delivery-audit.md`](./milestone-2-1-artifact-generation-delivery-audit.md) |
 | **2.2** | Workspace intelligence correctness | Evaluate Blueprint, Decisions, Insights, Objects, Flow, Satellite, Ledger for *right* information — not merely whether they populate | Blocked on 2.1 review |
 | **2.3** | Intelligence differentiation | Determine whether Builder, Storyteller, Designer, and other lenses provide meaningfully different and useful thinking | After 2.2 |
 | **2.4** | Natural conversation | Fewer unnecessary briefs, better intent recognition, appropriate follow-ups, less mechanical workspace behavior | After 2.3 |

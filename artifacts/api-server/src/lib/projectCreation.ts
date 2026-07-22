@@ -81,3 +81,55 @@ export async function createProjectForUser(input: CreateProjectForUserInput) {
 
   return project;
 }
+
+/** Stable marker on `projects.description` for the per-user Ask Atlas deliverable bucket. */
+export const DELIVERABLE_BUCKET_MARKER = "[atlas-deliverable-bucket]";
+export const DELIVERABLE_BUCKET_NAME = "Atlas Files";
+
+/**
+ * Idempotent persistence target when Ask Atlas generates a file with no focused project.
+ * Bytes still live in project_artifacts + object storage; conversation delivery remains
+ * the inline card. This bucket is additional persistence — not a substitute for delivery.
+ */
+export async function ensureUserDeliverableBucketProject(userId: number) {
+  await ensureProjectSchema();
+
+  const [existing] = await db
+    .select()
+    .from(projectsTable)
+    .where(
+      and(
+        eq(projectsTable.userId, userId),
+        eq(projectsTable.description, DELIVERABLE_BUCKET_MARKER),
+      ),
+    )
+    .limit(1);
+
+  if (existing) return existing;
+
+  try {
+    return await createProjectForUser({
+      userId,
+      name: DELIVERABLE_BUCKET_NAME,
+      description: DELIVERABLE_BUCKET_MARKER,
+      status: "shaping",
+      entityType: "project",
+      memory:
+        "System bucket for Ask Atlas file deliverables when no project is focused. Conversation delivery is the inline card; this project holds file bytes.",
+    });
+  } catch (err) {
+    // Concurrent first-create race: re-select the winner.
+    const [raced] = await db
+      .select()
+      .from(projectsTable)
+      .where(
+        and(
+          eq(projectsTable.userId, userId),
+          eq(projectsTable.description, DELIVERABLE_BUCKET_MARKER),
+        ),
+      )
+      .limit(1);
+    if (raced) return raced;
+    throw err;
+  }
+}

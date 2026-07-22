@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   HANDOFF_CONTINUATION_MESSAGE,
   navigateAfterAskAtlasHandoff,
+  navigateToProjectOutput,
   redirectAfterHandoff,
   seedHandoffContinuation,
   selectHandoffMessages,
@@ -62,6 +63,37 @@ describe("INT-13 handoff continuation seed", () => {
     navigateAfterAskAtlasHandoff(3, (p) => paths.push(p));
     expect(sessionStorage.getItem("atlas-handoff-continuation")).toBe("1");
     expect(paths[0]).toBe("/project/3?from=home&source=home-handoff");
+  });
+});
+
+describe("navigateToProjectOutput (open-output deep-link)", () => {
+  afterEach(() => {
+    clearHandoffKeys();
+    try {
+      sessionStorage.removeItem("atlas-open-output-11");
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it("seeds atlas-open-output and navigates without handoff continuation", () => {
+    seedHandoffContinuation(11);
+    const paths: string[] = [];
+    navigateToProjectOutput(11, 77, (p) => paths.push(p));
+    expect(sessionStorage.getItem("atlas-open-output-11")).toBe("77");
+    expect(sessionStorage.getItem("atlas-handoff-continuation")).toBeNull();
+    expect(sessionStorage.getItem("atlas-opening-message")).toBeNull();
+    expect(paths[0]).toBe("/project/11?from=home&source=open-output");
+  });
+
+  it("prefers /workspace when conversation id is known", () => {
+    const paths: string[] = [];
+    navigateToProjectOutput(5, "art-9", (p) => paths.push(p), {
+      conversationId: "conv-out",
+    });
+    expect(sessionStorage.getItem("atlas-open-output-5")).toBe("art-9");
+    expect(paths[0]).toContain("/workspace/conv-out?");
+    expect(paths[0]).toContain("source=open-output");
   });
 });
 
