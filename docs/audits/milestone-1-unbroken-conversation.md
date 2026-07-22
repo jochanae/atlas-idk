@@ -4,8 +4,8 @@
 **Date:** 2026-07-21  
 **Scope:** Conversation lifecycle, attachment lifecycle, interruption inventory, acceptance criteria, repair order  
 **Repo HEAD at audit:** `86e7b309` (`main`)  
-**Status:** Phase B in progress — **Wave 0 CLOSED** (2026-07-22); **Wave 1 in progress** — G1-1 (INT-05) **passed** (2026-07-22); G1-2 (INT-12) in progress.  
-**Gate:** Do **not** start Milestone 2 (Atlas intelligence) until Wave 0 and Wave 1 of this milestone are complete and verified.
+**Status:** Phase B — **Wave 0 CLOSED** (2026-07-22); **Wave 1 CLOSED** (2026-07-22 — G1-1 + G1-2 verified). Wave 2 started (INT-35).  
+**Gate:** Do **not** start Milestone 2 (Atlas intelligence) until Wave 0 and Wave 1 of this milestone are complete and verified. **Wave 0 + Wave 1 gates met** — Milestone 2 unblocked on attachment/auth continuity; remaining Wave 2 Breaks/Friction should still land before treating Milestone 1 as fully complete.
 
 **Hard rule (Phase B):**
 
@@ -701,6 +701,40 @@ Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/br
 | INT-33 | Form full-page submit on chat | Composers use buttons / preventDefault | Verified none |
 | INT-34 | Dedicated token refresh loop | None; expiry surfaces as 401 → INT-01 | Verified |
 
+#### INT-35 — Workspace create false confirmation (tool / PROJECT_READY lie)
+
+| Field | Detail |
+|-------|--------|
+| **Files** | `nexus.ts` SURFACE CONTRACT, `create_project` tool, `askAtlasHandoffContract.ts`, CommitPill / `handleHandoff` |
+| **Cause** | Ask Atlas BUILD coaching said “I'll create…” / “server creates” while `PROJECT_READY` only arms CommitPill; `forceCreate` was workspace-gated (dead on Ask Atlas). Model believed creation executed before any project row existed. |
+| **Confidence** | **Verified** (manual 2026-07-22 — first attempt narrated create with no workspace; second attempt succeeded) |
+| **Impact** | **Conversation Break** — user must catch Atlas’s false success and re-ask; trust in tool/action grounding broken |
+| **Acceptance test** | §6 INT-35 — explicit “create the workspace” creates a project (or Open Workspace is armed without creation claims); Atlas must not claim created/opening unless `create_project` succeeded this turn |
+
+#### INT-36 — Thinking Thread z-index / stacking
+
+| Field | Detail |
+|-------|--------|
+| **Cause** | Thinking Thread renders behind chat content |
+| **Confidence** | Observed (manual 2026-07-22) |
+| **Impact** | **Conversation Friction** — non-blocking; readability only |
+
+#### INT-37 — Composer jump on handoff / scroll
+
+| Field | Detail |
+|-------|--------|
+| **Cause** | Likely UnifiedContextDock / `useSmartAutoScroll` race (previously identified) |
+| **Confidence** | Observed (manual 2026-07-22) |
+| **Impact** | **Conversation Friction** — non-blocking |
+
+#### INT-38 — Home-handoff banner visual weight
+
+| Field | Detail |
+|-------|--------|
+| **Cause** | Banner after Ask Atlas → Workspace handoff feels visually heavy |
+| **Confidence** | Observed (manual 2026-07-22) |
+| **Impact** | **Conversation Friction** — non-blocking; polish later |
+
 ---
 
 ## 5. Product-principle severity classification
@@ -753,8 +787,10 @@ If yes → Killer or Break. If it only makes the conversation feel clumsy → Fr
 | **INT-24** | Upload failure / strip crash | Continuity of the attach act breaks; send blocked. |
 | **INT-25** | Send while upload incomplete | Thought stalled at send boundary. |
 | **INT-26** | Code files blocked on canonical matrix | Product promise (“share code”) cannot continue on the main path. |
+| **INT-35** | Workspace create false confirmation | Atlas says creating/created while nothing was created; user must re-ask. |
 
-> **Wave 1 focus:** INT-05 (durable attach recovery) and INT-12 (prior-turn reinjection). These are the attachment-continuity Breaks that define collaboration vs chat.
+> **Wave 1 focus (closed):** INT-05 (durable attach recovery) and INT-12 (prior-turn reinjection).  
+> **Wave 2a lead:** INT-35 (action grounding — never claim create/open without execution).
 
 ### 5.3 Conversation Friction
 
@@ -774,6 +810,9 @@ If yes → Killer or Break. If it only makes the conversation feel clumsy → Fr
 | **INT-32** | Vite HMR full-reload | Dev only. |
 | **INT-33** | Form full-page submit on chat | Not present on composers. |
 | **INT-34** | Token refresh loop | Covered by INT-01. |
+| **INT-36** | Thinking Thread z-index | Renders behind chat; polish. |
+| **INT-37** | Composer jump on handoff/scroll | Dock / auto-scroll race; polish. |
+| **INT-38** | Home-handoff banner weight | Visually heavy; refine later. |
 
 Legacy parallel paths (FlowPanel / ActiveRuns) are **Friction** for Milestone 1 until they claim to be the conversation — then they become Breaks. Quarantine or migrate in Wave 2.
 
@@ -782,8 +821,8 @@ Legacy parallel paths (FlowPanel / ActiveRuns) are **Friction** for Milestone 1 
 | Bucket | Count | IDs |
 |--------|------:|-----|
 | Conversation Killer | 8 | INT-01, INT-02, INT-04*, INT-05*, INT-09, INT-10*, INT-11, INT-13 |
-| Conversation Break | 13 | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26 |
-| Conversation Friction | 13 | INT-16, INT-18–20, INT-22–23, INT-27–34 |
+| Conversation Break | 14 | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26, **INT-35** |
+| Conversation Friction | 16 | INT-16, INT-18–20, INT-22–23, INT-27–34, INT-36–38 |
 
 \* Killer when accidental / mid-compose.  
 † INT-05 appears in both Killer (hard kill mid-attach) and Break (durable recovery / re-upload tax) — same root cause, two user faces.
@@ -808,6 +847,10 @@ Every repair ends with a **measurable test**, not “it should be fixed.”
 | INT-10 | Explicit hard navigations mid-compose | **Conversation Killer** *(mid-compose)* | From an active composer, trigger OAuth/account paths. Verify either blocked with save, or draft/attachments survive return; no unexplained conversation wipe. |
 | INT-11 | Dual controller empty handoff | **Conversation Killer** | Have a multi-turn Ask Atlas thread. Crystallize / Commit / create-from-conversation. Verify Workspace receives **that** transcript (non-empty), not an empty `nexusChat` snapshot. |
 | INT-12 | Prior-turn attachments not reinjected | **Conversation Break** | Upload a PowerPoint, discuss it, send a later turn with **no** new attach (“Look at slide 5 again”). Verify Atlas still has file context (Continuity V2 or equivalent) and does not claim no attachment was provided. |
+| INT-35 | Workspace create false confirmation | **Conversation Break** | After a long Ask Atlas thread, ask Atlas to create the workspace. Verify either (a) a project row is created via `create_project` on explicit create phrasing, or (b) Open Workspace is armed via `PROJECT_READY` **without** Atlas claiming creation/opening already happened. First-attempt false success fails the test. |
+| INT-36 | Thinking Thread stacking | **Conversation Friction** | Open Thinking Thread during chat; verify it is not obscured behind message content (z-index). |
+| INT-37 | Composer jump on handoff/scroll | **Conversation Friction** | Trigger handoff / scroll near composer; verify no large jump (UnifiedContextDock / auto-scroll). |
+| INT-38 | Home-handoff banner weight | **Conversation Friction** | After Ask Atlas → Workspace handoff, verify banner is readable without dominating the first viewport (polish bar). |
 | INT-13 | Quiet Workspace / missing continuation | **Conversation Killer** | Create/enter Workspace from Ask Atlas. Verify Atlas **automatically continues its thought** after navigation without requiring another user message. Quiet landing = fail. |
 | INT-14 | SSE disconnect / timeout | **Conversation Break** | Kill network mid-stream; restore. Verify user sees a recoverable error, persisted turns remain, and a retry/continue path exists without wiping history. |
 | INT-15 | Ghost click after picker | **Conversation Break** | Attach image, PDF, PPTX on Ask Atlas and Workspace. On picker return, verify no Exit/toggle/home-reset; draft + chips remain. |
@@ -1086,6 +1129,7 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 
 #### Wave 2a — Remaining Conversation Breaks
 
+0. **INT-35** — Workspace create false confirmation: never narrate create/open unless tool succeeded; force `create_project` on explicit create phrasing on Ask Atlas  
 1. INT-07 / INT-08 — Project switch + route unmount: rehydrate without blanking; handoff-safe navigation  
 2. INT-14 — SSE disconnect recovery path  
 3. INT-21 — Auth remount refetch races after picker (reinforces Wave 0)  
@@ -1102,6 +1146,7 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 11. Update ownership docs + unbroken-conversation invariants in agent rules  
 12. Regression locks for mitigated/dead items (INT-27–34)  
 13. Hour-long soak harness (AC-X6): text → image → PDF → PPTX → follow-up without re-attach → handoff → continue in Workspace  
+14. **INT-36 / INT-37 / INT-38** — Thinking Thread z-index; composer jump on handoff/scroll; home-handoff banner weight (observed 2026-07-22, non-blocking)  
 
 **Wave 2 exit criteria:** Remaining §9.2 must-pass criteria green; soak harness passes; Milestone 1 can be declared complete.
 
@@ -1126,7 +1171,7 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 | Re-enabling IDB File blob persistence | Previously OOM’d WebViews; needs a different design |
 | TanStack router resurrection | Dead path; leave dead unless product rewires mounts |
 | Non-conversation pickers (VisualVault, avatar) | Out of conversation interrupt scope |
-| Milestone 2 — Atlas intelligence | **Blocked** until Wave 0 and Wave 1 verified |
+| Milestone 2 — Atlas intelligence | **Unblocked** on Wave 0 + Wave 1 gates (2026-07-22); prefer clearing Wave 2 Breaks before heavy Milestone 2 investment |
 
 ---
 
@@ -1152,14 +1197,16 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 | Bucket | IDs | Wave |
 |--------|-----|------|
 | **Conversation Killer** | INT-01, INT-02, INT-04*, INT-05*, INT-09, INT-10*, INT-11, INT-13 | **Wave 0** (INT-01, INT-13, INT-11 first) |
-| **Conversation Break** | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26 | **Wave 1** (INT-05, INT-12 first) then Wave 2a |
-| **Conversation Friction** | INT-16, INT-18–20, INT-22–23, INT-27–34 | **Wave 2b** |
+| **Conversation Break** | INT-03, INT-05†, INT-06–08, INT-12, INT-14–15, INT-17, INT-21, INT-24–26, **INT-35** | **Wave 1** (INT-05, INT-12) done; **Wave 2a** starts with INT-35 |
+| **Conversation Friction** | INT-16, INT-18–20, INT-22–23, INT-27–34, INT-36–38 | **Wave 2b** |
 
 \* Killer when accidental / mid-compose.  
 † INT-05: Killer face (hard kill) + Break face (re-upload tax).
 
 **Wave 0 must-fix trio:** INT-01 (auth hard redirect), INT-13 (quiet Workspace), INT-11 (empty handoff).  
-**Wave 1 must-fix duo:** INT-05 (PPTX/Documents survival), INT-12 (prior-turn reinjection).
+**Wave 1 must-fix duo:** INT-05 (PPTX/Documents survival), INT-12 (prior-turn reinjection). **Both closed 2026-07-22.**
+
+**Wave 2 lead Break:** INT-35 (workspace create false confirmation).
 
 Technical Critical/High/Medium labels in §4 remain useful for engineering triage; **product-principle buckets decide repair order.**
 
@@ -1210,21 +1257,34 @@ Criteria checked against §6 INT-13 / G0-2:
 - [x] Atlas continued the thread (did not deny a prior session)  
 - [x] Momentum preserved without requiring the user to re-prompt the whole context  
 
-Wave 0 exit criteria met. **Milestone 2 remains blocked until Wave 1 (G1-1, G1-2) is verified.**
+Wave 0 exit criteria met.
 
 ---
 
-### Wave 1 repair status (Phase B — in progress)
+### Wave 1 repair status (Phase B — **CLOSED** 2026-07-22)
 
 | Gate | INT | Acceptance test | Status |
 |------|-----|-----------------|--------|
 | G1-1 | INT-05 | Finalized attachment IDs survive Documents/PPTX hard-reload; no silent re-upload of finalized files; conversation history intact | **Closed** (manual 2026-07-22) |
-| G1-2 | INT-12 | Prior-turn attachments reinjected (“Look at slide 5 again”) without re-upload | **In progress** |
+| G1-2 | INT-12 | Prior-turn attachments reinjected (“Look at slide 5 again”) without re-upload | **Closed** (manual 2026-07-22) |
 
 **G1-1 manual acceptance (2026-07-22):** PPTX survived repeated navigation and hard refreshes; Atlas continued answering slide-specific questions without re-upload. Staging-meta rehydrate path (PR #201) verified.
+
+**G1-2 manual acceptance (2026-07-22):** Atlas retained PPTX context across a long conversation, remembered previous slide discussions, and answered follow-up questions without requiring re-upload. Continuity V2 default-on (PR #202) verified.
+
+Wave 1 exit criteria met. **Milestone 2 attachment/auth continuity gate is satisfied** (G0 + G1). Remaining Wave 2 work (INT-35+) still tracks under Milestone 1 completeness.
+
+---
+
+### Wave 2 repair status (Phase B — started)
+
+| Gate | INT | Acceptance test | Status |
+|------|-----|-----------------|--------|
+| G2-1 | INT-35 | Explicit workspace create does not falsely succeed; PROJECT_READY does not claim creation | **In progress** |
+| — | INT-36–38 | Thinking Thread z-index; composer jump; handoff banner weight | Logged (non-blocking) |
 
 This is a structured stabilization program, not a bug chase.
 
 ---
 
-*Phase A complete. Phase B Wave 0 closed. Phase B Wave 1: G1-1 closed; G1-2 (INT-12 Continuity V2 default-on) in progress.*
+*Phase A complete. Phase B Wave 0 + Wave 1 closed. Phase B Wave 2 started with INT-35 (workspace create false confirmation).*
