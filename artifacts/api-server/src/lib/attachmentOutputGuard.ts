@@ -107,6 +107,18 @@ const PERCEPTION_PATTERNS: RegExp[] = [
   /\b(?:based\s+on|looking\s+at|from|in)\s+[\w][\w.()\- ]*\.(?:pdf|docx?|pptx?|xlsx?|xls|csv|png|jpe?g|gif|webp|txt|md)\b/i,
 ];
 
+/**
+ * INT-39: slide-index / deck-section order claims require reopened (or current-turn)
+ * deck content. Freeform order prose often never matches PERCEPTION_PATTERNS.
+ */
+const SLIDE_ORDER_CLAIM_PATTERNS: RegExp[] = [
+  /\bslide\s*\d+\b.{0,80}\b(?:before|after|follows?|precedes?)\b/i,
+  /\b(?:before|after|follows?|precedes?)\b.{0,80}\bslide\s*\d+\b/i,
+  /\b(?:pricing|takeaway|challenge|journey|closing)\b.{0,60}\b(?:comes?\s+)?(?:before|after)\b.{0,60}\b(?:pricing|takeaway|challenge|journey|closing|slide)\b/i,
+  /\b(?:pricing|takeaway|challenge|journey|closing)\b.{0,40}\bis\s+(?:before|after)\b/i,
+  /\b(?:deck|presentation|powerpoint|pptx)\b.{0,80}\b(?:order|sequence|before|after)\b/i,
+];
+
 // ── Streaming gate trigger patterns ───────────────────────────────────────────
 // BROADER than PERCEPTION_PATTERNS — fire early (on the trigger prefix) so we
 // can hold the rest of the sentence before validating.  False-positive holds are
@@ -548,6 +560,14 @@ export function checkAttachmentClaims(
     priorAttachments.some((p) => p.contentAvailableThisTurn) ||
     reopened.size > 0;
 
+  const hasPriorDeck = priorAttachments.some(
+    (p) =>
+      p.existed &&
+      (/\.pptx?$/i.test(p.filename) ||
+        /presentation|powerpoint/i.test(p.mimeType) ||
+        /\b(slide|deck|pricing|challenge)\b/i.test(p.filename)),
+  );
+
   for (const pattern of PERCEPTION_PATTERNS) {
     const match = text.match(pattern);
     if (!match) continue;
@@ -568,6 +588,17 @@ export function checkAttachmentClaims(
       if (!hasCurrentContent) {
         violations.push(matchedText);
       }
+    }
+  }
+
+  // INT-39: block unsupported slide-order / section-order claims when no deck
+  // content was supplied this turn (even if perception phrasing was soft).
+  if (!hasCurrentContent && (hasPriorDeck || priorAttachments.some((p) => p.existed))) {
+    for (const pattern of SLIDE_ORDER_CLAIM_PATTERNS) {
+      const match = text.match(pattern);
+      if (!match) continue;
+      violations.push(match[0].slice(0, 120));
+      break;
     }
   }
 

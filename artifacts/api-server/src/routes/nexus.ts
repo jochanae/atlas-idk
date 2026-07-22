@@ -2920,15 +2920,23 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
 
   // Continuity v2: load prior attachment provenance for history + grounding.
   // Real DB UUIDs stay server-side; model-visible blocks use publicRef.
-  if (continuityV2 && dbMessages.length > 0) {
+  // INT-39: always query BOTH message-id columns + conversationId (+ projectId
+  // on Workspace) so Ask Atlas → Workspace handoff cannot drop priors when
+  // history rows remapped or only one FK column was set.
+  if (continuityV2 && (dbMessages.length > 0 || conversationId || focusProjectId)) {
     try {
       const nexusIds = dbMessages
         .filter((m) => m.role === "user" && typeof (m as { id?: number }).id === "number")
         .map((m) => (m as { id: number }).id);
       priorAttachmentRecords = await loadPriorAttachmentsForMessages({
         userId,
+        // Message IDs are surface-specific serials — do not cross-wire columns.
+        // conversationId + projectId recover priors after Ask Atlas → Workspace
+        // when history rows were copied or only one FK was set (INT-39).
         nexusMessageIds: isInProjectAskAtlas ? [] : nexusIds,
         chatMessageIds: isInProjectAskAtlas ? nexusIds : [],
+        conversationId: conversationId ?? effectiveConversationId ?? null,
+        projectId: focusProjectId ?? null,
       });
     } catch (err) {
       logger.warn({ err, userId }, "nexus: failed to load prior attachment provenance");

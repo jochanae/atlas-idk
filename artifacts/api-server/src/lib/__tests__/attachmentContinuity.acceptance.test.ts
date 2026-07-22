@@ -223,6 +223,26 @@ describe("acceptance: OutputGuard provenance vs perception (T1)", () => {
     expect(allowedWithReopen.clean).toBe(true);
   });
 
+  it("INT-39: blocks unsupported slide-order claims when deck was not reopened", () => {
+    const claim =
+      "Pricing comes after the challenge in the deck — then the journey and closing.";
+    const blocked = checkAttachmentClaims(
+      claim,
+      evidence({ priorAttachments: [priorGuard] }),
+    );
+    expect(blocked.clean).toBe(false);
+    expect(blocked.correction).toMatch(/cannot reopen|original file contents/i);
+
+    const allowed = checkAttachmentClaims(
+      claim,
+      evidence({
+        priorAttachments: [{ ...priorGuard, contentAvailableThisTurn: true }],
+        contentReopenedAttachmentIds: new Set([PRIOR_PPTX.attachmentId]),
+      }),
+    );
+    expect(allowed.clean).toBe(true);
+  });
+
   it("blocks analysis-recall when prior existed but was not model-received", () => {
     const notReceived: PriorAttachmentGuardInfo = {
       ...priorGuard,
@@ -301,6 +321,16 @@ describe("acceptance: relevance selection before T3 reopen (T3-pre)", () => {
     });
     expect(result.selectedAttachmentIds).toEqual([PRIOR_PPTX.attachmentId]);
     expect(result.selectedPublicRefs).toEqual(["prior-1"]);
+  });
+
+  it("INT-39: selects prior deck for section-order follow-ups without saying slide", () => {
+    const result = selectRelevantPriorAttachments({
+      userMessage: "Does pricing come after the challenge?",
+      priorAttachments: candidates,
+      maxCount: 2,
+    });
+    expect(result.selectedAttachmentIds).toEqual([PRIOR_PPTX.attachmentId]);
+    expect(result.reasons[0]).toMatch(/deck_section_order_intent/);
   });
 
   it("selects the invoice PDF for total questions", () => {
