@@ -3,7 +3,7 @@
 **Phase:** Evaluation audit (quality of understanding — **not** infrastructure)  
 **Date:** 2026-07-22  
 **Repo HEAD at commission:** `d0b923d1` (`main`, post PR #208)  
-**Status:** **OPEN** — Round 1 scored (Blueprint PASS; Ledger/Insights PARTIAL; Flow unverified); **Knowledge Classification** added as first-class criterion  
+**Status:** **OPEN** — Round 1 closed out; next = **P1 Verify Flow → P2 Knowledge Classification → P3 Surface Integrity → Round 2**  
 **Board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Prerequisite:** Milestone 2.1 deliverable contract landed (PR #208)
 
@@ -109,15 +109,19 @@ After substantive turns, wait ~5–10s for fire-and-forget extraction before ins
 
 **Question:** Does Atlas put each piece of knowledge in the right bucket — or does the user have to untangle Ideas, Decisions, and engineering noise after the fact?
 
-Round 1 showed the biggest gap is **not a crash** — it is **classification**. Atlas currently mixes three (or more) kinds of knowledge into overlapping surfaces (especially Ledger / Objects):
+Round 1 showed the biggest gap is **not a crash** — it is **classification**. Atlas currently mixes kinds of knowledge into overlapping surfaces (especially Ledger / Objects).
 
-| Kind | Definition | Example from Round 1 |
-|------|------------|----------------------|
-| **Ideas** | Hypotheses and principles still being explored | Continuity is the product; Ask Atlas is the on-ramp; momentum must transfer, not restart |
-| **Decisions** | Explicitly committed architectural choices | Artifact persistence is required; automatic promotion when work becomes consequential |
-| **Insights** | Non-obvious syntheses that change how you see the problem | Ask Atlas ↔ Workspace boundary depends on **persistence**, not capability |
-| **Questions** | Open framing still unresolved | What problem does Ask Atlas solve for whom? |
-| **Engineering Events** | Implementation / system activity — not product knowledge | “Tier 1 field updated”; Blueprint regenerated; Manifest synced |
+### First-class knowledge types
+
+| Type | Meaning | Example from Round 1 |
+|------|---------|----------------------|
+| **Idea** | Hypothesis, concept, emerging principle | Continuity is the product; Ask Atlas is the on-ramp; momentum must transfer, not restart |
+| **Decision** | Explicitly committed | Artifact persistence is required; automatic promotion when work becomes consequential |
+| **Insight** | Synthesized understanding not directly stated | Ask Atlas ↔ Workspace boundary depends on **persistence**, not capability |
+| **Question** | Unresolved architectural uncertainty | What problem does Ask Atlas solve for whom? |
+| **Engineering Event** | Implementation / build activity — not product knowledge | “Tier 1 field updated”; Blueprint regenerated; Manifest synced |
+
+**Promotion rule:** A single object must not drift between categories unless **explicitly promoted** (e.g. an Idea later becomes a Decision). Silent reclassification is a fail.
 
 ### Acceptance criteria
 
@@ -127,9 +131,36 @@ Round 1 showed the biggest gap is **not a crash** — it is **classification**. 
 | K2 | Decisions are commitments only | Ledger Decisions are things the user (or an explicit commit path) actually locked |
 | K3 | Insights are synthesized | Insights elevate a non-obvious pattern — not stage/status procedure |
 | K4 | Questions remain open | Unresolved framing is not written as settled truth in Spec/Ledger |
-| K5 | Engineering events stay out of product knowledge | Activity like “Tier 1 field updated” lives in history/activity — **not** the architectural Ledger |
+| K5 | Engineering events stay out of product knowledge | Activity like “Tier 1 field updated” lives in **Activity** — **not** the architectural Ledger |
+| K6 | Promotion is explicit | Category changes only via an explicit promote path (Idea → Decision, etc.) |
 
-**Product bar:** A product architect should not have to mentally separate these after the fact — the system should do it automatically. Until K1–K5 pass, Atlas feels like a sophisticated note-taker rather than an architectural partner.
+**Product bar:** A product architect should not have to mentally separate these after the fact — the system should do it automatically. Until K1–K6 pass, Atlas feels like a sophisticated note-taker rather than an architectural partner.
+
+---
+
+## 0b. Surface Integrity (after classification)
+
+Once knowledge types exist, each surface owns **one** responsibility — no leakage:
+
+| Surface | Owns |
+|---------|------|
+| **Blueprint** | Stable project identity (Purpose, Identity, Audience, Manifest, Vision) |
+| **Ledger** | **Decisions only** |
+| **Insights** | Synthesized observations |
+| **Flow** | Relationships between concepts |
+| **Activity** | Engineering events, syncs, builds, commits |
+
+This removes Round 1’s leakage where implementation details appeared alongside architectural knowledge.
+
+### Acceptance criteria
+
+| # | Criterion | Pass if… |
+|---|-----------|----------|
+| S1 | Blueprint = identity | Spec/Soul hold stable product identity — not activity logs |
+| S2 | Ledger = Decisions only | No Engineering Events in Ledger |
+| S3 | Insights = synthesis | No pure stage/procedure Mad Libs as Insights |
+| S4 | Flow = relationships | Graph connects concepts — not a linear chat transcript |
+| S5 | Activity = engineering | Tier-1 updates / syncs / builds land here, not in Ledger |
 
 ---
 
@@ -402,22 +433,98 @@ Overall 2.2 (this run): Mixed — Blueprint strong; Ledger/Insights partial; Flo
 | **Flow** | **NOT VERIFIED** |
 | **Root issue** | **Classification**, not a crash — Ideas / Decisions / Insights / Questions / Engineering Events must be separated automatically |
 
-**Next:**
+**Next:** Follow **Round 1 Closeout** below — observation → correction → validation. Do **not** start Round 2 until P1–P3 complete.
 
-1. Verify Flow / Designer (still open).  
-2. Treat **Knowledge Classification (K1–K5)** as a 2.2 fix target before Round 2 expands scope.  
-3. Round 2: lock the three principles, add abandon + reversal; re-score with classification enforced.
+---
+
+## Round 1 Closeout — observation → correction → validation
+
+Progress the board in this order only.
+
+### P1. Verify Flow
+
+| | |
+|--|--|
+| **Status** | **NOT VERIFIED** |
+| **Mode** | Observation |
+| **Goal** | Confirm Atlas is building a **reasoning graph**, not a conversation graph |
+
+**Pass criteria:**
+
+- Founding promise appears as a **root** concept  
+- Principles **branch from** the promise  
+- Questions **branch from** principles  
+- No fabricated nodes  
+- No duplicate concepts  
+
+**Inspect:** Map → Designer on the Round 1 project. Score F1–F5 + S4.
+
+---
+
+### P2. Knowledge Classification
+
+| | |
+|--|--|
+| **Status** | **FAIL — highest-priority correction** |
+| **Mode** | Correction |
+| **Goal** | First-class types + explicit promotion (see §0) |
+
+**Implement / enforce:**
+
+- Idea · Decision · Insight · Question · Engineering Event  
+- Rule: no silent category drift — only **explicit promotion** (e.g. Idea → Decision)  
+
+**Pass:** K1–K6 green on a re-inspect of the Round 1 project (and a short new turn that produces each type).
+
+---
+
+### P3. Surface Integrity
+
+| | |
+|--|--|
+| **Status** | Blocked on P2 |
+| **Mode** | Correction (wiring after types exist) |
+| **Goal** | One responsibility per surface (see §0b) |
+
+| Surface | Owns |
+|---------|------|
+| Blueprint | Stable project identity |
+| Ledger | Decisions only |
+| Insights | Synthesized observations |
+| Flow | Relationships between concepts |
+| Activity | Engineering events, syncs, builds, commits |
+
+**Pass:** S1–S5 — no engineering leakage into Ledger; Insights not procedural state; Flow not a linear chat dump.
+
+---
+
+### Then — Round 2 (validation)
+
+Only after P1–P3 are complete:
+
+1. **Lock** the three architectural principles  
+2. Test **abandonment** and recovery  
+3. Test **reversal** (“we changed our mind”)  
+4. Verify Atlas can **evolve** knowledge without corrupting prior commitments  
+
+Re-score B4, D2–D3, K*, S* on that thread.
+
+---
+
+### Why this closeout matters
+
+Earlier work made Atlas **talk**. Round 1 on PR #209 is the first time the product is judged on whether Atlas **knows what kind of knowledge it has learned** — the foundation for growing intelligently over months instead of accumulating an undifferentiated pile of notes.
 
 ---
 
 ## Recommended sequence
 
-1. ~~Run rich founding conversation~~ — Round 1 done.  
-2. ~~Panel inspect + scorecard~~ — Round 1 scored (Flow still open).  
-3. **Verify Flow / Designer** on the same project.  
-4. **Prioritize Knowledge Classification** (K1–K5) as the highest-leverage correctness fix — keep engineering events out of the architectural Ledger; keep Ideas from auto-promoting to Decisions; elevate real Insights over procedural state.  
-5. Round 2: lock principles, add abandon + reversal, re-score B4/D3/K*.  
-6. After classification + surface accuracy bars, deepen lens differentiation under **2.3**.
+1. ~~Round 1 conversation + scorecard~~ — **closed out** (scores above).  
+2. **P1** — Verify Flow / Designer (pass criteria in Closeout).  
+3. **P2** — Knowledge Classification (K1–K6) — highest-priority fix.  
+4. **P3** — Surface Integrity (S1–S5) once types exist.  
+5. **Round 2** — lock principles → abandon → reversal → evolve without corruption.  
+6. After 2.2 accuracy + classification bars, deepen lens differentiation under **2.3**.
 
 ---
 
