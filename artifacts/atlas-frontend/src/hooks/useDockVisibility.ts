@@ -220,6 +220,12 @@ export const dockVisibility = {
     }
     emit();
   },
+  /** Lock the dock in the hidden state during a handoff. */
+  setHandoffLock(locked: boolean) {
+    if (handoffLock === locked) return;
+    handoffLock = locked;
+    emit();
+  },
 };
 
 export function useDockVisibility(): boolean {
