@@ -9,6 +9,7 @@ import { createReadStream, statSync, readFileSync } from "fs";
 import path from "path";
 import { projectWorkspaceDir } from "./lib/projectWorkspace";
 import { WebhookHandlers } from "./webhookHandlers";
+import { isAttachmentContinuityV2Enabled } from "./lib/attachmentGrounding";
 
 const app: Express = express();
 
@@ -251,13 +252,14 @@ app.use("/api/shell", shellRouter);
 // authenticated /api router so requireAuth middleware cannot intercept it.
 // Note: attachmentPersistence is advisory only. ATTACHMENTS_PERSISTENCE does
 // not gate /api/attachments/* or nexus/chat attachmentIds acceptance.
-// attachmentContinuityV2 mirrors ATTACHMENT_CONTINUITY_V2===1 on THIS process.
+// attachmentContinuityV2 mirrors isAttachmentContinuityV2Enabled() on THIS process
+// (default ON; kill switch ATTACHMENT_CONTINUITY_V2=0).
 const API_PROCESS_STARTED_AT = new Date().toISOString();
 
 app.get("/api/capabilities", (_req, res) => {
   res.json({
     attachmentPersistence: process.env.ATTACHMENTS_PERSISTENCE === "true",
-    attachmentContinuityV2: process.env.ATTACHMENT_CONTINUITY_V2 === "1",
+    attachmentContinuityV2: isAttachmentContinuityV2Enabled(),
     /** ISO timestamp when this Node process booted — use to confirm redeploy/restart. */
     apiProcessStartedAt: API_PROCESS_STARTED_AT,
     apiProcessUptimeSec: Math.floor(process.uptime()),

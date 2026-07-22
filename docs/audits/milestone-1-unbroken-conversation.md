@@ -4,7 +4,7 @@
 **Date:** 2026-07-21  
 **Scope:** Conversation lifecycle, attachment lifecycle, interruption inventory, acceptance criteria, repair order  
 **Repo HEAD at audit:** `86e7b309` (`main`)  
-**Status:** Phase B in progress — **Wave 0 CLOSED** (2026-07-22); **Wave 1 started** (INT-05).  
+**Status:** Phase B in progress — **Wave 0 CLOSED** (2026-07-22); **Wave 1 in progress** — G1-1 (INT-05) **passed** (2026-07-22); G1-2 (INT-12) in progress.  
 **Gate:** Do **not** start Milestone 2 (Atlas intelligence) until Wave 0 and Wave 1 of this milestone are complete and verified.
 
 **Hard rule (Phase B):**
@@ -384,8 +384,8 @@ Auth: `/api/attachments` is in `SILENT_401_PATTERNS` — attachment 401 does **n
 
 1. Client sends **IDs only** on the canonical path.
 2. Server `resolveAttachmentIdsForModel` downloads bytes, extracts OOXML/CSV/PPTX text (+ optional slide PNGs), injects for the **current turn**.
-3. **Legacy (flag off):** HARD RULE tells the model no attachment was provided if this turn has none — prior files are **not** treated as this-turn attachments (`nexus.ts`).
-4. **V2 (`ATTACHMENT_CONTINUITY_V2=1`):** prior attachments **can** be re-injected via relevance-gated historical reopen (`attachmentGrounding.ts`). Flag is strict `=== "1"`.
+3. **Legacy (kill switch `ATTACHMENT_CONTINUITY_V2=0`):** HARD RULE tells the model no attachment was provided if this turn has none — prior files are **not** treated as this-turn attachments (`nexus.ts`).
+4. **V2 (default ON; INT-12):** prior attachments **can** be re-injected via relevance-gated historical reopen (`attachmentGrounding.ts` / `selectRelevantPriorAttachments`). Kill switch: `ATTACHMENT_CONTINUITY_V2=0`.
 5. History does **not** automatically re-inject prior extracted content without V2 reopen — documented continuity gap in `docs/handoffs/2026-07-21-attachment-continuity-provenance-investigation.md`.
 
 This is a **semantic** interruption (user must re-attach or re-explain) even when the UI never remounts.
@@ -1218,11 +1218,13 @@ Wave 0 exit criteria met. **Milestone 2 remains blocked until Wave 1 (G1-1, G1-2
 
 | Gate | INT | Acceptance test | Status |
 |------|-----|-----------------|--------|
-| G1-1 | INT-05 | Finalized attachment IDs survive Documents/PPTX hard-reload; no silent re-upload of finalized files; conversation history intact | **In progress** |
-| G1-2 | INT-12 | Prior-turn attachments reinjected (“Look at slide 5 again”) without re-upload | Not started |
+| G1-1 | INT-05 | Finalized attachment IDs survive Documents/PPTX hard-reload; no silent re-upload of finalized files; conversation history intact | **Closed** (manual 2026-07-22) |
+| G1-2 | INT-12 | Prior-turn attachments reinjected (“Look at slide 5 again”) without re-upload | **In progress** |
+
+**G1-1 manual acceptance (2026-07-22):** PPTX survived repeated navigation and hard refreshes; Atlas continued answering slide-specific questions without re-upload. Staging-meta rehydrate path (PR #201) verified.
 
 This is a structured stabilization program, not a bug chase.
 
 ---
 
-*Phase A complete. Phase B Wave 0 closed. Phase B Wave 1 started with INT-05.*
+*Phase A complete. Phase B Wave 0 closed. Phase B Wave 1: G1-1 closed; G1-2 (INT-12 Continuity V2 default-on) in progress.*
