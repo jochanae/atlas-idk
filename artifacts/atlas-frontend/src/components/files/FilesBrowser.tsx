@@ -493,7 +493,7 @@ export function FilesBrowser({
               ? <EmptyPane title="No recent attachments" body="Files you attach to messages will appear here." />
               : <EmptyPane title="No files match" body="Try a different section or clear the search." />
           )}
-          {!isLoading && !anyError && visible.length > 0 && (
+          {!isLoading && !anyError && !(section === "workspace" && sourceView === "tree") && visible.length > 0 && (
             view === "list" ? (
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>
                 {visible.map((f) => (
