@@ -4,7 +4,7 @@
 **Date:** 2026-07-21  
 **Scope:** Conversation lifecycle, attachment lifecycle, interruption inventory, acceptance criteria, repair order  
 **Repo HEAD at audit:** `86e7b309` (`main`)  
-**Status:** Audit complete + product-principle prioritization applied. Phase B (Repair) must not begin until this document is reviewed.  
+**Status:** Phase B in progress — **Wave 0 CLOSED** (2026-07-22); **Wave 1 started** (INT-05).  
 **Gate:** Do **not** start Milestone 2 (Atlas intelligence) until Wave 0 and Wave 1 of this milestone are complete and verified.
 
 **Hard rule (Phase B):**
