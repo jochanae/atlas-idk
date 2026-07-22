@@ -105,45 +105,62 @@ export function SuggestionChipRail({ lastAssistantText, nextSuggestions, onTap, 
   return (
     <div
       style={{
-        display: "flex",
-        gap: 8,
-        overflowX: "auto",
-        padding: "4px 2px 10px",
+        position: "relative",
         margin: "8px 0 4px",
-        scrollbarWidth: "none",
+        // Right-edge fade signals horizontal overflow so users know to scroll.
+        WebkitMaskImage:
+          chips.length > 1
+            ? "linear-gradient(to right, #000 calc(100% - 24px), transparent)"
+            : undefined,
+        maskImage:
+          chips.length > 1
+            ? "linear-gradient(to right, #000 calc(100% - 24px), transparent)"
+            : undefined,
       }}
-      className="scrollbar-none"
-      role="group"
-      aria-label="Suggested next steps"
     >
-      {chips.map((c) => (
-        <button
-          key={c}
-          type="button"
-          onPointerDown={() => startPress(c)}
-          onPointerUp={() => endPress(c, false)}
-          onPointerLeave={() => endPress(c, true)}
-          onPointerCancel={() => endPress(c, true)}
-          style={{
-            flexShrink: 0,
-            padding: "7px 12px",
-            background: "rgba(var(--atlas-surface-rgb,30,30,30),0.6)",
-            border: "1px solid rgba(var(--atlas-border-rgb,80,80,80),0.5)",
-            borderRadius: 999,
-            fontSize: 12,
-            color: "var(--atlas-fg)",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            maxWidth: 260,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            touchAction: "manipulation",
-          }}
-          title="Tap to use · long-press to park"
-        >
-          {c}
-        </button>
-      ))}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          overflowX: "auto",
+          padding: "4px 20px 10px 2px",
+          scrollbarWidth: "none",
+          scrollSnapType: "x proximity",
+        }}
+        className="scrollbar-none"
+        role="group"
+        aria-label="Suggested next steps"
+      >
+        {chips.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onPointerDown={() => startPress(c)}
+            onPointerUp={() => endPress(c, false)}
+            onPointerLeave={() => endPress(c, true)}
+            onPointerCancel={() => endPress(c, true)}
+            style={{
+              flexShrink: 0,
+              padding: "7px 12px",
+              background: "rgba(var(--atlas-surface-rgb,30,30,30),0.6)",
+              border: "1px solid rgba(var(--atlas-border-rgb,80,80,80),0.5)",
+              borderRadius: 999,
+              fontSize: 12,
+              color: "var(--atlas-fg)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              maxWidth: "min(260px, 72vw)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              touchAction: "manipulation",
+              scrollSnapAlign: "start",
+            }}
+            title="Tap to use · long-press to park"
+          >
+            {c}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
