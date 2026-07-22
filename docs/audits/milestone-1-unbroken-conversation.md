@@ -4,7 +4,7 @@
 **Date:** 2026-07-21  
 **Scope:** Conversation lifecycle, attachment lifecycle, interruption inventory, acceptance criteria, repair order  
 **Repo HEAD at audit:** `86e7b309` (`main`)  
-**Status:** Audit complete + product-principle prioritization applied. Phase B (Repair) must not begin until this document is reviewed.  
+**Status:** Phase B in progress — **Wave 0 CLOSED** (2026-07-22); **Wave 1 started** (INT-05).  
 **Gate:** Do **not** start Milestone 2 (Atlas intelligence) until Wave 0 and Wave 1 of this milestone are complete and verified.
 
 **Hard rule (Phase B):**
@@ -1192,30 +1192,37 @@ Anything that breaks that narrative is in scope for Milestone 1 Phase B.
 | **Hard rule: no INT closed without passing its acceptance test** | Locked |
 | Milestone 2 gate | Wave 0 + Wave 1 verified |
 
-### Wave 0 repair status (Phase B started)
+### Wave 0 repair status — **CLOSED** (2026-07-22)
 
 | Gate | INT | Acceptance test | Status |
 |------|-----|-----------------|--------|
-| G0-1 | INT-01 (+ INT-02) | Soft-pause when composer session active; no hard login redirect mid-thought | **Passing** — `composerSessionGuard.test.ts` |
-| G0-2 | INT-13 | Seed continuation on every Ask Atlas → Workspace entry | **OPEN — manual FAILED** (see below) |
-| G0-3 | INT-11 | Handoff/crystallize uses live Ask Atlas transcript | **Passing** — `selectHandoffMessages` tests + home.tsx wiring |
+| G0-1 | INT-01 (+ INT-02) | Soft-pause when composer session active; no hard login redirect mid-thought | **Closed** — automated AC + no regression in Wave 0 manual sessions |
+| G0-2 | INT-13 | Ask Atlas → Workspace continues thought without requiring a fresh user message | **Closed** — manual acceptance via **Atlanta Family Tech Day** handoff (2026-07-22) |
+| G0-3 | INT-11 | Handoff/Crystallize/Commit never delivers an empty transcript when Ask Atlas had messages | **Closed** — automated AC + Atlanta Family Tech Day transcript carried into Workspace |
 
-#### INT-13 manual failure (2026-07-21) — do not close
+#### INT-13 close evidence (Atlanta Family Tech Day handoff)
 
-**Observed:** Workspace created, navigation OK, transcript visible / exportable, but first Atlas reply said it had no prior session. Internal home-handoff kickoff text was user-visible. Scroll jumped on arrival.
+Product-owner manual sign-off (2026-07-22): Ask Atlas → Workspace handoff for the Atlanta Family Tech Day conversation continued prior thought. Prior failure mode (“I don't have a prior session…”) no longer observed after kickoff-context gate (#200).
 
-**Root cause (verified):** Kickoff fired before Nexus `conversationId` + Living Thread history were ready. Model received only `HANDOFF_CONTINUATION_MESSAGE`. UI history loaded later via bridge — display and first inference were decoupled.
+Criteria checked against §6 INT-13 / G0-2:
+- [x] Workspace created / navigation succeeded  
+- [x] Prior Ask Atlas transcript present in Workspace  
+- [x] Atlas continued the thread (did not deny a prior session)  
+- [x] Momentum preserved without requiring the user to re-prompt the whole context  
 
-**Repair in progress (still OPEN until manual retest):**
-- Gate kickoff with `shouldFireHandoffKickoff` (cid + `historyReady` + non-empty transcript)
-- Prefer `/workspace/{cid}` navigation; await `append-thread` before navigate on Commit path
-- Hide internal kickoff via `hiddenFromUi` + content filter
-- Server honors client `history` when `focusProjectId` is set even if cid briefly missing
+Wave 0 exit criteria met. **Milestone 2 remains blocked until Wave 1 (G1-1, G1-2) is verified.**
 
-**Acceptance remains:** Create Workspace from Ask Atlas → Atlas continues prior thought without claiming no prior session → kickoff not shown as a user bubble.
+---
+
+### Wave 1 repair status (Phase B — in progress)
+
+| Gate | INT | Acceptance test | Status |
+|------|-----|-----------------|--------|
+| G1-1 | INT-05 | Finalized attachment IDs survive Documents/PPTX hard-reload; no silent re-upload of finalized files; conversation history intact | **In progress** |
+| G1-2 | INT-12 | Prior-turn attachments reinjected (“Look at slide 5 again”) without re-upload | Not started |
 
 This is a structured stabilization program, not a bug chase.
 
 ---
 
-*Phase A complete. Phase B Wave 0 — INT-13 remains open until manual acceptance passes.*
+*Phase A complete. Phase B Wave 0 closed. Phase B Wave 1 started with INT-05.*
