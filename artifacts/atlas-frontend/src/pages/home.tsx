@@ -2176,6 +2176,8 @@ export default function Home() {
     if (doneData?.convState) {
       setLastConvState(doneData.convState);
     }
+    // File deliverable turns must not promote into project / CommitPill mode.
+    if (doneData?.suppressProjectReady) return;
     if (doneData?.projectReady) {
       setProjectReadyDoneData(doneData);
       return;

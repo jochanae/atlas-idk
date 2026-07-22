@@ -181,6 +181,37 @@ export function navigateAfterAskAtlasHandoff(
 }
 
 /**
+ * Open a specific Workspace output from Ask Atlas without a conversation handoff.
+ * Seeds `atlas-open-output-*` and navigates with `source=open-output` so Workspace
+ * expands Outputs and focuses the artifact — no opening-message continuation.
+ */
+export function navigateToProjectOutput(
+  projectId: number,
+  artifactId: number | string,
+  setLocation: (path: string) => void,
+  opts?: { conversationId?: string | null },
+): void {
+  if (!projectId || projectId <= 0) return;
+  try {
+    sessionStorage.setItem(`atlas-open-output-${projectId}`, String(artifactId));
+    sessionStorage.removeItem("atlas-opening-message");
+    sessionStorage.removeItem("atlas-opening-message-project-id");
+    sessionStorage.removeItem("atlas-handoff-continuation");
+  } catch {
+    // sessionStorage may be unavailable; navigation still proceeds.
+  }
+  const params = new URLSearchParams({
+    from: "home",
+    source: "open-output",
+  });
+  if (opts?.conversationId) {
+    setLocation(`/workspace/${opts.conversationId}?${params.toString()}`);
+    return;
+  }
+  setLocation(`/project/${projectId}?${params.toString()}`);
+}
+
+/**
  * INT-11: pick the live transcript for handoff / crystallize.
  * When Ask Atlas is open (or holds messages), never snapshot the cleared ambient nexusChat.
  */

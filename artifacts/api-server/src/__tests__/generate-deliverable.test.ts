@@ -11,6 +11,30 @@ vi.mock("../lib/artifactEngine", () => ({
   registerArtifactRenderer: vi.fn(),
 }));
 
+vi.mock("../lib/library", () => ({
+  captureDeliverableToLibrary: vi.fn(),
+}));
+
+vi.mock("@workspace/db", () => ({
+  db: {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          orderBy: vi.fn(() => ({
+            limit: vi.fn(async () => []),
+          })),
+        })),
+      })),
+    })),
+  },
+  projectArtifactsTable: {
+    payload: "payload",
+    projectId: "project_id",
+    type: "type",
+    createdAt: "created_at",
+  },
+}));
+
 vi.mock("../lib/renderers/docxRenderer", () => ({}));
 vi.mock("../lib/renderers/pdfRenderer", () => ({}));
 vi.mock("../lib/renderers/pptxRenderer", () => ({}));
@@ -18,6 +42,12 @@ vi.mock("../lib/renderers/xlsxRenderer", () => ({}));
 vi.mock("../lib/renderers/mermaidRenderer", () => ({}));
 vi.mock("../lib/renderers/chartRenderer", () => ({}));
 vi.mock("../lib/renderers/htmlAppRenderer", () => ({}));
+
+const ensureUserDeliverableBucketProject = vi.fn();
+vi.mock("../lib/projectCreation", () => ({
+  ensureUserDeliverableBucketProject: (...args: unknown[]) =>
+    ensureUserDeliverableBucketProject(...args),
+}));
 
 import { generateDeliverableTool } from "../lib/agent-tools/generate-deliverable";
 
@@ -49,6 +79,7 @@ describe("generate_deliverable tool — Outputs visibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listArtifactRendererTypes.mockReturnValue(["pptx", "docx", "xlsx"]);
+    ensureUserDeliverableBucketProject.mockResolvedValue({ id: 99, name: "Atlas Files" });
     generateArtifact.mockResolvedValue({
       id: 123,
       projectId: 45,
@@ -72,7 +103,7 @@ describe("generate_deliverable tool — Outputs visibility", () => {
     });
   });
 
-  it("returns structured metadata, Outputs copy, timeline step, and side effects", async () => {
+  it("returns structured metadata, conversation-card copy, timeline step, and side effects", async () => {
     const ctx = makeCtx();
     const tool = generateDeliverableTool(ctx);
     const result = await tool.execute!(
@@ -93,8 +124,9 @@ describe("generate_deliverable tool — Outputs visibility", () => {
         slideHeadings: ["Welcome", "Goals", "Feedback"],
       },
     });
-    expect(String((result as { summary?: string }).summary)).toContain("Outputs");
+    expect(String((result as { summary?: string }).summary)).toMatch(/card|conversation|download/i);
     expect(String((result as { summary?: string }).summary)).not.toContain("Deliverables");
+    expect(ensureUserDeliverableBucketProject).not.toHaveBeenCalled();
 
     expect(ctx.sideEffects.generatedArtifacts).toHaveLength(1);
     expect(ctx.sideEffects.generatedArtifacts[0]).toMatchObject({
@@ -123,18 +155,58 @@ describe("generate_deliverable tool — Outputs visibility", () => {
     );
 
     const desc = typeof tool.description === "string" ? tool.description : "";
-    expect(desc).toContain("Outputs");
+    expect(desc).toMatch(/inline|card|conversation/i);
     expect(desc).not.toContain("Deliverables");
   });
 
-  it("fails cleanly when no project is focused", async () => {
+  it("uses the per-user Atlas Files bucket when no project is focused", async () => {
+    generateArtifact.mockResolvedValueOnce({
+      id: 456,
+      projectId: 99,
+      type: "xlsx",
+      category: "spreadsheet",
+      version: 1,
+      title: "Tracker",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      extension: "xlsx",
+      sizeBytes: 2048,
+      preview: {},
+      summary: "Generated spreadsheet.",
+      objectPath: "/objects/uploads/def",
+      ledgerEntryId: null,
+      createdAt: "2026-07-22T00:00:00.000Z",
+    });
+
     const ctx = makeCtx({ projectId: 0 });
+    const tool = generateDeliverableTool(ctx);
+    const result = await tool.execute!(
+      { type: "xlsx", title: "Tracker" },
+      { toolCallId: "t1", messages: [] } as never,
+    );
+
+    expect(ensureUserDeliverableBucketProject).toHaveBeenCalledWith(1);
+    expect(generateArtifact).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 99 }),
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      artifactId: 456,
+      projectId: 99,
+      downloadUrl: "/api/projects/99/artifacts/456/download",
+    });
+    expect(ctx.sideEffects.generatedArtifacts).toHaveLength(1);
+    expect(ctx.projectId).toBe(99);
+  });
+
+  it("fails cleanly when unfocused and the user id is missing", async () => {
+    const ctx = makeCtx({ projectId: 0, userId: 0 });
     const tool = generateDeliverableTool(ctx);
     const result = await tool.execute!(
       { type: "pptx" },
       { toolCallId: "t1", messages: [] } as never,
     );
     expect(result).toMatchObject({ ok: false });
+    expect(ensureUserDeliverableBucketProject).not.toHaveBeenCalled();
     expect(generateArtifact).not.toHaveBeenCalled();
     expect(ctx.sideEffects.generatedArtifacts).toHaveLength(0);
   });

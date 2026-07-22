@@ -63,9 +63,11 @@ import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCr
 import {
   ASK_ATLAS_HANDOFF_SURFACE_CONTRACT,
   CREATE_PROJECT_SUCCESS_INSTRUCTION,
+  isDeliverableOnlyRequest,
   messageHasExplicitCreateSignal,
   shouldForceCreateProject,
 } from "../lib/askAtlasHandoffContract";
+import { checkDeliverableClaims } from "../lib/deliverableOutputGuard";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import {
   advanceRunExecutionState,
@@ -4518,6 +4520,33 @@ PROSE RULES (enforced — contradiction detection is active):
     }
     // ── END ATTACHMENT OUTPUT GUARD ───────────────────────────────────────────
 
+    // ── DELIVERABLE OUTPUT GUARD ──────────────────────────────────────────────
+    // Non-negotiable: never claim a file was generated unless this turn
+    // actually produced generatedArtifacts (tool ok + artifact record).
+    {
+      const deliverableGuard = checkDeliverableClaims(rawContent, {
+        generatedArtifactsCount: sharedSideEffects.generatedArtifacts.length,
+        generateDeliverableAttempted: toolsExecutedThisTurn.has("generate_deliverable"),
+      });
+      if (!deliverableGuard.clean) {
+        req.log.warn(
+          {
+            violations: deliverableGuard.violations,
+            generatedArtifactsCount: sharedSideEffects.generatedArtifacts.length,
+            generateDeliverableAttempted: toolsExecutedThisTurn.has("generate_deliverable"),
+            focusProjectId,
+            conversationId: effectiveConversationId,
+          },
+          "nexus: deliverable output guard fired — replacing false generation claim",
+        );
+        rawContent = deliverableGuard.correction;
+        if (!res.writableEnded && !res.destroyed) {
+          res.write(`event: correction\ndata: ${JSON.stringify({ content: deliverableGuard.correction })}\n\n`);
+        }
+      }
+    }
+    // ── END DELIVERABLE OUTPUT GUARD ──────────────────────────────────────────
+
     // ── BUILD_CONTRACT detection ─────────────────────────────────────────────
     // When Atlas emits BUILD_CONTRACT_START/END on a BUILD turn, the server:
     //   1. Validates the manifest schema
@@ -4725,6 +4754,14 @@ PROSE RULES (enforced — contradiction detection is active):
     // Gate: in THINK mode, suppress CommitPill — recognition is not commitment.
     // PROJECT_READY only arms the pill in SHAPE or COMMIT state.
     if (convState === "THINK") {
+      projectReadyToken = null;
+    }
+
+    // Deliverable-only turns (and turns that already produced a file) must not
+    // promote the user into project mode. Reserve PROJECT_READY for ongoing
+    // project / workspace management.
+    const deliverableOnlyTurn = isDeliverableOnlyRequest(message);
+    if (deliverableOnlyTurn || sharedSideEffects.generatedArtifacts.length > 0) {
       projectReadyToken = null;
     }
 
@@ -6163,6 +6200,11 @@ PROSE RULES (enforced — contradiction detection is active):
       ...(openProjectChoices !== null ? { projectChoices: openProjectChoices } : {}),
       ...(openProjectNotFound !== null ? { projectNotFound: openProjectNotFound } : {}),
       ...(projectReadyToken ? { projectReady: projectReadyToken } : {}),
+      // Client: do not synthesize CommitPill from streamed PROJECT_READY text
+      // when this turn was deliverable-only or already produced a file card.
+      ...((deliverableOnlyTurn || sharedSideEffects.generatedArtifacts.length > 0)
+        ? { suppressProjectReady: true }
+        : {}),
       // INT-39: echo Continuity V2 diag so clients/devtools can confirm
       // historicalReopenResolvedCount > 0 without server-log access.
       attachmentContinuity: {

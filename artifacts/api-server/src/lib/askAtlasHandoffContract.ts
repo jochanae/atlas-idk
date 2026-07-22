@@ -84,6 +84,27 @@ export function messageHasExplicitCreateSignal(message: string): boolean {
   return EXPLICIT_CREATE_SIGNALS.some((s) => messageLC.includes(s));
 }
 
+/**
+ * True when the user is asking for a file deliverable (xlsx/pptx/docx/pdf/…)
+ * rather than ongoing project / workspace management.
+ *
+ * "Make me a spreadsheet" must not force create_project or arm PROJECT_READY.
+ * "Create the workspace" / "build me a habit tracker" remain project intents.
+ */
+const DELIVERABLE_FILE_RE =
+  /\b(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|slide\s*deck|\bdeck\b|slides?\b|presentation|docx|word\s+doc(?:ument)?|\bpdf\b|mermaid|flowchart|sequence\s+diagram|architecture\s+diagram|\bdiagram\b|(?:pie|bar|line)\s+chart|\bchart\b|html-?app|interactive\s+(?:web\s+)?(?:app|tool|widget))\b/i;
+
+const PROJECT_MANAGEMENT_RE =
+  /\b(?:workspace|create\s+(?:the\s+)?project|start\s+(?:the\s+)?project|open\s+(?:the\s+)?(?:workspace|project)|move\s+this\s+(?:into|to)\s+a\s+(?:project|workspace)|turn\s+this\s+into\s+a\s+project|build\s+(?:this|the|an?|me)\s+(?:app|application|product|saas|platform))\b/i;
+
+export function isDeliverableOnlyRequest(message: string): boolean {
+  const text = (message ?? "").trim();
+  if (!text) return false;
+  if (!DELIVERABLE_FILE_RE.test(text)) return false;
+  if (PROJECT_MANAGEMENT_RE.test(text)) return false;
+  return true;
+}
+
 export type ForceCreateDecisionInput = {
   message: string;
   /** BUILD/DECIDE tool access (Ask Atlas or Workspace). */
@@ -101,6 +122,9 @@ export type ForceCreateDecisionInput = {
  */
 export function shouldForceCreateProject(input: ForceCreateDecisionInput): boolean {
   if (input.focusProjectId) return false;
+  // File deliverables are not workspace creation — even if phrasing matches
+  // "make me" / "create a" from EXPLICIT_CREATE_SIGNALS.
+  if (isDeliverableOnlyRequest(input.message)) return false;
   if (!messageHasExplicitCreateSignal(input.message)) return false;
 
   // Workspace BUILD without a focused project (rare): keep historical path.

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ASK_ATLAS_HANDOFF_SURFACE_CONTRACT,
   CREATE_PROJECT_SUCCESS_INSTRUCTION,
+  isDeliverableOnlyRequest,
   messageHasExplicitCreateSignal,
   shouldForceCreateProject,
 } from "../askAtlasHandoffContract";
@@ -44,6 +45,24 @@ describe("shouldForceCreateProject (INT-35)", () => {
     ).toBe(true);
   });
 
+  it("does not force create for deliverable-only requests (make me a spreadsheet)", () => {
+    expect(
+      shouldForceCreateProject({
+        ...base,
+        message: "Make me a spreadsheet of the pricing options.",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not force create for create a powerpoint", () => {
+    expect(
+      shouldForceCreateProject({
+        ...base,
+        message: "Create a powerpoint summarizing this conversation.",
+      }),
+    ).toBe(false);
+  });
+
   it("does not force create on exploratory BUILD without explicit create phrasing", () => {
     expect(
       shouldForceCreateProject({
@@ -82,6 +101,20 @@ describe("shouldForceCreateProject (INT-35)", () => {
         message: "build me a habit tracker",
       }),
     ).toBe(true);
+  });
+});
+
+describe("isDeliverableOnlyRequest", () => {
+  it("recognizes spreadsheet / deck / pdf asks", () => {
+    expect(isDeliverableOnlyRequest("Make me a spreadsheet")).toBe(true);
+    expect(isDeliverableOnlyRequest("Can you generate a powerpoint deck?")).toBe(true);
+    expect(isDeliverableOnlyRequest("Export this as a PDF")).toBe(true);
+  });
+
+  it("rejects workspace / project management asks", () => {
+    expect(isDeliverableOnlyRequest("Please create the workspace")).toBe(false);
+    expect(isDeliverableOnlyRequest("Turn this into a project")).toBe(false);
+    expect(isDeliverableOnlyRequest("build me a habit tracker")).toBe(false);
   });
 });
 
