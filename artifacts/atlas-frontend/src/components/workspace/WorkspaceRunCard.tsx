@@ -1089,12 +1089,14 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         background: tone.cardBg,
         color: "hsl(var(--card-foreground))",
         border: `1px solid ${tone.border}`,
-        boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
+        boxShadow: tone.ring !== "transparent"
+          ? `0 0 0 3px ${tone.ring}, ${CARD_ELEVATION}`
+          : CARD_ELEVATION,
         borderRadius: "var(--card-radius)",
-        padding: "var(--card-pad-y) var(--card-pad-x)",
+        padding: "calc(var(--card-pad-y) + 2px) calc(var(--card-pad-x) + 2px)",
         margin: "var(--card-gap-half) 0",
         minHeight: "var(--card-min-h)",
-        width: "min(100%, 320px)",
+        width: "min(100%, 340px)",
         maxWidth: "100%",
         boxSizing: "border-box",
         alignSelf: "flex-start",
