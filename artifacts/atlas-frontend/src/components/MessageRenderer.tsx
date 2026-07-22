@@ -1,31 +1,33 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // MessageRenderer.tsx
-// Four rich text components recovered from commit b854dcc
-// CSS variables mapped to Axiom --atlas-* tokens.
+//
+// Workspace-facing markdown wrappers. All markdown structure and styling now
+// flows through the shared <AtlasMarkdown/> primitive. Only Workspace-specific
+// tokenization (file pills + codebase citation chips) and the ArchiveSummary
+// card layout live here.
+//
+// Historical exports (MarkdownProse, StreamingMarkdown, CodeBlockCard,
+// ArchiveSummaryCard) are preserved for callers.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import {
-  Children,
-  cloneElement,
-  isValidElement,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
+import { useMemo, type ReactNode } from "react";
 import { CitationChip } from "@/features/codebase";
+import {
+  AtlasMarkdown,
+  CodeBlockCard as SharedCodeBlockCard,
+  StreamingMarkdown as SharedStreamingMarkdown,
+  type AtlasTokenizer,
+} from "./AtlasMarkdown";
 
-// ── Patterns ──────────────────────────────────────────────────────────────────
+export const CodeBlockCard = SharedCodeBlockCard;
+export const StreamingMarkdown = SharedStreamingMarkdown;
+
+// ── Workspace tokenizer: file pills + codebase citations ──────────────────────
+
 const FILE_PILL_PATTERN = /(\b[\w-]+\.(?:tsx|ts|js|jsx|css|json|md|sql)\b)/gi;
 const FILE_PILL_EXACT_PATTERN = /^\b[\w-]+\.(?:tsx|ts|js|jsx|css|json|md|sql)\b$/i;
 // Codebase citation: path/with/slashes.ext OR file.ext:L12 (with optional -L24).
-// Requires extension (2-6 alpha/num after dot) so bare words aren't captured.
 const CITATION_PATTERN = /([\w./-]+\.[a-zA-Z][a-zA-Z0-9]{0,5})(?::L(\d+)(?:-L?(\d+))?)?/g;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function splitByFilePill(text: string, keyBase: string): ReactNode[] {
   const parts = text.split(FILE_PILL_PATTERN);
@@ -43,7 +45,7 @@ function splitByFilePill(text: string, keyBase: string): ReactNode[] {
   );
 }
 
-function renderStringWithChips(text: string, keyBase: string): ReactNode[] {
+const workspaceTokenizer: AtlasTokenizer = (text, keyBase) => {
   const out: ReactNode[] = [];
   const re = new RegExp(CITATION_PATTERN.source, "g");
   let last = 0;
@@ -69,288 +71,12 @@ function renderStringWithChips(text: string, keyBase: string): ReactNode[] {
     out.push(...splitByFilePill(text.slice(last), `${keyBase}-s${last}`));
   }
   return out;
-}
-
-function renderMarkdownChildren(children: ReactNode): ReactNode {
-  return Children.map(children, (child, i) => {
-    if (typeof child === "string") {
-      return renderStringWithChips(child, `mk${i}`);
-    }
-    if (isValidElement<{ children?: ReactNode }>(child)) {
-      return cloneElement(child, {
-        children: renderMarkdownChildren(child.props.children),
-      });
-    }
-    return child;
-  });
-}
-
-function extractText(node: ReactNode): string {
-  if (node === null || node === undefined || node === false) return "";
-  if (typeof node === "string" || typeof node === "number") return String(node);
-  if (Array.isArray(node)) return node.map(extractText).join("");
-  if (isValidElement<{ children?: ReactNode }>(node)) return extractText(node.props.children);
-  return "";
-}
-
-// ── CodeBlockCard ─────────────────────────────────────────────────────────────
-
-export function CodeBlockCard({ language, code }: { language: string; code: string }) {
-  const [copied, setCopied] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const PREVIEW_LINES = 8;
-  const codeContent = code ?? "";
-  const lines = codeContent ? codeContent.split("\n") : [];
-  const lineCount = lines.length;
-  const isOverflow = lineCount > PREVIEW_LINES;
-  const visibleCode = !isOverflow || expanded
-    ? codeContent
-    : lines.slice(0, PREVIEW_LINES).join("\n");
-  const hiddenCount = isOverflow && !expanded ? lineCount - PREVIEW_LINES : 0;
-  const label = language ? language.toUpperCase() : "CODE";
-
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(codeContent);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // clipboard unavailable
-    }
-  };
-
-  return (
-    <div
-      className="mb-3 overflow-hidden rounded-lg bg-[hsl(var(--code-bg))] text-[hsl(var(--code-fg))] border border-[hsl(var(--code-border))]"
-    >
-      <div
-        className="flex items-center justify-between px-3 py-2"
-        style={{
-          borderBottom: "0.5px solid var(--atlas-border)",
-          background: "color-mix(in oklab, var(--atlas-gold) 4%, transparent)",
-        }}
-      >
-        <span
-          className="font-mono"
-          style={{ fontSize: 10, letterSpacing: "0.12em", color: "var(--atlas-gold)" }}
-        >
-          {label} · {lineCount} {lineCount === 1 ? "line" : "lines"}
-        </span>
-        <button
-          type="button"
-          onClick={onCopy}
-          className="inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono"
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            background: "transparent",
-            border: "0.5px solid var(--atlas-border)",
-            color: copied ? "var(--atlas-gold)" : "var(--atlas-muted)",
-            cursor: "pointer",
-            transition: "all var(--motion-fast) var(--ease-standard)",
-          }}
-        >
-          {copied ? "Copied" : "Copy"}
-        </button>
-      </div>
-      <div style={{ position: "relative" }}>
-        <pre
-          className="overflow-x-auto p-3 font-mono text-[13px] leading-relaxed backdrop-blur-md"
-          style={{ margin: 0, color: "hsl(var(--code-fg))", background: "hsl(var(--code-bg) / 0.75)" }}
-        >
-          <code>{visibleCode}</code>
-        </pre>
-        {isOverflow && !expanded && (
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              left: 0, right: 0, bottom: 0, height: 36,
-              pointerEvents: "none",
-              background: "linear-gradient(to bottom, transparent, var(--atlas-surface))",
-            }}
-          />
-        )}
-      </div>
-      {isOverflow && (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="w-full font-mono"
-          style={{
-            padding: "8px 12px",
-            background: "transparent",
-            border: "none",
-            borderTop: "0.5px solid var(--atlas-border)",
-            color: "var(--atlas-gold)",
-            fontSize: 10,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-          }}
-        >
-          {expanded
-            ? "Collapse"
-            : `Expand · +${hiddenCount} more line${hiddenCount === 1 ? "" : "s"}`}
-        </button>
-      )}
-    </div>
-  );
-}
+};
 
 // ── MarkdownProse ─────────────────────────────────────────────────────────────
 
-// Stable components map — defined ONCE at module level so ReactMarkdown never
-// sees a "new" object and remounts its child tree. Without this, every parent
-// re-render (e.g. a streaming message tick) creates a fresh components object,
-// which forces ReactMarkdown to unmount → remount all rendered nodes, silently
-// resetting local state like CodeBlockCard's `expanded` flag.
-const MARKDOWN_COMPONENTS: import("react-markdown").Components = {
-  p: ({ children }) => (
-    <p
-      style={{
-        color: "inherit",
-        fontSize: "inherit",
-        lineHeight: "inherit",
-        letterSpacing: "inherit",
-        marginBottom: "0.6em",
-      }}
-    >
-      {renderMarkdownChildren(children)}
-    </p>
-  ),
-  strong: ({ children }) => (
-    <strong className="font-semibold" style={{ color: "inherit" }}>
-      {renderMarkdownChildren(children)}
-    </strong>
-  ),
-  code: ({ children, className }) => {
-    const isBlock = Boolean(className);
-    if (isBlock) {
-      return (
-        <code
-          className={`${className ?? ""} block whitespace-pre-wrap font-mono text-[13px]`}
-          style={{ color: "var(--atlas-fg)" }}
-        >
-          {children}
-        </code>
-      );
-    }
-    return (
-      <code
-        className="rounded px-1.5 py-0.5 font-mono bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))]"
-        style={{ fontSize: "0.88em" }}
-      >
-        {children}
-      </code>
-    );
-  },
-  pre: ({ children }) => {
-    let lang = "code";
-    let raw = "";
-    const childArray = Children.toArray(children);
-    for (const c of childArray) {
-      if (isValidElement<{ className?: string; children?: ReactNode }>(c)) {
-        const cls = (c.props as { className?: string }).className ?? "";
-        const m = /language-([\w+-]+)/.exec(cls);
-        if (m) lang = m[1];
-        raw += extractText((c.props as { children?: ReactNode }).children);
-      } else if (typeof c === "string") {
-        raw += c;
-      }
-    }
-    return <CodeBlockCard language={lang} code={raw.replace(/\n+$/, "")} />;
-  },
-  ul: ({ children }) => (
-    <ul
-      className="ml-4 list-disc"
-      style={{ marginTop: "0.25em", marginBottom: "0.6em", display: "flex", flexDirection: "column", gap: "0.2em" }}
-    >
-      {children}
-    </ul>
-  ),
-  ol: ({ children }) => (
-    <ol
-      className="ml-4 list-decimal"
-      style={{ marginTop: "0.25em", marginBottom: "0.6em", display: "flex", flexDirection: "column", gap: "0.2em" }}
-    >
-      {children}
-    </ol>
-  ),
-  li: ({ children }) => (
-    <li style={{ color: "inherit", fontSize: "inherit", lineHeight: "inherit", letterSpacing: "inherit" }}>
-      {renderMarkdownChildren(children)}
-    </li>
-  ),
-  a: ({ href, children }) => {
-    const isInternal = typeof href === "string" && href.startsWith("/");
-    if (isInternal) {
-      return (
-        <button
-          type="button"
-          onClick={() =>
-            window.dispatchEvent(new CustomEvent("axiom:navigate-internal", { detail: { href } }))
-          }
-          style={{
-            display: "inline",
-            background: "none",
-            border: "none",
-            padding: 0,
-            color: "var(--atlas-gold)",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            fontSize: "inherit",
-            lineHeight: "inherit",
-            letterSpacing: "inherit",
-            textDecoration: "underline",
-            textDecorationStyle: "dotted",
-            textUnderlineOffset: "3px",
-          }}
-        >
-          {children}
-        </button>
-      );
-    }
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          color: "var(--atlas-gold)",
-          textDecoration: "underline",
-          textDecorationStyle: "dotted",
-          textUnderlineOffset: "3px",
-        }}
-      >
-        {children}
-      </a>
-    );
-  },
-};
-
 export function MarkdownProse({ content }: { content: string }) {
-  return (
-    <div
-      className="atlas-prose"
-      style={{
-        overflowWrap: "anywhere",
-        wordBreak: "break-word",
-        minWidth: 0,
-        WebkitFontSmoothing: "antialiased",
-        MozOsxFontSmoothing: "grayscale",
-      }}
-    >
-      <ReactMarkdown remarkPlugins={[remarkBreaks]} components={MARKDOWN_COMPONENTS}>
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
+  return <AtlasMarkdown content={content} theme="obsidian" tokenize={workspaceTokenizer} />;
 }
 
 // ── ArchiveSummaryCard ────────────────────────────────────────────────────────
@@ -377,8 +103,7 @@ export function ArchiveSummaryCard({
     }
     for (let i = 0; i < matches.length; i++) {
       if (i + 1 < matches.length) {
-        matches[i].end =
-          matches[i + 1].start - matches[i + 1].key.length - 4;
+        matches[i].end = matches[i + 1].start - matches[i + 1].key.length - 4;
       }
       out[matches[i].key] = content.slice(matches[i].start, matches[i].end).trim();
     }
@@ -458,70 +183,6 @@ export function ArchiveSummaryCard({
           <MarkdownProse content={content} />
         )}
       </div>
-    </div>
-  );
-}
-
-// ── StreamingMarkdown ─────────────────────────────────────────────────────────
-
-export function StreamingMarkdown({
-  content,
-  speed = 30,
-  onComplete,
-}: {
-  content: string;
-  speed?: number;
-  onComplete?: () => void;
-}) {
-  const words = useMemo(() => content.match(/\S+\s*/g) ?? [], [content]);
-  const [visibleCount, setVisibleCount] = useState(0);
-  const completeCalled = useRef(false);
-
-  useEffect(() => {
-    setVisibleCount(0);
-    completeCalled.current = false;
-  }, [content]);
-
-  useEffect(() => {
-    const total = words.length;
-    if (visibleCount >= total) {
-      if (!completeCalled.current) {
-        completeCalled.current = true;
-        onComplete?.();
-      }
-      return;
-    }
-    const lastWord = words[visibleCount - 1] ?? "";
-    const jitter = speed * (0.6 + Math.random() * 0.8);
-    const pause = /[.!?]\s*$/.test(lastWord) ? speed * 4 : jitter;
-    const burst = Math.random() > 0.7 ? 2 : 1;
-    const timer = setTimeout(() => {
-      setVisibleCount((c) => Math.min(c + burst, total));
-    }, pause);
-    return () => clearTimeout(timer);
-  }, [visibleCount, words, speed, onComplete]);
-
-  const visibleText = words.slice(0, visibleCount).join("");
-  const isDone = visibleCount >= words.length;
-
-  return (
-    <div style={{ position: "relative" }}>
-      <MarkdownProse content={visibleText} />
-      {!isDone && (
-        <span
-          style={{
-            display: "inline-block",
-            width: 6,
-            height: 14,
-            marginLeft: 2,
-            background: "var(--atlas-gold)",
-            borderRadius: 1,
-            opacity: 0.7,
-            animation: "atlas-cursor-blink 800ms steps(2) infinite",
-            verticalAlign: "text-bottom",
-          }}
-        />
-      )}
     </div>
   );
 }
