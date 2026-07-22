@@ -1255,15 +1255,23 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
     }
   }
 
-  // M2.2 R1 fix: seed Insights DNA / Objects from Ask Atlas knowledge on handoff
+  // M2.2 R1 fix: seed Insights DNA / Objects from Ask Atlas knowledge on handoff.
+  // Await Tier1→DNA so Resume brief isn't empty; genome extraction stays async.
   const seedConversationId = sourceConversationId ?? adoptedConversationId;
-  void seedIntelligenceAfterHandoff({
-    projectId: id,
-    userId,
-    sourceConversationId: seedConversationId,
-  }).catch((err) => {
+  try {
+    const { flushNexusTier1BufferToProject } = await import("../services/tier1");
+    const { seedDnaFromTier1 } = await import("../lib/handoffIntelligenceSeed");
+    const { runGenomeExtraction } = await import("../lib/genomeExtract");
+    if (seedConversationId) {
+      await flushNexusTier1BufferToProject(seedConversationId, id, userId);
+    }
+    await seedDnaFromTier1(id);
+    void runGenomeExtraction(id).catch((err) => {
+      logger.warn({ err, projectId: id }, "append-thread: genome extraction failed — non-fatal");
+    });
+  } catch (err) {
     logger.warn({ err, projectId: id }, "append-thread: intelligence seed failed — non-fatal");
-  });
+  }
 
   const genomeRow = await getProjectDNA(id);
 
