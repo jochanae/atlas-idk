@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { OBJECT_TYPES } from "./objectTypes";
+import { CREATABLE_OBJECT_TYPES, OBJECT_TYPES, type ObjectType } from "./objectTypes";
 
 const GOLD = "var(--atlas-gold)";
 const MUTED = "var(--atlas-muted)";
@@ -7,20 +7,22 @@ const FG = "var(--atlas-fg)";
 const BORDER = "var(--atlas-border)";
 const MONO = "var(--app-font-mono)";
 
-export type ObjectType =
-  | "Idea" | "Goal" | "Blocker" | "Decision"
-  | "Audience" | "Feature" | "Risk" | "Insight";
+export type { ObjectType };
 
 const TYPE_CONFIG: Record<ObjectType, { icon: string; color: string }> = {
-  Idea:     { icon: "💡", color: "#f59e0b" },
-  Goal:     { icon: "🎯", color: "#4ade80" },
-  Blocker:  { icon: "🚧", color: "#f87171" },
-  Decision: { icon: "✅", color: "#60a5fa" },
-  Audience: { icon: "👥", color: "#a78bfa" },
-  Feature:  { icon: "📦", color: "#34d399" },
-  Risk:     { icon: "⚠️",  color: "#fb923c" },
-  Insight:  { icon: "💫", color: "#e879f9" },
+  Idea:              { icon: "·", color: "#f59e0b" },
+  Goal:              { icon: "·", color: "#4ade80" },
+  Blocker:           { icon: "·", color: "#f87171" },
+  Decision:          { icon: "·", color: "#60a5fa" },
+  Audience:          { icon: "·", color: "#a78bfa" },
+  Feature:           { icon: "·", color: "#34d399" },
+  Risk:              { icon: "·", color: "#fb923c" },
+  Insight:           { icon: "·", color: "#e879f9" },
+  Question:          { icon: "·", color: "#38bdf8" },
+  EngineeringEvent:  { icon: "·", color: "#94a3b8" },
 };
+
+const PROMOTABLE = new Set(["Idea", "Insight", "Question", "Goal", "Feature", "Risk"]);
 
 export type ProjectObject = {
   id: number;
@@ -119,7 +121,7 @@ function TypeFilterBar({
   onSelect: (t: ObjectType | "All") => void;
 }) {
   const total = (counts["All"] ?? 0);
-  const types: Array<ObjectType | "All"> = ["All", ...OBJECT_TYPES as unknown as ObjectType[]];
+  const types: Array<ObjectType | "All"> = ["All", ...CREATABLE_OBJECT_TYPES];
 
   return (
     <div style={{
@@ -237,7 +239,7 @@ function AddObjectForm({
 
       {/* Type selector */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-        {(OBJECT_TYPES as unknown as ObjectType[]).map(t => {
+        {CREATABLE_OBJECT_TYPES.map(t => {
           const cfg = TYPE_CONFIG[t];
           const isSelected = type === t;
           return (
@@ -255,7 +257,6 @@ function AddObjectForm({
                 transition: "all 100ms",
               }}
             >
-              <span style={{ fontSize: 9 }}>{cfg.icon}</span>
               {t}
             </button>
           );
@@ -314,14 +315,17 @@ function AddObjectForm({
 }
 
 function ObjectDetailPanel({
-  obj, onClose, onDeleted,
+  obj, onClose, onDeleted, onUpdated,
 }: {
   obj: ProjectObject;
   onClose: () => void;
   onDeleted: () => void;
+  onUpdated: () => void;
 }) {
   const cfg = TYPE_CONFIG[obj.type] ?? { icon: "·", color: MUTED };
   const [deleting, setDeleting] = useState(false);
+  const [promoting, setPromoting] = useState(false);
+  const canPromote = PROMOTABLE.has(obj.type) && obj.type !== "Decision";
 
   const handleDelete = async () => {
     if (!window.confirm("Remove this object?")) return;
@@ -330,6 +334,22 @@ function ObjectDetailPanel({
       await fetch(`/api/entries/${obj.id}`, { method: "DELETE", credentials: "include" });
       onDeleted();
     } catch { setDeleting(false); }
+  };
+
+  const handlePromote = async () => {
+    setPromoting(true);
+    try {
+      const res = await fetch(`/api/entries/${obj.id}/promote`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toType: "Decision" }),
+      });
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+      onUpdated();
+    } catch {
+      setPromoting(false);
+    }
   };
 
   return (
@@ -365,22 +385,38 @@ function ObjectDetailPanel({
         </div>
       )}
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <span style={{ fontFamily: MONO, fontSize: 8, color: MUTED, opacity: 0.35 }}>
           {fmtAge(obj.createdAt)}
         </span>
-        <button
-          onClick={() => void handleDelete()}
-          disabled={deleting}
-          style={{
-            background: "transparent", border: "none",
-            fontFamily: MONO, fontSize: 8, letterSpacing: "0.1em",
-            textTransform: "uppercase", color: "#f87171",
-            opacity: deleting ? 0.3 : 0.5, cursor: deleting ? "default" : "pointer",
-          }}
-        >
-          {deleting ? "removing…" : "remove"}
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          {canPromote && (
+            <button
+              onClick={() => void handlePromote()}
+              disabled={promoting}
+              style={{
+                background: "transparent", border: "none",
+                fontFamily: MONO, fontSize: 8, letterSpacing: "0.1em",
+                textTransform: "uppercase", color: GOLD,
+                opacity: promoting ? 0.3 : 0.85, cursor: promoting ? "default" : "pointer",
+              }}
+            >
+              {promoting ? "promoting…" : "promote to decision"}
+            </button>
+          )}
+          <button
+            onClick={() => void handleDelete()}
+            disabled={deleting}
+            style={{
+              background: "transparent", border: "none",
+              fontFamily: MONO, fontSize: 8, letterSpacing: "0.1em",
+              textTransform: "uppercase", color: "#f87171",
+              opacity: deleting ? 0.3 : 0.5, cursor: deleting ? "default" : "pointer",
+            }}
+          >
+            {deleting ? "removing…" : "remove"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -478,6 +514,7 @@ export function ObjectBoard({
           obj={selected}
           onClose={() => setSelected(null)}
           onDeleted={() => { setSelected(null); void load(); }}
+          onUpdated={() => { setSelected(null); void load(); }}
         />
       )}
 

@@ -6646,7 +6646,7 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     }
   }
 
-  // Auto-create ledger entries for resolved nodes — skipped in scenario mode
+  // Flow node resolution is an Engineering Event — not a product Decision (M2.2 K5)
   if (!isScenarioMode && resolvedNodes.length > 0) {
     const attributionMessageId = intentMsgId ?? savedMsgId;
     try {
@@ -6654,19 +6654,21 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
         db.insert(entriesTable).values({
           projectId,
           sessionId,
-          title: `${nodeId.charAt(0).toUpperCase() + nodeId.slice(1)} — decided`,
-          summary: "Node resolved during Atlas conversation. Decision committed to map.",
-          details: "Node resolved during Atlas conversation. Decision committed to map.",
+          type: "EngineeringEvent",
+          title: `${nodeId.charAt(0).toUpperCase() + nodeId.slice(1)} — resolved`,
+          summary: "Flow node resolved during Atlas conversation.",
+          details: "Flow node resolved during Atlas conversation.",
           status: "committed",
           severity: "committed",
-          mode: "decide",
+          mode: "flow",
+          verb: "flow_node_resolved",
           amField: "intent",
           ...(attributionMessageId != null ? { sourceMessageId: attributionMessageId } : {}),
           createdAt: new Date(),
           updatedAt: new Date(),
         })
       ));
-    } catch { /* non-fatal — map still updates even if ledger write fails */ }
+    } catch { /* non-fatal — map still updates even if activity write fails */ }
   }
 
   const finalPayload = {

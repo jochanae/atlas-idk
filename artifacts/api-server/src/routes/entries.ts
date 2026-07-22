@@ -12,7 +12,10 @@ import {
   ListEntriesParams,
   ListEntriesQueryParams,
   ReopenEntryParams,
+  PromoteEntryBody,
+  PromoteEntryParams,
 } from "@workspace/api-zod";
+import { isPromotableToDecision } from "../lib/knowledgeClassification";
 
 const router: IRouter = Router();
 
@@ -477,6 +480,8 @@ router.patch("/entries/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Entry not found" }); return;
   }
   const updateData: Record<string, unknown> = { ...parsed.data };
+  // K6: type changes only via POST /entries/:id/promote — strip silent type drift
+  delete updateData.type;
   if (parsed.data.title !== undefined) {
     updateData.title = parsed.data.title.trim();
   }
@@ -484,6 +489,48 @@ router.patch("/entries/:id", async (req, res): Promise<void> => {
     updateData.lockedAt = new Date();
   }
   const [entry] = await db.update(entriesTable).set(updateData).where(eq(entriesTable.id, params.data.id)).returning();
+  if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
+  await touchProjectActivity(entry.projectId);
+  res.json(serializeEntry(entry));
+});
+
+/** Explicit knowledge promotion (M2.2 K6) — e.g. Idea → Decision. */
+router.post("/entries/:id/promote", async (req, res): Promise<void> => {
+  const params = PromoteEntryParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const parsed = PromoteEntryBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const userId = (req as any).authUser.id as number;
+  if (!(await entryBelongsToUser(params.data.id, userId))) {
+    res.status(404).json({ error: "Entry not found" }); return;
+  }
+  const [original] = await db.select().from(entriesTable).where(eq(entriesTable.id, params.data.id));
+  if (!original) { res.status(404).json({ error: "Entry not found" }); return; }
+  if (original.type === "Decision" && original.status === "committed") {
+    res.status(409).json({ error: "Already a committed Decision" }); return;
+  }
+  if (original.type === "EngineeringEvent") {
+    res.status(409).json({ error: "Engineering events cannot be promoted to Decisions" }); return;
+  }
+  if (original.type !== "Decision" && !isPromotableToDecision(original.type)) {
+    res.status(409).json({ error: `Cannot promote ${original.type} to Decision` }); return;
+  }
+
+  let enrichment: Record<string, unknown> = {};
+  if (original.enrichmentJson) {
+    try { enrichment = JSON.parse(original.enrichmentJson) as Record<string, unknown>; } catch { /* keep empty */ }
+  }
+  enrichment.promotedFrom = original.type;
+  enrichment.promotedAt = new Date().toISOString();
+  enrichment.promotedBy = "explicit";
+
+  const [entry] = await db.update(entriesTable).set({
+    type: "Decision",
+    status: "committed",
+    severity: "committed",
+    lockedAt: new Date(),
+    enrichmentJson: JSON.stringify(enrichment),
+  }).where(eq(entriesTable.id, params.data.id)).returning();
   if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
   await touchProjectActivity(entry.projectId);
   res.json(serializeEntry(entry));
@@ -516,6 +563,7 @@ router.post("/entries/:id/reopen", async (req, res): Promise<void> => {
   const [newEntry] = await db.insert(entriesTable).values({
     projectId: original.projectId,
     sessionId: original.sessionId,
+    type: original.type,
     status: "draft",
     title: original.title,
     summary: original.summary,

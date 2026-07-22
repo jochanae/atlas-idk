@@ -3,8 +3,8 @@
 **Phase:** Evaluation audit (quality of understanding — **not** infrastructure)  
 **Date:** 2026-07-22  
 **Repo HEAD at commission:** `d0b923d1` (`main`, post PR #208)  
-**Status:** **OPEN — evaluation complete; implementation remaining**  
-**Checklist:** P1 Verify Flow ✅ PASS · P2 Knowledge Classification ⏳ · P3 Surface Integrity ⏳ · Round 2 validation ✅ complete · Final regression pending after fixes  
+**Status:** **OPEN — evaluation complete; P2/P3 implementation landed — awaiting user regression**  
+**Checklist:** P1 Verify Flow ✅ PASS · P2 Knowledge Classification ✅ implemented · P3 Surface Integrity ✅ implemented · Round 2 validation ✅ complete · Final regression ⏸ user pass  
 **Board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Prerequisite:** Milestone 2.1 deliverable contract landed (PR #208)
 
@@ -498,9 +498,9 @@ After those land: **one final regression pass** to close Milestone 2.2.
 |------|------|--------|
 | **P1** Verify Flow | Observation | ✅ **PASS** |
 | **Round 2** validation | Validation | ✅ **COMPLETE** |
-| **P2** Knowledge Classification | Correction / implementation | ⏳ **In progress** — highest priority |
-| **P3** Surface Integrity | Correction / implementation | ⏳ **In progress** (includes desktop Flow discoverability) |
-| Final regression | Validation | ⏸ After P2 + P3 |
+| **P2** Knowledge Classification | Correction / implementation | ✅ **Implemented** — awaiting regression |
+| **P3** Surface Integrity | Correction / implementation | ✅ **Implemented** (incl. desktop Flow tab) — awaiting regression |
+| Final regression | Validation | ⏸ **Your pass** to close 2.2 |
 
 ### P1 — Verify Flow (PASS)
 
@@ -515,34 +515,37 @@ Confirmed:
 
 **Discoverability note (not a P1 fail):** On desktop, Flow remains filtered from the right-rail tab bar; access via Insights → Open Flow / Map / `?view=flow`. Fix under P3 if product wants it in the normal tab strip.
 
-### P2 — Knowledge Classification (implementation)
+### P2 — Knowledge Classification (implemented)
 
 | | |
 |--|--|
-| **Status** | ⏳ In progress |
+| **Status** | ✅ Implemented — awaiting regression |
 | **Goal** | First-class types + explicit promotion (see §0) |
 
-Implement / enforce:
+Landed:
 
-- Idea · Decision · Insight · Question · Engineering Event  
-- Rule: no silent category drift — only **explicit promotion** (e.g. Idea → Decision)  
+- Schema: `Question`, `EngineeringEvent` on `object_type`  
+- Writers retargeted: Tier-1 / capacity / verify / artifact / repo-scan / flow-resolve → `EngineeringEvent`  
+- Genome extract: Decisions & Questions park (no silent Decision commit); receipt auto-promote removed  
+- Explicit promote: `POST /entries/:id/promote` + ObjectBoard / ParkingLot affordances  
+- PATCH strips silent `type` drift  
 
-### P3 — Surface Integrity (implementation)
+### P3 — Surface Integrity (implemented)
 
 | | |
 |--|--|
-| **Status** | ⏳ In progress |
+| **Status** | ✅ Implemented — awaiting regression |
 | **Goal** | One responsibility per surface (see §0b) + desktop Flow discoverability |
 
-| Surface | Owns |
-|---------|------|
-| Blueprint | Stable project identity |
-| Ledger | Decisions only |
-| Insights | Synthesized observations |
-| Flow | Relationships between concepts |
-| Activity | Engineering events, syncs, builds, commits |
+| Surface | Owns | Change |
+|---------|------|--------|
+| Blueprint | Stable project identity | unchanged contract |
+| Ledger | Decisions only | state + LedgerPanel + ledger page filter `type === Decision` |
+| Insights | Synthesized observations | briefing prefers purpose/wedge/differentiator/Insight objects |
+| Flow | Relationships between concepts | unchanged; desktop tab restored |
+| Activity | Engineering events | activity feed labels `engineering_event` separately |
 
-Also: restore or intentionally productize desktop access to Flow (currently hidden from right-rail tabs).
+Desktop Flow tab: right-rail no longer filters out `map`.
 
 ---
 
@@ -551,8 +554,8 @@ Also: restore or intentionally productize desktop access to Flow (currently hidd
 1. ~~Round 1 conversation + scorecard~~ — done.  
 2. ~~P1 Verify Flow~~ — **PASS**.  
 3. ~~Round 2 validation (reversal + lens surfaces)~~ — **COMPLETE**.  
-4. **Implement P2** — Knowledge Classification (K1–K6).  
-5. **Implement P3** — Surface Integrity (S1–S5) + desktop Flow discoverability.  
+4. ~~Implement P2~~ — Knowledge Classification (K1–K6).  
+5. ~~Implement P3~~ — Surface Integrity (S1–S5) + desktop Flow discoverability.  
 6. **One final regression pass** — then close Milestone 2.2.  
 7. After 2.2 closes, deepen lens differentiation under **2.3** only if still needed beyond Round 2 lens passes.
 

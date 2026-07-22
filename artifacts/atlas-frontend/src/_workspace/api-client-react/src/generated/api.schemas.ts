@@ -175,6 +175,8 @@ export interface Entry {
   projectId: number;
   /** @nullable */
   sessionId?: number | null;
+  /** Knowledge classification (Idea | Decision | Insight | Question | EngineeringEvent | …) */
+  type?: string | null;
   status: EntryStatus;
   title: string;
   /** @nullable */

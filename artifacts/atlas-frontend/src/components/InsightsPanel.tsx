@@ -69,6 +69,7 @@ interface Intelligence {
   };
   entries: {
     decisions: { id: number; title: string; summary: string | null; status: string; createdAt: string }[];
+    insights?: { id: number; title: string; summary: string | null; status: string; createdAt: string }[];
     openQuestionEntries: { id: number; title: string; summary: string | null; type: string; createdAt: string }[];
   };
   hasFlow: boolean;
@@ -96,72 +97,61 @@ const DIMENSION_LABEL: Record<string, string> = {
   delivery: "Build Readiness",
 };
 
-function stageArc(stage: string): string {
-  const arcs: Record<string, string> = {
-    Think: "shaping the idea",
-    Shape: "defining the shape",
-    Decide: "pressure-testing commitments",
-    Workspace: "setting up execution",
-    Strategize: "sequencing the plan",
-    Build: "implementing",
-    Operate: "running and learning",
-    Evolve: "iterating on what works",
-  };
-  return arcs[stage] ?? "in motion";
-}
-
+/**
+ * Synthesized Insights briefing (M2.2 K3 / S3).
+ * Prefer non-obvious product understanding over stage/status Mad Libs.
+ */
 function briefingLines(intel: Intelligence): string[] {
   const lines: string[] = [];
-  const { dna, health, readiness, entries } = intel;
+  const { dna, health, entries } = intel;
 
-  // Where the project stands
-  if (dna.stage) {
-    lines.push(`You're in the ${dna.stage} phase — ${stageArc(dna.stage)}.`);
+  // Core identity synthesis
+  if (dna.purpose) {
+    lines.push(dna.purpose);
+  }
+  if (dna.wedge) {
+    lines.push(`The irreducible core: ${dna.wedge}`);
+  }
+  if (dna.differentiator) {
+    lines.push(`What sets this apart: ${dna.differentiator}`);
+  } else if (dna.identity && dna.audience) {
+    lines.push(`${dna.identity} — for ${dna.audience}.`);
+  } else if (dna.audience) {
+    lines.push(`Built for ${dna.audience}.`);
   }
 
-  // Clarity read
-  if (dna.confidenceScore >= 70) {
-    lines.push(`The vision is stable (${dna.confidenceScore}% clarity).`);
-  } else if (dna.confidenceScore >= 35) {
-    lines.push(`The vision is taking shape (${dna.confidenceScore}% clarity) — worth another pass.`);
-  } else if (dna.confidenceScore > 0) {
-    lines.push(`The vision is still forming (${dna.confidenceScore}% clarity).`);
+  // First-class Insight objects (synthesized observations)
+  const insightEntries = entries.insights ?? [];
+  for (const insight of insightEntries.slice(0, 3)) {
+    const text = insight.summary?.trim() || insight.title;
+    if (text && !lines.includes(text)) lines.push(text);
   }
 
-  // Momentum
-  const conv = health.evidence?.conversationsLast7Days ?? 0;
-  if (health.momentum === "High") {
-    lines.push(`Momentum is strong — ${conv} conversations in the last 7 days.`);
-  } else if (health.momentum === "Medium") {
-    lines.push(`Momentum is steady (${conv} recent conversations).`);
-  } else if (conv === 0) {
-    lines.push(`Nothing new in the last 7 days — the thread's gone quiet.`);
-  } else {
-    lines.push(`Momentum is light — only ${conv} recent conversation${conv === 1 ? "" : "s"}.`);
-  }
-
-  // Risk / tension
+  // Tension that matters architecturally
   if (health.risk) {
-    lines.push(`Watching: ${health.risk}.`);
+    lines.push(`In tension: ${health.risk}.`);
   }
 
-  // Open questions
-  const openQ = dna.openQuestions.length + entries.openQuestionEntries.length;
-  if (openQ > 0) {
-    lines.push(`${openQ} open question${openQ === 1 ? "" : "s"} still in tension.`);
+  const openQTitles = [
+    ...dna.openQuestions,
+    ...entries.openQuestionEntries.map((q) => q.title),
+  ].filter(Boolean);
+  if (openQTitles.length > 0) {
+    lines.push(`Still unresolved: ${openQTitles[0]}`);
   }
 
-  // Committed decisions
-  if (entries.decisions.length > 0) {
-    lines.push(`${entries.decisions.length} decision${entries.decisions.length === 1 ? "" : "s"} committed.`);
+  // Light commitment signal — not a count Mad Lib
+  const committed = entries.decisions.filter((d) => d.status === "committed");
+  if (committed.length > 0 && committed[0]?.title) {
+    lines.push(`Locked in: ${committed[0].title}`);
   }
 
-  // Next action
-  if (health.nextAction) {
-    lines.push(`Next: ${health.nextAction}`);
+  // Fallback when DNA is empty — one orientation line, not a procedure script
+  if (lines.length === 0) {
+    lines.push("Atlas is still forming a read on this project — keep the architectural conversation going.");
   }
 
-  return lines;
+  return lines.slice(0, 6);
 }
 
 export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | null; onOpenFlow?: () => void }) {

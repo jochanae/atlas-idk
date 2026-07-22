@@ -97,11 +97,17 @@ export const UpdateEntryBody = z.object({
   context_why: z.string().optional(),
 }).passthrough();
 
+/** Explicit knowledge promotion (M2.2 K6) — Idea/Insight/Question → Decision. */
+export const PromoteEntryBody = z.object({
+  toType: z.literal("Decision"),
+});
+
 export const CreateEntryParams = z.object({ projectId: numericId });
 export const UpdateEntryParams = z.object({ id: numericId });
 export const DeleteEntryParams = z.object({ id: numericId });
 export const ListEntriesParams = z.object({ projectId: numericId });
 export const ReopenEntryParams = z.object({ id: numericId });
+export const PromoteEntryParams = z.object({ id: numericId });
 
 export const ListEntriesQueryParams = z.object({
   status: z.string().optional(),

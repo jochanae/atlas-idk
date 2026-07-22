@@ -1,7 +1,7 @@
 # Milestone 2 — Restore Intelligence
 
 **Parent:** Milestone track (M1 closed → M2 open)  
-**Status:** OPEN — 2.1 closed; 2.2 evaluation complete, implementation remaining  
+**Status:** OPEN — 2.1 closed; 2.2 implementation landed, awaiting user regression  
 **Branch / PR:** implementation work continues under `cursor/milestone-2-2-intelligence-correctness-df4c` / PR #209  
 **Last updated:** 2026-07-22
 
@@ -45,29 +45,25 @@ Ship and prove the Ask Atlas → generate → Open → Workspace path for PPTX a
 
 ---
 
-### 2.2 — Workspace Intelligence Correctness — 🟡 EVALUATION COMPLETE → IMPLEMENTATION
+### 2.2 — Workspace Intelligence Correctness — 🟡 IMPLEMENTATION LANDED → USER REGRESSION
 
 **Board:** [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md)
 
-**Status after Round 2 user evaluation (2026-07-22):**
+**Status after Round 2 + P2/P3 implementation (2026-07-22):**
 
 | Check | Result |
 |-------|--------|
 | Blueprint | ✅ PASS |
-| Ledger | ✅ PASS (engineering noise remains — fix in P2/P3) |
-| Insights | ✅ PASS (procedural tone remains — fix in P2/P3) |
+| Ledger | ✅ PASS (engineering noise fixed in P2/P3 — confirm in regression) |
+| Insights | ✅ PASS (synthesis briefing landed — confirm in regression) |
 | Flow (P1) | ✅ PASS — Designer / Builder / Storyteller share project knowledge |
 | Architectural reversal | ✅ PASS |
-| Knowledge Classification (P2) | ❌ FAIL — implementation required |
-| Surface Integrity (P3) | ⏳ PARTIAL — Flow works; desktop discoverability + ledger/insights purity remain |
+| Knowledge Classification (P2) | ✅ Implemented — awaiting regression |
+| Surface Integrity (P3) | ✅ Implemented (Ledger filter, Activity types, desktop Flow tab) — awaiting regression |
 
-**Evaluation is complete.** Stop creating new tests. Remaining work is **implementation only**:
+**Evaluation complete. Implementation landed.** Remaining:
 
-1. Knowledge Classification (Idea / Decision / Insight / Question / Engineering Event + promotion)
-2. Surface Integrity (Blueprint / Ledger / Insights / Flow / Activity contracts)
-3. Desktop Flow discoverability (if treated as product issue)
-
-**After Cursor ships those fixes:** one user regression pass closes 2.2.
+**One user regression pass** against K1–K6 and S1–S5 closes 2.2.
 
 **Not required to close 2.2:** Ask Atlas existence debates; more Flow verification rounds; infra rabbit holes.
 

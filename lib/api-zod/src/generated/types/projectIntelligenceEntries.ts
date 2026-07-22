@@ -17,5 +17,6 @@ export type ProjectIntelligenceEntries = {
   ideas: IntelligenceEntryItem[];
   features: IntelligenceEntryItem[];
   risks: IntelligenceEntryItem[];
+  insights?: IntelligenceEntryItem[];
   openQuestionEntries: IntelligenceEntryItem[];
 };

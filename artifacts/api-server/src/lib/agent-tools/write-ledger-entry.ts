@@ -21,6 +21,7 @@ export function writeLedgerEntryTool(_ctx: AgentToolContext) {
           .insert(entriesTable)
           .values({
             projectId,
+            type: "Decision",
             title,
             summary,
             verb,

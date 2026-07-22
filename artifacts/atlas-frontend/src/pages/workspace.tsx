@@ -2213,7 +2213,7 @@ function RightPanel({
           whiteSpace: "nowrap",
         }}
       >
-        {!isMobile && tabs.filter(t => t.id !== "map").map((t) => {
+        {!isMobile && tabs.map((t) => {
           const active = tab === t.id;
           return (
             <button

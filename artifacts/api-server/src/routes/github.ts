@@ -868,11 +868,13 @@ ${fileBlock}`;
           if (!existing_entry && analysis.summary) {
             await db.insert(entriesTable).values({
               projectId: matchedProject.id,
+              type: "EngineeringEvent",
               title: `Repo scan: ${analysis.projectName ?? repo}`,
               summary: analysis.summary,
               status: "committed",
               severity: "general",
               mode: "think",
+              verb: "repo_scan",
             }).catch(() => { /* non-blocking */ });
           }
         }

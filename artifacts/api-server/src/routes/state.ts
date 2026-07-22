@@ -56,10 +56,15 @@ router.get("/projects/:id/state", async (req, res): Promise<void> => {
         summary: entriesTable.summary,
         status: entriesTable.status,
         severity: entriesTable.severity,
+        type: entriesTable.type,
         createdAt: entriesTable.createdAt,
       })
       .from(entriesTable)
-      .where(and(eq(entriesTable.projectId, projectId), eq(entriesTable.status, "committed")))
+      .where(and(
+        eq(entriesTable.projectId, projectId),
+        eq(entriesTable.status, "committed"),
+        eq(entriesTable.type, "Decision"),
+      ))
       .orderBy(desc(entriesTable.createdAt))
       .limit(5),
     db

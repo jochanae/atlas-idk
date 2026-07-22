@@ -353,7 +353,7 @@ export async function consumeCapacity(
     try {
       await db.insert(entriesTable).values({
         projectId,
-        type: "Decision",
+        type: "EngineeringEvent",
         status: "committed",
         severity: "info",
         mode: "capacity",
