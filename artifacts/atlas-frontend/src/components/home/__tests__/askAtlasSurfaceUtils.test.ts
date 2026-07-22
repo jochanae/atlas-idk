@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   askAtlasMessageHasSketch,
+  renderMessageImages,
   resolveAskAtlasSketchSrc,
 } from "../askAtlasSurfaceUtils";
+import type { AskAtlasMessage } from "../AskAtlasSurface";
 import {
   buildSketchPrompt,
   formatSketchUserPromptDisplay,
@@ -50,6 +52,34 @@ describe("askAtlasMessageHasSketch", () => {
         imageGen: { images: [{ imageUrl: "data:image/png;base64,x" }] },
       }),
     ).toBe(true);
+  });
+});
+
+describe("renderMessageImages (INT-40 Ask Atlas)", () => {
+  it("returns null when structured attachments exist (AttachmentStrip owns the row)", () => {
+    const msg = {
+      role: "user",
+      content: "look at this deck",
+      attachments: [
+        {
+          mediaType:
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          base64: "",
+          name: "deck.pptx",
+        },
+      ],
+    } as AskAtlasMessage;
+    expect(renderMessageImages(msg)).toBeNull();
+  });
+
+  it("still renders a legacy sketch/imageUrl when there are no attachments", () => {
+    const msg = {
+      role: "assistant",
+      content: "",
+      imageUrl: "https://cdn.example/sketch.png",
+    } as AskAtlasMessage;
+    const node = renderMessageImages(msg);
+    expect(node).not.toBeNull();
   });
 });
 
