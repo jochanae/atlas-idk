@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useListProjects } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
-import { useDockVisibility, dockVisibility } from "@/hooks/useDockVisibility";
+import { useDockVisibility, useHandoffChromeLock, HANDOFF_LOCKED_DOCK_RESERVED_PX, dockVisibility } from "@/hooks/useDockVisibility";
 import { subscribeAnchorHeld, subscribeAnchorAbsorb } from "@/lib/atlasAnchor";
 
 const LAST_PROJECT_KEY = "atlas-last-project-id";
@@ -181,6 +181,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { data: projectsRaw } = useListProjects();
   const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
   const dockVisible = useDockVisibility();
+  const handoffChromeLocked = useHandoffChromeLock();
   const [showAtlasHub, setShowAtlasHub] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
   const [anchorHeld, setAnchorHeld] = useState(false);
@@ -200,13 +201,22 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   }, []);
   useEffect(() => {
     if (typeof document === "undefined") return;
+    // During handoff hydration, keep reserved height frozen at peek so
+    // footer/composer/safe-area don't incrementally reflow.
+    if (handoffChromeLocked) {
+      document.documentElement.style.setProperty(
+        "--atlas-dock-reserved",
+        HANDOFF_LOCKED_DOCK_RESERVED_PX,
+      );
+      return;
+    }
     // Apply reserved-height in lockstep with the dock's own translateY
     // transition (240ms). The consumer padding-bottom transition matches
     // duration + easing so the composer and the dock move together —
     // no void between the collapsing footer and the composer's bottom edge.
     const target = dockVisible ? "64px" : "18px";
     document.documentElement.style.setProperty("--atlas-dock-reserved", target);
-  }, [dockVisible]);
+  }, [dockVisible, handoffChromeLocked]);
 
   useEffect(() => {
     if (showAtlasHub) {

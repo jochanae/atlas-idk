@@ -22,7 +22,7 @@
 //   docs/architecture/agent-change-rules.md
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject, Project, Entry, Session, useListSessions, getListSessionsQueryKey, createSession, useCreateSession, useDeleteSession, useListEntries, getListEntriesQueryKey, getListProjectsQueryKey, useDeleteProject, useCreateProject, useListProjects, createEntry, useCreateEntry, useListReadinessSnapshots, getListReadinessSnapshotsQueryKey, useRecordReadinessSnapshot } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { createPortal } from "react-dom";
@@ -5949,12 +5949,22 @@ export default function Workspace() {
     const t = window.setTimeout(() => setShowAxiomBanner(false), 4500);
     return () => window.clearTimeout(t);
   }, [showAxiomBanner, handoffBannerPaused]);
-  // Handoff lock: while the pill is up, pin the composer to compact and the
-  // dock/footer to hidden so they stay in sync while Atlas processes the
-  // spec. Released the moment the banner resolves (auto-fade, user dismiss,
-  // manual scroll, or first user send).
-  useEffect(() => {
-    if (!showAxiomBanner) return;
+
+  // Handoff bottom-chrome lock: footer / composer / safe-area behave as one
+  // frozen layout while history + opening pipeline hydrate, then a single
+  // unlock transition. Not tied to axiom-banner timers or incidental touchmove.
+  const [handoffChromeActive, setHandoffChromeActive] = useState(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("source")) return true;
+      if (sessionStorage.getItem("atlas-handoff-continuation") === "1") return true;
+      if (sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY)) return true;
+      return false;
+    } catch {
+      return false;
+    }
+  });
+  useLayoutEffect(() => {
+    if (!handoffChromeActive) return;
     const store = useShellStore.getState();
     store.registerComposerClaim("__handoff__", {
       source: "stage",
@@ -5963,21 +5973,27 @@ export default function Workspace() {
     });
     dockVisibility.setHandoffLock(true);
     return () => {
-      try { useShellStore.getState().releaseComposerClaim("__handoff__"); } catch {}
+      try { useShellStore.getState().releaseComposerClaim("__handoff__"); } catch { /* ignore */ }
       dockVisibility.setHandoffLock(false);
     };
-  }, [showAxiomBanner]);
-  // Any real user scroll or user send also releases the lock early.
+  }, [handoffChromeActive]);
   useEffect(() => {
-    if (!showAxiomBanner) return;
-    const release = () => setShowAxiomBanner(false);
-    window.addEventListener("wheel", release, { passive: true, once: true });
-    window.addEventListener("touchmove", release, { passive: true, once: true });
-    return () => {
-      window.removeEventListener("wheel", release);
-      window.removeEventListener("touchmove", release);
-    };
-  }, [showAxiomBanner]);
+    if (!handoffChromeActive) return;
+    // Keep lock while opening message is still queued or history isn't ready.
+    if (openingMessage !== null) return;
+    if (sessionsLoading || !priorLoadedState) return;
+    if (useNexusWorkspaceChat && !nexusBridge.historyReady) return;
+    const raf = requestAnimationFrame(() => setHandoffChromeActive(false));
+    return () => cancelAnimationFrame(raf);
+  }, [
+    handoffChromeActive,
+    openingMessage,
+    sessionsLoading,
+    priorLoadedState,
+    useNexusWorkspaceChat,
+    nexusBridge.historyReady,
+  ]);
+  // (First user send is covered once openingMessage clears / history is ready.)
 
   useEffect(() => {
     if (!isHomeHandoff) return;
@@ -8715,7 +8731,7 @@ export default function Workspace() {
       )}
       {!showIntake && (
     <div
-      style={{ position: "fixed", top: 0, left: 0, right: 0, height: "var(--atlas-shell-h, 100dvh)", display: "flex", flexDirection: "column", background: "var(--atlas-bg)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(var(--atlas-dock-reserved, var(--atlas-dock-height)) + env(safe-area-inset-bottom, 0px))" : 0, transition: "padding-bottom 240ms cubic-bezier(.32,.72,0,1)" }}
+      style={{ position: "fixed", top: 0, left: 0, right: 0, height: "var(--atlas-shell-h, 100dvh)", display: "flex", flexDirection: "column", background: "var(--atlas-bg)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(var(--atlas-dock-reserved, var(--atlas-dock-height)) + env(safe-area-inset-bottom, 0px))" : 0, transition: handoffChromeActive ? "none" : "padding-bottom 240ms cubic-bezier(.32,.72,0,1)" }}
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }}
       onDrop={async (e) => {

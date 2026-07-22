@@ -745,7 +745,7 @@ Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/br
 | **Cause** | UnifiedContextDock / `useSmartAutoScroll` race; Workspace `returnToken` re-primed on every `focus` / `visibilitychange`, yanking mid-thread readers to the tail |
 | **Confidence** | Observed (manual 2026-07-22); root cause verified in code |
 | **Impact** | **Conversation Friction** |
-| **Repair** | Prime only on project identity (`primeKey: ws:<projectId>`); stop focus/visibility re-prime. Response-start: Ask Atlas `pendingPhrase` + Workspace `InlineThinkingPulse` before first token. |
+| **Repair** | Hydration-gated chrome lock: freeze `--atlas-dock-reserved` + `--atlas-composer-clearance` during handoff; unlock once after `historyReady` / opening pipeline settles. ChatStream no longer double-applies dock+safe-area (shell owns those). |
 
 #### INT-38 — Home-handoff banner visual weight
 

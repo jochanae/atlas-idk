@@ -2,6 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type C
 import type { Tier1Memory } from "@/lib/tier1Memory";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useComposerVisibility } from "@/hooks/useComposerVisibility";
+import { useHandoffChromeLock } from "@/hooks/useDockVisibility";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { StepProgress } from "@/components/workspace/StepProgress";
 import { AssistantBubble, type BuildGroupInfo } from "@/components/workspace/AssistantBubble";
@@ -470,7 +471,11 @@ export function ChatStream(props: ChatStreamProps) {
   // This is separate from the manual "latest" button and runs inside the actual
   // scroll surface so it waits for the rendered thread, then retries as layout
   // settles from markdown/cards/images.
+  // While handoff chrome is locked, skip multi-timer pins (they fight frozen
+  // bottom tokens). One pin runs when the lock releases.
+  const handoffChromeLocked = useHandoffChromeLock();
   useLayoutEffect(() => {
+    if (handoffChromeLocked) return;
     if (initialTailPinnedRef.current) return;
     if (!priorLoaded || messages.length === 0) return;
 
@@ -486,16 +491,14 @@ export function ChatStream(props: ChatStreamProps) {
     const raf2 = requestAnimationFrame(() => requestAnimationFrame(pinToTail));
     const t1 = window.setTimeout(pinToTail, 120);
     const t2 = window.setTimeout(pinToTail, 360);
-    const t3 = window.setTimeout(pinToTail, 700);
 
     return () => {
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
-      window.clearTimeout(t3);
     };
-  }, [messages.length, priorLoaded, scrollRef]);
+  }, [messages.length, priorLoaded, scrollRef, handoffChromeLocked]);
 
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
@@ -748,8 +751,11 @@ export function ChatStream(props: ChatStreamProps) {
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
   const composerVisibility = useComposerVisibility();
   const dockedExtraPad = composerVisibility === "docked" ? 72 : 0;
+  // Mobile shell already reserves dock + safe-area on the outer workspace
+  // container. ChatStream only needs composer clearance so dock toggles don't
+  // double-move the scroll surface.
   const bottomPadding = isMobile
-    ? `calc(var(--atlas-composer-clearance, 96px) + var(--atlas-dock-reserved, var(--atlas-dock-height, 64px)) + env(safe-area-inset-bottom, 0px) + 24px + ${dockedExtraPad}px)`
+    ? `calc(var(--atlas-composer-clearance, 52px) + 24px + ${dockedExtraPad}px)`
     : `calc(var(--atlas-composer-clearance, 0px) + ${28 + dockedExtraPad}px)`;
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
@@ -758,7 +764,10 @@ export function ChatStream(props: ChatStreamProps) {
       ? `32px 14px ${bottomPadding} 14px`
       : `56px 104px ${bottomPadding} 24px`,
     position: "relative", scrollbarWidth: "none",
-    transition: "padding 240ms cubic-bezier(0.22, 1, 0.36, 1)",
+    // Match dock/shell easing so bottom chrome moves as one unit.
+    transition: handoffChromeLocked
+      ? "none"
+      : "padding 240ms cubic-bezier(.32,.72,0,1)",
   };
 
 
