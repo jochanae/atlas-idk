@@ -33,11 +33,16 @@ let touchLastY: number | null = null;
 // Manual override from the floating handle. When set, wins over scroll/top
 // state until the next scroll movement (which clears it so auto resumes).
 let manual: "show" | "hide" | null = null;
+// Handoff lock: during Ask-Atlas → Workspace handoff, force the dock hidden
+// so the footer stays in sync with the compact composer while Atlas is
+// processing. Cleared explicitly when the handoff resolves.
+let handoffLock = false;
 
 const listeners = new Set<Listener>();
 let installed = false;
 
 function compute(): boolean {
+  if (handoffLock) return false;
   if (manual === "hide") return false;
   if (manual === "show") return true;
   if (inputActive) return false;
@@ -213,6 +218,12 @@ export const dockVisibility = {
       scrollHidden = false;
       inputActive = false;
     }
+    emit();
+  },
+  /** Lock the dock in the hidden state during a handoff. */
+  setHandoffLock(locked: boolean) {
+    if (handoffLock === locked) return;
+    handoffLock = locked;
     emit();
   },
 };
