@@ -57,6 +57,12 @@ import {
 import { listAttachmentActivitiesForProjects } from "../lib/attachmentActivity";
 import { ATLAS_SYSTEM_PROMPT, ATLAS_IDENTITY, ATLAS_DESIGN_INTELLIGENCE } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
+import {
+  ASK_ATLAS_HANDOFF_SURFACE_CONTRACT,
+  CREATE_PROJECT_SUCCESS_INSTRUCTION,
+  messageHasExplicitCreateSignal,
+  shouldForceCreateProject,
+} from "../lib/askAtlasHandoffContract";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import {
   advanceRunExecutionState,
@@ -764,7 +770,7 @@ Do NOT emit this for every response — only when the thinking meaningfully adva
 
 const CREATE_PROJECT_TOOL: Anthropic.Tool = {
   name: "create_project",
-  description: "Create a new project workspace. Call this when the shaping framework is satisfied — PROBLEM, AUDIENCE, GAP, VISION, and HARD PART are sufficiently understood (or at most 5 questions have been asked). Also call this immediately for direct build requests when the intent is clear enough (see Direct Build Requests section). Do not ask for confirmation before calling. Use what's been discussed to fill in the name and summary.",
+  description: "Create a new project workspace NOW (server-side). Call this only when the user explicitly asked to create/open/build the workspace (or a direct build request with enough information), or when the runtime forces this tool. For exploratory handoff on Ask Atlas, prefer emitting PROJECT_READY instead — that arms Open Workspace; do not narrate creation unless this tool returns ok:true. When calling: fill name + summary from the conversation; set buildIntent to the user's exact original build request when applicable.",
   input_schema: {
     type: "object",
     properties: {
@@ -4356,41 +4362,9 @@ PROSE RULES (enforced — contradiction detection is active):
 --- END VERIFICATION ENFORCEMENT ---`;
   } else if ((intent === "BUILD" || isResuming) && !justTalk && !conversationModeActive && surfaceContext !== "workspace") {
     // Non-workspace BUILD turn (Ask Atlas or home surface).
-    // Atlas must NOT write files here. Route to the Workspace instead.
-    systemPrompt += `\n\n--- SURFACE CONTRACT: ASK ATLAS — HANDOFF REQUIRED ---
-You received a build request, but you are operating on the Ask Atlas surface — NOT the Workspace.
-
-On this surface you MUST NOT:
-- Emit FILE_EDIT_START, LINE_PATCH_START, or any code-writing block
-- Emit BUILD_CONTRACT_START / BUILD_CONTRACT_END blocks
-- Call GITHUB_PUSH or any tool that mutates project files
-- Begin any execution run or software build
-
-You MUST keep your response to TWO sentences maximum — no more:
-1. One sentence acknowledging the request and naming the project (e.g. "Great candidate for a build — I'll create [Project Name] and continue there.").
-2. One optional sentence that is warm and forward-looking — but only if it adds something. If the first sentence is enough, stop there.
-
-DO NOT:
-- Describe the application, its architecture, its components, or how it will be built — none of that belongs here.
-- Use technical terms like "SANDBOX", "prototype", "state model", "component", or implementation details.
-- Make promises about what will happen next ("It'll run immediately...", "Opening the Workspace now...") — these create expectations the UI must meet instantly.
-- Write more than two sentences for any reason.
-
-You are the concierge, not the architect. Your job is to open the door. The Workspace is where the vision, planning, and building happen.
-
-Then emit this signal as the ABSOLUTE LAST LINE of your response — nothing after it:
-   PROJECT_READY:{"projectName":"<name inferred from the conversation>","reason":"<one sentence: what this is and why it matters>"}
-
-HARD RULES ON PROJECT ROUTING — violations break the user experience:
-- You MUST emit PROJECT_READY. The server creates the project and handles navigation. You do NOT choose IDs or routes.
-- NEVER emit NAVIGATE_TO from Ask Atlas. Never write "/project/<id>" in any form. You do not have access to valid project IDs and any ID you emit will be wrong.
-- A focused project in your context is REFERENCE DATA ONLY — it is NOT the routing target. Never use a focused project as the build destination for a new request.
-- For every new named build request, emit PROJECT_READY with the name derived from the request. A new project will be created server-side.
-- Only if the user explicitly says "add this to [existing project name]" should you mention that project in your response text — still emit PROJECT_READY, never OPEN_PROJECT.
-- If the user explicitly asks to open or navigate to an existing project (e.g. "take me to IntoIQ"), emit OPEN_PROJECT:{"projectName":"<project name>"} as the LAST LINE instead of PROJECT_READY.
-
-HARD RULE: You may describe and plan here. You may NEVER start building here. The Workspace owns all execution, run cards, stop controls, Timeline, Changes, Preview, and code mutations. Ask Atlas owns conversation, exploration, planning, project creation, and handoff.
---- END SURFACE CONTRACT ---`;
+    // Atlas must NOT write files here. Route via PROJECT_READY → CommitPill
+    // (or forced create_project on explicit create — see shouldForceCreateProject).
+    systemPrompt += `\n\n${ASK_ATLAS_HANDOFF_SURFACE_CONTRACT}`;
   }
 
   // MEMORY_CHIPS protocol — all intents (P0 gap independent of BUILD).
@@ -7435,7 +7409,7 @@ Do NOT claim to read, see, or describe any file not listed here.
         project: projectCreated,
         githubRepo,
         githubHtmlUrl,
-        instruction: `Project "${project.name}" created with id ${project.id}.${repoNote} Write ONE short sentence confirming the project was created (e.g. "The Obsidian Ledger is ready — opening the workspace now."). Then STOP. Do NOT write any code, HTML, CSS, files, or file contents. Do NOT start building. Do NOT include NAVIGATE_TO — navigation is handled automatically via the done event. The actual build happens inside the workspace, not here.`,
+        instruction: CREATE_PROJECT_SUCCESS_INSTRUCTION(project.name, project.id, repoNote),
       };
     } catch (error) {
       const message = error instanceof ProjectLimitReachedError
@@ -8012,29 +7986,21 @@ Do NOT produce another roadmap. Do NOT say "I'll inspect." Execute and return fi
   // Explicit commit signals — require clear project/workspace intent to avoid false positives.
   // Intentionally excludes context-free phrases like "do it", "set it up", "make it",
   // "go ahead", "yes", "ok", "sure" — these need object context ("set up a table" ≠ commit).
-  const EXPLICIT_CREATE_SIGNALS = [
-    "let's build it", "lets build it",
-    "let's build this", "lets build this",
-    "create the workspace", "start the project",
-    "create the project", "create a workspace",
-    "move this into a project", "turn this into a project",
-    "move this to a workspace", "create it",
-    "please create", "build this project",
-    // Direct build-intent phrases (e.g. "build a habit tracker", "build me a dashboard")
-    "build a ", "build an ", "build me", "build the ",
-    "create a ", "create an ", "create me",
-    "make a ", "make an ", "make me",
-  ];
-  const messageLC = message.toLowerCase();
-  const isExplicitCreate = EXPLICIT_CREATE_SIGNALS.some(s => messageLC.includes(s));
+  const isExplicitCreate = messageHasExplicitCreateSignal(message);
 
-  // create_project is a home/Ask-Atlas action only. Once a conversation is already
-  // scoped to a project (focusProjectId set), Atlas must NEVER spin up another one —
-  // build-flavored phrasing like "build the X now" / "create the Y" inside an active
-  // workspace turn must not be mistaken for a request to create a NEW project.
-  // Guard forceCreate on focusProjectId being unset, not just on message phrasing.
-  const shouldForceCreate = allowBuildSideEffects && isExplicitCreate && !focusProjectId;
-  if (allowBuildSideEffects && isExplicitCreate && focusProjectId) {
+  // INT-35: force create_project when the user explicitly asks to create, including
+  // on Ask Atlas (previously forceCreate was workspace-only / effectively dead there,
+  // so the model could narrate "creating…" via PROJECT_READY with nothing created).
+  // Once focusProjectId is set, never spin up another project from create phrasing.
+  const shouldForceCreate = shouldForceCreateProject({
+    message,
+    allowToolAccess,
+    allowBuildSideEffects,
+    intent,
+    focusProjectId,
+    surfaceContext,
+  });
+  if (isExplicitCreate && focusProjectId) {
     req.log.warn(
       { focusProjectId, messagePreview: message.slice(0, 120) },
       "nexus/chat: suppressed forceCreate — explicit-create phrasing matched inside an already-active project conversation",
