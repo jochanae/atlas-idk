@@ -20,7 +20,10 @@ import {
   type PriorAttachmentRecord,
 } from "../lib/attachmentGrounding";
 import { loadPriorAttachmentsForMessages } from "../lib/attachmentProvenanceQuery";
-import { selectRelevantPriorAttachments } from "../lib/attachmentRelevance";
+import {
+  hasDeckOrderFollowUpIntent,
+  selectRelevantPriorAttachments,
+} from "../lib/attachmentRelevance";
 import {
   beginTurnIdempotency,
   completeTurnIdempotency,
@@ -3094,18 +3097,17 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     continuityDiag.failureReasonCode = continuityDiag.failureReasonCode ?? "prior_candidates_zero";
   }
 
-  // Temporary request-level proof for Founder Continuity V2 verification.
+  // Request-level Continuity V2 proof (server log + done-event echo for clients).
   // Safe fields only — no file contents, storage paths, secrets, or DB UUIDs.
-  logger.info(
-    {
-      event: "nexus.continuity.diag",
-      ...continuityDiag,
-      currentTurnAttachmentRequestCount: attachmentIds.length,
-      userMessageLen: message.length,
-      slideQuestionLikely: /\bslide\s*\d+\b/i.test(message),
-    },
-    "nexus: attachment continuity diagnostic",
-  );
+  const continuityDiagEnvelope = {
+    event: "nexus.continuity.diag" as const,
+    ...continuityDiag,
+    currentTurnAttachmentRequestCount: attachmentIds.length,
+    userMessageLen: message.length,
+    slideQuestionLikely: /\bslide\s*\d+\b/i.test(message),
+    deckOrderQuestionLikely: hasDeckOrderFollowUpIntent(message),
+  };
+  logger.info(continuityDiagEnvelope, "nexus: attachment continuity diagnostic");
 
   // ── WhisperGate / Just-Talk — classify BEFORE prompt assembly & side effects ──
   // Must run before project-state briefing injection so greetings stay silent.
@@ -6161,6 +6163,19 @@ PROSE RULES (enforced — contradiction detection is active):
       ...(openProjectChoices !== null ? { projectChoices: openProjectChoices } : {}),
       ...(openProjectNotFound !== null ? { projectNotFound: openProjectNotFound } : {}),
       ...(projectReadyToken ? { projectReady: projectReadyToken } : {}),
+      // INT-39: echo Continuity V2 diag so clients/devtools can confirm
+      // historicalReopenResolvedCount > 0 without server-log access.
+      attachmentContinuity: {
+        continuityV2Enabled: continuityDiag.continuityV2Enabled,
+        priorCandidateCount: continuityDiag.priorCandidateCount,
+        relevanceSelectedCount: continuityDiag.relevanceSelectedCount,
+        historicalReopenAttempted: continuityDiag.historicalReopenAttempted,
+        historicalReopenResolvedCount: continuityDiag.historicalReopenResolvedCount,
+        historicalReopenSkippedCount: continuityDiag.historicalReopenSkippedCount,
+        failureReasonCode: continuityDiag.failureReasonCode,
+        slideQuestionLikely: continuityDiagEnvelope.slideQuestionLikely,
+        deckOrderQuestionLikely: continuityDiagEnvelope.deckOrderQuestionLikely,
+      },
       // Builder emitters — same field names as /api/chat
       ...(allChips.length > 0 ? { memoryChips: allChips } : {}),
       ...(responseFileEdits.length > 0

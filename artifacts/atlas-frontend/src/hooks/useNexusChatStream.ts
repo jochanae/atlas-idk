@@ -141,6 +141,18 @@ export interface NexusMessage {
   visualCaption?: string | null;
   visualLoading?: boolean;
   navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
+  /** Continuity V2 reopen diagnostic echoed from nexus done (INT-39). */
+  attachmentContinuity?: {
+    continuityV2Enabled: boolean;
+    priorCandidateCount: number;
+    relevanceSelectedCount: number;
+    historicalReopenAttempted: boolean;
+    historicalReopenResolvedCount: number;
+    historicalReopenSkippedCount: number;
+    failureReasonCode: string | null;
+    slideQuestionLikely: boolean;
+    deckOrderQuestionLikely: boolean;
+  } | null;
   /** Multiple candidate projects found for an OPEN_PROJECT signal — user must pick one. */
   projectChoices?: Array<{ id: number; name: string }> | null;
   /** Requested project name that had no match — surface a visible not-found message. */
@@ -944,8 +956,14 @@ export function useNexusChatStream(
                     fileDeletes: ((meta as any).fileDeletes ?? null) as NexusMessage["fileDeletes"],
                     githubPush: ((meta as any).githubPush ?? null) as NexusMessage["githubPush"],
                     awaitingAuthorization: ((meta as any).awaitingConfirmation ?? null) as NexusMessage["awaitingAuthorization"],
+                    attachmentContinuity: ((meta as any).attachmentContinuity ?? null) as NexusMessage["attachmentContinuity"],
                   };
             }));
+            const continuity = (meta as any).attachmentContinuity as NexusMessage["attachmentContinuity"];
+            if (continuity) {
+              // Devtools-visible confirmation that reopen ran (historicalReopenResolvedCount).
+              console.info("[atlas.continuity]", continuity);
+            }
 
             // Capture pending authorization so consumers can render the authorize card
             if ((meta as any).awaitingConfirmation) {

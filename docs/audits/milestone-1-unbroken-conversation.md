@@ -4,7 +4,7 @@
 **Date:** 2026-07-21  
 **Scope:** Conversation lifecycle, attachment lifecycle, interruption inventory, acceptance criteria, repair order  
 **Repo HEAD at audit:** `86e7b309` (`main`)  
-**Status:** Phase B — **Wave 0 CLOSED**; **Wave 1 CLOSED**; **Wave 2 in progress** — G2-1 (INT-35) **passed** (2026-07-22); G2-2 (INT-39 slide-order reopen) in progress.  
+**Status:** Phase B — **Wave 0 CLOSED**; **Wave 1 CLOSED**; **Wave 2 in progress** — G2-1 (INT-35) + G2-2 (INT-39) **passed** (2026-07-22); INT-37 scroll/composer + response-start feedback next.  
 **Gate:** Wave 0 + Wave 1 gates met. Remaining Wave 2 Breaks/Friction should still land before treating Milestone 1 as fully complete.
 
 **Hard rule (Phase B):**
@@ -741,9 +741,10 @@ Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/br
 
 | Field | Detail |
 |-------|--------|
-| **Cause** | Likely UnifiedContextDock / `useSmartAutoScroll` race (previously identified) |
-| **Confidence** | Observed (manual 2026-07-22) |
-| **Impact** | **Conversation Friction** — non-blocking |
+| **Cause** | UnifiedContextDock / `useSmartAutoScroll` race; Workspace `returnToken` re-primed on every `focus` / `visibilitychange`, yanking mid-thread readers to the tail |
+| **Confidence** | Observed (manual 2026-07-22); root cause verified in code |
+| **Impact** | **Conversation Friction** |
+| **Repair** | Prime only on project identity (`primeKey: ws:<projectId>`); stop focus/visibility re-prime. Response-start: Ask Atlas `pendingPhrase` + Workspace `InlineThinkingPulse` before first token. |
 
 #### INT-38 — Home-handoff banner visual weight
 
@@ -1304,15 +1305,19 @@ Wave 1 exit criteria met. **Milestone 2 attachment/auth continuity gate is satis
 | Gate | INT | Acceptance test | Status |
 |------|-----|-----------------|--------|
 | G2-1 | INT-35 | Explicit workspace create does not falsely succeed; PROJECT_READY does not claim creation | **Closed** (manual 2026-07-22) |
-| G2-2 | INT-39 | Section-order follow-up reopens PPTX (or refuses order claims); ending-slide order correct | **In progress** |
-| — | INT-36–38, INT-40 | Thinking Thread z-index; composer jump; handoff banner; broken inline attach preview / late clear | Logged (non-blocking) |
+| G2-2 | INT-39 | Section-order follow-up reopens PPTX (or refuses order claims); ending-slide order correct | **Closed** (manual 2026-07-22) |
+| G2-3 | INT-37 | Scroll/composer stable on handoff + tab focus; no mid-thread yank | **In progress** |
+| — | Response-start | Visible feedback before first token (Ask Atlas phrase + Workspace Thinking pulse) | **In progress** |
+| — | INT-36, INT-38, INT-40 | Thinking Thread z-index; handoff banner; broken inline attach preview / late clear | Logged (non-blocking) |
 
 **G2-1 manual acceptance (2026-07-22):** First explicit create request created **Empower Me Session 1** and armed Open Workspace. Transcript and PPTX carried into Workspace.
 
-**INT-39 finding (2026-07-22):** Workspace answer claimed pricing comes after the challenge; deck order is pricing 15 → takeaway 16 → challenge 17 → journey 18 → closing 19. Relevance is whole-file (not per-slide) — ending slides were not “deselected”; the turn likely failed to reopen (section-order phrasing missed relevance) and OutputGuard allowed freeform order prose. Fix: conversation/project-scoped prior load + deck section-order relevance + OutputGuard gate.
+**G2-2 manual acceptance (2026-07-22):** Prior PPTX reopened; slide-order question answered from the deck with pricing before challenge. Outcome strongly implies reopen; server-log `historicalReopenResolvedCount` for that past turn was not retrieved in-agent. **Follow-up instrumentation:** `attachmentContinuity` is now echoed on nexus `done` (and `console.info("[atlas.continuity]", …)` in the client) so the next turn can confirm `historicalReopenResolvedCount > 0` in DevTools without server logs.
+
+**INT-39 finding (resolved):** Workspace invented order when section-order follow-ups skipped relevance reopen. Fix shipped in PR #204.
 
 This is a structured stabilization program, not a bug chase.
 
 ---
 
-*Phase A complete. Phase B Wave 0 + Wave 1 closed. Wave 2: INT-35 closed; INT-39 (slide-order reopen grounding) in progress.*
+*Phase A complete. Phase B Wave 0 + Wave 1 closed. Wave 2: INT-35 + INT-39 closed; INT-37 scroll + response-start feedback in progress.*
