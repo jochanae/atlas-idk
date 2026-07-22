@@ -8676,7 +8676,7 @@ export default function Workspace() {
       )}
       {!showIntake && (
     <div
-      style={{ position: "fixed", top: 0, left: 0, right: 0, height: "var(--atlas-shell-h, 100dvh)", display: "flex", flexDirection: "column", background: "var(--atlas-bg)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(var(--atlas-dock-reserved, var(--atlas-dock-height)) + env(safe-area-inset-bottom, 0px))" : 0, transition: "padding-bottom 240ms var(--ease-standard, ease)" }}
+      style={{ position: "fixed", top: 0, left: 0, right: 0, height: "var(--atlas-shell-h, 100dvh)", display: "flex", flexDirection: "column", background: "var(--atlas-bg)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(var(--atlas-dock-reserved, var(--atlas-dock-height)) + env(safe-area-inset-bottom, 0px))" : 0, transition: "padding-bottom 240ms cubic-bezier(.32,.72,0,1)" }}
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }}
       onDrop={async (e) => {
