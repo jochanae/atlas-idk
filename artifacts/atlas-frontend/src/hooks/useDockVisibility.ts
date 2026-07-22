@@ -195,6 +195,42 @@ function install() {
   window.addEventListener("focusout", onFocusOut);
 }
 
+/** Peek crescent height while handoff chrome is locked (matches collapsed dock). */
+export const HANDOFF_LOCKED_DOCK_RESERVED_PX = "18px";
+/** Compact composer clearance while handoff chrome is locked (skip live RO). */
+export const HANDOFF_LOCKED_COMPOSER_CLEARANCE_PX = "52px";
+
+function applyFrozenHandoffChromeTokens() {
+  if (typeof document === "undefined") return;
+  document.documentElement.style.setProperty(
+    "--atlas-dock-reserved",
+    HANDOFF_LOCKED_DOCK_RESERVED_PX,
+  );
+  document.documentElement.style.setProperty(
+    "--atlas-composer-clearance",
+    HANDOFF_LOCKED_COMPOSER_CLEARANCE_PX,
+  );
+}
+
+export function isHandoffChromeLocked(): boolean {
+  return handoffLock;
+}
+
+/** Subscribe to handoff chrome lock changes (for freezing CSS tokens). */
+export function useHandoffChromeLock(): boolean {
+  install();
+  const [locked, setLocked] = useState(handoffLock);
+  useEffect(() => {
+    const listener = () => setLocked(handoffLock);
+    listeners.add(listener);
+    listener();
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
+  return locked;
+}
+
 export const dockVisibility = {
   peek() {
     let changed = false;
@@ -220,10 +256,19 @@ export const dockVisibility = {
     }
     emit();
   },
-  /** Lock the dock in the hidden state during a handoff. */
+  /**
+   * Lock bottom chrome (dock peek + compact composer tokens) during Workspace
+   * handoff hydration. Cleared once after history/opening pipeline settles —
+   * not on incidental scroll/touch.
+   */
   setHandoffLock(locked: boolean) {
     if (handoffLock === locked) return;
     handoffLock = locked;
+    if (locked) {
+      // Don't inherit a stale manual peek/show across the lock window.
+      manual = null;
+      applyFrozenHandoffChromeTokens();
+    }
     emit();
   },
 };

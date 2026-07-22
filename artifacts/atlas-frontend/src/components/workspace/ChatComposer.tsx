@@ -16,6 +16,10 @@ import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
 import { setAnchorHeld, triggerAnchorAbsorb, ABSORB_DURATION_MS } from "@/lib/atlasAnchor";
 import { logEvent as _adbgLog } from "@/lib/attachDebugLog";
+import {
+  HANDOFF_LOCKED_COMPOSER_CLEARANCE_PX,
+  useHandoffChromeLock,
+} from "@/hooks/useDockVisibility";
 // CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
 
 
@@ -365,6 +369,7 @@ export function ChatComposer(props: ChatComposerProps) {
   const isDocked = composerVisibility === 'docked' && !sheetVisible;
   const isParchment = useThemeMode() === "parchment";
   const composerShellRef = useRef<HTMLDivElement | null>(null);
+  const handoffChromeLocked = useHandoffChromeLock();
 
   // Mobile keyboard inset — lifts the expanded sheet above the on-screen
   // keyboard so the action bar (attach/mic/send) stays visible while typing.
@@ -390,6 +395,15 @@ export function ChatComposer(props: ChatComposerProps) {
 
   useEffect(() => {
     const root = document.documentElement;
+    // Handoff chrome lock: freeze clearance at compact constant — no live
+    // ResizeObserver writes that fight dock/safe-area during hydration.
+    if (handoffChromeLocked) {
+      root.style.setProperty(
+        "--atlas-composer-clearance",
+        HANDOFF_LOCKED_COMPOSER_CLEARANCE_PX,
+      );
+      return;
+    }
     const apply = () => {
       const el = composerShellRef.current;
       const height = composerActive && !isDocked && el ? Math.ceil(el.getBoundingClientRect().height) : 0;
@@ -405,7 +419,7 @@ export function ChatComposer(props: ChatComposerProps) {
       ro?.disconnect();
       window.removeEventListener("resize", apply);
     };
-  }, [composerActive, isDocked, sheetVisible, isCompact, attachedFiles.length, zipFiles.length, codeContextStatus, input.length]);
+  }, [handoffChromeLocked, composerActive, isDocked, sheetVisible, isCompact, attachedFiles.length, zipFiles.length, codeContextStatus, input.length]);
 
   // Publish held state to the footer anchor so its halo breathes when a
   // draft is being held or Atlas is mid-turn. Cleared when neither is true.
