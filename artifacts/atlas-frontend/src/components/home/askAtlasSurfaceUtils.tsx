@@ -73,41 +73,42 @@ export function findProjectOpenTarget<P extends { id: number; name: string }>(
   return null;
 }
 
+/**
+ * Legacy / sketch image helper for Ask Atlas user bubbles.
+ *
+ * INT-40: AttachmentStrip owns structured attachments (including PPTX/PDF).
+ * Never render non-image attachments as <img> — that produced the broken
+ * inline preview after a valid PPTX card. When `attachments` is present,
+ * return null and let AttachmentStrip render the strip alone.
+ */
 export function renderMessageImages(msg: AskAtlasMessage) {
-  const images = msg.attachments && msg.attachments.length > 0
-    ? msg.attachments
-    : (msg.imageUrl ? [{ mediaType: "", base64: "", name: undefined, _url: msg.imageUrl }] as Array<{
-        mediaType: string;
-        base64: string;
-        name?: string;
-        _url?: string;
-      }> : []);
+  if (msg.attachments && msg.attachments.length > 0) {
+    return null;
+  }
 
-  if (images.length === 0) return null;
+  // Sketch / legacy single-image path (no structured attachments array).
+  const sketchSrc = resolveAskAtlasSketchSrc(msg);
+  const url = sketchSrc ?? (typeof msg.imageUrl === "string" && msg.imageUrl ? msg.imageUrl : null);
+  if (!url) return null;
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.content ? 8 : 0 }}>
-      {images.map((img, idx) => {
-        const url = (img as { _url?: string })._url ?? `data:${img.mediaType};base64,${img.base64}`;
-        return (
-          <div key={idx} style={{ position: "relative" }}>
-            <img
-              src={url}
-              alt={img.name || "Attached"}
-              style={{
-                width: images.length === 1 ? "100%" : 110,
-                maxWidth: "100%",
-                height: images.length === 1 ? "auto" : 110,
-                maxHeight: images.length === 1 ? 320 : 110,
-                objectFit: "cover",
-                borderRadius: 8,
-                display: "block",
-                border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 25%, transparent)",
-              }}
-            />
-          </div>
-        );
-      })}
+      <div style={{ position: "relative" }}>
+        <img
+          src={url}
+          alt="Attached"
+          style={{
+            width: "100%",
+            maxWidth: "100%",
+            height: "auto",
+            maxHeight: 320,
+            objectFit: "cover",
+            borderRadius: 8,
+            display: "block",
+            border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 25%, transparent)",
+          }}
+        />
+      </div>
     </div>
   );
 }

@@ -725,9 +725,10 @@ Silent patterns today: `/api/attachments`, `/api/nexus/activity`, `/api/nexus/br
 
 | Field | Detail |
 |-------|--------|
-| **Cause** | Valid PPTX card followed by a broken inline image/filename preview; composer attachment chip clears late |
-| **Confidence** | Observed (manual 2026-07-22) |
-| **Impact** | **Conversation Friction** — non-blocking vs INT-39; polish after reopen grounding |
+| **Cause** | Ask Atlas `renderMessageImages` treated every attachment (including PPTX) as an `<img>` after `AttachmentStrip` already rendered a valid card — broken second preview. Workspace does not use this helper. Composer clear latency is separate polish. |
+| **Confidence** | **Verified** (repro Ask Atlas only; Workspace clean) |
+| **Impact** | **Conversation Friction** |
+| **Repair** | `renderMessageImages` returns null when structured `attachments` exist; AttachmentStrip is sole renderer for PPTX/PDF. |
 
 #### INT-36 — Thinking Thread z-index / stacking
 

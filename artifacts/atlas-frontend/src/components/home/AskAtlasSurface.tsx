@@ -264,6 +264,29 @@ export function AskAtlasSurface({
   const SUPPRESS_STEP_VERBS = new Set(["Reading", "Saved", "Recovered", "Failed", "Cancelled"]);
   const visibleLiveStep = liveStep && !SUPPRESS_STEP_VERBS.has(liveStep.verb) ? liveStep : undefined;
 
+  // Pre-token status for Ask Atlas: brief "Loading context…" then an active
+  // "Atlas is thinking…" so the panel never feels idle. Trailing StepProgress
+  // must NOT prefer liveStep here — backend verbs like "Capturing intent"
+  // were overriding pendingPhrase and hiding the active state (PR #205 gap).
+  const awaitingFirstToken =
+    (isSending || isStreaming) &&
+    !(
+      messages[messages.length - 1]?.role === "assistant" &&
+      Boolean(messages[messages.length - 1]?.content.trim().length)
+    );
+  const [preTokenPhase, setPreTokenPhase] = useState<"loading" | "thinking">("loading");
+  useEffect(() => {
+    if (!awaitingFirstToken) {
+      setPreTokenPhase("loading");
+      return;
+    }
+    setPreTokenPhase("loading");
+    const t = window.setTimeout(() => setPreTokenPhase("thinking"), 700);
+    return () => window.clearTimeout(t);
+  }, [awaitingFirstToken, messages.length]);
+  const askAtlasPreTokenPhrase =
+    preTokenPhase === "loading" ? "Loading context…" : "Atlas is thinking…";
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [, setLocation] = useLocation();
@@ -952,17 +975,14 @@ export function AskAtlasSurface({
           );
         })}
 
-        {(isSending || isStreaming) && (
-          <div style={{ padding: "8px 0 0" }}>
+        {awaitingFirstToken && (
+          <div style={{ padding: "8px 0 0" }} data-ask-atlas-pretoken={preTokenPhase}>
             <StepProgress
               mode="single"
-              isStreaming={isSending || isStreaming}
-              hasContent={Boolean(
-                messages[messages.length - 1]?.role === "assistant" &&
-                messages[messages.length - 1]?.content.trim().length > 0
-              )}
-              liveStep={visibleLiveStep}
-              pendingPhrase={pendingPhrase || "Atlas is responding…"}
+              isStreaming
+              hasContent={false}
+              // Intentionally omit liveStep — keep the human active-state copy.
+              pendingPhrase={askAtlasPreTokenPhrase}
             />
           </div>
         )}
