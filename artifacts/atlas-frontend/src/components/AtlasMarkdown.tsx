@@ -436,21 +436,29 @@ export function StreamingMarkdown({
   const [visibleCount, setVisibleCount] = useState(0);
   const completeCalled = useRef(false);
 
-  useMemo(() => {
+  useEffect(() => {
     setVisibleCount(0);
     completeCalled.current = false;
-    return null;
   }, [content]);
 
-  useMemoTimer(words.length, visibleCount, speed, () => {
+  useEffect(() => {
     const total = words.length;
     if (visibleCount >= total) {
       if (!completeCalled.current) {
         completeCalled.current = true;
         onComplete?.();
       }
+      return;
     }
-  }, setVisibleCount);
+    const lastWord = words[visibleCount - 1] ?? "";
+    const jitter = speed * (0.6 + Math.random() * 0.8);
+    const pause = /[.!?]\s*$/.test(lastWord) ? speed * 4 : jitter;
+    const burst = Math.random() > 0.7 ? 2 : 1;
+    const timer = setTimeout(() => {
+      setVisibleCount((c) => Math.min(c + burst, total));
+    }, pause);
+    return () => clearTimeout(timer);
+  }, [visibleCount, words, speed, onComplete]);
 
   const visibleText = words.slice(0, visibleCount).join("");
   const isDone = visibleCount >= words.length;
@@ -463,25 +471,3 @@ export function StreamingMarkdown({
   );
 }
 
-// Small typewriter driver kept local to avoid another module.
-function useMemoTimer(
-  total: number,
-  visibleCount: number,
-  speed: number,
-  onDone: () => void,
-  setVisibleCount: (fn: (c: number) => number) => void,
-) {
-  useMemo(() => {
-    if (visibleCount >= total) {
-      onDone();
-      return;
-    }
-    const jitter = speed * (0.6 + Math.random() * 0.8);
-    const burst = Math.random() > 0.7 ? 2 : 1;
-    const timer = setTimeout(() => {
-      setVisibleCount((c) => Math.min(c + burst, total));
-    }, jitter);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleCount, total, speed]);
-}
