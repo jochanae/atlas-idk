@@ -1266,10 +1266,12 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
     line-height: 1.65;
   }
 }
-/* Assistant prose flow — comfortable measure + generous paragraph rhythm. */
+/* Assistant prose flow — comfortable measure + generous paragraph rhythm.
+   Sized to match the Workspace AssistantBubble prose so Ask Atlas and
+   Workspace read as the same document surface (parity bump: ~8%). */
 .atlas-prose-flow {
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 17.5px;
+  line-height: 1.72;
   letter-spacing: 0.01em;
   font-family: var(--app-font-sans);
   color: var(--atlas-fg);
@@ -1280,8 +1282,8 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
 }
 @media (max-width: 640px) {
   .atlas-prose-flow {
-    font-size: 15.5px;
-    line-height: 1.65;
+    font-size: 16.5px;
+    line-height: 1.68;
     max-width: 100%;
   }
 }
