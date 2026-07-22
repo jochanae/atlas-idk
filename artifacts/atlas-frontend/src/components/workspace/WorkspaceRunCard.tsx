@@ -339,73 +339,97 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
   return null;
 }
 
+// Obsidian card + bronze hairline outline is the resting visual language for
+// all run receipts. Individual states only shift the icon color/fill so the
+// card reads as an Atlas artifact, not a status-colored debug panel.
+const OBSIDIAN_CARD_BG =
+  "linear-gradient(180deg, var(--atlas-surface) 0%, var(--atlas-bg) 100%)";
+const BRONZE_OUTLINE = "var(--atlas-gold-border)";
+const CARD_ELEVATION =
+  "0 1px 0 rgba(255,255,255,0.02) inset, 0 8px 24px -18px rgba(0,0,0,0.55)";
+
 const RECEIPT_TONE: Record<
   "running" | "success" | "failed" | "pushed" | "sketched" | "delivered" | "insight",
   { border: string; ring: string; fg: string; iconBg: string; cardBg: string }
 > = {
-  // Insight receipts (decision shaped, requirement clarified, etc.) are neutral
-  // and quiet — they should never read as a build/success flash.
   insight: {
-    border: "hsl(var(--border))",
+    border: BRONZE_OUTLINE,
     ring: "transparent",
-    fg: "hsl(var(--muted-foreground))",
-    iconBg: "hsl(var(--muted))",
-    cardBg: "hsl(var(--card))",
+    fg: "var(--atlas-gold)",
+    iconBg: "var(--atlas-gold-dim)",
+    cardBg: OBSIDIAN_CARD_BG,
   },
   running: {
-    border: "var(--atlas-gold-border)",
+    border: BRONZE_OUTLINE,
     ring: "transparent",
     fg: "var(--atlas-gold)",
     iconBg: "var(--atlas-gold-dim)",
-    cardBg: "hsl(var(--card))",
+    cardBg: OBSIDIAN_CARD_BG,
   },
-  // Success/failed borders are momentary status flashes — the persistent
-  // resting state is neutral so the card doesn't scream in the thread.
   success: {
-    border: "hsl(var(--border))",
+    border: BRONZE_OUTLINE,
     ring: "transparent",
-    fg: "#4ade80",
-    iconBg: "rgba(74,222,128,0.12)",
-    cardBg: "hsl(var(--card))",
+    fg: "var(--atlas-gold)",
+    iconBg: "var(--atlas-gold-dim)",
+    cardBg: OBSIDIAN_CARD_BG,
   },
   failed: {
-    border: "hsl(var(--border))",
+    border: BRONZE_OUTLINE,
     ring: "transparent",
     fg: "#f87171",
-    iconBg: "rgba(248,113,113,0.12)",
-    cardBg: "hsl(var(--card))",
+    iconBg: "rgba(248,113,113,0.10)",
+    cardBg: OBSIDIAN_CARD_BG,
   },
   pushed: {
-    border: "hsl(var(--border))",
+    border: BRONZE_OUTLINE,
     ring: "transparent",
-    fg: "hsl(var(--card-foreground))",
-    iconBg: "hsl(var(--muted))",
-    cardBg: "hsl(var(--card))",
-  },
-  sketched: {
-    border: "var(--atlas-gold-border)",
-    ring: "rgba(201,162,76,0.07)",
     fg: "var(--atlas-gold)",
     iconBg: "var(--atlas-gold-dim)",
-    cardBg: "hsl(var(--card))",
+    cardBg: OBSIDIAN_CARD_BG,
+  },
+  sketched: {
+    border: BRONZE_OUTLINE,
+    ring: "transparent",
+    fg: "var(--atlas-gold)",
+    iconBg: "var(--atlas-gold-dim)",
+    cardBg: OBSIDIAN_CARD_BG,
   },
   delivered: {
-    border: "hsl(var(--border))",
+    border: BRONZE_OUTLINE,
     ring: "transparent",
-    fg: "#4ade80",
-    iconBg: "rgba(74,222,128,0.12)",
-    cardBg: "hsl(var(--card))",
+    fg: "var(--atlas-gold)",
+    iconBg: "var(--atlas-gold-dim)",
+    cardBg: OBSIDIAN_CARD_BG,
   },
 };
 
+/** Atlas mark — a stylized "A" in bronze. Used as the default receipt sigil
+ *  so run cards read as Atlas artifacts rather than generic status chips. */
+function AtlasMark({ size = 12 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 13 L8 3 L13 13" />
+      <path d="M5.4 9 H10.6" />
+    </svg>
+  );
+}
+
 function ReceiptIcon({ status }: { status: DerivedStatus }) {
-  if (status === "applied") return <CheckCircle2 size={12} strokeWidth={1.75} />;
-  if (status === "delivered") return <CheckCircle2 size={12} strokeWidth={1.75} />;
   if (status === "failed") return <XCircle size={12} strokeWidth={1.75} />;
-  if (status === "pushed") return <Github size={12} strokeWidth={1.75} />;
-  if (status === "sketched") return <ImageIcon size={12} strokeWidth={1.75} />;
-  if (status === "insight") return <Circle size={9} strokeWidth={2} fill="currentColor" />;
-  return null;
+  // All non-failure receipts use the Atlas mark so the visual language stays
+  // consistent regardless of whether the work was a file edit, push, sketch,
+  // deliverable, or insight capture.
+  return <AtlasMark size={12} />;
 }
 
 /** Map a step verb+target to a display icon and short action label. */
@@ -1065,12 +1089,14 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         background: tone.cardBg,
         color: "hsl(var(--card-foreground))",
         border: `1px solid ${tone.border}`,
-        boxShadow: tone.ring !== "transparent" ? `0 0 0 3px ${tone.ring}` : undefined,
+        boxShadow: tone.ring !== "transparent"
+          ? `0 0 0 3px ${tone.ring}, ${CARD_ELEVATION}`
+          : CARD_ELEVATION,
         borderRadius: "var(--card-radius)",
-        padding: "var(--card-pad-y) var(--card-pad-x)",
+        padding: "calc(var(--card-pad-y) + 2px) calc(var(--card-pad-x) + 2px)",
         margin: "var(--card-gap-half) 0",
         minHeight: "var(--card-min-h)",
-        width: "min(100%, 320px)",
+        width: "min(100%, 340px)",
         maxWidth: "100%",
         boxSizing: "border-box",
         alignSelf: "flex-start",
@@ -1113,17 +1139,18 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         />
       </button>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 9, paddingRight: 22 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11, paddingRight: 22 }}>
         <span
           style={{
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 22,
-            height: 22,
+            width: 26,
+            height: 26,
             borderRadius: 999,
             background: tone.iconBg,
             color: tone.fg,
+            border: `1px solid ${BRONZE_OUTLINE}`,
             flexShrink: 0,
           }}
         >
@@ -1134,8 +1161,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           <div
             style={{
               fontFamily: "var(--app-font-mono)",
-              fontSize: 9,
-              letterSpacing: "0.14em",
+              fontSize: 9.5,
+              letterSpacing: "0.16em",
               textTransform: "uppercase",
               color: tone.fg,
               opacity: 0.9,
@@ -1144,19 +1171,20 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           >
             {kicker}
             {elapsedMs != null && (
-              <span style={{ opacity: 0.6, marginLeft: 6 }}>{fmtElapsed(elapsedMs)}</span>
+              <span style={{ opacity: 0.55, marginLeft: 6 }}>{fmtElapsed(elapsedMs)}</span>
             )}
           </div>
           <div
             style={{
-              fontSize: 12.5,
+              fontSize: 13.5,
               fontWeight: 500,
               color: "hsl(var(--card-foreground))",
-              marginTop: 1,
+              marginTop: 3,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               letterSpacing: "-0.005em",
+              lineHeight: 1.35,
             }}
           >
             {run.status === "pushed" ? (pushSubtitle || run.title) : run.title}

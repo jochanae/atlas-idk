@@ -2291,7 +2291,7 @@ function AssistantBubbleImpl({
             being generated — the sketch (or its loading state) IS the response, and
             raw in-progress prompt/description prose must never flash in its place. */}
         {!(message.imageB64 || imageGenDataUrl || (message.imageGen?.images?.length ?? 0) > 0 || message.pendingSketch) && (
-        <div className="atlas-prose" style={{ fontSize: 16.5, lineHeight: 1.75, letterSpacing: "0.015em", color: "var(--atlas-fg)", opacity: 0.94, fontFamily: "var(--app-font-sans)", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" as const }}>
+        <div className="atlas-prose" style={{ fontSize: 17.5, lineHeight: 1.72, letterSpacing: "0.012em", color: "var(--atlas-fg)", opacity: 0.94, fontFamily: "var(--app-font-sans)", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" as const }}>
           {/* Streaming and final states use the SAME renderer so partial markdown
               renders progressively (tables, lists, code fences etc. resolve as
               tokens close). No plain-text streaming branch — no post-completion
