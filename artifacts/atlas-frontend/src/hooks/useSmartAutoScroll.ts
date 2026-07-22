@@ -45,16 +45,30 @@ export function useSmartAutoScroll(
   }
 
   // Track user scroll position to maintain the stick flag.
+  // rAF-debounced: coalesce a burst of scroll events into one read per frame
+  // so we don't fight the dock's height animation with repeated scrollHeight
+  // reads mid-reflow.
   useEffect(() => {
     const el = ref.current;
     if (!el || !enabled) return;
-    const onScroll = () => {
-      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const node = ref.current;
+      if (!node) return;
+      const distance = node.scrollHeight - node.scrollTop - node.clientHeight;
       stickRef.current = distance <= threshold;
     };
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(measure);
+    };
     el.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => el.removeEventListener("scroll", onScroll);
+    measure();
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [ref, enabled, threshold]);
 
   // Auto-scroll on dep change if stuck to bottom.
