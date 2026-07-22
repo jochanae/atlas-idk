@@ -61,3 +61,66 @@
   border: 0;
   color: inherit;
 }
+
+/* ── Shared markdown spacing tokens (AtlasMarkdown primitive) ────────────────
+   Both Ask Atlas and Workspace mount .atlas-md; these rules give the two
+   surfaces identical paragraph/list/heading spacing without inline styles.
+   Surface-level typography (font-size, line-height, letter-spacing, color)
+   is still inherited from the parent .atlas-prose wrapper. */
+.atlas-md > *:first-child { margin-top: 0; }
+.atlas-md > *:last-child { margin-bottom: 0; }
+
+.atlas-md p {
+  margin: 0 0 0.6em 0;
+  color: inherit;
+}
+
+.atlas-md h1,
+.atlas-md h2,
+.atlas-md h3,
+.atlas-md h4,
+.atlas-md h5,
+.atlas-md h6 {
+  margin: 0.9em 0 0.4em 0;
+  line-height: 1.3;
+}
+.atlas-md h1 { font-size: 1.35em; }
+.atlas-md h2 { font-size: 1.2em; }
+.atlas-md h3 { font-size: 1.08em; }
+.atlas-md h4,
+.atlas-md h5,
+.atlas-md h6 { font-size: 1em; }
+
+.atlas-md ul,
+.atlas-md ol {
+  margin: 0.4em 0 0.6em 0;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+}
+.atlas-md ul { list-style-type: disc; }
+.atlas-md ol { list-style-type: decimal; }
+.atlas-md li { margin: 0.18em 0; }
+
+/* GFM task lists (remark-gfm) */
+.atlas-md li input[type="checkbox"] {
+  margin-right: 0.5em;
+  transform: translateY(1px);
+  accent-color: var(--atlas-gold);
+}
+.atlas-md li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.2em;
+}
+
+.atlas-md blockquote {
+  margin: 0.6em 0;
+  padding-left: 0.9em;
+  border-left: 2px solid color-mix(in oklab, var(--atlas-gold) 40%, var(--atlas-border));
+  color: color-mix(in oklab, var(--atlas-fg) 85%, transparent);
+  font-style: italic;
+}
+
+.atlas-md del { opacity: 0.55; }
+
