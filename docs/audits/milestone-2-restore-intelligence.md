@@ -1,77 +1,127 @@
 # Milestone 2 — Restore Intelligence
 
-**Status:** **OPEN** — 2.1 closed; **2.2 Round 1 closed out** → P1 Flow → P2 Classification → P3 Surface Integrity → Round 2  
-**Prerequisite:** [Milestone 1 — Restore the Conversation](./milestone-1-unbroken-conversation.md) **CLOSED**  
-**Principle:** Do **not** start by debating whether Ask Atlas should exist. Validate capabilities Atlas was designed to support — first delivery (2.1), then understanding (2.2).
+**Parent:** Milestone track (M1 closed → M2 open)  
+**Status:** OPEN — 2.1 closed; 2.2 evaluation complete, implementation remaining  
+**Branch / PR:** implementation work continues under `cursor/milestone-2-2-intelligence-correctness-df4c` / PR #209  
+**Last updated:** 2026-07-22
 
 ---
 
-## Sequence
+## What this milestone is about
 
-| # | Track | Mode | Status |
-|---|-------|------|--------|
-| **2.1** | Artifact Generation and Delivery | Audit → contract fix | **CLOSED** — PR #208 merged (`d0b923d1`) — [`milestone-2-1-artifact-generation-delivery-audit.md`](./milestone-2-1-artifact-generation-delivery-audit.md) |
-| **2.2** | Workspace intelligence correctness | Quality evaluation — *right* information, not mere population | **OPEN — Round 1 closed out** — next **P1→P2→P3→Round 2** — [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) |
-| **2.3** | Intelligence differentiation | Builder, Storyteller, Designer, and other lenses — meaningfully different thinking | After 2.2 accuracy bar |
-| **2.4** | Natural conversation | Fewer unnecessary briefs, better intent recognition, appropriate follow-ups, less mechanical workspace behavior | After 2.3 |
+M1 restored **conversation continuity** — Atlas remembers what was said across sessions.
 
----
+M2 restores **intelligence** — Atlas uses that memory to understand work, generate artifacts, and reason across surfaces.
 
-## Mindset by track
+This is not a UI milestone. Panels existing and looking populated is not success. Success is:
 
-| Track | Question |
-|-------|----------|
-| 2.1 | If Atlas says it generated something, did the user receive and open it? |
-| **2.2** | **Did Atlas actually understand the conversation?** — and does it know **what kind** of knowledge it learned? |
-| 2.3 | Do lenses provide unique, useful perspectives? |
-| 2.4 | Does the conversation feel natural rather than mechanical? |
+1. Artifacts that reflect the actual conversation
+2. Workspace knowledge that is correctly classified and surface-accurate
+3. Lens behavior that is distinct and useful
+4. Conversation that feels natural, not procedural
 
 ---
 
-## 2.2 success metric
+## The governing question
 
-> Atlas reliably extracts knowledge from the conversation in a way that is accurate, useful, and meaningfully different across its intelligence surfaces.
+> Did Atlas actually understand the conversation?
 
-**Knowledge Classification:**
-
-> Atlas must distinguish between Ideas, Decisions, Insights, Questions, and Engineering Events. A product architect shouldn't have to mentally separate those after the fact—the system should do it automatically.
-
-### Round 1 snapshot
-
-| Surface | Result |
-|---------|--------|
-| Blueprint | **PASS** |
-| Ledger | **PARTIAL** (architecture + engineering noise mixed) |
-| Insights | **PARTIAL** (procedural; missing persistence-boundary insight) |
-| Flow | **NOT VERIFIED** |
-| Knowledge Classification | **FAIL** — primary finding |
-
-### Round 1 Closeout path (do in order)
-
-| Step | Mode | Status |
-|------|------|--------|
-| **P1** Verify Flow | Observation | NOT VERIFIED — reasoning graph vs conversation graph |
-| **P2** Knowledge Classification | Correction | FAIL — highest priority |
-| **P3** Surface Integrity | Correction | Blueprint / Ledger / Insights / Flow / Activity each own one job |
-| **Round 2** | Validation | Lock principles → abandon → reversal → evolve without corruption |
-
-Do **not** start Round 2 until P1–P3 complete.  
-Full criteria: [2.2 board](./milestone-2-2-intelligence-correctness.md).
+Not: Did the UI survive?  
+Not: Did something render?
 
 ---
 
-## Closed: 2.1 governing requirements
+## Sub-milestones
 
-> When Atlas generates an artifact in Ask Atlas, the artifact must appear in that conversation first. Storage in Global Files or a related Workspace is additional persistence—not a substitute for delivery.
+### 2.1 — Artifact Generation & Delivery — ✅ CLOSED
 
-> A link to a Workspace output must open the actual output or its destination state, not initiate a generic full-conversation handoff.
+**Closed:** 2026-07-22 (PR #208 → `main` `d0b923d1`)
+
+Ship and prove the Ask Atlas → generate → Open → Workspace path for PPTX and related deliverables. Conversation-first; no forced project creation for deliverable-only turns.
+
+**What closed it:** generate_deliverable on home + Atlas Files bucket; Open deep-link; PROJECT_READY suppression for deliverable-only; prose honesty; Open forces All Outputs.
+
+**Evidence:** `docs/audits/milestone-2-1-artifact-generation.md`
 
 ---
 
-## Explicit non-goals (2.2)
+### 2.2 — Workspace Intelligence Correctness — 🟡 EVALUATION COMPLETE → IMPLEMENTATION
 
-- No infrastructure rabbit holes (SSE survival, auth, scale).  
-- No reopen of deliverable pipeline work unless a regression breaks the 2.1 contract.  
-- No debate on retiring Ask Atlas.  
-- Do not treat “panel populated” as success.  
-- Do not skip ahead to Round 2 before classification and surface integrity.
+**Board:** [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md)
+
+**Status after Round 2 user evaluation (2026-07-22):**
+
+| Check | Result |
+|-------|--------|
+| Blueprint | ✅ PASS |
+| Ledger | ✅ PASS (engineering noise remains — fix in P2/P3) |
+| Insights | ✅ PASS (procedural tone remains — fix in P2/P3) |
+| Flow (P1) | ✅ PASS — Designer / Builder / Storyteller share project knowledge |
+| Architectural reversal | ✅ PASS |
+| Knowledge Classification (P2) | ❌ FAIL — implementation required |
+| Surface Integrity (P3) | ⏳ PARTIAL — Flow works; desktop discoverability + ledger/insights purity remain |
+
+**Evaluation is complete.** Stop creating new tests. Remaining work is **implementation only**:
+
+1. Knowledge Classification (Idea / Decision / Insight / Question / Engineering Event + promotion)
+2. Surface Integrity (Blueprint / Ledger / Insights / Flow / Activity contracts)
+3. Desktop Flow discoverability (if treated as product issue)
+
+**After Cursor ships those fixes:** one user regression pass closes 2.2.
+
+**Not required to close 2.2:** Ask Atlas existence debates; more Flow verification rounds; infra rabbit holes.
+
+---
+
+### 2.3 — Lens Differentiation — ⬜ NOT STARTED
+
+Prove Designer, Builder, and Storyteller produce meaningfully different outputs and reasoning for the same project — not three skins on one answer.
+
+**Depends on:** 2.2 classification + surface integrity so lenses reason over the right knowledge types.
+
+---
+
+### 2.4 — Natural Conversation — ⬜ NOT STARTED
+
+Conversation should feel like working with a capable collaborator, not a procedural assistant. Less “here’s what I did,” more insight, challenge, and synthesis.
+
+**Depends on:** 2.2 (correct knowledge) and 2.3 (distinct lenses). Insights quality from 2.2 feeds this directly.
+
+---
+
+## Sequence (current)
+
+```
+2.1 Artifact generation     ✅ CLOSED
+        ↓
+2.2 Intelligence correctness
+        ✅ Evaluation complete (Round 1 + Round 2)
+        ⏳ Implementation: Classification + Surface Integrity (+ Flow desktop discoverability)
+        → then one user regression pass → CLOSE 2.2
+        ↓
+2.3 Lens differentiation
+        ↓
+2.4 Natural conversation
+```
+
+Do not start 2.3/2.4 until 2.2 implementation + regression close.
+
+---
+
+## Explicit non-goals for M2
+
+- Debating whether Ask Atlas should exist
+- Treating “panel has content” as success
+- More evaluation rounds before Classification / Surface Integrity land
+- Infrastructure rabbit holes unrelated to understanding
+
+---
+
+## Status log
+
+| Date | Event |
+|------|-------|
+| 2026-07-22 | M2 opened after M1 closed (`95e6f309`). |
+| 2026-07-22 | 2.1 closed via PR #208 (`d0b923d1`). |
+| 2026-07-22 | 2.2 Round 1: Blueprint PASS; Ledger/Insights PARTIAL; Flow discoverability gap; Classification FAIL. |
+| 2026-07-22 | 2.2 Round 2 user evaluation **complete**: Flow PASS; architectural reversal PASS; Classification FAIL; Surface Integrity PARTIAL. Evaluation stops; implementation begins. |

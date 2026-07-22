@@ -3,7 +3,8 @@
 **Phase:** Evaluation audit (quality of understanding — **not** infrastructure)  
 **Date:** 2026-07-22  
 **Repo HEAD at commission:** `d0b923d1` (`main`, post PR #208)  
-**Status:** **OPEN** — Round 1 closed out; next = **P1 Verify Flow → P2 Knowledge Classification → P3 Surface Integrity → Round 2**  
+**Status:** **OPEN — evaluation complete; implementation remaining**  
+**Checklist:** P1 Verify Flow ✅ PASS · P2 Knowledge Classification ⏳ · P3 Surface Integrity ⏳ · Round 2 validation ✅ complete · Final regression pending after fixes  
 **Board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Prerequisite:** Milestone 2.1 deliverable contract landed (PR #208)
 
@@ -52,17 +53,19 @@ Intelligence is captured mainly **after** workspace turns (fire-and-forget extra
 | **Blueprint** | `application_models` + `project_dna` | Per-turn AM extraction (~5s UI refresh) | Right tab → Blueprint → Spec / Data / Soul |
 | **Decisions** | `entries` (`type=Decision`) + decision artifacts | Nexus DECISION drafts, user commit, catch cards, genome objects | Ledger; Blueprint → Decisions |
 | **Insights** | Composed `GET /intelligence` (+ genome DNA) | Client template briefing over DNA/health/entries — **not** a dedicated insight extractor | Insights tab |
-| **Flow** | `projects.nodeState` (strategic); `project_flow_canvas` (AM projection) | FLOW_NODE, hydrate, Forge, AM sync | Map → Designer / Builder / Storyteller |
+| **Flow** | `projects.nodeState` (strategic); `project_flow_canvas` (AM projection) | FLOW_NODE, hydrate, Forge, AM sync | Flow Map / Designer — see P1 for how to open |
 | **Objects** | Same `entries` table, typed | Genome `objects[]` → often auto-committed | Blueprints → Objects |
 | **Satellite** | Portfolio Master Map / Flow goal satellites | Portfolio orbit — weak turn-level understanding signal | `/map` or Flow satellites |
 | **Ledger** | Full `entries` UI | Broader than Decisions (blockers, parked, etc.) | Ledger tab |
+| **Activity** | Intended home for engineering events | Sync/build/commit history | Activity / timeline (once Surface Integrity lands) |
 
 **Naming traps for evaluators:**
 
 1. “Blueprint” may mean the **live Application Model panel** (2.2 target) or a **one-shot JSON snapshot** (`POST /blueprint`). Prefer the AM panel.  
 2. **Insights panel** ≠ genome `Insight` objects on ObjectBoard.  
 3. **Two Flow stores** — strategic `nodeState` vs AM `project_flow_canvas`.  
-4. **Two lens systems** — workspace chat lenses (Flow/Build/Look/Scenario) vs Map UI lenses (Designer/Builder/Storyteller).
+4. **Two lens systems** — workspace chat lenses (Flow/Build/Look/Scenario) vs Map UI lenses (Designer/Builder/Storyteller).  
+5. On desktop, the Flow tab is currently **hidden** from the right rail even though the panel mounts when selected.
 
 ---
 
@@ -87,8 +90,9 @@ After substantive turns, wait ~5–10s for fire-and-forget extraction before ins
 1. Blueprint (Spec / Data / Soul)  
 2. Decisions / Ledger  
 3. Insights  
-4. Flow (Designer, then Builder + Storyteller)  
-5. Every relevant lens (chat lenses if used; Map lenses always)
+4. Flow (Designer, then Builder + Storyteller) — open via `?view=flow` or Insights if the tab is hidden  
+5. Knowledge Classification across those surfaces  
+6. Every relevant lens (chat lenses if used; Map lenses always)
 
 ### Five questions (always)
 
@@ -101,7 +105,7 @@ After substantive turns, wait ~5–10s for fire-and-forget extraction before ins
 ### Pass / fail shorthand
 
 - **Pass:** Contents would convince a human Atlas tracked commitments and forks.  
-- **Fail:** Populated but generic, duplicated, inventing, retaining abandoned ideas, or treating brainstorming as decision.
+- **Fail:** Populated but generic, duplicated, inventing, retaining abandoned ideas, treating brainstorming as decision, or mixing engineering events into product knowledge.
 
 ---
 
@@ -266,11 +270,12 @@ Insights tab Atlas Summary → ask whether any line is non-obvious → compare D
 - Hydrate with thin/no history can still invent “plausible” satellites.  
 - FLOW_NODE ids are timestamped → duplicate concepts across turns.  
 - Storyteller chapters are **status** narrative, not a true chronological timeline.  
-- Confirm whether you are on strategic `nodeState` Map vs AM canvas projection.
+- Confirm whether you are on strategic `nodeState` Map vs AM canvas projection.  
+- **Desktop discoverability:** Flow tab is filtered out of the right rail; open via `?view=flow` or Insights.
 
 ### Inspection path
 
-Map → Designer (ground truth graph) → Generate/Hydrate only if empty → compare nodes to transcript pivots → Builder + Storyteller for same graph, different jobs.
+Open Flow via `?view=flow` or Insights → Open the Flow Map → Designer. Then Builder + Storyteller for the same graph.
 
 ---
 
@@ -320,6 +325,7 @@ Evaluate only insofar as they affect understanding:
 | **Objects** | Watch for brainstorm auto-committed as Decision/Goal noise |
 | **Satellite** | Portfolio navigation — low weight for turn understanding |
 | **Ledger** | Primary home for Decisions criteria; also check non-decision clutter |
+| **Activity** | Intended home for Engineering Events once Surface Integrity lands |
 
 ---
 
@@ -431,94 +437,102 @@ Overall 2.2 (this run): Mixed — Blueprint strong; Ledger/Insights partial; Flo
 | **Blueprint extraction** | **PASS** — better shape than the agent checklist expected |
 | **Ledger** | **PARTIAL** — right architecture mixed with engineering history |
 | **Insights** | **PARTIAL** — procedural, missing the persistence-boundary insight |
-| **Flow** | **NOT VERIFIED** |
+| **Flow** | **PASS** (Round 2) — see validation report |
 | **Root issue** | **Classification**, not a crash — Ideas / Decisions / Insights / Questions / Engineering Events must be separated automatically |
 
-**Next:** Follow **Round 1 Closeout** below — observation → correction → validation. Do **not** start Round 2 until P1–P3 complete.
+**Next:** ~~Observe / validate~~ → **implement P2 + P3** → one final regression pass to close 2.2.
 
 ---
 
-## Round 1 Closeout — observation → correction → validation
+## Round 2 Validation Report (2026-07-22)
 
-Progress the board in this order only.
+**Objective:** Validate whether Atlas can handle an architectural reversal inside a live Workspace conversation and propagate change across project intelligence surfaces — and complete P1 Flow verification.
 
-### P1. Verify Flow
+### Scenario
 
-| | |
-|--|--|
-| **Status** | **NOT VERIFIED** — and **hard to find in current desktop Workspace UI** |
-| **Mode** | Observation |
-| **Goal** | Confirm Atlas is building a **reasoning graph**, not a conversation graph |
+Challenged an existing architectural assumption:
 
-#### Does Flow exist?
+> Ask Atlas should not always be the on-ramp. A user who already knows they're starting a long-term project should be able to begin directly in a Workspace.
 
-**Yes.** It is a real user-facing surface, not an internal-only structure.
+Atlas did **not** simply agree. It challenged the proposal, explored architectural consequences, identified that this changes the Ask Atlas ↔ Workspace distinction, proposed a cleaner model based on **commitment and persistence** rather than workflow, and raised a new unresolved UX question: “Where should a new user start?”
 
-| Layer | What |
-|-------|------|
-| UI | `FlowPanel` → `AxiomFlow` (Designer spatial graph + Builder schema + Storyteller chapters) |
-| Persistence | `projects.nodeState` (strategic graph). Separate AM projection: `project_flow_canvas` |
-| Code | `workspace.tsx` right-tab id `"map"` label **"Flow"**; `FlowPanel.tsx` |
+### Findings
 
-**Naming traps:**
+| Area | Result | Notes |
+|------|--------|-------|
+| **Conversation intelligence** | **PASS** | Reasoned through implications instead of agreeing; architectural thinking |
+| **Knowledge evolution** | **PASS** | Evolved the architecture rather than replacing it; preserved prior context |
+| **Flow (Axiom Flow)** | **PASS** | Real Workspace surface; verified via Insights → Open Flow, Map, Designer / Builder / Storyteller. Graph centered on: Atlas stays with you; Ask Atlas owns on-ramp; Workspace owns committed work; Promotion; Artifact persistence; Product principles; Active risks. No fabricated concepts. Possible duplicate: “Three non-negotiable product principles” appears twice in Builder |
+| **Storyteller** | **PASS** | Coherent architectural narrative — not a chat summary |
+| **Builder** | **PASS** | Organized into requirements / decisions / priorities / blockers — execution spec, not another chat |
+| **Blueprint** | **PASS** | Validated (Round 1 + Round 2 continuity) |
+| **Ledger** | **PASS (with issue)** | Architectural decisions present; engineering events still mixed in |
+| **Insights** | **PASS (with issue)** | Present; still too procedural — needs stronger synthesized insights |
+| **Architectural reversal** | **PASS** | Challenged change, reasoned consequences, proposed alternative, preserved context |
+| **Knowledge Classification** | **FAIL** | Objects still need stronger Idea / Decision / Insight / Question / Engineering Event separation; promotion must be explicit |
+| **Surface Integrity** | **PARTIAL** | Flow functions correctly; desktop discoverability still weak (hidden from normal Workspace tabs) |
 
-1. Chat lens **“Flow”** (“Think it through”) ≠ Flow **Map** tab.  
-2. Route **`/map`** = portfolio **Master Map** ≠ in-project Flow graph.  
-3. On **desktop**, Flow is **intentionally omitted** from the right-rail tab bar: `tabs.filter(t => t.id !== "map")` — so Blueprint / Insights / Ledger appear, but **Flow does not**. That is why Round 1 screenshots never showed it.
+### Important architectural discovery (not committed)
 
-**How to inspect today:**
+This conversation produced a new **hypothesis** (still an Idea / architectural discussion — do **not** treat as Decision until explicitly accepted):
 
-| Path | Works? |
-|------|--------|
-| Desktop right tabs (Blueprint, Insights, …) | **No** — Flow filtered out |
-| Mobile bottom tab **Flow** | Yes → mounts `FlowPanel` |
-| Insights → “Open the Flow Map” | Yes → `setTab("map")` |
-| URL `?view=flow` on the project/workspace | Yes |
-| Forge / hydrate paths that `setDesktopForceTab("map")` | Yes |
-| Mobile dock **Map** | **No for P1** — currently `setLocation("/map")` (portfolio), not workspace Flow |
+| Current model | Possible improved model |
+|---------------|-------------------------|
+| Ask Atlas → Workspace | Temporary conversational memory → Persistent project memory |
 
-**Pass criteria** (once the Designer graph is open):
+### Recommendation
 
-- Founding promise appears as a **root** concept  
-- Principles **branch from** the promise  
-- Questions **branch from** principles  
-- No fabricated nodes  
-- No duplicate concepts  
+Stop creating new evaluation tests. Remaining 2.2 work is **implementation**, not exploration:
 
-**Board decision:** Do **not** defer P1 or replace it with “verify the underlying model only.” The product claim is a **reasoning graph people can see**. For Round 1 closeout:
+1. **Knowledge Classification** (P2)  
+2. **Surface Integrity** (P3)  
+3. **Desktop discoverability of Flow** (product chrome under Surface Integrity, if accepted)
 
-1. Open Flow via `?view=flow` or Insights → Open the Flow Map.  
-2. Score the Designer graph against the pass criteria.  
-3. Log **desktop discoverability** as a separate finding (Flow hidden from the tab bar) — fix under Surface Integrity / product chrome if needed, but don’t skip the graph check.
-
-If the graph is empty until Generate/Hydrate/Forge: run hydrate once, then score — invented satellites still fail F4.
+After those land: **one final regression pass** to close Milestone 2.2.
 
 ---
 
-### P2. Knowledge Classification
+## Closeout checklist (current)
+
+| Step | Mode | Status |
+|------|------|--------|
+| **P1** Verify Flow | Observation | ✅ **PASS** |
+| **Round 2** validation | Validation | ✅ **COMPLETE** |
+| **P2** Knowledge Classification | Correction / implementation | ⏳ **In progress** — highest priority |
+| **P3** Surface Integrity | Correction / implementation | ⏳ **In progress** (includes desktop Flow discoverability) |
+| Final regression | Validation | ⏸ After P2 + P3 |
+
+### P1 — Verify Flow (PASS)
+
+Confirmed:
+
+- Flow exists as a real Workspace surface (`FlowPanel` / `AxiomFlow`)  
+- Reads `projects.nodeState`  
+- Designer, Builder, and Storyteller use the same project knowledge  
+- Graph reflects the Workspace conversation (founding promise, on-ramp, committed work, promotion, persistence, principles, risks)  
+- No fabricated concepts observed  
+- One possible duplicate in Builder (“Three non-negotiable product principles”)  
+
+**Discoverability note (not a P1 fail):** On desktop, Flow remains filtered from the right-rail tab bar; access via Insights → Open Flow / Map / `?view=flow`. Fix under P3 if product wants it in the normal tab strip.
+
+### P2 — Knowledge Classification (implementation)
 
 | | |
 |--|--|
-| **Status** | **FAIL — highest-priority correction** |
-| **Mode** | Correction |
+| **Status** | ⏳ In progress |
 | **Goal** | First-class types + explicit promotion (see §0) |
 
-**Implement / enforce:**
+Implement / enforce:
 
 - Idea · Decision · Insight · Question · Engineering Event  
 - Rule: no silent category drift — only **explicit promotion** (e.g. Idea → Decision)  
 
-**Pass:** K1–K6 green on a re-inspect of the Round 1 project (and a short new turn that produces each type).
-
----
-
-### P3. Surface Integrity
+### P3 — Surface Integrity (implementation)
 
 | | |
 |--|--|
-| **Status** | Blocked on P2 |
-| **Mode** | Correction (wiring after types exist) |
-| **Goal** | One responsibility per surface (see §0b) |
+| **Status** | ⏳ In progress |
+| **Goal** | One responsibility per surface (see §0b) + desktop Flow discoverability |
 
 | Surface | Owns |
 |---------|------|
@@ -528,37 +542,19 @@ If the graph is empty until Generate/Hydrate/Forge: run hydrate once, then score
 | Flow | Relationships between concepts |
 | Activity | Engineering events, syncs, builds, commits |
 
-**Pass:** S1–S5 — no engineering leakage into Ledger; Insights not procedural state; Flow not a linear chat dump.
-
----
-
-### Then — Round 2 (validation)
-
-Only after P1–P3 are complete:
-
-1. **Lock** the three architectural principles  
-2. Test **abandonment** and recovery  
-3. Test **reversal** (“we changed our mind”)  
-4. Verify Atlas can **evolve** knowledge without corrupting prior commitments  
-
-Re-score B4, D2–D3, K*, S* on that thread.
-
----
-
-### Why this closeout matters
-
-Earlier work made Atlas **talk**. Round 1 on PR #209 is the first time the product is judged on whether Atlas **knows what kind of knowledge it has learned** — the foundation for growing intelligently over months instead of accumulating an undifferentiated pile of notes.
+Also: restore or intentionally productize desktop access to Flow (currently hidden from right-rail tabs).
 
 ---
 
 ## Recommended sequence
 
-1. ~~Round 1 conversation + scorecard~~ — **closed out** (scores above).  
-2. **P1** — Verify Flow / Designer (pass criteria in Closeout).  
-3. **P2** — Knowledge Classification (K1–K6) — highest-priority fix.  
-4. **P3** — Surface Integrity (S1–S5) once types exist.  
-5. **Round 2** — lock principles → abandon → reversal → evolve without corruption.  
-6. After 2.2 accuracy + classification bars, deepen lens differentiation under **2.3**.
+1. ~~Round 1 conversation + scorecard~~ — done.  
+2. ~~P1 Verify Flow~~ — **PASS**.  
+3. ~~Round 2 validation (reversal + lens surfaces)~~ — **COMPLETE**.  
+4. **Implement P2** — Knowledge Classification (K1–K6).  
+5. **Implement P3** — Surface Integrity (S1–S5) + desktop Flow discoverability.  
+6. **One final regression pass** — then close Milestone 2.2.  
+7. After 2.2 closes, deepen lens differentiation under **2.3** only if still needed beyond Round 2 lens passes.
 
 ---
 
@@ -583,6 +579,8 @@ Earlier work made Atlas **talk**. Round 1 on PR #209 is the first time the produ
 |------------|--------|
 | Quality-of-understanding mindset (not infrastructure) | **Honored** |
 | Independent surface evaluation + acceptance criteria | **Delivered** |
+| Knowledge Classification criteria | **Delivered** |
+| Surface Integrity ownership map | **Delivered** |
 | Lens differentiation called out | **Delivered** |
 | Rich-conversation + five-question protocol | **Delivered** |
 | Success metric recorded | **Delivered** |
