@@ -15,6 +15,7 @@ import { cloneRepoBackground } from "../lib/workspaceHydration";
 import { classifyRepository, ATLAS_SERVICE_CAPABILITIES } from "@workspace/repo-classifier";
 import { loadClassificationInput } from "../services/repositoryClassificationSource";
 import { logger } from "../lib/logger";
+import { seedIntelligenceAfterHandoff } from "../lib/handoffIntelligenceSeed";
 import {
   CreateProjectBody,
   UpdateProjectBody,
@@ -1182,17 +1183,23 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
     .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId)));
   if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
 
+  const body = (req.body ?? {}) as Record<string, unknown>;
   // Accept a Nexus conversation snapshot from the client.
-  const bodyMessages = Array.isArray((req.body as Record<string, unknown>)?.messages)
-    ? ((req.body as Record<string, unknown>).messages as Array<{ role: string; content: string }>)
+  const bodyMessages = Array.isArray(body.messages)
+    ? (body.messages as Array<{ role: string; content: string }>)
     : [];
+  // Ask Atlas source conversation — used to adopt original messages + flush Tier1
+  const sourceConversationId =
+    typeof body.conversationId === "string" && body.conversationId.trim().length > 0
+      ? body.conversationId.trim()
+      : null;
 
   // Persist the conversation transcript to nexusMessagesTable so it survives
   // page refresh and gives the workspace AI full context on subsequent turns.
   // Only write if there are no existing nexus messages for this project yet
   // (idempotent — prevents duplicates if append-thread is called twice).
   let adoptedConversationId: string | null = null;
-  if (bodyMessages.length > 0) {
+  if (bodyMessages.length > 0 || sourceConversationId) {
     const [existingMsg] = await db
       .select({ id: nexusMessagesTable.id, conversationId: nexusMessagesTable.conversationId })
       .from(nexusMessagesTable)
@@ -1200,30 +1207,63 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
       .limit(1);
 
     if (!existingMsg) {
-      const convId = randomUUID();
-      adoptedConversationId = convId;
-      const validMessages = bodyMessages.filter(
-        (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim().length > 0,
-      );
-      if (validMessages.length > 0) {
-        await db.insert(nexusMessagesTable).values(
-          validMessages.map((m) => ({
-            userId,
-            projectId: id,
-            conversationId: convId,
-            role: m.role,
-            content: m.content.trim(),
-          })),
+      // Prefer adopting the original Ask Atlas conversation (keeps message ids /
+      // attachments / Tier1 buffer key) over copying into a new UUID.
+      if (sourceConversationId) {
+        try {
+          await db.execute(sql`
+            UPDATE nexus_messages
+            SET project_id = ${id}
+            WHERE conversation_id = ${sourceConversationId}
+              AND user_id = ${userId}
+              AND project_id IS NULL
+          `);
+          await db.execute(sql`
+            UPDATE projects SET conversation_id = ${sourceConversationId}
+            WHERE id = ${id} AND user_id = ${userId} AND conversation_id IS NULL
+          `);
+          adoptedConversationId = sourceConversationId;
+        } catch (adoptErr) {
+          logger.warn({ err: adoptErr, projectId: id, sourceConversationId }, "append-thread: adopt source conversation failed — falling back to copy");
+        }
+      }
+
+      if (!adoptedConversationId && bodyMessages.length > 0) {
+        const convId = randomUUID();
+        adoptedConversationId = convId;
+        const validMessages = bodyMessages.filter(
+          (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim().length > 0,
         );
-        await db.execute(sql`
-          UPDATE projects SET conversation_id = ${convId}
-          WHERE id = ${id} AND user_id = ${userId} AND conversation_id IS NULL
-        `);
+        if (validMessages.length > 0) {
+          await db.insert(nexusMessagesTable).values(
+            validMessages.map((m) => ({
+              userId,
+              projectId: id,
+              conversationId: convId,
+              role: m.role,
+              content: m.content.trim(),
+            })),
+          );
+          await db.execute(sql`
+            UPDATE projects SET conversation_id = ${convId}
+            WHERE id = ${id} AND user_id = ${userId} AND conversation_id IS NULL
+          `);
+        }
       }
     } else {
       adoptedConversationId = existingMsg.conversationId ?? null;
     }
   }
+
+  // M2.2 R1 fix: seed Insights DNA / Objects from Ask Atlas knowledge on handoff
+  const seedConversationId = sourceConversationId ?? adoptedConversationId;
+  void seedIntelligenceAfterHandoff({
+    projectId: id,
+    userId,
+    sourceConversationId: seedConversationId,
+  }).catch((err) => {
+    logger.warn({ err, projectId: id }, "append-thread: intelligence seed failed — non-fatal");
+  });
 
   const genomeRow = await getProjectDNA(id);
 

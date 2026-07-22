@@ -7441,6 +7441,18 @@ Do NOT claim to read, see, or describe any file not listed here.
         await flushNexusTier1BufferToProject(effectiveConversationId, project.id, userId);
       }
 
+      // M2.2 R1: seed Insights DNA + Objects from the discovery conversation
+      try {
+        const { seedIntelligenceAfterHandoff } = await import("../lib/handoffIntelligenceSeed");
+        void seedIntelligenceAfterHandoff({
+          projectId: project.id,
+          userId,
+          sourceConversationId: effectiveConversationId,
+        });
+      } catch (seedErr) {
+        logger.warn({ err: String(seedErr), projectId: project.id }, "create_project: intelligence seed failed — non-fatal");
+      }
+
       // Attempt GitHub repo creation — BUILD turns only; graceful degradation if no token or API error
       let githubRepo: string | null = null;
       let githubHtmlUrl: string | null = null;
@@ -8257,6 +8269,16 @@ For backendSpec: infer it from the conversation — what data needs to persist, 
 
     if (handoffConversationId) {
       await flushNexusTier1BufferToProject(handoffConversationId, targetProjectId, userId);
+      try {
+        const { seedIntelligenceAfterHandoff } = await import("../lib/handoffIntelligenceSeed");
+        void seedIntelligenceAfterHandoff({
+          projectId: targetProjectId,
+          userId,
+          sourceConversationId: handoffConversationId,
+        });
+      } catch (seedErr) {
+        logger.warn({ err: String(seedErr), projectId: targetProjectId }, "nexus/handoff: intelligence seed failed — non-fatal");
+      }
     }
 
     res.json({ projectId: targetProjectId, projectName: brief.projectName, brief });
