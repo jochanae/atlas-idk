@@ -18,13 +18,22 @@ export interface DeliverableGuardResult {
   correction: string;
 }
 
-/** Success / readiness claims that require a real artifact. */
+/**
+ * Success / readiness claims that require a real artifact.
+ *
+ * IMPORTANT: Do NOT match bare "open it" — discovery/architecture prose
+ * routinely says things like "open it in Workspace" or "when you open it,"
+ * and a full-response replacement (SSE `correction`) would wipe the turn.
+ * Require an explicit file/deliverable noun (or "download it").
+ */
 const DELIVERABLE_SUCCESS_PATTERNS: RegExp[] = [
   /\bI(?:'ve| have)\s+(?:created|generated|made|built|produced|prepared)\s+(?:a\s+|an\s+|your\s+|the\s+)?(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|slides?|presentation|document|docx|pdf|diagram|chart|file|download)\b/i,
   /\bhere(?:'s| is)\s+your\s+(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|slides?|presentation|document|docx|pdf|diagram|chart|file)\b/i,
   /\b(?:the\s+)?(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|presentation|document|docx|pdf|diagram|chart|file)\s+(?:is|are)\s+ready\b/i,
   /\bit(?:'s| is)\s+in\s+Outputs\b/i,
-  /\b(?:download|open)\s+(?:it|the\s+file|the\s+spreadsheet|the\s+deck|the\s+document)\b/i,
+  // "download it" is deliverable-specific; bare "open it" is NOT (false-positive hazard).
+  /\bdownload\s+(?:it|the\s+file|the\s+spreadsheet|the\s+deck|the\s+document)\b/i,
+  /\bopen\s+(?:the\s+)?(?:file|spreadsheet|deck|document|download|pptx|xlsx|docx|pdf)\b/i,
   /\bI(?:'ve| have)\s+put\s+(?:it|the\s+file)\s+in\s+(?:Outputs|your\s+workspace|the\s+project)\b/i,
   /\bfile\s+(?:is\s+)?(?:ready|available)\s+(?:to\s+download|in\s+(?:this\s+)?conversation|as\s+a\s+card)\b/i,
   /\b(?:generated|created)\s+(?:successfully|the\s+(?:xlsx|pptx|docx|pdf))\b/i,
