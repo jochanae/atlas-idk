@@ -1139,17 +1139,18 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
         />
       </button>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 9, paddingRight: 22 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11, paddingRight: 22 }}>
         <span
           style={{
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 22,
-            height: 22,
+            width: 26,
+            height: 26,
             borderRadius: 999,
             background: tone.iconBg,
             color: tone.fg,
+            border: `1px solid ${BRONZE_OUTLINE}`,
             flexShrink: 0,
           }}
         >
@@ -1160,8 +1161,8 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           <div
             style={{
               fontFamily: "var(--app-font-mono)",
-              fontSize: 9,
-              letterSpacing: "0.14em",
+              fontSize: 9.5,
+              letterSpacing: "0.16em",
               textTransform: "uppercase",
               color: tone.fg,
               opacity: 0.9,
@@ -1170,19 +1171,20 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
           >
             {kicker}
             {elapsedMs != null && (
-              <span style={{ opacity: 0.6, marginLeft: 6 }}>{fmtElapsed(elapsedMs)}</span>
+              <span style={{ opacity: 0.55, marginLeft: 6 }}>{fmtElapsed(elapsedMs)}</span>
             )}
           </div>
           <div
             style={{
-              fontSize: 12.5,
+              fontSize: 13.5,
               fontWeight: 500,
               color: "hsl(var(--card-foreground))",
-              marginTop: 1,
+              marginTop: 3,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               letterSpacing: "-0.005em",
+              lineHeight: 1.35,
             }}
           >
             {run.status === "pushed" ? (pushSubtitle || run.title) : run.title}
