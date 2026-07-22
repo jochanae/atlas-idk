@@ -3,7 +3,7 @@
 **Phase:** Evaluation audit (quality of understanding — **not** infrastructure)  
 **Date:** 2026-07-22  
 **Repo HEAD at commission:** `d0b923d1` (`main`, post PR #208)  
-**Status:** **OPEN** — Round 1 evaluation in progress (founding-principles conversation)  
+**Status:** **OPEN** — Round 1 scored (Blueprint PASS; Ledger/Insights PARTIAL; Flow unverified); **Knowledge Classification** added as first-class criterion  
 **Board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Prerequisite:** Milestone 2.1 deliverable contract landed (PR #208)
 
@@ -23,7 +23,11 @@ This phase validates the **quality of Atlas’s thinking** and whether each inte
 
 > Atlas reliably extracts knowledge from the conversation in a way that is accurate, useful, and meaningfully different across its intelligence surfaces.
 
-**Fail condition:** Panels populate with generic, duplicated, invented, or abandoned content that would not convince a human Atlas tracked the conversation’s commitments and forks.
+**Governing addition (Round 1 finding):**
+
+> **Knowledge Classification:** Atlas must distinguish between Ideas, Decisions, Insights, Questions, and Engineering Events. A product architect shouldn't have to mentally separate those after the fact—the system should do it automatically.
+
+**Fail condition:** Panels populate with generic, duplicated, invented, or abandoned content that would not convince a human Atlas tracked the conversation’s commitments and forks — or that forces the user to re-classify Ideas vs Decisions vs engineering noise by hand.
 
 ---
 
@@ -98,6 +102,34 @@ After substantive turns, wait ~5–10s for fire-and-forget extraction before ins
 
 - **Pass:** Contents would convince a human Atlas tracked commitments and forks.  
 - **Fail:** Populated but generic, duplicated, inventing, retaining abandoned ideas, or treating brainstorming as decision.
+
+---
+
+## 0. Knowledge Classification (cross-cutting)
+
+**Question:** Does Atlas put each piece of knowledge in the right bucket — or does the user have to untangle Ideas, Decisions, and engineering noise after the fact?
+
+Round 1 showed the biggest gap is **not a crash** — it is **classification**. Atlas currently mixes three (or more) kinds of knowledge into overlapping surfaces (especially Ledger / Objects):
+
+| Kind | Definition | Example from Round 1 |
+|------|------------|----------------------|
+| **Ideas** | Hypotheses and principles still being explored | Continuity is the product; Ask Atlas is the on-ramp; momentum must transfer, not restart |
+| **Decisions** | Explicitly committed architectural choices | Artifact persistence is required; automatic promotion when work becomes consequential |
+| **Insights** | Non-obvious syntheses that change how you see the problem | Ask Atlas ↔ Workspace boundary depends on **persistence**, not capability |
+| **Questions** | Open framing still unresolved | What problem does Ask Atlas solve for whom? |
+| **Engineering Events** | Implementation / system activity — not product knowledge | “Tier 1 field updated”; Blueprint regenerated; Manifest synced |
+
+### Acceptance criteria
+
+| # | Criterion | Pass if… |
+|---|-----------|----------|
+| K1 | Ideas stay ideas | Explored principles are not auto-committed as Decisions |
+| K2 | Decisions are commitments only | Ledger Decisions are things the user (or an explicit commit path) actually locked |
+| K3 | Insights are synthesized | Insights elevate a non-obvious pattern — not stage/status procedure |
+| K4 | Questions remain open | Unresolved framing is not written as settled truth in Spec/Ledger |
+| K5 | Engineering events stay out of product knowledge | Activity like “Tier 1 field updated” lives in history/activity — **not** the architectural Ledger |
+
+**Product bar:** A product architect should not have to mentally separate these after the fact — the system should do it automatically. Until K1–K5 pass, Atlas feels like a sophisticated note-taker rather than an architectural partner.
 
 ---
 
@@ -317,62 +349,74 @@ Mark `_` as `P` / `F` / `N` (n/a).
 
 Round 1 is **incomplete** for full B4/D3 coverage (no abandoned idea or explicit reversal yet) — that is fine. Score what *is* present; extend the thread for abandon + reversal in Round 2.
 
-### Inspection checklist (do this in the Workspace now)
+### Inspection checklist (completed)
 
-Wait ~5–10s after the latest turn, then:
+1. **Blueprint → Spec / Soul** — ✅ Purpose, Audience, Identity, Wedge, Manifest converge on **continuity across time** (goals, not topics).  
+2. **Ledger** — ⚠️ Architectural commitments present (“Artifact persistence model required”) **and** engineering noise (“Tier 1 field updated”) in the same bucket.  
+3. **Insights** — ⚠️ Better than before, still procedural (“Shape phase”, “Answer this next”); missing the real insight: Ask Atlas ↔ Workspace boundary depends on **persistence**, not capability.  
+4. **Flow / Designer** — ❌ Not in screenshots — still needs verification.  
+5. **Knowledge classification** — ❌ Ideas / Decisions / Engineering Events mixed (see §0).
 
-1. **Blueprint → Spec** — Does purpose/outcomes say continuity/momentum/execution (goals), or only “Atlas future / product thinking” (topics)?  
-2. **Blueprint → Soul / DNA** — Any creative principle that sounds like the founding statement?  
-3. **Ledger / Decisions** — Is anything committed yet? The three principles are **in flight**, not decided — parking is ok; auto-committing brainstorm principles as Decisions would **fail D2**.  
-4. **Insights** — Any line that is non-obvious (e.g. circular Ask Atlas framing risk), or only stage/momentum Mad Libs?  
-5. **Flow** — Nodes for founding promise, Ask Atlas job trap, principles-in-progress? Any invented satellites unrelated to this thread?  
-6. **Lenses** — If you re-ask the principles question under Build vs Storyteller (or Map Builder vs Storyteller), do answers diverge meaningfully?
+### Five questions — Round 1 (scored)
 
-### Five questions — Round 1 (conversation quality; panels TBD after inspect)
+1. **Understood correctly:** Continuity across time as core promise; Spec/Soul converged on it.  
+2. **Missed:** Persistence-vs-capability boundary as a first-class Insight; clean separation of knowledge kinds.  
+3. **Invented / polluted:** Engineering events (“Tier 1 field updated”) treated as Ledger product knowledge.  
+4. **Genuinely helpful:** Blueprint no longer a conversation summary — architectural Spec forming.  
+5. **Would actually use:** Spec/Soul yes; Ledger only after engineering noise is removed; Insights not yet.
 
-1. **Understood correctly:** Continuity / momentum / execution as core promise; challenge about defining Ask Atlas too early.  
-2. **Missed:** (Fill after panel inspect — e.g. founding statement absent from Spec.)  
-3. **Invented:** (Fill after panel inspect — e.g. Flow nodes or Decisions not in the chat.)  
-4. **Genuinely helpful:** The circular-reasoning challenge and “clearest founding statement” framing — strong *in-chat* intelligence.  
-5. **Would actually use:** The forthcoming three principles + at-risk feature — if those land in Decisions/Blueprint and stay accurate, high use; if only in chat scrollback, surfaces failed their job.
+### Scorecard — Round 1 (filled)
 
-### Scorecard — Round 1
+| Surface | Result | Notes |
+|---------|--------|-------|
+| **Blueprint (Spec / Soul)** | **PASS** | Not a conversation summary. Purpose, Audience, Identity, Wedge, Manifest converge on continuity across time. |
+| **Ledger** | **PARTIAL PASS** | Good architectural commitments (“Artifact persistence model required”); also committed implementation noise (“Tier 1 field updated”) — belongs in engineering history, not the architectural ledger. |
+| **Insights** | **PARTIAL PASS** | Still too procedural (project state / “Shape phase” / “Answer this next”). Real insight — Ask Atlas ↔ Workspace boundary depends on **persistence**, not capability — not elevated. |
+| **Flow / Designer** | **NOT VERIFIED** | No Designer/Flow graph in screenshots. Cannot tell reasoning graph vs linear conversation. |
+| **Knowledge Classification** | **FAIL (cross-cutting)** | Ideas, Decisions, and Engineering Events mixed in one bucket. |
 
 ```text
 Project / conversation: Atlas future / founding principles
 Date: 2026-07-22
-Evaluator: Jo (+ agent board)
+Evaluator: Jo (screenshot review)
 
-Blueprint:  B1_ B2_N B3_ B4_N B5_   Notes: Fill after Spec inspect. B2/B4 N/A until deps + abandon appear.
-Decisions:  D1_ D2_ D3_N D4_ D5_   Notes: Principles not yet committed — D2 is the trap (don’t auto-decide).
-Insights:   I1_ I2_ I3_N I4_ I5_ I6_   Notes: Look for “Ask Atlas job before problem” as non-obvious risk.
-Flow:       F1_ F2_ F3_N F4_ F5_   Notes: Expect founding + principles branch; fail on invented nodes.
-Lenses:     L1_ L2_ L3_   Notes: Optional this round; prioritize Blueprint/Insights/Decisions first.
+Blueprint:  B1P B2N B3P B4N B5P   Notes: Continuity converged across Spec/Soul fields.
+Decisions:  D1P D2F D3N D4_ D5_   Notes: Real commits present; engineering events violate D2/K5.
+Insights:   I1F I2F I3N I4F I5_ I6_   Notes: Procedural state ≠ synthesis; persistence-boundary insight missing.
+Flow:       F1_ F2_ F3N F4_ F5_   Notes: NOT VERIFIED — open Designer next.
+Lenses:     L1N L2N L3N   Notes: Deferred.
+Knowledge:  K1_ K2F K3F K4_ K5F   Notes: Classification is the primary Round 1 finding.
 
-Five questions: see above (panels TBD)
-
-Overall 2.2 (this run): Mixed pending panel inspect — in-chat understanding looks strong; extraction TBD
+Overall 2.2 (this run): Mixed — Blueprint strong; Ledger/Insights partial; Flow unverified; Classification fail
 ```
 
-### Round 1 verdict so far
+### Round 1 verdict
 
-| Layer | Early read |
-|-------|------------|
-| **In-chat intelligence** | Strong — challenge + founding lock + principles ask is exactly the material 2.2 cares about |
-| **Surface extraction** | **Not scored until you inspect panels** — that is the actual Round 1 gate |
-| **Why it matters** | Milestone 1 would stop at “thread survived.” 2.2 asks whether Blueprint/Decisions/Insights/Flow *earned* this conversation |
+| Layer | Result |
+|-------|--------|
+| **In-chat intelligence** | Strong |
+| **Blueprint extraction** | **PASS** — better shape than the agent checklist expected |
+| **Ledger** | **PARTIAL** — right architecture mixed with engineering history |
+| **Insights** | **PARTIAL** — procedural, missing the persistence-boundary insight |
+| **Flow** | **NOT VERIFIED** |
+| **Root issue** | **Classification**, not a crash — Ideas / Decisions / Insights / Questions / Engineering Events must be separated automatically |
 
-**Next:** Inspect the five surfaces above, fill P/F on the scorecard, then extend the thread with (a) the three principles locked, (b) one abandoned idea, (c) one reversal — Round 2.
+**Next:**
+
+1. Verify Flow / Designer (still open).  
+2. Treat **Knowledge Classification (K1–K5)** as a 2.2 fix target before Round 2 expands scope.  
+3. Round 2: lock the three principles, add abandon + reversal; re-score with classification enforced.
 
 ---
 
 ## Recommended sequence
 
-1. ~~Run **one** rich Atlas/Reveal-style conversation~~ — **Round 1 underway** (founding principles).  
-2. Complete Round 1 panel inspect + scorecard.  
-3. Round 2: lock principles, add abandon + reversal, re-score B4/D3.  
-4. Log failures against criteria; only then prioritize **targeted** correctness fixes.  
-5. After surfaces pass accuracy/usefulness bars, deepen lens differentiation under **2.3**.
+1. ~~Run rich founding conversation~~ — Round 1 done.  
+2. ~~Panel inspect + scorecard~~ — Round 1 scored (Flow still open).  
+3. **Verify Flow / Designer** on the same project.  
+4. **Prioritize Knowledge Classification** (K1–K5) as the highest-leverage correctness fix — keep engineering events out of the architectural Ledger; keep Ideas from auto-promoting to Decisions; elevate real Insights over procedural state.  
+5. Round 2: lock principles, add abandon + reversal, re-score B4/D3/K*.  
+6. After classification + surface accuracy bars, deepen lens differentiation under **2.3**.
 
 ---
 
