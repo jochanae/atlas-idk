@@ -277,6 +277,7 @@ export function AskAtlasSurface({
   const [savedIdxSet, setSavedIdxSet] = useState<Set<number>>(new Set());
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
+  const [parkPrefill, setParkPrefill] = useState<string>("");
   
   const isParchment = useThemeMode() === "parchment";
   const [showScrollBtn, setShowScrollBtn] = useState(false);
