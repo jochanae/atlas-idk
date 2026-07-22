@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import type { Tier1Memory } from "@/lib/tier1Memory";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useComposerVisibility } from "@/hooks/useComposerVisibility";
@@ -395,6 +395,7 @@ export function ChatStream(props: ChatStreamProps) {
     authorizeRun,
     floatingControlsEnabled = true,
   } = props;
+  const initialTailPinnedRef = useRef(false);
 
   // Attachment / turn lifecycle verbs belong to Changes → Timeline ONLY.
   // The chat thread keeps only commit / decision / session receipts so they
@@ -464,6 +465,37 @@ export function ChatStream(props: ChatStreamProps) {
     }
     return false;
   }, [execLatestRun, runCardsByIdx]);
+
+  // Workspace page load must land at the tail after stored messages hydrate.
+  // This is separate from the manual "latest" button and runs inside the actual
+  // scroll surface so it waits for the rendered thread, then retries as layout
+  // settles from markdown/cards/images.
+  useLayoutEffect(() => {
+    if (initialTailPinnedRef.current) return;
+    if (!priorLoaded || messages.length === 0) return;
+
+    initialTailPinnedRef.current = true;
+    const pinToTail = () => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight);
+    };
+
+    pinToTail();
+    const raf1 = requestAnimationFrame(pinToTail);
+    const raf2 = requestAnimationFrame(() => requestAnimationFrame(pinToTail));
+    const t1 = window.setTimeout(pinToTail, 120);
+    const t2 = window.setTimeout(pinToTail, 360);
+    const t3 = window.setTimeout(pinToTail, 700);
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, [messages.length, priorLoaded, scrollRef]);
 
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
