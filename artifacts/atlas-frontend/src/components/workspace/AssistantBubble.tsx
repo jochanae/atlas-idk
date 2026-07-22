@@ -2292,14 +2292,15 @@ function AssistantBubbleImpl({
             raw in-progress prompt/description prose must never flash in its place. */}
         {!(message.imageB64 || imageGenDataUrl || (message.imageGen?.images?.length ?? 0) > 0 || message.pendingSketch) && (
         <div className="atlas-prose" style={{ fontSize: 16.5, lineHeight: 1.75, letterSpacing: "0.015em", color: "var(--atlas-fg)", opacity: 0.94, fontFamily: "var(--app-font-sans)", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" as const }}>
-          {message.streaming ? (
-            <span className="atlas-live-stream-text" style={{ opacity: 0.92, whiteSpace: "pre-wrap" }}>
-              {actionCleanedContent}
-              <span className="atlas-cursor" aria-hidden />
-            </span>
-          ) : (
-            <MarkdownProse content={actionCleanedContent} />
+          {/* Streaming and final states use the SAME renderer so partial markdown
+              renders progressively (tables, lists, code fences etc. resolve as
+              tokens close). No plain-text streaming branch — no post-completion
+              typography swap. See docs/handoffs/2026-07-22-shared-markdown-renderer.md */}
+          <MarkdownProse content={actionCleanedContent} />
+          {message.streaming && (
+            <span className="atlas-cursor" aria-hidden style={{ marginLeft: 2 }} />
           )}
+
           {/* atlas-action quick-action pills — rendered after prose, not inside the markdown renderer */}
           {!message.streaming && actionBlocks.map((block, i) =>
             block ? (
