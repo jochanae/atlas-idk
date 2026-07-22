@@ -5,8 +5,8 @@
  * helper modules that implementation must provide. Do not weaken assertions
  * to match legacy HARD RULE / current-turn-only OutputGuard behavior.
  *
- * Flag: ATTACHMENT_CONTINUITY_V2=1 enables new semantics inside the same
- * helpers (no parallel pipeline).
+ * Continuity V2 is ON by default; ATTACHMENT_CONTINUITY_V2=0 is the kill
+ * switch. Helpers below define the required semantics (no parallel pipeline).
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -200,6 +200,29 @@ describe("acceptance: OutputGuard provenance vs perception (T1)", () => {
     }
   });
 
+  it("INT-12: allows slide content claims when prior deck was reopened this turn", () => {
+    const reopened: PriorAttachmentGuardInfo = {
+      ...priorGuard,
+      contentAvailableThisTurn: true,
+    };
+    // Perception phrasing that is NOT a provenance-only disclosure.
+    const claim = "Looking at the file, slide 5 covers the family tech day agenda.";
+    const blockedWithoutReopen = checkAttachmentClaims(
+      claim,
+      evidence({ priorAttachments: [priorGuard] }),
+    );
+    expect(blockedWithoutReopen.clean).toBe(false);
+
+    const allowedWithReopen = checkAttachmentClaims(
+      claim,
+      evidence({
+        priorAttachments: [reopened],
+        contentReopenedAttachmentIds: new Set([PRIOR_PPTX.attachmentId]),
+      }),
+    );
+    expect(allowedWithReopen.clean).toBe(true);
+  });
+
   it("blocks analysis-recall when prior existed but was not model-received", () => {
     const notReceived: PriorAttachmentGuardInfo = {
       ...priorGuard,
@@ -268,6 +291,16 @@ describe("acceptance: relevance selection before T3 reopen (T3-pre)", () => {
     });
     expect(result.selectedAttachmentIds).toContain(PRIOR_PPTX.attachmentId);
     expect(result.selectedAttachmentIds.length).toBeLessThanOrEqual(2);
+  });
+
+  it("INT-12: selects prior deck for “Look at slide 5 again” with no new attach", () => {
+    const result = selectRelevantPriorAttachments({
+      userMessage: "Look at slide 5 again",
+      priorAttachments: candidates,
+      maxCount: 2,
+    });
+    expect(result.selectedAttachmentIds).toEqual([PRIOR_PPTX.attachmentId]);
+    expect(result.selectedPublicRefs).toEqual(["prior-1"]);
   });
 
   it("selects the invoice PDF for total questions", () => {

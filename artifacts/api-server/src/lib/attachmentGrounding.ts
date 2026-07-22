@@ -1,13 +1,18 @@
 /**
  * Attachment grounding — single canonical helper for T1/T2 signals.
  *
- * Feature flag ATTACHMENT_CONTINUITY_V2=1 enables expanded prompt/history
- * formatting. Callers always use these helpers; flag only changes output shape
- * inside this module (no parallel nexus pipeline).
+ * Continuity V2 is ON by default (Milestone 1 INT-12 / G1-2): prior attachments
+ * can be relevance-gated and reopened into model context. Kill switch:
+ * ATTACHMENT_CONTINUITY_V2=0 (also accepts "false" / "off"). Callers always use
+ * these helpers; the flag only changes pipeline/output shape (no parallel nexus
+ * path).
  */
 
 export function isAttachmentContinuityV2Enabled(): boolean {
-  return process.env.ATTACHMENT_CONTINUITY_V2 === "1";
+  const raw = process.env.ATTACHMENT_CONTINUITY_V2;
+  if (raw == null || raw === "") return true;
+  const v = raw.trim().toLowerCase();
+  return v !== "0" && v !== "false" && v !== "off";
 }
 
 /** Server-side prior row (may include DB ids). Not for prompt injection as-is. */
