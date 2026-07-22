@@ -289,12 +289,90 @@ Mark `_` as `P` / `F` / `N` (n/a).
 
 ---
 
+## Round 1 — Founding principles conversation (2026-07-22)
+
+**Why this is a good first test:** It is not a crash/UI check. It asks whether Atlas extracts the *right* knowledge from a strategic founding dialogue — exactly the 2.2 question.
+
+### Transcript ground truth (what was actually said)
+
+| Turn | Content |
+|------|---------|
+| User | Wants to think through the future of Atlas |
+| Atlas | Challenges nested/circular framing — defining Ask Atlas’s job before locking the problem/for-whom |
+| User | **Founding statement:** built Atlas to stop starting over on complex ideas; wants AI that stays across days/weeks/months — remembering decisions, tracking progress, challenging thinking, idea → real without losing context. Not just conversations: **continuity, momentum, and execution** |
+| Atlas | Treats that as the clearest founding statement; says it resolves foundational (not all) questions |
+| User | Asks for **three product principles that must never be violated**, plus which current feature/assumption is **most at risk** of violating them |
+| Atlas | Begins answering from what the user *actually* told it — not a product doc |
+
+### Knowledge Atlas should now hold (evaluation targets)
+
+| Kind | Expected capture |
+|------|------------------|
+| **Goal / purpose** | Continuity + momentum + execution over multi-session complex work — not “better answers” |
+| **Founding constraint** | Must not lose context as projects evolve |
+| **Anti-goal** | One-shot Q&A / start-over chatbots |
+| **Open decision (in progress)** | Three non-negotiable product principles (user asked; Atlas answering) |
+| **Risk prompt** | Which current feature/assumption most threatens those principles |
+| **Meta challenge (Atlas→user)** | Don’t define Ask Atlas’s job before the problem/for-whom is locked |
+
+Round 1 is **incomplete** for full B4/D3 coverage (no abandoned idea or explicit reversal yet) — that is fine. Score what *is* present; extend the thread for abandon + reversal in Round 2.
+
+### Inspection checklist (do this in the Workspace now)
+
+Wait ~5–10s after the latest turn, then:
+
+1. **Blueprint → Spec** — Does purpose/outcomes say continuity/momentum/execution (goals), or only “Atlas future / product thinking” (topics)?  
+2. **Blueprint → Soul / DNA** — Any creative principle that sounds like the founding statement?  
+3. **Ledger / Decisions** — Is anything committed yet? The three principles are **in flight**, not decided — parking is ok; auto-committing brainstorm principles as Decisions would **fail D2**.  
+4. **Insights** — Any line that is non-obvious (e.g. circular Ask Atlas framing risk), or only stage/momentum Mad Libs?  
+5. **Flow** — Nodes for founding promise, Ask Atlas job trap, principles-in-progress? Any invented satellites unrelated to this thread?  
+6. **Lenses** — If you re-ask the principles question under Build vs Storyteller (or Map Builder vs Storyteller), do answers diverge meaningfully?
+
+### Five questions — Round 1 (conversation quality; panels TBD after inspect)
+
+1. **Understood correctly:** Continuity / momentum / execution as core promise; challenge about defining Ask Atlas too early.  
+2. **Missed:** (Fill after panel inspect — e.g. founding statement absent from Spec.)  
+3. **Invented:** (Fill after panel inspect — e.g. Flow nodes or Decisions not in the chat.)  
+4. **Genuinely helpful:** The circular-reasoning challenge and “clearest founding statement” framing — strong *in-chat* intelligence.  
+5. **Would actually use:** The forthcoming three principles + at-risk feature — if those land in Decisions/Blueprint and stay accurate, high use; if only in chat scrollback, surfaces failed their job.
+
+### Scorecard — Round 1
+
+```text
+Project / conversation: Atlas future / founding principles
+Date: 2026-07-22
+Evaluator: Jo (+ agent board)
+
+Blueprint:  B1_ B2_N B3_ B4_N B5_   Notes: Fill after Spec inspect. B2/B4 N/A until deps + abandon appear.
+Decisions:  D1_ D2_ D3_N D4_ D5_   Notes: Principles not yet committed — D2 is the trap (don’t auto-decide).
+Insights:   I1_ I2_ I3_N I4_ I5_ I6_   Notes: Look for “Ask Atlas job before problem” as non-obvious risk.
+Flow:       F1_ F2_ F3_N F4_ F5_   Notes: Expect founding + principles branch; fail on invented nodes.
+Lenses:     L1_ L2_ L3_   Notes: Optional this round; prioritize Blueprint/Insights/Decisions first.
+
+Five questions: see above (panels TBD)
+
+Overall 2.2 (this run): Mixed pending panel inspect — in-chat understanding looks strong; extraction TBD
+```
+
+### Round 1 verdict so far
+
+| Layer | Early read |
+|-------|------------|
+| **In-chat intelligence** | Strong — challenge + founding lock + principles ask is exactly the material 2.2 cares about |
+| **Surface extraction** | **Not scored until you inspect panels** — that is the actual Round 1 gate |
+| **Why it matters** | Milestone 1 would stop at “thread survived.” 2.2 asks whether Blueprint/Decisions/Insights/Flow *earned* this conversation |
+
+**Next:** Inspect the five surfaces above, fill P/F on the scorecard, then extend the thread with (a) the three principles locked, (b) one abandoned idea, (c) one reversal — Round 2.
+
+---
+
 ## Recommended sequence
 
-1. Run **one** rich Atlas/Reveal-style conversation end-to-end with the scorecard.  
-2. Log failures against criteria (B4 abandoned retention, I1 template Insights, F4 hydrate invention, L2 lens sameness are the highest-likelihood fails from code review).  
-3. Only then prioritize **targeted** correctness fixes for failed criteria — not a platform rewrite.  
-4. After surfaces pass accuracy/usefulness bars, deepen lens differentiation under **2.3**.
+1. ~~Run **one** rich Atlas/Reveal-style conversation~~ — **Round 1 underway** (founding principles).  
+2. Complete Round 1 panel inspect + scorecard.  
+3. Round 2: lock principles, add abandon + reversal, re-score B4/D3.  
+4. Log failures against criteria; only then prioritize **targeted** correctness fixes.  
+5. After surfaces pass accuracy/usefulness bars, deepen lens differentiation under **2.3**.
 
 ---
 
