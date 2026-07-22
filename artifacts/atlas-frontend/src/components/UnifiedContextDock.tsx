@@ -200,10 +200,33 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   }, []);
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.style.setProperty(
-      "--atlas-dock-reserved",
-      dockVisible ? "64px" : "18px",
-    );
+    const target = dockVisible ? "64px" : "18px";
+    // Defer the CSS-var write until scroll settles. Consumers use this var
+    // for padding-bottom; writing it mid-scroll causes layout reflow that
+    // fights the user's active gesture. Wait for a ~140ms scroll-idle
+    // window before applying. Dock chrome itself is unaffected (it doesn't
+    // read this var — its own transform animates independently).
+    let idleTimer: number | undefined;
+    let raf = 0;
+    const apply = () => {
+      document.documentElement.style.setProperty("--atlas-dock-reserved", target);
+    };
+    const schedule = () => {
+      if (idleTimer !== undefined) window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(apply, 140);
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; schedule(); });
+    };
+    // Kick once immediately-ish; if user is mid-scroll it'll get pushed out.
+    schedule();
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true } as any);
+      if (idleTimer !== undefined) window.clearTimeout(idleTimer);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [dockVisible]);
 
   useEffect(() => {
