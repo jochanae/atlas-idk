@@ -5942,6 +5942,42 @@ export default function Workspace() {
     try { localStorage.setItem(`atlas-axiom-banner-${id}`, "1"); } catch { /* ignore */ }
     setShowAxiomBanner(false);
   };
+  const [handoffBannerPaused, setHandoffBannerPaused] = useState(false);
+  // Auto-fade the handoff pill after ~4.5s unless the user is hovering it.
+  useEffect(() => {
+    if (!showAxiomBanner || handoffBannerPaused) return;
+    const t = window.setTimeout(() => setShowAxiomBanner(false), 4500);
+    return () => window.clearTimeout(t);
+  }, [showAxiomBanner, handoffBannerPaused]);
+  // Handoff lock: while the pill is up, pin the composer to compact and the
+  // dock/footer to hidden so they stay in sync while Atlas processes the
+  // spec. Released the moment the banner resolves (auto-fade, user dismiss,
+  // manual scroll, or first user send).
+  useEffect(() => {
+    if (!showAxiomBanner) return;
+    const store = useShellStore.getState();
+    store.registerComposerClaim("__handoff__", {
+      source: "stage",
+      kind: "handoff",
+      visibility: "compact",
+    });
+    dockVisibility.setHandoffLock(true);
+    return () => {
+      try { useShellStore.getState().releaseComposerClaim("__handoff__"); } catch {}
+      dockVisibility.setHandoffLock(false);
+    };
+  }, [showAxiomBanner]);
+  // Any real user scroll or user send also releases the lock early.
+  useEffect(() => {
+    if (!showAxiomBanner) return;
+    const release = () => setShowAxiomBanner(false);
+    window.addEventListener("wheel", release, { passive: true, once: true });
+    window.addEventListener("touchmove", release, { passive: true, once: true });
+    return () => {
+      window.removeEventListener("wheel", release);
+      window.removeEventListener("touchmove", release);
+    };
+  }, [showAxiomBanner]);
 
   useEffect(() => {
     if (!isHomeHandoff) return;
