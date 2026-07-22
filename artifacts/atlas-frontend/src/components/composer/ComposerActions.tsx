@@ -224,6 +224,17 @@ export function ComposerActions({
     };
   }, [showPlus, showMore, showFiles]);
 
+  // Auto-open the Files sheet when navigated in from the global Files browser.
+  useEffect(() => {
+    if (scope !== "ws") return;
+    try {
+      if (sessionStorage.getItem("atlas-open-files-sheet") === "1") {
+        sessionStorage.removeItem("atlas-open-files-sheet");
+        setShowFiles(true);
+      }
+    } catch {}
+  }, [scope]);
+
   function openNativePicker(kind: "attach" | "camera", input: HTMLInputElement | null) {
     const surface = scope === "ask-atlas" ? "ask-atlas" : scope === "ws" ? "workspace" : "shared";
     // Document pickers (pptx via Files app) background the tab for a long time
