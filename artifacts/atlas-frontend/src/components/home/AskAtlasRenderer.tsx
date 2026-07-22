@@ -13,10 +13,10 @@
 
 import React from "react";
 import { AtlasMarkdown, type AtlasPreRenderer, type AtlasTokenizer } from "../AtlasMarkdown";
-import { parseAtlasCard } from "../AtlasCardParser";
-import { AtlasConversationCard } from "../AtlasConversationCards";
-import { parseAtlasAction } from "../AtlasActionParser";
-import { AtlasActionRow } from "../AtlasActionRow";
+import { parseAtlasCard } from "./AtlasCardParser";
+import { AtlasConversationCard } from "./AtlasConversationCards";
+import { parseAtlasAction } from "./AtlasActionParser";
+import { AtlasActionRow } from "./AtlasActionRow";
 
 type Project = { id: number; name: string };
 
