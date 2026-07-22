@@ -1,11 +1,12 @@
 # Milestone 1 — Operation: Unbroken Conversation
 
-**Phase:** A — Read-only audit (NO CODE CHANGES)  
-**Date:** 2026-07-21  
+**Phase:** A — Read-only audit → B — Repair → **CLOSED**  
+**Date:** 2026-07-21 (audit) · **Closed:** 2026-07-22  
 **Scope:** Conversation lifecycle, attachment lifecycle, interruption inventory, acceptance criteria, repair order  
 **Repo HEAD at audit:** `86e7b309` (`main`)  
-**Status:** Phase B — **Wave 0 CLOSED**; **Wave 1 CLOSED**; **Wave 2 in progress** — G2-1 (INT-35) + G2-2 (INT-39) **passed** (2026-07-22); INT-37 scroll/composer + response-start feedback next.  
-**Gate:** Wave 0 + Wave 1 gates met. Remaining Wave 2 Breaks/Friction should still land before treating Milestone 1 as fully complete.
+**Repo HEAD at close:** `95e6f309` (`main`, includes PR #207)  
+**Status:** **CLOSED — Restore the Conversation complete.** Wave 0 CLOSED · Wave 1 CLOSED · Wave 2 gates required for close CLOSED (G2-1, G2-2, INT-37 handoff chrome, thinking/response-start, INT-40 Ask Atlas preview).  
+**Next:** [Milestone 2 — Restore Intelligence](./milestone-2-restore-intelligence.md) (starts with 2.1 Artifact Generation & Delivery Audit).
 
 **Hard rule (Phase B):**
 
@@ -1153,27 +1154,19 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 #### Wave 2a — Remaining Conversation Breaks
 
 0. **INT-35** — Workspace create false confirmation — **Closed** (manual 2026-07-22)  
-0b. **INT-39** — Slide-order / section-order claims require PPTX reopen after Workspace handoff (relevance + OutputGuard + conversation-scoped prior load)  
-1. INT-07 / INT-08 — Project switch + route unmount: rehydrate without blanking; handoff-safe navigation  
-2. INT-14 — SSE disconnect recovery path  
-3. INT-21 — Auth remount refetch races after picker (reinforces Wave 0)  
-4. INT-26 — Code-file support on canonical matrix (or explicit supported path)  
-5. Multi-file partial-failure locks already started in Wave 1  
+0b. **INT-39** — Slide-order / section-order claims require PPTX reopen after Workspace handoff — **Closed** (manual 2026-07-22; PR #204)  
+~~1–5~~ Remaining Breaks below the close bar are **deferred** (not blockers for Restore the Conversation).  
 
-#### Wave 2b — Conversation Friction + consolidation
+#### Wave 2b — Conversation Friction + consolidation (close-bar items)
 
-6. INT-16 — Intentional clears: confirm / soft-archive when messages exist  
-7. INT-18 / INT-19 / INT-20 — Invalidate / transition / lazy-load polish  
-8. INT-22 / INT-23 — Account redirects + duplicate-send guards  
-9. Migrate or quarantine FlowPanel / ActiveRuns (legacy `/api/chat`)  
-10. Align ZIP drop vs staged attach intent  
-11. Update ownership docs + unbroken-conversation invariants in agent rules  
-12. Regression locks for mitigated/dead items (INT-27–34)  
-13. Hour-long soak harness (AC-X6): text → image → PDF → PPTX → follow-up without re-attach → handoff → continue in Workspace  
-14. **INT-36 / INT-37 / INT-38** — Thinking Thread z-index; composer jump on handoff/scroll; home-handoff banner weight (observed 2026-07-22, non-blocking)  
-15. **INT-40** — Broken inline PPTX/image preview + late composer attachment clear (observed 2026-07-22, non-blocking vs INT-39)  
+- **INT-37 handoff bottom chrome** — **Closed in code** (PR #207, merged `95e6f309`). Manual handoff acceptance checklist in §Closeout.  
+- **Ask Atlas / Workspace thinking pre-token** — **Closed** (PRs #205, #206).  
+- **INT-40 Ask Atlas broken PPTX double-preview** — **Closed** (PR #206).  
+- **INT-37 scroll prime** — Focus/visibility re-prime removed (PR #205).  
 
-**Wave 2 exit criteria:** Remaining §9.2 must-pass criteria green; soak harness passes; Milestone 1 can be declared complete.
+Remaining Friction (INT-16/18–23/36/38, soak harness, legacy path quarantine) is **explicitly out of the Milestone 1 close bar** — capture as follow-ups, do not reopen the milestone.
+
+**Wave 2 exit criteria (for Milestone 1 close):** G2-1, G2-2, INT-37 handoff chrome, thinking/response-start, INT-40 Ask Atlas preview — **met**.
 
 ---
 
@@ -1196,7 +1189,7 @@ Work remaining interruptions in Cursor’s dependency order **within** the produ
 | Re-enabling IDB File blob persistence | Previously OOM’d WebViews; needs a different design |
 | TanStack router resurrection | Dead path; leave dead unless product rewires mounts |
 | Non-conversation pickers (VisualVault, avatar) | Out of conversation interrupt scope |
-| Milestone 2 — Atlas intelligence | **Unblocked** on Wave 0 + Wave 1 gates (2026-07-22); prefer clearing Wave 2 Breaks before heavy Milestone 2 investment |
+| Milestone 2 — Atlas intelligence | **Started** 2026-07-22 — see [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md) |
 
 ---
 
@@ -1301,24 +1294,63 @@ Wave 1 exit criteria met. **Milestone 2 attachment/auth continuity gate is satis
 
 ---
 
-### Wave 2 repair status (Phase B — in progress)
+### Wave 2 repair status (Phase B — closed for Milestone 1)
 
 | Gate | INT | Acceptance test | Status |
 |------|-----|-----------------|--------|
 | G2-1 | INT-35 | Explicit workspace create does not falsely succeed; PROJECT_READY does not claim creation | **Closed** (manual 2026-07-22) |
 | G2-2 | INT-39 | Section-order follow-up reopens PPTX (or refuses order claims); ending-slide order correct | **Closed** (manual 2026-07-22) |
-| G2-3 | INT-37 | Scroll/composer stable on handoff + tab focus; no mid-thread yank | **In progress** |
-| — | Response-start | Visible feedback before first token (Ask Atlas phrase + Workspace Thinking pulse) | **In progress** |
-| — | INT-36, INT-38, INT-40 | Thinking Thread z-index; handoff banner; broken inline attach preview / late clear | Logged (non-blocking) |
+| G2-3 | INT-37 | Handoff bottom-chrome stable; no composer jump / independent footer expand; reserved space stable | **Closed in code** (PR #207 → `95e6f309`); see §Closeout checklist |
+| — | Response-start | Visible feedback before first token (Ask Atlas phrase + Workspace Thinking pulse) | **Closed** (PRs #205, #206) |
+| — | INT-40 | Ask Atlas broken second PPTX/`<img>` preview when structured attachments exist | **Closed** (PR #206) |
+| — | INT-36, INT-38 | Thinking Thread z-index; handoff banner weight | Deferred (non-blocking) |
 
 **G2-1 manual acceptance (2026-07-22):** First explicit create request created **Empower Me Session 1** and armed Open Workspace. Transcript and PPTX carried into Workspace.
 
-**G2-2 manual acceptance (2026-07-22):** Prior PPTX reopened; slide-order question answered from the deck with pricing before challenge. Outcome strongly implies reopen; server-log `historicalReopenResolvedCount` for that past turn was not retrieved in-agent. **Follow-up instrumentation:** `attachmentContinuity` is now echoed on nexus `done` (and `console.info("[atlas.continuity]", …)` in the client) so the next turn can confirm `historicalReopenResolvedCount > 0` in DevTools without server logs.
+**G2-2 manual acceptance (2026-07-22):** Prior PPTX reopened; slide-order question answered from the deck with pricing before challenge. Outcome strongly implies reopen; server-log `historicalReopenResolvedCount` for that past turn was not retrieved in-agent. **Do not hold Milestone 1** for telemetry — INT-39 closed behaviorally. Capture `historicalReopenResolvedCount > 0` (already echoed on nexus `done` + `console.info("[atlas.continuity]", …)`) during a convenient follow-up.
 
 **INT-39 finding (resolved):** Workspace invented order when section-order follow-ups skipped relevance reopen. Fix shipped in PR #204.
 
-This is a structured stabilization program, not a bug chase.
+---
+
+## Closeout — Restore the Conversation (2026-07-22)
+
+### Verified closed
+
+| Area | Outcome |
+|------|---------|
+| Ask Atlas thinking state | Fixed — `Loading context…` → `Atlas is thinking…`; liveStep no longer overrides (PR #206) |
+| Workspace thinking state | Fixed — `InlineThinkingPulse` before first token (PR #205) |
+| Broken PowerPoint preview/link (Ask Atlas) | Fixed — `renderMessageImages` returns null when structured attachments exist (PR #206) |
+| Historical attachment reopen + slide-order continuity | Fixed — INT-39 / G2-2 (PR #204) |
+| Return position + normal Ask Atlas scrolling | Fixed — scroll prime removed (PR #205) |
+| Workspace handoff bottom-chrome stability | PR #207 merged (`95e6f309`) — hydration-gated lock |
+
+### PR #207 — final handoff acceptance (run once or twice)
+
+1. Start in Ask Atlas.  
+2. Trigger a **real** Workspace handoff.  
+3. Watch **only the bottom area** during hydration.  
+4. Confirm:  
+   - composer does not jump;  
+   - footer does not independently expand or collapse;  
+   - reserved space stays stable;  
+   - no repeated viewport reflow;  
+   - after hydration settles, at most one final transition.  
+5. Also confirm **normal Workspace entry with no handoff**: lock inactive; no excess bottom spacing.
+
+If that passes, INT-37 handoff-layout is closed behaviorally as well as in code.
+
+### Explicitly not holding the milestone
+
+- Continuity telemetry (`historicalReopenResolvedCount > 0`) — convenient follow-up only.  
+- Remaining Wave 2 Friction / soak harness — follow-ups, not reopen criteria.  
+- Whether Ask Atlas should exist — **out of scope**; do not reopen that debate.
+
+### Milestone complete
+
+**Restore the Conversation is complete.** Proceed to Milestone 2 — Restore Intelligence, starting with a **read-only** Artifact Generation & Delivery Audit ([`milestone-2-1-artifact-generation-delivery-audit.md`](./milestone-2-1-artifact-generation-delivery-audit.md)).
 
 ---
 
-*Phase A complete. Phase B Wave 0 + Wave 1 closed. Wave 2: INT-35 + INT-39 closed; INT-37 scroll + response-start feedback in progress.*
+*Phase A complete. Phase B Wave 0 + Wave 1 + Milestone-1 close-bar Wave 2 closed. Milestone 1 CLOSED 2026-07-22.*
