@@ -67,6 +67,7 @@ export const SHARED_HOME_TOOL_NAMES = [
   "architecture_diff",
   "project_knowledge",
   "component_registry",
+  "generate_deliverable",
 ];
 
 export const SHARED_WORKSPACE_TOOL_NAMES = [

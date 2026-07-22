@@ -21,7 +21,7 @@ type HtmlStage = typeof HTML_STAGES[number];
 export function generateDeliverableTool(ctx: AgentToolContext) {
   return tool({
     description:
-      "Generate a downloadable file-backed deliverable from the current conversation and save it to the project's Outputs. Use this whenever the user asks for a presentation/deck, document, spreadsheet, or web app/tool/widget to be created — never say you can't produce files. After success, tell the user it's in Outputs.",
+      "Generate a downloadable file-backed deliverable from the current conversation. Use this whenever the user asks for a presentation/deck, document, spreadsheet, diagram, chart, or web app/tool/widget — never say you can't produce files. Call this tool on any surface (Ask Atlas or Workspace) — the result appears as a card inline in the current conversation. After success, tell the user the file is ready and they can download it from the card.",
     inputSchema: z.object({
       type: z
         .enum(["pptx", "docx", "xlsx", "html-app", "pdf", "mermaid", "chart"])
