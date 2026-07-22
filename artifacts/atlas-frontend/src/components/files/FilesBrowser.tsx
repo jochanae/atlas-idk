@@ -459,7 +459,7 @@ export function FilesBrowser({
                   >
                     {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
                   </select>
-                  <ViewSourceToggle onOpenTree={openProjectTree} disabled={workspaceProjectId == null} />
+                  <ViewSourceToggle value={sourceView} onChange={setSourceView} onOpenWorkspace={openProjectWorkspace} disabled={workspaceProjectId == null} />
                 </div>
               </RailGroup>
             )}
