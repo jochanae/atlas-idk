@@ -962,7 +962,7 @@ export function AskAtlasSurface({
                 messages[messages.length - 1]?.content.trim().length > 0
               )}
               liveStep={visibleLiveStep}
-              pendingPhrase=""
+              pendingPhrase={pendingPhrase || "Atlas is responding…"}
             />
           </div>
         )}

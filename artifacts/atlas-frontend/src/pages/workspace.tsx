@@ -7481,25 +7481,12 @@ export default function Workspace() {
     () => messages.reduce((total, message) => total + (message.streaming ? message.content.length : 0), 0),
     [messages],
   );
-  // Bump a return-token whenever the workspace becomes visible again (tab
-  // focus, back-navigation, project switch) so the auto-scroll hook re-primes
-  // to the bottom on every return, not just first mount.
-  const [returnToken, setReturnToken] = useState(0);
-  useEffect(() => {
-    const bump = () => setReturnToken((n) => n + 1);
-    bump(); // fresh mount
-    const onVis = () => { if (document.visibilityState === "visible") bump(); };
-    window.addEventListener("focus", bump);
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.removeEventListener("focus", bump);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [project?.id]);
+  // INT-37: prime only on project identity change / mount — not on every tab
+  // focus/visibilitychange (that yanked mid-thread readers back to the tail).
   useSmartAutoScroll(chatPanelScrollRef, [messages.length, chatPending], {
     forceDeps: [userMsgCount],
     behavior: "auto",
-    primeKey: `ws:${project?.id ?? "none"}:${returnToken}`,
+    primeKey: `ws:${project?.id ?? "none"}`,
   });
   useEffect(() => {
     if (!chatPending && streamingContentLength === 0) return;

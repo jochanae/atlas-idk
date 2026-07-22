@@ -1022,9 +1022,9 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     // once that prose has actually started rendering, this component must
     // show nothing — no shimmer, no title row — otherwise the same turn
     // would show both prose AND a card simultaneously. Before the first
-    // token arrives (liveSteps present, no text yet), show a brief inline
-    // shimmer as a bridge so the turn doesn't look inert.
-    if (!liveSteps.length || hasStreamedText) return null;
+    // token arrives (even with zero liveSteps yet), show a brief inline
+    // shimmer so send → response-start is never a dead silent gap.
+    if (hasStreamedText) return null;
     return <InlineThinkingPulse steps={liveSteps} />;
   }
 

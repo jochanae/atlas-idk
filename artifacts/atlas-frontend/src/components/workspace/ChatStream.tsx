@@ -1134,8 +1134,10 @@ export function ChatStream(props: ChatStreamProps) {
         </div>
       )}
 
-      {/* Immediate pending indicator — shows the instant chatPending=true, before any stream arrives.
-          This closes the "dead silence" gap where users couldn't tell if anything was happening. */}
+      {/* Immediate pending indicator — shows when chatPending=true and the last
+          row is still the user message (no optimistic assistant yet). Once an
+          empty streaming assistant exists, WorkspaceRunCard owns the pre-token
+          “Thinking…” pulse so we don't double-chrome. */}
       {chatPending && !activityStream.active && !thinkingBlock && (messages.length === 0 || messages[messages.length - 1]?.role === "user") && (
         <ChatPendingIndicator />
       )}
