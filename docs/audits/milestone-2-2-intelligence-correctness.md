@@ -249,17 +249,17 @@ Insights tab Atlas Summary → ask whether any line is non-obvious → compare D
 
 ## 4. Flow
 
-**Question:** Does this represent how the conversation actually unfolded?
+**Question:** Does this represent how the conversation actually unfolded — as a **reasoning graph**, not a conversation transcript?
 
 ### Acceptance criteria
 
 | # | Criterion | Pass if… |
 |---|-----------|----------|
-| F1 | Major branches | Real forks in the conversation appear as nodes/edges |
-| F2 | Topic pivots shown | Direction changes are visible |
-| F3 | Parallel work separated | Concurrent threads are not collapsed into one false spine |
-| F4 | No invented branches | Nodes are grounded in discussion — not plausible fiction |
-| F5 | Timeline feels accurate | Discovery order / status narrative matches the chat well enough to trust |
+| F1 | Major branches / root promise | Founding promise appears as a **root** concept |
+| F2 | Principles branch from promise | Principles are children of the promise — not a flat list |
+| F3 | Questions branch from principles | Open uncertainties hang off the right parents |
+| F4 | No invented / duplicate nodes | No fabricated satellites; no duplicate concepts |
+| F5 | Timeline / structure feels accurate | Graph reflects real forks — not a linear chat dump |
 
 ### Known quality risks
 
@@ -332,7 +332,8 @@ Project / conversation:
 Date:
 Evaluator:
 
-Knowledge:  K1_ K2_ K3_ K4_ K5_   Notes:
+Knowledge:  K1_ K2_ K3_ K4_ K5_ K6_   Notes:
+Surfaces:   S1_ S2_ S3_ S4_ S5_   Notes:
 Blueprint:  B1_ B2_ B3_ B4_ B5_   Notes:
 Decisions:  D1_ D2_ D3_ D4_ D5_   Notes:
 Insights:   I1_ I2_ I3_ I4_ I5_ I6_   Notes:
