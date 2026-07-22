@@ -38,6 +38,11 @@ import {
   useStagedAttachments,
 } from "@/hooks/useStagedAttachments";
 import { AttachmentComposer } from "@/components/attachments/AttachmentComposer";
+import {
+  clearStagingAttachmentMeta,
+  loadStagingAttachmentMetaForSurface,
+  upsertStagingAttachmentMeta,
+} from "@/lib/attachments/stagingPersistence";
 
 function makeFile(name: string, type: string, size = 1024): File {
   const f = new File([new Uint8Array(Math.min(size, 64))], name, { type });
@@ -47,11 +52,13 @@ function makeFile(name: string, type: string, size = 1024): File {
 
 beforeEach(() => {
   __resetStagedAttachmentsSoftMemoryForTests();
+  clearStagingAttachmentMeta();
 });
 
 afterEach(() => {
   cleanup();
   __resetStagedAttachmentsSoftMemoryForTests();
+  clearStagingAttachmentMeta();
 });
 
 describe("support matrix (explicit contract)", () => {
@@ -270,6 +277,158 @@ describe("useStagedAttachments — upload, limits, retry", () => {
       result.current.removeFile(id);
     });
     expect(result.current.files).toHaveLength(0);
+  });
+});
+
+/**
+ * INT-05 acceptance (G1-1):
+ * After Documents/PPTX hard reload, finalized attachmentIds survive as ready
+ * chips without File blobs and without silent re-upload.
+ */
+describe("useStagedAttachments — hard-reload recovery (INT-05)", () => {
+  it("rehydrates finalized attachmentIds as ready chips without File blobs or re-upload", async () => {
+    const requestUpload = vi.fn();
+    const adapter = createMockAdapter();
+    const spyRequest = vi.spyOn(adapter, "requestUpload");
+
+    const { result, unmount } = renderHook(() =>
+      useStagedAttachments({
+        adapter,
+        diagnosticContext: { surface: "ask-atlas" },
+      }),
+    );
+
+    const pptx = makeFile(
+      "deck.pptx",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      4096,
+    );
+    await act(async () => {
+      result.current.addFiles([pptx]);
+    });
+    await waitFor(() => expect(result.current.readyFiles).toHaveLength(1));
+    const attachmentId = result.current.readyFiles[0]!.attachmentId!;
+    const clientId = result.current.readyFiles[0]!.id;
+    expect(attachmentId).toBeTruthy();
+    expect(loadStagingAttachmentMetaForSurface("ask-atlas")).toHaveLength(1);
+    expect(spyRequest).toHaveBeenCalledTimes(1);
+
+    // Simulate hard reload: wipe soft memory, remount hook (sessionStorage remains).
+    unmount();
+    __resetStagedAttachmentsSoftMemoryForTests();
+    spyRequest.mockClear();
+    requestUpload.mockClear();
+
+    const { result: remounted } = renderHook(() =>
+      useStagedAttachments({
+        adapter,
+        diagnosticContext: { surface: "ask-atlas" },
+      }),
+    );
+
+    expect(remounted.current.readyFiles).toHaveLength(1);
+    expect(remounted.current.readyFiles[0]!.attachmentId).toBe(attachmentId);
+    expect(remounted.current.readyFiles[0]!.id).toBe(clientId);
+    expect(remounted.current.readyFiles[0]!.name).toBe("deck.pptx");
+    expect(remounted.current.readyFiles[0]!.file.size).toBe(0);
+    // No silent re-upload of finalized files.
+    expect(spyRequest).not.toHaveBeenCalled();
+  });
+
+  it("after simulate hard reload, finalized attachmentIds are still present for submit", async () => {
+    const adapter = createMockAdapter();
+    const { result, unmount } = renderHook(() =>
+      useStagedAttachments({
+        adapter,
+        diagnosticContext: { surface: "workspace", projectId: "9" },
+      }),
+    );
+    await act(async () => {
+      result.current.addFiles([makeFile("invoice.pdf", "application/pdf", 2048)]);
+    });
+    await waitFor(() => expect(result.current.readyFiles).toHaveLength(1));
+    const idsBefore = result.current.readyFiles.map((f) => f.attachmentId!);
+
+    unmount();
+    __resetStagedAttachmentsSoftMemoryForTests();
+
+    const { result: remounted } = renderHook(() =>
+      useStagedAttachments({
+        adapter,
+        diagnosticContext: { surface: "workspace", projectId: "9" },
+      }),
+    );
+    const idsAfter = remounted.current.readyFiles.map((f) => f.attachmentId!);
+    expect(idsAfter).toEqual(idsBefore);
+    expect(
+      shouldIncludeAttachmentsOnSend({
+        text: "",
+        attachmentCount: idsAfter.length,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("mid-upload hard reload shows recoverable failed state without silent re-upload", async () => {
+    upsertStagingAttachmentMeta({
+      clientAttachmentId: "client-mid",
+      attachmentId: null,
+      filename: "deck.pptx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      sizeBytes: 9999,
+      uploadStatus: "pending_upload",
+      conversationId: null,
+      surface: "ask-atlas",
+      updatedAt: Date.now(),
+    });
+    __resetStagedAttachmentsSoftMemoryForTests();
+    const adapter = createMockAdapter();
+    const spyRequest = vi.spyOn(adapter, "requestUpload");
+
+    const { result } = renderHook(() =>
+      useStagedAttachments({
+        adapter,
+        diagnosticContext: { surface: "ask-atlas" },
+      }),
+    );
+
+    expect(result.current.failedFiles).toHaveLength(1);
+    expect(result.current.failedFiles[0]!.error?.code).toBe("UPLOAD_INTERRUPTED");
+    expect(result.current.failedFiles[0]!.error?.message).toMatch(/re-attach/i);
+    expect(spyRequest).not.toHaveBeenCalled();
+  });
+
+  it("clearSent / removeFile clears staging sessionStorage meta", async () => {
+    const adapter = createMockAdapter();
+    const { result } = renderHook(() =>
+      useStagedAttachments({
+        adapter,
+        diagnosticContext: { surface: "ask-atlas" },
+      }),
+    );
+    await act(async () => {
+      result.current.addFiles([
+        makeFile("a.png", "image/png"),
+        makeFile("b.pdf", "application/pdf"),
+      ]);
+    });
+    await waitFor(() => expect(result.current.readyFiles.length).toBe(2));
+    expect(loadStagingAttachmentMetaForSurface("ask-atlas")).toHaveLength(2);
+
+    const [first, second] = result.current.readyFiles;
+    await act(async () => {
+      result.current.clearSent([first!.id]);
+    });
+    expect(
+      loadStagingAttachmentMetaForSurface("ask-atlas").some(
+        (m) => m.clientAttachmentId === first!.id,
+      ),
+    ).toBe(false);
+
+    await act(async () => {
+      result.current.removeFile(second!.id);
+    });
+    expect(loadStagingAttachmentMetaForSurface("ask-atlas")).toHaveLength(0);
   });
 });
 

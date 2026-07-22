@@ -1,6 +1,9 @@
 /**
- * Staging metadata persistence for Android Documents hard-reload recovery (T4).
+ * Staging metadata persistence for Android Documents hard-reload recovery (INT-05 / T4).
  * Persists attachment IDs + status — never File blobs (WebView OOM).
+ *
+ * Soft remounts still use useStagedAttachments module memory.
+ * Hard reloads rehydrate chips from this sessionStorage mirror.
  */
 
 const STORAGE_KEY = "atlas-attachment-staging-v1";
@@ -15,6 +18,8 @@ export type StagingAttachmentMeta = {
   conversationId: string | null;
   surface: string;
   updatedAt: number;
+  /** Optional finalize open URL — usually null; chips rarely need it. */
+  contentUrl?: string | null;
 };
 
 function safeParse(raw: string | null): StagingAttachmentMeta[] {
@@ -42,6 +47,11 @@ export function loadStagingAttachmentMeta(): StagingAttachmentMeta[] {
   }
 }
 
+export function loadStagingAttachmentMetaForSurface(surface: string): StagingAttachmentMeta[] {
+  const key = surface || "default";
+  return loadStagingAttachmentMeta().filter((e) => (e.surface || "default") === key);
+}
+
 export function saveStagingAttachmentMeta(entries: StagingAttachmentMeta[]): void {
   if (typeof sessionStorage === "undefined") return;
   try {
@@ -57,6 +67,21 @@ export function upsertStagingAttachmentMeta(entry: StagingAttachmentMeta): void 
     entry,
     ...prev.filter((e) => e.clientAttachmentId !== entry.clientAttachmentId),
   ];
+  saveStagingAttachmentMeta(next);
+}
+
+export function removeStagingAttachmentMeta(clientAttachmentId: string): void {
+  const next = loadStagingAttachmentMeta().filter(
+    (e) => e.clientAttachmentId !== clientAttachmentId,
+  );
+  saveStagingAttachmentMeta(next);
+}
+
+export function clearStagingAttachmentMetaForSurface(surface: string): void {
+  const key = surface || "default";
+  const next = loadStagingAttachmentMeta().filter(
+    (e) => (e.surface || "default") !== key,
+  );
   saveStagingAttachmentMeta(next);
 }
 

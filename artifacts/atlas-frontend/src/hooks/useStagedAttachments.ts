@@ -25,6 +25,13 @@ import { resolveSupport } from "@/lib/attachments/supportMatrix";
 import type { AttachmentAdapter } from "@/lib/attachments/adapter";
 import { httpAttachmentAdapter } from "@/lib/attachments/adapter";
 import { uploadAttachmentFile } from "@/lib/attachments/uploadService";
+import {
+  clearStagingAttachmentMetaForSurface,
+  loadStagingAttachmentMetaForSurface,
+  removeStagingAttachmentMeta,
+  upsertStagingAttachmentMeta,
+  type StagingAttachmentMeta,
+} from "@/lib/attachments/stagingPersistence";
 
 // ─── Re-exports for existing call sites ───────────────────────────────────────
 
@@ -146,6 +153,67 @@ export function __resetStagedAttachmentsSoftMemoryForTests() {
   softMemoryBySurface.clear();
 }
 
+/**
+ * INT-05: rebuild chips from sessionStorage metadata after a hard reload.
+ * Never restores File blobs — finalized IDs are enough for submit.
+ */
+function metaToStagedAttachment(meta: StagingAttachmentMeta): StagedAttachment {
+  const support = resolveSupport(meta.mimeType, meta.filename);
+  const extension = (meta.filename.split(".").pop() ?? "").toLowerCase();
+  // Empty placeholder File — pumpQueue skips when attachmentId is set;
+  // retry without attachmentId asks the user to re-attach (no silent empty PUT).
+  const placeholder = new File([], meta.filename, {
+    type: meta.mimeType || "application/octet-stream",
+  });
+  const uploaded = meta.uploadStatus === "uploaded" && !!meta.attachmentId;
+  return {
+    id: meta.clientAttachmentId,
+    file: placeholder,
+    name: meta.filename,
+    mimeType: meta.mimeType || "application/octet-stream",
+    extension,
+    sizeBytes: meta.sizeBytes,
+    kind: support.kind,
+    capability: support.capability,
+    statusLabel: support.statusLabel,
+    previewUrl: null,
+    status: uploaded ? "ready" : "failed",
+    uploadStatus: uploaded ? "uploaded" : "failed",
+    uploadProgress: uploaded ? 1 : 0,
+    attachmentId: meta.attachmentId,
+    processingStatus:
+      support.capability === "model_use"
+        ? "understood"
+        : support.capability === "storage_only"
+          ? "unsupported"
+          : null,
+    error: uploaded
+      ? null
+      : {
+          code: "UPLOAD_INTERRUPTED",
+          message: "Upload interrupted — re-attach",
+          retryable: false,
+        },
+  };
+}
+
+function hydrateStagedFromPersistence(
+  memoryKey: string,
+  surface: string,
+): StagedAttachment[] {
+  const soft = softMemoryBySurface.get(memoryKey);
+  if (soft && soft.length > 0) return soft;
+  try {
+    const meta = loadStagingAttachmentMetaForSurface(surface);
+    if (meta.length === 0) return [];
+    const chips = meta.map(metaToStagedAttachment);
+    softMemoryBySurface.set(memoryKey, chips);
+    return chips;
+  } catch {
+    return [];
+  }
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useStagedAttachments(opts?: {
@@ -168,9 +236,10 @@ export function useStagedAttachments(opts?: {
   const memoryKey = surfaceMemoryKey(opts?.diagnosticContext);
   const memoryKeyRef = useRef(memoryKey);
   memoryKeyRef.current = memoryKey;
+  const surfaceName = opts?.diagnosticContext?.surface ?? "default";
 
-  const [files, setFiles] = useState<StagedAttachment[]>(
-    () => softMemoryBySurface.get(memoryKey) ?? [],
+  const [files, setFiles] = useState<StagedAttachment[]>(() =>
+    hydrateStagedFromPersistence(memoryKey, surfaceName),
   );
   const filesRef = useRef(files);
   filesRef.current = files;
@@ -281,6 +350,24 @@ export function useStagedAttachments(opts?: {
         error: null,
       });
 
+      // INT-05: persist pending metadata immediately so a Documents/PPTX WebView
+      // kill mid-upload leaves a recoverable chip (not a silently empty composer).
+      try {
+        upsertStagingAttachmentMeta({
+          clientAttachmentId: id,
+          attachmentId: null,
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes: file.size,
+          uploadStatus: "pending_upload",
+          conversationId: diagCtxRef.current?.conversationId ?? null,
+          surface: diagCtxRef.current?.surface ?? "default",
+          updatedAt: Date.now(),
+        });
+      } catch {
+        /* staging persistence is best-effort */
+      }
+
       let lastProgress = -1;
       let lastProgressAt = 0;
 
@@ -316,9 +403,6 @@ export function useStagedAttachments(opts?: {
             error: null,
           });
           try {
-            const { upsertStagingAttachmentMeta } = await import(
-              "@/lib/attachments/stagingPersistence"
-            );
             upsertStagingAttachmentMeta({
               clientAttachmentId: id,
               attachmentId: result.attachmentId,
@@ -329,6 +413,7 @@ export function useStagedAttachments(opts?: {
               conversationId: diagCtxRef.current?.conversationId ?? null,
               surface: diagCtxRef.current?.surface ?? "default",
               updatedAt: Date.now(),
+              contentUrl: result.persisted.openUrl ?? null,
             });
           } catch {
             /* staging persistence is best-effort */
@@ -354,6 +439,21 @@ export function useStagedAttachments(opts?: {
               retryable: true,
             },
           });
+          try {
+            upsertStagingAttachmentMeta({
+              clientAttachmentId: id,
+              attachmentId: null,
+              filename: file.name,
+              mimeType: file.type || "application/octet-stream",
+              sizeBytes: file.size,
+              uploadStatus: "failed",
+              conversationId: diagCtxRef.current?.conversationId ?? null,
+              surface: diagCtxRef.current?.surface ?? "default",
+              updatedAt: Date.now(),
+            });
+          } catch {
+            /* best-effort */
+          }
         }
       })();
     },
@@ -369,6 +469,8 @@ export function useStagedAttachments(opts?: {
       const id = uploadQueueRef.current.shift()!;
       const sf = filesRef.current.find((f) => f.id === id);
       if (!sf || sf.attachmentId || sf.status === "blocked") continue;
+      // INT-05: never PUT empty placeholder Files from hard-reload rehydrate.
+      if (sf.file.size === 0) continue;
       activeUploadsRef.current += 1;
       void runUpload(id, sf.file).finally(() => {
         activeUploadsRef.current = Math.max(0, activeUploadsRef.current - 1);
@@ -594,6 +696,11 @@ export function useStagedAttachments(opts?: {
     pendingUploadIdsRef.current.delete(id);
     abortUpload(id);
     uploadGenRef.current.delete(id);
+    try {
+      removeStagingAttachmentMeta(id);
+    } catch {
+      /* best-effort */
+    }
     commitFiles((prev) => {
       const target = prev.find((sf) => sf.id === id);
       if (target) revokeUrl(target);
@@ -606,18 +713,44 @@ export function useStagedAttachments(opts?: {
       const target = filesRef.current.find((sf) => sf.id === id);
       if (!target) return;
       if (!target.error?.retryable && target.status !== "failed") return;
+      // INT-05: rehydrated chips have empty placeholder Files — never silent re-upload.
+      if (target.attachmentId) {
+        patchFile(id, {
+          status: "ready",
+          uploadStatus: "uploaded",
+          uploadProgress: 1,
+          error: null,
+        });
+        return;
+      }
+      if (target.file.size === 0) {
+        patchFile(id, {
+          status: "failed",
+          uploadStatus: "failed",
+          error: {
+            code: "UPLOAD_INTERRUPTED",
+            message: "Upload interrupted — re-attach",
+            retryable: false,
+          },
+        });
+        return;
+      }
       startUpload(id, target.file);
     },
-    [startUpload],
+    [patchFile, startUpload],
   );
 
   const retryFailed = useCallback(() => {
     for (const sf of filesRef.current) {
       if (sf.status === "failed" && sf.error?.retryable) {
-        startUpload(sf.id, sf.file);
+        if (sf.attachmentId || sf.file.size === 0) {
+          retryFile(sf.id);
+        } else {
+          startUpload(sf.id, sf.file);
+        }
       }
     }
-  }, [startUpload]);
+  }, [retryFile, startUpload]);
 
   const markConverting = useCallback((_ids: string[]) => {
     // Upload already happened at stage time.
@@ -691,12 +824,23 @@ export function useStagedAttachments(opts?: {
       for (const sf of removed) {
         pendingUploadIdsRef.current.delete(sf.id);
         uploadGenRef.current.delete(sf.id);
+        try {
+          removeStagingAttachmentMeta(sf.id);
+        } catch {
+          /* best-effort */
+        }
       }
       return prev.filter((sf) => !idSet.has(sf.id));
     });
   }, [commitFiles]);
 
   const clearFiles = useCallback(() => {
+    const surface = diagCtxRef.current?.surface ?? "default";
+    try {
+      clearStagingAttachmentMetaForSurface(surface);
+    } catch {
+      /* best-effort */
+    }
     commitFiles((prev) => {
       revokeAll(prev);
       pendingUploadIdsRef.current.clear();
