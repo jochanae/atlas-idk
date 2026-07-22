@@ -3210,7 +3210,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // DECIDE's own system-prompt block forbade tool calls outright. Widening
   // this to include DECIDE lets Atlas actually ground its answer/recommendation
   // in real project data instead of promising to look and then not looking.
-  const allowToolAccess = (intent === "BUILD" || intent === "DECIDE") && !justTalk && !conversationModeActive;
+  const allowToolAccess = !justTalk && !conversationModeActive;
   // CHAT turns emit nothing except the reply + meta. DECIDE may surface memory
   // read-only, but capture cards fire only on Commit.
   const isChatTurn = intent === "CHAT" || justTalk;
@@ -3325,7 +3325,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // The denial happened regardless of whether tools were enabled this turn —
   // so this block is unconditional, not gated on intent === BUILD.
   systemPrompt += `\n\n--- DELIVERABLE GENERATION CAPABILITY (always true — do not contradict this) ---
-You CAN generate real, downloadable files by calling the generate_deliverable tool. This is a real server-side capability — the tool produces an actual file and returns a download link in Workspace → Outputs.
+You CAN generate real, downloadable files by calling the generate_deliverable tool. This is a real server-side capability — the tool produces an actual file. The result appears as a card inline in the current conversation. In the Workspace, it also appears in the Outputs panel. On Ask Atlas, call generate_deliverable right here — do NOT say "I'll put it in your workspace" or navigate anywhere.
 
 Supported types and when to choose each:
 - pptx — PowerPoint slide deck / presentation / pitch deck
@@ -3938,7 +3938,7 @@ WHAT YOU HAVE ACCESS TO:
 - Project files (file tree injected above if available)
 - Project memory, ledger decisions, DNA, Application Model — all injected above
 - FILE_EDIT: propose file writes for the local workspace (see BUILD PROTOCOLS for the exact block format)
-- generate_deliverable: create real downloadable files — pptx (deck), docx (document), pdf (fixed-layout report), xlsx (spreadsheet), html-app (interactive web app), mermaid (flowchart/architecture/sequence diagram), chart (bar/line/pie SVG from numeric data) — all appear in Workspace → Outputs
+- generate_deliverable: create real downloadable files — pptx (deck), docx (document), pdf (fixed-layout report), xlsx (spreadsheet), html-app (interactive web app), mermaid (flowchart/architecture/sequence diagram), chart (bar/line/pie SVG from numeric data) — all render as a card inline in the current conversation (and also in Workspace → Outputs when inside a project workspace)
 - BROWSER_VISIT: visit public URLs for live checks, competitor research (unauthenticated)
 - run_browser_flow: run authenticated browser verification against the live app — launches Chromium, asserts element/text visibility across DESKTOP and MOBILE viewport profiles, returns per-profile pass/fail with screenshots. Use when asked to "verify", "check", or "confirm" any UI state or page behavior.
 - IMAGE_GEN: generate mockups, sketches, or visual concepts on request (inline image in chat, not a file)
