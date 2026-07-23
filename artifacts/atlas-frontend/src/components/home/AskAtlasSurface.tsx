@@ -468,7 +468,7 @@ export function AskAtlasSurface({
     <div
       className="atlas-ask-atlas-surface"
       role="dialog"
-      aria-label="Ask Atlas"
+      aria-label="Ask Joy"
       style={{
         position: "fixed",
         top: "var(--atlas-header-height, 56px)",

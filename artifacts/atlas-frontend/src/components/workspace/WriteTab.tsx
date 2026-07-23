@@ -158,7 +158,7 @@ const PROFILE_CONFIG: Record<ReviewProfile, {
 }> = {
   editorial: {
     label: "Editorial",
-    buttonText: "Ask Atlas to Review",
+    buttonText: "Ask Joy to Review",
     panelLabel: "Atlas Editorial",
     placeholder: "Paste or write your text here.\n\nAtlas will analyze it across four dimensions:\nvoice consistency, structural integrity,\nunnecessary bloat, and cognitive load.",
     defs: EDITORIAL_SECTION_DEFS,

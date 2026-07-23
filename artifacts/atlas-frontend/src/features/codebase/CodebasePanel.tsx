@@ -359,7 +359,7 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
 
         {view === "questions" && (
           <StubView
-            title="Ask Atlas about this project"
+            title="Ask Joy about this project"
             blurb="Free-form Q&A grounded in the indexed source. Every answer cites file:line so you can jump straight to the code."
             examples={[
               '"Where does auth state get initialized?"',

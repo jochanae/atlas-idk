@@ -750,7 +750,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
               <textarea
                 ref={textareaRef}
-                aria-label="Ask Atlas"
+                aria-label="Ask Joy"
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value);

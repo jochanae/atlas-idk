@@ -42,7 +42,7 @@ export function metaFor(kind: LibraryItemKind): KindMeta {
 }
 
 const ORIGIN_LABEL: Record<LibraryItemOrigin["source"], string> = {
-  "ask-atlas": "Ask Atlas",
+  "ask-atlas": "Ask Joy",
   workspace: "Workspace",
   upload: "Upload",
   unknown: "",

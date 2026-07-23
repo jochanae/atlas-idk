@@ -72,7 +72,7 @@ export function ConversationsLauncher() {
     <LauncherOverlay
       open={open}
       onClose={() => setOpen(false)}
-      eyebrow="Ask Atlas"
+      eyebrow="Ask Joy"
       title="Conversation history"
     >
       {projects.length === 0 ? (

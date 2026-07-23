@@ -181,7 +181,7 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
     window.dispatchEvent(new CustomEvent("axiom:restore-workspace-context-chip"));
   };
   // Header title rotation stripped (Pass 1). Header is permanently
-  // "Ask Atlas"; the project name lives in the CommitPill only.
+  // "Ask Joy"; the project name lives in the CommitPill only.
   return (
     <>
       <style>{`
@@ -244,7 +244,7 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
           </span>
         </button>
         <span
-          title="Ask Atlas"
+          title="Ask Joy"
           style={{
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -2132,9 +2132,9 @@ export default function Home() {
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
   // Ask Atlas is a standalone surface — see AskAtlasSurface.
-  // The composer "Ask Atlas" pill and the axiom:ask-atlas event both open
+  // The composer "Ask Joy" pill and the axiom:ask-atlas event both open
   // the same purple-header surface. No inline routing, no split renderer.
-  // Radial menu "Ask Atlas" → open the AskAtlasSurface + focus its composer.
+  // Radial menu "Ask Joy" → open the AskAtlasSurface + focus its composer.
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
@@ -2747,7 +2747,7 @@ export default function Home() {
       askAtlasSession.clearClosed(); // allow restore to fire when surface opens
       setAskAtlasSurfaceOpen(true);
       window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
-      toast("Ask Atlas · Strategic view", {
+      toast("Ask Joy · Strategic view", {
         className: "atlas-toast-premium",
         description: "Macro view across every project.",
       });
@@ -4442,7 +4442,7 @@ export default function Home() {
             <button
               type="button"
               title="Download thread"
-              aria-label="Download Ask Atlas thread"
+              aria-label="Download Ask Joy thread"
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -4470,7 +4470,7 @@ export default function Home() {
                   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
                   // UTF-8 BOM so Windows Notepad / some importers don't Latin-1-decode
                   // apostrophes and dashes into mojibake (Iâ€™m / â€”).
-                  const body = `\uFEFFASK ATLAS\n${stamp}\n\n${lines}`;
+                  const body = `\uFEFFASK JOY\n${stamp}\n\n${lines}`;
                   const filename = `ask-atlas-${stamp}.txt`;
                   const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
                   const url = URL.createObjectURL(blob);
@@ -5812,8 +5812,8 @@ export default function Home() {
                   Atlas on Send. Inspired by the workspace Plan Mode button. */}
               <button
                 type="button"
-                title="Open Ask Atlas"
-                aria-label="Open Ask Atlas"
+                title="Open Ask Joy"
+                aria-label="Open Ask Joy"
                 // Close/open on click only — never onPointerDown. Document pickers
                 // (pptx) return a delayed ghost tap that used to hit this toggle
                 // and wipe the thread (looked like a refresh).
@@ -6275,8 +6275,8 @@ export default function Home() {
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <button
               type="button"
-              title="Exit Ask Atlas"
-              aria-label="Exit Ask Atlas"
+              title="Exit Ask Joy"
+              aria-label="Exit Ask Joy"
               // IMPORTANT: close on click only — never onPointerDown.
               // Mobile file-picker return synthesizes a tap at the Attach tile
               // coordinates; on Z Fold that lands on this centered chip and used
@@ -6362,7 +6362,7 @@ export default function Home() {
       <SessionHistorySheet
         open={showHistory}
         onClose={() => setShowHistory(false)}
-        title="ASK ATLAS HISTORY"
+        title="ASK JOY HISTORY"
         loading={historyLoading}
         emptyHint="No saved Ask Atlas threads yet. Start a conversation above — it will appear here."
         items={conversations
