@@ -598,6 +598,23 @@ Desktop Flow tab: right-rail no longer filters out `map`.
 
 ---
 
+## Regression note — Ask Atlas stream lost on remount (2026-07-23)
+
+**Symptom:** During/after Ask Atlas streaming, soft remount or refresh dropped the assistant turn and injected `Welcome back. Picking up where we left off…`.
+
+**Cause:** Streamed content lived only in React state until `finishStream` persisted; restore always rehydrated from `/api/nexus/thread` (often missing the in-flight assistant) and appended a synthetic greeting.
+
+**Fix (PR on `cursor/ask-atlas-stream-remount-recovery-df4c`):**
+- Client `askAtlasThreadMemory` (module + sessionStorage) snapshots the live transcript
+- Restore merges memory with `/thread`; skips welcome-back when recovering / awaiting assistant
+- Polls `/thread` after remount until the durable assistant lands
+- `beforeunload` warning while Ask Atlas is generating
+- Server: on client abort after tokens, continue generation for durable persist; `finishStream` idempotent; no throw on closed SSE after DB write
+
+**Retest:** Redeploy, then remount/refresh mid-stream and immediately after stream completes — original assistant text must return, not a welcome-back prompt.
+
+---
+
 ## Related docs
 
 | Doc | Role |

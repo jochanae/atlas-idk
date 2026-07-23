@@ -79,6 +79,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     this.recentErrors.push(now);
 
     // If we're not looping (<3 crashes in 10s), auto-recover with a toast.
+    // Ask Atlas transcript survives soft remount via askAtlasThreadMemory.
     if (this.recentErrors.length < 3) {
       // Best-effort dynamic import to avoid pulling sonner into the boundary
       // module graph if it's already tree-shaken elsewhere.
