@@ -4461,17 +4461,17 @@ export default function Home() {
                   const lines = askAtlasConv.messages
                     .map((m: any) => ({ role: m?.role, body: extract(m) }))
                     .filter((m) => m.body && m.body.trim().length > 0)
-                    .map((m) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.body}\n`)
+                    .map((m) => `${m.role === "user" ? "YOU" : "JOY"}\n${m.body}\n`)
                     .join("\n");
                   if (!lines) {
-                    console.warn("[ask-atlas download] no message content to export");
+                    console.warn("[ask-joy download] no message content to export");
                     return;
                   }
                   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
                   // UTF-8 BOM so Windows Notepad / some importers don't Latin-1-decode
                   // apostrophes and dashes into mojibake (Iâ€™m / â€”).
                   const body = `\uFEFFASK JOY\n${stamp}\n\n${lines}`;
-                  const filename = `ask-atlas-${stamp}.txt`;
+                  const filename = `ask-joy-${stamp}.txt`;
                   const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
