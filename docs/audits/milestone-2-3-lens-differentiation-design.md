@@ -1,8 +1,8 @@
 # Milestone 2.3 — Lens Differentiation Design
 
-**Phase:** Phase C (Constitution on live chat) in progress  
+**Phase:** Phase C CLOSED — ready for Phase D/E closeout (not 2.4)  
 **Date:** 2026-07-23  
-**Status:** **PHASE 0 CLOSED** · **Phase A PASS** · **Phase B CLOSED** · **Phase C landing**  
+**Status:** **PHASE 0 CLOSED** · **Phase A PASS** · **Phase B CLOSED** · **Phase C CLOSED**  
 **Prerequisite:** Milestone 2.2 CLOSED (intelligence correctness)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Repo HEAD at commission:** `51acaf50` (`main`, post #217)
@@ -512,16 +512,12 @@ Ordered by leverage for true differentiation:
 **Dependencies:** Phase A (shared lens identity); Phase A′ baseline preferred.  
 **Status:** **CLOSED** (2026-07-23) — battery **6/6 Pass**, T1 Pass. Score sheet: [`milestone-2-3-phase-b-battery/score-sheet.md`](./milestone-2-3-phase-b-battery/score-sheet.md).
 
-### Phase C — Constitution on live chat ← **IN PROGRESS**  
+### Phase C — Constitution on live chat ← **CLOSED**  
 **Objective:** Full live-chat differentiation using the **same** Constitution and lens ids (now that plumbing exists). Port/replace stranded `chat.ts` disposition logic onto Nexus under Designer/Builder/Storyteller — not a revival of Flow/Build/Look/Scenario as a second set.  
 **Acceptance:** Re-run **same** T1–T6 battery on **live chat**; Pass bar matches Map (≥5/6, T1 mandatory); selecting a lens changes reasoning content (L2), not only model chrome.  
 **Complexity:** High.  
 **Dependencies:** Phase A + Phase B quality bar (Map proves Constitution works before chat absorbs it).  
-**Status (landing):**
-- ✅ Nexus Workspace injects `buildLiveChatConstitutionBlock(perspective, speculate)`
-- ✅ Lens-weighted DNA emphasis on focused-project context
-- ✅ Soft “which lens?” copy remapped to Designer / Builder / Storyteller
-- ⏳ Live-chat battery T1–T6 (same bar as Map)
+**Status:** **CLOSED** (2026-07-23) — live-chat battery **6/6 Pass**, T1 Pass, continuity Pass. Score sheet: [`milestone-2-3-phase-c-battery/score-sheet.md`](./milestone-2-3-phase-c-battery/score-sheet.md). Refinement: CONTINUITY clause on live-chat Constitution.
 
 ### Phase D — Disagreement & compare (thin)  
 **Objective:** Productive conflict (L5) without auto-merge — side-by-side or dissent affordance.  
@@ -567,7 +563,7 @@ These remain **out of the lens constitution** unless a phase explicitly absorbs 
 | Phased roadmap | ✅ §6 **Approved order** |
 | Naming recommendation | ✅ §9 — **Signed off** (Flow → Storyteller) |
 
-**Next:** Finish Phase C live-chat battery (same T1–T6 bar), then Phase D/E closeout.
+**Next:** Phase D (disagreement/compare, thin) → Phase E close 2.3. **Do not start 2.4** until 2.3 CLOSED.
 
 ---
 

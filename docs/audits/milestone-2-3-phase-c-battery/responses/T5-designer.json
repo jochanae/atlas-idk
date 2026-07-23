@@ -1,0 +1,9 @@
+{
+  "caseId": "T5",
+  "lens": "designer",
+  "surface": "live-workspace-chat",
+  "prompt": "Help me plan my next four weeks as founder of Reveal.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Plan the month as you experience it \u2014 energy and focus surfaces, not a wall of tasks.\n\nProtect non-negotiable design blocks so join/trust UX doesn\u2019t regress under shipping pressure. Each week: one primary experience goal, plus tasting the product as a new member (empty states, join friction). Weekly OS: one calm review surface that reduces chaos.\n\nIf the calendar is only build hours, the experience of Reveal will quietly decay."
+}

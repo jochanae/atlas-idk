@@ -1,0 +1,9 @@
+{
+  "caseId": "T2",
+  "lens": "designer",
+  "surface": "live-workspace-chat",
+  "prompt": "Should Reveal charge for community access in v1?",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "From an experience view: I would not put a hard paywall on first home.\n\nIf she hits a lock mid-join or sees an empty feed that feels punitive, perceived fairness collapses and the no-shame path breaks. Design guest vs member states so permissioning is legible before she invests emotion. If paid ever appears, the upgrade moment should be a calm optional choice \u2014 never a surprise gate.\n\nDefault interaction: belong first. Paid can be a later layer in the UI, not the first door."
+}

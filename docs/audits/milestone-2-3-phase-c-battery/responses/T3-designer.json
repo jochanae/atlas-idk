@@ -1,0 +1,9 @@
+{
+  "caseId": "T3",
+  "lens": "designer",
+  "surface": "live-workspace-chat",
+  "prompt": "Add real-time notifications when someone replies in the community.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "I\u2019d treat \u201creal-time\u201d as a feeling of being answered \u2014 not a stream of interrupts.\n\nPrefer inbox / quiet badge over toast storms. Default-on noisy alerts violate the already-decided intensity: quiet belonging over engagement spam. Give her mute, thread mute, and quiet hours in the primary interaction model.\n\nSuccess state when someone replies should feel personal and calm. Copy and focus order stay accessible \u2014 no shame urgency. Realtime transport is a constraint; the experience job is interrupt ethics."
+}

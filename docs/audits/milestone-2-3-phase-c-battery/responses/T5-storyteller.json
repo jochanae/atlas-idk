@@ -1,0 +1,9 @@
+{
+  "caseId": "T5",
+  "lens": "storyteller",
+  "surface": "live-workspace-chat",
+  "prompt": "Help me plan my next four weeks as founder of Reveal.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "These four weeks are about making Reveal feel like a home \u2014 not proving a feature factory.\n\nWeekly ask: did we deepen trust and belonging, or only ship chrome? Guard the access promise; refuse paywall theater. End of month: one real witness story of a woman feeling safer talking about money.\n\nA packed calendar that never tastes the member journey makes the mission hollow."
+}

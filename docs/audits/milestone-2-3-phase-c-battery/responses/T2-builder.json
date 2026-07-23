@@ -1,0 +1,9 @@
+{
+  "caseId": "T2",
+  "lens": "builder",
+  "surface": "live-workspace-chat",
+  "prompt": "Should Reveal charge for community access in v1?",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Recommendation for v1: do not enforce paid access, but model entitlements now.\n\n- Add entitlements table / flags so a free\u2192paid migration doesn\u2019t rewrite the feed.\n- Authz check points in APIs return allow-all in v1.\n- Instrument join/activation events so a later pricing decision is data-backed.\n- Migration plan: grant `community_home` to all existing members if pricing turns on.\n\nEngineering cost of a paywall is low; retrofit debt is high if we skip the model. Enforcement stays out of this ship slice."
+}

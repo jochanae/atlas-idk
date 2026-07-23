@@ -1,0 +1,9 @@
+{
+  "caseId": "T6",
+  "lens": "storyteller",
+  "surface": "live-workspace-chat",
+  "prompt": "Write the opening of the community page \u2014 the first thing a new member reads.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Opening draft:\n\nYou don\u2019t have to figure money out alone.\n\nHere, faith-rooted women tell the truth \u2014 calmly, without shame \u2014 and belong before any tip. This is a house for safe money talk when traditional finance culture left you outside.\n\nCome in quietly. You\u2019re not late.\n\nThat\u2019s the promise in one breath: confidence through trusted community, not alone. Reject hype slogans and tip-list openers that erase belonging-first identity."
+}

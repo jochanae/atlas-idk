@@ -1,0 +1,9 @@
+{
+  "caseId": "T4",
+  "lens": "builder",
+  "surface": "live-workspace-chat",
+  "prompt": "Design a weekly group Bible study rhythm inside Reveal\u2019s community.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Content model: study series \u2192 weekly sessions \u2192 passages \u2192 member notes \u2192 schedule timestamps.\n\nRoles: facilitator vs member with authz on creating sessions/prompts. Series/session CRUD on postgres; feed item type links to community home. Reminder job respects quiet notification prefs.\n\nOut of scope this slice: streaks, leaderboards, engagement gamification."
+}

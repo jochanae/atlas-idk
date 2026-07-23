@@ -1,0 +1,9 @@
+{
+  "caseId": "T5",
+  "lens": "builder",
+  "surface": "live-workspace-chat",
+  "prompt": "Help me plan my next four weeks as founder of Reveal.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Concrete backlog:\n\n- Week 1: member profiles + authz \u2014 exit: join\u2192profile\u2192home works.\n- Week 2: community home route + empty/feed queries \u2014 empty-state contract green.\n- Week 3: study series schema + facilitator role \u2014 no gamification.\n- Week 4: notification persistence + quiet prefs \u2014 realtime optional.\n\nDependency: paid-vs-free still open \u2014 do not block on entitlements enforcement this month."
+}

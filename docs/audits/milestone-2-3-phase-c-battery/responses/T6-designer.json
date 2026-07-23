@@ -1,0 +1,9 @@
+{
+  "caseId": "T6",
+  "lens": "designer",
+  "surface": "live-workspace-chat",
+  "prompt": "Write the opening of the community page \u2014 the first thing a new member reads.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "I won\u2019t draft the brand essay \u2014 I\u2019ll specify how the opening is experienced.\n\nFirst viewport: home/brand signal, one short promise line, one calm CTA \u2014 no tip carousel. Mobile scan: welcome \u2192 what this is \u2192 how to begin; CTA thumb-reachable. Alternate states: empty / returning / error so the first read never looks broken.\n\nCTA emotion: invitation (\u201cEnter quietly\u201d) not growth (\u201cJoin now!\u201d). Reserve a short prose slot; length and placement are the Designer deliverable. Storyteller owns the voice that fills it."
+}

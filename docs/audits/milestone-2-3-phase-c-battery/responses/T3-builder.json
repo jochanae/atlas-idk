@@ -1,0 +1,9 @@
+{
+  "caseId": "T3",
+  "lens": "builder",
+  "surface": "live-workspace-chat",
+  "prompt": "Add real-time notifications when someone replies in the community.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Implementation plan:\n\n1. Persist notifications in postgres (read/unread) \u2014 inbox works without a live socket.\n2. Fan-out on reply create with idempotent delivery keys.\n3. Preference flags API encoding quiet defaults.\n4. Transport decision (SSE vs WS) with reconnect/backoff documented \u2014 can follow the inbox slice.\n5. Smallest ship: persist + poll first; realtime second.\n\nAcceptance: quiet prefs honored; no duplicate alerts; failure modes don\u2019t drop unread state."
+}
