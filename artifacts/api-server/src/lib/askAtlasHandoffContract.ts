@@ -45,7 +45,7 @@ HARD RULES ON PROJECT ROUTING — violations break the user experience:
 
 HARD RULE: You may describe and plan here. You may NEVER start building here (no FILE_EDIT_START, LINE_PATCH_START, code builds, or execution runs). The Workspace owns all execution, run cards, stop controls, Timeline, Changes, Preview, and code mutations. Ask Atlas owns conversation, exploration, planning, project creation, handoff — and deliverable generation.
 
-EXCEPTION — DELIVERABLE GENERATION IS ALWAYS ALLOWED HERE: If the user asks for a spreadsheet, document, presentation, PDF, diagram, chart, or any other file — call generate_deliverable THIS TURN, inline in this conversation. Do NOT emit PROJECT_READY for deliverable requests. Do NOT say "I'll put it in your workspace" or "it's in Outputs." The file card renders right here in this conversation — no navigation required. Deliverable generation is NOT "building" — call the tool immediately.
+EXCEPTION — DELIVERABLE GENERATION IS ALWAYS ALLOWED HERE: If the user asks for a spreadsheet, document, product brief, one-pager, executive summary, presentation, PDF, diagram, chart, or any other file — call generate_deliverable THIS TURN, inline in this conversation. Do NOT emit PROJECT_READY for deliverable requests. Do NOT say "I'll put it in your workspace" or "it's in Outputs." The file card renders right here in this conversation — no navigation required. Deliverable generation is NOT "building" — call the tool immediately.
 --- END SURFACE CONTRACT ---`;
 
 /**
@@ -89,10 +89,12 @@ export function messageHasExplicitCreateSignal(message: string): boolean {
  * rather than ongoing project / workspace management.
  *
  * "Make me a spreadsheet" must not force create_project or arm PROJECT_READY.
+ * "Build the full product brief" must not force create either — that is a docx
+ * deliverable; forceCreate would disable tools and leave Outputs empty.
  * "Create the workspace" / "build me a habit tracker" remain project intents.
  */
 const DELIVERABLE_FILE_RE =
-  /\b(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|slide\s*deck|\bdeck\b|slides?\b|presentation|docx|word\s+doc(?:ument)?|\bpdf\b|mermaid|flowchart|sequence\s+diagram|architecture\s+diagram|\bdiagram\b|(?:pie|bar|line)\s+chart|\bchart\b|html-?app|interactive\s+(?:web\s+)?(?:app|tool|widget))\b/i;
+  /\b(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|slide\s*deck|\bdeck\b|slides?\b|presentation|docx|word\s+doc(?:ument)?|\bpdf\b|mermaid|flowchart|sequence\s+diagram|architecture\s+diagram|\bdiagram\b|(?:pie|bar|line)\s+chart|\bchart\b|html-?app|interactive\s+(?:web\s+)?(?:app|tool|widget)|(?:product\s+)?brief|one-?pager|executive\s+summary|write-?up)\b/i;
 
 const PROJECT_MANAGEMENT_RE =
   /\b(?:workspace|create\s+(?:the\s+)?project|start\s+(?:the\s+)?project|open\s+(?:the\s+)?(?:workspace|project)|move\s+this\s+(?:into|to)\s+a\s+(?:project|workspace)|turn\s+this\s+into\s+a\s+project|build\s+(?:this|the|an?|me)\s+(?:app|application|product|saas|platform))\b/i;

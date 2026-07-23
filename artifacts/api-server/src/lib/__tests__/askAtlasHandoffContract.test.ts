@@ -63,6 +63,15 @@ describe("shouldForceCreateProject (INT-35)", () => {
     ).toBe(false);
   });
 
+  it("does not force create for build the full product brief (file, not workspace)", () => {
+    expect(
+      shouldForceCreateProject({
+        ...base,
+        message: "build the full product brief",
+      }),
+    ).toBe(false);
+  });
+
   it("does not force create on exploratory BUILD without explicit create phrasing", () => {
     expect(
       shouldForceCreateProject({
@@ -111,10 +120,18 @@ describe("isDeliverableOnlyRequest", () => {
     expect(isDeliverableOnlyRequest("Export this as a PDF")).toBe(true);
   });
 
+  it("recognizes product brief / one-pager / executive summary asks", () => {
+    expect(isDeliverableOnlyRequest("build the full product brief")).toBe(true);
+    expect(isDeliverableOnlyRequest("Write a product brief from this conversation")).toBe(true);
+    expect(isDeliverableOnlyRequest("Generate an executive summary")).toBe(true);
+    expect(isDeliverableOnlyRequest("Make me a one-pager")).toBe(true);
+  });
+
   it("rejects workspace / project management asks", () => {
     expect(isDeliverableOnlyRequest("Please create the workspace")).toBe(false);
     expect(isDeliverableOnlyRequest("Turn this into a project")).toBe(false);
     expect(isDeliverableOnlyRequest("build me a habit tracker")).toBe(false);
+    expect(isDeliverableOnlyRequest("build me a product")).toBe(false);
   });
 });
 
