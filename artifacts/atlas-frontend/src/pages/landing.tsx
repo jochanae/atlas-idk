@@ -180,7 +180,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
             e.currentTarget.style.borderColor = "rgba(212,175,55,0.5)";
           }}
         >
-          Enter Axiom →
+          Talk with Joy →
         </button>
 
         {/* Scroll hint — sits below the button with breathing room */}
