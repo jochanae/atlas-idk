@@ -14,6 +14,7 @@ import { exportFlowSurfacePng, exportFlowJson, exportFlowPdf } from "@/lib/flowE
 import { toast } from "sonner";
 import {
   type AtlasPerspective,
+  PERSPECTIVE_CONTRACT,
   readStoredPerspective,
   writeStoredPerspective,
   emitPerspectiveChange,
@@ -415,6 +416,8 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           projectId,
           message: fullText,
           flowMode: true,
+          // Milestone 2.3 Phase B — Map constitution uses active lensView.
+          perspective: lensView,
           flowNodes: nodes,
           history: flowMessages.map(m => ({ role: m.role, content: m.content })),
           projectMap: nodeContext,
@@ -464,7 +467,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
     } finally {
       setFlowLoading(false);
     }
-  }, [addFlowMessage, flowMessages, flowAttachedFiles, flowLoading, nodes, projectId]);
+  }, [addFlowMessage, flowMessages, flowAttachedFiles, flowLoading, nodes, projectId, lensView]);
 
   const handleSend = useCallback(() => {
     if (!intent.trim()) return;
@@ -674,6 +677,8 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                 <button
                   key={lens}
                   type="button"
+                  title={PERSPECTIVE_CONTRACT[lens]}
+                  aria-label={`${label}: ${PERSPECTIVE_CONTRACT[lens]}`}
                   onClick={() => setSharedLensView(lens)}
                   onMouseDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}

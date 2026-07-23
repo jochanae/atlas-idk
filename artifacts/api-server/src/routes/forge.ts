@@ -5,6 +5,16 @@ import { eq, desc, sql } from "drizzle-orm";
 import { db, projectFlowCanvasTable, projectsTable, nexusMessagesTable } from "@workspace/db";
 import { NODE_GENERATION_SYSTEM_PROMPT } from "../lib/nodeContract";
 import { upsertTier1, markTier1Skipped, appendTier1LedgerEntry } from "../services/tier1";
+import { normalizePerspective } from "../lib/atlasPerspective";
+import {
+  buildConstitutionPolicyBlock,
+  buildExpandNodeOutputContract,
+  filterTranscriptForLens,
+  formatDnaEvidenceForLens,
+  formatFlowNodeEvidenceForLens,
+  type FlowNodeEvidence,
+} from "../lib/lensConstitution";
+import { getProjectDNA } from "../lib/projectDNA";
 
 const router: IRouter = Router();
 
@@ -286,10 +296,14 @@ router.post("/expand-node", async (req, res) => {
   const parsed = ExpandNodeSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid request" }); return; }
 
-  const { nodeId, nodeLabel, nodeType, projectId, lens } = parsed.data;
+  const { nodeId, nodeLabel, nodeType, projectId } = parsed.data;
+  // Milestone 2.3 — canonicalize lens id (legacy remaps via normalizePerspective).
+  const lens = normalizePerspective(parsed.data.lens);
 
-  // Fetch recent project conversation for grounding
+  // Fetch recent project conversation for grounding (lens-weighted filter).
   let transcriptContext = "";
+  let dnaEvidence = "";
+  let flowEvidence = "";
   if (projectId) {
     try {
       const msgs = await db
@@ -297,38 +311,79 @@ router.post("/expand-node", async (req, res) => {
         .from(nexusMessagesTable)
         .where(eq(nexusMessagesTable.projectId, projectId))
         .orderBy(desc(nexusMessagesTable.createdAt))
-        .limit(30);
+        .limit(40);
       if (msgs.length > 0) {
-        const lines = msgs.reverse().map(m =>
-          `${m.role === "user" ? "User" : "Joy"}: ${m.content.slice(0, 400)}`
-        );
-        transcriptContext = lines.join("\n");
+        const chronological = msgs.reverse().map((m) => ({
+          role: m.role === "user" ? "User" : "Joy",
+          content: m.content.slice(0, 400),
+        }));
+        const filtered = filterTranscriptForLens(chronological, lens, 18);
+        transcriptContext = filtered
+          .map((m) => `${m.role}: ${m.content}`)
+          .join("\n");
       }
     } catch { /* non-fatal — continue without transcript */ }
+
+    try {
+      const dna = await getProjectDNA(projectId);
+      dnaEvidence = formatDnaEvidenceForLens(dna, lens);
+    } catch { /* non-fatal */ }
+
+    try {
+      const [project] = await db
+        .select({ nodeState: projectsTable.nodeState })
+        .from(projectsTable)
+        .where(eq(projectsTable.id, projectId))
+        .limit(1);
+      const nodeState = (project?.nodeState ?? {}) as Record<string, unknown>;
+      const flowNodes: FlowNodeEvidence[] = Object.entries(nodeState).flatMap(([id, raw]) => {
+        if (!raw || typeof raw !== "object") return [];
+        const rec = raw as Record<string, unknown>;
+        return [{
+          type: typeof rec.type === "string" ? rec.type : undefined,
+          label: typeof rec.label === "string" ? rec.label : id,
+          strategicAnswer: typeof rec.strategicAnswer === "string" ? rec.strategicAnswer : undefined,
+          details: typeof rec.details === "string" ? rec.details : undefined,
+          question: typeof rec.question === "string" ? rec.question : undefined,
+          resolved: Boolean(rec.resolved) || (typeof rec.strategicAnswer === "string" && rec.strategicAnswer.trim().length > 0),
+        }];
+      });
+      flowEvidence = formatFlowNodeEvidenceForLens(flowNodes, lens);
+    } catch { /* non-fatal */ }
   }
 
-  const lensInstructions: Record<string, string> = {
-    designer: "Focus on user experience, journeys, personas, pain points, accessibility, interface moments, and what the user actually encounters.",
-    builder: "Focus on technical components, APIs, data models, system boundaries, integrations, infrastructure, and what needs to be built.",
-    storyteller: "Focus on origin story, vision, the why behind this, user narrative, product DNA, the problem in human terms, and what makes this matter.",
-  };
+  const constitutionBlock = buildConstitutionPolicyBlock(lens);
+  const outputContract = buildExpandNodeOutputContract(lens);
+  const evidenceBlocks = [
+    dnaEvidence,
+    flowEvidence,
+    transcriptContext
+      ? `Project conversation evidence (lens-weighted):\n${transcriptContext.slice(0, 2800)}`
+      : "",
+  ].filter(Boolean).join("\n\n");
 
-  const systemPrompt = `You are expanding a specific node in a project's Axiom Flow map into sub-nodes.
+  const systemPrompt = `You are expanding a specific node in a project's Axiom Flow map into sub-nodes under a constitutional lens.
 
 Node being expanded: "${nodeLabel}" (type: ${nodeType})
-Lens: ${lens.toUpperCase()}
-${lensInstructions[lens] ?? ""}
+Active lens: ${lens}
 
-Generate 4–7 sub-nodes that break this node down one level deeper. Requirements:
-- Be specific to this project's context (not generic)
-- Each sub-node is concrete and represents a real concern or component
+${constitutionBlock}
+
+${outputContract}
+
+Generate 4–7 sub-nodes that break this node down one level deeper under THIS lens's job only.
+Shared requirements:
+- Be specific to this project's evidence (not generic)
+- Each sub-node is concrete and represents a real concern owned by this lens
 - Use these node types: requirement, blocker, decision, priority, sprint, goal
-- If a decision or answer for a sub-node is clearly and explicitly stated in the conversation, set resolved: true and add a "strategicAnswer" field with the actual answer (1–2 sentences, in the user's own words). Omit the "strategicAnswer" field entirely if the answer is not unambiguously stated — do not infer or guess.
-${transcriptContext ? `\nProject conversation context:\n${transcriptContext.slice(0, 3000)}` : ""}
+- If a decision or answer for a sub-node is clearly and explicitly stated in the evidence, set resolved: true and add a "strategicAnswer" field with the actual answer (1–2 sentences, in the user's own words). Omit "strategicAnswer" if not unambiguously stated — do not infer or guess.
+- Do not produce an outline another lens could claim by renaming headings.
+
+${evidenceBlocks ? `\nGrounding evidence:\n${evidenceBlocks}` : "\nNo project evidence available — stay conservative; do not invent stack or lore."}
 
 Respond with ONLY a JSON array. Each element MUST have these fields:
-{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of context","x":0,"y":0}
-Only add "strategicAnswer":"<actual answer from conversation>" and set resolved:true on elements where the answer is unambiguously present in the conversation above.`;
+{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of lens-specific context","x":0,"y":0}
+Only add "strategicAnswer":"<actual answer from evidence>" and set resolved:true when the answer is unambiguously present above.`;
 
   try {
     const message = await anthropic.messages.create({

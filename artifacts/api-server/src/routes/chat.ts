@@ -51,6 +51,8 @@ import {
   responseGeneratedSubtitle,
   unsupportedAttachmentReason,
 } from "../lib/workspaceActivity";
+import { normalizePerspective } from "../lib/atlasPerspective";
+import { buildConstitutionPolicyBlock } from "../lib/lensConstitution";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -3139,11 +3141,21 @@ router.post("/chat", async (req, res): Promise<void> => {
     planMode?: boolean;
     previousLens?: string;
     displayAs?: string;
+    /**
+     * Milestone 2.3 — canonical Map perspective for flowMode constitution.
+     * designer | builder | storyteller (legacy remapped).
+     */
+    perspective?: string;
   };
 
   const isFlowMode = !!body.flowMode;
   const isScenarioMode = !!body.scenarioMode;
   const buildMode = Boolean(body.buildMode);
+  // Map-bound Flow chat: constitutional perspective (Phase B). Default designer
+  // on the map surface when omitted (matches expand-node default historically).
+  const mapPerspective = normalizePerspective(
+    body.perspective ?? (isFlowMode ? "designer" : undefined),
+  );
 
   const isFoundationMode = !body.projectId;
   const legacyAttachments = Array.isArray(body.attachments) ? body.attachments : [];
@@ -4780,12 +4792,18 @@ NOT gates — Joy decides these alone:
     const nodeList = existingNodes.length > 0
       ? `\n\nCurrent canvas nodes:\n${existingNodes.map(n => `- [${n.type}] ${n.label}${n.strategicAnswer ? ` (answered)` : " (unanswered)"}`).join("\n")}`
       : "\n\nThe canvas is currently empty.";
-    systemPrompt += `\n\n--- ACTIVE MODE: FLOW ARCHITECT ---
-You are helping the user build their AxiomFlow map — a strategic canvas of goals, requirements, blockers, decisions, and sprints.${nodeList}
+    // Phase B: Map-bound chat obeys Lens Constitution (same packs as expand-node).
+    const mapConstitution = buildConstitutionPolicyBlock(mapPerspective);
+    systemPrompt += `\n\n--- ACTIVE MODE: FLOW ARCHITECT (${mapPerspective.toUpperCase()}) ---
+You are helping the user build their Axiom Flow map — a strategic canvas of goals, requirements, blockers, decisions, and sprints.
+Active Map perspective: ${mapPerspective}
+${nodeList}
+
+${mapConstitution}
 
 In this mode you have TWO jobs:
-1. Respond naturally as a strategic thinking partner — concise, direct, no fluff.
-2. At the END of your response, emit any NEW nodes that belong on the canvas.
+1. Respond as the active lens only — obey the constitution above. Do not silently restyle another lens's outline.
+2. At the END of your response, emit any NEW nodes that belong on the canvas AND are owned by this lens's job.
 
 Node format — one per line, at the very end of your response ONLY:
 FLOW_NODE:{"type":"goal","label":"Short label","question":"Strategic question for this node"}
@@ -4797,6 +4815,7 @@ Rules:
 - Only emit nodes when the conversation surfaces something worth mapping — not every response needs them.
 - Maximum 3 nodes per response.
 - No FLOW_NODE lines if nothing new needs mapping.
+- Designer nodes = experience/states/interaction; Builder nodes = construction/execution; Storyteller nodes = meaning/commitment/journey beats.
 - These lines are invisible to the user — they power the live canvas.
 --- END FLOW ARCHITECT ---`;
   }

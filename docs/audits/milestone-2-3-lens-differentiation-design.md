@@ -1,8 +1,8 @@
 # Milestone 2.3 — Lens Differentiation Design
 
-**Phase:** Phase A (plumbing) in progress  
+**Phase:** Phase B (Constitution on Map) in progress  
 **Date:** 2026-07-23  
-**Status:** **PHASE 0 CLOSED** · **Phase A plumbing landing**  
+**Status:** **PHASE 0 CLOSED** · **Phase A PASS** · **Phase B landing**  
 **Prerequisite:** Milestone 2.2 CLOSED (intelligence correctness)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Repo HEAD at commission:** `51acaf50` (`main`, post #217)
@@ -480,7 +480,7 @@ Ordered by leverage for true differentiation:
 **Dependencies:** 2.2 closed ✅.  
 **Status:** **Complete** — Flow → Storyteller signed off; Scenario = modifier; Flow reserved for Map; AtlasLens rename required; one-sentence contracts locked.
 
-### Phase A — One lens pipeline (plumbing only) ← **IN PROGRESS**  
+### Phase A — One lens pipeline (plumbing only) ← **PASS**  
 **Objective:** Carry **active lens** end-to-end on Map **and** live Workspace chat so there is one architecture, not two. **No full chat differentiation yet** — signal must be present, typed, logged, and consumed as a stub/policy hook on Nexus (may be no-op or identity-only beyond “lens=X is active”).  
 **In scope:**
 - Canonical lens type shared by Map tabs + composer (post-naming: Designer | Builder | Storyteller)
@@ -497,15 +497,7 @@ Ordered by leverage for true differentiation:
 - Automated or manual trace checklist checked in  
 **Complexity:** Medium (Nexus + client wiring; naming migration).  
 **Dependencies:** Phase 0 naming sign-off.  
-**Status (plumbing landing):**
-- ✅ Shared `AtlasPerspective` module (frontend + api-server) + legacy remap
-- ✅ Composer picker: Designer / Builder / Storyteller + Scenario (`speculate`) modifier
-- ✅ `useAtlasConversation` → `useNexusChatStream` sends `perspective` + `speculate`
-- ✅ Nexus `/api/nexus/chat` normalizes + echoes on early `event: meta` (`perspective`, `speculate`, `perspectiveStub`)
-- ✅ Map `lensView` syncs via `axiom:perspective-change` + shared storage
-- ✅ Expand-node enum already `designer|builder|storyteller` (`forge.ts`)
-- ✅ History `AtlasLens` → `HistoryIntent` (`build|decide|chat`)
-- ⏳ Constitution prompts = Phase B (Map) / Phase C (chat) — intentionally not in Phase A
+**Status:** **PASS** (2026-07-23) — plumbing complete; no behavioral differentiation introduced. Checklist: [`milestone-2-3-phase-a-trace-checklist.md`](./milestone-2-3-phase-a-trace-checklist.md).
 
 ### Phase A′ — Baseline measurement (may parallelize after A starts)  
 **Objective:** Run T1–T6 against **current** Map behavior (pre-Constitution) for a before/after delta.  
@@ -513,11 +505,19 @@ Ordered by leverage for true differentiation:
 **Complexity:** Low–medium.  
 **Dependencies:** Phase 0.
 
-### Phase B — Constitution on Map path  
+### Phase B — Constitution on Map path ← **IN PROGRESS**  
 **Objective:** Implement §3 on Map generative + presentation path (expand-node / Map-bound reasoning): policy, evidence weighting, output contracts — not adjective swaps.  
 **Acceptance:** Re-run battery on **Map**; T1 Pass mandatory; ≥5/6 Pass; L2 improves vs baseline; Builder remains schema-true.  
 **Complexity:** Medium–high.  
-**Dependencies:** Phase A (shared lens identity); Phase A′ baseline preferred.
+**Dependencies:** Phase A (shared lens identity); Phase A′ baseline preferred.  
+**Status (landing):**
+- ✅ Shared `lensConstitution.ts` packs from §3 (mission / evidence / blind spots / disagreement / failure modes)
+- ✅ Expand-node injects constitution + per-lens **output contracts** (not adjective one-liners)
+- ✅ Lens-weighted transcript filter + DNA + Flow graph evidence selection
+- ✅ Map-bound Flow chat (`flowMode`) passes `perspective` and injects the same constitution
+- ✅ Map tab tooltips use §3.0 one-sentence contracts
+- ⏳ Manual / battery eval T1–T6 on Map (acceptance gate)
+- ⏳ Live Workspace chat Constitution = Phase C (not this phase)
 
 ### Phase C — Constitution on live chat  
 **Objective:** Full live-chat differentiation using the **same** Constitution and lens ids (now that plumbing exists). Port/replace stranded `chat.ts` disposition logic onto Nexus under Designer/Builder/Storyteller — not a revival of Flow/Build/Look/Scenario as a second set.  
@@ -569,7 +569,7 @@ These remain **out of the lens constitution** unless a phase explicitly absorbs 
 | Phased roadmap | ✅ §6 **Approved order** |
 | Naming recommendation | ✅ §9 — **Signed off** (Flow → Storyteller) |
 
-**Next:** Finish Phase A acceptance trace checklist, then Phase A′ baseline / Phase B Constitution on Map.
+**Next:** Finish Phase B Map battery (T1 mandatory, ≥5/6 Pass), then Phase C Constitution on live chat.
 
 ---
 
