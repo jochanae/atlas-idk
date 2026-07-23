@@ -114,7 +114,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
           color: "rgba(232,220,200,0.32)",
         }}>
-          Axiom // Where ideas become enduring projects
+          Axiom // Powered by Joy
         </p>
 
         <h1 className="leading-[0.95] mb-8" style={{
@@ -180,7 +180,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
             e.currentTarget.style.borderColor = "rgba(212,175,55,0.5)";
           }}
         >
-          Enter Axiom →
+          Talk with Joy →
         </button>
 
         {/* Scroll hint — sits below the button with breathing room */}

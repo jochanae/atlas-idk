@@ -124,7 +124,7 @@ export function LandingHeader({ onSignIn }: { onSignIn?: () => void }) {
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,175,55,0.9)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "#D4AF37")}
         >
-          Enter Axiom →
+          Talk with Joy →
         </button>
       </div>
 
