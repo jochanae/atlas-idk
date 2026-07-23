@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 
 const features = [
-  "Unlimited Atlas conversations",
+  "Unlimited Joy conversations",
   "Full decision ledger + flow map",
   "GitHub integration + codebase awareness",
 ];

@@ -2,7 +2,7 @@
  * activeProjectContext — shared state describing the project the user is
  * currently inside. Populated by Workspace on mount, consumed by
  * AskAtlasSurface so that opening "Conversation" from within a workspace
- * (or the ambient Ask Atlas floater while in a project) sees the same
+ * (or the ambient Ask Joy floater while in a project) sees the same
  * project identity, memory brief, decisions, and recent events.
  *
  * Deliberately client-only — no new backend endpoints. All data is
@@ -97,7 +97,7 @@ export function subscribeActiveProjectContext(fn: Listener): () => void {
 }
 
 /**
- * Build the compact seed string that Ask Atlas prepends as a hidden
+ * Build the compact seed string that Ask Joy prepends as a hidden
  * system-role turn on the first user message when opened in-project.
  * Keep it short — this is context, not a dump.
  */

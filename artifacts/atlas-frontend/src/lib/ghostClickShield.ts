@@ -1,7 +1,7 @@
 /**
  * Mobile file pickers (esp. Android / Z Fold) synthesize a tap at the original
  * coordinates when the picker closes. By then the Plus sheet is gone, so that
- * tap lands on whatever sits underneath — on Ask Atlas that is often the
+ * tap lands on whatever sits underneath — on Ask Joy that is often the
  * centered "Exit Ask Joy" chip, which wiped the active thread.
  *
  * Document pickers (PowerPoint / Files app) are worse than the photo gallery:

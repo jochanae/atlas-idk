@@ -555,7 +555,7 @@ export function useChatStream(
               costUsd: res.costUsd != null ? Number(res.costUsd) : null,
             }]);
             setActivityStream({ active: false, content: "" });
-            // When Atlas queued background extraction, emit entry-changed after a
+            // When Joy queued background extraction, emit entry-changed after a
             // short delay to let the server write the extracted entries first.
             if (extractionQueuedFlag) {
               setTimeout(() => workspaceEventBus.emit("entry-changed", { projectId }), 2500);
@@ -899,7 +899,7 @@ export function useChatStream(
                     );
                   } catch { /* ignore malformed receipt */ }
                 } else if (evtName === "decision_gate") {
-                  // Atlas reached a genuine implementation fork — halt stream and show gate card.
+                  // Joy reached a genuine implementation fork — halt stream and show gate card.
                   const gatePayload = (typeEmbedded ?? JSON.parse(evtData)) as import("../lib/plan").StructuredDecisionGate;
                   setMessages((prev) =>
                     prev.map((m) => m.id === placeholderId ? { ...m, decisionGate: gatePayload } : m)
@@ -932,7 +932,7 @@ export function useChatStream(
                     }
                   } catch { /* ignore malformed image event */ }
                 } else if (evtName === "artifact_created") {
-                  // Live signal: Atlas just generated a deliverable. Auto-open the
+                  // Live signal: Joy just generated a deliverable. Auto-open the
                   // Outputs panel immediately (before the done event) so the user
                   // doesn't have to hunt for it.
                   try {
@@ -1144,7 +1144,7 @@ export function useChatStream(
             ...(res.reviewNotes?.length ? { reviewNotes: res.reviewNotes } : {}),
           }]);
           setActivityStream({ active: false, content: "" });
-          // When Atlas queued background extraction, emit entry-changed after a
+          // When Joy queued background extraction, emit entry-changed after a
           // short delay to let the server write the extracted entries first.
           if (extractionQueuedFlag) {
             setTimeout(() => workspaceEventBus.emit("entry-changed", { projectId }), 2500);

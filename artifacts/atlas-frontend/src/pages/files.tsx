@@ -8,7 +8,7 @@ import { ChevronLeft, X } from "lucide-react";
 import { FilesBrowser, type UnifiedFile } from "@/components/files/FilesBrowser";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 
-/** Paths that count as a valid in-app Atlas origin for the back chevron. */
+/** Paths that count as a valid in-app Joy origin for the back chevron. */
 function isAtlasLocation(path: string | null | undefined): boolean {
   if (!path || path === "/files") return false;
   // Reject bare external/unknown origins; keep known app surfaces.
@@ -33,7 +33,7 @@ export default function FilesPage() {
   const { goBack, previewPrev } = useEntryReferrer("/home");
   const prev = previewPrev();
   const hasAtlasPrev = isAtlasLocation(prev);
-  // When history has a prior Atlas location → back chevron.
+  // When history has a prior Joy location → back chevron.
   // When opened without a stack entry (deep link / overlay-style entry) → X,
   // still returning to the originating surface via /home fallback.
   const useCloseX = !hasAtlasPrev;
@@ -89,7 +89,7 @@ export default function FilesPage() {
             fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.18em",
             textTransform: "uppercase", color: "hsl(var(--muted-foreground))",
           }}>
-            Everything Atlas can use
+            Everything Joy can use
           </span>
         </div>
       </header>

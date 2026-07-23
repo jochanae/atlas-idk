@@ -707,7 +707,7 @@ function stepLabel(verb: string, detail?: string | null): string {
     IMAGE_ANALYZED:         "Image analyzed",
     DOCUMENT_ANALYZED:      "Document analyzed",
     ATTACHMENT_UNSUPPORTED: "Unsupported attachment",
-    ATLAS_THINKING:         "Atlas thinking",
+    ATLAS_THINKING:         "Joy thinking",
     RESPONSE_GENERATED:     "Response generated",
   };
   return MAP[verb] ?? verb;

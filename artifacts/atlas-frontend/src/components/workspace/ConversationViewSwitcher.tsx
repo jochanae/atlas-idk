@@ -2,7 +2,7 @@
  * ConversationViewSwitcher — segmented control that toggles the workspace
  * between Conversation Mode (pure talk, no tools/build actions) and Build
  * Mode (full build capability). Same thread, same session — this is a
- * posture switch, not a surface handoff. Ask Atlas has been removed; this
+ * posture switch, not a surface handoff. Ask Joy has been removed; this
  * control now owns the "Conversation" vs "Build" distinction in-place.
  */
 import type { CSSProperties } from "react";

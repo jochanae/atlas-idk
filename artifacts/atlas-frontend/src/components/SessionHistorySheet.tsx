@@ -2,7 +2,7 @@
  * SessionHistorySheet — unified "sessions / threads" surface.
  *
  * Single bottom-sheet used by:
- *   • Ask Atlas composer's gold-clock  →  ASK ATLAS · HISTORY
+ *   • Ask Joy composer's gold-clock  →  ASK ATLAS · HISTORY
  *   • Workspace composer's gold-clock       →  [PROJECT] · SESSIONS
  *
  * One mental model: time = "where was I." New + Resume + Delete all live
@@ -17,7 +17,7 @@ export interface SessionHistoryItem {
   /** ISO string or epoch ms. */
   timestamp?: string | number | null;
   active?: boolean;
-  /** "promoted" rows resolve to a workspace, not the Ask Atlas surface. */
+  /** "promoted" rows resolve to a workspace, not the Ask Joy surface. */
   kind?: "conversation" | "promoted";
   projectId?: number | null;
   projectName?: string | null;

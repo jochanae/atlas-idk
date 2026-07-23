@@ -89,7 +89,7 @@ export function DecisionGateCard({ gate, resolved, selectedValue, onSelect }: De
               opacity: 0.85,
             }}
           >
-            Atlas needs one decision before continuing
+            Joy needs one decision before continuing
           </span>
           <span
             style={{
@@ -189,7 +189,7 @@ export function DecisionGateCard({ gate, resolved, selectedValue, onSelect }: De
           color: "var(--atlas-muted, rgba(255,255,255,0.3))",
         }}
       >
-        Atlas is waiting for your direction
+        Joy is waiting for your direction
       </span>
     </div>
   );

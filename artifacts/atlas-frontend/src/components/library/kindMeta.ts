@@ -48,7 +48,7 @@ const ORIGIN_LABEL: Record<LibraryItemOrigin["source"], string> = {
   unknown: "",
 };
 
-/** Human origin phrase: "Saved from Ask Atlas · Family Reunion Planning". */
+/** Human origin phrase: "Saved from Ask Joy · Family Reunion Planning". */
 export function originPhrase(origin: LibraryItemOrigin, projectName?: string | null): string {
   const src = ORIGIN_LABEL[origin.source] ?? "";
   const bits: string[] = [];

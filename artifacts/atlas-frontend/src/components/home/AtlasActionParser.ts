@@ -1,4 +1,4 @@
-// Pure schema validation for Atlas quick-action blocks.
+// Pure schema validation for Joy quick-action blocks.
 // Transport-agnostic — the fenced-code-block syntax is today's delivery mechanism,
 // but this parser knows nothing about markdown.
 //

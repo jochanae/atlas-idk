@@ -2,7 +2,7 @@
  * ForgeIntakeSheet — glassmorphic bottom sheet for raw context dumps.
  *
  * Unified intake surface. Two entry paths:
- *   • Long-press on the Atlas Pulse glyph (LifecycleGlyph)
+ *   • Long-press on the Joy Pulse glyph (LifecycleGlyph)
  *   • "+" menu → "Forge intake" in the chat composer
  *
  * Both open this sheet. The sheet owns the dump pad + Intake action + a

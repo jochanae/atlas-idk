@@ -527,7 +527,7 @@ export function ObjectBoard({
       {filtered.length === 0 && (
         <div style={{ color: MUTED, fontSize: 11, opacity: 0.4, padding: "20px 0", textAlign: "center", lineHeight: 1.6 }}>
           {(counts["All"] ?? 0) === 0
-            ? "Atlas extracts objects from your conversations.\nStart talking — ideas, goals, and blockers will appear here."
+            ? "Joy extracts objects from your conversations.\nStart talking — ideas, goals, and blockers will appear here."
             : `No ${typeFilter} objects yet.`
           }
         </div>

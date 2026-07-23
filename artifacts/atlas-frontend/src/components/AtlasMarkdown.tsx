@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // AtlasMarkdown.tsx
 //
-// Shared markdown primitive for BOTH Ask Atlas and Workspace surfaces.
+// Shared markdown primitive for BOTH Ask Joy and Workspace surfaces.
 // Replaces the parallel implementations in `MessageRenderer.tsx` and
 // `home/AskAtlasRenderer.tsx`. Streaming and final renders now share the same
 // component tree — no plain-text streaming branch, no post-completion typography
@@ -15,7 +15,7 @@
 //   • preserves CodeBlockCard (copy + collapse)
 //   • surface-specific string tokenization via optional `tokenize` prop
 //   • surface-specific fenced-code interception via optional `renderPre` prop
-//     (Ask Atlas uses this for atlas-* cards)
+//     (Ask Joy uses this for atlas-* cards)
 //   • theme: 'obsidian' | 'parchment'
 //
 // See docs/handoffs/2026-07-22-shared-markdown-renderer.md
@@ -52,7 +52,7 @@ export interface AtlasMarkdownProps {
   tokenize?: AtlasTokenizer;
   /**
    * Intercept fenced code blocks before the default <CodeBlockCard/> renders.
-   * Return `undefined` to fall through to the default. Ask Atlas uses this for
+   * Return `undefined` to fall through to the default. Ask Joy uses this for
    * atlas-choice / atlas-clarify / atlas-action cards.
    */
   renderPre?: AtlasPreRenderer;
@@ -195,7 +195,7 @@ export function CodeBlockCard({ language, code }: { language: string; code: stri
 // ── AtlasMarkdown ─────────────────────────────────────────────────────────────
 
 /**
- * Shared markdown renderer. Both Ask Atlas and Workspace mount this component
+ * Shared markdown renderer. Both Ask Joy and Workspace mount this component
  * — streaming and final states use the same tree so partial markdown renders
  * progressively without a typography swap on completion.
  */

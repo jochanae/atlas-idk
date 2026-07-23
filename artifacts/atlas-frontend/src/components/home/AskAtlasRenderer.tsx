@@ -1,13 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // AskAtlasRenderer.tsx
 //
-// Ask Atlas surface wrapper around the shared <AtlasMarkdown/> primitive.
+// Ask Joy surface wrapper around the shared <AtlasMarkdown/> primitive.
 // Contributes only surface-specific behavior:
 //   • tokenizer for project name links, folder-CTA phrases, file paths
 //   • fenced-code interception for atlas-choice / atlas-clarify / atlas-action
 //
 // All markdown structure (paragraphs, lists, tables, headings, code blocks,
-// links) is rendered by the shared component so Ask Atlas and Workspace stay
+// links) is rendered by the shared component so Ask Joy and Workspace stay
 // visually in parity.
 // ─────────────────────────────────────────────────────────────────────────────
 

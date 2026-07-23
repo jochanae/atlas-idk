@@ -169,7 +169,7 @@ export function ParkSheet({ projectId: initialProjectId, projects, onClose, onOp
               void handlePark();
             }
           }}
-          placeholder="Park a thought — Atlas will analyze it when you come back…"
+          placeholder="Park a thought — Joy will analyze it when you come back…"
           disabled={status === "done"}
           rows={4}
           style={{

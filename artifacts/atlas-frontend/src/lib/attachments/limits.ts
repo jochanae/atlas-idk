@@ -1,5 +1,5 @@
 /**
- * Shared attachment limits — single source of truth for Ask Atlas, Workspace,
+ * Shared attachment limits — single source of truth for Ask Joy, Workspace,
  * and the upload service. Backend mirrors these in attachmentStorage.ts.
  */
 

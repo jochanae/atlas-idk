@@ -43,7 +43,7 @@ const FEATURES = {
     "Full ledger history",
     "Project profiles",
     "GitHub integration",
-    "Atlas handoff",
+    "Joy handoff",
   ],
   teams: [
     "Everything in Pro",

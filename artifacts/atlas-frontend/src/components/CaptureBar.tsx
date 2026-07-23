@@ -3,7 +3,7 @@
  *
  * One bar, two destinations:
  *   • Park  — defers to the Parking Lot (status:"parked"). Parent owns the
- *             write via `onPark`. Atlas can analyze parked entries later.
+ *             write via `onPark`. Joy can analyze parked entries later.
  *   • Forge — fire-and-forget classification through /api/quick-prompt.
  *
  * Replaces the standalone QuickPromptCard and the workspace's floating

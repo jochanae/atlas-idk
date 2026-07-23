@@ -215,7 +215,7 @@ export interface ChatComposerProps {
   onSketch?: (prompt: string) => void;
 
   /** Seed the initial composer mode. Defaults to "plan" when omitted.
-   *  For local (no-GitHub) project workspaces pass "build" so Atlas emits
+   *  For local (no-GitHub) project workspaces pass "build" so Joy emits
    *  FILE_EDIT blocks by default. User can still toggle to Plan freely. */
   defaultComposerMode?: "plan" | "build";
 }
@@ -332,7 +332,7 @@ export function ChatComposer(props: ChatComposerProps) {
     return () => { _adbgLog("ChatComposer_unmounted"); };
   }, []);
 
-  // When the project is empty, focus the composer so Atlas feels "already in the room".
+  // When the project is empty, focus the composer so Joy feels "already in the room".
   // Skip on mobile to avoid yanking the keyboard up uninvited.
   useEffect(() => {
     if (isMobile) return;
@@ -422,7 +422,7 @@ export function ChatComposer(props: ChatComposerProps) {
   }, [handoffChromeLocked, composerActive, isDocked, sheetVisible, isCompact, attachedFiles.length, zipFiles.length, codeContextStatus, input.length]);
 
   // Publish held state to the footer anchor so its halo breathes when a
-  // draft is being held or Atlas is mid-turn. Cleared when neither is true.
+  // draft is being held or Joy is mid-turn. Cleared when neither is true.
   useEffect(() => {
     setAnchorHeld(Boolean(hasInput || chatPending));
     return () => setAnchorHeld(false);
@@ -640,7 +640,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
         {/* CaptureBar + intake toggle removed (2026-06-09).
             Intake now lives in the ForgeIntakeSheet, opened from:
-              • long-press on the Atlas Pulse glyph (LifecycleGlyph)
+              • long-press on the Joy Pulse glyph (LifecycleGlyph)
               • "+" menu → "Forge intake" (ComposerActions)
             This restores the composer to its lightweight resting state on mobile. */}
 
@@ -658,7 +658,7 @@ export function ChatComposer(props: ChatComposerProps) {
         )}
 
         {/* First-run banner removed — empty state now lives in the conversation surface
-            as a single Atlas-voiced shaping question. No wizard, no setup card. */}
+            as a single Joy-voiced shaping question. No wizard, no setup card. */}
 
 
         {/* Generate Blueprint pill removed from composer — accessible from the
@@ -743,7 +743,7 @@ export function ChatComposer(props: ChatComposerProps) {
                       fontFamily: "var(--app-font-sans)",
                     }}
                   >
-                    Ask Atlas…
+                    Ask Joy…
                   </div>
                 )
               )}

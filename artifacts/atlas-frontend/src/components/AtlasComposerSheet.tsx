@@ -12,8 +12,8 @@ type Props = {
 };
 
 /**
- * Atlas Composer, hosted as a bottom-anchored sheet opened from the project
- * drawer (Tools → Atlas Composer). Wraps <ActiveRuns/> so the composer form
+ * Joy Composer, hosted as a bottom-anchored sheet opened from the project
+ * drawer (Tools → Joy Composer). Wraps <ActiveRuns/> so the composer form
  * AND any in-flight / completed runs render in one place.
  */
 export function AtlasComposerSheet({ open, onClose, projects }: Props) {
@@ -39,7 +39,7 @@ export function AtlasComposerSheet({ open, onClose, projects }: Props) {
       />
       <aside
         role="dialog"
-        aria-label="Atlas Composer"
+        aria-label="Joy Composer"
         style={{
           position: "fixed",
           left: "50%",
@@ -85,7 +85,7 @@ export function AtlasComposerSheet({ open, onClose, projects }: Props) {
               fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)",
               letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.7,
             }}>
-              Atlas Composer
+              Joy Composer
             </span>
             <span style={{
               fontSize: 10.5, color: "var(--atlas-muted)",

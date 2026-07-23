@@ -10,7 +10,7 @@
  *
  * Lives on BOTH surfaces (home global insights + workspace chat) via
  * ComposerActions, so users can always reach image gen manually without
- * waiting for Atlas to surface the InlineSketchOffer pill.
+ * waiting for Joy to surface the InlineSketchOffer pill.
  */
 
 import { useEffect, useRef, useState } from "react";

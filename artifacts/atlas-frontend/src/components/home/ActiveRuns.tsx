@@ -1,4 +1,4 @@
-// ActiveRuns — command center for starting and tracking Atlas build sessions.
+// ActiveRuns — command center for starting and tracking Joy build sessions.
 //
 // BUILD-only composer: type a prompt, pick a project, fire it. The run streams
 // live, and when complete the card expands inline to show Chat + Diff tabs.
@@ -297,7 +297,7 @@ async function _startRun(
 
     // 2. Fire chat stream
     // ── LEGACY DIRECT SENDER — /api/chat ─────────────────────────────────────
-    // ActiveRuns (Atlas Composer) bypasses useAtlasConversation / useNexusChatStream.
+    // ActiveRuns (Joy Composer) bypasses useAtlasConversation / useNexusChatStream.
     // This is a known LEGACY BUT REACHABLE path.  It skips: WhisperGate, Nexus
     // features (CLARIFY, DECIDE, plan artifacts, memory chips), and the canonical
     // useStagedAttachments attachment pipeline.
@@ -672,7 +672,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
     setSubmitting(true);
 
     try {
-      // Shared upload service — same attachmentIds contract as Ask Atlas / Workspace.
+      // Shared upload service — same attachmentIds contract as Ask Joy / Workspace.
       let attachmentIds: string[] = [];
       if (attachments.length > 0) {
         const { uploadAttachmentFiles } = await import(
@@ -729,7 +729,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
             fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)",
             letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7,
           }}>
-            Atlas Composer
+            Joy Composer
           </h3>
           {activeRuns.length > 0 && (
             <span style={{
@@ -1833,7 +1833,7 @@ export function useAllRuns(): ActiveRun[] {
 }
 
 // Public hook — count of in-flight runs (queued + running). Used by the
-// project drawer to surface a badge on the "Atlas Composer" entry.
+// project drawer to surface a badge on the "Joy Composer" entry.
 export function useActiveRunsCount(): number {
   const [n, setN] = useState(() =>
     _getRuns().filter((r) => r.status === "queued" || r.status === "running").length

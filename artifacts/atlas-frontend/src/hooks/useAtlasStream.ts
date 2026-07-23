@@ -146,7 +146,7 @@ export function useAtlasStream(): UseAtlasStreamReturn {
           ? "Images are too large to send. Try fewer or smaller images."
           : res.status === 401
             ? "Session expired. Please sign in again."
-            : `Atlas couldn't respond (HTTP ${res.status})${reason ? `: ${reason}` : ""}. Try again.`;
+            : `Joy couldn't respond (HTTP ${res.status})${reason ? `: ${reason}` : ""}. Try again.`;
         callbacks.onError?.(errText);
         return;
       }
@@ -181,7 +181,7 @@ export function useAtlasStream(): UseAtlasStreamReturn {
           }
           callbacks.onDone(streamedText, json ?? { content: streamedText });
         } catch (e) {
-          callbacks.onError?.("Couldn't parse Atlas response.");
+          callbacks.onError?.("Couldn't parse Joy response.");
           // unreachable, but satisfies TypeScript exhaustiveness
         }
         return;

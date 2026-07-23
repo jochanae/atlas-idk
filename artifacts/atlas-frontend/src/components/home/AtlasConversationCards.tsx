@@ -1,4 +1,4 @@
-// Presentational-only Atlas conversation card components.
+// Presentational-only Joy conversation card components.
 // State is local to each card instance (selected option + submitted flag).
 // The transport that delivers the card data is irrelevant here.
 

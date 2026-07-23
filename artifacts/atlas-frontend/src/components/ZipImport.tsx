@@ -1,4 +1,4 @@
-// ZIP drag-and-drop import for Atlas workspace
+// ZIP drag-and-drop import for Joy workspace
 // Parses a ZIP archive client-side, lets the user select files,
 // and assembles the contents as a fileContext string for the chat API.
 

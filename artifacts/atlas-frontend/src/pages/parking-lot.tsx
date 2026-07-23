@@ -19,7 +19,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { CaptureBar } from "@/components/CaptureBar";
 import { buildParkedEntryPayload } from "@/lib/parking";
 
-// ── Architectural note (locked rule from original Atlas) ──────────────────────
+// ── Architectural note (locked rule from original Joy) ──────────────────────
 // "Ledger and Parking Lot are the same object, rendered differently based on
 //  state. Moving between them is NOT duplication. It is a status change on
 //  the same object."
@@ -325,7 +325,7 @@ export default function ParkingLot() {
             <p style={{ margin: "5px 0 0", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.55, fontStyle: "italic", fontFamily: "var(--app-font-sans)" }}>
               {totalCount > 0
                 ? `${totalCount} idea${totalCount === 1 ? "" : "s"} waiting — Resume to continue any thread.`
-                : "When Atlas delivers a thought you're not ready to commit, park it here."}
+                : "When Joy delivers a thought you're not ready to commit, park it here."}
             </p>
           </div>
 
@@ -644,7 +644,7 @@ function EmptyParked() {
         Nothing parked.
       </p>
       <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.4, maxWidth: 280, marginInline: "auto" }}>
-        Tap the tray icon on any Atlas response to save a thought without breaking your flow.
+        Tap the tray icon on any Joy response to save a thought without breaking your flow.
       </p>
     </div>
   );

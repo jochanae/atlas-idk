@@ -71,7 +71,7 @@ function plural(n: number, singular: string, pluralForm?: string): string {
 }
 
 /**
- * Read-only window into Atlas's understanding of the project.
+ * Read-only window into Joy's understanding of the project.
  * Tapping the lifecycle glyph opens this. No actions, no commit buttons.
  */
 export function ProjectPulsePanel(props: Props) {
@@ -172,7 +172,7 @@ export function ProjectPulsePanel(props: Props) {
               fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)",
               letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.85, marginBottom: 4,
             }}>
-              Atlas Pulse
+              Joy Pulse
             </div>
             <div style={{
               fontSize: 17, fontWeight: 600, lineHeight: 1.2,
@@ -196,7 +196,7 @@ export function ProjectPulsePanel(props: Props) {
           </button>
         </div>
 
-        {/* Project DNA — the 6 Tier1 slots Atlas is capturing */}
+        {/* Project DNA — the 6 Tier1 slots Joy is capturing */}
         <PulseDnaSection projectId={projectId} />
 
         {/* Current state */}
@@ -216,7 +216,7 @@ export function ProjectPulsePanel(props: Props) {
             borderRadius: 10,
             fontSize: 12.5, color: "var(--atlas-muted)", lineHeight: 1.55,
           }}>
-            This project is brand new. Atlas hasn&apos;t gathered enough signal yet — themes and decisions will appear here as the conversation deepens.
+            This project is brand new. Joy hasn&apos;t gathered enough signal yet — themes and decisions will appear here as the conversation deepens.
           </div>
         ) : (
           <>
@@ -243,10 +243,10 @@ export function ProjectPulsePanel(props: Props) {
               </Section>
             )}
 
-            {/* Explainability: what Atlas observed before concluding anything */}
+            {/* Explainability: what Joy observed before concluding anything */}
             {evidence && <EvidenceBlock evidence={evidence} lastActivityAt={lastActivityAt} />}
 
-            <Section label="Atlas Concludes">
+            <Section label="Joy Concludes">
               <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5 }}>
                 {evidence ? (
                   <>
@@ -303,7 +303,7 @@ export function ProjectPulsePanel(props: Props) {
               {justMarked ? "Marked as Built" : updateProject.isPending ? "Saving…" : "Mark as Built"}
             </button>
             <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.6, fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
-              Built means complete and successful. This is your call — Atlas won&apos;t make it for you.
+              Built means complete and successful. This is your call — Joy won&apos;t make it for you.
             </div>
           </div>
         )}
@@ -315,7 +315,7 @@ export function ProjectPulsePanel(props: Props) {
           fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.55,
           fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em", lineHeight: 1.5,
         }}>
-          Shaping and Committed are Atlas assessments — they shift automatically as evidence accrues. Built is your call.
+          Shaping and Committed are Joy assessments — they shift automatically as evidence accrues. Built is your call.
         </div>
       </div>
     </div>,
@@ -344,7 +344,7 @@ function EvidenceBlock({ evidence, lastActivityAt }: { evidence: GenomeEvidence;
   if (lastActivityAt) bullets.push(`Last activity ${relTime(lastActivityAt)}`);
 
   return (
-    <Section label="Atlas Observed">
+    <Section label="Joy Observed">
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 4 }}>
         {bullets.map((b, i) => (
           <li key={i} style={{

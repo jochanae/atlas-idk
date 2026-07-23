@@ -1,8 +1,8 @@
 /**
- * CapabilityHint — small "What files can Atlas read?" affordance.
+ * CapabilityHint — small "What files can Joy read?" affordance.
  *
  * Reads the shared support matrix (single source of truth). Renders a
- * popover listing which types Atlas can actually understand today vs.
+ * popover listing which types Joy can actually understand today vs.
  * which are stored-only. Never claims capability the matrix denies.
  *
  * Drop into any composer: <CapabilityHint />
@@ -22,7 +22,7 @@ export function CapabilityHint() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="What files can Atlas read?"
+        aria-label="What files can Joy read?"
         style={{
           font: "inherit",
           fontSize: 11,
@@ -35,7 +35,7 @@ export function CapabilityHint() {
           lineHeight: 1.4,
         }}
       >
-        What can Atlas read?
+        What can Joy read?
       </button>
       {open && (
         <div
@@ -56,14 +56,14 @@ export function CapabilityHint() {
             lineHeight: 1.45,
           }}
         >
-          <Section label="Atlas can read these" tone="ok">
+          <Section label="Joy can read these" tone="ok">
             {model.map((e) => e.label).join(" · ")}
           </Section>
           <Section label="Stored but not analyzed" tone="warn">
             {stored.map((e) => e.label).join(" · ")}
           </Section>
           <p style={{ margin: "8px 0 0", fontSize: 10.5, opacity: 0.6 }}>
-            Unsupported types are kept in Files. Atlas will tell you when it
+            Unsupported types are kept in Files. Joy will tell you when it
             can't read one instead of pretending it did.
           </p>
         </div>

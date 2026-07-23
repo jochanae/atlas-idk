@@ -643,7 +643,7 @@ export function HistoryBookmarksSheet({
               <EmptyState
                 icon={<HistoryIcon size={26} strokeWidth={1.4} />}
                 copy="No history snapshots recorded yet."
-                sub="Snapshots appear as you converse with Atlas."
+                sub="Snapshots appear as you converse with Joy."
               />
             ) : (
               <>
@@ -847,7 +847,7 @@ export function HistoryBookmarksSheet({
                 <EmptyState
                   icon={<Shield size={26} strokeWidth={1.4} />}
                   copy="No checkpoints yet."
-                  sub="Atlas creates checkpoints automatically when your project DNA is confirmed or a verified build passes. You can also save one manually anytime."
+                  sub="Joy creates checkpoints automatically when your project DNA is confirmed or a verified build passes. You can also save one manually anytime."
                 />
               ) : (
                 <div
@@ -1153,7 +1153,7 @@ function CheckpointInspectPanel({
                 letterSpacing: "0.06em",
               }}
             >
-              saved by Atlas
+              saved by Joy
             </span>
           ) : (
             <span

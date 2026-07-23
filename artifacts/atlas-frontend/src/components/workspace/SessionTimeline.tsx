@@ -1,7 +1,7 @@
 // SessionTimeline — chronological execution trace for the Changes tab.
 //
 // Replaces the flat PushDiffCard list inside LedgerPanel with a unified
-// vertical timeline that interleaves the three real signals Atlas already
+// vertical timeline that interleaves the three real signals Joy already
 // captures, newest first:
 //
 //   • Prompt        — the user's message that opened a turn.
@@ -792,7 +792,7 @@ export function SessionTimeline({ messages, pushHistory, onRollbackPush, project
             lineHeight: 1.65,
           }}
         >
-          Your session timeline will appear here — prompts, Atlas thoughts,
+          Your session timeline will appear here — prompts, Joy thoughts,
           file edits, and pushes, in the order they happened.
         </div>
       )}

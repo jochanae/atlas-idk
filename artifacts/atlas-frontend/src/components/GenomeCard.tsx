@@ -67,7 +67,7 @@ function AtlasStateTrack({ state }: { state: AtlasState | undefined }) {
         fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em",
         textTransform: "uppercase", color: MUTED, opacity: 0.4,
       }}>
-        Atlas State
+        Joy State
       </span>
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {ATLAS_STATES.map((s, i) => {
@@ -151,9 +151,9 @@ function HealthMetric({
 function HealthPanel({ health, stage }: { health: ProjectHealth; stage: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Atlas State track + metrics side-by-side */}
+      {/* Joy State track + metrics side-by-side */}
       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-        {/* Atlas State track — left column */}
+        {/* Joy State track — left column */}
         <div style={{ flexShrink: 0 }}>
           <AtlasStateTrack state={health.atlasState} />
         </div>
@@ -412,7 +412,7 @@ export function GenomeCard({
 
         {!loading && !error && !hasHealth && (
           <div style={{ fontSize: 11, color: MUTED, opacity: 0.35, lineHeight: 1.6 }}>
-            Health builds as you work. Keep going — Atlas is learning.
+            Health builds as you work. Keep going — Joy is learning.
           </div>
         )}
 

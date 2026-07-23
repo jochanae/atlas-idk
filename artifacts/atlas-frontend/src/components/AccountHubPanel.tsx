@@ -5,7 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
 import { useThemeMode } from "@/lib/theme";
 
-// ── Local Atlas profile (mirrors workspace.tsx UserProfile for localStorage) ──
+// ── Local Joy profile (mirrors workspace.tsx UserProfile for localStorage) ──
 interface AtlasProfile {
   name: string;
   stack: string;
@@ -33,7 +33,7 @@ function loadAtlasProfile(): AtlasProfile {
     const raw = localStorage.getItem("atlas-user-profile");
     if (raw) return JSON.parse(raw) as AtlasProfile;
   } catch {}
-  return { name: "", stack: "React, React Router, Tailwind CSS, Supabase", projects: "Compani, IntoIQ, CoinsBloom, PresentQ, SanctumIQ, Atlas", notes: "", photoUrl: "" };
+  return { name: "", stack: "React, React Router, Tailwind CSS, Supabase", projects: "Compani, IntoIQ, CoinsBloom, PresentQ, SanctumIQ, Joy", notes: "", photoUrl: "" };
 }
 
 function saveAtlasProfile(p: AtlasProfile) {
@@ -280,7 +280,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     if (authUser?.name && !name) setName(authUser.name);
   }, [authUser?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Atlas context (localStorage) ──────────────────────────────────────────
+  // ── Joy context (localStorage) ──────────────────────────────────────────
   const [atlasProfile, setAtlasProfile] = useState<AtlasProfile>(loadAtlasProfile);
   const [githubConnections, setGithubConnections] = useState<AccountConnection[]>([]);
   const [githubConnectionsLoading, setGithubConnectionsLoading] = useState(true);
@@ -763,11 +763,11 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
             )}
           </div>
 
-          {/* ── Atlas context (AI chat) ───────────────────────────────────── */}
+          {/* ── Joy context (AI chat) ───────────────────────────────────── */}
           <div style={{ padding: "0 18px 20px", display: "flex", flexDirection: "column", gap: 11 }}>
-            <SectionLabel>Atlas Context</SectionLabel>
+            <SectionLabel>Joy Context</SectionLabel>
             <div style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, lineHeight: 1.6 }}>
-              Injected into every conversation so Atlas knows who you are.
+              Injected into every conversation so Joy knows who you are.
             </div>
             <GlassInput
               label="Stack"
@@ -782,7 +782,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               placeholder="IntoIQ, CoinsBloom…"
             />
             <GlassTextarea
-              label="Notes for Atlas"
+              label="Notes for Joy"
               value={atlasProfile.notes}
               onChange={(v) => setAtlasProfile(p => ({ ...p, notes: v }))}
               placeholder="Anything you want it to always know…"
@@ -811,7 +811,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               marginBottom: "12px",
               lineHeight: 1.5,
             }}>
-              Connect your GitHub account so Atlas can read and write code across projects.
+              Connect your GitHub account so Joy can read and write code across projects.
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
               <button

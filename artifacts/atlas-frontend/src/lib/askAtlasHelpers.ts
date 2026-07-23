@@ -4,10 +4,10 @@ const BUILD_INTENT_RE =
 /**
  * Canonical destination resolver for a conversation row.
  *
- * Both the Projects drawer (ATLAS section) and the Ask Atlas clock/history
+ * Both the Projects drawer (ATLAS section) and the Ask Joy clock/history
  * sheet render the same underlying conversation list. Route every tap through
  * this resolver so promoted threads always land in their workspace and
- * non-promoted threads always reopen inside Ask Atlas — no surface-specific
+ * non-promoted threads always reopen inside Ask Joy — no surface-specific
  * click logic, no detached copies of a thread that already belongs to a
  * workspace.
  */
@@ -45,11 +45,11 @@ export function buildAskAtlasHandoffSeed(
 ): string {
   const lines: string[] = [];
   for (const m of messages.slice(-6)) {
-    lines.push(`${m.role === "user" ? "Me" : "Atlas"}: ${m.content.trim()}`);
+    lines.push(`${m.role === "user" ? "Me" : "Joy"}: ${m.content.trim()}`);
   }
   if (!lines.length) return draftFallback.trim();
   return [
-    "Continuing from an Ask Atlas thread:",
+    "Continuing from an Ask Joy thread:",
     "",
     ...lines,
     "",
@@ -153,7 +153,7 @@ export function redirectAfterHandoff(
 }
 
 /**
- * Navigate into a project/workspace after Ask Atlas handoff.
+ * Navigate into a project/workspace after Ask Joy handoff.
  * Always seeds continuation so Workspace is never quiet (INT-13).
  */
 export function navigateAfterAskAtlasHandoff(
@@ -181,7 +181,7 @@ export function navigateAfterAskAtlasHandoff(
 }
 
 /**
- * Open a specific Workspace output from Ask Atlas without a conversation handoff.
+ * Open a specific Workspace output from Ask Joy without a conversation handoff.
  * Seeds `atlas-open-output-*` and navigates with `source=open-output` so Workspace
  * expands Outputs and focuses the artifact — no opening-message continuation.
  */
@@ -213,7 +213,7 @@ export function navigateToProjectOutput(
 
 /**
  * INT-11: pick the live transcript for handoff / crystallize.
- * When Ask Atlas is open (or holds messages), never snapshot the cleared ambient nexusChat.
+ * When Ask Joy is open (or holds messages), never snapshot the cleared ambient nexusChat.
  */
 export function selectHandoffMessages<T>(opts: {
   preferAskAtlas: boolean;
@@ -230,13 +230,13 @@ export function selectHandoffMessages<T>(opts: {
     : opts.askAtlasMessages;
 }
 
-/** Default kickoff Atlas receives on workspace arrival after a home/Ask Atlas handoff. */
+/** Default kickoff Joy receives on workspace arrival after a home/Ask Joy handoff. */
 export const HANDOFF_CONTINUATION_MESSAGE =
   "Continue from where we left off — acknowledge the handoff and propose the next concrete step.";
 
 /**
- * Seed the workspace opening-message pipeline so Atlas auto-responds after
- * a homepage / Ask Atlas → workspace handoff.
+ * Seed the workspace opening-message pipeline so Joy auto-responds after
+ * a homepage / Ask Joy → workspace handoff.
  *
  * Why this exists: transferring the transcript alone leaves the workspace
  * quiet (thread shows up, but no new turn starts). The workspace suppresses

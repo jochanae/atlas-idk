@@ -113,8 +113,8 @@ const PLACEHOLDERS = [
   "What would have to be true for this to work…",
 ];
 
-/** Legacy home inline pending copy. Ask Atlas surface owns its own
- *  Loading context → Atlas is thinking… transition (see AskAtlasSurface). */
+/** Legacy home inline pending copy. Ask Joy surface owns its own
+ *  Loading context → Joy is thinking… transition (see AskAtlasSurface). */
 const HOME_PENDING_PHRASES = [
   "Joy is thinking…",
   "Working on your question…",
@@ -260,7 +260,7 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
             opacity: 0.92,
           }}
         >
-          Ask Atlas
+          Ask Joy
         </span>
       </div>
     </>
@@ -274,7 +274,7 @@ type HomeHandoffSignal = {
   projectName: string | null;
   reason: string | null;
   projectId?: number | null;
-  /** True when Atlas explicitly emitted PROJECT_READY in the stream — bypasses the 5-message gate. */
+  /** True when Joy explicitly emitted PROJECT_READY in the stream — bypasses the 5-message gate. */
   explicit?: boolean;
 };
 
@@ -626,7 +626,7 @@ function HomeMarkdown({ text }: { text: string }) {
         },
         a: ({ href, children }) => {
           const imageUrl = href && /\.(?:png|jpe?g|webp|gif)(?:\?|$)/i.test(href);
-          if (imageUrl) return <HomeInlineImage src={href} alt={plainTextFromNode(children) || "Atlas image"} />;
+          if (imageUrl) return <HomeInlineImage src={href} alt={plainTextFromNode(children) || "Joy image"} />;
           return <a href={href} target="_blank" rel="noreferrer" style={{ color: "var(--atlas-gold)" }}>{children}</a>;
         },
       }}
@@ -636,7 +636,7 @@ function HomeMarkdown({ text }: { text: string }) {
   );
 }
 
-function HomeInlineImage({ src, alt = "Atlas image" }: { src: string; alt?: string }) {
+function HomeInlineImage({ src, alt = "Joy image" }: { src: string; alt?: string }) {
   return (
     <img
       src={src}
@@ -906,10 +906,10 @@ function HomeChunkedBubbles({ text, isNew, isStreaming }: { text: string; isNew:
 
   useEffect(() => {
     if (!isNew || revealed >= chunks.length) return;
-    // Longer, more human pauses between chunks — feels like Atlas is
+    // Longer, more human pauses between chunks — feels like Joy is
     // thinking, not paginating. First chunk gets a small settle, later
     // chunks get a full breath (900–1400ms) so each paragraph lands.
-    // Slower, more deliberate cadence — Atlas should feel like it's
+    // Slower, more deliberate cadence — Joy should feel like it's
     // choosing its next thought, not paginating output.
     const delay = revealed === 0 ? 360 : 1150 + Math.random() * 650;
     const t = setTimeout(() => setRevealed(r => r + 1), delay);
@@ -1030,7 +1030,7 @@ function HomeHandoffCard({
         This is ready to build.
       </div>
       <div style={{ fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", lineHeight: 1.55, marginBottom: 10 }}>
-        {signal.reason ?? "Atlas has enough shape to start a workspace."}
+        {signal.reason ?? "Joy has enough shape to start a workspace."}
       </div>
       <input
         value={projectName}
@@ -2051,8 +2051,8 @@ export default function Home() {
       const askAtlasId = askAtlasSession.getConversationId();
       const homeId = sessionStorage.getItem("atlas-home-conversation-id") ?? localStorage.getItem("atlas-home-conversation-id");
 
-      // One-time migration: if nexusChat has a stale conversation ID but Ask Atlas
-      // doesn't, claim it for Ask Atlas so it loads in the right surface.
+      // One-time migration: if nexusChat has a stale conversation ID but Ask Joy
+      // doesn't, claim it for Ask Joy so it loads in the right surface.
       // User never needs to clear their browser storage manually.
       if (!askAtlasId && homeId) {
         askAtlasSession.setConversationId(homeId);
@@ -2061,7 +2061,7 @@ export default function Home() {
         return null; // nexusChat gets nothing
       }
 
-      // If Ask Atlas already owns a conversation, nexusChat gets nothing.
+      // If Ask Joy already owns a conversation, nexusChat gets nothing.
       if (askAtlasId && !askAtlasSession.isClosed()) return null;
 
       return homeId;
@@ -2131,7 +2131,7 @@ export default function Home() {
   // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
   const [showParkSheet, setShowParkSheet] = useState(false);
   const [savedMsgIdxSet, setSavedMsgIdxSet] = useState<Set<number>>(new Set());
-  // Ask Atlas is a standalone surface — see AskAtlasSurface.
+  // Ask Joy is a standalone surface — see AskAtlasSurface.
   // The composer "Ask Joy" pill and the axiom:ask-atlas event both open
   // the same purple-header surface. No inline routing, no split renderer.
   // Radial menu "Ask Joy" → open the AskAtlasSurface + focus its composer.
@@ -2148,7 +2148,7 @@ export default function Home() {
   }, []);
 
   // When navigating here from Master Map center tap (or any other surface that
-  // wants to open Ask Atlas), check for the sessionStorage flag and open immediately.
+  // wants to open Ask Joy), check for the sessionStorage flag and open immediately.
   useEffect(() => {
     try {
       if (sessionStorage.getItem("atlas-open-ask")) {
@@ -2219,7 +2219,7 @@ export default function Home() {
         seed: buildWorkspaceContextSeed(activeProjectCtx),
       }
     : null;
-  // Canonical conversation controller — owns useNexusChatStream for Ask Atlas.
+  // Canonical conversation controller — owns useNexusChatStream for Ask Joy.
   // submit({ text, attachments }) calls nexusChatStream.send directly; no field extraction.
   const askAtlasConv = useAtlasConversation({
     surface: "ask-atlas",
@@ -2244,7 +2244,7 @@ export default function Home() {
   //  askAtlasSurfaceOpen state is created.)
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
   // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
-  // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
+  // promote to 'ready' when Joy declares readyToHandoff OR the conversation
   // crosses the same ≥5-user-message gate the inline card used.
   const setShapingStatus = useShellStore((s) => s.setShapingStatus);
   const setPendingWorkspace = useShellStore((s) => s.setPendingWorkspace);
@@ -2256,7 +2256,7 @@ export default function Home() {
       : (nexusChat.messages as HomeMessage[])
   ).filter(m => m.role === "user").length;
   useEffect(() => {
-    // Project-focus mode: arm CommitPill only when Atlas signals structured work (SHAPE/COMMIT).
+    // Project-focus mode: arm CommitPill only when Joy signals structured work (SHAPE/COMMIT).
     // THINK = exploring — pill stays idle, no prompt to commit.
     if (resolvedPortfolioFocus === "project" && homeFocus != null) {
       if (shapingStatus === "transitioning" || shapingStatus === "packaging" || shapingStatus === "opening") return;
@@ -2273,7 +2273,7 @@ export default function Home() {
       return;
     }
     // All-Projects mode: handoffSignal drives the pill.
-    // INT-11: prefer Ask Atlas signal when that surface owns the live thread.
+    // INT-11: prefer Ask Joy signal when that surface owns the live thread.
     const liveSignal = askAtlasConv.handoffSignal ?? nexusChat.handoffSignal;
     if (liveSignal?.readyToHandoff === true) {
       setIsHandoffReady(true);
@@ -2313,9 +2313,9 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
-  // ── Ask Atlas mode ────────────────────────────────────────────────────────────
+  // ── Ask Joy mode ────────────────────────────────────────────────────────────
   const [askAtlasSurfaceOpen, setAskAtlasSurfaceOpen] = useState(() => {
-    // Auto-resume: if the user has a prior Ask Atlas conversation and didn't
+    // Auto-resume: if the user has a prior Ask Joy conversation and didn't
     // explicitly close it this session, open the surface immediately on load.
     const hasConversation = Boolean(askAtlasSession.getConversationId());
     const wasClosed = askAtlasSession.isClosed(); // session-scoped, resets per tab
@@ -2329,7 +2329,7 @@ export default function Home() {
     const wasClosed = askAtlasSession.isClosed();
     return hasConversation && !wasClosed;
   });
-  // The Ask Atlas visual chrome (fullscreen surface + hero title + header chip)
+  // The Ask Joy visual chrome (fullscreen surface + hero title + header chip)
   // only appears once the user has actually sent the first message. Until then
   // the home page stays as-is; askAtlasSurfaceOpen=true just highlights the
   // button and routes sends to askAtlasConv.
@@ -2342,7 +2342,7 @@ export default function Home() {
   // optional short context excerpt from the last assistant turn.
   const [askAtlasResumeGreeting, setAskAtlasResumeGreeting] = useState<{ hint: string | null } | null>(null);
   const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasConv.messages.length > 0 || isAskAtlasRestoring || askAtlasNewConvMode);
-  // INT-11: live handoff transcript — Ask Atlas owns messages when open (ambient nexusChat is cleared).
+  // INT-11: live handoff transcript — Ask Joy owns messages when open (ambient nexusChat is cleared).
   const getHandoffMessages = useCallback((): HomeMessage[] => {
     return selectHandoffMessages({
       preferAskAtlas: askAtlasSurfaceOpen || askAtlasConv.messages.length > 0,
@@ -2368,13 +2368,13 @@ export default function Home() {
     return () => { document.body.removeAttribute("data-axiom-ask-atlas"); };
   }, [askAtlasSurfaceVisible]);
 
-  // Clear any ambient nexus messages the instant Ask Atlas opens so the two
+  // Clear any ambient nexus messages the instant Ask Joy opens so the two
   // renderers can never coexist on screen.
   useEffect(() => {
     if (askAtlasSurfaceOpen) nexusChat.clearMessages();
   }, [askAtlasSurfaceOpen, nexusChat.clearMessages]);
 
-  // Keep stale surface-open storage from forcing Ask Atlas back open later.
+  // Keep stale surface-open storage from forcing Ask Joy back open later.
   // Also clear new-conversation mode so it doesn't bleed into the next session.
   useEffect(() => {
     if (!askAtlasSurfaceOpen) {
@@ -2383,7 +2383,7 @@ export default function Home() {
     }
   }, [askAtlasSurfaceOpen]);
 
-  // Restore Ask Atlas thread after hard refresh or navigation return — the surface
+  // Restore Ask Joy thread after hard refresh or navigation return — the surface
   // may be open (from localStorage) but askAtlasChat is empty because the standard
   // thread-load effect populates nexusChat, not askAtlasConv.
   //
@@ -2489,7 +2489,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasConv.setMessages]);
 
-  // Persist Ask Atlas transcript across soft remounts / hard reloads while generating.
+  // Persist Ask Joy transcript across soft remounts / hard reloads while generating.
   useEffect(() => {
     if (!askAtlasConversationId) return;
     if (askAtlasConv.messages.length === 0) return;
@@ -2571,7 +2571,7 @@ export default function Home() {
     askAtlasConv.messages.length,
   ]);
 
-  // Discourage hard refresh while Ask Atlas is generating — reload aborts SSE
+  // Discourage hard refresh while Ask Joy is generating — reload aborts SSE
   // and can race finishStream persistence.
   useEffect(() => {
     if (!askAtlasBusy) return;
@@ -2585,7 +2585,7 @@ export default function Home() {
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
-  // backlog produced while Atlas streams a reply.
+  // backlog produced while Joy streams a reply.
   // Also re-runs when askAtlasSurfaceOpen changes so the container ref is valid
   // after GI mode mounts the scroll div.
   useEffect(() => {
@@ -2724,7 +2724,7 @@ export default function Home() {
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (askAtlasSurfaceOpen) {
-      // Minimize Ask Atlas — return to the ambient homepage but PRESERVE the
+      // Minimize Ask Joy — return to the ambient homepage but PRESERVE the
       // conversation so it can be restored when the user reopens.
       // Only a deliberate "Start fresh" / shred action should clear the ID.
       void callAskAtlasMode(false);
@@ -2841,7 +2841,7 @@ export default function Home() {
     }, 700);
   }, [vibrate, callAskAtlasMode, nexusChat.setMessages]);
 
-  // Cycle pending phrases while Atlas is generating
+  // Cycle pending phrases while Joy is generating
   useEffect(() => {
     if (!isAtlasStreaming) { setPendingPhraseIdx(0); return; }
     const t = setInterval(() => setPendingPhraseIdx(i => (i + 1) % HOME_PENDING_PHRASES.length), 2400);
@@ -2871,7 +2871,7 @@ export default function Home() {
     isPickerPending,
   );
 
-  // Atlas Core center-button → restore composer + focus
+  // Joy Core center-button → restore composer + focus
   // When the AskAtlas composer is docked, the textarea is unmounted, so we
   // must restoreComposer() first and then poll for the ref (mirrors workspace).
   useEffect(() => {
@@ -3236,11 +3236,11 @@ export default function Home() {
       });
   }, [activeConversationId, nexusChat.setMessages]);
 
-  // Rehydrate Ask Atlas mode on hard refresh / initial load.
+  // Rehydrate Ask Joy mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
   // via POST /api/sessions/:id/reflection-mode). Without this, a refresh
   // resets the in-memory `askAtlasSurfaceOpen` to false and the conversation
-  // renders as the ambient/active homepage instead of the Ask Atlas surface.
+  // renders as the ambient/active homepage instead of the Ask Joy surface.
   useEffect(() => {
     if (!activeConversationId) return;
     let cancelled = false;
@@ -3355,7 +3355,7 @@ export default function Home() {
       });
   }, [isFree, projects, queryClient, setLocation]);
 
-  // "New Project" is destructive to whatever Ask Atlas is mid-thought on — confirm
+  // "New Project" is destructive to whatever Ask Joy is mid-thought on — confirm
   // before wiping it out if there's a live conversation with messages.
   const [pendingNewProjectConfirm, setPendingNewProjectConfirm] = useState(false);
   const requestNewProject = useCallback(() => {
@@ -3471,13 +3471,13 @@ export default function Home() {
     const text = liveText.trim();
     // Snapshot staged state for this turn. messageOverride indicates a programmatic resend (no files).
     // `readyStagedFiles` + `readyIds` drive the lifecycle callbacks (markConverting, clearSent, etc.).
-    // `files` is a plain File[] snapshot for the non-Ask-Atlas path (text suffix + sessionStorage).
+    // `files` is a plain File[] snapshot for the non-Ask-Joy path (text suffix + sessionStorage).
     const readyStagedFiles = messageOverride ? [] : staged.readyFiles;
     const readyIds = readyStagedFiles.map(sf => sf.id);
     const files = readyStagedFiles.map(sf => sf.file);
     const hasFiles = files.length > 0;
     if (submitInFlightRef.current || (!text && !hasFiles) || isSending) return;
-    // Ask Atlas surface routing — the surface is the sole owner of askAtlasConv.
+    // Ask Joy surface routing — the surface is the sole owner of askAtlasConv.
     // When it's open, EVERY send goes through askAtlasChat regardless of how
     // the surface was opened (composer pill, resume, radial, history). This
     // eliminates the old split where entry point determined data source.
@@ -3545,7 +3545,7 @@ export default function Home() {
     setCreateError(null);
     setIsAtlasStreaming(true);
 
-    // HUD emitters — surface what Atlas is hearing right now.
+    // HUD emitters — surface what Joy is hearing right now.
     if (text) {
       pushHudEvent("INTENT", text.length > 60 ? text.slice(0, 57) + "…" : text);
     }
@@ -3758,7 +3758,7 @@ export default function Home() {
       } catch {}
       // Seed the unified handoff kickoff. The commit-carryover auto-continue
       // effect only fires when the last assistant reply is a short ack (≤150
-      // chars); full Ask Atlas threads need this path. Clear the short-ack
+      // chars); full Ask Joy threads need this path. Clear the short-ack
       // carryover key so we don't double-send when both would apply.
       seedHandoffContinuation(projectId);
       try {
@@ -3834,7 +3834,7 @@ export default function Home() {
       askAtlasSeedPendingRef.current = false;
       return;
     }
-    // Wait until Ask Atlas is actually open before sending.
+    // Wait until Ask Joy is actually open before sending.
     if (!askAtlasSurfaceOpen) return;
 
     askAtlasSeedPendingRef.current = false;
@@ -3893,7 +3893,7 @@ export default function Home() {
       const projectId = Number(project.id);
       setActiveProjectId(projectId);
       const transcriptMessages = conversationMessagesLive.slice(-20).map(({ role, content }) => ({ role, content }));
-      const transcript = transcriptMessages.map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`).join("\n\n");
+      const transcript = transcriptMessages.map(m => `${m.role === "user" ? "User" : "Joy"}: ${m.content}`).join("\n\n");
       const summary = signal?.reason || transcriptMessages.map(m => m.content).join(" ").slice(0, 800);
 
       setHandoffStage("Loading your conversation...");
@@ -3977,7 +3977,7 @@ export default function Home() {
         const conversationSnapshot = conversationMessagesLive.map(({ role, content }) => ({ role, content }));
         sessionStorage.setItem(OPENING_CONVERSATION_STORAGE_KEY, JSON.stringify(conversationSnapshot));
         sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
-        // Kick Atlas on arrival: transcript transfer alone leaves the workspace
+        // Kick Joy on arrival: transcript transfer alone leaves the workspace
         // quiet because the bridge already has messages and suppresses auto-send
         // unless atlas-handoff-continuation=1 is set (see workspace opening pipeline).
         seedHandoffContinuation(projectId);
@@ -4046,7 +4046,7 @@ export default function Home() {
     handledProjectReadyDoneDataRef.current = projectReadyDoneData;
     const doneData = projectReadyDoneData;
     if (doneData.projectReady && !activeProjectId) {
-      // Prime the CommitPill with the project name Atlas suggested.
+      // Prime the CommitPill with the project name Joy suggested.
       // Do NOT auto-navigate. User taps CommitPill to enter workspace.
       const suggestedName = doneData.projectReady.projectName?.trim() || "";
       if (suggestedName) setPendingWorkspace(null, suggestedName);
@@ -4091,7 +4091,7 @@ export default function Home() {
             title: surface.label,
             status: "committed",
             severity: "committed",
-            summary: "Logged from Atlas surface signal",
+            summary: "Logged from Joy surface signal",
           }),
         });
         if (res.ok) {
@@ -4188,7 +4188,7 @@ export default function Home() {
       askAtlasConv.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
       nexusChat.clearMessages();
 
-      // Tell Ask Atlas it owns this conversation — both in state and storage.
+      // Tell Ask Joy it owns this conversation — both in state and storage.
       // Do NOT write to atlas-home-conversation-id (nexusChat's key) or nexusChat
       // will restore this conversation into the mystery surface on next load.
       setAskAtlasConversationId(id);
@@ -4432,7 +4432,7 @@ export default function Home() {
       }}
     >
       {/* FocusModeAura removed — aura now lives on the composer border (see composerAura.ts) */}
-      {/* Ask Atlas runs inline through the ambient home shell:
+      {/* Ask Joy runs inline through the ambient home shell:
           header title only, no overlay, no duplicate header, no separate composer. */}
 
       {askAtlasTitleSlot && askAtlasSurfaceVisible && createPortal(
@@ -4643,7 +4643,7 @@ export default function Home() {
       {/* Lens chips removed from home — lenses live in the workspace only */}
 
 
-      {/* Shred-It modal removed — exit Ask Atlas directly via the header sparkle. */}
+      {/* Shred-It modal removed — exit Ask Joy directly via the header sparkle. */}
 
       {showOverlay && (
         <FirstRunOverlay
@@ -4769,7 +4769,7 @@ export default function Home() {
               zIndex: 0,
             }} />
 
-            {/* Greeting + inline Ask Atlas conversation — crossfade in the hero slot */}
+            {/* Greeting + inline Ask Joy conversation — crossfade in the hero slot */}
             {nexusChat.messages.length === 0 && !showOverviewSheet && !askAtlasConversationActive && (
               <div style={{
                 textAlign: "center",
@@ -4800,7 +4800,7 @@ export default function Home() {
                     backgroundClip: askAtlasSurfaceVisible ? "text" : undefined,
                     filter: askAtlasSurfaceVisible ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                   }}>
-                    {askAtlasSurfaceVisible ? "Ask Atlas." : (
+                    {askAtlasSurfaceVisible ? "Ask Joy." : (
                       <>
                         {greetingRef.current?.head}
                         {isTiny && (() => {
@@ -5026,7 +5026,7 @@ export default function Home() {
                               fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                               textTransform: "uppercase", opacity: 0.45,
                               color: askAtlasSurfaceVisible ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
-                            }}>Atlas</span>
+                            }}>Joy</span>
                             {msg.intentType && (
                               <span style={{
                                 fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
@@ -5414,7 +5414,7 @@ export default function Home() {
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 6, animation: "fadeIn 200ms ease forwards" }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.4, marginBottom: 6 }}>
-                          Atlas
+                          Joy
                         </div>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                           <LoadingSpinner size="sm" color="atlas" />
@@ -5549,8 +5549,8 @@ export default function Home() {
               const focusLensChipNode = (
                 <button
                   type="button"
-                  title="Set Atlas focus"
-                  aria-label="Set Atlas focus"
+                  title="Set Joy focus"
+                  aria-label="Set Joy focus"
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -5807,9 +5807,9 @@ export default function Home() {
               />
 
 
-              {/* Ask Atlas toggle — inline mode switch on the home composer.
+              {/* Ask Joy toggle — inline mode switch on the home composer.
                   OFF = Workspace (default); ON = composer routes to inline Ask
-                  Atlas on Send. Inspired by the workspace Plan Mode button. */}
+                  Joy on Send. Inspired by the workspace Plan Mode button. */}
               <button
                 type="button"
                 title="Open Ask Joy"
@@ -5877,7 +5877,7 @@ export default function Home() {
                 }}
               >
                 <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-                {!isTiny && <span>Ask Atlas</span>}
+                {!isTiny && <span>Ask Joy</span>}
                 {askAtlasSurfaceOpen && (
                   <span style={{
                     width: 5, height: 5, borderRadius: "50%",
@@ -6280,7 +6280,7 @@ export default function Home() {
               // IMPORTANT: close on click only — never onPointerDown.
               // Mobile file-picker return synthesizes a tap at the Attach tile
               // coordinates; on Z Fold that lands on this centered chip and used
-              // to wipe the active Ask Atlas thread (looked like a refresh).
+              // to wipe the active Ask Joy thread (looked like a refresh).
               onPointerDown={(e) => {
                 // Prevent the button from stealing composer focus; do not exit.
                 e.preventDefault();
@@ -6314,7 +6314,7 @@ export default function Home() {
               }}
             >
               <Globe size={13} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-              {!isTiny && <span>Ask Atlas</span>}
+              {!isTiny && <span>Ask Joy</span>}
               <span style={{
                 width: 5, height: 5, borderRadius: "50%",
                 background: "var(--atlas-gold)",
@@ -6338,7 +6338,7 @@ export default function Home() {
         }}
       />
 
-      {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Atlas too. */}
+      {/* AskAtlasTimeline removed — TimelineRail (scroll/hover fade) now handles Ask Joy too. */}
 
       <AskAtlasFocusSheet
         open={showFocusPicker}
@@ -6364,7 +6364,7 @@ export default function Home() {
         onClose={() => setShowHistory(false)}
         title="ASK JOY HISTORY"
         loading={historyLoading}
-        emptyHint="No saved Ask Atlas threads yet. Start a conversation above — it will appear here."
+        emptyHint="No saved Ask Joy threads yet. Start a conversation above — it will appear here."
         items={conversations
           .filter((c) => {
             const t = (c.title ?? "").trim();
@@ -6437,7 +6437,7 @@ export default function Home() {
               Start a new project?
             </p>
             <p style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)" }}>
-              You're mid-conversation with Ask Atlas. Starting a new project won't delete it, but you'll leave this thread behind.
+              You're mid-conversation with Ask Joy. Starting a new project won't delete it, but you'll leave this thread behind.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
               <button
@@ -6475,7 +6475,7 @@ export default function Home() {
       {!askAtlasSurfaceVisible && nexusChat.messages.length > 0 && (
         <TimelineRail alwaysVisible={false} hideSearch={false} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
       )}
-      {/* Ask Atlas timeline rail — rendered as a sibling (NOT inside AskAtlasSurface) so it lives
+      {/* Ask Joy timeline rail — rendered as a sibling (NOT inside AskAtlasSurface) so it lives
           in the normal stacking context and position:fixed children anchor to the viewport. */}
       {askAtlasSurfaceVisible && askAtlasConv.messages.length > 0 && (
         <TimelineRail

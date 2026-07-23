@@ -1,5 +1,5 @@
 /**
- * Ask Atlas composer draft.
+ * Ask Joy composer draft.
  *
  * - Module memory survives soft React remounts (ErrorBoundary / surface flip).
  * - sessionStorage keeps the typed input across hard reloads (Documents/PPTX

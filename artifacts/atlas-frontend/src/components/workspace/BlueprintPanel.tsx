@@ -165,7 +165,7 @@ function SpecTab({ model, alignment }: {
     intent.coreProblems?.length || intent.keyOutcomes?.length || intent.constraints?.length;
 
   if (!hasContent) {
-    return <EmptySlot message="Chat with Atlas to define what you're building. Spec fills here." />;
+    return <EmptySlot message="Chat with Joy to define what you're building. Spec fills here." />;
   }
 
   return (

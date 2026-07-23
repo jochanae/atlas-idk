@@ -1,9 +1,9 @@
 /**
- * Atlas time-travel ledger.
+ * Joy time-travel ledger.
  *
  * Single localStorage-backed snapshot store shared by:
  *   - the History card bottom sheet (History | Bookmarks tabs)
- *   - the rollback hook arrow in the Atlas message action toolbar
+ *   - the rollback hook arrow in the Joy message action toolbar
  *
  * Each snapshot links a chat message (`associated_message_id`) to a
  * workspace state payload (`code_delta`, `ledger_entry`, …). Rollback

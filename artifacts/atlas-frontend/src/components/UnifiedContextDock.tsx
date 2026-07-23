@@ -15,7 +15,7 @@ const LAST_PROJECT_KEY = "atlas-last-project-id";
  *   active       — contextual tools (Map, Files, A, Decisions, Forge)
  *   operational  — workspace tools (Chat, Ledger, A, Preview, Flow)
  *
- * The center glyph is the persistent Atlas Core anchor — it returns focus
+ * The center glyph is the persistent Joy Core anchor — it returns focus
  * to the conversation spine. It never opens Forge directly.
  *
  * Visual language (arch SVG + raised circular monogram + 4 flanking icon buttons)
@@ -30,7 +30,7 @@ export type OperationalTab = "chat" | "ledger" | "manifest" | "insights" | "map"
 
 export interface UnifiedContextDockProps {
   mode: DockMode;
-  /** Return focus to Atlas Core / conversation spine. Always required. */
+  /** Return focus to Joy Core / conversation spine. Always required. */
   onAtlasCore: () => void;
 
   // ambient
@@ -608,10 +608,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       >
         {left.map(renderSlot)}
 
-        {/* Center — Atlas Core anchor */}
+        {/* Center — Joy Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "relative", width: 56, height: 56, marginTop: -26 }}>
-            {/* Breathing halo — only while composer has a draft or Atlas is pending. */}
+            {/* Breathing halo — only while composer has a draft or Joy is pending. */}
             <span
               aria-hidden
               style={{
@@ -651,8 +651,8 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               )}
             </span>
             <button
-              title="Atlas Core — tap to focus chat, hold 900ms to open Atlas Hub"
-              aria-label="Atlas Core. Tap to focus chat. Hold 900ms or right-click to open Atlas Hub."
+              title="Joy Core — tap to focus chat, hold 900ms to open Joy Hub"
+              aria-label="Joy Core. Tap to focus chat. Hold 900ms or right-click to open Joy Hub."
               className="udock-center"
               onClick={handleAtlasClick}
               onTouchStart={(e) => {
@@ -732,14 +732,14 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         }
       `}</style>
 
-      {/* Atlas Command — radial launcher portal */}
+      {/* Joy Command — radial launcher portal */}
       {showAtlasHub && typeof document !== "undefined" && createPortal(
         (() => {
           const RADIUS = 116;
           // Six utilities, 60° apart. All open as overlays/drawers — never navigate away from the current surface.
           // Layout:        Search (top)
           //          Capture   Decisions
-          //                Atlas
+          //                Joy
           //       Conversations   Files
           //              Settings (bottom)
           const ITEMS: { label: string; angleDeg: number; color: string; icon: ReactNode; action: () => void }[] = [

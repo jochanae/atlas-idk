@@ -94,7 +94,7 @@ export default function ComponentRegistryPage() {
           Components you keep rebuilding
         </h1>
         <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 18px", lineHeight: 1.6 }}>
-          Atlas scanned {result?.totalProjects ?? 0} project{result?.totalProjects === 1 ? "" : "s"} and found{" "}
+          Joy scanned {result?.totalProjects ?? 0} project{result?.totalProjects === 1 ? "" : "s"} and found{" "}
           {duplicates.length} component{duplicates.length === 1 ? "" : "s"} built more than once.
           These are candidates for extraction into a shared library.
         </p>

@@ -8,9 +8,9 @@ import { projectIntelligenceQueryKey } from "@/hooks/useProjectIntelligence";
  * InsightsPanel — v1 read-only intelligence surface.
  *
  * Replaces the legacy "Manifest" documentation slot with a living project
- * briefing composed from data Atlas already knows:
- *   - Atlas Summary (generated briefing — what Atlas thinks right now)
- *   - Atlas Confidence (four-dimension readiness)
+ * briefing composed from data Joy already knows:
+ *   - Joy Summary (generated briefing — what Joy thinks right now)
+ *   - Joy Confidence (four-dimension readiness)
  *   - Project DNA (purpose, audience, wedge, identity)
  *   - Manifest (vision-level: purpose + core emotion)
  *   - Major Decisions (committed ledger entries)
@@ -148,7 +148,7 @@ function briefingLines(intel: Intelligence): string[] {
 
   // Fallback when DNA is empty — one orientation line, not a procedure script
   if (lines.length === 0) {
-    lines.push("Atlas is still forming a read on this project — keep the architectural conversation going.");
+    lines.push("Joy is still forming a read on this project — keep the architectural conversation going.");
   }
 
   return lines.slice(0, 6);
@@ -220,12 +220,12 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
           {intel.projectName ?? "This project"}
         </div>
         <div style={{ fontSize: 12, color: MUTED, marginTop: 4, fontFamily: SANS }}>
-          What Atlas thinks is happening right now.
+          What Joy thinks is happening right now.
         </div>
       </div>
 
-      {/* Atlas Summary */}
-      <Section title="Atlas's perspective">
+      {/* Joy Summary */}
+      <Section title="Joy's perspective">
         <div style={{
           borderLeft: `2px solid ${GOLD}`,
           paddingLeft: 12,
@@ -253,8 +253,8 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
         </div>
       </Section>
 
-      {/* Atlas Confidence */}
-      <Section title="Atlas confidence" trailing={
+      {/* Joy Confidence */}
+      <Section title="Joy confidence" trailing={
         <button
           onClick={() => setExplainDim({ key: "__overall", label: "Build readiness overall", score: readiness.overall, note: readiness.label, evidence: "", applicable: true })}
           style={{ background: "transparent", border: "none", color: GOLD, fontFamily: SANS, fontSize: 11, cursor: "pointer", padding: 0 }}
@@ -511,13 +511,13 @@ function DnaGrid({ dna }: { dna: Intelligence["dna"] }) {
       label: "Purpose",
       value: dna.purpose,
       help: "The core reason this project exists — the problem it solves and why it matters.",
-      missingHint: "Tell Atlas what problem this solves and who feels it most.",
+      missingHint: "Tell Joy what problem this solves and who feels it most.",
     },
     {
       label: "Audience",
       value: dna.audience,
       help: "Who this is built for — the specific person or group who benefits most.",
-      missingHint: "Name the audience out loud in a conversation with Atlas.",
+      missingHint: "Name the audience out loud in a conversation with Joy.",
     },
     {
       label: "Identity",
@@ -634,12 +634,12 @@ function HelpDot({ label, help, missingHint }: { label: string; help: string; mi
 
 function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
   const rows: { label: string; value: string | null; help: string; missingHint: string }[] = [
-    { label: "Frontend", value: stack?.frontend ?? null, help: "The UI framework and language the frontend is built with.", missingHint: "Tell Atlas what the frontend uses (e.g. React + Vite + TypeScript)." },
+    { label: "Frontend", value: stack?.frontend ?? null, help: "The UI framework and language the frontend is built with.", missingHint: "Tell Joy what the frontend uses (e.g. React + Vite + TypeScript)." },
     { label: "Backend", value: stack?.backend ?? null, help: "The server runtime, framework, and where it runs.", missingHint: "Describe the backend runtime and framework (e.g. Node/Express on Cloud Run)." },
     { label: "Database", value: stack?.database ?? null, help: "The primary datastore for the project.", missingHint: "Name the database and provider (e.g. Supabase Postgres)." },
     { label: "Hosting", value: stack?.hosting ?? null, help: "Where the frontend and backend are deployed.", missingHint: "Say where each piece runs (e.g. Vercel frontend, Cloud Run backend)." },
     { label: "Auth", value: stack?.auth ?? null, help: "How users are authenticated.", missingHint: "Describe how auth works (provider, token/cookie strategy)." },
-    { label: "Language", value: stack?.language ?? null, help: "The dominant language across the codebase.", missingHint: "Set the primary language in Atlas (e.g. TypeScript)." },
+    { label: "Language", value: stack?.language ?? null, help: "The dominant language across the codebase.", missingHint: "Set the primary language in Joy (e.g. TypeScript)." },
     { label: "Package manager", value: stack?.packageManager ?? null, help: "The package manager used to install and lock dependencies.", missingHint: "Note the package manager (pnpm, npm, bun)." },
   ];
 
@@ -650,7 +650,7 @@ function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ fontSize: 12.5, color: MUTED, fontFamily: SANS, fontStyle: "italic", lineHeight: 1.5 }}>
-          Not captured yet — Atlas hasn't seen this project's stack.
+          Not captured yet — Joy hasn't seen this project's stack.
         </div>
         {rows.map((r) => (
           <FieldBlock key={r.label} label={r.label} value="" help={r.help} missingHint={r.missingHint} />
@@ -844,7 +844,7 @@ function ReadinessDrawer({
         </div>
 
         <div style={{ overflowY: "auto", padding: "16px 20px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
-          <DrawerBlock title="What Atlas is seeing" items={observations} emptyText="No observations recorded yet." />
+          <DrawerBlock title="What Joy is seeing" items={observations} emptyText="No observations recorded yet." />
           <DrawerBlock title="What would raise this" items={missing} emptyText="Nothing missing — this dimension is solid." accent="warn" />
         </div>
 
@@ -935,7 +935,7 @@ function buildDimensionObservations(row: ExplainRow, intel: Intelligence): strin
       else out.push("Stack row exists but no fields captured yet.");
       if (s.integrations && s.integrations.length > 0) out.push(`Integrations tracked: ${s.integrations.join(", ")}.`);
     } else {
-      out.push("No stack captured yet — Atlas hasn't seen this project's tech.");
+      out.push("No stack captured yet — Joy hasn't seen this project's tech.");
     }
     out.push(intel.hasFlow ? "Flow map exists — architecture is being tracked." : "No flow map yet — architecture hasn't been sketched.");
   }
@@ -962,8 +962,8 @@ function buildDimensionMissing(row: ExplainRow, intel: Intelligence): string[] {
     if (openQ > 0) out.push("Resolve open questions or move them to committed.");
   }
   if (row.key === "build") {
-    if (!intel.stack) out.push("Capture the tech stack (frontend, backend, database) so Atlas can reason about architecture.");
-    if (!intel.hasFlow) out.push("Sketch the flow map so Atlas can track architecture.");
+    if (!intel.stack) out.push("Capture the tech stack (frontend, backend, database) so Joy can reason about architecture.");
+    if (!intel.hasFlow) out.push("Sketch the flow map so Joy can track architecture.");
   }
   return out;
 }

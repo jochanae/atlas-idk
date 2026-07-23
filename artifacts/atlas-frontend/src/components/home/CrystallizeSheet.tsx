@@ -1,5 +1,5 @@
 /**
- * CrystallizeSheet — handoff picker for Ask Atlas conversations.
+ * CrystallizeSheet — handoff picker for Ask Joy conversations.
  *
  * Three destination paths:
  *  1. New workspace  — creates a new project from this conversation
@@ -205,7 +205,7 @@ export function CrystallizeSheet({
               color: "var(--atlas-gold)",
               letterSpacing: "0.04em",
             }}>
-              Atlas detected: <strong>{suggestedName}</strong>
+              Joy detected: <strong>{suggestedName}</strong>
             </div>
           )}
         </div>

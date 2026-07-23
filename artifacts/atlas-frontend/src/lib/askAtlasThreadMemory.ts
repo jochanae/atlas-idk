@@ -1,5 +1,5 @@
 /**
- * Ask Atlas thread memory — survives soft remounts (ErrorBoundary / surface flip)
+ * Ask Joy thread memory — survives soft remounts (ErrorBoundary / surface flip)
  * and hard reloads for the active conversation.
  *
  * Why this exists:
@@ -8,7 +8,7 @@
  *   tokens finish but before DB write) rehydrates from /api/nexus/thread, which
  *   may not yet include the assistant turn — and home.tsx used to inject a
  *   synthetic "Welcome back…" message on top. This module keeps the last known
- *   Ask Atlas transcript so restore can recover the real turn instead.
+ *   Ask Joy transcript so restore can recover the real turn instead.
  *
  * Storage:
  *   - Module memory: soft remount survival (same JS realm).
@@ -111,7 +111,7 @@ function readFromSession(): AskAtlasThreadSnapshot | null {
   }
 }
 
-/** True while Ask Atlas is actively generating — used to discourage remount/reload. */
+/** True while Ask Joy is actively generating — used to discourage remount/reload. */
 let generationActive = false;
 
 export function setAskAtlasGenerationActive(active: boolean) {

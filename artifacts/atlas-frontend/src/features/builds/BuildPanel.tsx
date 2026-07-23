@@ -218,7 +218,7 @@ export function BuildPanel() {
         )}
         {lines.length === 0 && patchSent && (
           <div style={{ ...MONO, fontSize: 11, color: "rgba(201,162,76,0.5)", lineHeight: 1.7 }}>
-            Errors sent to Atlas. Review the proposed changes in the chat,{"\n"}
+            Errors sent to Joy. Review the proposed changes in the chat,{"\n"}
             then approve the diff — the build will re-run automatically.
           </div>
         )}
@@ -346,8 +346,8 @@ export function BuildPanel() {
               : status === "success" ? "No errors to send"
               : atMaxAttempts ? `Max ${MAX_FIX_ATTEMPTS} fix attempts reached`
               : inFixCycle
-                ? `Send remaining errors to Atlas (attempt ${fixAttempt + 1}/${MAX_FIX_ATTEMPTS})`
-                : "Send errors to Atlas to diagnose and fix"
+                ? `Send remaining errors to Joy (attempt ${fixAttempt + 1}/${MAX_FIX_ATTEMPTS})`
+                : "Send errors to Joy to diagnose and fix"
             }
             onClick={() => {
               if (!result?.errorSummary) return;

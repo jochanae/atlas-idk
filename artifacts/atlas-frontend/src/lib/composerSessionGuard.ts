@@ -1,7 +1,7 @@
 /**
  * Composer-session guard for auth expiry (Milestone 1 / INT-01).
  *
- * When the user is mid-thought (typing, attaching, Ask Atlas open with a
+ * When the user is mid-thought (typing, attaching, Ask Joy open with a
  * thread), a confirmed 401 must soft-pause — never hard-redirect to /login
  * and wipe the conversation.
  */

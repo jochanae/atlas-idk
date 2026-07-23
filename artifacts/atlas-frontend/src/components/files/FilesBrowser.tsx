@@ -9,7 +9,7 @@
  *
  * Type filters compose on top of section: Images · Documents · Code · Archives.
  *
- * Every row carries an Availability badge (Current Conversation / Atlas Project
+ * Every row carries an Availability badge (Current Conversation / Joy Project
  * / All Projects) so the user never has to guess where the file "lives."
  */
 

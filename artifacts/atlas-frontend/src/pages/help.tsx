@@ -13,7 +13,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What is the Decision Log?",
-    a: "When you say something in chat that pulls against a committed decision, Atlas surfaces a log card. It shows you the tension quietly, lets you proceed with a reason noted, or adjust your direction. Every logged override lives in your Decision Ledger so you can trace your reasoning over time.",
+    a: "When you say something in chat that pulls against a committed decision, Joy surfaces a log card. It shows you the tension quietly, lets you proceed with a reason noted, or adjust your direction. Every logged override lives in your Decision Ledger so you can trace your reasoning over time.",
   },
   {
     q: "What is the Decision Ledger?",
@@ -25,11 +25,11 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What is the Home space?",
-    a: "The Home space is your global strategic layer — where you think across all your projects at once without being locked into any single one. Atlas lives here and has visibility across your entire portfolio. It generates a briefing on load summarising where things stand, and maintains a persistent conversation thread across sessions. Access it from the bottom nav or the Atlas card in the side drawer.",
+    a: "The Home space is your global strategic layer — where you think across all your projects at once without being locked into any single one. Joy lives here and has visibility across your entire portfolio. It generates a briefing on load summarising where things stand, and maintains a persistent conversation thread across sessions. Access it from the bottom nav or the Joy card in the side drawer.",
   },
   {
-    q: "How does Atlas remember things between sessions?",
-    a: "Atlas uses three memory layers: (1) Project Memory — a running log of facts Atlas learns about your project, stored in the database and injected into every chat. (2) Your User Profile — name, stack, and project notes stored in your browser's local storage. (3) AI Memory Protocol — during sessions, Atlas emits structured memory facts that are automatically saved and recalled next time.",
+    q: "How does Joy remember things between sessions?",
+    a: "Joy uses three memory layers: (1) Project Memory — a running log of facts Joy learns about your project, stored in the database and injected into every chat. (2) Your User Profile — name, stack, and project notes stored in your browser's local storage. (3) AI Memory Protocol — during sessions, Joy emits structured memory facts that are automatically saved and recalled next time.",
   },
   {
     q: "What is the Master Map?",
@@ -37,7 +37,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What is the System Map?",
-    a: "The System Map is the street view — a technical blueprint for a single project. It shows the architecture of your project (auth, database, API routes, state, UI, and business logic) as interconnected nodes. It lives inside each Atlas workspace under the Map tab. The Master Map is your satellite view of all projects; the System Map is your ground-level view of one.",
+    a: "The System Map is the street view — a technical blueprint for a single project. It shows the architecture of your project (auth, database, API routes, state, UI, and business logic) as interconnected nodes. It lives inside each Joy workspace under the Map tab. The Master Map is your satellite view of all projects; the System Map is your ground-level view of one.",
   },
   {
     q: "How do I link a GitHub repository?",
@@ -45,7 +45,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What is Think Freely?",
-    a: "Think Freely is a scratchpad mode — a space to write without Atlas in the loop. It's useful for brainstorming, drafting, or thinking out loud before you're ready to commit to anything.",
+    a: "Think Freely is a scratchpad mode — a space to write without Joy in the loop. It's useful for brainstorming, drafting, or thinking out loud before you're ready to commit to anything.",
   },
   {
     q: "What is the Guard Report?",
@@ -137,7 +137,7 @@ export default function Help() {
           Help & FAQ
         </h1>
         <p style={{ ...sans, fontSize: 14, color: "var(--atlas-muted)", marginBottom: 48, lineHeight: 1.6 }}>
-          Answers to common questions about Atlas. Can't find what you need?{" "}
+          Answers to common questions about Joy. Can't find what you need?{" "}
           <a href="mailto:support@intoinnovations.com" style={{ color: "var(--atlas-gold)", textDecoration: "none" }}>
             Contact us
           </a>

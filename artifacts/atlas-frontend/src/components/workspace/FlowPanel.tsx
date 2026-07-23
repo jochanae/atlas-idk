@@ -370,7 +370,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
       const nodeContext = nodes.length > 0
         ? `Current canvas nodes:\n${nodes.map(n => `- [${n.type}] ${n.label}${n.strategicAnswer ? " (answered)" : " (unanswered)"}`).join("\n")}`
         : "Canvas is empty — no nodes yet.";
-      // Shared upload service → attachmentIds (same contract as Ask Atlas / Workspace).
+      // Shared upload service → attachmentIds (same contract as Ask Joy / Workspace).
       let attachmentIds: string[] = [];
       if (files.length > 0) {
         const uploaded = await uploadAttachmentFiles(files);
@@ -775,7 +775,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                 if (!goal && rest.length === 0) {
                   return (
                     <div style={{ display: "flex", height: "60%", alignItems: "center", justifyContent: "center", color: "rgba(var(--atlas-muted-rgb),0.38)", fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.08em", textAlign: "center" as const, padding: "0 24px", lineHeight: 1.7 }}>
-                      {"// no schema yet"}<br />{"// talk to Atlas to define requirements"}
+                      {"// no schema yet"}<br />{"// talk to Joy to define requirements"}
                     </div>
                   );
                 }
@@ -946,7 +946,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                 if (!goal && rest.length === 0) {
                   return (
                     <div style={{ display: "flex", height: "60%", alignItems: "center", justifyContent: "center", color: "rgba(var(--atlas-muted-rgb),0.45)", fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em", textAlign: "center" as const, padding: "0 28px" }}>
-                      Nothing mapped yet — talk to Atlas to build the story.
+                      Nothing mapped yet — talk to Joy to build the story.
                     </div>
                   );
                 }
@@ -1278,7 +1278,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
             >Intent</button>
           </div>
 
-          {/* FLOW CHAT — Atlas drives the canvas */}
+          {/* FLOW CHAT — Joy drives the canvas */}
           {flowChatTab === "flow" && (
             <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", padding: "0 14px 10px" }}>
               {/* Message list */}
@@ -1297,7 +1297,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                   }}>
                     <span style={{ fontSize: 18 }}>⬡</span>
                     <span style={{ fontSize: 10, color: "rgba(var(--atlas-muted-rgb),0.8)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textAlign: "center", lineHeight: 1.5 }}>
-                      Talk to Atlas.<br />Nodes appear on the canvas as you plan.
+                      Talk to Joy.<br />Nodes appear on the canvas as you plan.
                     </span>
                   </div>
                 )}
@@ -1412,7 +1412,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                   onKeyDown={e => {
                     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendFlowMessage(flowInput); }
                   }}
-                  placeholder="What are you building? Atlas will map it..."
+                  placeholder="What are you building? Joy will map it..."
                   rows={2}
                   disabled={flowLoading}
                   style={{

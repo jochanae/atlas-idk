@@ -1,7 +1,7 @@
 /**
  * ThinkingReceiptsStrip — surfaces extracted thinking receipts below the
- * Ask Atlas conversation. Receipts are extracted server-side after each
- * Atlas response (fire-and-forget Haiku pass) and fetched here once
+ * Ask Joy conversation. Receipts are extracted server-side after each
+ * Joy response (fire-and-forget Haiku pass) and fetched here once
  * streaming has settled.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -92,7 +92,7 @@ interface Props {
   isStreaming: boolean;
   /** Number of completed assistant turns — used to gate fetching. */
   turnCount: number;
-  /** True when Atlas emitted THINKING_STABLE — triggers faster poll + crystallized header. */
+  /** True when Joy emitted THINKING_STABLE — triggers faster poll + crystallized header. */
   crystallized?: boolean;
 }
 

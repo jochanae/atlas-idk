@@ -1,7 +1,7 @@
 /**
  * Listening HUD event bus — frontend-only, in-memory pub/sub.
  *
- * Surfaces "what Atlas is hearing" inline with conversation flow:
+ * Surfaces "what Joy is hearing" inline with conversation flow:
  * intent classified, memory written, decision caught, attachment ingested,
  * navigation logged. Backend can later replace this by pushing events
  * onto the same bus from an SSE handler.

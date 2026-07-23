@@ -574,7 +574,7 @@ export default function Projects() {
               No projects yet.
             </p>
             <p style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, color: "rgba(var(--atlas-muted-rgb),0.65)", lineHeight: 1.5, margin: 0 }}>
-              Create your first project and Atlas will begin building your architecture.
+              Create your first project and Joy will begin building your architecture.
             </p>
             <button
               onClick={handleNew}

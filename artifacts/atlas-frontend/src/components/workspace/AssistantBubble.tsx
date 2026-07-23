@@ -28,7 +28,7 @@ import {
 
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
-// DecisionCatchCard removed — intelligence now surfaces inline in Atlas's prose.
+// DecisionCatchCard removed — intelligence now surfaces inline in Joy's prose.
 import { DecisionArtifactCard } from "./DecisionArtifactCard";
 import { RuntimeDecisionCard } from "./RuntimeDecisionCard";
 import { SpeakButton } from "./SpeakButton";
@@ -77,7 +77,7 @@ function ProactiveAlertCard({
     );
   };
   return (
-    <div role="status" aria-label="Atlas notice" className="atlas-bubble-in"
+    <div role="status" aria-label="Joy notice" className="atlas-bubble-in"
       style={{ marginTop: 8, padding: "10px 12px", borderRadius: 8,
         background: "color-mix(in oklab, var(--atlas-gold) 5%, var(--atlas-surface))",
         border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)" }}>
@@ -295,7 +295,7 @@ function InlineDiffCard({
         let content = original;
         for (const patch of patches) {
           const idx = content.indexOf(patch.find);
-          if (idx === -1) throw new Error(`Anchor not found in ${filePath.split("/").pop()}. Ask Atlas to re-read the file first.`);
+          if (idx === -1) throw new Error(`Anchor not found in ${filePath.split("/").pop()}. Ask Joy to re-read the file first.`);
           content = content.slice(0, idx) + patch.replace + content.slice(idx + patch.find.length);
         }
         const ext = filePath.split(".").pop() ?? "";
@@ -888,7 +888,7 @@ function TradeoffMatrixCard({ matrix }: { matrix: TradeoffMatrix }) {
                 position: "absolute", top: 6, right: 8,
                 fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                 textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.8,
-              }}>Atlas pick</span>
+              }}>Joy pick</span>
             )}
             <div style={{ fontSize: 12, fontWeight: 600, color: opt.atlas_leans ? "var(--atlas-gold)" : "var(--atlas-fg)", marginBottom: 7 }}>
               {opt.label}
@@ -916,7 +916,7 @@ function TradeoffMatrixCard({ matrix }: { matrix: TradeoffMatrix }) {
           borderTop: "1px solid color-mix(in oklab, var(--atlas-border) 60%, transparent)",
           fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.5,
         }}>
-          <span style={{ color: "var(--atlas-gold)", fontWeight: 600 }}>Atlas leans toward {lean.label}.</span>
+          <span style={{ color: "var(--atlas-gold)", fontWeight: 600 }}>Joy leans toward {lean.label}.</span>
           {" "}You have full context — override as needed.
         </div>
       )}
@@ -1405,7 +1405,7 @@ function DecisionDraftConfirmChip({
 }
 
 // ── ReadinessGateCard ─────────────────────────────────────────────────────────
-// Advisory-only card — Atlas always proceeds. Collapsed by default when there
+// Advisory-only card — Joy always proceeds. Collapsed by default when there
 // are gaps; the user can expand to see the full check list.
 function ReadinessGateCard({
   result,
@@ -1693,7 +1693,7 @@ function AssistantBubbleImpl({
       : undefined;
     addSnapshot(projectId, {
       associated_message_id: message.id,
-      title: (message.content || "").split("\n")[0].slice(0, 80) || "Atlas response",
+      title: (message.content || "").split("\n")[0].slice(0, 80) || "Joy response",
       lens,
       payload: {
         code_delta: codeDelta,
@@ -1721,7 +1721,7 @@ function AssistantBubbleImpl({
     : imageGenDataUrl || inlineImageUrl;
   const modelUsedLabel = formatModelUsedLabel(message.modelUsed);
 
-  // Parse CMD_EXEC block from Atlas response
+  // Parse CMD_EXEC block from Joy response
   const { cmdExec, cleanContent } = useMemo(() => {
     const m = message.content.match(/CMD_EXEC:(\{[^}]*\})/);
     if (m) {
@@ -1738,7 +1738,7 @@ function AssistantBubbleImpl({
     return { cmdExec: null, cleanContent: message.content };
   }, [message.content]);
 
-  // Parse DB_MIGRATION_START...DB_MIGRATION_END blocks from Atlas response
+  // Parse DB_MIGRATION_START...DB_MIGRATION_END blocks from Joy response
   const { migrationBlocks, displayContent: migrationDisplayContent } = useMemo(() => {
     const blocks: string[] = [];
     const pattern = /DB_MIGRATION_START\s*([\s\S]*?)\s*DB_MIGRATION_END/g;
@@ -1844,7 +1844,7 @@ function AssistantBubbleImpl({
       let content = original;
       for (const patch of patches) {
         const idx = content.indexOf(patch.find);
-        if (idx === -1) throw new Error(`Anchor not found in ${filePath.split("/").pop()}. Ask Atlas to re-read the file first.`);
+        if (idx === -1) throw new Error(`Anchor not found in ${filePath.split("/").pop()}. Ask Joy to re-read the file first.`);
         content = content.slice(0, idx) + patch.replace + content.slice(idx + patch.find.length);
       }
       const ext = filePath.split(".").pop() ?? "";
@@ -1985,7 +1985,7 @@ function AssistantBubbleImpl({
           }}
         >
           <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: "var(--atlas-gold)", boxShadow: "0 0 7px color-mix(in oklab, var(--atlas-gold) 55%, transparent)", opacity: 0.8 }} />
-          <span>Atlas</span>
+          <span>Joy</span>
           {/* Model badge is telemetry — lives in Inspect, not the header */}
           {message.isDeepDive && (
             <span style={{
@@ -2056,7 +2056,7 @@ function AssistantBubbleImpl({
 
         {message.pendingSketch && !message.imageB64 && !imageGenDataUrl && !inlineImageUrl && (
           <div style={{ marginBottom: 12 }}>
-            <SketchReveal src={null} loading alt="Atlas sketch" />
+            <SketchReveal src={null} loading alt="Joy sketch" />
           </div>
         )}
         {(message.imageB64 || imageGenDataUrl || inlineImageUrl) && (
@@ -2388,7 +2388,7 @@ function AssistantBubbleImpl({
           <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 text-xs">
             <div className="mb-1.5 flex items-center gap-1.5 font-medium text-amber-400/90">
               <span className="text-amber-400">⚠</span>
-              Atlas flagged {message.reviewNotes.length === 1 ? "an issue" : `${message.reviewNotes.length} issues`} in this change
+              Joy flagged {message.reviewNotes.length === 1 ? "an issue" : `${message.reviewNotes.length} issues`} in this change
             </div>
             <ul className="space-y-0.5 text-[11px] text-amber-200/70">
               {message.reviewNotes.map((note, i) => (
@@ -2583,7 +2583,7 @@ function AssistantBubbleImpl({
                       <span>{issue}</span>
                     </div>
                   ))}
-                  <div style={{ fontSize: 10, opacity: 0.4, marginTop: 6 }}>Atlas attempted a correction pass — check the output in Draft.</div>
+                  <div style={{ fontSize: 10, opacity: 0.4, marginTop: 6 }}>Joy attempted a correction pass — check the output in Draft.</div>
                 </div>
               )}
             </div>
@@ -2726,7 +2726,7 @@ function AssistantBubbleImpl({
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(56,189,248,0.9)", marginBottom: 2 }}>
-                  {selfEdits.length === 1 ? "Self-repair ready" : `${selfEdits.length} Atlas files ready`}
+                  {selfEdits.length === 1 ? "Self-repair ready" : `${selfEdits.length} Joy files ready`}
                 </div>
                 <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
                   {selfEdits.length === 1
@@ -2758,7 +2758,7 @@ function AssistantBubbleImpl({
                 transition: "opacity 160ms ease",
               }}
             >
-              {selfApplyStatus === "applying" ? "Applying…" : selfApplyStatus === "done" ? "Applied ✓" : "Apply to Atlas →"}
+              {selfApplyStatus === "applying" ? "Applying…" : selfApplyStatus === "done" ? "Applied ✓" : "Apply to Joy →"}
             </button>
           </div>
         )}
@@ -2814,7 +2814,7 @@ function AssistantBubbleImpl({
               )}
 
               {/* Decision Catch card UI removed — intelligence now surfaces inline
-                  in Atlas's prose. Payload still arrives on message.catchPayload
+                  in Joy's prose. Payload still arrives on message.catchPayload
                   for telemetry/inline hints; no modal-style interrupt is rendered.
                   Hard confirmations (destructive actions) live on their own dialogs. */}
 
@@ -2830,7 +2830,7 @@ function AssistantBubbleImpl({
 
 
 
-        {/* CMD_EXEC — runnable command card suggested by Atlas */}
+        {/* CMD_EXEC — runnable command card suggested by Joy */}
         {!message.streaming && cmdExec && (
           <div
             style={{
@@ -2876,7 +2876,7 @@ function AssistantBubbleImpl({
         {!message.streaming && (
         <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", transition: "opacity 180ms ease" }}>
 
-          {/* Feedback — only persistent on the newest Atlas response */}
+          {/* Feedback — only persistent on the newest Joy response */}
           {isLatestAssistant && (
             <div style={{ marginRight: 2 }}>
               <MessageFeedback messageId={message.id} />

@@ -161,9 +161,9 @@ export interface NexusMessage {
   nextSuggestions?: string[] | null;
   /** True when the backend queued background decision extraction after this turn. */
   extractionQueued?: boolean;
-  /** Structured clarification card emitted by Atlas on DECIDE turns when target is ambiguous. */
+  /** Structured clarification card emitted by Joy on DECIDE turns when target is ambiguous. */
   clarify?: { steps: Array<{ question: string; options: string[]; allowFreeText?: boolean; reason?: string }> } | null;
-  /** Structured tradeoff matrix emitted by Atlas on DECIDE turns for binary/multi-way choices. */
+  /** Structured tradeoff matrix emitted by Joy on DECIDE turns for binary/multi-way choices. */
   tradeoffMatrix?: { question: string; options: Array<{ label: string; pros: string[]; cons: string[]; atlas_leans?: boolean }>; context?: string } | null;
   /** Decision Intelligence artifacts (Tradeoff Matrix / Decision Tree / Deviation Log) generated this turn. */
   decisionArtifacts?: NexusDecisionArtifact[] | null;
@@ -267,7 +267,7 @@ export interface UseNexusChatStreamOptions {
     decisions?: unknown[];
   } | null;
   /**
-   * In-project Ask Atlas mode. When present, chat POST includes
+   * In-project Ask Joy mode. When present, chat POST includes
    * `projectId` + `sessionId` + `askAtlasContextSeed` (first turn only) so the
    * backend treats this turn as part of the workspace's shared session.
    * See docs/handoffs/2026-07-07-ask-atlas-in-project-mode.md.
@@ -280,7 +280,7 @@ export interface UseNexusChatStreamOptions {
   /** Conversation Mode: same thread, pure-talk posture (no tools/build actions). */
   conversationMode?: boolean;
   /** Explicit surface context sent to the backend. Governs which build
-   *  capabilities are allowed. Workspace = full execution. Ask Atlas / home =
+   *  capabilities are allowed. Workspace = full execution. Ask Joy / home =
    *  conversation + handoff only. Defaults to "home" on the backend when omitted. */
   surfaceContext?: "workspace" | "ask-atlas" | "home";
 }
@@ -654,7 +654,7 @@ export function useNexusChatStream(
             setLiveSteps(prev => [...prev, nextStep].slice(-6));
           },
           onArtifactCreated: (data) => {
-            // Live signal: Atlas finished generating a deliverable during this
+            // Live signal: Joy finished generating a deliverable during this
             // stream. Open the Outputs panel immediately — before done fires —
             // so the user sees where the file landed without hunting for it.
             if (typeof window !== "undefined") {
@@ -732,7 +732,7 @@ export function useNexusChatStream(
               onConversationId?.(doneConversationId);
             }
 
-            // THINKING_STABLE — crystallization signal from Atlas
+            // THINKING_STABLE — crystallization signal from Joy
             if ((meta as any).thinkingStable === true) {
               onThinkingStable?.();
             }
@@ -772,7 +772,7 @@ export function useNexusChatStream(
             // Always notify — handler reads convState on every response, not just projectReady ones
             notifyProjectReady(meta as NexusProjectReadyDoneData);
 
-            // Push convState as a HUD signal so the extraction feed reflects Atlas's mode.
+            // Push convState as a HUD signal so the extraction feed reflects Joy's mode.
             const convState = (meta as any).convState as "THINK" | "SHAPE" | "COMMIT" | undefined;
             if (convState === "SHAPE") {
               pushHudEvent("TENSION", "Structuring scope — mapping constraints and gaps");
@@ -785,7 +785,7 @@ export function useNexusChatStream(
             if (surfaceMeta?.type === "DECISION" && (meta as any).focusProjectId) {
               import("sonner").then(({ toast }) => {
                 toast("Decision captured to Ledger", {
-                  description: "Atlas logged this commitment automatically.",
+                  description: "Joy logged this commitment automatically.",
                   duration: 3500,
                 });
               }).catch(() => { /* non-critical */ });

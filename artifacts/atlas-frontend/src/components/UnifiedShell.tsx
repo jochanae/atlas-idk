@@ -155,7 +155,7 @@ function ShellWordmark() {
       window.dispatchEvent(new CustomEvent("axiom:home-reset"));
     } else {
       // Leaving a workspace for home: also drop the persisted home/Ask
-      // Atlas conversation ids so a fresh Ask Atlas session doesn't
+      // Joy conversation ids so a fresh Ask Joy session doesn't
       // silently resume the workspace we just left. The full
       // `axiom:home-reset` reset only fires when home.tsx is already
       // mounted (see the `location === "/home"` branch above), so we
@@ -620,7 +620,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: isTinyMobile ? 2 : 4, maxWidth: isTinyMobile ? "min(200px, 100%)" : "min(320px, 100%)", minWidth: 0 }}>
-      {/* Unified Project Status — Readiness ring (right-side look) merged with Atlas Pulse.
+      {/* Unified Project Status — Readiness ring (right-side look) merged with Joy Pulse.
           Tap opens a two-tab panel: Readiness (default) and Pulse. */}
       <ShellCompletionChip projectId={projectId} />
       {/* Suppress unused-var warnings for canonicalReadiness/hasActive now that LifecycleGlyph is gone. */}
@@ -793,7 +793,7 @@ function ShellAtlasTitle() {
             background: "var(--atlas-gold)", boxShadow: "0 0 6px rgba(201,162,76,0.5)",
           }}
         />
-        <span style={{ opacity: 0.92 }}>Atlas</span>
+        <span style={{ opacity: 0.92 }}>Joy</span>
         {/* chevron */}
         <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, transform: open ? "rotate(180deg)" : "none", transition: "transform 140ms ease" }}>
           <path d="M2 4l4 4 4-4" />
@@ -1300,8 +1300,8 @@ function SovereignReadinessSheet({
           ))}
         </div>
 
-        {/* Atlas guidance */}
-        <SectionLabel>Atlas Strategic Assessment</SectionLabel>
+        {/* Joy guidance */}
+        <SectionLabel>Joy Strategic Assessment</SectionLabel>
         <div style={{
           padding: "12px 14px", borderRadius: 10,
           background: "rgba(201,162,76,0.06)",
@@ -1698,7 +1698,7 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
             >×</button>
           </div>
 
-          {/* Two-tab switch: Readiness (quantitative) · Pulse (Atlas assessment) */}
+          {/* Two-tab switch: Readiness (quantitative) · Pulse (Joy assessment) */}
           <div style={{ display: "flex", gap: 4, padding: "8px 12px 0", borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.08)" }}>
             {(["readiness", "pulse"] as const).map((t) => {
               const active = statusTab === t;
@@ -1913,7 +1913,7 @@ function MetaRow({ label, value, ok, onClick }: { label: string; value: string; 
 }
 
 
-// ── PulseTabPanel — inline Atlas Pulse content inside the unified status dropdown ──
+// ── PulseTabPanel — inline Joy Pulse content inside the unified status dropdown ──
 function PulseTabPanel({
   projectId, projectName, readinessScore, decisionCount, hasRepo, status, onDone,
 }: {
@@ -1995,12 +1995,12 @@ function PulseTabPanel({
         </div>
       </div>
 
-      {/* Atlas Concludes */}
+      {/* Joy Concludes */}
       <div>
         <div style={{
           fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
           letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.7, marginBottom: 6,
-        }}>Atlas Concludes</div>
+        }}>Joy Concludes</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
           <PulseRow k="Coherence" v={String(coherence)} />
           <PulseRow k="Momentum" v={String(momentum)} />
@@ -2039,7 +2039,7 @@ function PulseTabPanel({
         fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55,
         fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
       }}>
-        Shaping and Committed are Atlas assessments — they shift as evidence accrues. Built is your call.
+        Shaping and Committed are Joy assessments — they shift as evidence accrues. Built is your call.
       </div>
       {/* Silence unused-var warning for projectName in the compact panel. */}
       {false && <span>{projectName}</span>}
@@ -2468,7 +2468,7 @@ function ShellFooter() {
           } else {
             // Same rationale as ShellWordmark.goHome(): dropping the
             // persisted conversation ids here (not just activeProjectContext)
-            // prevents a fresh Ask Atlas session from silently resuming the
+            // prevents a fresh Ask Joy session from silently resuming the
             // workspace we're navigating away from.
             clearActiveProjectContext();
             try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}

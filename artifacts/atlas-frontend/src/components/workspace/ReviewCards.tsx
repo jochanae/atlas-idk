@@ -68,7 +68,7 @@ export function LinePatchReviewCard({
         for (const patch of patches) {
           const idx = content.indexOf(patch.find);
           if (idx === -1) throw new Error(
-            `Anchor not found in ${filePath.split("/").pop()}. The file may have changed since Atlas last read it — ask Atlas to re-read the file first.`
+            `Anchor not found in ${filePath.split("/").pop()}. The file may have changed since Joy last read it — ask Joy to re-read the file first.`
           );
           content = content.slice(0, idx) + patch.replace + content.slice(idx + patch.find.length);
         }
@@ -221,7 +221,7 @@ export function ReviewPlanCard({
       let content = original;
       for (const patch of patches) {
         const idx = content.indexOf(patch.find);
-        if (idx === -1) throw new Error(`Anchor not found in ${filePath.split("/").pop()}. Ask Atlas to re-read the file first.`);
+        if (idx === -1) throw new Error(`Anchor not found in ${filePath.split("/").pop()}. Ask Joy to re-read the file first.`);
         content = content.slice(0, idx) + patch.replace + content.slice(idx + patch.find.length);
       }
       const ext = filePath.split(".").pop() ?? "";

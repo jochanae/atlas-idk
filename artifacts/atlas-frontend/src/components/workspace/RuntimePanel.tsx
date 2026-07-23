@@ -206,7 +206,7 @@ export function RuntimePanel({ projectId, onOpenPreview }: { projectId: number; 
 
   const atlasVoice = isRunning ? null
     : isError ? "The server exited with an error. Review the logs and restart."
-    : !state.hasScaffold ? "No project code yet. Atlas will offer to run the preview once there\u2019s something to build."
+    : !state.hasScaffold ? "No project code yet. Joy will offer to run the preview once there\u2019s something to build."
     : isIdle ? "Ready. Click \u25B6 Run to build and start the dev server." : null;
 
   const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -246,7 +246,7 @@ export function RuntimePanel({ projectId, onOpenPreview }: { projectId: number; 
           )}
         </div>
 
-        {/* Atlas voice */}
+        {/* Joy voice */}
         {atlasVoice && (
           <div style={{ fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.55, fontStyle: "italic", opacity: 0.75 }}>{atlasVoice}</div>
         )}

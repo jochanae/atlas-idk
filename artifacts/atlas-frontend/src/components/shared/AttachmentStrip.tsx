@@ -1,7 +1,7 @@
 /**
  * AttachmentStrip — Shared renderer for staged and sent attachments.
  *
- * One component for Ask Atlas and Workspace. Modes:
+ * One component for Ask Joy and Workspace. Modes:
  *   "staged" — composer preview with upload progress, capability labels, retry
  *   "sent"   — message thumbnail row (contentUrl / base64 / capability badge)
  *
@@ -17,7 +17,7 @@ import {
 } from "react";
 import type { StagedAttachment } from "@/hooks/useStagedAttachments";
 
-/** Keep strip failures from blanking the whole Ask Atlas / Workspace tree. */
+/** Keep strip failures from blanking the whole Ask Joy / Workspace tree. */
 class AttachmentStripBoundary extends Component<
   { children: ReactNode },
   { hasError: boolean }
@@ -199,7 +199,7 @@ function AttachmentStripInner(props: AttachmentStripProps) {
                   mimeType={att.mediaType}
                   capabilityLabel={
                     unsupported
-                      ? "Stored — Atlas can't read this file type yet"
+                      ? "Stored — Joy can't read this file type yet"
                       : undefined
                   }
                 />

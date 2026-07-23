@@ -1,5 +1,5 @@
 /**
- * AskAtlasSurface — standalone Ask Atlas chat surface.
+ * AskAtlasSurface — standalone Ask Joy chat surface.
  *
  * Owns its own fixed-overlay layout, isolated scroll container, and a
  * minimal composer. No `askAtlasSurfaceOpen` ternaries, no shared scroll
@@ -22,7 +22,7 @@ function sanitizeForStreaming(text: string): string {
   let inFence = false;
   let inAtlasFence = false;
   for (const line of lines) {
-    // Atlas card fences — hide the entire block during streaming so the
+    // Joy card fences — hide the entire block during streaming so the
     // user never sees raw JSON payload.
     if (!inFence && /^```atlas-/.test(line)) { inAtlasFence = true; continue; }
     if (inAtlasFence) { if (/^```\s*$/.test(line)) inAtlasFence = false; continue; }
@@ -61,7 +61,7 @@ function inferLibraryKind(text: string): import("@/lib/library").LibraryItemKind
 function inferLibraryTitle(text: string): string {
   const headingMatch = text.match(/^#{1,3}\s+(.+)/m);
   const raw = headingMatch ? headingMatch[1] : text.replace(/[#*_`]/g, "").trim();
-  return raw.slice(0, 80) || "Atlas note";
+  return raw.slice(0, 80) || "Joy note";
 }
 import { type NexusHandoffSignal } from "@/hooks/useNexusChatStream";
 import { useLocation } from "wouter";
@@ -216,7 +216,7 @@ interface Props {
   hideComposer?: boolean;
   /** When set, the folder+plus button glows gold to indicate a workspace is ready to open. */
   handoffSignal?: NexusHandoffSignal | null;
-  /** True when Atlas emitted THINKING_STABLE — triggers faster receipt polling + crystallized UI. */
+  /** True when Joy emitted THINKING_STABLE — triggers faster receipt polling + crystallized UI. */
   crystallized?: boolean;
   /** True while the thread restore fetch is in-flight — shows a skeleton instead of blank. */
   isRestoring?: boolean;
@@ -265,11 +265,11 @@ export function AskAtlasSurface({
   onDismissResumeGreeting,
 }: Props) {
   // Internal verbs describe model machinery, not user-relevant actions.
-  // Only surface steps that answer "what is Atlas doing for me right now?"
+  // Only surface steps that answer "what is Joy doing for me right now?"
   const SUPPRESS_STEP_VERBS = new Set(["Reading", "Saved", "Recovered", "Failed", "Cancelled"]);
   const visibleLiveStep = liveStep && !SUPPRESS_STEP_VERBS.has(liveStep.verb) ? liveStep : undefined;
 
-  // Pre-token status for Ask Atlas: brief "Loading context…" then an active
+  // Pre-token status for Ask Joy: brief "Loading context…" then an active
   // "Joy is thinking…" so the panel never feels idle. Trailing StepProgress
   // must NOT prefer liveStep here — backend verbs like "Capturing intent"
   // were overriding pendingPhrase and hiding the active state (PR #205 gap).
@@ -347,7 +347,7 @@ export function AskAtlasSurface({
   // Smart Anchor auto-scroll — stick to bottom only if user is already near bottom.
   // If they scrolled up to re-read, freeze; don't yank them back during streaming.
   // Force-jump ONLY when the user sends a new message (not on each assistant turn),
-  // so incoming Atlas replies never rip the reader away from mid-conversation.
+  // so incoming Joy replies never rip the reader away from mid-conversation.
   const userMessageCount = messages.filter(m => m.role === "user").length;
   // Bump a token whenever the surface opens so the auto-scroll hook re-primes
   // to the bottom on every return — not just the first mount.
@@ -646,7 +646,7 @@ export function AskAtlasSurface({
                       opacity: 0.42,
                     }}
                   >
-                    Atlas
+                    Joy
                   </span>
                   {msg.createdAt && (
                     <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.32, letterSpacing: "0.04em" }}>
@@ -664,7 +664,7 @@ export function AskAtlasSurface({
                     <SketchReveal
                       src={sketchSrc}
                       loading={!!msg.pendingSketch && !sketchSrc}
-                      alt="Atlas sketch"
+                      alt="Joy sketch"
                       style={{ marginTop: 0, marginBottom: displayContent ? 10 : 0 }}
                     />
                   )}
@@ -1163,7 +1163,7 @@ export function AskAtlasSurface({
       </div>
 
       {/* Floating dock orb removed — the footer center "A" is the single
-          composer anchor across Ask Atlas and Workspace. */}
+          composer anchor across Ask Joy and Workspace. */}
 
       {/* Focus backdrop — full-viewport dim when composer is focused. Tap to dismiss. */}
       {!hideComposer && !restingDocked && (
@@ -1552,7 +1552,7 @@ export function AskAtlasSurface({
 }
 
 /**
- * WorkspaceContextChip — visible signal that Ask Atlas is opened in-project.
+ * WorkspaceContextChip — visible signal that Ask Joy is opened in-project.
  * Reads activeProjectContext (populated by Workspace on mount). When present,
  * shows "In: <project name>" with a "Back to workspace" tap.
  *

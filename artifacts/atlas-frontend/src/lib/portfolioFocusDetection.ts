@@ -13,7 +13,7 @@ const PROJECT_NAMES = [
   "PresentQ",
   "SanctumIQ",
   "Axiom",
-  "Axiom-Atlas",
+  "Axiom-Joy",
 ] as const;
 
 const PROJECT_NAME_WEIGHT = 2.0;

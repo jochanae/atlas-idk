@@ -43,7 +43,7 @@ export function DecisionIntelligencePanel({ projectId }: DecisionIntelligencePan
           No decisions yet.
         </span>
         <span style={{ fontFamily: MONO, fontSize: 10, color: MUTED, opacity: 0.35, fontStyle: "italic", textAlign: "center", maxWidth: 260 }}>
-          When you weigh 3+ competing options in conversation, Atlas builds a Tradeoff Matrix, Decision Tree, and — if you override its pick — a Deviation Log. They'll show up here.
+          When you weigh 3+ competing options in conversation, Joy builds a Tradeoff Matrix, Decision Tree, and — if you override its pick — a Deviation Log. They'll show up here.
         </span>
       </div>
     );

@@ -1,4 +1,4 @@
-// Presentational Atlas quick-action row.
+// Presentational Joy quick-action row.
 // Renders a horizontal row of pill buttons. Actions fire immediately on tap —
 // no confirm step. The entire row disables after the first action fires.
 

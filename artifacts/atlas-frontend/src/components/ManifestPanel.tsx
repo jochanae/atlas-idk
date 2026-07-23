@@ -224,10 +224,10 @@ export function ManifestPanel({
   const selectedIsAvailable = targets.find(t => t.id === selectedTarget)?.status === "available";
 
   const nextAction = known.length === 0
-    ? "Tell Atlas what you're building. Start with the problem it solves."
+    ? "Tell Joy what you're building. Start with the problem it solves."
     : missing.some(a => a.label === "Core audience")
     ? "Define who this is for — their situation before and after your product exists."
-    : "Keep going. Atlas is building a clearer picture with every exchange.";
+    : "Keep going. Joy is building a clearer picture with every exchange.";
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--atlas-surface-alt)" }}>
@@ -259,9 +259,9 @@ export function ManifestPanel({
         ) : (
           <div style={{ padding: "16px 16px 12px", display: "flex", flexDirection: "column", gap: 20 }}>
 
-            {/* Atlas knows */}
+            {/* Joy knows */}
             <div>
-              <SectionLabel>Atlas knows</SectionLabel>
+              <SectionLabel>Joy knows</SectionLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {projectName && (
                   <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
@@ -271,7 +271,7 @@ export function ManifestPanel({
                 )}
                 {known.length === 0 && (
                   <div style={{ fontFamily: SANS, fontSize: 12, color: MUTED, opacity: 0.65, lineHeight: 1.5, paddingLeft: 2 }}>
-                    Keep talking with Atlas — understanding builds with every message.
+                    Keep talking with Joy — understanding builds with every message.
                   </div>
                 )}
                 {known.map(a => (
@@ -283,10 +283,10 @@ export function ManifestPanel({
               </div>
             </div>
 
-            {/* Atlas still needs */}
+            {/* Joy still needs */}
             {(missing.length > 0 || openQuestions.length > 0) && (
               <div>
-                <SectionLabel>Atlas still needs</SectionLabel>
+                <SectionLabel>Joy still needs</SectionLabel>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {missing.map(a => (
                     <div key={a.label} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>

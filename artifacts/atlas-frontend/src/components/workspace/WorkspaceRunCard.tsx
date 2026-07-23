@@ -256,7 +256,7 @@ function adaptExecutionRun(
   }
 
   const failStep = run.steps.find(s => s.status === "fail");
-  // Task #158: Atlas must never say "I can't generate X" — a deliverable that
+  // Task #158: Joy must never say "I can't generate X" — a deliverable that
   // was generated but failed to persist/deliver downstream is still a failure
   // receipt, but the copy must reflect delivery failure, not generation refusal.
   const error =
@@ -341,7 +341,7 @@ function findFileContent(messages: ChatMessage[], filePath: string): string | nu
 
 // Obsidian card + bronze hairline outline is the resting visual language for
 // all run receipts. Individual states only shift the icon color/fill so the
-// card reads as an Atlas artifact, not a status-colored debug panel.
+// card reads as an Joy artifact, not a status-colored debug panel.
 const OBSIDIAN_CARD_BG =
   "linear-gradient(180deg, var(--atlas-surface) 0%, var(--atlas-bg) 100%)";
 const BRONZE_OUTLINE = "var(--atlas-gold-border)";
@@ -403,8 +403,8 @@ const RECEIPT_TONE: Record<
   },
 };
 
-/** Atlas mark — a stylized "A" in bronze. Used as the default receipt sigil
- *  so run cards read as Atlas artifacts rather than generic status chips. */
+/** Joy mark — a stylized "A" in bronze. Used as the default receipt sigil
+ *  so run cards read as Joy artifacts rather than generic status chips. */
 function AtlasMark({ size = 12 }: { size?: number }) {
   return (
     <svg
@@ -426,7 +426,7 @@ function AtlasMark({ size = 12 }: { size?: number }) {
 
 function ReceiptIcon({ status }: { status: DerivedStatus }) {
   if (status === "failed") return <XCircle size={12} strokeWidth={1.75} />;
-  // All non-failure receipts use the Atlas mark so the visual language stays
+  // All non-failure receipts use the Joy mark so the visual language stays
   // consistent regardless of whether the work was a file edit, push, sketch,
   // deliverable, or insight capture.
   return <AtlasMark size={12} />;
@@ -477,7 +477,7 @@ function liveStepMeta(step?: LiveStepItem): { Icon: LucideIcon; headline: string
 /**
  * Lightweight inline status shown for conversational/thinking-only turns.
  * A single shimmer line — no card, no border, no title row.
- * Disappears as soon as Atlas's response text begins streaming.
+ * Disappears as soon as Joy's response text begins streaming.
  */
 function InlineThinkingPulse({ steps }: { steps: LiveStepItem[] }) {
   const current = steps[steps.length - 1];
@@ -524,7 +524,7 @@ function InlineThinkingPulse({ steps }: { steps: LiveStepItem[] }) {
   );
 }
 
-/** The live execution card shown while Atlas is working.
+/** The live execution card shown while Joy is working.
  *  Shows a growing list of task-level steps (file writes, commands, pushes),
  *  each with an individual spinner → checkmark as they complete in sequence.
  *  Non-task (read/think) steps appear as a muted subtitle, not as list rows.
@@ -536,7 +536,7 @@ function ActiveCard({ steps, taskGoal, runId, completing }: { steps: LiveStepIte
   // as list rows; context steps become the muted subtitle.
   const taskSteps = steps.filter(s => isDoingVerb(s.verb));
 
-  // Last non-task step → subtitle. Gives context for what Atlas reviewed
+  // Last non-task step → subtitle. Gives context for what Joy reviewed
   // before / between task steps without adding noise to the list.
   let subtitleText: string | null = null;
   for (let i = steps.length - 1; i >= 0; i--) {
@@ -860,7 +860,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     return undefined;
   }, [isActive, hasBuildStep]);
 
-  // Task goal — derived from what Atlas is actually DOING, not what the user said.
+  // Task goal — derived from what Joy is actually DOING, not what the user said.
   // The user message already appears in the chat bubble above; repeating it in
   // the run card title makes no sense (e.g. "Lets do it. Im ready" as a run title).
   const taskGoal = useMemo(() => {
@@ -870,7 +870,7 @@ export function WorkspaceRunCard({ projectId, messages, projectPreviewUrl, chatP
     const execStep = liveSteps.find(s => EXECUTION_VERBS.has((s.verb ?? "").toUpperCase()));
     if (execStep) return doingLabel(execStep.verb, execStep.target);
 
-    // Read-only steps — describe what Atlas is reviewing (plain language, no card).
+    // Read-only steps — describe what Joy is reviewing (plain language, no card).
     const readStep = liveSteps.find(s => {
       const v = (s.verb ?? "").toUpperCase();
       return v === "FILE_READ" || v === "TREE" || v === "FETCH";

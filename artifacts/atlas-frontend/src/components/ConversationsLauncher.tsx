@@ -1,9 +1,9 @@
-// ConversationsLauncher — Ask Atlas · History.
+// ConversationsLauncher — Ask Joy · History.
 // Global mount listening for `axiom:launcher-conversations`. Lists every
 // session across projects, grouped by recency, with smart titles derived
-// from the session title (falls back to `Session N`). A pinned "Atlas
-// Portfolio" section reserves space for project-less Atlas threads
-// (project_id === null) once the Ask Atlas overlay starts persisting
+// from the session title (falls back to `Session N`). A pinned "Joy
+// Portfolio" section reserves space for project-less Joy threads
+// (project_id === null) once the Ask Joy overlay starts persisting
 // them.
 
 import { useEffect, useMemo, useState } from "react";
@@ -134,8 +134,8 @@ function UnifiedHistory({
       ))}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        {/* Atlas Portfolio — reserved pinned section. Populates once project-less
-            Ask Atlas threads start persisting. Hidden until then. */}
+        {/* Joy Portfolio — reserved pinned section. Populates once project-less
+            Ask Joy threads start persisting. Hidden until then. */}
         <AtlasPortfolioSection />
 
         <RecencyGroup label="Today" items={grouped.today} onOpen={onOpen} />
@@ -168,7 +168,7 @@ function ProjectCollector({
 }
 
 function AtlasPortfolioSection() {
-  // Reserved slot. The Ask Atlas overlay will persist portfolio-scope
+  // Reserved slot. The Ask Joy overlay will persist portfolio-scope
   // conversations (project_id === null) and surface them here. Until that
   // wiring lands, this stays hidden so the section doesn't render an empty
   // header. Keep the structure ready so the future wiring is a one-line
@@ -177,7 +177,7 @@ function AtlasPortfolioSection() {
   if (portfolioThreads.length === 0) return null;
   return (
     <div>
-      <SectionHeader label="⭐ Atlas Portfolio" gold />
+      <SectionHeader label="⭐ Joy Portfolio" gold />
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>
         {portfolioThreads.map((s) => (
           <SessionRow key={`p-${s.id}`} s={s} onOpen={() => {}} />

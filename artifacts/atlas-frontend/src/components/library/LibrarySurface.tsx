@@ -26,7 +26,7 @@ import { openLibraryDraftPreview } from "@/lib/library/openDraftPreview";
 
 /**
  * Shared Library list + detail surface.
- * Mounted from Atlas Focus (attach) and the global drawer (browse).
+ * Mounted from Joy Focus (attach) and the global drawer (browse).
  */
 
 export type LibrarySurfaceMode = "attach" | "browse";
@@ -693,7 +693,7 @@ function LibraryDetail({
     });
   }
 
-  // Copy for prose / Ask Atlas documents
+  // Copy for prose / Ask Joy documents
   if (!download || item.origin.source === "ask-atlas") {
     actions.push({
       key: "copy",

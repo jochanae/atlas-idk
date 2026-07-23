@@ -1,5 +1,5 @@
 // Project lifecycle — Seed → Shape → Build
-// Atlas-assigned: shaping, committed. User-confirmed: built.
+// Joy-assigned: shaping, committed. User-confirmed: built.
 // See chat thread 2026-06-02 — "🌱 → ◉ → ✓" decision.
 
 export type Lifecycle = "shaping" | "committed" | "built";
@@ -17,7 +17,7 @@ export interface LifecycleSignals {
 
 /**
  * Derive the lifecycle state from whatever signal is available.
- * - Atlas owns shaping → committed.
+ * - Joy owns shaping → committed.
  * - Built is only set when the backend persists it (user-confirmed).
  */
 export function deriveLifecycle(s: LifecycleSignals): Lifecycle {

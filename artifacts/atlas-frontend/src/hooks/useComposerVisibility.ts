@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
  * Composer visibility contract (mem://design/composer-modes).
  *
  *   full     — default. Conversation is the activity.
- *   compact  — Atlas produced a long-read / ledger / analysis / decision /
+ *   compact  — Joy produced a long-read / ledger / analysis / decision /
  *              research / code-explainer artifact and the user is reading.
  *   hidden   — a stage artifact (Preview, Flow, Sketch, Map, Canvas, large
  *              wireframe) owns the screen. Mobile only by default; desktop

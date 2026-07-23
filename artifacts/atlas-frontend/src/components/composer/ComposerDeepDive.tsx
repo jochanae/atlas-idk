@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
  *
  * Philosophy (per product direction): Deep Dive is NOT "export this conversation."
  * It's a clipboard-shaped surface. Start blank. One tiny header line for context.
- * You type what you want. Optional one-tap helpers: Insert last Atlas response,
+ * You type what you want. Optional one-tap helpers: Insert last Joy response,
  * Clear, Copy. Then pick a destination.
  *
  * Two states, same panel:
@@ -68,7 +68,7 @@ export function ComposerDeepDive({
   if (!open || !portalHost) return null;
 
   // Hardcoded prefix — the ONLY thing added on top of the user's text.
-  const HEADER_LINE = "Discuss this with another AI. Paste the response back into Atlas when you're finished.\n\n";
+  const HEADER_LINE = "Discuss this with another AI. Paste the response back into Joy when you're finished.\n\n";
 
   const buildPayload = () => `${HEADER_LINE}${context.trim()}`;
 
@@ -178,7 +178,7 @@ export function ComposerDeepDive({
         {phase === "brief" ? (
           <>
             <div style={{ fontSize: 12.5, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
-              Research outside Atlas. Type what you want to explore, then pick where to dive. Paste the response back when you're done.
+              Research outside Joy. Type what you want to explore, then pick where to dive. Paste the response back when you're done.
             </div>
 
             <textarea
@@ -203,10 +203,10 @@ export function ComposerDeepDive({
                   type="button"
                   onClick={insertLast}
                   disabled={!lastAtlasResponse}
-                  title={lastAtlasResponse ? "Insert last Atlas response" : "No Atlas response yet"}
+                  title={lastAtlasResponse ? "Insert last Joy response" : "No Joy response yet"}
                   style={helperBtnStyle(!!lastAtlasResponse)}
                 >
-                  + Last Atlas reply
+                  + Last Joy reply
                 </button>
                 <button
                   type="button"
@@ -231,7 +231,7 @@ export function ComposerDeepDive({
               fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.7,
               fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
             }}>
-              One line is added on top: <span style={{ color: "var(--atlas-gold)" }}>"Discuss this with another AI. Paste the response back into Atlas when you're finished."</span>
+              One line is added on top: <span style={{ color: "var(--atlas-gold)" }}>"Discuss this with another AI. Paste the response back into Joy when you're finished."</span>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>

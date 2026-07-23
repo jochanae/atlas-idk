@@ -3,7 +3,7 @@
  *
  * Two concerns:
  *   1. Held state — whether the composer has a live draft or a pending
- *      Atlas turn. Drives the breathing gold halo behind the anchor so the
+ *      Joy turn. Drives the breathing gold halo behind the anchor so the
  *      user can feel that work is being held there.
  *   2. Absorb event — fired the moment a composer collapses off-screen.
  *      Drives a contained gold ripple inside the anchor ring so the user

@@ -122,7 +122,7 @@ export default function AccountSummarySections(props: AccountSummaryProps) {
             boxShadow: "0 0 8px rgba(201,162,76,0.6)",
             flexShrink: 0,
           }} />
-          Atlas knows this project
+          Joy knows this project
         </div>
         {props.lastSessionTitle && (
           <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)" }}>

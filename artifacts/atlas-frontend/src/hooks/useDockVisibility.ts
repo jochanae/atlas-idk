@@ -33,8 +33,8 @@ let touchLastY: number | null = null;
 // Manual override from the floating handle. When set, wins over scroll/top
 // state until the next scroll movement (which clears it so auto resumes).
 let manual: "show" | "hide" | null = null;
-// Handoff lock: during Ask-Atlas → Workspace handoff, force the dock hidden
-// so the footer stays in sync with the compact composer while Atlas is
+// Handoff lock: during Ask-Joy → Workspace handoff, force the dock hidden
+// so the footer stays in sync with the compact composer while Joy is
 // processing. Cleared explicitly when the handoff resolves.
 let handoffLock = false;
 

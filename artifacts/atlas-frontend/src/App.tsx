@@ -79,7 +79,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     this.recentErrors.push(now);
 
     // If we're not looping (<3 crashes in 10s), auto-recover with a toast.
-    // Ask Atlas transcript survives soft remount via askAtlasThreadMemory.
+    // Ask Joy transcript survives soft remount via askAtlasThreadMemory.
     if (this.recentErrors.length < 3) {
       // Best-effort dynamic import to avoid pulling sonner into the boundary
       // module graph if it's already tree-shaken elsewhere.
@@ -235,7 +235,7 @@ function RootRouteGate() {
     }
     // Restore last surface: if the user was in a workspace, return them there.
     // Only restore /project/:id routes — /home is the default fallback.
-    // Ask Atlas auto-restores its own conversation via askAtlasSession in home.tsx.
+    // Ask Joy auto-restores its own conversation via askAtlasSession in home.tsx.
     const last = readLastSurface();
     if (last && last.startsWith("/project/")) {
       nav(last, { replace: true });

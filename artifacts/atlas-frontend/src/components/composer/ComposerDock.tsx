@@ -3,21 +3,21 @@
  * collapses the composer past compact (chevron: full → compact → docked).
  *
  * Tap the orb to restore full. While the parent surface reports `chatPending`,
- * a soft gold ring pulses to signal live Atlas activity without expanding
+ * a soft gold ring pulses to signal live Joy activity without expanding
  * the composer.
  *
  * Positioning:
  *   - Fixed, bottom-right, above the footer nav + safe-area inset.
  *   - z-index below the focus backdrop but above canvas content.
  *
- * Scope: workspace ChatComposer + Ask Atlas (post-first-message) only.
+ * Scope: workspace ChatComposer + Ask Joy (post-first-message) only.
  * Homepage ambient / focus-composer states never render this.
  */
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
 
 interface Props {
-  /** When true, show the pulsing gold ring (Atlas streaming/working). */
+  /** When true, show the pulsing gold ring (Joy streaming/working). */
   pending?: boolean;
   /** Right-edge offset in px. Defaults to 16. */
   offsetRight?: number;
@@ -26,7 +26,7 @@ interface Props {
   /** Optional aria label override. */
   label?: string;
   /** Force-render the dock regardless of shellStore visibility. Used by
-   *  surfaces (Ask Atlas) that manage their own dock state locally. */
+   *  surfaces (Ask Joy) that manage their own dock state locally. */
   forceVisible?: boolean;
   /** Custom restore handler. When omitted, calls shellStore.restoreComposer. */
   onRestore?: () => void;

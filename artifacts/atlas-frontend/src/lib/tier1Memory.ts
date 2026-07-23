@@ -19,7 +19,7 @@ export type Tier1FieldKey = keyof Tier1Answers;
 export type Tier1Memory = {
   answers: Tier1Answers;
   updatedAt: string;
-  /** ISO timestamp — set when the user explicitly told Atlas to stop asking. */
+  /** ISO timestamp — set when the user explicitly told Joy to stop asking. */
   skippedAt?: string | null;
   /** Field keys still empty. Backend-computed source of truth. */
   missing?: Tier1FieldKey[];

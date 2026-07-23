@@ -1,5 +1,5 @@
 /**
- * Shared attachment types — one model for Ask Atlas and Workspace.
+ * Shared attachment types — one model for Ask Joy and Workspace.
  */
 
 import type { AttachmentCapability, AttachmentKind } from "./supportMatrix";
@@ -127,7 +127,7 @@ export function formatExpiryDate(iso: string): string {
   });
 }
 
-/** Pure send-gate — identical on Ask Atlas and Workspace. */
+/** Pure send-gate — identical on Ask Joy and Workspace. */
 export function shouldIncludeAttachmentsOnSend(args: {
   text: string;
   attachmentCount: number;

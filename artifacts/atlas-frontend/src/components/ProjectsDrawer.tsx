@@ -198,7 +198,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                 New Conversation
               </div>
               <div style={{ fontSize: 9.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", marginTop: 1, opacity: 0.6 }}>
-                Start thinking with Atlas
+                Start thinking with Joy
               </div>
             </div>
 
@@ -219,10 +219,10 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               fontFamily: "var(--app-font-mono)",
             }}>
               {atlasExpanded ? <ChevronDown size={11} strokeWidth={2.2} /> : <ChevronRight size={11} strokeWidth={2.2} />}
-              Atlas
+              Joy
             </button>
             {onNewAtlasConversation && (
-              <button type="button" onClick={() => { onNewAtlasConversation(); onClose(); }} aria-label="New Atlas conversation" title="New conversation" style={{ ...iconBtn, width: 26, height: 26 }}>
+              <button type="button" onClick={() => { onNewAtlasConversation(); onClose(); }} aria-label="New Joy conversation" title="New conversation" style={{ ...iconBtn, width: 26, height: 26 }}>
                 <Plus size={13} strokeWidth={1.8} />
               </button>
             )}
@@ -443,12 +443,12 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             onClick={() => { navigate("/parking"); onClose(); }}
           />
 
-          {/* LIBRARY — global saved items (same LibrarySurface as Atlas Focus) */}
+          {/* LIBRARY — global saved items (same LibrarySurface as Joy Focus) */}
           <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
           <NavRow
             icon={<Library size={14} strokeWidth={1.6} />}
             label="Files"
-            sublabel="Everything available to Atlas"
+            sublabel="Everything available to Joy"
             onClick={() => {
               navigate("/files");
               onClose();

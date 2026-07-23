@@ -41,7 +41,7 @@ type LiveStepLike = { verb: string; target?: string; status?: string } | null;
 type PlanExecutionLike = PlanExecution;
 
 const PENDING_PHRASES = [
-  "Atlas is reading your message…",
+  "Joy is reading your message…",
   "Loading context…",
   "Thinking…",
   "On it…",
@@ -353,7 +353,7 @@ export interface ChatStreamProps {
 
   /** Conversation Mode: clean chat only — no run cards, tool blocks, or
    *  execution journals. Same thread/session as Build Mode, just a quieter
-   *  render of it (mirrors the old Ask Atlas posture). */
+   *  render of it (mirrors the old Ask Joy posture). */
   conversationMode?: boolean;
 
   /** Chat surface lifecycle: fixed chat controls only mount while chat is the
@@ -423,7 +423,7 @@ export function ChatStream(props: ChatStreamProps) {
   }, [messages]);
   // Task #158: only suppress prose for "Doing" steps (mutating tool-use — the
   // WorkspaceRunCard owns that surface). Pure "Thinking" steps (FILE_READ,
-  // TREE, FETCH, etc.) must NOT suppress — Atlas's prose should stream
+  // TREE, FETCH, etc.) must NOT suppress — Joy's prose should stream
   // normally while thinking, per the Thinking/Doing/Receipt lifecycle.
   const suppressStreamingText = isDoingVerb(liveStep?.verb, liveStep?.target) || (chatPending && inBuildChain);
 
@@ -778,7 +778,7 @@ export function ChatStream(props: ChatStreamProps) {
 
       ref={scrollRef}
       aria-live="polite"
-      aria-label="Atlas conversation"
+      aria-label="Joy conversation"
       aria-busy={chatPending ? "true" : "false"}
       onScroll={onScroll}
       style={containerStyle}
@@ -849,7 +849,7 @@ export function ChatStream(props: ChatStreamProps) {
         }}>
           {greetingLoading ? (
             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
-              Atlas is here…
+              Joy is here…
             </div>
           ) : (() => {
             const a = tier1Memory?.answers;
@@ -904,7 +904,7 @@ export function ChatStream(props: ChatStreamProps) {
           return null;
         }
 
-        // While Atlas is executing steps the WorkspaceRunCard is the live view.
+        // While Joy is executing steps the WorkspaceRunCard is the live view.
         // Suppress the last streaming assistant message so the card stands alone.
         if (
           suppressStreamingText &&
@@ -1083,7 +1083,7 @@ export function ChatStream(props: ChatStreamProps) {
                   ))}
                 </div>
               )}
-              {/* Execution Journal — shows underneath Atlas's prose during active multi-step streams.
+              {/* Execution Journal — shows underneath Joy's prose during active multi-step streams.
                   Model A: WorkspaceRunCard.ActiveCard owns the live step feed, so we skip
                   LiveGenerationCard here and only render the non-generation activity views.
                   Suppressed entirely in Conversation Mode — no tool/build chrome. */}

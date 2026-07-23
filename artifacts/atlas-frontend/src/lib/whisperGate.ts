@@ -1,6 +1,6 @@
 /**
  * WhisperGate action-suggestion map — maps user phrases to inline verification actions.
- * Used by chat stream detectors and Atlas inline action chips.
+ * Used by chat stream detectors and Joy inline action chips.
  */
 import type { VerifyKind } from "./verification";
 

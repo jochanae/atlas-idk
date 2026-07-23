@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { LibrarySurface } from "./LibrarySurface";
 
 /**
- * Global Library browse sheet — same visual language as Atlas Focus,
+ * Global Library browse sheet — same visual language as Joy Focus,
  * mounts shared LibrarySurface in browse mode (no attach requirement).
  */
 export interface LibraryBrowseSheetProps {

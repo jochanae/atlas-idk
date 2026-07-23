@@ -35,7 +35,7 @@ import {
 /* ──────────────────────────────────────────────────────────────────────────
    /code — Generation Workspace
    ──────────────────────────────────────────────────────────────────────────
-   Widescreen code generation viewer. Atlas streams files here; the user
+   Widescreen code generation viewer. Joy streams files here; the user
    reviews, diffs, pushes to GitHub, downloads a zip, or extracts to Forge.
    ────────────────────────────────────────────────────────────────────────── */
 
@@ -1304,8 +1304,8 @@ export default function CodePage() {
             path: file.path,
             content: edits[file.id] ?? file.content ?? "",
             message: files.length === 1
-              ? `Atlas: update ${file.path.split("/").pop() ?? "generated file"}`
-              : `Atlas: update generation run ${activeRun.id.slice(0, 8)} (${i + 1}/${files.length})`,
+              ? `Joy: update ${file.path.split("/").pop() ?? "generated file"}`
+              : `Joy: update generation run ${activeRun.id.slice(0, 8)} (${i + 1}/${files.length})`,
           }),
         });
         if (!commitRes.ok) {

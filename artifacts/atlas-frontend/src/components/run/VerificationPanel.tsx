@@ -62,7 +62,7 @@ export function VerificationPanel({
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
   const [localStates, setLocalStates] = useState<Record<VerifyKind, VerifyKindState> | null>(null);
-  // Track the most recent Atlas step so we can contextualise verification output.
+  // Track the most recent Joy step so we can contextualise verification output.
   const [lastAtlasStep, setLastAtlasStep] = useState<{ verb: string; target?: string } | null>(null);
   useWorkspaceEvent("step-event", ({ verb, target }) => { setLastAtlasStep({ verb, target }); }, []);
   void lastAtlasStep; // consumed by future verification context display
@@ -114,7 +114,7 @@ export function VerificationPanel({
     }
   }, [projectId, run, runningKind]);
 
-  // Listen for global verify-run events (Atlas inline chips, BUILD card actions)
+  // Listen for global verify-run events (Joy inline chips, BUILD card actions)
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ kind?: VerifyKind; projectId?: number; parentRunId?: string }>).detail ?? {};

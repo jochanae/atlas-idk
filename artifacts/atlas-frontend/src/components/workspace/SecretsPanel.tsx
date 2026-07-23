@@ -151,7 +151,7 @@ export function SecretsPanel({ projectId, projectName }: SecretsPanelProps) {
           Environment Variables
         </div>
         <div style={{ color: "var(--atlas-muted)", fontSize: 11, lineHeight: 1.6 }}>
-          Encrypted API keys and secrets for <strong style={{ color: "var(--atlas-fg)", fontWeight: 600 }}>{projectName}</strong>. Atlas knows which keys are configured so it can reference them in generated code.
+          Encrypted API keys and secrets for <strong style={{ color: "var(--atlas-fg)", fontWeight: 600 }}>{projectName}</strong>. Joy knows which keys are configured so it can reference them in generated code.
         </div>
       </div>
 
@@ -210,7 +210,7 @@ export function SecretsPanel({ projectId, projectName }: SecretsPanelProps) {
               No environment variables configured yet.
             </div>
             <div style={{ color: "var(--atlas-muted)", fontSize: 11, lineHeight: 1.6, opacity: 0.6 }}>
-              Add API keys, connection strings, or other runtime values. They're stored encrypted and Atlas references them by label in generated code.
+              Add API keys, connection strings, or other runtime values. They're stored encrypted and Joy references them by label in generated code.
             </div>
           </div>
         ) : (
@@ -282,7 +282,7 @@ export function SecretsPanel({ projectId, projectName }: SecretsPanelProps) {
       {/* gitignore reminder */}
       {secrets.length > 0 && (
         <div style={{ border: "1px dashed rgba(201,162,76,0.2)", borderRadius: 10, padding: "10px 12px", fontSize: 10.5, color: "var(--atlas-muted)", lineHeight: 1.6, opacity: 0.75 }}>
-          <span style={{ color: "var(--atlas-gold)", fontWeight: 700 }}>Reminder:</span> If you have a local <code>.env</code> file, make sure it's in your <code>.gitignore</code> before pushing to GitHub. Atlas adds this automatically when it writes code that references env vars.
+          <span style={{ color: "var(--atlas-gold)", fontWeight: 700 }}>Reminder:</span> If you have a local <code>.env</code> file, make sure it's in your <code>.gitignore</code> before pushing to GitHub. Joy adds this automatically when it writes code that references env vars.
         </div>
       )}
     </div>

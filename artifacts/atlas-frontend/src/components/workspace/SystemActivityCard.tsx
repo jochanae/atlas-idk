@@ -240,7 +240,7 @@ function CommitReceipt({ item, isLatest }: { item: ActivityItem; isLatest?: bool
       </div>
     </div>
     {/* Overflow actions rail — matches the assistant message affordance below
-        each Atlas response: rollback arrow + more menu (Copy link, Preview). */}
+        each Joy response: rollback arrow + more menu (Copy link, Preview). */}
     <CommitCardActions
       commitUrl={commitUrl}
       commitSha={commitSha}

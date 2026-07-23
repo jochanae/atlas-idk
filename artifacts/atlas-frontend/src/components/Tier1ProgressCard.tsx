@@ -1,15 +1,15 @@
 /**
  * Tier1ProgressCard — a compact horizontal chip strip showing which of the
- * 6 Tier 1 project-DNA fields Atlas has captured so far. Fills in live as
- * Atlas discovers each field in conversation (via the backend
+ * 6 Tier 1 project-DNA fields Joy has captured so far. Fills in live as
+ * Joy discovers each field in conversation (via the backend
  * `tier1_upsert_field` tool). Tap to open the structured stepper.
  *
  * When all 6 fields are filled, renders a compact one-line recall strip
- * ("Building X · For Y · Problem Z") so the user can see what Atlas knows.
+ * ("Building X · For Y · Problem Z") so the user can see what Joy knows.
  * The recall strip is dismissible per session.
  *
  * When the user has skipped, the card still shows (in a muted "opportunistic"
- * mode) so they can see Atlas quietly capturing fields in conversation.
+ * mode) so they can see Joy quietly capturing fields in conversation.
  */
 import { useEffect, useState, type CSSProperties } from "react";
 import { Check, ChevronRight, X } from "lucide-react";
@@ -186,7 +186,7 @@ export function Tier1ProgressCard({ memory, projectId }: Props) {
           ...monoLabel, color: "rgba(var(--atlas-muted-rgb), 0.6)",
           fontSize: 9,
         }}>
-          {skipped ? "Atlas listening" : "Atlas capturing"}
+          {skipped ? "Joy listening" : "Joy capturing"}
         </span>
         <div style={{ flex: 1 }} />
         <button

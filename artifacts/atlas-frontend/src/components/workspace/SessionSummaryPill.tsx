@@ -129,7 +129,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
       type="button"
       onClick={() => setOpen((v) => !v)}
       aria-label={hasSummary ? "Last session memory" : "No session memory yet"}
-      title={hasSummary ? "What Atlas remembers from your last session" : "No session memory yet"}
+      title={hasSummary ? "What Joy remembers from your last session" : "No session memory yet"}
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: 32, height: 32, borderRadius: 999,
@@ -155,7 +155,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
     <button
       type="button"
       onClick={() => setOpen((v) => !v)}
-      title="What Atlas remembers from your last session"
+      title="What Joy remembers from your last session"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -224,7 +224,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
                 fontFamily: "var(--app-font-sans)",
               }}
             >
-              Atlas Memory
+              Joy Memory
             </span>
             <button
               type="button"
@@ -306,7 +306,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
             <div style={{ padding: "18px 14px", textAlign: "center", fontFamily: "var(--app-font-sans)" }}>
               <Clock size={18} strokeWidth={1.5} aria-hidden style={{ color: "color-mix(in oklab, var(--atlas-gold) 55%, transparent)", opacity: 0.7 }} />
               <p style={{ margin: "8px 0 0", fontSize: 12.5, lineHeight: 1.5, color: "var(--atlas-muted)" }}>
-                Nothing to remember yet.<br />Atlas will hold onto what matters as you work.
+                Nothing to remember yet.<br />Joy will hold onto what matters as you work.
               </p>
             </div>
           )}
