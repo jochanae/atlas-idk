@@ -1,7 +1,7 @@
 # Milestone 2 — Restore Intelligence
 
 **Parent:** Milestone track (M1 closed → M2 in progress)  
-**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 CLOSED · 2.4 READY FOR PLANNING**  
+**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 CLOSED · 2.4 DESIGN DRAFT**  
 **Last updated:** 2026-07-23
 
 ---
@@ -67,11 +67,17 @@ Prove Designer, Builder, and Storyteller produce meaningfully different outputs 
 
 ---
 
-### 2.4 — Natural Conversation — ⬜ READY FOR PLANNING
+### 2.4 — Natural Conversation — 🟡 DESIGN DRAFT ← **NOW**
 
-Conversation should feel like working with a capable collaborator, not a procedural assistant.
+**Design doc:** [`milestone-2-4-natural-conversation-design.md`](./milestone-2-4-natural-conversation-design.md)
 
-**Depends on:** 2.2 ✅ and 2.3 ✅ (distinct lenses). Unblocked for planning; do not market production as Constitution-differentiated until post-redeploy live battery passes.
+Conversation should feel like working with a capable collaborator already inside the work — not a workflow engine, wizard, checklist, or phase coach.
+
+**Governing question:** Does this feel like continuing work with someone who already understands the project — or like operating a procedure?
+
+**Status:** Design draft published (principles P1–P9, audit, inventory, battery T1–T10, phases A–E). **No implementation until design freeze approved.**
+
+**Depends on:** 2.2 ✅ and 2.3 ✅ (distinct lenses). Ops caveat from 2.3: do not market production as Constitution-differentiated until post-redeploy live battery passes.
 
 ---
 
@@ -86,10 +92,10 @@ Conversation should feel like working with a capable collaborator, not a procedu
         ↓
 2.3 Lens differentiation      ✅ CLOSED
         ↓
-2.4 Natural conversation      ⬜ READY FOR PLANNING  ← NOW
+2.4 Natural conversation      🟡 DESIGN DRAFT  ← NOW
 ```
 
-**2.3 CLOSED.** Milestone **2.4** may begin planning. Ops caveat: redeploy `main` + live T1–T6 before claiming production differentiation.
+**2.3 CLOSED.** Milestone **2.4** design draft in review — approve before Phase A (arrival contract). Ops caveat: redeploy `main` + live T1–T6 before claiming production differentiation.
 ---
 
 ## Explicit non-goals for M2
@@ -117,3 +123,4 @@ Conversation should feel like working with a capable collaborator, not a procedu
 | 2026-07-23 | **2.3 Phase C CLOSED** — live-chat battery 6/6 Pass, T1 Pass, continuity Pass; CONTINUITY clause added. |
 | 2026-07-23 | **2.3 Phase D CLOSED** — production probe + disagreement + cross-project scenarios ([phase-d](./milestone-2-3-phase-d-production.md)); live authenticated T1–T6 deferred (deploy lag). |
 | 2026-07-23 | **2.3 Phase E CLOSED** — [acceptance report](./milestone-2-3-acceptance-report.md). **Milestone 2.3 CLOSED.** Milestone **2.4** ready for planning (redeploy caveat). |
+| 2026-07-23 | **2.4 design draft** — [natural conversation design](./milestone-2-4-natural-conversation-design.md): principles, audit, inventory, battery, phased roadmap. Awaiting approval; no implementation yet. |
