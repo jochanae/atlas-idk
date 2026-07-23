@@ -6243,8 +6243,8 @@ export default function Home() {
         }}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => staged.addFiles(files)}
-        onSketch={(prompt) => { if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text: prompt }); }}
-        onSend={(text) => { if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text }); }}
+        onSketch={(prompt) => { setAskAtlasResumeGreeting(null); if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text: prompt }); }}
+        onSend={(text) => { setAskAtlasResumeGreeting(null); if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text }); }}
         onAction={(id, payload) => {
           if (id === "create-project") {
             const name = typeof payload?.name === "string" ? payload.name : undefined;
