@@ -83,7 +83,7 @@ Output ONLY valid JSON (no markdown, no explanation) with this shape:
 Rules:
 - Nest children only as deep as the actual conversation logic requires (2-3 levels is typical)
 - Every leaf node (no children) MUST have a non-null "outcome"
-- recommendedPath should trace the labels of the branch Atlas would recommend, root to leaf`;
+- recommendedPath should trace the labels of the branch Joy would recommend, root to leaf`;
 
 const DEVIATION_LOG_PROMPT = `You are a decision analyst documenting a case where the user chose differently than what
 was recommended. Given the conversation context below, produce a structured deviation log entry.
@@ -96,8 +96,8 @@ Conversation context:
 Output ONLY valid JSON (no markdown, no explanation) with this shape:
 {
   "decision": "<what was being decided>",
-  "recommended": "<what Atlas recommended>",
-  "recommendedReason": "<why Atlas recommended it>",
+  "recommended": "<what Joy recommended>",
+  "recommendedReason": "<why Joy recommended it>",
   "chosen": "<what the user actually chose instead>",
   "chosenReason": "<the user's stated or implied reason for deviating, if known — otherwise 'Not stated'>",
   "risks": ["<risk or tradeoff introduced by this deviation>"],
@@ -140,7 +140,7 @@ export async function generateDeviationLogPayload(
   override?: { recommended?: string; chosen?: string; reason?: string },
 ): Promise<Record<string, unknown> | null> {
   const overrideContext = override
-    ? `The user overrode Atlas's recommendation. Recommended: "${override.recommended ?? "unknown"}". User chose instead: "${override.chosen ?? "unknown"}". Stated reason: "${override.reason ?? "not stated"}".`
+    ? `The user overrode Joy's recommendation. Recommended: "${override.recommended ?? "unknown"}". User chose instead: "${override.chosen ?? "unknown"}". Stated reason: "${override.reason ?? "not stated"}".`
     : "";
   return callClaude(
     DEVIATION_LOG_PROMPT.replace("{CONTEXT}", context).replace("{OVERRIDE_CONTEXT}", overrideContext),

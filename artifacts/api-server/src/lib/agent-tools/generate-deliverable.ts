@@ -22,7 +22,7 @@ type HtmlStage = typeof HTML_STAGES[number];
 export function generateDeliverableTool(ctx: AgentToolContext) {
   return tool({
     description:
-      "Generate a downloadable file-backed deliverable from the current conversation. Use this whenever the user asks for a presentation/deck, document, spreadsheet, diagram, chart, or web app/tool/widget — never say you can't produce files. Call this tool on any surface (Ask Atlas or Workspace) — the result appears as a card inline in the current conversation. After success, tell the user the file is ready and they can download it from the card.",
+      "Generate a downloadable file-backed deliverable from the current conversation. Use this whenever the user asks for a presentation/deck, document, spreadsheet, diagram, chart, or web app/tool/widget — never say you can't produce files. Call this tool on any surface (Ask Joy or Workspace) — the result appears as a card inline in the current conversation. After success, tell the user the file is ready and they can download it from the card.",
     inputSchema: z.object({
       type: z
         .enum(["pptx", "docx", "xlsx", "html-app", "pdf", "mermaid", "chart"])
@@ -84,7 +84,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
         }
 
         // Prefer the focused Workspace project; otherwise persist into the
-        // per-user Atlas Files bucket so Ask Atlas can still deliver a card.
+        // per-user Joy Files bucket so Ask Joy can still deliver a card.
         let projectId = ctx.projectId > 0 ? ctx.projectId : 0;
         if (projectId <= 0) {
           if (!ctx.userId || ctx.userId <= 0) {
@@ -137,7 +137,7 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
         }
 
         const context = ctx.messages
-          .map((m) => `${m.role === "user" ? "User" : "Atlas"}: ${String(m.content).slice(0, 2000)}`)
+          .map((m) => `${m.role === "user" ? "User" : "Joy"}: ${String(m.content).slice(0, 2000)}`)
           .join("\n\n")
           + (focus ? `\n\n[Focus for this deliverable: ${focus}]` : "");
 

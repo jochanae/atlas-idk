@@ -356,7 +356,7 @@ const IDEA_MODE_EXPLICIT_SIGNALS = [
 const IDEA_MODE_POSTURE = `--- IDEA MODE ACTIVE ---
 idea_mode: true
 
-Atlas should feel like a thoughtful person sitting across from the user — not a project management system. This is expansive thinking, not convergent building.
+Joy should feel like a thoughtful person sitting across from the user — not a project management system. This is expansive thinking, not convergent building.
 
 ENERGY:
 - Be genuinely curious. React to what's interesting before asking anything.
@@ -532,7 +532,7 @@ function extractExplicitConversationTitle(content: string): string | null {
 async function generateConversationTitle(messages: NexusTitleMessage[]): Promise<string | null> {
   const context = messages
     .slice(-3)
-    .map((m) => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`)
+    .map((m) => `${m.role === "user" ? "User" : "Joy"}: ${m.content}`)
     .join("\n\n");
   if (!context) return null;
 
@@ -558,7 +558,7 @@ async function detectHomeHandoff(
   if (messages.length < 4) return null;
   const context = messages
     .slice(-10)
-    .map((m) => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`)
+    .map((m) => `${m.role === "user" ? "User" : "Joy"}: ${m.content}`)
     .join("\n\n");
   const prompt = `Given this conversation, respond with JSON only:
 {
@@ -568,10 +568,10 @@ async function detectHomeHandoff(
   "reason": "one sentence why this is ready to build, or null"
 }
 
-It is ready to handoff when the idea is sufficiently shaped AND the user has shown forward momentum — this includes both explicit commitment and positive agreement after Atlas bridges toward a workspace.
+It is ready to handoff when the idea is sufficiently shaped AND the user has shown forward momentum — this includes both explicit commitment and positive agreement after Joy bridges toward a workspace.
 
 CONFIDENCE levels:
-- "high": Clear forward intent. Explicit: "let's build this", "create a workspace", "create the project", "move this into a project", "start the project", "create it". OR implied: positive agreement after Atlas suggested the workspace step ("yeah let's", "sounds good", "go for it", "set it up", "do it", "sure", "let's go", "ok").
+- "high": Clear forward intent. Explicit: "let's build this", "create a workspace", "create the project", "move this into a project", "start the project", "create it". OR implied: positive agreement after Joy suggested the workspace step ("yeah let's", "sounds good", "go for it", "set it up", "do it", "sure", "let's go", "ok").
 - "medium": The idea is well-shaped (name, problem, purpose clear) and the user is engaging positively and leaning forward, but has not explicitly committed yet.
 - "low": Still in early exploration — idea unclear, too vague, or user is asking for information only.
 
@@ -583,7 +583,7 @@ Set readyToHandoff: true when ALL of the following are true:
 Return readyToHandoff: false when:
 - The user is in pure exploration mode with no evident intent to build (asking "what do you think about...", "help me understand...", "can you break this down...")
 - The conversation has just started (fewer than 4 exchanges)
-- Atlas has only recognized that an idea belongs in an existing project — recognition alone is not commitment
+- Joy has only recognized that an idea belongs in an existing project — recognition alone is not commitment
 
 Conversation:
 ${context}`;
@@ -623,14 +623,14 @@ Before asking any clarifying question, resolve it against the active conversatio
 
 Words like "both", "that", "this", "it", "the other one", "the concept", "that idea" are not ambiguous — they point to something already said. Your job is to find what they point to, not ask the user to repeat themselves.
 
-**The test:** Could a person who has been listening to this conversation for the last two minutes answer the question without asking? If yes, Atlas should answer it the same way — by resolving the reference, not surfacing it.
+**The test:** Could a person who has been listening to this conversation for the last two minutes answer the question without asking? If yes, Joy should answer it the same way — by resolving the reference, not surfacing it.
 
 **Only ask for clarification when there are genuinely multiple plausible interpretations that would lead to meaningfully different responses.** A short conversation about two specific things (e.g. heated blankets and cooling blankets) followed by "both" has exactly one interpretation. Asking "what two things?" is not curiosity — it is a failure to listen.
 
 **The failure pattern to avoid:**
 - User establishes context: heated blanket, cooling blanket
 - User follows up: "I'm wondering about the concept of both..."
-- Atlas asks: "What's the 'both together' — what two things are you combining?"
+- Joy asks: "What's the 'both together' — what two things are you combining?"
 This is wrong. "Both" resolved against the immediate context is unambiguous.
 
 **The correct posture:**
@@ -643,7 +643,7 @@ This applies to every pronoun and shorthand: "that idea", "the thing you mention
 
 ## Never Reject Curiosity — Discover Intent First
 
-Atlas is a thinking partner for people who build things. The medium — software, physical product, service, invention, business, nonprofit, workflow, device — does not matter. What matters is whether there is an idea forming.
+Joy is a thinking partner for people who build things. The medium — software, physical product, service, invention, business, nonprofit, workflow, device — does not matter. What matters is whether there is an idea forming.
 
 **When a user asks about an object, technology, industry, gap, or everyday problem, do not assume they are seeking factual information alone.** Before concluding a topic is outside your domain, ask yourself:
 
@@ -652,11 +652,11 @@ Atlas is a thinking partner for people who build things. The medium — software
 - Could this observation become a product, a business, or a project?
 - Is this a strategic discussion disguised as a casual question?
 
-**If there is any reasonable chance the question is the seed of an idea — engage with it.** Treat curiosity as a signal, not a category mismatch. The right Atlas response to "is there a blanket that heats and cools?" is not "that's outside my lane, ask Google." It is: share what you know briefly, then ask whether they're shopping or wondering if there's something to build. That one question transforms a deflection into a discovery.
+**If there is any reasonable chance the question is the seed of an idea — engage with it.** Treat curiosity as a signal, not a category mismatch. The right Joy response to "is there a blanket that heats and cools?" is not "that's outside my lane, ask Google." It is: share what you know briefly, then ask whether they're shopping or wondering if there's something to build. That one question transforms a deflection into a discovery.
 
-**Never redirect users to ChatGPT, Google, Perplexity, or any other tool.** That response tells the user their curiosity doesn't belong here. It is the exact opposite of what Atlas is for. If a question has no product angle whatsoever, answer it anyway — briefly and directly — then move forward. Atlas is the last product that should tell someone to go look something up elsewhere.
+**Never redirect users to ChatGPT, Google, Perplexity, or any other tool.** That response tells the user their curiosity doesn't belong here. It is the exact opposite of what Joy is for. If a question has no product angle whatsoever, answer it anyway — briefly and directly — then move forward. Joy is the last product that should tell someone to go look something up elsewhere.
 
-**The governing principle:** A person who asks about a blanket may be about to invent the next Dyson product. A person who asks about a restaurant workflow may be about to build the next Toast. A person who asks about medication schedules may be about to create a care platform. Atlas should be the first to see that possibility — not the first to close it down.
+**The governing principle:** A person who asks about a blanket may be about to invent the next Dyson product. A person who asks about a restaurant workflow may be about to build the next Toast. A person who asks about medication schedules may be about to create a care platform. Joy should be the first to see that possibility — not the first to close it down.
 
 The correct posture for any off-topic-looking question:
 1. Engage with the content briefly (what you actually know)
@@ -677,14 +677,14 @@ Emit the project name only — never an ID or route. The server validates the na
 ## Global Boundaries — Discovery Engine, Not Execution Engine
 Global is where thoughts become clear enough to deserve a workspace. The workspace is where they become real.
 
-Global Atlas may ask:
+Global Joy may ask:
 - What problem needs solving?
 - Who needs it most?
 - What already exists and why isn't it enough?
 - What does it look like when it works?
 - What's the constraint or unknown?
 
-Global Atlas never asks:
+Global Joy never asks:
 - What should we call it? (naming belongs in the workspace)
 - What should we build first, what's the architecture, what's the pricing, what are the milestones, what are the features?
 
@@ -776,7 +776,7 @@ Do NOT emit this for every response — only when the thinking meaningfully adva
 
 const CREATE_PROJECT_TOOL: Anthropic.Tool = {
   name: "create_project",
-  description: "Create a new project workspace NOW (server-side). Call this only when the user explicitly asked to create/open/build the workspace (or a direct build request with enough information), or when the runtime forces this tool. For exploratory handoff on Ask Atlas, prefer emitting PROJECT_READY instead — that arms Open Workspace; do not narrate creation unless this tool returns ok:true. When calling: fill name + summary from the conversation; set buildIntent to the user's exact original build request when applicable.",
+  description: "Create a new project workspace NOW (server-side). Call this only when the user explicitly asked to create/open/build the workspace (or a direct build request with enough information), or when the runtime forces this tool. For exploratory handoff on Ask Joy, prefer emitting PROJECT_READY instead — that arms Open Workspace; do not narrate creation unless this tool returns ok:true. When calling: fill name + summary from the conversation; set buildIntent to the user's exact original build request when applicable.",
   input_schema: {
     type: "object",
     properties: {
@@ -835,7 +835,7 @@ const NEXUS_AGENT_TOOLS: Anthropic.Tool[] = [
 // project workspace). Deliberately excludes CREATE_PROJECT_TOOL — you are
 // already inside a project, so "build/create" intent here means write
 // files, not spin up a second project. (Bug: this used to spread in
-// NEXUS_AGENT_TOOLS, which includes CREATE_PROJECT_TOOL, causing Atlas to
+// NEXUS_AGENT_TOOLS, which includes CREATE_PROJECT_TOOL, causing Joy to
 // try creating a new project mid-workspace and fail with the free-plan
 // project limit.)
 const CLASSIFY_REPOSITORY_TOOL: Anthropic.Tool = {
@@ -885,7 +885,7 @@ COMMIT = user has explicitly said they want to build ("build it", "create a work
 → Transition is now appropriate.
 
 TRANSITION RULE:
-Emit PROJECT_READY when: (1) the picture is clear enough (4+ dimensions gathered), AND (2) the user shows positive forward motion — explicit commit OR positive agreement after Atlas suggests the workspace step. Do not wait for exact phrasing.
+Emit PROJECT_READY when: (1) the picture is clear enough (4+ dimensions gathered), AND (2) the user shows positive forward motion — explicit commit OR positive agreement after Joy suggests the workspace step. Do not wait for exact phrasing.
 
 Do not confirm. Do not say "ready to create." Do not call create_project. Do not emit NAVIGATE_TO. Say something brief and declarative. Then emit this signal at the END of your response on its own line:
 PROJECT_READY:{"projectName":"<short memorable name inferred from the conversation>","reason":"<one sentence: what this is and why it matters>"}
@@ -933,7 +933,7 @@ function buildInitialProjectMemory(summary: string): string {
     v: 2,
     entries: [{
       tier: 1,
-      text: `Initial project summary from Ask Atlas: ${summary}`,
+      text: `Initial project summary from Ask Joy: ${summary}`,
       createdAt: now,
       retrievalCount: 0,
       lastRetrievedAt: null,
@@ -1357,7 +1357,7 @@ function extractRunSummary(content: string): string {
     .split("\n")
     .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*•]\s*/, "").trim())
     .find((line) => line.length > 0);
-  if (!cleaned) return "Atlas response completed.";
+  if (!cleaned) return "Joy response completed.";
   return cleaned.length > 120 ? `${cleaned.slice(0, 117).trim()}...` : cleaned;
 }
 
@@ -1390,7 +1390,7 @@ function failedRunMetadata(summary: string, status: RunStatus = "failed"): Nexus
     costUsd: null,
     runStatus: status,
     runSummary: summary,
-    runActions: [{ verb: status === "cancelled" ? "Cancelled" : "Failed", target: "Atlas response", status: status === "cancelled" ? "warn" : "fail" }],
+    runActions: [{ verb: status === "cancelled" ? "Cancelled" : "Failed", target: "Joy response", status: status === "cancelled" ? "warn" : "fail" }],
     runArtifacts: null,
   };
 }
@@ -1455,7 +1455,7 @@ function conversationMessages(whereClause: SQL | undefined, hasMessageType = tru
   return nonBriefingMessages(whereClause, hasMessageType);
 }
 
-/** Compact workspace-orientation block for the first in-project Ask Atlas turn. */
+/** Compact workspace-orientation block for the first in-project Ask Joy turn. */
 async function buildInProjectAskAtlasSeed(
   projectId: number,
   sessionId: number,
@@ -1870,7 +1870,7 @@ async function persistNexusExecutionRun(args: {
       });
     }
 
-    // SUMMARY — the full Atlas response, distinct from the brief THOUGHT excerpt above.
+    // SUMMARY — the full Joy response, distinct from the brief THOUGHT excerpt above.
     if (fullResponse) {
       steps.push({ verb: "SUMMARY", target: null, status: "ok", detail: null, content: fullResponse.slice(0, 8000) });
     }
@@ -2275,7 +2275,7 @@ router.delete("/nexus/thread", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-// Returns the in-progress Tier 1 buffer for an Ask Atlas conversation.
+// Returns the in-progress Tier 1 buffer for an Ask Joy conversation.
 // Used by the frontend to show Tier1ProgressCard before a project is created.
 router.get("/nexus/tier1-buffer", async (req, res): Promise<void> => {
   try {
@@ -2638,7 +2638,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // conversations list. If the frontend doesn't send one (new thread), we
   // generate a UUID here and return it in the `done` event so the client can
   // attach it to every subsequent message in the same conversation.
-  // In-project Ask Atlas shares the workspace session thread instead — no new
+  // In-project Ask Joy shares the workspace session thread instead — no new
   // nexus conversation row is created.
   const sessionId = Number.isInteger(body.sessionId) && Number(body.sessionId) > 0 ? Number(body.sessionId) : null;
   const requestedProjectId = Number.isInteger(body.projectId) && Number(body.projectId) > 0
@@ -2670,11 +2670,11 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         .where(eq(sessionsTable.id, sessionId))
         .limit(1)
     : [];
-  // Auth: Atlas sessions (null projectId) owned by user_id directly; project sessions via project ownership
+  // Auth: Joy sessions (null projectId) owned by user_id directly; project sessions via project ownership
   if (sessionId && sessionContext.length > 0) {
     const ctx = sessionContext[0]!;
     if (ctx.projectId == null) {
-      // Atlas session — verify user_id matches
+      // Joy session — verify user_id matches
       const [sRow] = await db.select({ sessionUserId: (sessionsTable as any).userId }).from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1);
       if (!sRow || (sRow as any).sessionUserId !== userId) {
         res.status(404).json({ error: "Session not found" }); return;
@@ -2707,7 +2707,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // When conversationId is absent the caller is starting a brand-new thread —
   // return no DB history so stale messages from previous conversations never
   // bleed into the fresh context (the old fallback loaded every message for
-  // the user, which caused old workspace sessions to pollute new Ask Atlas
+  // the user, which caused old workspace sessions to pollute new Ask Joy
   // conversations).
   const [projects, dbMessages] = await Promise.all([
     db
@@ -2795,7 +2795,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     return lastMsg[0]?.createdAt ?? null;
   })();
 
-  // Project roster — always list every project by name so Atlas knows the full portfolio
+  // Project roster — always list every project by name so Joy knows the full portfolio
   const projectRoster = projects.length > 0
     ? projects.map((p) => `• ${p.name}`).join("\n")
     : "(no projects yet)";
@@ -2810,7 +2810,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     .filter(Boolean)
     .join("\n\n");
 
-  // Portfolio health snapshot — Atlas speaks to this when asked about momentum/health
+  // Portfolio health snapshot — Joy speaks to this when asked about momentum/health
   const portfolioHealth = await (async () => {
     if (projectIds.length === 0) return null;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -2863,7 +2863,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   }
   const crossProjectPatterns: string | null = ideaMode ? null : await loadTier3Block(userId);
 
-  // Scheduled health check awareness — summarise per-project monitor status for Atlas
+  // Scheduled health check awareness — summarise per-project monitor status for Joy
   const monitorContext = await (async () => {
     if (projectIds.length === 0) return null;
     try {
@@ -2927,7 +2927,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // Continuity v2: load prior attachment provenance for history + grounding.
   // Real DB UUIDs stay server-side; model-visible blocks use publicRef.
   // INT-39: always query BOTH message-id columns + conversationId (+ projectId
-  // on Workspace) so Ask Atlas → Workspace handoff cannot drop priors when
+  // on Workspace) so Ask Joy → Workspace handoff cannot drop priors when
   // history rows remapped or only one FK column was set.
   if (continuityV2 && (dbMessages.length > 0 || conversationId || focusProjectId)) {
     try {
@@ -2937,7 +2937,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       priorAttachmentRecords = await loadPriorAttachmentsForMessages({
         userId,
         // Message IDs are surface-specific serials — do not cross-wire columns.
-        // conversationId + projectId recover priors after Ask Atlas → Workspace
+        // conversationId + projectId recover priors after Ask Joy → Workspace
         // when history rows were copied or only one FK was set (INT-39).
         nexusMessageIds: isInProjectAskAtlas ? [] : nexusIds,
         chatMessageIds: isInProjectAskAtlas ? nexusIds : [],
@@ -3195,7 +3195,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     }
   }
   // Surface context governs which build capabilities are unlocked.
-  // Only the Workspace surface may execute mutations. Ask Atlas and home are
+  // Only the Workspace surface may execute mutations. Ask Joy and home are
   // conversation/planning surfaces — they must hand off before any file write.
   const surfaceContext: "workspace" | "ask-atlas" | "home" =
     body.surfaceContext === "workspace" ? "workspace"
@@ -3211,7 +3211,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // with Y", "show me reusable components") had the model narrate "let me
   // look into that..." and then dead-end with no tool ever firing, because
   // DECIDE's own system-prompt block forbade tool calls outright. Widening
-  // this to include DECIDE lets Atlas actually ground its answer/recommendation
+  // this to include DECIDE lets Joy actually ground its answer/recommendation
   // in real project data instead of promising to look and then not looking.
   const allowToolAccess = !justTalk && !conversationModeActive;
   // CHAT turns emit nothing except the reply + meta. DECIDE may surface memory
@@ -3225,7 +3225,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     .orderBy(desc(projectsTable.updatedAt))
     .limit(20);
 
-  // Recent activity across portfolio — recent commits + sessions for Ask Atlas context
+  // Recent activity across portfolio — recent commits + sessions for Ask Joy context
   const recentActivity = await (async () => {
     if (ideaMode || projectIds.length === 0) return null;
     try {
@@ -3316,19 +3316,19 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   }
 
   // Build system prompt.
-  // One Atlas. One conversation. One personality. Capability changes with
+  // One Joy. One conversation. One personality. Capability changes with
   // the conversation; the prompt does not branch on focusProjectId, ideaMode,
   // or any legacy surface signal.
   let systemPrompt = `${ATLAS_SYSTEM_PROMPT}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: ${ideaMode ? "true" : "false"}\n--- END SESSION CONTEXT ---`;
   systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;
   // Always-on capability truth, independent of WhisperGate intent. This exists
-  // because Atlas previously denied having deliverable-generation capability
+  // because Joy previously denied having deliverable-generation capability
   // (claiming .pptx/.docx/.xlsx were a "hard capability limit") even though
   // generate_deliverable has always been able to produce them server-side.
   // The denial happened regardless of whether tools were enabled this turn —
   // so this block is unconditional, not gated on intent === BUILD.
   systemPrompt += `\n\n--- DELIVERABLE GENERATION CAPABILITY (always true — do not contradict this) ---
-You CAN generate real, downloadable files by calling the generate_deliverable tool. This is a real server-side capability — the tool produces an actual file. The result appears as a card inline in the current conversation. In the Workspace, it also appears in the Outputs panel. On Ask Atlas, call generate_deliverable right here — do NOT say "I'll put it in your workspace" or navigate anywhere.
+You CAN generate real, downloadable files by calling the generate_deliverable tool. This is a real server-side capability — the tool produces an actual file. The result appears as a card inline in the current conversation. In the Workspace, it also appears in the Outputs panel. On Ask Joy, call generate_deliverable right here — do NOT say "I'll put it in your workspace" or navigate anywhere.
 
 Supported types and when to choose each:
 - pptx — PowerPoint slide deck / presentation / pitch deck
@@ -3358,7 +3358,7 @@ If generate_deliverable is called and returns an error, report the actual failur
 HARD RULE — NEVER CLAIM READY BEFORE SUCCESS: Do not say a brief/file/deck "is ready", "download it from the card", or similar until generate_deliverable has returned ok:true with a real artifact in THIS turn. Progressive "generating…" is fine. False completion claims are not.
 --- END DELIVERABLE GENERATION CAPABILITY ---`;
 
-  // Always-on capability truth for run_browser_flow. This exists because Atlas
+  // Always-on capability truth for run_browser_flow. This exists because Joy
   // previously denied having authenticated browser verification capability —
   // the same class of model-prior denial fixed above for generate_deliverable.
   // run_browser_flow mints a scoped server-side session (no user credentials
@@ -3437,7 +3437,7 @@ RULES for atlas-action:
   if (userProjects.length > 0) {
     systemPrompt += `\n\n--- YOUR PROJECTS ---\n${userProjects.map(p => `- ${p.name} (id: ${p.id})`).join("\n")}\nThese are the user's actual projects. Reference them by name when relevant. Never invent project names.\n--- END YOUR PROJECTS ---`;
   }
-  // Always inject the full project roster so Atlas knows every room, even empty ones
+  // Always inject the full project roster so Joy knows every room, even empty ones
   systemPrompt += `\n\n--- YOUR PROJECT PORTFOLIO (${projects.length} project${projects.length !== 1 ? "s" : ""}) ---\n${projectRoster}`;
 
   // Heavy portfolio / status context — skip on CHAT so greetings stay greetings.
@@ -3474,7 +3474,7 @@ RULES for atlas-action:
     systemPrompt += `\n\n--- PARKED IDEAS ACROSS PORTFOLIO ---\n${parkedLedger}\nThese ideas were deliberately deferred. Reference them if the conversation is relevant — e.g. "you've parked X before, is now the time?" Do not enumerate them unprompted.\n--- END PARKED IDEAS ---`;
   }
   if (aggregatedMemory) {
-    systemPrompt += `\n\n--- AGGREGATED PROJECT MEMORY (Atlas knows this across all projects) ---\n${aggregatedMemory}\n--- END AGGREGATED MEMORY ---`;
+    systemPrompt += `\n\n--- AGGREGATED PROJECT MEMORY (Joy knows this across all projects) ---\n${aggregatedMemory}\n--- END AGGREGATED MEMORY ---`;
   }
   if (crossProjectPatterns) {
     systemPrompt += `\n\n--- CROSS-PROJECT BEHAVIORAL PATTERNS ---\n${crossProjectPatterns}\nUse these patterns only when the conversation explicitly touches on working habits, momentum, or stalled progress. Do not insert them into every response.\n--- END PATTERNS ---`;
@@ -3487,7 +3487,7 @@ RULES for atlas-action:
   }
 
   // Global narrative — living cross-thread memory. Read from user record, inject as
-  // natural context at the top of the memory stack so Atlas enters every conversation
+  // natural context at the top of the memory stack so Joy enters every conversation
   // already holding the thread of what's been discussed recently.
   const userNarrativeRow = await db.execute(sql`
     SELECT global_narrative, name, user_identity FROM users WHERE id = ${userId} LIMIT 1
@@ -3499,7 +3499,7 @@ RULES for atlas-action:
 
   // ── Identity block — prepended to the system prompt so it ranks above everything else ──
   // The user's name and personality sit at the top, before any project context. This means
-  // Atlas enters every conversation knowing WHO it's talking with before it knows what
+  // Joy enters every conversation knowing WHO it's talking with before it knows what
   // they're working on. State known facts directly — do not replace knowledge with speculation.
   const identityLines: string[] = [];
   if (userName) {
@@ -3519,7 +3519,7 @@ When the user uses strong or colorful language (including profanity) to describe
     systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH ---\n${userGlobalNarrative}\n--- END LIVING MEMORY ---`;
   }
 
-  // Inject thinking receipts — Ask Atlas now re-reads its own prior reasoning across all sessions
+  // Inject thinking receipts — Ask Joy now re-reads its own prior reasoning across all sessions
   const nexusReceiptsRows = await db.execute(sql`
     SELECT headline, body, category, confidence
     FROM thinking_receipts
@@ -3574,7 +3574,7 @@ When the user uses strong or colorful language (including profanity) to describe
 
         const focusedProjectSurfaceLabel = surfaceContext === "workspace"
           ? `You are inside the "${focusProject.name}" project workspace.`
-          : `"${focusProject.name}" is loaded as reference context. IMPORTANT: You are currently on Ask Atlas — NOT inside this project's workspace. These are completely different surfaces. The user has not entered the Workspace. Never claim otherwise.`;
+          : `"${focusProject.name}" is loaded as reference context. IMPORTANT: You are currently on Ask Joy — NOT inside this project's workspace. These are completely different surfaces. The user has not entered the Workspace. Never claim otherwise.`;
         systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\n${focusedProjectSurfaceLabel}`;
         if (chatDnaLines.length > 0) {
           systemPrompt += `\n\nProject DNA:\n${chatDnaLines.join("\n")}`;
@@ -3587,7 +3587,7 @@ When the user uses strong or colorful language (including profanity) to describe
       // FILE TREE INJECTION — source-of-truth priority:
       //   1. Local workspace disk (same source as read_file) — always preferred.
       //   2. GitHub tree — fallback only when local workspace is empty.
-      // This prevents the "two project states" problem where Atlas's system-prompt
+      // This prevents the "two project states" problem where Joy's system-prompt
       // tree shows GitHub while read_file reads local disk and they disagree.
       {
         const SKIP_RE = /node_modules|\.git|\.next|dist\/|build\/|\.cache|__pycache__|\.DS_Store/;
@@ -3608,7 +3608,7 @@ When the user uses strong or colorful language (including profanity) to describe
 
         if (localFilePaths) {
           // Local disk is the source of truth — matches what read_file sees.
-          // If a GitHub repo is also linked, note the distinction so Atlas never mixes sources.
+          // If a GitHub repo is also linked, note the distinction so Joy never mixes sources.
           const githubNote = focusProject.linkedRepo
             ? ` (local workspace — source of truth for read_file; GitHub is an external sync target)`
             : "";
@@ -3650,8 +3650,8 @@ When the user uses strong or colorful language (including profanity) to describe
         }
       }
 
-      // Fetch recent commits for the focused project so Atlas can interpret them.
-      // NOT gated behind shouldBrief — commits are cheap (7 max) and Atlas needs
+      // Fetch recent commits for the focused project so Joy can interpret them.
+      // NOT gated behind shouldBrief — commits are cheap (7 max) and Joy needs
       // them for ANY question about recent project activity, not just status overviews.
       let focusRecentCommits = "";
       if (focusProject.linkedRepo) {
@@ -3751,7 +3751,7 @@ When the user uses strong or colorful language (including profanity) to describe
       const focusAM = focusAMRows[0] ?? null;
       const committedDesignPlan = committedDPRows[0] ?? null;
 
-      // Atlas State — fetch DNA to determine conversational posture
+      // Joy State — fetch DNA to determine conversational posture
       const focusGenomeRow = await getProjectDNA(focusProjectId);
 
       const atlasStateLabel: string = (() => {
@@ -3825,8 +3825,8 @@ Parked (${ledgerGroups.parked.length}): ${formatTitles(ledgerGroups.parked)}
 In Tension (${ledgerGroups.inTension.length}): ${formatTitles(ledgerGroups.inTension)}
 Overridden (${ledgerGroups.overridden.length}): ${formatTitles(ledgerGroups.overridden)}
 
-Atlas should reference parked items naturally if relevant.
-Atlas should flag in-tension items if the conversation touches them.`;
+Joy should reference parked items naturally if relevant.
+Joy should flag in-tension items if the conversation touches them.`;
       if (ledgerGroups.parked.length > 0) {
         systemPrompt += `\n\nPARKING LOT AWARENESS:
 The user has ${ledgerGroups.parked.length} parked item${ledgerGroups.parked.length === 1 ? "" : "s"}: ${formatTitles(ledgerGroups.parked)}. Reference them naturally if the conversation is relevant. Do not list them all at once unprompted.`;
@@ -3907,16 +3907,16 @@ The user has ${ledgerGroups.parked.length} parked item${ledgerGroups.parked.leng
       if (shouldBrief) {
       systemPrompt += `\n\nCROSS-PROJECT TENSIONS:
 ${tensionLines}
-If Atlas detects the conversation is heading toward one of these tensions, surface it proactively with: "⚠️ Cross-project tension: [description]"
+If Joy detects the conversation is heading toward one of these tensions, surface it proactively with: "⚠️ Cross-project tension: [description]"
 
 READINESS SCORE:
 Current readiness: ${blendedScore}% (architecture: ${architectureScore}%, decisions: ${decisionsScore}%)
-Atlas should reference this if asked about project health or progress.
+Joy should reference this if asked about project health or progress.
 
 FLOW MAP STATE:
 FLOW MAP: ${flowNodes.length} nodes total — ${answeredFlowNodes.length} answered, ${unansweredFlowNodes.length} unanswered
 Unanswered: ${unansweredFlowNodes.length > 0 ? unansweredFlowNodes.map((node) => node.label).join("; ") : "none"}
-Atlas should offer to help fill unanswered nodes if the conversation provides relevant information.`;
+Joy should offer to help fill unanswered nodes if the conversation provides relevant information.`;
       }
       systemPrompt += `\n--- END FOCUSED PROJECT ---`;
       }
@@ -4031,7 +4031,7 @@ WHAT YOU SHOULD NOT DO:
   if (isInProjectAskAtlas && requestedProjectId && sessionId && typeof body.askAtlasContextSeed === "string") {
     try {
       const workspaceSeed = await buildInProjectAskAtlasSeed(requestedProjectId, sessionId, userId);
-      systemPrompt += `\n\n--- WORKSPACE CONTEXT ---\n${workspaceSeed}\nYou are continuing an existing workspace conversation in Ask Atlas view. Treat prior workspace turns as already known context.\n--- END WORKSPACE CONTEXT ---`;
+      systemPrompt += `\n\n--- WORKSPACE CONTEXT ---\n${workspaceSeed}\nYou are continuing an existing workspace conversation in Ask Joy view. Treat prior workspace turns as already known context.\n--- END WORKSPACE CONTEXT ---`;
     } catch (seedErr) {
       logger.warn({ err: seedErr, projectId: requestedProjectId, sessionId }, "nexus: failed to build in-project Ask Atlas seed");
     }
@@ -4057,7 +4057,7 @@ WHAT YOU SHOULD NOT DO:
     systemPrompt += buildTier1BlockForNexusConversation(conversationBuffer);
   }
 
-  // Persist the user turn — workspace session thread for in-project Ask Atlas,
+  // Persist the user turn — workspace session thread for in-project Ask Joy,
   // otherwise the Nexus Living Thread.
   // Sequencing (attachment lifecycle option a): attachment rows already exist
   // from request-upload; we patch chat_message_id / nexus_message_id here.
@@ -4378,8 +4378,8 @@ PROSE RULES (enforced — contradiction detection is active):
 - Never assert completion in prose. The outcome badge shown to the user IS the completion signal.
 --- END VERIFICATION ENFORCEMENT ---`;
   } else if ((intent === "BUILD" || isResuming) && !justTalk && !conversationModeActive && surfaceContext !== "workspace") {
-    // Non-workspace BUILD turn (Ask Atlas or home surface).
-    // Atlas must NOT write files here. Route via PROJECT_READY → CommitPill
+    // Non-workspace BUILD turn (Ask Joy or home surface).
+    // Joy must NOT write files here. Route via PROJECT_READY → CommitPill
     // (or forced create_project on explicit create — see shouldForceCreateProject).
     systemPrompt += `\n\n${ASK_ATLAS_HANDOFF_SURFACE_CONTRACT}`;
   }
@@ -4560,7 +4560,7 @@ PROSE RULES (enforced — contradiction detection is active):
     // ── END DELIVERABLE OUTPUT GUARD ──────────────────────────────────────────
 
     // ── BUILD_CONTRACT detection ─────────────────────────────────────────────
-    // When Atlas emits BUILD_CONTRACT_START/END on a BUILD turn, the server:
+    // When Joy emits BUILD_CONTRACT_START/END on a BUILD turn, the server:
     //   1. Validates the manifest schema
     //   2. Resolves authorization policy (model proposal is advisory only)
     //   3. Persists the contract to verification_contract
@@ -4689,7 +4689,7 @@ PROSE RULES (enforced — contradiction detection is active):
       return "";
     }).trim();
 
-    // Extract and strip DECISION_ARTIFACT tokens — Atlas requests a decision artifact
+    // Extract and strip DECISION_ARTIFACT tokens — Joy requests a decision artifact
     // (tradeoff matrix / decision tree / deviation log) be generated and saved.
     const DECISION_ARTIFACT_RE = /^DECISION_ARTIFACT:\s*(\{[^\n]+\})\s*$/gm;
     type DecisionArtifactToken = {
@@ -4709,7 +4709,7 @@ PROSE RULES (enforced — contradiction detection is active):
       return "";
     }).trim();
 
-    // Extract and strip BROWSER_VISIT tokens — Atlas requests browser visits at end of response
+    // Extract and strip BROWSER_VISIT tokens — Joy requests browser visits at end of response
     const BROWSER_VISIT_RE = /^BROWSER_VISIT:\s*(\{[^\n]+\})\s*$/gm;
     type BrowserVisitToken = { url: string; mode: "screenshot" | "scrape" | "health" | "monitor" };
     let browserVisitToken: BrowserVisitToken | null = null;
@@ -4725,7 +4725,7 @@ PROSE RULES (enforced — contradiction detection is active):
       return "";
     }).trim();
 
-    // Parse CONV_STATE — Atlas's self-reported intent classification (THINK / SHAPE / COMMIT).
+    // Parse CONV_STATE — Joy's self-reported intent classification (THINK / SHAPE / COMMIT).
     // Must parse before PROJECT_READY so we can gate CommitPill based on the state.
     const CONV_STATE_RE = /^CONV_STATE:\s*(\{[^\n]+\})\s*$/gm;
     type ConvStateValue = "THINK" | "SHAPE" | "COMMIT";
@@ -4880,7 +4880,7 @@ PROSE RULES (enforced — contradiction detection is active):
       .trim();
     const memoryUpdated = parsedMemoryUpdated;
 
-    // Extract CLARIFY_START ... CLARIFY_END block — Atlas emits structured
+    // Extract CLARIFY_START ... CLARIFY_END block — Joy emits structured
     // clarification cards for discrete, high-leverage forks (see
     // atlasIdentity.ts "Clarification cards"). The block is stripped from
     // visible prose and shipped as `clarify` on the `done` event; the
@@ -4921,7 +4921,7 @@ PROSE RULES (enforced — contradiction detection is active):
       visibleContent = visibleContent.replace(clarifyMatch[0], "\n").replace(/\n{3,}/g, "\n\n").trim();
     }
 
-    // Extract TRADEOFF_START ... TRADEOFF_END block — Atlas emits structured tradeoff
+    // Extract TRADEOFF_START ... TRADEOFF_END block — Joy emits structured tradeoff
     // matrices on DECIDE turns for binary/multi-way architectural or strategic choices.
     // Stripped from prose and shipped as `tradeoff` on the `done` event; the frontend
     // renders it via TradeoffMatrixCard on the assistant bubble.
@@ -5363,7 +5363,7 @@ PROSE RULES (enforced — contradiction detection is active):
                 const prTitle = gpt.prTitle ?? gpt.message;
                 const prBody =
                   gpt.prBody ??
-                  `Automated commit by Atlas\n\nFiles changed:\n${effectiveEdits.map((e) => `- \`${e.path}\``).join("\n")}`;
+                  `Automated commit by Joy\n\nFiles changed:\n${effectiveEdits.map((e) => `- \`${e.path}\``).join("\n")}`;
                 const prResp = await fetch(`${GH_API_BASE}/repos/${repoFull}/pulls`, {
                   method: "POST",
                   headers: { ...ghApiHeaders(ghToken), "Content-Type": "application/json" },
@@ -5604,7 +5604,7 @@ PROSE RULES (enforced — contradiction detection is active):
         }
 
         if (!res.writableEnded && !res.destroyed) {
-          res.write(`event: error\ndata: ${JSON.stringify({ error: "empty_response", message: "Atlas didn't generate a response. Please try again." })}\n\n`);
+          res.write(`event: error\ndata: ${JSON.stringify({ error: "empty_response", message: "Joy didn't generate a response. Please try again." })}\n\n`);
           res.end();
         }
         return;
@@ -5613,7 +5613,7 @@ PROSE RULES (enforced — contradiction detection is active):
 
     writeStep({ verb: "Saved", target: "response", detail: "Thread updated" });
 
-    // Execute BROWSER_VISIT if Atlas emitted one — emit visiting step so UI shows the globe indicator
+    // Execute BROWSER_VISIT if Joy emitted one — emit visiting step so UI shows the globe indicator
     if (browserVisitToken) {
       const bvt = browserVisitToken as BrowserVisitToken;
       writeStep({ verb: "Visiting", target: bvt.url });
@@ -5678,7 +5678,7 @@ PROSE RULES (enforced — contradiction detection is active):
     }
 
     // Execute DECISION_ARTIFACT tokens — generate + persist tradeoff matrix / decision
-    // tree / deviation log artifacts requested by Atlas, then attach to the done event
+    // tree / deviation log artifacts requested by Joy, then attach to the done event
     // so the frontend can render them inline as cards.
     const decisionArtifactResults: Array<Awaited<ReturnType<typeof saveDecisionArtifact>>> = [];
     if (decisionArtifactTokens.length > 0 && focusProjectId) {
@@ -5710,7 +5710,7 @@ PROSE RULES (enforced — contradiction detection is active):
       runActions: runActions.length > 0 ? runActions : null,
     });
 
-    // Detect active mode from Atlas's response
+    // Detect active mode from Joy's response
     const lowerContent = visibleContent.toLowerCase();
     const detectedMode: string = (() => {
       const auditSignals = ["broken", "gap", "risk", "fragile", "inconsistent", "conflict", "missing", "dead end", "what's wrong", "fix", "⚠️"];
@@ -5722,7 +5722,7 @@ PROSE RULES (enforced — contradiction detection is active):
       return "strategic";
     })();
 
-    // Detect if Atlas keeps referencing one project and suggest focus
+    // Detect if Joy keeps referencing one project and suggest focus
     const projectMentions = ideaMode ? [] : projects.map(p => ({
       id: p.id,
       name: p.name,
@@ -5770,7 +5770,7 @@ PROSE RULES (enforced — contradiction detection is active):
       }
     }
 
-    // Persist the assistant response — workspace session thread for in-project Ask Atlas,
+    // Persist the assistant response — workspace session thread for in-project Ask Joy,
     // otherwise the Nexus Living Thread (with optional mirror into chat_messages).
     let nexusMsgId: number | null = null;
     let sourceChatMessageId: number | null = null;
@@ -5820,7 +5820,7 @@ PROSE RULES (enforced — contradiction detection is active):
         sessionId,
         conversationId: effectiveConversationId,
         ...(hasMessageType ? { messageType: "message" } : {}),
-        // Persist suggestion pills so they survive refresh (Ask Atlas + workspace).
+        // Persist suggestion pills so they survive refresh (Ask Joy + workspace).
         ...(nextSuggestions?.length ? { metadata: { nextSuggestions } } : {}),
       }).returning({ id: nexusMessagesTable.id });
       nexusMsgId = nexusMsg?.id ?? null;
@@ -5899,7 +5899,7 @@ PROSE RULES (enforced — contradiction detection is active):
 
     // Persist a run row for EVERY completed project-scoped turn so Timeline is
     // a complete account of the thread (PROMPT / THOUGHT / FILE_READ / DECISION
-    // / SUMMARY / etc.). Skip only pure CHAT greetings and off-project Ask Atlas
+    // / SUMMARY / etc.). Skip only pure CHAT greetings and off-project Ask Joy
     // turns. Receipt eligibility is a SEPARATE concern handled by the frontend
     // via a verb-based classifier in WorkspaceRunCard — not by whether we
     // persisted or by the `mode` field alone.
@@ -5962,7 +5962,7 @@ PROSE RULES (enforced — contradiction detection is active):
       });
     }
 
-    // Thinking receipt extraction — global Ask Atlas turns only (no project focus).
+    // Thinking receipt extraction — global Ask Joy turns only (no project focus).
     // CHAT greetings must not write memory.
     if (!isChatTurn && !isInProjectAskAtlas && !focusProjectId && effectiveConversationId) {
       void maybeExtractThinkingReceipts({
@@ -6047,7 +6047,7 @@ PROSE RULES (enforced — contradiction detection is active):
     // Two triggers:
     //   A) surface?.type === "DECISION" — assistant response contains decision markers
     //   B) allowDecideDraft + user message has explicit commitment language
-    //      (catches "I've decided to go with X" even when Atlas gives a brief ack)
+    //      (catches "I've decided to go with X" even when Joy gives a brief ack)
     const USER_COMMIT_RE = /\b(i('ve| have) decided|we('re| are) going with|going with|settling on|settled on|committing to|committed to|decided on|off the table|that's settled|it's decided|no more.*debate)\b/i;
     const userHasCommitmentSignal = USER_COMMIT_RE.test(message);
     const shouldCaptureDraft = focusProjectId &&
@@ -6205,7 +6205,7 @@ PROSE RULES (enforced — contradiction detection is active):
         ? {
             navigateTo: {
               // Prefer /workspace/<conversationId> so the workspace mounts with
-              // the adopted Ask Atlas thread pre-selected — no race between
+              // the adopted Ask Joy thread pre-selected — no race between
               // navigation and the DB adoption UPDATE.
               route: effectiveConversationId
                 ? `/workspace/${effectiveConversationId}`
@@ -6333,7 +6333,7 @@ PROSE RULES (enforced — contradiction detection is active):
           try {
             const prompts = imageGenTokens.map((t) => t.prompt).join("\n");
             const recentTurns = (rawContent ? [{ role: "assistant" as const, text: rawContent.slice(0, 600) }] : []);
-            const contextBlock = recentTurns.map((t) => `${t.role === "assistant" ? "Atlas" : "User"}: ${t.text}`).join("\n\n");
+            const contextBlock = recentTurns.map((t) => `${t.role === "assistant" ? "Joy" : "User"}: ${t.text}`).join("\n\n");
 
             const contractRes = await anthropic.messages.create({
               model: "claude-haiku-4-5",
@@ -6557,7 +6557,7 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
   const failStream = async (summary: string, status: RunStatus = "failed") => {
     if (streamDone || res.writableEnded || res.destroyed) return;
     streamDone = true;
-    writeStep({ verb: status === "cancelled" ? "Cancelled" : "Failed", target: "Atlas response", status: status === "cancelled" ? "warn" : "fail" });
+    writeStep({ verb: status === "cancelled" ? "Cancelled" : "Failed", target: "Joy response", status: status === "cancelled" ? "warn" : "fail" });
 
     if (status === "cancelled") {
       const metadata = failedRunMetadata(summary, status);
@@ -6574,7 +6574,7 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
 
     // Real failure — emit error event so the frontend shows the reason
     // instead of rendering a blank bubble.
-    res.write(`event: error\ndata: ${JSON.stringify(summary || "Atlas ran into an issue. Please try again.")}\n\n`);
+    res.write(`event: error\ndata: ${JSON.stringify(summary || "Joy ran into an issue. Please try again.")}\n\n`);
     res.end();
   };
   req.on("aborted", () => {
@@ -6816,7 +6816,7 @@ Do NOT claim to read, see, or describe any file not listed here.
   if (activeModel === "gemini") {
     let rawContent = "";
     const combinedText = [
-      ...conversationHistory.map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`),
+      ...conversationHistory.map(m => `${m.role === "user" ? "User" : "Joy"}: ${m.content}`),
       `User: ${message}`,
     ].join("\n\n");
     const geminiAtlasVerb = mode === "audit" ? "Auditing"
@@ -6929,7 +6929,7 @@ Do NOT claim to read, see, or describe any file not listed here.
 
   const contentParts: Array<VaultBlock | TextBlock> = [];
 
-  // 1. Vault images (project visual context) — injected first so Atlas sees them before the user's message
+  // 1. Vault images (project visual context) — injected first so Joy sees them before the user's message
   for (const vb of vault.imageBlocks) {
     // Skip vault images that exceed Claude's dimension limit
     const vaultImage = { base64: vb.source.data };
@@ -6984,7 +6984,7 @@ Do NOT claim to read, see, or describe any file not listed here.
             ? `unavailable (${s.reason})`
             : s.reason.startsWith("extraction_failed")
               ? `attached, but extraction failed (${s.reason.replace(/^extraction_failed:\s*/, "")})`
-              : "stored with the message, but Atlas cannot read this file type yet";
+              : "stored with the message, but Joy cannot read this file type yet";
       return `- ${name}${mime}: ${detail}`;
     });
     contentParts.push({
@@ -7437,7 +7437,7 @@ Do NOT claim to read, see, or describe any file not listed here.
       pendingNavProjectId = project.id;
       pendingNavProjectName = project.name;
 
-      // Adopt the Ask Atlas conversation into this new project — transactional
+      // Adopt the Ask Joy conversation into this new project — transactional
       // so we never leave a project created without its conversation attached.
       // Both statements are idempotent (scoped to conversation_id + user_id +
       // project_id IS NULL / equal target) so retrying handoff cannot detach,
@@ -7452,7 +7452,7 @@ Do NOT claim to read, see, or describe any file not listed here.
                 AND user_id = ${userId}
                 AND conversation_id IS NULL
             `);
-            // Adopt every orphaned Ask Atlas message from this exact conversation
+            // Adopt every orphaned Ask Joy message from this exact conversation
             // for this exact user into the new project. Scoping to project_id IS
             // NULL keeps this idempotent and prevents cross-project bleed.
             await tx.execute(sql`
@@ -7466,7 +7466,7 @@ Do NOT claim to read, see, or describe any file not listed here.
         } catch (adoptErr) {
           logger.error(
             { err: String(adoptErr), projectId: project.id, conversationId: effectiveConversationId, userId },
-            "Ask Atlas conversation adoption failed — project created but thread not linked",
+            "Ask Joy conversation adoption failed — project created but thread not linked",
           );
           throw adoptErr;
         }
@@ -7542,7 +7542,7 @@ Do NOT claim to read, see, or describe any file not listed here.
     if (!filePath) return { ok: false, error: "path_required" };
     if (!focusProjectId) return { ok: false, error: "no_project_context" };
 
-    // Show the user Atlas is actively reading — not silent
+    // Show the user Joy is actively reading — not silent
     writeStep({ verb: "Reading", target: filePath });
 
     try {
@@ -7556,7 +7556,7 @@ Do NOT claim to read, see, or describe any file not listed here.
       }
 
       const content = await fsPromises.readFile(absPath, "utf-8");
-      // Cap at ~200KB to avoid context blowout; signal truncation so Atlas knows
+      // Cap at ~200KB to avoid context blowout; signal truncation so Joy knows
       const MAX_BYTES = 200_000;
       const truncated = Buffer.byteLength(content, "utf-8") > MAX_BYTES;
       const safeContent = truncated ? content.slice(0, MAX_BYTES) + "\n\n[...file truncated — first 200KB shown]" : content;
@@ -7823,7 +7823,7 @@ Do NOT claim to read, see, or describe any file not listed here.
         await finishStream("");
       } catch (err) {
         req.log.error({ err }, "forced create_project call failed");
-        await failStream("Atlas ran into an issue creating the project. Please try again.");
+        await failStream("Joy ran into an issue creating the project. Please try again.");
       }
       return;
     }
@@ -7846,7 +7846,7 @@ Do NOT claim to read, see, or describe any file not listed here.
         "nexus: anthropic.messages.stream threw before start",
       );
       await failStream(
-        err instanceof Error ? err.message : "Atlas ran into an issue starting the model.",
+        err instanceof Error ? err.message : "Joy ran into an issue starting the model.",
         "failed",
       );
       return;
@@ -7871,7 +7871,7 @@ Do NOT claim to read, see, or describe any file not listed here.
         },
         "nexus: Claude stream error",
       );
-      void failStream(err.message || "Atlas ran into an issue.", cancelled ? "cancelled" : "failed");
+      void failStream(err.message || "Joy ran into an issue.", cancelled ? "cancelled" : "failed");
     });
 
     // Some SDK failures reject the stream promise without a clean finalMessage.
@@ -7879,7 +7879,7 @@ Do NOT claim to read, see, or describe any file not listed here.
     void Promise.resolve(stream as unknown as PromiseLike<unknown>).then(
       undefined,
       (err: unknown) => {
-        const msg = err instanceof Error ? err.message : "Atlas ran into an issue.";
+        const msg = err instanceof Error ? err.message : "Joy ran into an issue.";
         req.log.warn(
           { err: msg, focusProjectId, conversationId: effectiveConversationId },
           "nexus: Claude stream promise rejected",
@@ -7918,11 +7918,11 @@ Do NOT claim to read, see, or describe any file not listed here.
           ];
           // Multi-hop tool loop: this used to hardcode tools:false on the
           // continuation, so a turn that called tier1_upsert_field first
-          // (a very common pattern — Atlas logs the field before acting)
+          // (a very common pattern — Joy logs the field before acting)
           // had no way to follow up with generate_deliverable in the same
           // turn. The model would want to call it, find no tools available,
           // and return an empty response instead — surfaced to the user as
-          // "Atlas didn't generate a response." Keep tools on for follow-up
+          // "Joy didn't generate a response." Keep tools on for follow-up
           // hops (still gated by the original BUILD/DECIDE allowToolAccess
           // check via options.tools), capped so a stuck loop can't run away.
           const nextHop = (options.toolHopCount ?? 0) + 1;
@@ -7938,7 +7938,7 @@ Do NOT claim to read, see, or describe any file not listed here.
         }
 
         // Intercept narrated <tool_call> — Claude wrote the call as text instead of using the API mechanism.
-        // Skip entirely when focusProjectId is set: create_project is a home/Ask-Atlas
+        // Skip entirely when focusProjectId is set: create_project is a home/Ask-Joy
         // action only — inside an existing workspace it must never fire, narrated or not.
         if (options.tools && !focusProjectId) {
           const narrated = extractNarratedToolCall(fullText);
@@ -8003,7 +8003,7 @@ Do NOT claim to read, see, or describe any file not listed here.
                   .replace(/\n{3,}/g, "\n\n")
                   .trim();
 
-                // Signal to the client so the user can see Atlas is continuing.
+                // Signal to the client so the user can see Joy is continuing.
                 writeStep({
                   verb: "Continuing automatically",
                   target: "read-only audit",
@@ -8091,7 +8091,7 @@ Do NOT produce another roadmap. Do NOT say "I'll inspect." Execute and return fi
         await finishStream(rawForFinish);
       } catch (err) {
         req.log.error({ err }, "nexus/chat stream finalization error");
-        await failStream("Atlas ran into an issue. Please try again.", "failed");
+        await failStream("Joy ran into an issue. Please try again.", "failed");
       }
     });
   };
@@ -8102,7 +8102,7 @@ Do NOT produce another roadmap. Do NOT say "I'll inspect." Execute and return fi
   const isExplicitCreate = messageHasExplicitCreateSignal(message);
 
   // INT-35: force create_project when the user explicitly asks to create, including
-  // on Ask Atlas (previously forceCreate was workspace-only / effectively dead there,
+  // on Ask Joy (previously forceCreate was workspace-only / effectively dead there,
   // so the model could narrate "creating…" via PROJECT_READY with nothing created).
   // Once focusProjectId is set, never spin up another project from create phrasing.
   const shouldForceCreate = shouldForceCreateProject({
@@ -8135,11 +8135,11 @@ Do NOT produce another roadmap. Do NOT say "I'll inspect." Execute and return fi
     req.log.error({ err }, "nexus/chat error");
     if (res.headersSent && !res.writableEnded) {
       // Stream already started — send error event so the frontend shows it
-      const msg = err instanceof Error ? err.message : "Atlas ran into an issue. Please try again.";
+      const msg = err instanceof Error ? err.message : "Joy ran into an issue. Please try again.";
       res.write(`event: error\ndata: ${JSON.stringify(msg)}\n\n`);
       res.end();
     } else if (!res.headersSent) {
-      res.status(500).json({ error: "Atlas ran into an issue. Please try again." });
+      res.status(500).json({ error: "Joy ran into an issue. Please try again." });
     }
   }
 });
@@ -8168,7 +8168,7 @@ router.post("/nexus/handoff", async (req, res): Promise<void> => {
     const briefResponse = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1536,
-      system: `You are extracting a project brief from a conversation between a founder and Atlas.
+      system: `You are extracting a project brief from a conversation between a founder and Joy.
 
 Extract and return ONLY a JSON object with this exact shape — no markdown, no explanation:
 {
@@ -8498,7 +8498,7 @@ router.get("/nexus/manifest/:projectId", async (req, res): Promise<void> => {
   }
 });
 
-// GET /api/nexus/resume — Atlas-written structured brief (4-section continuity engine)
+// GET /api/nexus/resume — Joy-written structured brief (4-section continuity engine)
 router.get("/nexus/resume", async (req, res): Promise<void> => {
   try {
     const userId = (req as any).authUser.id as number;
@@ -8604,13 +8604,13 @@ router.get("/nexus/resume", async (req, res): Promise<void> => {
       ? recentMessages
           .slice()
           .reverse()
-          .map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content.slice(0, 300)}`)
+          .map(m => `${m.role === "user" ? "User" : "Joy"}: ${m.content.slice(0, 300)}`)
           .join("\n\n")
-      : "No recent Ask Atlas conversation.";
+      : "No recent Ask Joy conversation.";
 
     const prompt = `${ATLAS_IDENTITY}
 
-You are generating the Resume — the structured brief Atlas writes at the start of every session to orient the user across their entire portfolio. This is curated continuity, not a raw activity log.
+You are generating the Resume — the structured brief Joy writes at the start of every session to orient the user across their entire portfolio. This is curated continuity, not a raw activity log.
 
 PORTFOLIO:
 ${projectContext}
@@ -8785,7 +8785,7 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
         );
         if (!r.ok) return [];
         const data = await r.json() as any[];
-        // Skip Atlas-owned run pushes — they already appear as GITHUB_PUSH
+        // Skip Joy-owned run pushes — they already appear as GITHUB_PUSH
         // receipts on the originating execution run.
         return data
           .filter((c: any) => !hasAtlasRunTrailer((c.commit?.message ?? "") as string))
@@ -9035,7 +9035,7 @@ const handleGenerateName: import("express").RequestHandler = async (req, res): P
   if (Array.isArray(body.messages) && body.messages.length > 0) {
     context = body.messages
       .slice(-12)
-      .map((m) => `${m.role === "user" ? "User" : "Atlas"}: ${String(m.content ?? "").slice(0, 600)}`)
+      .map((m) => `${m.role === "user" ? "User" : "Joy"}: ${String(m.content ?? "").slice(0, 600)}`)
       .join("\n\n")
       .slice(0, 3000);
   } else if (body.message?.trim()) {
@@ -9050,7 +9050,7 @@ const handleGenerateName: import("express").RequestHandler = async (req, res): P
       max_tokens: 20,
       messages: [{
         role: "user",
-        content: `Read this conversation and generate a concise, memorable project name for what is being built.\n\nRules:\n- 2-5 words maximum\n- Title case\n- Evocative and specific — capture the idea, not the category\n- No punctuation\n- Avoid generic words like "Project", "App", "Platform" unless they are essential to the concept\n- Examples of good names: "Living Legacy Box", "Founder Decision Log", "Atlas Memory Layer"\n\nConversation:\n${context}\n\nRespond with only the project name, nothing else.`,
+        content: `Read this conversation and generate a concise, memorable project name for what is being built.\n\nRules:\n- 2-5 words maximum\n- Title case\n- Evocative and specific — capture the idea, not the category\n- No punctuation\n- Avoid generic words like "Project", "App", "Platform" unless they are essential to the concept\n- Examples of good names: "Living Legacy Box", "Founder Decision Log", "Joy Memory Layer"\n\nConversation:\n${context}\n\nRespond with only the project name, nothing else.`,
       }],
     });
     const raw = resp.content[0]?.type === "text" ? resp.content[0].text.trim() : "";

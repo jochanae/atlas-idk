@@ -553,7 +553,7 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
       return;
     }
 
-    // Event 1 — fire Atlas Memory refresh on activation (fire-and-forget, non-blocking)
+    // Event 1 — fire Joy Memory refresh on activation (fire-and-forget, non-blocking)
     pushAtlasMdToRepo(projectId, userId, req.log).catch(() => {});
 
     // Hydrate workspace: clone linked repo if workspace dir is empty (fire-and-forget)
@@ -569,7 +569,7 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
 });
 
 // POST /api/projects/create-and-activate — create a committed workspace in one shot
-// Used by Atlas when the user makes an explicit "Build X" request from Ask Atlas.
+// Used by Joy when the user makes an explicit "Build X" request from Ask Joy.
 // Returns a fully committed project (genome + session seeded) so NAVIGATE_TO can fire
 // immediately without any secondary activation step.
 router.post("/projects/create-and-activate", async (req, res): Promise<void> => {
@@ -620,7 +620,7 @@ router.post("/projects/create-and-activate", async (req, res): Promise<void> => 
   }
 });
 
-// POST /api/projects/:id/refresh-atlas-memory — Event 3: manual "Refresh Atlas Memory"
+// POST /api/projects/:id/refresh-atlas-memory — Event 3: manual "Refresh Joy Memory"
 router.post("/projects/:id/refresh-atlas-memory", async (req, res): Promise<void> => {
   const projectId = parseInt(req.params.id, 10);
   if (Number.isNaN(projectId) || projectId <= 0) {
@@ -645,7 +645,7 @@ router.post("/projects/:id/refresh-atlas-memory", async (req, res): Promise<void
     res.json({ ok: true });
   } catch (err) {
     req.log?.error({ err }, "refresh-atlas-memory error");
-    res.status(500).json({ error: "Failed to refresh Atlas Memory" });
+    res.status(500).json({ error: "Failed to refresh Joy Memory" });
   }
 });
 
@@ -666,7 +666,7 @@ router.post("/projects/:id/memories", async (req, res): Promise<void> => {
   };
   const transcript = (body.messages ?? [])
     .slice(-20)
-    .map((m) => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`)
+    .map((m) => `${m.role === "user" ? "User" : "Joy"}: ${m.content}`)
     .join("\n\n");
   const summary = (body.summary?.trim() || transcript.slice(0, 1200) || "Home conversation imported.").trim();
   const tier = body.tier === "foundational" ? 1 : body.tier === "contextual" ? 4 : 3;
@@ -1001,7 +1001,7 @@ router.post("/projects/:id/flow/hydrate", async (req, res): Promise<void> => {
 
   if (realMessages.length < 3 && !hasGenomeData) {
     res.status(422).json({
-      error: "Not enough context to hydrate. Have a few conversations with Atlas about this project first.",
+      error: "Not enough context to hydrate. Have a few conversations with Joy about this project first.",
     });
     return;
   }
@@ -1011,11 +1011,11 @@ router.post("/projects/:id/flow/hydrate", async (req, res): Promise<void> => {
   // Most-recent last, capped for context window
   const recent = [...realMessages].reverse().slice(-40);
   const formattedConversation = recent
-    .map(m => `${m.role === "user" ? "You" : "Atlas"}: ${m.content.trim()}`)
+    .map(m => `${m.role === "user" ? "You" : "Joy"}: ${m.content.trim()}`)
     .join("\n\n");
 
   const conversationSection = realMessages.length >= 3
-    ? `\nHere is the conversation history between the user and Atlas (their strategic thinking partner):\n\n${formattedConversation}\n\nBased on this conversation, generate a strategic flow map as a JSON object. Extract SPECIFIC goals, requirements, blockers, decisions, and priorities that were actually discussed — not generic placeholders.`
+    ? `\nHere is the conversation history between the user and Joy (their strategic thinking partner):\n\n${formattedConversation}\n\nBased on this conversation, generate a strategic flow map as a JSON object. Extract SPECIFIC goals, requirements, blockers, decisions, and priorities that were actually discussed — not generic placeholders.`
     : `\nNo conversation history is available yet. Generate a strategic flow map based on the project context above. Create SPECIFIC, plausible goals, requirements, and next steps tailored to the project's identity and purpose — not generic placeholders.`;
 
   const prompt = `You are building a strategic flow map for a project named "${proj.name}".${projectContext}${conversationSection}
@@ -1188,7 +1188,7 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
   const bodyMessages = Array.isArray(body.messages)
     ? (body.messages as Array<{ role: string; content: string }>)
     : [];
-  // Ask Atlas source conversation — used to adopt original messages + flush Tier1
+  // Ask Joy source conversation — used to adopt original messages + flush Tier1
   const sourceConversationId =
     typeof body.conversationId === "string" && body.conversationId.trim().length > 0
       ? body.conversationId.trim()
@@ -1207,7 +1207,7 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
       .limit(1);
 
     if (!existingMsg) {
-      // Prefer adopting the original Ask Atlas conversation (keeps message ids /
+      // Prefer adopting the original Ask Joy conversation (keeps message ids /
       // attachments / Tier1 buffer key) over copying into a new UUID.
       if (sourceConversationId) {
         try {
@@ -1255,7 +1255,7 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
     }
   }
 
-  // M2.2 R1 fix: seed Insights DNA / Objects from Ask Atlas knowledge on handoff.
+  // M2.2 R1 fix: seed Insights DNA / Objects from Ask Joy knowledge on handoff.
   // Await Tier1→DNA so Resume brief isn't empty; genome extraction stays async.
   const seedConversationId = sourceConversationId ?? adoptedConversationId;
   try {
@@ -1366,7 +1366,7 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
   res.json({ ok: true, artifact, brief, conversationId: adoptedConversationId });
 });
 
-// ── POST /api/projects/:id/editorial — Atlas editorial analysis ───────────────
+// ── POST /api/projects/:id/editorial — Joy editorial analysis ───────────────
 router.post("/:id/editorial", async (req, res) => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid project id" }); return; }
@@ -1479,7 +1479,7 @@ ${projectContext}`;
   }
 });
 
-// ── Atlas Review Engine ────────────────────────────────────────────────────────
+// ── Joy Review Engine ────────────────────────────────────────────────────────
 // Unified context-hydrated judgment endpoint.
 // Each profile declares what it needs and how to build its system prompt.
 // The /editorial route above is kept as a backward-compat alias.
@@ -1875,7 +1875,7 @@ router.get("/projects/:projectId/latest-conversation", async (req, res): Promise
     .limit(1);
 
   // Fall back to projects.conversation_id — covers the race window right after
-  // Ask Atlas → project adoption and legacy projects whose messages were not
+  // Ask Joy → project adoption and legacy projects whose messages were not
   // reparented. Logged as a legacy gap so we can track migrations owed.
   const resolved = row?.conversationId ?? project.conversationId ?? null;
   if (!row?.conversationId && project.conversationId) {
@@ -1943,7 +1943,7 @@ router.post("/projects/:id/classify", async (req, res): Promise<void> => {
 
   const report = classifyRepository(input);
 
-  // Phase 4 — merge Atlas capability registry into each external service requirement.
+  // Phase 4 — merge Joy capability registry into each external service requirement.
   // Lookup is by canonical serviceId (case-insensitive) to prevent display-name drift.
   // provisionMode, knownEnvVars, and providerLabel are API-layer concerns only —
   // the static classifier knows nothing of product capabilities.
@@ -1981,7 +1981,7 @@ router.post("/projects/:id/classify", async (req, res): Promise<void> => {
 //   table for consistency so /run can inject it the same way.
 //
 //   atlas-managed: not yet implemented (would require per-project DB provisioning).
-//   unsupported: 422 — Atlas has no provisioning support.
+//   unsupported: 422 — Joy has no provisioning support.
 router.post("/projects/:id/provision-service", async (req, res): Promise<void> => {
   const projectId = parseInt(req.params.id, 10);
   if (isNaN(projectId) || projectId <= 0) {
@@ -2011,7 +2011,7 @@ router.post("/projects/:id/provision-service", async (req, res): Promise<void> =
 
   if (cap.provisionMode === "unsupported") {
     res.status(422).json({
-      error: `Atlas cannot provision ${cap.displayName}.`,
+      error: `Joy cannot provision ${cap.displayName}.`,
       detail: "This service requires an external account. Set it up and add your connection string manually.",
     });
     return;

@@ -300,7 +300,7 @@ router.post("/expand-node", async (req, res) => {
         .limit(30);
       if (msgs.length > 0) {
         const lines = msgs.reverse().map(m =>
-          `${m.role === "user" ? "User" : "Atlas"}: ${m.content.slice(0, 400)}`
+          `${m.role === "user" ? "User" : "Joy"}: ${m.content.slice(0, 400)}`
         );
         transcriptContext = lines.join("\n");
       }

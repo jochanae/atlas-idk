@@ -82,12 +82,12 @@ export async function createProjectForUser(input: CreateProjectForUserInput) {
   return project;
 }
 
-/** Stable marker on `projects.description` for the per-user Ask Atlas deliverable bucket. */
+/** Stable marker on `projects.description` for the per-user Ask Joy deliverable bucket. */
 export const DELIVERABLE_BUCKET_MARKER = "[atlas-deliverable-bucket]";
-export const DELIVERABLE_BUCKET_NAME = "Atlas Files";
+export const DELIVERABLE_BUCKET_NAME = "Joy Files";
 
 /**
- * Idempotent persistence target when Ask Atlas generates a file with no focused project.
+ * Idempotent persistence target when Ask Joy generates a file with no focused project.
  * Bytes still live in project_artifacts + object storage; conversation delivery remains
  * the inline card. This bucket is additional persistence — not a substitute for delivery.
  */
@@ -115,7 +115,7 @@ export async function ensureUserDeliverableBucketProject(userId: number) {
       status: "shaping",
       entityType: "project",
       memory:
-        "System bucket for Ask Atlas file deliverables when no project is focused. Conversation delivery is the inline card; this project holds file bytes.",
+        "System bucket for Ask Joy file deliverables when no project is focused. Conversation delivery is the inline card; this project holds file bytes.",
     });
   } catch (err) {
     // Concurrent first-create race: re-select the winner.

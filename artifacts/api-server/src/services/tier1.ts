@@ -370,7 +370,7 @@ const WORKSPACE_TIER1_UPSERT_TOOL: Anthropic.Tool = {
 const WORKSPACE_TIER1_SKIP_TOOL: Anthropic.Tool = {
   name: "tier1_mark_skipped",
   description:
-    "Call ONLY when the user has clearly told you to stop asking Tier 1 questions (e.g. 'skip', 'stop asking that', 'I don't want to answer'). Prevents Atlas from asking again.",
+    "Call ONLY when the user has clearly told you to stop asking Tier 1 questions (e.g. 'skip', 'stop asking that', 'I don't want to answer'). Prevents Joy from asking again.",
   input_schema: {
     type: "object",
     properties: {},

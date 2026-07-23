@@ -76,7 +76,7 @@ cat <file>      read a file's contents
 
 ATLAS COMMANDS
 ───────────────────────────────
-Ask Atlas in Chat and it can suggest
+Ask Joy in Chat and it can suggest
 commands to run here automatically.
 Type any command above to get started.`,
       exitCode: 0,

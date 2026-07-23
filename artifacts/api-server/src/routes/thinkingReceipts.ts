@@ -61,14 +61,14 @@ router.delete("/thinking-receipts/:id", async (req, res): Promise<void> => {
 });
 
 // GET /projects/:id/thinking-receipts
-// Returns receipts from (a) the Ask Atlas conversation that created this project
+// Returns receipts from (a) the Ask Joy conversation that created this project
 // and (b) all workspace session turns for this project — unified into one stream.
 router.get("/projects/:id/thinking-receipts", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   const projectId = parseInt(req.params.id, 10);
   if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
 
-  // Resolve the project's source Ask Atlas conversation ID (may be null)
+  // Resolve the project's source Ask Joy conversation ID (may be null)
   const projectRow = await db.execute(sql`
     SELECT conversation_id
     FROM projects
@@ -78,7 +78,7 @@ router.get("/projects/:id/thinking-receipts", async (req, res): Promise<void> =>
   const row = (projectRow.rows ?? projectRow)[0] as { conversation_id?: string | null } | undefined;
   const sourceConversationId = row?.conversation_id ?? null;
 
-  // Query both Ask Atlas receipts (via projects.conversation_id) and workspace
+  // Query both Ask Joy receipts (via projects.conversation_id) and workspace
   // session receipts (stored as 'ws-<sessionId>' conversation IDs) in one pass.
   const result = await db.execute(sql`
     SELECT id, conversation_id, turn_index, headline, body, category, confidence, is_stable, created_at

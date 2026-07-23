@@ -1,5 +1,5 @@
 /**
- * Milestone 2.2 — Ask Atlas → Workspace intelligence seed.
+ * Milestone 2.2 — Ask Joy → Workspace intelligence seed.
  *
  * Handoff historically preserved transcript + Resume only. Workspace surfaces
  * (Insights DNA, Objects, Blueprint) stayed empty until later extractors ran —
@@ -77,7 +77,7 @@ export async function seedDnaFromTier1(projectId: number): Promise<void> {
 }
 
 /**
- * After Ask Atlas conversation is linked to a project:
+ * After Ask Joy conversation is linked to a project:
  * 1. Flush Tier1 buffer → project_tier1_memory
  * 2. Project Tier1 → DNA (fast Insights fill)
  * 3. Run genome extraction (objects + richer DNA) fire-and-forget
@@ -85,7 +85,7 @@ export async function seedDnaFromTier1(projectId: number): Promise<void> {
 export async function seedIntelligenceAfterHandoff(opts: {
   projectId: number;
   userId: number;
-  /** Ask Atlas conversation id (source of Tier1 buffer + original messages). */
+  /** Ask Joy conversation id (source of Tier1 buffer + original messages). */
   sourceConversationId?: string | null;
 }): Promise<void> {
   const { projectId, userId, sourceConversationId } = opts;

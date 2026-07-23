@@ -1,16 +1,16 @@
 /**
- * Ask Atlas → Workspace handoff contract helpers (Milestone 1 INT-35).
+ * Ask Joy → Workspace handoff contract helpers (Milestone 1 INT-35).
  *
  * Canonical UX (see .agents/memory/atlas-shaping-threshold.md):
  *   PROJECT_READY → CommitPill → user tap → client create via handleHandoff.
  *
- * Explicit create phrasing may force the create_project tool so Atlas cannot
+ * Explicit create phrasing may force the create_project tool so Joy cannot
  * narrate creation without executing it.
  */
 
-/** Surface-contract copy injected on Ask Atlas BUILD turns (not Workspace). */
+/** Surface-contract copy injected on Ask Joy BUILD turns (not Workspace). */
 export const ASK_ATLAS_HANDOFF_SURFACE_CONTRACT = `--- SURFACE CONTRACT: ASK ATLAS — HANDOFF REQUIRED ---
-You received a build request, but you are operating on the Ask Atlas surface — NOT the Workspace.
+You received a build request, but you are operating on the Ask Joy surface — NOT the Workspace.
 
 On this surface you MUST NOT:
 - Emit FILE_EDIT_START, LINE_PATCH_START, or any code-writing block
@@ -37,13 +37,13 @@ Then emit this signal as the ABSOLUTE LAST LINE of your response — nothing aft
 HARD RULES ON PROJECT ROUTING — violations break the user experience:
 - You MUST emit PROJECT_READY. That signal arms the Open Workspace control. It does NOT create a project by itself.
 - Do NOT call create_project on exploratory handoff turns. Prefer PROJECT_READY so the user confirms via Open Workspace.
-- NEVER emit NAVIGATE_TO from Ask Atlas. Never write "/project/<id>" in any form. You do not have access to valid project IDs and any ID you emit will be wrong.
+- NEVER emit NAVIGATE_TO from Ask Joy. Never write "/project/<id>" in any form. You do not have access to valid project IDs and any ID you emit will be wrong.
 - A focused project in your context is REFERENCE DATA ONLY — it is NOT the routing target. Never use a focused project as the build destination for a new request.
 - For every new named build request, emit PROJECT_READY with the name derived from the request.
 - Only if the user explicitly says "add this to [existing project name]" should you mention that project in your response text — still emit PROJECT_READY, never OPEN_PROJECT.
 - If the user explicitly asks to open or navigate to an existing project (e.g. "take me to IntoIQ"), emit OPEN_PROJECT:{"projectName":"<project name>"} as the LAST LINE instead of PROJECT_READY.
 
-HARD RULE: You may describe and plan here. You may NEVER start building here (no FILE_EDIT_START, LINE_PATCH_START, code builds, or execution runs). The Workspace owns all execution, run cards, stop controls, Timeline, Changes, Preview, and code mutations. Ask Atlas owns conversation, exploration, planning, project creation, handoff — and deliverable generation.
+HARD RULE: You may describe and plan here. You may NEVER start building here (no FILE_EDIT_START, LINE_PATCH_START, code builds, or execution runs). The Workspace owns all execution, run cards, stop controls, Timeline, Changes, Preview, and code mutations. Ask Joy owns conversation, exploration, planning, project creation, handoff — and deliverable generation.
 
 EXCEPTION — DELIVERABLE GENERATION IS ALWAYS ALLOWED HERE: If the user asks for a spreadsheet, document, product brief, one-pager, executive summary, presentation, PDF, diagram, chart, or any other file — call generate_deliverable THIS TURN, inline in this conversation. Do NOT emit PROJECT_READY for deliverable requests. Do NOT say "I'll put it in your workspace" or "it's in Outputs." The file card renders right here in this conversation — no navigation required. Deliverable generation is NOT "building" — call the tool immediately.
 --- END SURFACE CONTRACT ---`;
@@ -109,7 +109,7 @@ export function isDeliverableOnlyRequest(message: string): boolean {
 
 export type ForceCreateDecisionInput = {
   message: string;
-  /** BUILD/DECIDE tool access (Ask Atlas or Workspace). */
+  /** BUILD/DECIDE tool access (Ask Joy or Workspace). */
   allowToolAccess: boolean;
   /** Workspace surface + BUILD — file-mutation mode. */
   allowBuildSideEffects: boolean;
@@ -119,7 +119,7 @@ export type ForceCreateDecisionInput = {
 };
 
 /**
- * When true, nexus forces the create_project tool so Atlas cannot narrate
+ * When true, nexus forces the create_project tool so Joy cannot narrate
  * creation without executing it (INT-35).
  */
 export function shouldForceCreateProject(input: ForceCreateDecisionInput): boolean {
@@ -132,7 +132,7 @@ export function shouldForceCreateProject(input: ForceCreateDecisionInput): boole
   // Workspace BUILD without a focused project (rare): keep historical path.
   if (input.allowBuildSideEffects) return true;
 
-  // Ask Atlas / home BUILD: explicit create must invoke the tool, not only
+  // Ask Joy / home BUILD: explicit create must invoke the tool, not only
   // PROJECT_READY prose.
   return (
     input.allowToolAccess &&

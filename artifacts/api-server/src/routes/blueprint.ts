@@ -171,7 +171,7 @@ router.post("/projects/:id/blueprint", async (req, res): Promise<void> => {
 
     const messages = await loadConversation(projectId, sessionId);
     if (messages.length === 0) {
-      res.status(400).json({ error: "No conversation found for this project. Have a chat with Atlas in the workspace first." });
+      res.status(400).json({ error: "No conversation found for this project. Have a chat with Joy in the workspace first." });
       return;
     }
 
