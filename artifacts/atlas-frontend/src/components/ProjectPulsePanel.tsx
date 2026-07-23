@@ -5,6 +5,8 @@ import { X, Check } from "lucide-react";
 import { useUpdateProject, getGetProjectQueryKey, getListProjectsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LIFECYCLE_META, type Lifecycle } from "@/lib/lifecycle";
+import { useTier1Memory } from "@/hooks/useTier1Memory";
+import { TIER1_QUESTIONS, openTier1IntakeSheet, type Tier1FieldKey } from "@/lib/tier1Memory";
 
 interface Props {
   projectId: number;
