@@ -2365,9 +2365,16 @@ function ShellCenterButton({
             </defs>
             <circle cx="256" cy="256" r="256" fill="var(--atlas-bg)" />
             <circle cx="256" cy="256" r="256" fill="url(#shell-center-purple)" />
-            <polygon points="256,130 178,390 216,390 268,188" fill="url(#shell-center-gold)" />
-            <polygon points="256,130 334,390 296,390 244,188" fill="url(#shell-center-gold)" />
-            <rect x="192" y="292" width="128" height="30" rx="5" fill="url(#shell-center-gold)" />
+            {/* Custom "J" — same design DNA as the "A":
+                (1) horizontal serif bar (mirrors A's crossbar treatment),
+                (2) tapered vertical stem (mirrors A's leg taper),
+                (3) filled hook curl (mirrors A's leg polygon weight). */}
+            <rect x="192" y="130" width="128" height="30" rx="5" fill="url(#shell-center-gold)" />
+            <polygon points="236,160 276,160 270,320 242,320" fill="url(#shell-center-gold)" />
+            <path
+              d="M 242 320 L 270 320 C 270 375, 220 395, 180 380 C 148 368, 140 340, 148 315 L 178 322 C 172 340, 185 358, 205 358 C 230 358, 240 345, 242 320 Z"
+              fill="url(#shell-center-gold)"
+            />
           </svg>
         </div>
       </button>
