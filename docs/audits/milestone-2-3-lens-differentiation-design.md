@@ -1,8 +1,8 @@
 # Milestone 2.3 — Lens Differentiation Design
 
-**Phase:** Planning complete — **ready for Phase A (plumbing)**  
+**Phase:** Phase A (plumbing) in progress  
 **Date:** 2026-07-23  
-**Status:** **PHASE 0 CLOSED** — Constitution · Eval · Scope · Naming all signed off  
+**Status:** **PHASE 0 CLOSED** · **Phase A plumbing landing**  
 **Prerequisite:** Milestone 2.2 CLOSED (intelligence correctness)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Repo HEAD at commission:** `51acaf50` (`main`, post #217)
@@ -310,7 +310,7 @@ For each test case:
 
 | ID | Criterion | Pass if… |
 |----|-----------|----------|
-| **L1** Distinct job | Each answer clearly serves its constitutional primary objective |
+| **L1** Distinct job | Each answer clearly serves its §3.0 one-sentence contract and primary question |
 | **L2** Distinct content | ≥2 substantive claims unique to each lens; not a heading swap |
 | **L3** Useful alone | A practitioner of that craft could act without reading the other two |
 | **L4** Grounded | No invented stack/lore that contradicts project knowledge |
@@ -480,7 +480,7 @@ Ordered by leverage for true differentiation:
 **Dependencies:** 2.2 closed ✅.  
 **Status:** **Complete** — Flow → Storyteller signed off; Scenario = modifier; Flow reserved for Map; AtlasLens rename required; one-sentence contracts locked.
 
-### Phase A — One lens pipeline (plumbing only) ← **NEXT / FIRST IMPLEMENTATION**  
+### Phase A — One lens pipeline (plumbing only) ← **IN PROGRESS**  
 **Objective:** Carry **active lens** end-to-end on Map **and** live Workspace chat so there is one architecture, not two. **No full chat differentiation yet** — signal must be present, typed, logged, and consumed as a stub/policy hook on Nexus (may be no-op or identity-only beyond “lens=X is active”).  
 **In scope:**
 - Canonical lens type shared by Map tabs + composer (post-naming: Designer | Builder | Storyteller)
@@ -496,7 +496,16 @@ Ordered by leverage for true differentiation:
 - No second parallel `workspaceLens` string space left live in composer
 - Automated or manual trace checklist checked in  
 **Complexity:** Medium (Nexus + client wiring; naming migration).  
-**Dependencies:** Phase 0 naming sign-off.
+**Dependencies:** Phase 0 naming sign-off.  
+**Status (plumbing landing):**
+- ✅ Shared `AtlasPerspective` module (frontend + api-server) + legacy remap
+- ✅ Composer picker: Designer / Builder / Storyteller + Scenario (`speculate`) modifier
+- ✅ `useAtlasConversation` → `useNexusChatStream` sends `perspective` + `speculate`
+- ✅ Nexus `/api/nexus/chat` normalizes + echoes on early `event: meta` (`perspective`, `speculate`, `perspectiveStub`)
+- ✅ Map `lensView` syncs via `axiom:perspective-change` + shared storage
+- ✅ Expand-node enum already `designer|builder|storyteller` (`forge.ts`)
+- ✅ History `AtlasLens` → `HistoryIntent` (`build|decide|chat`)
+- ⏳ Constitution prompts = Phase B (Map) / Phase C (chat) — intentionally not in Phase A
 
 ### Phase A′ — Baseline measurement (may parallelize after A starts)  
 **Objective:** Run T1–T6 against **current** Map behavior (pre-Constitution) for a before/after delta.  
@@ -560,7 +569,7 @@ These remain **out of the lens constitution** unless a phase explicitly absorbs 
 | Phased roadmap | ✅ §6 **Approved order** |
 | Naming recommendation | ✅ §9 — **Signed off** (Flow → Storyteller) |
 
-**Next:** Begin **Phase A** — one lens pipeline plumbing (no full chat differentiation yet).
+**Next:** Finish Phase A acceptance trace checklist, then Phase A′ baseline / Phase B Constitution on Map.
 
 ---
 

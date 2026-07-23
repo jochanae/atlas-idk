@@ -158,6 +158,10 @@ export type AtlasConversationConfig = {
   askAtlasInProject?: UseNexusChatStreamOptions["askAtlasInProject"];
   onConversationId?: (id: string) => void;
   onThinkingStable?: () => void;
+  /** Milestone 2.3 Phase A — canonical perspective for Nexus. */
+  perspective?: UseNexusChatStreamOptions["perspective"];
+  /** Scenario modifier — changes assumptions, not lens identity. */
+  speculate?: boolean;
 };
 
 export type AtlasConversation = {
@@ -205,6 +209,8 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
     askAtlasInProject: config.askAtlasInProject,
     onConversationId: config.onConversationId,
     onThinkingStable: config.onThinkingStable,
+    perspective: config.perspective,
+    speculate: config.speculate,
   });
 
   const canSend = !nexusChatStream.isPending && !nexusChatStream.isStreaming;

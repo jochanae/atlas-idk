@@ -24,28 +24,29 @@ import {
 
 
 const LENS_PLACEHOLDERS: Record<WorkspaceLens, string[]> = {
-  flow: [
+  storyteller: [
     "What are you turning over…",
     "What's the constraint you haven't named…",
     "What would have to be true for this to work…",
     "Where did the last session leave things…",
   ],
-  build: [
+  builder: [
     "What needs to be built or fixed…",
     "What's the smallest next step…",
     "Where does this slot into the system…",
   ],
-  look: [
+  designer: [
     "What visual change do you need…",
     "What feels off in the UI…",
     "Describe the vibe you're chasing…",
   ],
-  scenario: [
-    "What if…",
-    "What changes if this assumption flips…",
-    "Walk a scenario forward — what breaks first…",
-  ],
 };
+
+const SPECULATE_PLACEHOLDERS = [
+  "What if…",
+  "What changes if this assumption flips…",
+  "Walk a scenario forward — what breaks first…",
+];
 
 function useComposerTypewriter(phrases: string[], paused: boolean) {
   const [display, setDisplay] = useState("");
@@ -90,8 +91,22 @@ function useComposerTypewriter(phrases: string[], paused: boolean) {
   return display;
 }
 
-function RotatingPlaceholder({ wsLens, hasInput, inputFocused, hasMessages }: { wsLens: WorkspaceLens; hasInput: boolean; inputFocused: boolean; hasMessages: boolean }) {
-  const pool = LENS_PLACEHOLDERS[wsLens] ?? LENS_PLACEHOLDERS.flow;
+function RotatingPlaceholder({
+  wsLens,
+  speculate,
+  hasInput,
+  inputFocused,
+  hasMessages,
+}: {
+  wsLens: WorkspaceLens;
+  speculate?: boolean;
+  hasInput: boolean;
+  inputFocused: boolean;
+  hasMessages: boolean;
+}) {
+  const pool = speculate
+    ? SPECULATE_PLACEHOLDERS
+    : (LENS_PLACEHOLDERS[wsLens] ?? LENS_PLACEHOLDERS.storyteller);
   const paused = hasInput || inputFocused || hasMessages;
   const typed = useComposerTypewriter(pool, paused);
   if (paused) return null;
@@ -168,6 +183,8 @@ export interface ChatComposerProps {
   inputFocused: boolean;
   setInputFocused: (v: boolean) => void;
   wsLens: WorkspaceLens;
+  /** Scenario modifier — changes placeholders, not perspective identity. */
+  speculate?: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
@@ -264,6 +281,7 @@ export function ChatComposer(props: ChatComposerProps) {
     inputFocused,
     setInputFocused,
     wsLens,
+    speculate = false,
     textareaRef,
     input,
     setInput,
@@ -472,12 +490,13 @@ export function ChatComposer(props: ChatComposerProps) {
       {/* Input — hidden when Terminal tab is active (terminal has its own input row) or when docked. */}
       {composerActive && !isDocked && (() => {
         const wsLensContext: Record<WorkspaceLens, AuraContext> = {
-          build:    "build",
-          flow:     "think",
-          scenario: "decide",
-          look:     "axiom",
+          builder:     "build",
+          storyteller: "think",
+          designer:    "axiom",
         };
-        const auraVars = getAuraVars(wsLensContext[wsLens] ?? "axiom");
+        const auraVars = getAuraVars(
+          speculate ? "decide" : (wsLensContext[wsLens] ?? "axiom"),
+        );
         return <div
         ref={composerShellRef}
         className="atlas-composer-glass atlas-composer-live"

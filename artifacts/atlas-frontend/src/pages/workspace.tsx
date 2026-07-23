@@ -41,6 +41,8 @@ import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 
 import { useChatLens } from "@/hooks/useChatLens";
+import type { AtlasPerspective } from "@/lib/atlasPerspective";
+import { PERSPECTIVE_CONTRACT, PERSPECTIVE_QUESTION } from "@/lib/atlasPerspective";
 import { useComposerZip } from "@/hooks/useComposerZip";
 import { useParkingLot } from "@/hooks/useParkingLot";
 import { useForceDesktop, useIsMobile, useIsTinyScreen, useIsDesktop } from "@/hooks/useBreakpoints";
@@ -475,7 +477,7 @@ const DEFAULT_NAMES = new Set([
   "Untitled project",
   "",
 ]);
-type WorkspaceLens = "flow" | "build" | "look" | "scenario";
+type WorkspaceLens = AtlasPerspective;
 
 type LiveGenerationMode = "plan" | "blueprint" | "edit" | "thinking" | "sketch";
 
@@ -524,7 +526,7 @@ function normalizeThinkFreelyThread(raw: unknown): ChatMessage[] {
 }
 
 
-const LENS_CONFIG: Record<WorkspaceLens, {
+const LENS_CONFIG: Record<AtlasPerspective, {
   label: string;
   sub: string;
   color: string;
@@ -532,11 +534,38 @@ const LENS_CONFIG: Record<WorkspaceLens, {
   glowColor: string;
   bgTint: string;
   model: string;
+  contract: string;
 }> = {
-  flow:     { label: "Flow",     sub: "Think it through",            color: "#C9A24C", borderColor: "rgba(201,162,76,0.45)",  glowColor: "rgba(201,162,76,0.10)", bgTint: "transparent",                   model: "claude" },
-  build:    { label: "Build",    sub: "Write code · push to GitHub", color: "#C4521A", borderColor: "rgba(196,82,26,0.45)",   glowColor: "rgba(196,82,26,0.10)",  bgTint: "transparent",                   model: "claude" },
-  look:     { label: "Look",     sub: "CSS · animation · visual",    color: "#8B5CF6", borderColor: "rgba(139,92,246,0.40)",  glowColor: "rgba(139,92,246,0.10)", bgTint: "transparent",                   model: "gemini" },
-  scenario: { label: "Scenario", sub: "What if — no commitment",     color: "#78716C", borderColor: "rgba(120,113,108,0.35)", glowColor: "rgba(120,113,108,0.06)", bgTint: "rgba(120,113,108,0.04)",       model: "" },
+  designer: {
+    label: "Designer",
+    sub: PERSPECTIVE_QUESTION.designer,
+    color: "#8B5CF6",
+    borderColor: "rgba(139,92,246,0.40)",
+    glowColor: "rgba(139,92,246,0.10)",
+    bgTint: "transparent",
+    model: "gemini",
+    contract: PERSPECTIVE_CONTRACT.designer,
+  },
+  builder: {
+    label: "Builder",
+    sub: PERSPECTIVE_QUESTION.builder,
+    color: "#C4521A",
+    borderColor: "rgba(196,82,26,0.45)",
+    glowColor: "rgba(196,82,26,0.10)",
+    bgTint: "transparent",
+    model: "claude",
+    contract: PERSPECTIVE_CONTRACT.builder,
+  },
+  storyteller: {
+    label: "Storyteller",
+    sub: PERSPECTIVE_QUESTION.storyteller,
+    color: "#C9A24C",
+    borderColor: "rgba(201,162,76,0.45)",
+    glowColor: "rgba(201,162,76,0.10)",
+    bgTint: "transparent",
+    model: "claude",
+    contract: PERSPECTIVE_CONTRACT.storyteller,
+  },
 };
 
 export interface ProjectScan {
@@ -1885,6 +1914,7 @@ function RightPanel({
   onTerminalCommandConsumed,
   onCommandComplete,
   wsLens,
+  speculate,
   onOpenForge,
   externalForgeNodes,
   onForgeNodesConsumed,
@@ -1950,6 +1980,7 @@ function RightPanel({
   onTerminalCommandConsumed?: () => void;
   onCommandComplete?: (command: string, output: string, exitCode: number | null) => void;
   wsLens?: WorkspaceLens;
+  speculate?: boolean;
   onOpenForge?: () => void;
   externalForgeNodes?: ArchNode[];
   onForgeNodesConsumed?: () => void;
@@ -2182,7 +2213,7 @@ function RightPanel({
         </svg>
       ),
     },
-    ...(wsLens === "build" || wsLens === "scenario" ? [{
+    ...(wsLens === "builder" || speculate ? [{
       id: "terminal" as RightTab,
       label: "Terminal",
       icon: (
@@ -2518,7 +2549,7 @@ function RightPanel({
       )}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} onHydrated={onHydrated} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} />}
-      {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} entries={entries} />}
+      {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={speculate} projectId={projectId} entries={entries} />}
       {tab === "write" && <WriteTab projectId={projectId} isMobile={isMobile} />}
     </div>
   );
@@ -4646,6 +4677,7 @@ export default function Workspace() {
   const {
     wsModel, setWsModel,
     wsLens, setWsLensRaw,
+    speculate, setSpeculate,
     showLensPicker, setShowLensPicker,
     detectedLens, setDetectedLens,
     showScenarioPrompt, setShowScenarioPrompt,
@@ -4859,6 +4891,9 @@ export default function Workspace() {
     // so the Gemini→Claude empty-response fallback never ran for image turns.
     model: wsModel === "gemini" ? "gemini" : "claude",
     mode: "workspace",
+    // Milestone 2.3 Phase A — one perspective through Nexus (Constitution in Phase C).
+    perspective: wsLens,
+    speculate,
   });
   // ── CANONICAL NEXUS BRIDGE ───────────────────────────────────────────────────
   // useNexusWorkspaceBridge is the CANONICAL adapter: NexusMessage[] → ChatMessage[],
@@ -5637,37 +5672,39 @@ export default function Workspace() {
   }, [showProjectMenu]);
 
 
-  const setWsLens = useCallback((newLens: WorkspaceLens) => {
-    const currentMessages = messages;
-    if (wsLens === "scenario" && scenarioStartIdxRef.current >= 0 && currentMessages.length > scenarioStartIdxRef.current) {
-      setPendingLensSwitch(newLens);
-      setShowScenarioPrompt(true);
-      return;
-    }
+  const setWsLens = useCallback((newLens: AtlasPerspective) => {
     setWsLensRaw(newLens);
     setDetectedLens(null);
-    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, newLens); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
     workspaceEventBus.emit("lens-change", { lens: newLens });
-    if (newLens === "scenario") {
-      scenarioStartIdxRef.current = currentMessages.length;
-    } else {
-      scenarioStartIdxRef.current = -1;
-    }
     const cfg = LENS_CONFIG[newLens];
     if (cfg.model) setWsModel(cfg.model);
     setShowLensPicker(false);
-  }, [wsLens, messages, id]);
+  }, [setWsLensRaw, setWsModel]);
 
-  // Warn on page-leave if an unsaved scenario is in progress
+  const setSpeculateMode = useCallback((next: boolean) => {
+    const currentMessages = messages;
+    if (speculate && !next && scenarioStartIdxRef.current >= 0 && currentMessages.length > scenarioStartIdxRef.current) {
+      setPendingLensSwitch(wsLens);
+      setShowScenarioPrompt(true);
+      return;
+    }
+    if (!speculate && next) {
+      scenarioStartIdxRef.current = currentMessages.length;
+    }
+    if (!next) scenarioStartIdxRef.current = -1;
+    setSpeculate(next);
+  }, [speculate, messages, wsLens, setSpeculate]);
+
+  // Warn on page-leave if an unsaved scenario (speculate) is in progress
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (wsLens === "scenario" && scenarioStartIdxRef.current >= 0) {
+      if (speculate && scenarioStartIdxRef.current >= 0) {
         e.preventDefault();
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [wsLens]);
+  }, [speculate]);
 
   // Terminal is always available — no auto-fallback on lens change.
 
@@ -6856,6 +6893,7 @@ export default function Workspace() {
   const ghToken = githubPushToken ?? (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
   sendCtxRef.current = {
     wsLens,
+    speculate,
     wsModel,
     githubToken: ghToken,
   };
@@ -8028,7 +8066,7 @@ export default function Workspace() {
   const handleRunCommand = useCallback((command: string) => {
     setPendingTerminalCommand(command);
     setLeftTab("terminal");
-    if (wsLens !== "build" && wsLens !== "scenario") {
+    if (wsLens !== "builder" && !speculate) {
       setWsLensRaw("build");
     }
   }, [wsLens]);
@@ -9283,6 +9321,7 @@ export default function Workspace() {
             onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
             onCommandComplete={handleTerminalComplete}
             wsLens={wsLens}
+            speculate={speculate}
             onBackToChat={() => {
               setLeftTab("chat");
               setDesktopRightFull(false);
@@ -9423,7 +9462,7 @@ export default function Workspace() {
 
             </div>
           ) : leftTab === "terminal" ? (
-            <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} projectId={project?.id} entries={entries || []} />
+            <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={speculate} projectId={project?.id} entries={entries || []} />
           ) : leftTab === "blueprints" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <BlueprintsTab projectId={id} manifestDecision={manifestDecision} manifestLoading={manifestLoading} onBuild={handleManifest} />
@@ -9503,6 +9542,7 @@ export default function Workspace() {
               },
               wsModel,
               wsLens,
+              speculate,
               onSwitchToGemini: () => { setWsModel("gemini"); },
               onEditUserMessage: (content) => {
                 setInput(content);
@@ -9655,6 +9695,7 @@ export default function Workspace() {
               inputFocused,
               setInputFocused,
               wsLens,
+              speculate,
               textareaRef,
               input,
               setInput,
@@ -9981,6 +10022,7 @@ export default function Workspace() {
                 onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
                 onCommandComplete={handleTerminalComplete}
                 wsLens={wsLens}
+                speculate={speculate}
                 onOpenForge={() => setShowForgeExternal(true)}
                 externalForgeNodes={externalForgeNodes}
                 onForgeNodesConsumed={() => setExternalForgeNodes([])}
@@ -10998,10 +11040,11 @@ export default function Workspace() {
               <button onClick={() => setShowLensPicker(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}>×</button>
             </div>
             <div style={{ padding: "0 14px" }}>
-              {(Object.entries(LENS_CONFIG) as [WorkspaceLens, typeof LENS_CONFIG[WorkspaceLens]][]).map(([lensId, cfg]) => (
+              {(Object.entries(LENS_CONFIG) as [AtlasPerspective, typeof LENS_CONFIG[AtlasPerspective]][]).map(([lensId, cfg]) => (
                 <button
                   key={lensId}
                   onClick={() => setWsLens(lensId)}
+                  title={cfg.contract}
                   style={{
                     width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 8,
                     background: wsLens === lensId ? `${cfg.glowColor}` : "transparent",
@@ -11039,9 +11082,36 @@ export default function Workspace() {
                   )}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setSpeculateMode(!speculate)}
+                title="Scenario changes assumptions — not the active perspective"
+                style={{
+                  width: "100%", textAlign: "left", padding: "11px 12px", borderRadius: 8, marginTop: 6, marginBottom: 2,
+                  background: speculate ? "rgba(120,113,108,0.12)" : "transparent",
+                  border: `1px solid ${speculate ? "rgba(120,113,108,0.45)" : "rgba(120,113,108,0.2)"}`,
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+                }}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                  background: "rgba(120,113,108,0.12)",
+                  border: "1px solid rgba(120,113,108,0.35)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "var(--app-font-mono)", fontSize: 10, color: "rgba(120,113,108,0.9)",
+                }}>{speculate ? "ON" : "OFF"}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-body)", fontWeight: 500, color: "var(--atlas-fg)" }}>
+                    Scenario <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", color: "var(--atlas-muted)", letterSpacing: "0.08em" }}>modifier</span>
+                  </div>
+                  <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.05em", marginTop: 2, opacity: 0.7 }}>
+                    What if — changes assumptions, keeps {LENS_CONFIG[wsLens].label}
+                  </div>
+                </div>
+              </button>
               <div style={{ margin: "10px 0 2px", padding: "8px 12px", background: "rgba(201,162,76,0.04)", borderRadius: 6, border: "1px solid rgba(201,162,76,0.1)" }}>
                 <p style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.07em", margin: 0, lineHeight: 1.6 }}>
-                  Lens shapes how Joy responds — and sets the model. <span style={{ color: "rgba(201,162,76,0.7)" }}>Scenario</span> keeps the model you're already using.
+                  Perspectives shape how Joy reasons. <span style={{ color: "rgba(201,162,76,0.7)" }}>Scenario</span> is a toggle — it changes assumptions, not the lens.
                 </p>
               </div>
             </div>
@@ -11060,7 +11130,7 @@ export default function Workspace() {
             border: "1px solid rgba(120,113,108,0.35)",
             boxShadow: "0 20px 60px rgba(0,0,0,0.5)", padding: "20px 20px 18px",
           }}>
-            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(120,113,108,0.7)", marginBottom: 8 }}>Leaving Scenario</div>
+            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(120,113,108,0.7)", marginBottom: 8 }}>Leaving Scenario mode</div>
             <div style={{ fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-md)", color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16 }}>
               What do you want to do with the scenario messages?
             </div>
@@ -11078,16 +11148,9 @@ export default function Workspace() {
                     } catch { /* non-fatal — messages stay in client state */ }
                   }
                   setScenarioBuffer([]);
-                  if (pendingLensSwitch) {
-                    setWsLensRaw(pendingLensSwitch);
-                    setDetectedLens(null);
-                    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
-                    workspaceEventBus.emit("lens-change", { lens: pendingLensSwitch });
-                    const cfg = LENS_CONFIG[pendingLensSwitch];
-                    if (cfg.model) setWsModel(cfg.model);
-                    scenarioStartIdxRef.current = -1;
-                    setPendingLensSwitch(null);
-                  }
+                  setSpeculate(false);
+                  scenarioStartIdxRef.current = -1;
+                  setPendingLensSwitch(null);
                   setShowScenarioPrompt(false);
                   setShowLensPicker(false);
                 }}
@@ -11102,15 +11165,8 @@ export default function Workspace() {
                     setMessages(prev => prev.slice(0, scenarioStartIdxRef.current));
                   }
                   setScenarioBuffer([]);
-                  if (pendingLensSwitch) {
-                    setWsLensRaw(pendingLensSwitch);
-                    setDetectedLens(null);
-                    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
-                    workspaceEventBus.emit("lens-change", { lens: pendingLensSwitch });
-                    const cfg = LENS_CONFIG[pendingLensSwitch];
-                    if (cfg.model) setWsModel(cfg.model);
-                    setPendingLensSwitch(null);
-                  }
+                  setSpeculate(false);
+                  setPendingLensSwitch(null);
                   scenarioStartIdxRef.current = -1;
                   setShowScenarioPrompt(false);
                   setShowLensPicker(false);
@@ -11123,7 +11179,7 @@ export default function Workspace() {
                 onClick={() => { setShowScenarioPrompt(false); setPendingLensSwitch(null); }}
                 style={{ padding: "8px 14px", borderRadius: 8, background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.06em", opacity: 0.55 }}
               >
-                Stay in Scenario
+                Stay in Scenario mode
               </button>
             </div>
           </div>

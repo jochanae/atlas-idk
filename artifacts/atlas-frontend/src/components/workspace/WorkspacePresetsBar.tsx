@@ -2,10 +2,9 @@ import { useState, useRef } from "react";
 import { useWorkspacePresets, type WorkspaceLens } from "@/hooks/useWorkspacePresets";
 
 const LENS_LABEL: Record<WorkspaceLens, string> = {
-  flow: "Flow",
-  build: "Build",
-  look: "Look",
-  scenario: "Scenario",
+  designer: "Designer",
+  builder: "Builder",
+  storyteller: "Storyteller",
 };
 
 const MODEL_LABEL: Record<string, string> = {
@@ -16,10 +15,9 @@ const MODEL_LABEL: Record<string, string> = {
 };
 
 const LENS_COLOR: Record<WorkspaceLens, string> = {
-  flow: "rgba(201,162,76,0.75)",
-  build: "rgba(196,82,26,0.75)",
-  look: "rgba(139,92,246,0.75)",
-  scenario: "rgba(34,197,94,0.75)",
+  designer: "rgba(139,92,246,0.75)",
+  builder: "rgba(196,82,26,0.75)",
+  storyteller: "rgba(201,162,76,0.75)",
 };
 
 function PresetChip({

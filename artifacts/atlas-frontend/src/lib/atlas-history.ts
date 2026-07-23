@@ -16,7 +16,30 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type AtlasLens = "builder" | "strategic" | "minimal";
+/**
+ * History taxonomy — NOT a Workspace perspective / lens.
+ * Milestone 2.3 §9: renamed from AtlasLens so history never collides with
+ * Designer | Builder | Storyteller.
+ */
+export type HistoryIntent = "build" | "decide" | "chat";
+
+/** @deprecated Use HistoryIntent — kept for transitional imports. */
+export type AtlasLens = HistoryIntent;
+
+const HISTORY_INTENT_MAP: Record<string, HistoryIntent> = {
+  build: "build",
+  decide: "decide",
+  chat: "chat",
+  // Legacy AtlasLens values
+  builder: "build",
+  strategic: "decide",
+  minimal: "chat",
+};
+
+export function normalizeHistoryIntent(raw: unknown): HistoryIntent {
+  if (typeof raw !== "string") return "chat";
+  return HISTORY_INTENT_MAP[raw.trim().toLowerCase()] ?? "chat";
+}
 
 export interface AtlasHistoryItem {
   id: string;
@@ -25,7 +48,12 @@ export interface AtlasHistoryItem {
   timestamp: string; // ISO
   isBookmarked: boolean;
   reverted?: boolean;
-  lens: AtlasLens;
+  /** Intent taxonomy for history UI — not a Workspace perspective. */
+  historyIntent: HistoryIntent;
+  /**
+   * @deprecated Prefer historyIntent. Kept for older localStorage snapshots.
+   */
+  lens?: HistoryIntent;
   payload: {
     code_delta?: string;
     active_file?: string;
@@ -36,7 +64,9 @@ export interface AtlasHistoryItem {
 export interface RollbackDetail {
   snapshotId: string;
   associatedMessageId: number;
-  lens: AtlasLens;
+  historyIntent: HistoryIntent;
+  /** @deprecated Prefer historyIntent */
+  lens?: HistoryIntent;
   payload: AtlasHistoryItem["payload"];
 }
 
@@ -56,6 +86,15 @@ function safeLocalStorage(): Storage | null {
   }
 }
 
+function coerceHistoryItem(raw: AtlasHistoryItem & { lens?: unknown }): AtlasHistoryItem {
+  const historyIntent = normalizeHistoryIntent(raw.historyIntent ?? raw.lens);
+  return {
+    ...raw,
+    historyIntent,
+    lens: historyIntent,
+  };
+}
+
 function read(projectId: number | string): AtlasHistoryItem[] {
   const ls = safeLocalStorage();
   if (!ls) return [];
@@ -63,7 +102,7 @@ function read(projectId: number | string): AtlasHistoryItem[] {
     const raw = ls.getItem(storageKey(projectId));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as AtlasHistoryItem[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(coerceHistoryItem) : [];
   } catch {
     return [];
   }
@@ -111,7 +150,9 @@ export function addSnapshot(
   input: {
     associated_message_id: number;
     title: string;
-    lens: AtlasLens;
+    historyIntent?: HistoryIntent;
+    /** @deprecated Prefer historyIntent */
+    lens?: HistoryIntent | AtlasLens;
     payload?: AtlasHistoryItem["payload"];
   },
 ): AtlasHistoryItem | null {
@@ -120,13 +161,15 @@ export function addSnapshot(
   if (items.some((i) => i.associated_message_id === input.associated_message_id)) {
     return null;
   }
+  const historyIntent = normalizeHistoryIntent(input.historyIntent ?? input.lens);
   const next: AtlasHistoryItem = {
     id: genId(),
     associated_message_id: input.associated_message_id,
     title: deriveTitle(input.title),
     timestamp: new Date().toISOString(),
     isBookmarked: false,
-    lens: input.lens,
+    historyIntent,
+    lens: historyIntent,
     payload: input.payload ?? {},
   };
   write(projectId, [next, ...items]);
@@ -137,7 +180,13 @@ export function addSnapshot(
     body: JSON.stringify({
       type: "history_snapshot",
       title: next.title,
-      metadata: { messageId: next.associated_message_id, lens: next.lens, localId: next.id },
+      metadata: {
+        messageId: next.associated_message_id,
+        historyIntent: next.historyIntent,
+        // Keep legacy key for older readers
+        lens: next.historyIntent,
+        localId: next.id,
+      },
       payload: next.payload,
     }),
   }).catch(() => { /* non-fatal — local state is correct */ });
@@ -183,7 +232,8 @@ async function syncBookmarkToServer(
         messageId: item.associated_message_id || null,
         localId: item.id,
         title: item.title,
-        lens: item.lens,
+        lens: item.historyIntent ?? item.lens,
+        historyIntent: item.historyIntent ?? item.lens,
         payload: item.payload,
       }),
     });
@@ -296,7 +346,8 @@ export function rollbackTo(
     const detail: RollbackDetail = {
       snapshotId: target.id,
       associatedMessageId: target.associated_message_id,
-      lens: target.lens,
+      historyIntent: target.historyIntent,
+      lens: target.historyIntent,
       payload: target.payload,
     };
     window.dispatchEvent(new CustomEvent(ROLLBACK_EVENT, { detail }));
@@ -349,9 +400,11 @@ export function useAtlasHistory(projectId: number | string | null | undefined) {
             title: a.title ?? "History item",
             timestamp: a.createdAt ?? new Date().toISOString(),
             isBookmarked: false,
-            lens: ((a.metadata?.lens as string | undefined) ?? "builder") as AtlasLens,
+            historyIntent: normalizeHistoryIntent(
+              a.metadata?.historyIntent ?? a.metadata?.lens ?? "chat",
+            ),
             payload: (a.payload as AtlasHistoryItem["payload"]) ?? {},
-          }));
+          })).map(coerceHistoryItem);
         setItems((prev) => {
           const existingMsgIds = new Set(prev.map((i) => i.associated_message_id));
           const incoming = serverItems.filter((i) => !existingMsgIds.has(i.associated_message_id));

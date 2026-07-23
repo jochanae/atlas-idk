@@ -44,7 +44,7 @@ function makeOpts(): UseChatStreamOptions {
     fileContext: null,
     forgeContext: null,
     dbUrl: null,
-    sendCtxRef: { current: { wsLens: "flow", wsModel: "multi", githubToken: null } } as any,
+    sendCtxRef: { current: { wsLens: "storyteller", speculate: false, wsModel: "multi", githubToken: null } } as any,
     setDetectedLens: vi.fn(),
     setScenarioBuffer: vi.fn(),
     setLeftTab: vi.fn(),

@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import {
   type AtlasHistoryItem,
-  type AtlasLens,
+  type HistoryIntent,
   type CheckpointType,
   type ProjectCheckpoint,
   type ServerBookmark,
@@ -82,9 +82,9 @@ const TAB_BAR: React.CSSProperties = {
   borderRadius: 12,
 };
 
-const lensGlyph = (lens: AtlasLens) => {
-  if (lens === "builder") return <Code2 size={13} strokeWidth={1.7} />;
-  if (lens === "strategic") return <Gavel size={13} strokeWidth={1.7} />;
+const historyIntentGlyph = (intent: HistoryIntent) => {
+  if (intent === "build") return <Code2 size={13} strokeWidth={1.7} />;
+  if (intent === "decide") return <Gavel size={13} strokeWidth={1.7} />;
   return <Sparkles size={13} strokeWidth={1.7} />;
 };
 
@@ -123,7 +123,11 @@ function serverToHistoryItem(sb: ServerBookmark): AtlasHistoryItem {
     title: sb.title,
     timestamp: sb.created_at,
     isBookmarked: true,
-    lens: (sb.lens as AtlasLens | null) ?? "builder",
+    historyIntent: (sb.lens === "builder" || sb.lens === "build")
+      ? "build"
+      : (sb.lens === "strategic" || sb.lens === "decide")
+        ? "decide"
+        : "chat",
     payload,
   };
 }
@@ -262,7 +266,7 @@ export function HistoryBookmarksSheet({
           color: iconColor,
         }}
       >
-        {lensGlyph(item.lens)}
+        {historyIntentGlyph(item.historyIntent ?? item.lens ?? "chat")}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
