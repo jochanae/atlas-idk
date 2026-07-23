@@ -3,8 +3,8 @@
 **Phase:** Evaluation audit (quality of understanding — **not** infrastructure)  
 **Date:** 2026-07-22  
 **Repo HEAD at commission:** `d0b923d1` (`main`, post PR #208)  
-**Status:** **OPEN — evaluation complete; P2/P3 implementation landed — awaiting user regression**  
-**Checklist:** P1 Verify Flow ✅ PASS · P2 Knowledge Classification ✅ implemented · P3 Surface Integrity ✅ implemented · Round 2 validation ✅ complete · Final regression ⏸ user pass  
+**Status:** **OPEN — reasoning PASS (Round 3); execution-layer defects remain**  
+**Checklist:** P1 Verify Flow ✅ PASS · P2/P3 implemented · Round 2 ✅ · R1 intelligence transfer ✅ (user) · Round 3 Ask Atlas reasoning ✅ STRONG PASS · Execution (artifact honesty / export / resume / handoff) 🟡 in progress  
 **Board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Prerequisite:** Milestone 2.1 deliverable contract landed (PR #208)
 
