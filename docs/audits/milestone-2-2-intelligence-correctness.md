@@ -598,6 +598,18 @@ Desktop Flow tab: right-rail no longer filters out `map`.
 
 ---
 
+## Regression note — “Generating the brief” → empty Outputs (2026-07-23)
+
+**User finding (post-redeploy handoff):** Intelligence transfer largely worked (DNA, Objects, Decisions, Builder, Story, Map populated). UX of transfer felt abrupt. Functional gap: Atlas said “Generating the brief now” but Workspace Outputs was empty.
+
+**Root cause (code):** Choosing “build the full product brief” matched `EXPLICIT_CREATE_SIGNALS` (`"build the "`) but **not** `isDeliverableOnlyRequest` (no brief/document synonym). That forced `create_project` then continued with `tools: false` — so `generate_deliverable` never ran. Progressive prose (“Generating…”) is not honesty-guarded. Secondary: even successful Ask Atlas files land in Atlas Files bucket and are not reparented on Open Workspace.
+
+**Separate UX (not this fix):** Workspace kickoff still asks “What’s first?” after handoff; user expected continuity (“I'm continuing the Product Brief…”). Track as transfer-experience work after 2.2, not as intelligence failure.
+
+**Fix:** Treat product brief / one-pager / executive summary as deliverable-only so forceCreate does not fire.
+
+---
+
 ## Regression note — Ask Atlas stream lost on remount (2026-07-23)
 
 **Symptom:** During/after Ask Atlas streaming, soft remount or refresh dropped the assistant turn and injected `Welcome back. Picking up where we left off…`.
