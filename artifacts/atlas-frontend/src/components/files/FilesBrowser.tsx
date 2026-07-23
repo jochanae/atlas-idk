@@ -14,11 +14,12 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { createPortal } from "react-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X, FolderTree } from "lucide-react";
+import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X, FolderTree, Trash2 } from "lucide-react";
 import { useListProjects } from "@workspace/api-client-react";
-import { fetchLibraryItems, type LibraryItem } from "@/lib/library";
+import { fetchLibraryItems, deleteLibraryItem, type LibraryItem } from "@/lib/library";
 import {
   getRecentAttachments,
   subscribeRecentAttachments,
