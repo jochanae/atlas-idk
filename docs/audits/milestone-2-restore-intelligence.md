@@ -1,7 +1,7 @@
 # Milestone 2 — Restore Intelligence
 
 **Parent:** Milestone track (M1 closed → M2 in progress)  
-**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 IN PROGRESS (Phase C CLOSED — D/E remain) · 2.4 NOT STARTED**  
+**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 CLOSED · 2.4 READY FOR PLANNING**  
 **Last updated:** 2026-07-23
 
 ---
@@ -51,25 +51,27 @@ Knowledge classification (K1–K6), surface integrity (S1–S5), handoff intelli
 
 ---
 
-### 2.3 — Lens Differentiation — 🟡 IN PROGRESS ← **NOW**
+### 2.3 — Lens Differentiation — ✅ CLOSED
 
-**Design doc:** [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md)
+**Closed:** 2026-07-23  
+**Design doc:** [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md)  
+**Acceptance:** [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md) · **Phase D:** [`milestone-2-3-phase-d-production.md`](./milestone-2-3-phase-d-production.md)
 
 Prove Designer, Builder, and Storyteller produce meaningfully different outputs and reasoning for the **same question** on the same project — not three skins on one answer.
 
 **Acceptance intent:** Same question → three different perspectives (experience / execution / meaning).
 
-**Status:** Phase 0 **CLOSED**. Phase A **PASS**. Phase B **CLOSED**. Phase C **CLOSED** (live-chat battery 6/6 + continuity Pass). **Next:** Phase D/E to close 2.3. **Do not start 2.4.**
+**Status:** Phases 0–E **CLOSED**. Map + chat batteries 6/6. Live authenticated prod T1–T6 deferred until Constitution redeploy (ops).
 
 **Depends on:** 2.2 ✅
 
 ---
 
-### 2.4 — Natural Conversation — ⬜ NOT STARTED
+### 2.4 — Natural Conversation — ⬜ READY FOR PLANNING
 
 Conversation should feel like working with a capable collaborator, not a procedural assistant.
 
-**Depends on:** 2.2 ✅ and 2.3 (distinct lenses).
+**Depends on:** 2.2 ✅ and 2.3 ✅ (distinct lenses). Unblocked for planning; do not market production as Constitution-differentiated until post-redeploy live battery passes.
 
 ---
 
@@ -82,13 +84,12 @@ Conversation should feel like working with a capable collaborator, not a procedu
         ↓
 2.2 Intelligence correctness  ✅ CLOSED
         ↓
-2.3 Lens differentiation      🟡 IN PROGRESS (Phase C CLOSED — D/E remain)  ← NOW
+2.3 Lens differentiation      ✅ CLOSED
         ↓
-2.4 Natural conversation      ⬜ NOT STARTED
+2.4 Natural conversation      ⬜ READY FOR PLANNING  ← NOW
 ```
 
-Phase C live-chat Constitution CLOSED (battery 6/6 + continuity). Finish D/E before closing 2.3. **Do not start 2.4.**
-
+**2.3 CLOSED.** Milestone **2.4** may begin planning. Ops caveat: redeploy `main` + live T1–T6 before claiming production differentiation.
 ---
 
 ## Explicit non-goals for M2
@@ -113,4 +114,6 @@ Phase C live-chat Constitution CLOSED (battery 6/6 + continuity). Finish D/E bef
 | 2026-07-23 | **2.3 Phase B landing** — Constitution packs + evidence filters + expand-node output contracts; Map-bound Flow chat constitution. Battery eval still open. |
 | 2026-07-23 | **2.3 Phase B CLOSED** — Map battery 6/6 Pass (T1 mandatory Pass). Blind test: labels removable. |
 | 2026-07-23 | **2.3 Phase C landing** — Nexus Workspace injects live-chat Constitution + lens-weighted DNA. |
-| 2026-07-23 | **2.3 Phase C CLOSED** — live-chat battery 6/6 Pass, T1 Pass, continuity Pass; CONTINUITY clause added. 2.4 not started. |
+| 2026-07-23 | **2.3 Phase C CLOSED** — live-chat battery 6/6 Pass, T1 Pass, continuity Pass; CONTINUITY clause added. |
+| 2026-07-23 | **2.3 Phase D CLOSED** — production probe + disagreement + cross-project scenarios ([phase-d](./milestone-2-3-phase-d-production.md)); live authenticated T1–T6 deferred (deploy lag). |
+| 2026-07-23 | **2.3 Phase E CLOSED** — [acceptance report](./milestone-2-3-acceptance-report.md). **Milestone 2.3 CLOSED.** Milestone **2.4** ready for planning (redeploy caveat). |
