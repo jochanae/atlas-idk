@@ -34,6 +34,21 @@ function hex(color: string): string {
   return color.startsWith("#") ? color : `#${color}`;
 }
 
+/**
+ * Paint the themed page fill. Atlas Obsidian (and most inferred themes) use
+ * light heading/body on a dark background — same tokens as PPTX. PDFKit
+ * defaults to a white page, so without this fill light text becomes invisible.
+ */
+function paintPageBackground(doc: PDFKit.PDFDocument, theme: DeliverableTheme): void {
+  doc.save();
+  doc.rect(0, 0, doc.page.width, doc.page.height).fill(hex(theme.colors.background));
+  doc.restore();
+  // Keep the text cursor inside the margin after the full-page fill.
+  doc.x = PAGE_MARGIN;
+  doc.y = PAGE_MARGIN;
+  doc.fillColor(hex(theme.colors.body));
+}
+
 function drawFooter(doc: PDFKit.PDFDocument, theme: DeliverableTheme, brandLabel: string): void {
   const bottom = doc.page.height - PAGE_MARGIN + 14;
   doc
@@ -145,6 +160,11 @@ function buildPdfBuffer(plan: DocumentContentPlan, theme: DeliverableTheme, bran
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
     doc.on("error", reject);
+    // Every new page (including the first) must get the themed background
+    // before content draws — mirrors pptxLayouts slide background fill.
+    doc.on("pageAdded", () => {
+      paintPageBackground(doc, theme);
+    });
     doc.on("end", () => {
       const range = doc.bufferedPageRange();
       for (let i = 0; i < range.count; i++) {
@@ -153,6 +173,10 @@ function buildPdfBuffer(plan: DocumentContentPlan, theme: DeliverableTheme, bran
       }
       resolve(Buffer.concat(chunks));
     });
+
+    // First page already exists when PDFDocument constructs — paint it now
+    // (pageAdded only fires for subsequent addPage calls).
+    paintPageBackground(doc, theme);
 
     // Cover page.
     doc.fillColor(hex(theme.colors.heading)).fontSize(30).font("Helvetica-Bold").text(plan.title, { align: "left" });

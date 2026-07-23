@@ -194,6 +194,9 @@ function buildDocxBuffer(plan: DocumentContentPlan, theme: DeliverableTheme, bra
   }
 
   const doc = new Document({
+    // Match PPTX/PDF: light heading/body tokens assume a dark page fill.
+    // Without this, Word's default white page makes Obsidian text unreadable.
+    background: { color: theme.colors.background },
     sections: [
       {
         headers: {
