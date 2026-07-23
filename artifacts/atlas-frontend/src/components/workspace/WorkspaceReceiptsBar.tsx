@@ -1,5 +1,5 @@
 /**
- * WorkspaceReceiptsBar — surfaces thinking receipts from the Ask Atlas
+ * WorkspaceReceiptsBar — surfaces thinking receipts from the Ask Joy
  * conversation that spawned this project. Anchored at the bottom-left of the
  * conversation column (above the composer / mobile footer), collapsed by
  * default after first view.

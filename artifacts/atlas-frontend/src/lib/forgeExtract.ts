@@ -29,7 +29,7 @@ export function extractStrategicIntent(raw: string): string {
   // If the message was mostly code, prose will be empty or trivially short.
   if (prose.length < 40) {
     return hadFences
-      ? "[Atlas generated code in this reply. Describe the strategic intent behind it — what should this build accomplish, for whom, and why?]"
+      ? "[Joy generated code in this reply. Describe the strategic intent behind it — what should this build accomplish, for whom, and why?]"
       : prose;
   }
 

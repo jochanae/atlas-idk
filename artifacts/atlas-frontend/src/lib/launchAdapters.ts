@@ -1,13 +1,13 @@
 /**
  * Launch Adapter Layer — Phase 3
  *
- * Atlas determines readiness. Adapters handle execution.
+ * Joy determines readiness. Adapters handle execution.
  * The interface is pluggable: today Replit, tomorrow anything.
  *
  * Flow:
  *   PROJECT_READY fires → CommitPill arms → axiom:launch-project dispatched
  *   → LaunchPanel resolves adapter → adapter.launch(spec, onUpdate)
- *   → User sees "Atlas is launching" → adapter reports running → Preview opens
+ *   → User sees "Joy is launching" → adapter reports running → Preview opens
  */
 
 export interface LaunchSpec {
@@ -139,13 +139,13 @@ export const ReplitDevserverAdapter: LaunchAdapter = {
   },
 };
 
-// ── Atlas Native Adapter ──────────────────────────────────────────────────────
+// ── Joy Native Adapter ──────────────────────────────────────────────────────
 // Delegates to the existing BuildPanel via axiom:build-run.
 // BuildPanel owns its own display; this adapter is fire-and-forget.
 
 export const AtlasNativeAdapter: LaunchAdapter = {
   id: "atlas-native",
-  label: "Atlas Native",
+  label: "Joy Native",
 
   canHandle: (spec) => spec.adapter === "atlas-native",
 

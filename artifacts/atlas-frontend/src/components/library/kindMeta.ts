@@ -42,13 +42,13 @@ export function metaFor(kind: LibraryItemKind): KindMeta {
 }
 
 const ORIGIN_LABEL: Record<LibraryItemOrigin["source"], string> = {
-  "ask-atlas": "Ask Atlas",
+  "ask-atlas": "Ask Joy",
   workspace: "Workspace",
   upload: "Upload",
   unknown: "",
 };
 
-/** Human origin phrase: "Saved from Ask Atlas · Family Reunion Planning". */
+/** Human origin phrase: "Saved from Ask Joy · Family Reunion Planning". */
 export function originPhrase(origin: LibraryItemOrigin, projectName?: string | null): string {
   const src = ORIGIN_LABEL[origin.source] ?? "";
   const bits: string[] = [];

@@ -1,7 +1,7 @@
 /**
  * ActivationSequence — first-ever sign-in choreography.
  *
- * Reads as "Atlas is coming online" — not "your workspace is loading."
+ * Reads as "Joy is coming online" — not "your workspace is loading."
  * Sequence (parchment + obsidian):
  *   1. 0.0s → constellation dots fade in, staggered
  *   2. 0.8s → dots converge toward center + Axiom logo strokes draw
@@ -98,7 +98,7 @@ export default function ActivatePage() {
   }
 
   return (
-    <div className="atlas-activate-root" role="status" aria-label="Atlas is coming online">
+    <div className="atlas-activate-root" role="status" aria-label="Joy is coming online">
       <div className="atlas-activate-stage">
         {/* Constellation dots */}
         {CONSTELLATION.map((p, i) => (

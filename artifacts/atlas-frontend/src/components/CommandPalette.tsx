@@ -8,7 +8,7 @@ import {
   type Command as Cmd,
 } from "@/lib/commandRegistry";
 
-const SECTION_ORDER = ["Navigation", "Atlas", "Launcher", "Build", "System"];
+const SECTION_ORDER = ["Navigation", "Joy", "Launcher", "Build", "System"];
 
 function groupBySection(cmds: Cmd[]): [string, Cmd[]][] {
   const map = new Map<string, Cmd[]>();
@@ -40,7 +40,7 @@ export function CommandPalette() {
 
     const commands: Cmd[] = [
       // Navigation
-      { id: "go-home",        label: "Go Home",        description: "Return to the Atlas home page",    keywords: ["home","start","main"],             section: "Navigation", action: () => go("/home") },
+      { id: "go-home",        label: "Go Home",        description: "Return to the Joy home page",    keywords: ["home","start","main"],             section: "Navigation", action: () => go("/home") },
       { id: "open-projects",  label: "Open Projects",  description: "View all your projects",            keywords: ["projects","list"],                 section: "Navigation", action: () => go("/projects") },
       { id: "open-workspace", label: "Open Workspace", description: "Go to your project workspace",      keywords: ["workspace","build","project"],     section: "Navigation", action: () => go("/workspace") },
       { id: "open-preview",   label: "Open Preview",   description: "Open the live app in a new tab",   keywords: ["preview","live","launch","view"],  section: "Navigation",

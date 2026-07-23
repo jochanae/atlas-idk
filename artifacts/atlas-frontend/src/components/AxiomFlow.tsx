@@ -94,7 +94,7 @@ function flowPaletteFor(theme: ThemeMode): FlowPalette {
   };
 }
 
-/** Staged "Atlas is reviewing…" checklist used by the hydrate loading overlay.
+/** Staged "Joy is reviewing…" checklist used by the hydrate loading overlay.
  *  Purely visual cadence — does not reflect actual backend pipeline steps. */
 function AnalyzeChecklist({ goldRgb, mutedText }: { goldRgb: string; mutedText: string }) {
   const steps = ["decisions", "architecture", "unresolved tension", "dependencies"];
@@ -165,7 +165,7 @@ export function isNodeDefined(node: ArchNode): boolean {
 
 // ── Handover snapshot ─────────────────────────────────────────────────────────
 // Build a structured payload that captures the current Flow state for handing
-// off to a new Atlas chat session. The hash is content-addressed so the
+// off to a new Joy chat session. The hash is content-addressed so the
 // Workspace header can detect drift since the last handover.
 
 // Structured snapshot of the Flow at handover time. `summary` is the
@@ -779,13 +779,13 @@ export function AxiomFlow({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFiredRef = useRef(false);
 
-  // Long-press Center button → reset this project's layout to Atlas's auto arrangement.
+  // Long-press Center button → reset this project's layout to Joy's auto arrangement.
   // Clears every node's `moved` flag (which marked it as user-positioned) and re-runs
   // layoutRadial, then persists. Scoped to this project — never global.
   const resetLayoutToAuto = useCallback(() => {
     const hasManual = nodes.some(n => n.moved);
     const confirmMsg = hasManual
-      ? "Reset this project's layout to Atlas's automatic arrangement? Your manual node positions will be lost."
+      ? "Reset this project's layout to Joy's automatic arrangement? Your manual node positions will be lost."
       : "Re-run automatic layout for this project?";
     if (!window.confirm(confirmMsg)) return;
     const cleared = nodes.map(n => ({ ...n, moved: false }));
@@ -1752,7 +1752,7 @@ export function AxiomFlow({
         </div>
       )}
 
-      {/* Drill-down loading overlay — shown while Atlas generates sub-nodes */}
+      {/* Drill-down loading overlay — shown while Joy generates sub-nodes */}
       {drillLoading && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 28,
@@ -1782,7 +1782,7 @@ export function AxiomFlow({
       )}
 
       {/* Auto-hydrating overlay — shown over the generic-shell canvas while
-          Atlas reads the project's data spine and generates real nodes.
+          Joy reads the project's data spine and generates real nodes.
           Semi-transparent so the user sees the canvas beneath it. */}
       {hydrateLoading && !flowEmpty && nodes.length > 0 && (
         <div style={{
@@ -1800,7 +1800,7 @@ export function AxiomFlow({
             color: `rgba(${palette.goldRgb},0.75)`,
             marginBottom: 4,
           }}>
-            Atlas is reviewing…
+            Joy is reviewing…
           </span>
           <AnalyzeChecklist goldRgb={palette.goldRgb} mutedText={palette.mutedText} />
           {hydrateError && (
@@ -1862,9 +1862,9 @@ export function AxiomFlow({
               color: palette.mutedText,
               fontFamily: "var(--app-font-sans)",
             }}>
-              Atlas has been shaping{" "}
+              Joy has been shaping{" "}
               <span style={{ color: palette.fgText, fontWeight: 500 }}>{projectLabel}</span>
-              {" "}through your conversations. Generate the first visual Flow from what Atlas understands so far.
+              {" "}through your conversations. Generate the first visual Flow from what Joy understands so far.
             </div>
           </div>
 
@@ -1976,7 +1976,7 @@ export function AxiomFlow({
                 opacity: 0.6,
               }}
             >
-              Ask Atlas to map it
+              Ask Joy to map it
             </button>
           )}
         </div>
@@ -2097,13 +2097,13 @@ export function AxiomFlow({
             color: palette.goldText, fontFamily: "var(--app-font-mono)",
             textTransform: "uppercase", marginBottom: 8,
           }}>
-            Hand off to Atlas
+            Hand off to Joy
           </div>
           <div style={{
             fontSize: 10.5, color: palette.fgText,
             marginBottom: 10, lineHeight: 1.5,
           }}>
-            Atlas will start a new chat seeded with this Flow snapshot
+            Joy will start a new chat seeded with this Flow snapshot
             ({currentSnapshot.definedCount}/{currentSnapshot.totalCount} defined).
           </div>
           <input
@@ -2159,7 +2159,7 @@ export function AxiomFlow({
                 opacity: handoverPending ? 0.5 : 1,
               }}
             >
-              {handoverPending ? "Handing over…" : "Hand over to Atlas"}
+              {handoverPending ? "Handing over…" : "Hand over to Joy"}
             </button>
           </div>
         </div>
@@ -2365,7 +2365,7 @@ export function AxiomFlow({
                   letterSpacing: "0.1em", textTransform: "uppercase",
                   color: `rgba(${palette.goldRgb},0.75)`, marginBottom: 6,
                 }}>
-                  Atlas believes · {activeCardNode.confidence <= 1
+                  Joy believes · {activeCardNode.confidence <= 1
                     ? Math.round(activeCardNode.confidence * 100)
                     : Math.round(activeCardNode.confidence)}%
                 </div>
@@ -2401,7 +2401,7 @@ export function AxiomFlow({
         {!flowLoading && !flowEmpty && nodes.length > 0 && (
           <button
             type="button"
-            title="Tap: center map · Long-press: reset to Atlas's auto layout"
+            title="Tap: center map · Long-press: reset to Joy's auto layout"
             onClick={(e) => {
               e.stopPropagation();
               if (longPressFiredRef.current) {
@@ -2490,7 +2490,7 @@ export function AxiomFlow({
             )}
             <button
               type="button"
-              title={hydrateLoading ? "Analyzing…" : needsHydrateHint ? "Tap to hydrate — Atlas reads decisions, ledger, and architecture" : "Update — Atlas re-reads decisions, ledger, and architecture"}
+              title={hydrateLoading ? "Analyzing…" : needsHydrateHint ? "Tap to hydrate — Joy reads decisions, ledger, and architecture" : "Update — Joy re-reads decisions, ledger, and architecture"}
               onClick={(e) => { e.stopPropagation(); void hydrateFlow(); }}
               onMouseDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}

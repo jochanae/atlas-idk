@@ -153,7 +153,7 @@ export function UrlPreviewCard({ url, data, loading, error, onDismiss }: Props) 
               <polyline points="21,15 16,10 5,21" />
             </svg>
             <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.6)", letterSpacing: "0.06em" }}>
-              Screenshot captured · Atlas will see this
+              Screenshot captured · Joy will see this
             </span>
           </div>
         )}
@@ -164,7 +164,7 @@ export function UrlPreviewCard({ url, data, loading, error, onDismiss }: Props) 
               <path d="M21,12v7a2,2,0,0,1-2,2H5a2,2,0,0,1-2-2V5a2,2,0,0,1,2-2h11" />
             </svg>
             <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "rgba(255,255,255,0.3)", letterSpacing: "0.06em" }}>
-              Page content captured · Atlas will read this
+              Page content captured · Joy will read this
             </span>
           </div>
         )}

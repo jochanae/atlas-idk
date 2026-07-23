@@ -479,7 +479,7 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <PortfolioHealthDashboard onOpenProject={onOpenProject} />
       </RevealOnScroll>
 
-      {/* ACTIVE RUNS moved to the project drawer → Tools → Atlas Composer */}
+      {/* ACTIVE RUNS moved to the project drawer → Tools → Joy Composer */}
 
 
       {/* RECENT ACTIVITY */}

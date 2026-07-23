@@ -65,7 +65,7 @@ export function AskAtlasFocusSheet({
             fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.12em",
             textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.7,
           }}>
-            Atlas focus
+            Joy focus
           </span>
           <button
             onClick={onClose}

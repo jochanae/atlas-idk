@@ -4,7 +4,7 @@
  * Listens for `axiom:launch-project` (CustomEvent<LaunchSpec>).
  * Resolves the right adapter, runs it, and shows progress.
  *
- * The experience reads as "Atlas is launching" — not "you opened a tab."
+ * The experience reads as "Joy is launching" — not "you opened a tab."
  * Auto-dismisses 8s after reaching running state.
  */
 
@@ -18,7 +18,7 @@ type Phase = "idle" | "checking" | "starting" | "running" | "failed" | "no-scaff
 const PHASE_LABEL: Record<Phase, string> = {
   idle: "",
   checking: "Checking project…",
-  starting: "Atlas is launching your project…",
+  starting: "Joy is launching your project…",
   running: "Running",
   failed: "Launch failed",
   "no-scaffold": "No code yet",

@@ -180,7 +180,7 @@ export function MemoryTab({ projectId }: { projectId: number }) {
               return (
                 <div style={{ padding: "48px 16px", textAlign: "center" }}>
                   <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", opacity: 0.4, lineHeight: 1.7, fontFamily: "var(--app-font-mono)" }}>
-                    Nothing here yet.<br />Atlas builds memory as you work.
+                    Nothing here yet.<br />Joy builds memory as you work.
                   </div>
                 </div>
               );

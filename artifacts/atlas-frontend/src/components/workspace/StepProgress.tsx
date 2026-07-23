@@ -1,6 +1,6 @@
 // StepProgress — unified step indicator for chat streaming.
 //
-// mode="single"  Ask Atlas: pulsing dot + current step text.
+// mode="single"  Ask Joy: pulsing dot + current step text.
 //                Shown when streaming but no assistant content has appeared yet.
 // mode="stream"  Workspace: orbital animation + narrated or ambient step text.
 //                Driven by the activityStream content string.
@@ -75,7 +75,7 @@ function resolveActivityStatus(content: string): string {
 }
 
 const AMBIENT_STEPS = [
-  "Atlas is thinking",
+  "Joy is thinking",
   "Mapping architecture",
   "Aligning multi-agent nodes",
   "Synthesizing workspace blueprint",

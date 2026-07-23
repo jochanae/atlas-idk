@@ -17,7 +17,7 @@ const VIOLET_RING = "rgb(167,139,250)";
 const FONT_MONO = "var(--app-font-mono, 'Geist Mono', ui-monospace, monospace)";
 const FONT_SANS = "var(--app-font-sans, 'Geist', ui-sans-serif, system-ui)";
 
-/** Shaping signals shown in Atlas Knows — awareness layer only. */
+/** Shaping signals shown in Joy Knows — awareness layer only. */
 const SHAPING_TYPES: HudEventType[] = ["INTENT", "TENSION", "PROJECT", "MEMORY", "DECISION"];
 
 /** Signals persisted to the API for session restoration. */
@@ -258,13 +258,13 @@ export function AtlasMemoryHUD({
   // ── Collapsed pill ──
   if (!expanded) {
     const topSignal = shapingEvents[0];
-    const pillLabel = snapshot[0]?.value ?? topSignal?.payload ?? "Atlas Knows";
+    const pillLabel = snapshot[0]?.value ?? topSignal?.payload ?? "Joy Knows";
     return (
       <div style={wrapStyle}>
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          aria-label="Expand Atlas Knows"
+          aria-label="Expand Joy Knows"
           style={{
             height: 28,
             padding: "0 11px",
@@ -312,7 +312,7 @@ export function AtlasMemoryHUD({
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {!isRestored ? <VioletPulse /> : <AmberDot />}
             <span style={{ fontFamily: FONT_SANS, fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.7)", letterSpacing: "-0.005em" }}>
-              Atlas Knows
+              Joy Knows
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center" }}>

@@ -364,7 +364,7 @@ export function AttachmentDiagnosticsPanel() {
           ...mono, fontSize: 12, color: "#444",
           border: "1px dashed #222", borderRadius: 10,
         }}>
-          No attachment attempts recorded yet. Try attaching a file in the workspace or Ask Atlas.
+          No attachment attempts recorded yet. Try attaching a file in the workspace or Ask Joy.
         </div>
       ) : (
         <div>

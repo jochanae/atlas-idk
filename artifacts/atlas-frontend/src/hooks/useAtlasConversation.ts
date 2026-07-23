@@ -1,7 +1,7 @@
 /**
  * useAtlasConversation — Surface-neutral conversation controller.
  *
- * Owns useNexusChatStream directly. Both Ask Atlas and Workspace instantiate
+ * Owns useNexusChatStream directly. Both Ask Joy and Workspace instantiate
  * this hook. The controller calls nexusChatStream.send({ text, attachmentIds })
  * with the canonical submission object — no surface adapter, no field
  * extraction. Nothing between submit() and the transport may remove or
@@ -162,7 +162,7 @@ export type AtlasConversationConfig = {
 
 export type AtlasConversation = {
   /**
-   * Canonical user-initiated send. Called from both Ask Atlas and Workspace.
+   * Canonical user-initiated send. Called from both Ask Joy and Workspace.
    * Returns SubmissionResult — callers must await to determine lifecycle outcome.
    * The controller validates, normalises, converts staged attachments, drives
    * lifecycle callbacks, and calls nexusChatStream.send directly.

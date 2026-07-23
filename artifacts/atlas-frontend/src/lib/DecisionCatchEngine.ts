@@ -8,7 +8,7 @@ export type CommitCardPayload = {
   commitLabel?: string;
 };
 
-// Forward-looking decision language — Atlas is proposing something new
+// Forward-looking decision language — Joy is proposing something new
 const DECISION_TRIGGERS = [
   "decided",
   "going with",
@@ -26,7 +26,7 @@ const DECISION_TRIGGERS = [
   "we'll go with",
 ];
 
-// Atlas is observing/summarizing existing context — not proposing a new decision
+// Joy is observing/summarizing existing context — not proposing a new decision
 const SUMMARY_SUPPRESSORS = [
   "from what i can see",
   "from what i've seen",
@@ -56,7 +56,7 @@ const SUMMARY_SUPPRESSORS = [
   "as far as i can tell",
   "looking at what",
   "from the codebase",
-  // Aesthetic / design-language observations — Atlas noting existing context, not deciding
+  // Aesthetic / design-language observations — Joy noting existing context, not deciding
   "the aesthetic is already",
   "aesthetic is locked",
   "already locked in from",
@@ -64,7 +64,7 @@ const SUMMARY_SUPPRESSORS = [
   "design language is already",
 ];
 
-// Atlas is evaluating the work — never a user-facing decision
+// Joy is evaluating the work — never a user-facing decision
 // If the title candidate starts with one of these, suppress the card.
 const SELF_EVAL_OPENERS = [
   "this is a sharp",
@@ -103,7 +103,7 @@ const BUILD_INTENT_TRIGGERS = [
   "scaffold",
 ];
 
-// Atlas is asking a question or pushing back — do not show BUILD READY
+// Joy is asking a question or pushing back — do not show BUILD READY
 const PUSHBACK_SIGNALS = [
   "before we build",
   "before building",
@@ -173,10 +173,10 @@ export function detectDecisionMoment(
   // Deliverable-guard fallback is not a product decision / build-ready signal
   if (GUARD_FALLBACK_MARKERS.some((m) => lower.includes(m))) return null;
 
-  // Atlas is summarizing/observing — not proposing a decision
+  // Joy is summarizing/observing — not proposing a decision
   if (SUMMARY_SUPPRESSORS.some((s) => lower.includes(s))) return null;
 
-  // BUILD READY: user explicitly requested initialization/build AND Atlas isn't pushing back
+  // BUILD READY: user explicitly requested initialization/build AND Joy isn't pushing back
   const hasBuildIntent = BUILD_INTENT_TRIGGERS.some((t) => userLower.includes(t));
   const atlasPushingBack = PUSHBACK_SIGNALS.some((s) => lower.includes(s));
 
@@ -213,7 +213,7 @@ export function detectDecisionMoment(
     return DECISION_TRIGGERS.some((t) => sl.includes(t));
   });
 
-  // Title candidate: the trigger sentence (not sentence[0], which is often Atlas's preamble)
+  // Title candidate: the trigger sentence (not sentence[0], which is often Joy's preamble)
   const titleCandidate = triggerSentence ?? sentences[0] ?? clean;
   const candidateLower = titleCandidate.toLowerCase();
 

@@ -15,11 +15,11 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Atlas — Decision Enforcement System" },
+      { title: "Joy — Decision Enforcement System" },
       {
         name: "description",
         content:
-          "Atlas: a decision enforcement system. Permanent record of architectural decisions, costs, and bought lessons.",
+          "Joy: a decision enforcement system. Permanent record of architectural decisions, costs, and bought lessons.",
       },
     ],
   }),

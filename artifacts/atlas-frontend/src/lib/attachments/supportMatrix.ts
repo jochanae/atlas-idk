@@ -1,7 +1,7 @@
 /**
  * Explicit attachment support matrix.
  *
- * This is the product contract for conversational attachments. Both Ask Atlas
+ * This is the product contract for conversational attachments. Both Ask Joy
  * and Workspace must enforce the same rules before Send — never surface-
  * specific allowlists.
  *
@@ -50,7 +50,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     mimeTypes: ["image/png"],
     kind: "image",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "jpeg",
@@ -59,7 +59,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     mimeTypes: ["image/jpeg"],
     kind: "image",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "webp",
@@ -68,7 +68,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     mimeTypes: ["image/webp"],
     kind: "image",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "pdf",
@@ -77,7 +77,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     mimeTypes: ["application/pdf"],
     kind: "pdf",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "txt",
@@ -86,7 +86,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     mimeTypes: ["text/plain"],
     kind: "text",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "markdown",
@@ -95,7 +95,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     mimeTypes: ["text/markdown", "text/x-markdown"],
     kind: "text",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "docx",
@@ -106,7 +106,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     ],
     kind: "document",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "pptx",
@@ -117,7 +117,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     ],
     kind: "presentation",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "xlsx",
@@ -128,7 +128,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     ],
     kind: "spreadsheet",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "csv",
@@ -137,7 +137,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     mimeTypes: ["text/csv", "application/csv"],
     kind: "spreadsheet",
     capability: "model_use",
-    statusLabel: "Ready for Atlas",
+    statusLabel: "Ready for Joy",
   },
   {
     id: "zip",
@@ -146,7 +146,7 @@ export const ATTACHMENT_SUPPORT_MATRIX: readonly SupportMatrixEntry[] = [
     mimeTypes: ["application/zip", "application/x-zip-compressed"],
     kind: "archive",
     capability: "storage_only",
-    statusLabel: "Stored — Atlas can't read this file type yet",
+    statusLabel: "Stored — Joy can't read this file type yet",
   },
 ] as const;
 

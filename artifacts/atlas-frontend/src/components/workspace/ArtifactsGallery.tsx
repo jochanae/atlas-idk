@@ -4,7 +4,7 @@ import { classify } from "@/lib/outputsClassification";
 import { resolveItemDestination } from "@/lib/resolveItemDestination";
 
 /**
- * ArtifactsGallery — the "Atlas Generated" artifact list.
+ * ArtifactsGallery — the "Joy Generated" artifact list.
  *
  * Extracted verbatim from PreviewPanel so it can also render as a sub-tab
  * inside the workspace Outputs panel. Cross-panel actions ("Open in Draft",
@@ -79,7 +79,7 @@ export function ArtifactsGallery({ projectId, enabled = true }: { projectId: num
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderBottom: "1px solid var(--atlas-border)", background: "var(--atlas-surface)" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.05em" }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block", boxShadow: "0 0 6px rgba(201,162,76,0.5)" }} />
-          Atlas Generated
+          Joy Generated
         </span>
         <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45 }}>
           {artifacts.length > 0 ? `${artifacts.length} artifact${artifacts.length === 1 ? "" : "s"}` : ""}

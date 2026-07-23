@@ -23,8 +23,8 @@ export type ShellMode = 'ambient' | 'active' | 'operational';
 
 // Shaping → Commit handoff state machine.
 //   idle          = no commit in flight (baseline)
-//   shaping       = Atlas is mid-stream forming the idea; pill visible but non-interactive
-//   ready         = stream done, Atlas finished goodbye; CommitPill glowing, waiting for tap
+//   shaping       = Joy is mid-stream forming the idea; pill visible but non-interactive
+//   ready         = stream done, Joy finished goodbye; CommitPill glowing, waiting for tap
 //   packaging     = user tapped; handleHandoff running in background
 //   opening       = handoff complete, navigating; pill shows "Opening Workspace…"
 //   transitioning = legacy alias kept for backward compat; behaves like packaging

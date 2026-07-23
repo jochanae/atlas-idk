@@ -1,4 +1,4 @@
-// Intelligence Panel — Atlas's indexed understanding of the project.
+// Intelligence Panel — Joy's indexed understanding of the project.
 // NOT a file browser. Workspace tab already owns files/tree/edit.
 // This surface answers: where is X used, who imports Y, what routes exist,
 // what components live here, what does this depend on, ask a question.
@@ -187,8 +187,8 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
   if (!source) {
     return (
       <EmptyState
-        label="Atlas hasn't indexed this project yet"
-        hint="Once you upload a ZIP, connect a repo, or generate files in Workspace, Atlas will build a searchable index — symbols, routes, components, imports — and you'll be able to interrogate the project from here."
+        label="Joy hasn't indexed this project yet"
+        hint="Once you upload a ZIP, connect a repo, or generate files in Workspace, Joy will build a searchable index — symbols, routes, components, imports — and you'll be able to interrogate the project from here."
         onRetry={refresh}
       />
     );
@@ -281,7 +281,7 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
             <div style={{ flex: 1, overflow: "auto" }}>
               {!searched && (
                 <div style={{ padding: 16, fontSize: 11.5, color: MUTED, lineHeight: 1.6 }}>
-                  Search Atlas's index of this project.
+                  Search Joy's index of this project.
                   <div style={{ marginTop: 8, fontSize: 10.5 }}>
                     Try: <code style={{ color: GOLD }}>useAuth</code>, <code style={{ color: GOLD }}>createProject</code>, <code style={{ color: GOLD }}>/api/sources</code>
                   </div>
@@ -359,7 +359,7 @@ export const CodebasePanel: React.FC<Props> = ({ projectId }) => {
 
         {view === "questions" && (
           <StubView
-            title="Ask Atlas about this project"
+            title="Ask Joy about this project"
             blurb="Free-form Q&A grounded in the indexed source. Every answer cites file:line so you can jump straight to the code."
             examples={[
               '"Where does auth state get initialized?"',

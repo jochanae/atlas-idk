@@ -727,7 +727,7 @@ ${t}
   }, [projectId]);
 
   // Listen for auto-routed preview artifacts emitted by useChatStream when
-  // Atlas generates a FILE_EDIT at preview/output.html. Mirrors the sandboxCode
+  // Joy generates a FILE_EDIT at preview/output.html. Mirrors the sandboxCode
   // prop path so Draft auto-populates without user copy-paste.
   useEffect(() => {
     const handler = (ev: Event) => {
@@ -1524,7 +1524,7 @@ ${t}
         </div>
       )}
 
-      {/* The former "Atlas Generated" artifacts view now lives inside the
+      {/* The former "Joy Generated" artifacts view now lives inside the
           workspace Outputs panel as an "Artifacts" sub-tab. See
           @/components/workspace/ArtifactsGallery.tsx. */}
 
@@ -1540,7 +1540,7 @@ ${t}
                 <rect x="2" y="14" width="20" height="8" rx="2" stroke="var(--atlas-fg)" strokeWidth="1.5" />
               </svg>
               <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.4, textAlign: "center", lineHeight: 1.8 }}>
-                No runnable code yet. Ask Atlas to scaffold a project to get a live preview.
+                No runnable code yet. Ask Joy to scaffold a project to get a live preview.
               </div>
             </div>
           )}
@@ -1576,7 +1576,7 @@ ${t}
                     Visual Artifact
                   </div>
                   <div style={{ fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
-                    Atlas generated a visual preview — not a runnable project. No <code style={{ fontSize: 10, color: "var(--atlas-fg)", opacity: 0.6 }}>package.json</code> was emitted. Check the <strong style={{ color: "var(--atlas-fg)", opacity: 0.7 }}>Artifacts</strong> tab to see the output, or ask Atlas to "build a complete runnable project with package.json and Vite config" to get a Local Dev–ready scaffold.
+                    Joy generated a visual preview — not a runnable project. No <code style={{ fontSize: 10, color: "var(--atlas-fg)", opacity: 0.6 }}>package.json</code> was emitted. Check the <strong style={{ color: "var(--atlas-fg)", opacity: 0.7 }}>Artifacts</strong> tab to see the output, or ask Joy to "build a complete runnable project with package.json and Vite config" to get a Local Dev–ready scaffold.
                   </div>
                 </div>
               )}
@@ -1653,10 +1653,10 @@ ${t}
                 </div>
               )}
 
-              {/* While booting: show Atlas Generated preview as placeholder + logs below */}
+              {/* While booting: show Joy Generated preview as placeholder + logs below */}
               {wsDsStatus !== "running" && (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                  {/* Atlas Generated fallback while boot happens */}
+                  {/* Joy Generated fallback while boot happens */}
                   {manifestPreviewHtml && wsDsStatus !== "idle" && (
                     <div style={{ flex: "0 0 55%", overflow: "hidden", borderBottom: "1px solid var(--atlas-border)", position: "relative" }}>
                       <div style={{ position: "absolute", top: 6, left: 8, fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.35, letterSpacing: "0.08em", zIndex: 1 }}>
@@ -1664,7 +1664,7 @@ ${t}
                       </div>
                       <iframe
                         srcDoc={manifestPreviewHtml}
-                        title="Atlas Generated (fallback)"
+                        title="Joy Generated (fallback)"
                         sandbox="allow-scripts allow-same-origin"
                         style={{ width: "100%", height: "100%", border: "none", display: "block", opacity: 0.7 }}
                       />

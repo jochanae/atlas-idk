@@ -111,7 +111,7 @@ export default function KnowledgePage() {
         </h1>
         <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 18px", lineHeight: 1.6 }}>
           Search a concept, component, or pattern across every one of your projects.
-          Atlas ranks each implementation by how mature it looks — breadth of files touched,
+          Joy ranks each implementation by how mature it looks — breadth of files touched,
           depth of usage, test coverage, and recency.
         </p>
 

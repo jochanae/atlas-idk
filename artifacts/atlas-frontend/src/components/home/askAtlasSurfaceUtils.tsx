@@ -74,7 +74,7 @@ export function findProjectOpenTarget<P extends { id: number; name: string }>(
 }
 
 /**
- * Legacy / sketch image helper for Ask Atlas user bubbles.
+ * Legacy / sketch image helper for Ask Joy user bubbles.
  *
  * INT-40: AttachmentStrip owns structured attachments (including PPTX/PDF).
  * Never render non-image attachments as <img> — that produced the broken

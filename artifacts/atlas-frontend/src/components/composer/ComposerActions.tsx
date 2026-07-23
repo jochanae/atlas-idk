@@ -73,9 +73,9 @@ export interface ComposerActionsProps {
   hasAttachments?: boolean;
   /** Optional trailing slot — e.g. workspace model chip — rendered between actions and Send. */
   trailing?: ReactNode;
-  /** Strip the borders / chip backgrounds from + and ... buttons (used by Ask Atlas). */
+  /** Strip the borders / chip backgrounds from + and ... buttons (used by Ask Joy). */
   borderless?: boolean;
-  /** When true (Ask Atlas), hides workspace-only items from the More menu. */
+  /** When true (Ask Joy), hides workspace-only items from the More menu. */
   globalContext?: boolean;
   /** When provided, shows a "Sketch" tile in the + sheet that opens a manual
    *  image-generation prompt. Receives the composed `[SKETCH:<preset>] …`
@@ -100,7 +100,7 @@ type PrimaryItem = {
 
 const PRIMARY_ITEMS: PrimaryItem[] = [
   { id: "forge-intake", label: "Add to Forge", icon: <Flame size={18} strokeWidth={1.6} />, projectOnly: true },
-  // Files is available in Ask Atlas / ambient home (global) as well as workspace —
+  // Files is available in Ask Joy / ambient home (global) as well as workspace —
   // it opens the same /files route as the hamburger drawer.
   { id: "files", label: "Files", icon: <FolderClosed size={18} strokeWidth={1.6} /> },
   { id: "mcp", label: "MCP", icon: <Layers size={18} strokeWidth={1.6} /> },

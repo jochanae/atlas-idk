@@ -101,7 +101,7 @@ function resolveRuntimeRecommendation(
         tone: "warning",
         title: "Dependencies changed",
         explanation:
-          "package.json or the lockfile changed after the last successful run. Atlas will reinstall before the next restart.",
+          "package.json or the lockfile changed after the last successful run. Joy will reinstall before the next restart.",
         action: "restart",
         actionLabel: "Restart",
       };
@@ -109,7 +109,7 @@ function resolveRuntimeRecommendation(
     if (readiness?.classification === "stale") {
       return {
         tone: "warning",
-        title: "Atlas needs to inspect this target again",
+        title: "Joy needs to inspect this target again",
         explanation:
           "The repository's runtime structure changed after the last successful run. Reclassify before restarting.",
         action: "reclassify",
@@ -134,7 +134,7 @@ function resolveRuntimeRecommendation(
     if (blockedReason === "target-changed") {
       return {
         tone: "warning",
-        title: "Atlas needs to inspect this target again",
+        title: "Joy needs to inspect this target again",
         explanation:
           "The repository's runtime structure changed after the last successful run.",
         action: "reclassify",
@@ -155,7 +155,7 @@ function resolveRuntimeRecommendation(
         tone: "warning",
         title: "Dependencies changed",
         explanation:
-          "package.json or the lockfile changed after the last successful run. Atlas will reinstall before restarting.",
+          "package.json or the lockfile changed after the last successful run. Joy will reinstall before restarting.",
         action: "reinstall-restart",
         actionLabel: "Reinstall and restart",
       };
@@ -163,7 +163,7 @@ function resolveRuntimeRecommendation(
     if (readiness?.classification === "stale") {
       return {
         tone: "warning",
-        title: "Atlas needs to inspect this target again",
+        title: "Joy needs to inspect this target again",
         explanation: "The repository's runtime structure changed after the last successful run.",
         action: "reclassify",
         actionLabel: "Inspect repository again",
@@ -194,7 +194,7 @@ function resolveRuntimeRecommendation(
   if (status === "error") {
     return {
       tone: "danger",
-      title: "Atlas could not start the app",
+      title: "Joy could not start the app",
       explanation: "An unexpected error occurred. Review the logs and try again.",
       action: "view-logs",
       actionLabel: "View logs",
@@ -806,7 +806,7 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
 
           {selectedTarget.status === "likely-runnable" && (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>Atlas will:</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>Joy will:</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>• Install this repository's dependencies</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>• Start the {selectedTarget.role === "frontend" ? "frontend" : selectedTarget.role === "api" ? "API server" : "application"}</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>• Check that it accepts HTTP connections</div>
@@ -867,7 +867,7 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
                           </button>
                         )
                       ) : (
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>Manual setup required — Atlas does not currently support this service</span>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>Manual setup required — Joy does not currently support this service</span>
                       )}
                     </div>
                     {showInput && (
@@ -915,7 +915,7 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
                 </div>
               )}
               <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>
-                Atlas cannot confirm the app will start until all services are connected.
+                Joy cannot confirm the app will start until all services are connected.
               </div>
             </div>
           )}
@@ -1042,7 +1042,7 @@ export function RuntimeDecisionCard({ data, projectId }: { data: RuntimeCardData
       {phase === "confirming" && (
         <>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 16, lineHeight: 1.6 }}>
-            Atlas will install this repository's dependencies and run its declared development command inside the project workspace.
+            Joy will install this repository's dependencies and run its declared development command inside the project workspace.
           </div>
           <div style={{ marginBottom: 14, padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 7, ...MONO, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
             <div>{selectedTarget.installCommand}</div>

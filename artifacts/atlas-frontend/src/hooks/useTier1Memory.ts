@@ -4,7 +4,7 @@
  * Refetches on:
  *   - mount / projectId change
  *   - window focus
- *   - TIER1_UPDATED_EVENT (dispatched after commit or when Atlas tool-calls
+ *   - TIER1_UPDATED_EVENT (dispatched after commit or when Joy tool-calls
  *     `tier1_upsert_field` server-side — currently on a poll interval as a
  *     safety net until the chat stream forwards the tool-result to FE)
  *   - 20s poll while incomplete-and-not-skipped
@@ -58,7 +58,7 @@ export function useTier1Memory(projectId: number | null): UseTier1Result {
     };
   }, [refetch]);
 
-  // Poll while incomplete and not skipped — Atlas may be writing between turns.
+  // Poll while incomplete and not skipped — Joy may be writing between turns.
   useEffect(() => {
     if (!projectId) return;
     const missingCount = memory?.missing?.length ?? 6;

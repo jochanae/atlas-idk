@@ -1,7 +1,7 @@
 /**
  * DecisionCatchCard payload — produced by the backend "decision catch"
  * detection layer when a user's BUILD intent (or a strong forward-looking
- * decision from Atlas) semantically overlaps with an already-committed
+ * decision from Joy) semantically overlaps with an already-committed
  * Decision Ledger entry.
  *
  * See: docs/handoffs/2026-07-07-decision-catch-endpoint.md
@@ -30,7 +30,7 @@ export type CatchCheck = {
 
 export type CatchPayload = {
   v: 1;
-  /** What Atlas heard the user (or itself) commit to. */
+  /** What Joy heard the user (or itself) commit to. */
   intent: string;
   /** Ordered checks — conflicts should come first. */
   checks: CatchCheck[];

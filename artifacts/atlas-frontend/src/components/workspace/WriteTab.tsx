@@ -158,19 +158,19 @@ const PROFILE_CONFIG: Record<ReviewProfile, {
 }> = {
   editorial: {
     label: "Editorial",
-    buttonText: "Ask Atlas to Review",
-    panelLabel: "Atlas Editorial",
+    buttonText: "Ask Joy to Review",
+    panelLabel: "Joy Editorial",
     placeholder: "Paste or write your text here.\n\nAtlas will analyze it across four dimensions:\nvoice consistency, structural integrity,\nunnecessary bloat, and cognitive load.",
     defs: EDITORIAL_SECTION_DEFS,
-    emptyHint: "Paste your text and ask Atlas to review it. Every suggestion will quote the exact passage.",
+    emptyHint: "Paste your text and ask Joy to review it. Every suggestion will quote the exact passage.",
   },
   strategy: {
     label: "Strategy",
     buttonText: "Request Strategic Analysis",
-    panelLabel: "Atlas Strategy",
+    panelLabel: "Joy Strategy",
     placeholder: "Paste a document, brief, pitch, or plan.\n\nAtlas will cross-reference it against your project genome and decision ledger — flagging contradictions, missing assumptions, and strategic risks.",
     defs: STRATEGY_SECTION_DEFS,
-    emptyHint: "Atlas will audit your text against your project's history — decisions, genome, and direction. Every finding quotes the exact passage.",
+    emptyHint: "Joy will audit your text against your project's history — decisions, genome, and direction. Every finding quotes the exact passage.",
   },
 };
 
@@ -472,7 +472,7 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
           </div>
         </div>
 
-        {/* ── Right / Bottom: Atlas Review Panel ──────────────────────────── */}
+        {/* ── Right / Bottom: Joy Review Panel ──────────────────────────── */}
         <div ref={feedbackRef} style={feedbackPaneStyle}>
           <div style={{ padding: "9px 16px 7px", display: "flex", alignItems: "center", gap: 7, borderBottom: "1px solid rgba(201,162,76,0.06)", flexShrink: 0, background: "rgba(0,0,0,0.04)" }}>
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none">

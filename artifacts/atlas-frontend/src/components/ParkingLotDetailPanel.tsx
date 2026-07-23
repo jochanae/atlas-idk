@@ -365,7 +365,7 @@ function ThinkingLine() {
           flexShrink: 0,
         }}
       />
-      Atlas is thinking...
+      Joy is thinking...
     </span>
   );
 }

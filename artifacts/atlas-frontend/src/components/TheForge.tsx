@@ -526,7 +526,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                   textTransform: "uppercase",
                 }}
               >
-                Hand to Atlas →
+                Hand to Joy →
               </button>
             )}
           </div>
@@ -566,7 +566,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
             <div style={{ display: "flex", flexDirection: "column", gap: 4, borderRadius: 8, border: "1px solid color-mix(in oklab, var(--warning) 28%, var(--atlas-border))", background: "color-mix(in oklab, var(--warning) 9%, var(--atlas-surface))", padding: "9px 10px" }}>
               {missingForgeNodeTypes.map(type => (
                 <p key={type} style={{ margin: 0, color: "var(--warning)", fontSize: 11, lineHeight: 1.45, fontFamily: "var(--app-font-mono)" }}>
-                  No <ForgeNodeTypeLabel type={type} /> detected — consider adding one before handing to Atlas.
+                  No <ForgeNodeTypeLabel type={type} /> detected — consider adding one before handing to Joy.
                 </p>
               ))}
             </div>

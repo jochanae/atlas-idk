@@ -247,7 +247,7 @@ export function DesignPlanPanel({ projectId }: DesignPlanPanelProps) {
             No Design Plan yet.
           </span>
           <span style={{ fontFamily: MONO, fontSize: 10, color: MUTED, opacity: 0.35, fontStyle: "italic" }}>
-            Atlas reads your Soul tab and generates a structured design brief.
+            Joy reads your Soul tab and generates a structured design brief.
           </span>
         </div>
         <button

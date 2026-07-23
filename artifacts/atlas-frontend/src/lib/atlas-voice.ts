@@ -1,4 +1,4 @@
-// Atlas voice layer — greeting selection with category diversity,
+// Joy voice layer — greeting selection with category diversity,
 // time-of-day weighting, micro-state awareness, anti-repeat, and
 // optional name personalization (~35% of the time).
 //

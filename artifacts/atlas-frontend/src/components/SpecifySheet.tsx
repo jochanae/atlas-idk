@@ -174,7 +174,7 @@ export function SpecifySheet() {
             <>
               <div style={{ borderRadius: 10, background: "rgba(var(--atlas-gold-rgb),0.02)", border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", padding: "10px 12px" }}>
                 <p style={{ fontSize: 11, color: "rgba(var(--atlas-gold-rgb),0.7)", lineHeight: 1.55, margin: 0, fontFamily: "var(--app-font-mono)" }}>
-                  Describe your intent. Atlas writes the spec — goal, constraints, blast radius, validation steps.
+                  Describe your intent. Joy writes the spec — goal, constraints, blast radius, validation steps.
                 </p>
               </div>
 

@@ -1,6 +1,6 @@
 /**
  * Tier1GapCard — inline observation card that surfaces ONE Tier 1 gap
- * Atlas can't reasonably infer from conversation.
+ * Joy can't reasonably infer from conversation.
  *
  * Contract: GET /api/projects/:projectId/tier1-gaps
  *   200 → { missing, nextGap: { key, question, hint, atlasContext } | null, completeness }
@@ -116,7 +116,7 @@ export function Tier1GapCard({ projectId, isStreaming, turnCount }: Props) {
             letterSpacing: "0.01em",
           }}
         >
-          Atlas is still missing
+          Joy is still missing
         </span>
         <button
           type="button"

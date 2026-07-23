@@ -1,7 +1,7 @@
 import * as React from "react";
 
 /**
- * AskAtlasUtilityButton — small icon button used across the Ask Atlas
+ * AskAtlasUtilityButton — small icon button used across the Ask Joy
  * composer utility row. Extracted from AskAtlasSurface to keep the
  * main surface file focused on layout/state.
  */

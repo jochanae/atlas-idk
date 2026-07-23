@@ -12,7 +12,7 @@ export interface CitationChipProps {
   lineEnd?: number;
   compact?: boolean;
   // Present for cross-project citations produced by search_all_projects,
-  // formatted by Atlas as "ProjectName › path:Lline". The chip resolves the
+  // formatted by Joy as "ProjectName › path:Lline". The chip resolves the
   // name to a project id lazily (name→id lookup) since chat text only ever
   // carries the human-readable name.
   projectName?: string;

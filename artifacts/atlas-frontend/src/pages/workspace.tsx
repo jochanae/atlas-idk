@@ -389,7 +389,7 @@ export interface ChatMessage {
   /** Stable run ID (execution_runs.id) for this turn — used by the Plan card to
    *  PATCH the run from "awaiting_approval" → "succeeded" after GitHub push. */
   runId?: string | null;
-  /** Atlas-proposed workspace file write — set when Atlas emits WRITE_FILE signal. */
+  /** Joy-proposed workspace file write — set when Joy emits WRITE_FILE signal. */
   writeFileProposal?: { path: string };
   /** Build Readiness Gate — present when intentType === "readiness_gate". */
   readinessResult?: {
@@ -399,9 +399,9 @@ export interface ChatMessage {
     summary: string;
     originalMessage?: string;
   };
-  /** Repo-wide code search results when Atlas detected a REPO_SEARCH_REQUEST signal. */
+  /** Repo-wide code search results when Joy detected a REPO_SEARCH_REQUEST signal. */
   repoSearch?: { query: string; files: Array<{ name: string; path: string; url: string }> };
-  /** True when Atlas queued background extraction after this response. */
+  /** True when Joy queued background extraction after this response. */
   extractionQueued?: boolean;
   /** Durable receipt of a completed GitHub push. Source of truth after reload
    *  (liveStep.verb === "github_push" only covers the in-flight window). */
@@ -790,7 +790,7 @@ function GithubTokenInput({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.6, opacity: 0.7 }}>
-        Connect GitHub once for this account so Atlas can read and write code across projects.
+        Connect GitHub once for this account so Joy can read and write code across projects.
       </div>
       {error && (
         <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)" }}>
@@ -1210,7 +1210,7 @@ function ConnectionsTab({
                 letterSpacing: "0.04em",
               }}
             >
-              All connections active - Atlas has full context.
+              All connections active - Joy has full context.
             </div>
           ) : (
             <div
@@ -1222,9 +1222,9 @@ function ConnectionsTab({
               }}
             >
               {[
-                !repoName && "Link a GitHub repo so Atlas can read and write files.",
+                !repoName && "Link a GitHub repo so Joy can read and write files.",
                 !githubCanRead && "Connect GitHub to enable file reading.",
-                !dbUrl && "Connect a database so Atlas can reference your schema.",
+                !dbUrl && "Connect a database so Joy can reference your schema.",
               ]
                 .filter(Boolean)
                 .map((msg, i) => (
@@ -1328,7 +1328,7 @@ function DatabaseTab({
                   </span>
                 </div>
                 <div style={{ fontSize: 11, ...muted, opacity: 0.55, lineHeight: 1.6 }}>
-                  Atlas can reference this schema when answering questions about your database structure.
+                  Joy can reference this schema when answering questions about your database structure.
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="button" onClick={() => {
@@ -1348,7 +1348,7 @@ function DatabaseTab({
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ fontSize: 11, ...muted, opacity: 0.6, lineHeight: 1.7 }}>
-                  Paste your project's Postgres connection string so Atlas can inspect its schema.
+                  Paste your project's Postgres connection string so Joy can inspect its schema.
                 </div>
                 <input
                   type="password"
@@ -1406,7 +1406,7 @@ function DatabaseTab({
               <div style={{ border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 5 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "var(--atlas-fg)", opacity: 0.7 }}>No database schema detected.</div>
                 <div style={{ fontSize: 11, ...muted, lineHeight: 1.6, opacity: 0.6 }}>
-                  This project currently uses local state only. Connect a database on the Connection tab and Atlas will surface the table structure here.
+                  This project currently uses local state only. Connect a database on the Connection tab and Joy will surface the table structure here.
                 </div>
               </div>
             )}
@@ -2593,7 +2593,7 @@ function buildAtlasCommitMessage(files: string[]): string {
       : `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
   // Capitalize first letter
   const cap = summary.charAt(0).toUpperCase() + summary.slice(1);
-  return `Atlas: ${cap}`;
+  return `Joy: ${cap}`;
 }
 
 function TerminalPanel({
@@ -2639,7 +2639,7 @@ function TerminalPanel({
     return () => clearInterval(id);
   }, []);
 
-  // Auto-suggest a plain-English commit message describing Atlas's recent edits.
+  // Auto-suggest a plain-English commit message describing Joy's recent edits.
   useEffect(() => {
     if (syncMsgTouched) return;
     if (syncFiles.length === 0) { setSyncMsg(""); return; }
@@ -2739,7 +2739,7 @@ function TerminalPanel({
         `clear           clear the terminal\n\n` +
         `ATLAS COMMANDS\n` +
         `───────────────────────────────\n` +
-        `Ask Atlas in Chat and it can suggest\n` +
+        `Ask Joy in Chat and it can suggest\n` +
         `commands to run here automatically.`,
         "output"
       );
@@ -2753,7 +2753,7 @@ function TerminalPanel({
 
     // SCENARIO mode — explain rather than execute
     if (scenarioLens) {
-      addLine("[SCENARIO] Asking Atlas what this command would do…", "system");
+      addLine("[SCENARIO] Asking Joy what this command would do…", "system");
       try {
         const r = await fetch("/api/terminal/explain", {
           method: "POST",
@@ -2932,7 +2932,7 @@ function TerminalPanel({
       });
       const data = await r.json() as { explanation?: string; error?: string };
       if (data.explanation) addLine(`[ATLAS] ${data.explanation}`, "commentary");
-      else addLine(`Error: ${data.error ?? "Atlas could not translate that request"}`, "error");
+      else addLine(`Error: ${data.error ?? "Joy could not translate that request"}`, "error");
     } catch (err) {
       addLine(`Error: ${err instanceof Error ? err.message : String(err)}`, "error");
     } finally {
@@ -3127,7 +3127,7 @@ function TerminalPanel({
                 </div>
               ) : (
                 <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(77, 90, 110,0.5)" : "rgba(var(--atlas-muted-rgb),0.45)", letterSpacing: "0.05em" }}>
-                  No tracked edits yet — Atlas writes files here when it self-updates.
+                  No tracked edits yet — Joy writes files here when it self-updates.
                 </div>
               )}
 
@@ -3136,7 +3136,7 @@ function TerminalPanel({
                 <input
                   value={syncMsg}
                   onChange={e => { setSyncMsg(e.target.value); setSyncMsgTouched(true); }}
-                  placeholder={hasChanges ? "Atlas: …" : "Commit message (optional)"}
+                  placeholder={hasChanges ? "Joy: …" : "Commit message (optional)"}
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
@@ -3159,7 +3159,7 @@ function TerminalPanel({
                     letterSpacing: "0.08em", color: "var(--atlas-gold)",
                     textTransform: "uppercase",
                   }}>
-                    Atlas suggested
+                    Joy suggested
                   </span>
                 )}
               </div>
@@ -3281,7 +3281,7 @@ function TerminalPanel({
         {/* NL toggle */}
         <button
           onClick={() => setNlMode(v => !v)}
-          title={nlMode ? "Switch to Bash" : "Switch to Atlas Natural Language"}
+          title={nlMode ? "Switch to Bash" : "Switch to Joy Natural Language"}
           style={{
             flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6,
             padding: "6px 10px", borderRadius: 999,
@@ -3304,7 +3304,7 @@ function TerminalPanel({
               transition: "left 160ms ease",
             }} />
           </span>
-          {nlMode ? "Atlas" : "Bash"}
+          {nlMode ? "Joy" : "Bash"}
         </button>
         {/* Help button */}
         <button
@@ -3465,7 +3465,7 @@ function TerminalPanel({
             placeholder={
               running ? "running…" :
               nlPending ? "atlas thinking…" :
-              nlMode ? "Tell Atlas what to do in plain English..." :
+              nlMode ? "Tell Joy what to do in plain English..." :
               "enter command"
             }
             autoCapitalize="none"
@@ -3514,7 +3514,7 @@ function TerminalPanel({
         <div ref={bottomRef} />
       </div>
 
-      {/* Desktop right sidebar — Atlas Assistant + Help Center */}
+      {/* Desktop right sidebar — Joy Assistant + Help Center */}
       {isDesktopView && (
         <aside style={{
           flex: "0 0 30%", minWidth: 280,
@@ -3526,11 +3526,11 @@ function TerminalPanel({
         }}>
           <div>
             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 6 }}>
-              Atlas Assistant
+              Joy Assistant
             </div>
             <p style={{ margin: 0, fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.5 }}>
               {nlMode
-                ? "Plain-English mode is on. Type what you want and Atlas translates it."
+                ? "Plain-English mode is on. Type what you want and Joy translates it."
                 : "Flip the toggle to switch the prompt into plain English."}
             </p>
           </div>
@@ -3954,7 +3954,7 @@ function WorkspaceOnboardingCoach({
   onDismiss: (id: OnboardingCoachId) => void;
 }) {
   const marks: Array<{ id: OnboardingCoachId; label: string; text: string }> = [
-    { id: "chat", label: "Chat tab", text: "Talk to Atlas. Describe what you're building." },
+    { id: "chat", label: "Chat tab", text: "Talk to Joy. Describe what you're building." },
     { id: "ledger", label: "Ledger tab", text: "Every decision you make gets logged here." },
     { id: "flow", label: "Flow tab", text: "Your thinking becomes a visual map." },
   ];
@@ -4129,7 +4129,7 @@ function buildIntakeSeedNodes(answers: IntakeAnswers): ArchNode[] {
       y: 475,
       details: "Preferred problem-solving style from intake.",
       meta: "should",
-      question: "How should Atlas think with you as this project evolves?",
+      question: "How should Joy think with you as this project evolves?",
     },
   ];
 
@@ -4952,7 +4952,7 @@ export default function Workspace() {
   const [thinkingState, setThinkingState] = useState<{ status: "processing"|"streaming"|"completed"; currentStep: any; history: any[]; developerLens?: any } | null>(null);
   const [pendingAutoApply, setPendingAutoApply] = useState<string[] | null>(null);
   // Tracks consecutive auto-apply rounds without a human message in between.
-  // Capped at 4 to prevent runaway loops if Atlas keeps emitting FILE_EDIT blocks.
+  // Capped at 4 to prevent runaway loops if Joy keeps emitting FILE_EDIT blocks.
   const autoApplyCountRef = useRef<number>(0);
   const stepStartRef = useRef<number>(Date.now());
   const handleThinkingSendStart = useCallback(() => {
@@ -4979,11 +4979,11 @@ export default function Workspace() {
     if (payload?.autoApplied && Array.isArray(payload?.autoAppliedPaths) && payload.autoAppliedPaths.length > 0) {
       setPendingAutoApply(payload.autoAppliedPaths as string[]);
     } else {
-      // Atlas responded to a human message (no auto-apply) — reset the
+      // Joy responded to a human message (no auto-apply) — reset the
       // consecutive loop counter so the next build handoff starts fresh.
       autoApplyCountRef.current = 0;
     }
-    // NAVIGATE_TO — Atlas requesting in-conversation navigation to a project
+    // NAVIGATE_TO — Joy requesting in-conversation navigation to a project
     if (payload?.content && typeof payload.content === "string") {
       const navMatch = (payload.content as string).match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
       if (navMatch) {
@@ -4994,8 +4994,8 @@ export default function Workspace() {
     }
   }, [setLocation]);
 
-  // For Atlas scope: provide a synthetic session entry so useChatStream
-  // picks up the correct Atlas sessionId directly and never calls
+  // For Joy scope: provide a synthetic session entry so useChatStream
+  // picks up the correct Joy sessionId directly and never calls
   // ensureSessionId() (which would create a spurious project-0 session).
   const _atlasNumId = isAtlasScope && atlasSessionId ? Number(atlasSessionId) : 0;
   const effectiveSessions = (_atlasNumId > 0)
@@ -5117,8 +5117,8 @@ export default function Workspace() {
     },
   });
 
-  // Atlas scope: sync sessionId from route param so the workspace loads the correct conversation.
-  // Also reset priorLoaded so history reloads when navigating between Atlas sessions.
+  // Joy scope: sync sessionId from route param so the workspace loads the correct conversation.
+  // Also reset priorLoaded so history reloads when navigating between Joy sessions.
   useEffect(() => {
     if (!isAtlasScope || !atlasSessionId) return;
     const numId = Number(atlasSessionId);
@@ -5131,15 +5131,15 @@ export default function Workspace() {
   }, [atlasSessionId, isAtlasScope]);
 
   // When the server auto-applies FILE_EDIT blocks during a build handoff, send
-  // LOCAL_APPLY_SUCCESS so Atlas knows files are on disk and can read them back.
+  // LOCAL_APPLY_SUCCESS so Joy knows files are on disk and can read them back.
   // We run a deterministic import-resolution audit first and embed any specific
-  // missing filenames into the message — giving Atlas exact targets to fix rather
+  // missing filenames into the message — giving Joy exact targets to fix rather
   // than a generic "check for missing files" prompt.
   useEffect(() => {
     if (!pendingAutoApply || !sessionId) return;
 
     // Hard cap: no more than 4 consecutive auto-apply rounds without a human
-    // message in between. Each round Atlas emits FILE_EDIT blocks → frontend
+    // message in between. Each round Joy emits FILE_EDIT blocks → frontend
     // applies them → this effect fires. Without a cap, an audit that always
     // passes (same files each time) loops indefinitely.
     autoApplyCountRef.current += 1;
@@ -5162,7 +5162,7 @@ export default function Workspace() {
       setPendingAutoApply(null);
     };
 
-    // Run deterministic import audit — surfaces specific missing files so Atlas
+    // Run deterministic import audit — surfaces specific missing files so Joy
     // can fix them immediately rather than doing a probabilistic "check everything".
     fetch(`/api/fs/${id}/audit`, { credentials: "include" })
       .then((r) => r.ok ? r.json() as Promise<{ ok: boolean; missing: Array<{ importedIn: string; importPath: string }> }> : null)
@@ -5285,7 +5285,7 @@ export default function Workspace() {
     workspaceMountedAtRef.current = Date.now();
   }, [id, sessionId]);
 
-  // Session-gated, non-intrusive "Atlas Build ready" detection.
+  // Session-gated, non-intrusive "Joy Build ready" detection.
   // Only fires for runs that (a) belong to the current session, (b) finished
   // after this workspace instance mounted, and (c) when not viewing the flow map.
   useEffect(() => {
@@ -5318,7 +5318,7 @@ export default function Workspace() {
     return () => window.removeEventListener("axiom:open-account-hub", open);
   }, []);
 
-  // Atlas Core center-button → switch to chat tab + focus composer + restore composer
+  // Joy Core center-button → switch to chat tab + focus composer + restore composer
   useEffect(() => {
     const onFocus = () => {
       // Composer modes: gold "A" always returns composer to `full`.
@@ -5491,7 +5491,7 @@ export default function Workspace() {
         "",
       ];
       for (const m of sourceMessages) {
-        const who = m.role === "user" ? "You" : "Atlas";
+        const who = m.role === "user" ? "You" : "Joy";
         lines.push(`## ${who}`);
         lines.push("");
         lines.push((m.content ?? "").trim());
@@ -5518,7 +5518,7 @@ export default function Workspace() {
     setSessionActionBusy(true);
     try {
       if (isAtlasScope) {
-        // Atlas scope: POST /sessions/atlas, then navigate to the new session URL
+        // Joy scope: POST /sessions/atlas, then navigate to the new session URL
         const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
         const r = await fetch("/api/sessions/atlas", {
           method: "POST",
@@ -5743,7 +5743,7 @@ export default function Workspace() {
       window.removeEventListener("axiom:navigate-internal", onInternalNav);
     };
   }, [setLocation]);
-  // Atlas scope — events dispatched from ShellAtlasTitle dropdown + ShellAtlasDownload
+  // Joy scope — events dispatched from ShellAtlasTitle dropdown + ShellAtlasDownload
   useEffect(() => {
     if (!isAtlasScope) return;
     const onNew = () => { void handleNewSession(); };
@@ -5772,7 +5772,7 @@ export default function Workspace() {
   // MAP surface detected in chat → nudge user to Flow tab via toast
   useEffect(() => {
     const onMapSurface = () => {
-      toast("Atlas mapped interconnected tensions in this conversation", {
+      toast("Joy mapped interconnected tensions in this conversation", {
         action: {
           label: "View Flow Map",
           onClick: () => window.dispatchEvent(new CustomEvent("axiom:navigate-to-map")),
@@ -5866,8 +5866,8 @@ export default function Workspace() {
   }, [id]);
 
   // Auto-continuation: when workspace opens from a commit-carryover handoff and
-  // Atlas's last message is only a short handoff acknowledgement (not a real answer),
-  // automatically prompt Atlas to continue fulfilling the original request.
+  // Joy's last message is only a short handoff acknowledgement (not a real answer),
+  // automatically prompt Joy to continue fulfilling the original request.
   // Key: use the conversationId URL param directly — it's available immediately,
   // unlike `id` (projectId) which is resolved asynchronously on the /workspace/:conversationId route.
   // Prefer seedHandoffContinuation / opening-message pipeline when present — skip
@@ -5919,7 +5919,7 @@ export default function Workspace() {
       .then((data) => {
         if (data?.buildIntent) {
           // Build-handoff path: auto-send through /api/chat so BUILD_HANDOFF fires
-          // and Atlas starts writing FILE_EDIT blocks without user typing anything.
+          // and Joy starts writing FILE_EDIT blocks without user typing anything.
           setOpeningMessage({ message: data.buildIntent, projectId: String(id) });
         } else if (data?.message && !forgeRanRef.current) {
           setAtlasGreeting(data.message);
@@ -6064,7 +6064,7 @@ export default function Workspace() {
   // creation or first-visit — the user experienced this as friction
   // ("essay before you can start"). It only opens via the
   // TIER1_INTAKE_OPEN_EVENT (e.g. a manual "Project DNA" button) or
-  // when Atlas conversationally surfaces a gap. The old ?intake=1 URL
+  // when Joy conversationally surfaces a gap. The old ?intake=1 URL
   // param is intentionally ignored.
   const [tier1SheetOpen, setTier1SheetOpen] = useState(false);
 
@@ -6247,7 +6247,7 @@ export default function Workspace() {
   const projectFromList = allProjects?.find((p) => p.id === id) ?? null;
   const project = projectState.project ?? fallbackProject ?? projectFromList;
 
-  // Populate the shared activeProjectContext so Ask Atlas (opened from within
+  // Populate the shared activeProjectContext so Ask Joy (opened from within
   // the workspace or via the ambient floater) sees the same project identity,
   // memory brief, last user goal, and open decisions. Cleared on route-away.
   // See plan step 1 (2026-07-07).
@@ -6351,7 +6351,7 @@ export default function Workspace() {
   // Thinking Mode vs Building Mode.
   // Building = conversation has produced file edits. Thinking = pure conversation.
   // This gates engineering telemetry: liveStep (FILE_READ/TREE indicators) only
-  // renders in Building Mode so the workspace feels as calm as Ask Atlas during chat.
+  // renders in Building Mode so the workspace feels as calm as Ask Joy during chat.
   const isBuilding = useMemo(() =>
     messages.some(m => m.role === "assistant" && ((m.fileEdits?.length ?? 0) > 0 || m.fileEdit != null)),
     [messages]
@@ -6416,7 +6416,7 @@ export default function Workspace() {
 
       if (!data.ready) {
         const missing = (data.missingCriteria ?? []).join(", ");
-        addLocalMessage("assistant", `Atlas needs a bit more clarity before it can manifest this project.\n\nMissing: ${missing}\n\nContinue the conversation to fill in the gaps, then try again.`);
+        addLocalMessage("assistant", `Joy needs a bit more clarity before it can manifest this project.\n\nMissing: ${missing}\n\nContinue the conversation to fill in the gaps, then try again.`);
         return;
       }
 
@@ -6426,7 +6426,7 @@ export default function Workspace() {
 
       // V1 only supports atlas-generated.
       if (data.decision.activeEngine !== "atlas-generated") {
-        addLocalMessage("assistant", `The manifest engine selected "${data.decision.activeEngine}" for this project. Only Atlas Generated is wired in V1 — escalation paths are coming soon.`);
+        addLocalMessage("assistant", `The manifest engine selected "${data.decision.activeEngine}" for this project. Only Joy Generated is wired in V1 — escalation paths are coming soon.`);
         return;
       }
 
@@ -6650,8 +6650,8 @@ export default function Workspace() {
           body: JSON.stringify({
             repo: linkedRepo.fullName, branch, path: fe.path, content: fe.content,
             message: editsToCommit.length === 1
-              ? `Atlas: update ${fe.path?.split("/").pop() ?? "file"}`
-              : `Atlas: update ${editsToCommit.length} files (${i + 1}/${editsToCommit.length})`,
+              ? `Joy: update ${fe.path?.split("/").pop() ?? "file"}`
+              : `Joy: update ${editsToCommit.length} files (${i + 1}/${editsToCommit.length})`,
           }),
         });
       }
@@ -6807,7 +6807,7 @@ export default function Workspace() {
     return () => { cancelled = true; };
   }, [githubPushToken, id, project?.linkedRepo]);
 
-  // Auto-run analyze scan at workspace level so Atlas knows the full codebase
+  // Auto-run analyze scan at workspace level so Joy knows the full codebase
   // structure the moment a project opens — no FILES tab visit required.
   // Skips if a fresh scan (< 24h) already exists in localStorage.
   useEffect(() => {
@@ -6944,7 +6944,7 @@ export default function Workspace() {
     setMessages([{
       id: messageId,
       role: "assistant",
-      content: "This plan came over from Home. Review it here, then approve it when you want Atlas to execute it inside this workspace.",
+      content: "This plan came over from Home. Review it here, then approve it when you want Joy to execute it inside this workspace.",
       intentType: "PLAN",
       plan,
       planFromHome: true,
@@ -7130,7 +7130,7 @@ export default function Workspace() {
     if (!project) return;
 
     // One-shot per project for this browser tab — prevents a refresh with
-    // ?source=home-handoff still in the URL from kicking Atlas again.
+    // ?source=home-handoff still in the URL from kicking Joy again.
     const primedKey = `atlas-home-handoff-primed-${id}`;
     try {
       if (sessionStorage.getItem(primedKey) === "1") {
@@ -7163,7 +7163,7 @@ export default function Workspace() {
     };
 
     // Successful handoffs always arrive with the transferred thread already
-    // loaded. That used to abort this prime entirely — which is why Atlas
+    // loaded. That used to abort this prime entirely — which is why Joy
     // stayed silent until the user typed again. Kick a continuation instead.
     if (threadLen > 0) {
       // INT-13: same gate as opening-message pipeline — need pinned cid + history.
@@ -7305,7 +7305,7 @@ export default function Workspace() {
     return () => window.removeEventListener("axiom:open-output", handler);
   }, [id, isMobile]);
 
-  // Ask Atlas (or other surfaces) may navigate here with source=open-output and
+  // Ask Joy (or other surfaces) may navigate here with source=open-output and
   // atlas-open-output-{projectId} seeded — open Outputs + focus without handoff kickoff.
   useEffect(() => {
     if (!id || !Number.isFinite(id) || id <= 0) return;
@@ -7523,7 +7523,7 @@ export default function Workspace() {
   }, []);
 
   // Smart Anchor: stick to bottom only when user is already near it.
-  // If they scrolled up to re-read while Atlas streams, freeze instead of yanking back.
+  // If they scrolled up to re-read while Joy streams, freeze instead of yanking back.
   // A fresh user message (userMsgCount increments) bypasses the freeze.
   // IMPORTANT: when Nexus owns the visible Workspace transcript, these scroll
   // dependencies must come from nexusBridge.messages — not the legacy
@@ -7629,7 +7629,7 @@ export default function Workspace() {
         return;
       }
       if (!atlasConv.canSend) {
-        toast("Atlas is still working on your last message.");
+        toast("Joy is still working on your last message.");
         return;
       }
       if (staged.isUploading) {
@@ -7689,7 +7689,7 @@ export default function Workspace() {
 
     const imageFiles = files.filter(f => f.type.startsWith("image/")).slice(0, 10);
     const otherFiles = files.filter(f => !f.type.startsWith("image/"));
-    // Collect selected zip entries as text context for Atlas
+    // Collect selected zip entries as text context for Joy
     const zipContext = zipFiles
       .filter(z => z.selected && z.content)
       .map(z => `// FILE: ${z.path}\n${z.content}`)
@@ -7813,7 +7813,7 @@ export default function Workspace() {
       body: JSON.stringify({
         repo: linkedRepo.fullName, branch: record.branch,
         path: record.path, content: record.originalContent,
-        message: `Atlas: rollback ${record.filename}`,
+        message: `Joy: rollback ${record.filename}`,
       }),
     });
     setPushHistory((prev) => prev.map((r) => r.id === record.id ? { ...r, rolledBack: true } : r));
@@ -8158,10 +8158,10 @@ export default function Workspace() {
   }, []);
 
   // Auto-prompt intake DISABLED (locked with user 2026-07-08).
-  // Atlas should never slap a 6-question form on the user at project
+  // Joy should never slap a 6-question form on the user at project
   // entry. Tier 1 memory should be extracted from conversation
   // (backend handoff) and only surfaced as an explicit question when
-  // Atlas cannot infer an answer. The sheet remains available via the
+  // Joy cannot infer an answer. The sheet remains available via the
   // TIER1_INTAKE_OPEN_EVENT for "Project DNA" review.
 
 
@@ -8418,7 +8418,7 @@ export default function Workspace() {
   const updateProjectFromHandover = useUpdateProject();
   const [handoverPending, setHandoverPending] = useState(false);
   // Live snapshot streamed up from AxiomFlow — drives the workspace-header
-  // drift pill and the desktop "→ Atlas" trigger button in RightPanel.
+  // drift pill and the desktop "→ Joy" trigger button in RightPanel.
   const [currentSnapshot, setCurrentSnapshot] = useState<HandoverSnapshot | null>(null);
   // Controlled state for the handover popover so a desktop trigger in the
   // tab bar can open the same popover that lives inside AxiomFlow.
@@ -8604,7 +8604,7 @@ export default function Workspace() {
     }
   }, [messages]);
 
-  // ── Verification runner — detect VERIFY_RUN action in Atlas stream ───────
+  // ── Verification runner — detect VERIFY_RUN action in Joy stream ───────
   const verifyRunFiredRef = useRef(false);
   useEffect(() => {
     if (!activityStream.active) { verifyRunFiredRef.current = false; return; }
@@ -8623,7 +8623,7 @@ export default function Workspace() {
     }
   }, [activityStream.content, activityStream.active, id]);
 
-  // ── Build runner — detect BUILD_RUN action in Atlas stream ───────────────
+  // ── Build runner — detect BUILD_RUN action in Joy stream ───────────────
   const buildRunFiredRef = useRef(false);
   useEffect(() => {
     if (!activityStream.active) { buildRunFiredRef.current = false; return; }
@@ -9090,7 +9090,7 @@ export default function Workspace() {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
               <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
-                {isEmpty ? `${projectLabel} — nothing mapped yet` : "Here's what Atlas mapped from your conversation"}
+                {isEmpty ? `${projectLabel} — nothing mapped yet` : "Here's what Joy mapped from your conversation"}
               </span>
               <button
                 type="button"
@@ -9112,9 +9112,9 @@ export default function Workspace() {
             </div>
             <div style={{ color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.55, opacity: 0.88 }}>
               {isEmpty ? (
-                <>Atlas hasn't extracted anything for <b>{projectLabel}</b> yet — open Flow and start mapping.</>
+                <>Joy hasn't extracted anything for <b>{projectLabel}</b> yet — open Flow and start mapping.</>
               ) : (
-                <>Your goal is <b>{goalLabel}</b>. Atlas captured {definedCount} of {totalCount} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers{parkedCount > 0 ? `, ${parkedCount} ideas parked` : ""}. Open Flow or Ledger to edit.</>
+                <>Your goal is <b>{goalLabel}</b>. Joy captured {definedCount} of {totalCount} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers{parkedCount > 0 ? `, ${parkedCount} ideas parked` : ""}. Open Flow or Ledger to edit.</>
               )}
             </div>
           </div>
@@ -9477,10 +9477,10 @@ export default function Workspace() {
               conversationMode,
               floatingControlsEnabled: !isMobile || (mobileTab === "chat" && !rightOpen && !launchModal.open),
               // In Thinking Mode (pure conversation, no file edits), suppress all
-              // engineering telemetry so the workspace feels as calm as Ask Atlas.
+              // engineering telemetry so the workspace feels as calm as Ask Joy.
               // activityStream drives the step-by-step FILE_READ/TREE visualization;
               // liveStep drives the inline "working…" badge. Both are hidden when
-              // Atlas is thinking rather than building.
+              // Joy is thinking rather than building.
               activityStream: isBuilding ? activityStream : { active: false, content: "" },
               liveGeneration,
               liveStep: liveStep,
@@ -9811,7 +9811,7 @@ export default function Workspace() {
 
 
 
-        {/* Soft "Atlas Build ready" chip — non-intrusive surface for a completed run.
+        {/* Soft "Joy Build ready" chip — non-intrusive surface for a completed run.
             Tapping switches to the preview tab; dismiss keeps the user where they are. */}
         {previewReady && (
           <div
@@ -9864,7 +9864,7 @@ export default function Workspace() {
                 padding: 0,
               }}
             >
-              Atlas Build ready →
+              Joy Build ready →
             </button>
             <button
               type="button"
@@ -10237,7 +10237,7 @@ export default function Workspace() {
         />
       )}
 
-      {/* Forge intake — bottom sheet opened by Atlas Pulse long-press or "+" menu */}
+      {/* Forge intake — bottom sheet opened by Joy Pulse long-press or "+" menu */}
       <ForgeIntakeSheet
         open={forgeIntakeSheetOpen}
         onClose={() => setForgeIntakeSheetOpen(false)}
@@ -10258,17 +10258,17 @@ export default function Workspace() {
             try { textareaRef.current?.focus(); } catch {}
           }, 180);
           // If this was a fresh intake (?intake=1 flow), pre-fill a gentle
-          // first message so Atlas responds with the Tier1 context in scope.
+          // first message so Joy responds with the Tier1 context in scope.
           const what = memory?.answers?.building?.trim();
           if (what) {
             setInput(`Foundation locked. I'm building: ${what}. Where should we start?`);
           }
-          toast.success("Foundation set — Atlas has your Tier 1.", { duration: 3000 });
+          toast.success("Foundation set — Joy has your Tier 1.", { duration: 3000 });
         }}
         onSkip={() => {
           if (tier1ProjectId) markTier1Skipped(tier1ProjectId);
           setTier1SheetOpen(false);
-          toast("Skipped — Atlas will gather this in conversation.", { duration: 2500 });
+          toast("Skipped — Joy will gather this in conversation.", { duration: 2500 });
         }}
       />
 
@@ -10296,7 +10296,7 @@ export default function Workspace() {
         </div>
       )}
 
-      {/* Live Tier 1 progress — floats above composer, fills in as Atlas
+      {/* Live Tier 1 progress — floats above composer, fills in as Joy
           discovers each field in conversation. Hidden when complete or
           dismissed. */}
       {tier1ProjectId && !useNexusWorkspaceChat && (
@@ -10595,9 +10595,9 @@ export default function Workspace() {
             })()}
             <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 2l3 3-8 8H3v-3l8-8z" /></svg>} label="Rename project" onClick={() => { setShowProjectMenu(false); window.dispatchEvent(new CustomEvent("axiom:rename-project")); }} />
             <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="2" /><path d="M13.7 9.4a1 1 0 010-2.8l.5-.2a1 1 0 00.6-1.5l-.7-1.2a1 1 0 00-1.5-.3l-.4.3a1 1 0 01-1.4-.6l-.1-.5a1 1 0 00-1-.8H8.3a1 1 0 00-1 .8l-.1.5a1 1 0 01-1.4.6l-.4-.3a1 1 0 00-1.5.3l-.7 1.2a1 1 0 00.6 1.5l.5.2a1 1 0 010 2.8l-.5.2a1 1 0 00-.6 1.5l.7 1.2a1 1 0 001.5.3l.4-.3a1 1 0 011.4.6l.1.5a1 1 0 001 .8h1.4a1 1 0 001-.8l.1-.5a1 1 0 011.4-.6l.4.3a1 1 0 001.5-.3l.7-1.2a1 1 0 00-.6-1.5l-.5-.2z" /></svg>} label="Project settings" onClick={() => { setShowProjectMenu(false); setShowProjectSettings(true); }} />
-            {/* Project DNA — manual review of Tier 1 slots Atlas has extracted
+            {/* Project DNA — manual review of Tier 1 slots Joy has extracted
                 from conversation. Never proactive; users open it here when they
-                want to correct or top-up what Atlas has understood. */}
+                want to correct or top-up what Joy has understood. */}
             <MenuBtn
               icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2c1.5 2 1.5 4 0 6-1.5 2-1.5 4 0 6M12 2c-1.5 2-1.5 4 0 6 1.5 2 1.5 4 0 6M5 5h6M5 11h6" /></svg>}
               label="Project DNA"
@@ -10849,14 +10849,14 @@ export default function Workspace() {
         atlasConversations={drawerAtlasConversations}
         activeAtlasSessionId={isAtlasScope && atlasSessionId ? Number(atlasSessionId) : null}
         onNewAtlasConversation={() => {
-          // Start a fresh Ask Atlas conversation on home.
+          // Start a fresh Ask Joy conversation on home.
           askAtlasSession.clearClosed();
           try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
           setLocation("/home");
           setShowDrawer(false);
         }}
         onOpenAtlasConversation={(sid) => {
-          // Open this nexus conversation in the proper Ask Atlas surface on home.
+          // Open this nexus conversation in the proper Ask Joy surface on home.
           askAtlasSession.setConversationId(String(sid));
           askAtlasSession.clearClosed();
           setLocation("/home");
@@ -10926,7 +10926,7 @@ export default function Workspace() {
             />
             <div style={{ padding: "0 14px" }}>
               {([
-                { id: "multi", label: "Multi-Agent", sub: "Default · Atlas orchestrates Claude, GPT, Gemini & Haiku", available: true, icon: "★" },
+                { id: "multi", label: "Multi-Agent", sub: "Default · Joy orchestrates Claude, GPT, Gemini & Haiku", available: true, icon: "★" },
                 { id: "claude", label: "Claude", sub: "Architect · Nuance & Strategy", available: true, icon: "C" },
                 { id: "gpt4o", label: "GPT-4o", sub: "Mechanic · Speed & Logic", available: true, icon: "G" },
                 { id: "gemini", label: "Gemini", sub: "Strategy · Long Context", available: true, icon: "Ge" },
@@ -11041,7 +11041,7 @@ export default function Workspace() {
               ))}
               <div style={{ margin: "10px 0 2px", padding: "8px 12px", background: "rgba(201,162,76,0.04)", borderRadius: 6, border: "1px solid rgba(201,162,76,0.1)" }}>
                 <p style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.07em", margin: 0, lineHeight: 1.6 }}>
-                  Lens shapes how Atlas responds — and sets the model. <span style={{ color: "rgba(201,162,76,0.7)" }}>Scenario</span> keeps the model you're already using.
+                  Lens shapes how Joy responds — and sets the model. <span style={{ color: "rgba(201,162,76,0.7)" }}>Scenario</span> keeps the model you're already using.
                 </p>
               </div>
             </div>

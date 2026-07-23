@@ -104,7 +104,7 @@ export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: P
             fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
             opacity: 0.5, letterSpacing: "0.04em",
           }}>
-            {bustSignal > 0 ? "Atlas is recalibrating…" : "Atlas is reading the ledger…"}
+            {bustSignal > 0 ? "Joy is recalibrating…" : "Joy is reading the ledger…"}
           </span>
         </div>
       )}

@@ -276,7 +276,7 @@ export function ShellLogSheet({ open, onClose }: Props) {
                   fontSize: 11, fontFamily: "var(--app-font-sans)",
                   color: "var(--atlas-muted)",
                 }}>
-                  Run a build in the Atlas Composer to see commands here.
+                  Run a build in the Joy Composer to see commands here.
                 </div>
               </div>
             </div>

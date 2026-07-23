@@ -3,8 +3,8 @@
  * sketch a thinking artifact from an assistant reply. Each preset carries
  * a label and a style hint appended to the generation prompt.
  *
- * Ported from Compani (sketchStylePresets.ts) and adapted for Atlas.
- * In Atlas, image generation flows through the standard chat path, so we
+ * Ported from Compani (sketchStylePresets.ts) and adapted for Joy.
+ * In Joy, image generation flows through the standard chat path, so we
  * compose a prompt rather than calling a dedicated work-image hook.
  *
  * Discipline (per North Star):
@@ -125,7 +125,7 @@ export function routeDirectImageRequestToSketchPrompt(text: string): string {
  * sends `event: image_pending`, then `event: done`, then generates the
  * image and emits `event: image` with `{ images: [{ imageUrl: "data:…" }] }`.
  * Frontend surfaces must render from `imageGen` / `imageB64` (not only
- * `imageUrl`) — Ask Atlas historically missed that and showed no sketch.
+ * `imageUrl`) — Ask Joy historically missed that and showed no sketch.
  * ───────────────────────────────────────────────────────────────────────
  */
 

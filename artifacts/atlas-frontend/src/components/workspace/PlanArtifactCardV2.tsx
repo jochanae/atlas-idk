@@ -181,7 +181,7 @@ export default function PlanArtifactCardV2({ plan, approval, history }: Props) {
         </div>
       )}
       {rejected && (
-        <div style={{ marginTop: 10, fontSize: 11, color: "var(--atlas-muted)" }}>Rejected — Atlas will wait for revised direction.</div>
+        <div style={{ marginTop: 10, fontSize: 11, color: "var(--atlas-muted)" }}>Rejected — Joy will wait for revised direction.</div>
       )}
       {error && (
         <div style={{ marginTop: 6, fontSize: 11, color: "rgba(248,113,113,0.9)" }}>{error}</div>

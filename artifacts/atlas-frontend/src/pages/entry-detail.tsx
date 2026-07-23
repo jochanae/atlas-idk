@@ -148,7 +148,7 @@ export default function EntryDetail() {
   // Keep browser tab title meaningful
   useEffect(() => {
     const prev = document.title;
-    document.title = entry?.title ? `${entry.title} · Atlas Ledger` : "Entry · Atlas Ledger";
+    document.title = entry?.title ? `${entry.title} · Joy Ledger` : "Entry · Joy Ledger";
     return () => { document.title = prev; };
   }, [entry?.title]);
 

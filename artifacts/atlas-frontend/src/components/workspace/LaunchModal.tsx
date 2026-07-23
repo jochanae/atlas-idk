@@ -165,7 +165,7 @@ export function LaunchModal({ open, mode, onClose, linkedRepo, previewUrl, previ
           <div style={{ flex: 1, padding: 18, overflow: "auto" }}>
             {activityNode ?? (
               <div style={{ color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 12, opacity: 0.6 }}>
-                No live activity. Atlas is idle.
+                No live activity. Joy is idle.
               </div>
             )}
           </div>

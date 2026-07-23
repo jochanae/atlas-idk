@@ -1,5 +1,5 @@
 // /commits/:projectId/:sha — in-app scoped view of an external GitHub commit.
-// Reached from SystemActivityCard "Details" button. Stays inside Atlas.
+// Reached from SystemActivityCard "Details" button. Stays inside Joy.
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 

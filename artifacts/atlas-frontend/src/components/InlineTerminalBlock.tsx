@@ -177,7 +177,7 @@ export function InlineTerminalBlock({ terminalCmd, terminalResult, projectId }: 
     const fullText = `$ ${result.command}\n${outputText}\nExit code ${result.exitCode ?? "unknown"} · ${result.durationMs}ms`;
     return (
       <div style={baseStyle}>
-        <div style={{ color: "var(--atlas-fg)", marginBottom: 8 }}>○ Atlas ran <code className="bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))] rounded px-1.5 py-0.5 font-mono">{result.command}</code></div>
+        <div style={{ color: "var(--atlas-fg)", marginBottom: 8 }}>○ Joy ran <code className="bg-[hsl(var(--token-bg))] text-[hsl(var(--token-fg))] border border-[hsl(var(--token-border))] rounded px-1.5 py-0.5 font-mono">{result.command}</code></div>
         <pre className="bg-[hsl(var(--code-bg)/0.75)] text-[hsl(var(--code-fg))] border border-[hsl(var(--code-border))] backdrop-blur-md" style={{ margin: "0 0 8px", whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "var(--app-font-mono)" }}>
           {outputText}
         </pre>
@@ -203,7 +203,7 @@ export function InlineTerminalBlock({ terminalCmd, terminalResult, projectId }: 
   if (cmd.tier === 3) {
     return (
       <div style={{ ...baseStyle, border: "1px solid color-mix(in oklab, var(--warning) 45%, var(--atlas-border))" }}>
-        <div style={{ color: "var(--warning)", marginBottom: 8 }}>⚠ Atlas wants to make a permanent change</div>
+        <div style={{ color: "var(--warning)", marginBottom: 8 }}>⚠ Joy wants to make a permanent change</div>
         <pre style={{ margin: "0 0 8px", whiteSpace: "pre-wrap", color: "var(--atlas-fg)", fontFamily: "var(--app-font-mono)" }}>{cmd.command}</pre>
         {cmd.reason && <div style={{ marginBottom: 8 }}>{cmd.reason}</div>}
         {diffResult && (
@@ -229,7 +229,7 @@ export function InlineTerminalBlock({ terminalCmd, terminalResult, projectId }: 
 
   return (
     <div style={{ ...baseStyle, border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, var(--atlas-border))" }}>
-      <div style={{ color: "var(--atlas-gold)", marginBottom: 8 }}>⚡ Atlas wants to run a command</div>
+      <div style={{ color: "var(--atlas-gold)", marginBottom: 8 }}>⚡ Joy wants to run a command</div>
       <pre style={{ margin: "0 0 8px", whiteSpace: "pre-wrap", color: "var(--atlas-fg)", fontFamily: "var(--app-font-mono)" }}>{cmd.command}</pre>
       {cmd.reason && <div style={{ marginBottom: 8 }}>{cmd.reason}</div>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

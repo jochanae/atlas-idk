@@ -1,4 +1,4 @@
-// Pure schema validation for Atlas conversation cards.
+// Pure schema validation for Joy conversation cards.
 // Transport-agnostic — currently the fenced-code-block syntax delivers these,
 // but the parser itself knows nothing about markdown.
 //
@@ -47,7 +47,7 @@ function validOptions(arr: string[]): boolean {
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
- * Parse and strictly validate an Atlas card payload.
+ * Parse and strictly validate an Joy card payload.
  *
  * @param lang  The fenced-block language tag, e.g. "atlas-choice"
  * @param raw   Raw string content of the fenced block

@@ -149,7 +149,7 @@ export function NewProjectModal({ open, onClose, onCreate, creating, error }: Pr
 
         {/* Initial thought */}
         <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
-          Tell Atlas what you're thinking about
+          Tell Joy what you're thinking about
           <span style={{ marginLeft: 6, opacity: 0.5, fontWeight: 400 }}>optional</span>
         </label>
         <textarea

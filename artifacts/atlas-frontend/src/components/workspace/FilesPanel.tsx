@@ -155,7 +155,7 @@ function DatabaseConnectionSection({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.6, lineHeight: 1.6 }}>
-            Paste your project's Postgres connection string so Atlas can inspect its schema.
+            Paste your project's Postgres connection string so Joy can inspect its schema.
           </div>
           <DbUrlInput projectId={projectId} onSave={(url) => { onDbUrlChange(url); }} />
         </div>
@@ -1077,7 +1077,7 @@ export function FilesPanel({
                 GitHub · remote sync view
               </span>
               <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, marginLeft: 2 }}>
-                — Atlas reads from workspace disk
+                — Joy reads from workspace disk
               </span>
             </>
           )}

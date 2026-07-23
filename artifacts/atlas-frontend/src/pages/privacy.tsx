@@ -57,12 +57,12 @@ export default function Privacy() {
         </p>
 
         <Section title="01 // What We Collect">
-          <p style={{ marginBottom: 12 }}>When you use Atlas, we collect:</p>
+          <p style={{ marginBottom: 12 }}>When you use Joy, we collect:</p>
           <ul style={{ paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
             <li><strong style={{ color: "var(--atlas-fg)" }}>Account data</strong> — your name and profile information you choose to provide</li>
             <li><strong style={{ color: "var(--atlas-fg)" }}>Project data</strong> — project names, descriptions, and session content you create</li>
             <li><strong style={{ color: "var(--atlas-fg)" }}>Decision entries</strong> — committed decisions, parked ideas, and override history</li>
-            <li><strong style={{ color: "var(--atlas-fg)" }}>Chat messages</strong> — your conversations with Atlas, including AI responses</li>
+            <li><strong style={{ color: "var(--atlas-fg)" }}>Chat messages</strong> — your conversations with Joy, including AI responses</li>
             <li><strong style={{ color: "var(--atlas-fg)" }}>Usage data</strong> — how you interact with the application (page views, feature usage)</li>
           </ul>
         </Section>
@@ -80,7 +80,7 @@ export default function Privacy() {
         <Section title="03 // How We Use Your Data">
           <p style={{ marginBottom: 12 }}>We use your data to:</p>
           <ul style={{ paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
-            <li>Provide and improve the Atlas service</li>
+            <li>Provide and improve the Joy service</li>
             <li>Power the AI features, including the Decision Log</li>
             <li>Maintain your decision history and session continuity</li>
             <li>Send you service-related communications (no marketing without consent)</li>
@@ -89,7 +89,7 @@ export default function Privacy() {
         </Section>
 
         <Section title="04 // AI & Your Data">
-          Your chat messages are sent to third-party AI providers (currently Anthropic) to generate responses. These providers process your messages under their own privacy policies. We do not permit them to use your data to train their models. Chat history is stored in our database so Atlas can maintain context between sessions.
+          Your chat messages are sent to third-party AI providers (currently Anthropic) to generate responses. These providers process your messages under their own privacy policies. We do not permit them to use your data to train their models. Chat history is stored in our database so Joy can maintain context between sessions.
         </Section>
 
         <Section title="05 // Data Storage">
@@ -99,7 +99,7 @@ export default function Privacy() {
         <Section title="06 // Data Sharing">
           <p style={{ marginBottom: 12 }}>We do not sell your data. We share it only with:</p>
           <ul style={{ paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
-            <li><strong style={{ color: "var(--atlas-fg)" }}>Service providers</strong> — hosting, database, and AI providers necessary to run Atlas</li>
+            <li><strong style={{ color: "var(--atlas-fg)" }}>Service providers</strong> — hosting, database, and AI providers necessary to run Joy</li>
             <li><strong style={{ color: "var(--atlas-fg)" }}>Legal requirements</strong> — when required by law or to protect our rights</li>
           </ul>
         </Section>
@@ -123,7 +123,7 @@ export default function Privacy() {
         </Section>
 
         <Section title="08 // Cookies & Local Storage">
-          Atlas uses browser localStorage to store your theme preference, profile information, and GitHub token. No cross-site tracking cookies are used. We may use session cookies for authentication purposes only.
+          Joy uses browser localStorage to store your theme preference, profile information, and GitHub token. No cross-site tracking cookies are used. We may use session cookies for authentication purposes only.
         </Section>
 
         <Section title="09 // Data Retention">
@@ -131,11 +131,11 @@ export default function Privacy() {
         </Section>
 
         <Section title="10 // Children's Privacy">
-          Atlas is not intended for users under the age of 13. We do not knowingly collect personal data from children under 13. If you believe we have inadvertently collected such data, please contact us immediately and we will delete it promptly.
+          Joy is not intended for users under the age of 13. We do not knowingly collect personal data from children under 13. If you believe we have inadvertently collected such data, please contact us immediately and we will delete it promptly.
         </Section>
 
         <Section title="11 // Changes to This Policy">
-          We may update this Privacy Policy from time to time. When we do, we will update the date above and notify you of significant changes via email or in-app notification. Continued use of Atlas after changes constitutes your acceptance of the updated policy.
+          We may update this Privacy Policy from time to time. When we do, we will update the date above and notify you of significant changes via email or in-app notification. Continued use of Joy after changes constitutes your acceptance of the updated policy.
         </Section>
 
         <Section title="12 // Contact">

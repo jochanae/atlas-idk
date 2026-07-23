@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Volume2, Square } from "lucide-react";
 
 /**
- * SpeakButton — read-aloud toggle for Atlas responses.
+ * SpeakButton — read-aloud toggle for Joy responses.
  *
  * Native Web Speech API (window.speechSynthesis) — free, offline, uses
  * whatever voices the device provides.

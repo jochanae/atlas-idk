@@ -1,7 +1,7 @@
 /**
  * AskAtlasTier1Chip — pre-project Tier 1 progress indicator.
  *
- * Ask Atlas is pre-project: the user hasn't picked a workspace yet, so the
+ * Ask Joy is pre-project: the user hasn't picked a workspace yet, so the
  * canonical Tier1ProgressCard (which loads via /api/memory/tier1/:projectId)
  * doesn't apply. Instead we poll the Nexus conversation buffer:
  *
@@ -9,7 +9,7 @@
  *     → { buffer, skippedAt, missing[] }
  *
  * The chip renders a compact strip mirroring the workspace card so the user
- * sees Atlas quietly capturing project DNA as they talk. Silent until at
+ * sees Joy quietly capturing project DNA as they talk. Silent until at
  * least one field is filled OR the user has explicitly skipped.
  */
 import { useEffect, useState, type CSSProperties } from "react";
@@ -44,7 +44,7 @@ type Props = {
   paused?: boolean;
 };
 
-/** Dispatch to toggle the chip on Ask Atlas (from the purple header dot). */
+/** Dispatch to toggle the chip on Ask Joy (from the purple header dot). */
 export const ASK_ATLAS_DNA_TOGGLE_EVENT = "axiom:ask-atlas-dna-toggle";
 
 export function AskAtlasTier1Chip({ conversationId, paused = false }: Props) {

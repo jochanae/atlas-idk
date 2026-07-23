@@ -15,7 +15,7 @@ type RailMessage = {
 };
 
 // Prefer the shared timeline anchor selector; fall back to legacy msg-idx so
-// pre-migration surfaces (Ask Atlas, home) keep working during the rollout.
+// pre-migration surfaces (Ask Joy, home) keep working during the rollout.
 const ANCHOR_SELECTOR = "[data-timeline-index],[data-msg-idx]";
 function anchorIndex(el: HTMLElement): number {
   const v = el.getAttribute("data-timeline-index") ?? el.getAttribute("data-msg-idx");
@@ -193,7 +193,7 @@ export function TimelineRail({
     if (typeof window === "undefined") return;
     let raf = 0;
     const compute = () => {
-      // Priority order matters: Ask Atlas surface overlays home, so its scroll
+      // Priority order matters: Ask Joy surface overlays home, so its scroll
       // container must win over the (still-mounted) home messages scroll.
       const container =
         document.querySelector<HTMLElement>(".atlas-ask-atlas-scroll") ||
@@ -350,7 +350,7 @@ export function TimelineRail({
           backdropFilter: "blur(6px)",
           boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
           // Must sit above AskAtlasSurface (z-index 260) so the magnifier is
-          // reachable on the Ask Atlas conversation surface too.
+          // reachable on the Ask Joy conversation surface too.
           zIndex: 270,
           padding: 0,
           color: "var(--atlas-search-btn-fg, rgba(201,162,76,0.95))",

@@ -11,7 +11,7 @@
  * verb classification here keeps ChatStream and WorkspaceRunCard in sync.
  */
 
-// Verbs that mean Atlas is actually writing, building, or executing something.
+// Verbs that mean Joy is actually writing, building, or executing something.
 // Anything not in this set is a read/think operation ("Thinking").
 export const EXECUTION_VERBS = new Set([
   "FILE_EDIT", "LINE_PATCH", "FILE_DELETE", "COMMAND", "SHELL",

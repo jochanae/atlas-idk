@@ -68,7 +68,7 @@ export function LifecycleGlyph(props: Props) {
         onPointerLeave={endPress}
         onPointerCancel={endPress}
         title={`${meta.label} — ${meta.description} · long-press for Forge intake`}
-        aria-label={`${projectName} is ${meta.label}. Tap for Atlas Pulse, long-press for Forge intake.`}
+        aria-label={`${projectName} is ${meta.label}. Tap for Joy Pulse, long-press for Forge intake.`}
         style={{
           flexShrink: 0,
           width: size + 8,

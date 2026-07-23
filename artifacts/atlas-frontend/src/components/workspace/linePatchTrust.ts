@@ -42,7 +42,7 @@ export async function runLinePatchTrustChecks(
       errors.push({
         kind: "partial",
         path,
-        message: `Patched ${name} is ${newLines}L vs original ${origLines}L — anchor may have swallowed too much. Ask Atlas to re-read the file.`,
+        message: `Patched ${name} is ${newLines}L vs original ${origLines}L — anchor may have swallowed too much. Ask Joy to re-read the file.`,
       });
     }
   }

@@ -1,6 +1,6 @@
 /**
  * askAtlasSession — typed wrapper around the three storage keys that
- * back the Ask Atlas surface. Consolidating the reads/writes here means
+ * back the Ask Joy surface. Consolidating the reads/writes here means
  * the surface + home shell no longer sprinkle raw localStorage /
  * sessionStorage calls across the codebase.
  *

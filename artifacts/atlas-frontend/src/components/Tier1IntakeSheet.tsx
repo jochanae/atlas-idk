@@ -3,10 +3,10 @@
  *
  * A 6-question structured intake that writes to the canonical
  * `project_tier1_memory` table via /api/memory/tier1. This is Tier 1 of
- * Atlas's 5-tier memory system: the foundational "who/what/why" every
+ * Joy's 5-tier memory system: the foundational "who/what/why" every
  * downstream tier and the Decision Catch Engine reads from.
  *
- * UX: single-question-at-a-time stepper (matches Atlas's "one question at a
+ * UX: single-question-at-a-time stepper (matches Joy's "one question at a
  * time" discipline rule), progress dots, back/next, review step, commit.
  * Reopening on an already-committed project loads existing answers and
  * behaves as an edit surface (PUT).
@@ -337,7 +337,7 @@ export function Tier1IntakeSheet({ open, projectId, projectName, onClose, onComm
             <button
               type="button"
               onClick={() => { onSkip(); onClose(); }}
-              title="Let Atlas gather this conversationally"
+              title="Let Joy gather this conversationally"
               style={{
                 padding: "8px 10px", borderRadius: 8,
                 background: "transparent", border: "none",
@@ -347,7 +347,7 @@ export function Tier1IntakeSheet({ open, projectId, projectName, onClose, onComm
                 cursor: "pointer",
               }}
             >
-              Skip — Atlas will ask
+              Skip — Joy will ask
             </button>
           )}
           <div style={{ flex: 1 }} />

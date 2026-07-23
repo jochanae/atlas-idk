@@ -1,6 +1,6 @@
 /**
  * useMessageAttachments — load persisted chips for a sent message.
- * Shared by Ask Atlas and Workspace message renderers.
+ * Shared by Ask Joy and Workspace message renderers.
  */
 import { useQuery } from "@tanstack/react-query";
 import {

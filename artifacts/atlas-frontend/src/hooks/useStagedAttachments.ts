@@ -1,7 +1,7 @@
 /**
  * useStagedAttachments — Shared staged-attachment controller.
  *
- * One hook for Ask Atlas and Workspace. Owns validation (support matrix +
+ * One hook for Ask Joy and Workspace. Owns validation (support matrix +
  * limits), per-file upload progress, failure/retry, and send lifecycle.
  *
  * Lifecycle:

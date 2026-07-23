@@ -16,7 +16,7 @@ export function loadProfile(): UserProfile {
   return {
     name: "",
     stack: "React, React Router, Tailwind CSS, Supabase",
-    projects: "Compani, IntoIQ, CoinsBloom, PresentQ, SanctumIQ, Atlas",
+    projects: "Compani, IntoIQ, CoinsBloom, PresentQ, SanctumIQ, Joy",
     notes: "",
     photoUrl: "",
   };

@@ -60,7 +60,7 @@ const MOCK_DIRECTORY: DirectoryConnector[] = [
   { id: "dir_gcal",   provider: "google_calendar", label: "Google Calendar", tagline: "Sync events into your Ledger.",           category: "Productivity", popular: true },
   { id: "dir_stripe", provider: "stripe",          label: "Stripe",           tagline: "Pull MRR, churn, and payouts.",            category: "Payments",     popular: true },
   { id: "dir_slack",  provider: "slack",           label: "Slack",            tagline: "Deferred — planned for the future Connectors layer, where you'll connect your own workspace.", category: "Comms" },
-  { id: "dir_sf",     provider: "salesforce",      label: "Salesforce",       tagline: "Mirror your pipeline into Atlas.",         category: "CRM" },
+  { id: "dir_sf",     provider: "salesforce",      label: "Salesforce",       tagline: "Mirror your pipeline into Joy.",         category: "CRM" },
   { id: "dir_twilio", provider: "twilio",          label: "Twilio",           tagline: "Programmable SMS + voice triggers.",       category: "Telephony" },
   { id: "dir_hub",    provider: "hubspot",         label: "HubSpot",          tagline: "Sync contacts, deals, and lifecycle.",     category: "CRM" },
 ];
@@ -270,7 +270,7 @@ export default function ConnectorsPage() {
           <SectionHead
             eyebrow="Active"
             title="Live connections"
-            subtitle="Endpoints currently feeding Atlas with signal."
+            subtitle="Endpoints currently feeding Joy with signal."
           />
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14, marginTop: 14 }}>
@@ -311,7 +311,7 @@ export default function ConnectorsPage() {
           <SectionHead
             eyebrow="Discover"
             title="Build from what you already use"
-            subtitle="Plug Atlas into the systems your work already lives in."
+            subtitle="Plug Joy into the systems your work already lives in."
           />
 
           {/* Search */}
@@ -364,7 +364,7 @@ export default function ConnectorsPage() {
           <SectionHead
             eyebrow="Provision"
             title="Custom endpoint"
-            subtitle="Point Atlas at any internal or third-party service."
+            subtitle="Point Joy at any internal or third-party service."
           />
 
           <div
