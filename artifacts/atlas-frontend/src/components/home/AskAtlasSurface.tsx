@@ -261,6 +261,8 @@ export function AskAtlasSurface({
   handoffSignal,
   crystallized = false,
   isRestoring = false,
+  resumeGreeting = null,
+  onDismissResumeGreeting,
 }: Props) {
   // Internal verbs describe model machinery, not user-relevant actions.
   // Only surface steps that answer "what is Atlas doing for me right now?"
