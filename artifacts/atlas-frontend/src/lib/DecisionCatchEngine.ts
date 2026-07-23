@@ -151,6 +151,14 @@ function truncate(text: string, max: number): string {
   return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
+/** Honesty-fallback / meta messages must never become BUILD READY card copy. */
+const GUARD_FALLBACK_MARKERS = [
+  "i haven't generated a downloadable file",
+  "i tried to generate that file, but generation did not complete",
+  "no file was actually produced this turn",
+  "nothing ready to open or download",
+];
+
 export function detectDecisionMoment(
   atlasResponse: string,
   userMessage?: string,
@@ -161,6 +169,9 @@ export function detectDecisionMoment(
 
   const lower = clean.toLowerCase();
   const userLower = (userMessage ?? "").toLowerCase();
+
+  // Deliverable-guard fallback is not a product decision / build-ready signal
+  if (GUARD_FALLBACK_MARKERS.some((m) => lower.includes(m))) return null;
 
   // Atlas is summarizing/observing — not proposing a decision
   if (SUMMARY_SUPPRESSORS.some((s) => lower.includes(s))) return null;
