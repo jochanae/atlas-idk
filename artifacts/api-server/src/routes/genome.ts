@@ -85,7 +85,7 @@ function nextActionForStage(stage: string, openQuestions: string[], constraints:
     case "Build":      return "Pick one feature and ship it — learn from real usage";
     case "Operate":    return "Monitor and learn — what is the data telling you?";
     case "Evolve":     return "Identify the next evolution — what would 10x this?";
-    default:           return q ?? "Keep the conversation going — Atlas is listening";
+    default:           return q ?? "Keep the conversation going — Joy is listening";
   }
 }
 
@@ -253,7 +253,7 @@ router.patch("/projects/:id/genome", async (req, res): Promise<void> => {
 
     await updateProjectDNA(projectId, patch);
 
-    // Refresh Atlas Memory when major fields change (fire-and-forget)
+    // Refresh Joy Memory when major fields change (fire-and-forget)
     const majorFields = ["purpose", "audience", "wedge", "stack", "protectedAreas", "constraints"] as const;
     const hasMajorChange = prevDna && majorFields.some(
       f => f in patch && JSON.stringify((patch as unknown as Record<string, unknown>)[f]) !== JSON.stringify((prevDna as unknown as Record<string, unknown>)[f]),

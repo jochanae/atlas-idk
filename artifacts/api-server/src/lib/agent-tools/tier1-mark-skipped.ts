@@ -6,7 +6,7 @@ import { markTier1Skipped } from "../../services/tier1";
 export function tier1MarkSkippedTool(ctx: AgentToolContext) {
   return tool({
     description:
-      "Call ONLY when the user has clearly told you to stop asking Tier 1 questions (e.g. 'skip', 'stop asking that', 'I don't want to answer'). Prevents Atlas from asking again this project.",
+      "Call ONLY when the user has clearly told you to stop asking Tier 1 questions (e.g. 'skip', 'stop asking that', 'I don't want to answer'). Prevents Joy from asking again this project.",
     inputSchema: z.object({}),
     execute: async () => {
       const started = performance.now();

@@ -1,13 +1,13 @@
 // Deliverable Design System — shared brand tokens (Phase 3B.1).
 //
-// This is the single source of visual truth for Atlas-generated deliverables
+// This is the single source of visual truth for Joy-generated deliverables
 // (PPTX today; DOCX/PDF/HTML consume the same tokens in later phases).
 // Renderers must read colors/fonts/spacing from here rather than hardcoding
 // their own values, so every deliverable format converges on one identity.
 //
 // Values mirror the app's own obsidian/gold theme
 // (artifacts/atlas-frontend/src/styles.css) so a generated deck/doc looks
-// like it came from the same product as the Atlas UI itself.
+// like it came from the same product as the Joy UI itself.
 
 export interface DeliverableTheme {
   name: string;
@@ -61,7 +61,7 @@ export interface ThemeResolutionInput {
 
 /**
  * Resolves the theme a deliverable should render with, in order:
- * explicit user style override > inferred project theme (from DNA) > Atlas
+ * explicit user style override > inferred project theme (from DNA) > Joy
  * default. Both the override and the DNA-derived signals go through the same
  * inference call (`inferProjectTheme`) — the override text is just weighted
  * higher inside that prompt — so there is one code path, not two.

@@ -200,7 +200,7 @@ registerArtifactRenderer({
     if (input.title) plan.title = input.title;
     const theme = await resolveDeliverableTheme(themeSignals);
 
-    const buffer = await buildPdfBuffer(plan, theme, "Atlas");
+    const buffer = await buildPdfBuffer(plan, theme, "Joy");
 
     return {
       buffer,

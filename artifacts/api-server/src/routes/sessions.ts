@@ -67,7 +67,7 @@ async function projectBelongsToUser(projectId: number, userId: number): Promise<
   return rows.length > 0;
 }
 
-// Resolve ownership for a session — handles both project-scoped and Atlas (projectId = null) sessions.
+// Resolve ownership for a session — handles both project-scoped and Joy (projectId = null) sessions.
 async function sessionBelongsToUser(sessionId: number, userId: number): Promise<boolean> {
   const [row] = await db
     .select({ projectId: sessionsTable.projectId, sessionUserId: (sessionsTable as any).userId })
@@ -75,7 +75,7 @@ async function sessionBelongsToUser(sessionId: number, userId: number): Promise<
     .where(eq(sessionsTable.id, sessionId))
     .limit(1);
   if (!row) return false;
-  // Atlas session: auth by direct user_id on session
+  // Joy session: auth by direct user_id on session
   if (row.projectId == null) return (row as any).sessionUserId === userId;
   // Project session: auth via project ownership
   const [proj] = await db
@@ -192,11 +192,11 @@ router.post("/projects/:projectId/sessions", async (req, res): Promise<void> => 
   }).catch(() => { /* silent */ });
 });
 
-// ── Atlas session routes ─────────────────────────────────────────────────────
+// ── Joy session routes ─────────────────────────────────────────────────────
 // IMPORTANT: These must be defined BEFORE /sessions/:id or Express will treat
 // the literal "atlas" as the :id param (→ NaN → 400 validation error).
 
-// GET /api/sessions/atlas — list recent Atlas sessions for the authenticated user
+// GET /api/sessions/atlas — list recent Joy sessions for the authenticated user
 // Uses raw SQL because user_id is not in the Drizzle sessionsTable schema.
 router.get("/sessions/atlas", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
@@ -215,7 +215,7 @@ router.get("/sessions/atlas", async (req, res): Promise<void> => {
   res.json(Array.isArray(rows) ? rows : []);
 });
 
-// POST /api/sessions/atlas — create a new Atlas session (projectId = null)
+// POST /api/sessions/atlas — create a new Joy session (projectId = null)
 router.post("/sessions/atlas", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   const body = z.object({
@@ -237,7 +237,7 @@ router.post("/sessions/atlas", async (req, res): Promise<void> => {
 
   // NOTE: We intentionally do NOT save the initialMessage here.
   // The workspace reads it from sessionStorage and sends it via /api/chat,
-  // which handles message persistence, title auto-update, and Atlas response
+  // which handles message persistence, title auto-update, and Joy response
   // through the full pipeline. Saving it here would create duplicates.
   const insertResult = await db.execute(sql`
     INSERT INTO sessions (project_id, user_id, title, mode, status)
@@ -258,7 +258,7 @@ router.post("/sessions/atlas", async (req, res): Promise<void> => {
   });
 });
 
-// ── End Atlas session routes ──────────────────────────────────────────────────
+// ── End Joy session routes ──────────────────────────────────────────────────
 
 router.get("/sessions/:id", async (req, res): Promise<void> => {
   const params = GetSessionParams.safeParse(req.params);
@@ -495,10 +495,10 @@ router.post("/sessions/:id/summarize", async (req, res): Promise<void> => {
   if (assistantCount < 2) { res.json({ ok: true, skipped: "too few messages" }); return; }
 
   const transcript = rows.reverse()
-    .map(m => `${m.role === "user" ? "You" : "Atlas"}: ${m.content.slice(0, 500)}`)
+    .map(m => `${m.role === "user" ? "You" : "Joy"}: ${m.content.slice(0, 500)}`)
     .join("\n\n");
 
-  // Atlas sessions (null projectId) have no project memory store — skip.
+  // Joy sessions (null projectId) have no project memory store — skip.
   if (session.projectId == null) { res.json({ ok: true, skipped: "atlas-session-no-project-memory" }); return; }
 
   // Load current project memory
@@ -516,7 +516,7 @@ router.post("/sessions/:id/summarize", async (req, res): Promise<void> => {
     max_tokens: 200,
     messages: [{
       role: "user",
-      content: `You are the memory layer of Atlas, a strategic AI partner. Write a 2-3 sentence session summary covering: (1) what was discussed or built, (2) any decisions made, (3) the logical next step. Be specific. Past tense. No markdown, no bullets.\n\nSession:\n${transcript}`,
+      content: `You are the memory layer of Joy, a strategic AI partner. Write a 2-3 sentence session summary covering: (1) what was discussed or built, (2) any decisions made, (3) the logical next step. Be specific. Past tense. No markdown, no bullets.\n\nSession:\n${transcript}`,
     }],
   });
 

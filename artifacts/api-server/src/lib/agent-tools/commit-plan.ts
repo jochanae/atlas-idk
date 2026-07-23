@@ -7,7 +7,7 @@ import { withPlanErrorGuard, writePlanCommittedLedgerEntry } from "./plan-helper
 
 export function commitPlanTool(ctx: AgentToolContext) {
   return tool({
-    description: "Commit an approved plan so Atlas may execute write tools.",
+    description: "Commit an approved plan so Joy may execute write tools.",
     inputSchema: CommitPlanInput,
     execute: withPlanErrorGuard(
       async ({ planId }) => {

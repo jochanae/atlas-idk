@@ -43,7 +43,7 @@ async function tryStreamableHttp(
         params: {
           protocolVersion: "2024-11-05",
           capabilities: {},
-          clientInfo: { name: "Atlas", version: "1.0" },
+          clientInfo: { name: "Joy", version: "1.0" },
         },
       }),
       signal: AbortSignal.timeout(8000),
@@ -141,7 +141,7 @@ async function trySseMcp(
         params: {
           protocolVersion: "2024-11-05",
           capabilities: {},
-          clientInfo: { name: "Atlas", version: "1.0" },
+          clientInfo: { name: "Joy", version: "1.0" },
         },
       }),
       signal: AbortSignal.timeout(8000),
