@@ -1,11 +1,20 @@
 # Milestone 2.3 — Lens Differentiation Design
 
-**Phase:** Planning / architecture review (**read-only — no implementation**)  
+**Phase:** Planning — **design approved; implementation not started**  
 **Date:** 2026-07-23  
-**Status:** DRAFT — design only; no code, no prompt rewrites, no feature additions  
+**Status:** APPROVED (Constitution · Eval battery · Phase 0 scope) — awaiting naming sign-off, then implementation  
 **Prerequisite:** Milestone 2.2 CLOSED (intelligence correctness)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Repo HEAD at commission:** `51acaf50` (`main`, post #217)
+
+### Approvals (2026-07-23)
+
+| Item | Decision |
+|------|----------|
+| §3 Lens Constitution | **Approved** |
+| §4 Evaluation battery (T1–T6 + L1–L5) | **Approved** |
+| Phase 0 scope | **Map + live chat plumbing first** — do **not** implement full chat differentiation yet. First carry the active lens through the entire reasoning pipeline so there is **one lens architecture, not two**. Then implement the Constitution on the **Map** path, then **live chat**, and validate **both** with the same evaluation battery. |
+| Naming collisions | Recommendation in **§9** — sign off before implementation begins |
 
 ---
 
@@ -27,23 +36,26 @@ If the three outputs are rewriteable into each other by swapping headings, diffe
 
 ---
 
-## 0. Scope clarification — two lens systems
+## 0. Scope clarification — unify to one lens architecture
 
-Axiom currently has **two primary lens systems**. Naming collisions are a product risk.
+Axiom **today** has two parallel systems (inventory in §1). **2.3 approved scope** collapses that into **one architecture**:
 
-| System | Names | Job today | Primary 2.3 target? |
-|--------|-------|-----------|---------------------|
-| **Map / Flow UI lenses** | Designer · Builder · Storyteller | Three views of the **same** Flow `nodeState` graph (+ expand-node AI) | **Yes — this is the 2.3 bar** |
-| **Workspace chat lenses** | Flow · Build · Look · Scenario | Shape chat disposition / model / side effects | Secondary — must be inventoried; live path may not honor prompts |
+> The active lens is a first-class signal carried through the **entire** reasoning pipeline (UI → client transport → Nexus/live server → expand-node / chat assembly → SSE/UI). Map and chat are **surfaces** that consume the same lens identity — not two competing taxonomies.
 
-**Naming traps (do not conflate):**
+| Concern | Approved direction |
+|---------|-------------------|
+| Canonical lens identities | **Designer · Builder · Storyteller** (Constitution §3) |
+| Map surface | Implements Constitution first (presentation + generative) |
+| Chat surface | **Plumbing first** (carry active lens end-to-end); **full chat differentiation second** |
+| Legacy chat modes (Flow / Build / Look / Scenario) | Retire or remap under naming plan §9 — must not remain a second ontology |
+| Evaluation | Same T1–T6 battery on Map **and** live chat once each surface claims differentiation |
+
+**Naming traps (current code — resolve via §9 before impl):**
 
 - Chat **Build** ≠ Map **Builder**
 - Chat **Flow** ≠ Flow Map surface
 - History `AtlasLens` (`builder` / `strategic` / `minimal`) ≠ either system
 - Soft Nexus copy (“Which lens? Positioning / UX…”) is not selectable state
-
-This document inventories both systems. The **Lens Constitution (§3)** and **Evaluation Framework (§4)** are written for Designer / Builder / Storyteller — the user’s 2.3 definition. Chat lenses are covered in Current State + Architecture so Phase work does not silently “fix the wrong system.”
 
 ---
 
@@ -398,7 +410,7 @@ Overall 2.3 battery: _ / 6 cases Pass
 | Shared knowledge | Correct and desired (one project truth). |
 | Shared outline risk | High — one expand call shape + one transcript → isomorphic sub-nodes with different adjectives. |
 
-**Conclusion:** Today’s Map lenses are closer to **differentiated presentation** than **differentiated reasoning**. Chat lenses are a **stranded design** on a non-live route. 2.3 must decide whether to (a) deepen Map generative separation under the Constitution, (b) reconnect chat lenses on the live Nexus path, or (c) both — in phases.
+**Conclusion (superseded by approval):** Today’s Map lenses are presentation-first; chat lens prompts are stranded on `/api/chat`. **Approved plan:** (1) one pipeline carrying active lens on Map + live Nexus, (2) Constitution on Map generative path, (3) full live-chat differentiation, (4) same battery on both.
 
 ### 5.2 Shared prompts / context / routing
 
@@ -433,45 +445,65 @@ Ordered by leverage for true differentiation:
 
 ---
 
-## 6. Roadmap (implementation phases)
+## 6. Roadmap (implementation phases) — **approved order**
 
-> Complexity is technical (surface area / risk), not calendar time.
+> Complexity is technical (surface area / risk), not calendar time.  
+> **Do not skip plumbing (Phase A) before Constitution work (Phase B).**
 
-### Phase 0 — Align & freeze scope  
-**Objective:** Lock 2.3 primary surface = Map Designer/Builder/Storyteller; record chat-lens live-path gap as either in-scope Phase 3 or explicit deferral.  
-**Acceptance:** This design doc accepted; constitution §3 approved; T1–T6 battery approved; decision recorded on chat-lens scope.  
-**Complexity:** Low (docs/decision only).  
-**Dependencies:** 2.2 closed ✅.
+### Phase 0 — Design freeze ✅  
+**Objective:** Approve Constitution, eval battery, scope, naming.  
+**Acceptance:** §3 + §4 approved; §0 scope recorded; §9 naming signed off.  
+**Complexity:** Low.  
+**Dependencies:** 2.2 closed ✅.  
+**Status:** Constitution + battery + scope approved; **naming sign-off pending**.
 
-### Phase 1 — Baseline measurement (no behavior change)  
-**Objective:** Run T1–T6 against **current** Map lenses (view + expand-node where applicable); publish score sheet.  
-**Acceptance:** Baseline artifact with Pass/Fail per case; known failure modes listed; no code changes required.  
-**Complexity:** Low–medium (manual eval labor).  
+### Phase A — One lens pipeline (plumbing only) ← **FIRST IMPLEMENTATION**  
+**Objective:** Carry **active lens** end-to-end on Map **and** live Workspace chat so there is one architecture, not two. **No full chat differentiation yet** — signal must be present, typed, logged, and consumed as a stub/policy hook on Nexus (may be no-op or identity-only beyond “lens=X is active”).  
+**In scope:**
+- Canonical lens type shared by Map tabs + composer (post-naming: Designer | Builder | Storyteller)
+- Client → `POST /api/nexus/chat` includes active lens
+- Nexus accepts/persists/forwards lens on the turn (meta SSE / tracing)
+- Expand-node already has `lens`; align enum + shared module with Nexus
+- Map `lensView` and chat active lens stay in sync (or explicitly document single source of truth)
+- Remove or stop implying legacy Flow/Build/Look/Scenario as a second ontology (per §9)
+**Out of scope:** Constitution-grade evidence filters, output contracts, chat disposition packs, Scenario side-effect port  
+**Acceptance:**
+- Trace one Workspace send: UI selection → request body → Nexus log/meta → (optional) prompt stub acknowledges lens id
+- Trace one Map expand: same lens id enum as chat
+- No second parallel `workspaceLens` string space left live in composer
+- Automated or manual trace checklist checked in  
+**Complexity:** Medium (Nexus + client wiring; naming migration).  
+**Dependencies:** Phase 0 naming sign-off.
+
+### Phase A′ — Baseline measurement (may parallelize after A starts)  
+**Objective:** Run T1–T6 against **current** Map behavior (pre-Constitution) for a before/after delta.  
+**Acceptance:** Baseline score sheet published.  
+**Complexity:** Low–medium.  
 **Dependencies:** Phase 0.
 
-### Phase 2 — Constitution enforcement on Map generative path  
-**Objective:** Make expand-node (and any Map-bound Q&A) obey §3 via **policy/evidence/output-contract separation** — not adjective swaps.  
-**Acceptance:** Re-run battery; T1 Pass mandatory; ≥5/6 Pass; L2 Fail rate drops vs baseline; Builder remains schema-true per identity doc.  
-**Complexity:** Medium–high (forge/expand contracts, possible retrieval weighting, eval harness).  
-**Dependencies:** Phase 1 baseline; Constitution frozen.
+### Phase B — Constitution on Map path  
+**Objective:** Implement §3 on Map generative + presentation path (expand-node / Map-bound reasoning): policy, evidence weighting, output contracts — not adjective swaps.  
+**Acceptance:** Re-run battery on **Map**; T1 Pass mandatory; ≥5/6 Pass; L2 improves vs baseline; Builder remains schema-true.  
+**Complexity:** Medium–high.  
+**Dependencies:** Phase A (shared lens identity); Phase A′ baseline preferred.
 
-### Phase 3 — Live chat-lens truthfulness (optional / recommended)  
-**Objective:** Either wire lens policy into live Nexus Workspace chat **or** remove/disable inert lens claims in UI until wired.  
-**Acceptance:** Selecting Flow/Build/Look/Scenario changes model reasoning on a traced live turn (or UI no longer implies it does). Scenario side effects match documented behavior on the live path.  
-**Complexity:** High (nexus/chat dual-path debt).  
-**Dependencies:** Phase 0 scope decision; Nexus vs chat route discipline (`.agents/memory/nexus-vs-chat-routes.md`).
+### Phase C — Constitution on live chat  
+**Objective:** Full live-chat differentiation using the **same** Constitution and lens ids (now that plumbing exists). Port/replace stranded `chat.ts` disposition logic onto Nexus under Designer/Builder/Storyteller — not a revival of Flow/Build/Look/Scenario as a second set.  
+**Acceptance:** Re-run **same** T1–T6 battery on **live chat**; Pass bar matches Map (≥5/6, T1 mandatory); selecting a lens changes reasoning content (L2), not only model chrome.  
+**Complexity:** High.  
+**Dependencies:** Phase A + Phase B quality bar (Map proves Constitution works before chat absorbs it).
 
-### Phase 4 — Disagreement & synthesis (thin)  
-**Objective:** Support productive conflict (L5) without auto-merging — e.g. “lens dissent” affordance or explicit compare mode.  
-**Acceptance:** On T2/T3, documented dissent appears; user can read three perspectives side by side.  
+### Phase D — Disagreement & compare (thin)  
+**Objective:** Productive conflict (L5) without auto-merge — side-by-side or dissent affordance.  
+**Acceptance:** T2/T3 show documented tension across lenses.  
 **Complexity:** Medium.  
-**Dependencies:** Phase 2 quality bar met.
+**Dependencies:** Phase B; Phase C for chat compare.
 
-### Phase 5 — Close 2.3  
-**Objective:** Tag milestone closed; hand deferred UX (resume toast, soft handoff, etc.) to 2.4 where appropriate.  
-**Acceptance:** Battery pass bar met; constitution filed as governing doc; parent board flips 2.3 → CLOSED; 2.4 unblocked.  
+### Phase E — Close 2.3  
+**Objective:** Milestone closed; deferred UX → 2.4.  
+**Acceptance:** Map + chat both pass battery; parent board → 2.3 CLOSED; 2.4 unblocked.  
 **Complexity:** Low.  
-**Dependencies:** Phase 2 (required); Phase 3–4 per scope decision.
+**Dependencies:** Phase B + Phase C.
 
 ---
 
@@ -495,17 +527,85 @@ These remain **out of the lens constitution** unless a phase explicitly absorbs 
 | Requirement | Status |
 |-------------|--------|
 | Design document only | ✅ This file |
-| No implementation | ✅ |
+| No implementation (yet) | ✅ |
 | No prompt rewriting | ✅ |
-| No feature additions | ✅ |
 | Current state inventory | ✅ §1 |
 | Definition of differentiation | ✅ §2 |
-| Lens constitution | ✅ §3 |
-| Evaluation framework | ✅ §4 |
+| Lens constitution | ✅ §3 **Approved** |
+| Evaluation framework | ✅ §4 **Approved** |
 | Architecture review | ✅ §5 |
-| Phased roadmap | ✅ §6 |
+| Phased roadmap | ✅ §6 **Approved order** |
+| Naming recommendation | ✅ §9 — **sign-off before Phase A** |
 
-**Next human decision before coding:** Approve §3 Constitution + §4 battery + Phase 0 scope (Map-only vs Map+chat).
+**Next human decision before coding:** Approve **§9 Naming** (or amend it). Then start Phase A plumbing.
+
+---
+
+## 9. Naming collisions — recommendation (sign off before implementation)
+
+### 9.1 Problem
+
+| Collision | Why it hurts |
+|-----------|--------------|
+| Chat **Build** vs Map **Builder** | Same English root; different jobs (code-write mode vs execution schema perspective) |
+| Chat **Flow** vs **Flow Map** surface | “Flow” means think-through chat *and* the graph product |
+| Chat **Look** vs Designer | Overlapping “visual/UX” ownership without shared id |
+| Chat **Scenario** | Side-effect mode (no commit), not a professional perspective |
+| History `AtlasLens`: `builder` / `strategic` / `minimal` | Third taxonomy from Whisper intent |
+| Soft Nexus “Which lens? Positioning / UX…” | Copy-only; not state |
+
+Two taxonomies guarantee two architectures. 2.3 requires **one**.
+
+### 9.2 Recommended model: one vocabulary, two *modifiers*
+
+**Canonical perspectives (Constitution — user-visible lens names):**
+
+| Id | Label | Job |
+|----|-------|-----|
+| `designer` | Designer | Experience / interaction / usability |
+| `builder` | Builder | Architecture / implementation / execution |
+| `storyteller` | Storyteller | Meaning / narrative / engagement |
+
+**Session modifiers (not lenses — orthogonal flags):**
+
+| Flag | Replaces | Meaning |
+|------|----------|---------|
+| `speculate` (or keep UI label **Scenario**) | Chat lens `scenario` | No-commitment exploration; can combine with any perspective |
+| *(optional later)* `code_write` | Aspects of chat `build` FILE_EDIT pressure | Tooling bias, not a fourth perspective |
+
+**Chat modes → remap (do not keep as parallel ontology):**
+
+| Legacy chat mode | Remap to |
+|------------------|----------|
+| **Look** | **Designer** (+ model default Gemini may remain a Designer preference) |
+| **Build** | **Builder** (+ optional `code_write` intensity later — Phase C) |
+| **Flow** | **Storyteller** *or* default **Designer** — see choice below |
+| **Scenario** | Modifier `speculate=true` on whichever perspective is active |
+
+**Recommended choice for legacy Flow:** map **Flow → Storyteller** when the user was “thinking it through” in narrative/strategic terms; default new sessions to **Designer** on Map and **Builder** only when entering code-forward tasks. *Alternative (also acceptable):* Flow → Designer as “explore the experience of the problem.” **Pick one in sign-off; default recommendation = Flow → Storyteller** so Look/Designer are not doubled and strategic “think through” lands on meaning/implications.
+
+**History `AtlasLens`:** rename internally to `historyIntent` (`build` / `decide` / `chat`) — **never** call it a lens in UI or types.
+
+**Flow Map surface:** keep product name **Flow** / **Axiom Flow** for the *graph*; lens tabs remain Designer / Builder / Storyteller. Never label a chat mode “Flow” after migration.
+
+### 9.3 Migration rules (Phase A)
+
+1. Single shared TypeScript union: `type AtlasPerspective = "designer" | "builder" | "storyteller"`.  
+2. Composer picker shows only those three (+ Scenario as toggle/modifier).  
+3. Persist `atlas-ws-lens-v2-*` values migrated: `look→designer`, `build→builder`, `flow→storyteller` (if that choice approved), `scenario→` keep perspective + set speculate flag.  
+4. Map `lensView` uses the same union (already close).  
+5. Nexus + expand-node accept only the canonical union.  
+6. Docs: deprecate dual wording in `flow-lens-architecture.md`; Builder presentation rules stay in `builder-lens-identity.md` under id `builder`.
+
+### 9.4 Sign-off checklist
+
+- [ ] Canonical ids = `designer` | `builder` | `storyteller`  
+- [ ] Scenario = modifier, not a fourth lens  
+- [ ] Legacy Flow maps to: **Storyteller** (recommended) / Designer (alt)  
+- [ ] History taxonomy renamed away from “lens”  
+- [ ] “Flow” reserved for Map surface name only  
+
+**Implementation must not start Phase A until this checklist is checked.**
 
 ---
 
