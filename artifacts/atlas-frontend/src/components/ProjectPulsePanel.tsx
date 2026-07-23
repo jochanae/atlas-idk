@@ -149,12 +149,17 @@ export function ProjectPulsePanel(props: Props) {
         aria-label={`${projectName} pulse`}
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto",
+          width: "100%",
+          maxWidth: "min(560px, 94vw)",
+          maxHeight: "min(90vh, 900px)",
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
           background: "rgba(var(--atlas-surface-rgb), 0.96)",
           border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)",
-          borderRadius: 14,
+          borderRadius: 16,
           boxShadow: "0 24px 80px rgba(0,0,0,0.35), inset 0 1px 0 rgba(var(--atlas-gold-rgb), 0.06)",
-          padding: 20,
+          padding: "clamp(18px, 3vw, 26px)",
           animation: "atlas-pulse-rise 240ms cubic-bezier(0.22,1,0.36,1)",
           fontFamily: "var(--app-font-sans)",
           color: "var(--atlas-fg)",
@@ -191,9 +196,12 @@ export function ProjectPulsePanel(props: Props) {
           </button>
         </div>
 
+        {/* Project DNA — the 6 Tier1 slots Atlas is capturing */}
+        <PulseDnaSection projectId={projectId} />
+
         {/* Current state */}
         <Section label="Current State">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ color: meta.color, fontSize: 14 }}>{meta.glyph}</span>
             <span style={{ color: "var(--atlas-fg)", fontSize: 13, fontWeight: 500 }}>{meta.label}</span>
             <span style={{ color: "var(--atlas-muted)", fontSize: 12, opacity: 0.7 }}>— {meta.description}</span>
