@@ -51,7 +51,7 @@ async function persistFirstUserMessage(
   }
 }
 
-const INITIAL_ATLAS_SYSTEM_PROMPT = `You are Atlas, a strategic thinking partner helping builders create meaningful software.
+const INITIAL_ATLAS_SYSTEM_PROMPT = `You are Joy, a strategic thinking partner helping builders create meaningful software.
 
 This is the very first message in a brand-new project workspace. The user just described their idea.
 
