@@ -266,27 +266,10 @@ export function mergeAskAtlasThread(
   };
 }
 
-/** Whether a synthetic welcome-back greeting should be appended. */
-export function shouldInjectAskAtlasWelcomeBack(opts: {
-  alreadyGreeted: boolean;
-  recoveredFromMemory: boolean;
-  awaitingServerAssistant: boolean;
-  messages: AskAtlasMemoryMessage[];
-}): boolean {
-  if (opts.alreadyGreeted) return false;
-  if (opts.recoveredFromMemory) return false;
-  if (opts.awaitingServerAssistant) return false;
-  if (opts.messages.length === 0) return false;
-  const last = opts.messages[opts.messages.length - 1];
-  // Only greet on a cold resume of a completed thread.
-  if (last?.role !== "assistant") return false;
-  if (!last.content.trim()) return false;
-  // Never greet on top of an ephemeral/recovered resume bubble.
-  if (String(last.id ?? "").startsWith("aa-resume-") || String(last.id ?? "").startsWith("aa-recovered-")) {
-    return false;
-  }
-  return true;
-}
+// Legacy `shouldInjectAskAtlasWelcomeBack` removed — resume greeting is now an
+// ephemeral UI card owned by home.tsx (`askAtlasResumeGreeting` state), never
+// inserted into the transcript.
+
 
 /** Test helper */
 export function __resetAskAtlasThreadMemoryForTests() {
