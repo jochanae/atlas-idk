@@ -5,8 +5,8 @@ import {
   getAskAtlasThreadMemory,
   mergeAskAtlasThread,
   setAskAtlasThreadMemory,
-  shouldInjectAskAtlasWelcomeBack,
   isAskAtlasGenerationActive,
+  type AskAtlasMemoryMessage,
 } from "../askAtlasThreadMemory";
 
 describe("askAtlasThreadMemory", () => {
@@ -81,33 +81,23 @@ describe("askAtlasThreadMemory", () => {
     expect(merged.messages[1]?.content).toContain("much longer");
   });
 
-  it("gates welcome-back when recovered or awaiting assistant", () => {
-    expect(
-      shouldInjectAskAtlasWelcomeBack({
-        alreadyGreeted: false,
-        recoveredFromMemory: true,
-        awaitingServerAssistant: false,
-        messages: [{ role: "assistant", content: "hi" }],
-      }),
-    ).toBe(false);
-
-    expect(
-      shouldInjectAskAtlasWelcomeBack({
-        alreadyGreeted: false,
-        recoveredFromMemory: false,
-        awaitingServerAssistant: true,
-        messages: [{ role: "user", content: "hi" }],
-      }),
-    ).toBe(false);
-
-    expect(
-      shouldInjectAskAtlasWelcomeBack({
-        alreadyGreeted: false,
-        recoveredFromMemory: false,
-        awaitingServerAssistant: false,
-        messages: [{ role: "assistant", content: "complete turn" }],
-      }),
-    ).toBe(true);
+  it("regression: merge never introduces a synthetic 'Welcome back' assistant turn", () => {
+    // Simulates cold resume: server has the completed thread, no local memory snapshot.
+    const server: AskAtlasMemoryMessage[] = [
+      { role: "user", content: "hey" },
+      { role: "assistant", content: "Real reply from the server." },
+    ];
+    const merged = mergeAskAtlasThread(server, null);
+    // Transcript must be preserved exactly — no aa-resume-* id, no "Welcome back" copy.
+    expect(merged.messages).toEqual(server);
+    for (const m of merged.messages) {
+      expect(String(m.id ?? "")).not.toMatch(/^aa-resume-/);
+      expect(m.content).not.toMatch(/Welcome back/i);
+    }
+    // Exported/serialized shape must also be free of the synthetic greeting.
+    const exported = JSON.stringify(merged.messages);
+    expect(exported).not.toMatch(/Welcome back/i);
+    expect(exported).not.toMatch(/aa-resume-/);
   });
 
   it("clears memory", () => {
