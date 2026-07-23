@@ -59,7 +59,7 @@ Prove Designer, Builder, and Storyteller produce meaningfully different outputs 
 
 **Acceptance intent:** Same question → three different perspectives (experience / execution / meaning).
 
-**Status:** Architecture review + lens constitution + evaluation battery drafted (**read-only**). No implementation until design accepted.
+**Status:** Constitution + eval battery + scope **approved**. Naming recommendation pending sign-off (§9), then Phase A (one lens pipeline plumbing).
 
 **Depends on:** 2.2 ✅
 
@@ -106,4 +106,5 @@ Do not implement 2.3 behavior until the design doc is accepted. Do not start 2.4
 | 2026-07-22 | M2 opened after M1 closed. 2.1 closed via PR #208. |
 | 2026-07-22–23 | 2.2 evaluation, P2/P3, handoff seed, Round 3, execution PRs #213–#217. |
 | 2026-07-23 | **2.2 CLOSED.** |
-| 2026-07-23 | **2.3 planning** — design doc `milestone-2-3-lens-differentiation-design.md` (no code). |
+| 2026-07-23 | **2.3 planning** — design doc drafted. |
+| 2026-07-23 | **2.3 approvals** — Constitution, eval battery, scope (Map + live chat plumbing → Map Constitution → live chat). Naming §9 pending sign-off. |
