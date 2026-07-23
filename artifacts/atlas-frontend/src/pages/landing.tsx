@@ -114,7 +114,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
           color: "rgba(232,220,200,0.32)",
         }}>
-          Axiom // Powered by Joy
+          Built on Axiom // Guided by Joy
         </p>
 
         <h1 className="leading-[0.95] mb-8" style={{
