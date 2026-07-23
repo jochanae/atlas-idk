@@ -4460,7 +4460,9 @@ export default function Home() {
                     return;
                   }
                   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-                  const body = `ASK ATLAS\n${stamp}\n\n${lines}`;
+                  // UTF-8 BOM so Windows Notepad / some importers don't Latin-1-decode
+                  // apostrophes and dashes into mojibake (Iâ€™m / â€”).
+                  const body = `\uFEFFASK ATLAS\n${stamp}\n\n${lines}`;
                   const filename = `ask-atlas-${stamp}.txt`;
                   const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
                   const url = URL.createObjectURL(blob);

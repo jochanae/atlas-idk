@@ -68,6 +68,7 @@ import {
   shouldForceCreateProject,
 } from "../lib/askAtlasHandoffContract";
 import { checkDeliverableClaims } from "../lib/deliverableOutputGuard";
+import { collapseRepeatedTail } from "../lib/collapseRepeatedTail";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import {
   advanceRunExecutionState,
@@ -3354,6 +3355,7 @@ If the user asks for a deliverable: say you'll generate it, then actually call g
 Do not substitute a text-only outline or script for the user to run themselves — call the tool and produce the real artifact.
 If tools are not enabled on this specific turn, say plainly that you'll generate it on the next turn and follow through.
 If generate_deliverable is called and returns an error, report the actual failure honestly — never reinterpret a tool failure as "I don't have this capability at all."
+HARD RULE — NEVER CLAIM READY BEFORE SUCCESS: Do not say a brief/file/deck "is ready", "download it from the card", or similar until generate_deliverable has returned ok:true with a real artifact in THIS turn. Progressive "generating…" is fine. False completion claims are not.
 --- END DELIVERABLE GENERATION CAPABILITY ---`;
 
   // Always-on capability truth for run_browser_flow. This exists because Atlas
@@ -4487,6 +4489,9 @@ PROSE RULES (enforced — contradiction detection is active):
       .replace(/\nPLAN_CONTINUATION_START[\s\S]*?PLAN_CONTINUATION_END(?:\n|$)/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
+
+    // Collapse duplicated trailing paragraphs/questions from stream finalize glitches.
+    rawContent = collapseRepeatedTail(rawContent);
 
     // ── ATTACHMENT OUTPUT GUARD ───────────────────────────────────────────────
     // Narrow post-stream validator: checks for unsupported perception/retrieval

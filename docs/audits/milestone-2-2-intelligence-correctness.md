@@ -598,6 +598,40 @@ Desktop Flow tab: right-rail no longer filters out `map`.
 
 ---
 
+## Round 3 — Ask Atlas reasoning (no handoff) (2026-07-23)
+
+**Scenario:** Long founding conversation for a women’s financial-decision community → Product Strategy Brief. Entirely on Ask Atlas.
+
+### Verdict
+
+| Layer | Result |
+|-------|--------|
+| **Reasoning / intelligence** | **STRONG PASS** — sustained challenge, framework development, moat analysis, coherent brief synthesis |
+| **Execution layer** | **FAIL / MIXED** — false artifact-ready claim, renderer failure, export mojibake, duplicate stream tail, resume UX, persistence overclaim |
+
+**Governing split:** Atlas’s *thinking* succeeded; its *execution* (artifact verification, export, persistence truthfulness, refresh recovery, handoff action) did not fully succeed. Do not commission another long reasoning test to close 2.2 — concentrate on execution defects below.
+
+### Improvements to record
+
+| # | Issue | Severity | Disposition |
+|---|-------|----------|-------------|
+| 1 | Duplicate closing question streamed twice | Bug | Fix: `collapseRepeatedTail` on finishStream |
+| 2 | Resume-after-refresh as inline “Welcome back…” message | UX | Recorded — Conversation Resume UX (toast/card, not transcript); not blocking intelligence close |
+| 3 | Export mojibake (`Iâ€™m`, `â€”`) | Bug | Fix: UTF-8 BOM on Ask Atlas thread download |
+| 4 | Duplicate user message after server interrupt / resend | Bug | Recorded — submission idempotency / continue pending run (continuityV2 key exists; resent mints new id) |
+| 5 | False “strategy brief is ready — download from the card” before artifact | **Critical** | Fix: deliverable guard strips readiness claims even when tool not attempted; prompt hard rule |
+| 6 | Visible multi-format renderer struggle | UX | Recorded — internal format fallbacks; one concise recovery message |
+| 7 | Inline brief fallback after renderer fail | **Keep** | Protect — never lose work when file export fails |
+| 8 | Brief strong but essay-like | Product | Recorded — living Product Strategy Brief sections (decisions / assumptions / risks / next decision) |
+| 9 | “Preserved / full context next time” overclaim | Truthfulness | Recorded — distinguish thread retention vs artifact vs Workspace memory |
+| 10 | Workspace offered but not a verified handoff action | UX | Recorded — contextual “Continue in Workspace” with brief + next task |
+
+### Closeout implication
+
+Reasoning bar for this conversation is met. Remaining 2.2 concentration: **output verification, artifact rendering, persistence truthfulness, refresh recovery, seamless handoff** — not more philosophy tests.
+
+---
+
 ## Regression note — “Generating the brief” → empty Outputs (2026-07-23)
 
 **User finding (post-redeploy handoff):** Intelligence transfer largely worked (DNA, Objects, Decisions, Builder, Story, Map populated). UX of transfer felt abrupt. Functional gap: Atlas said “Generating the brief now” but Workspace Outputs was empty.
