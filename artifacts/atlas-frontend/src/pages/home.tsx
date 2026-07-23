@@ -2332,6 +2332,10 @@ export default function Home() {
   // True when the user explicitly started a new conversation — keeps the surface
   // visible even before the first message lands (messages.length === 0 after clear).
   const [askAtlasNewConvMode, setAskAtlasNewConvMode] = useState(false);
+  // Ephemeral "Welcome back" resume card. Never inserted into messages; renders
+  // above the transcript, auto-fades, and clears on next send. `hint` is an
+  // optional short context excerpt from the last assistant turn.
+  const [askAtlasResumeGreeting, setAskAtlasResumeGreeting] = useState<{ hint: string | null } | null>(null);
   const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasConv.messages.length > 0 || isAskAtlasRestoring || askAtlasNewConvMode);
   // INT-11: live handoff transcript — Ask Atlas owns messages when open (ambient nexusChat is cleared).
   const getHandoffMessages = useCallback((): HomeMessage[] => {
