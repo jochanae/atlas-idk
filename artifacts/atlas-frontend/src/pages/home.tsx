@@ -100,7 +100,6 @@ import {
   getAskAtlasThreadMemory,
   mergeAskAtlasThread,
   setAskAtlasThreadMemory,
-  shouldInjectAskAtlasWelcomeBack,
   type AskAtlasMemoryMessage,
 } from "@/lib/askAtlasThreadMemory";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
