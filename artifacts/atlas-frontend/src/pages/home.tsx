@@ -100,7 +100,6 @@ import {
   getAskAtlasThreadMemory,
   mergeAskAtlasThread,
   setAskAtlasThreadMemory,
-  shouldInjectAskAtlasWelcomeBack,
   type AskAtlasMemoryMessage,
 } from "@/lib/askAtlasThreadMemory";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
@@ -2333,6 +2332,10 @@ export default function Home() {
   // True when the user explicitly started a new conversation — keeps the surface
   // visible even before the first message lands (messages.length === 0 after clear).
   const [askAtlasNewConvMode, setAskAtlasNewConvMode] = useState(false);
+  // Ephemeral "Welcome back" resume card. Never inserted into messages; renders
+  // above the transcript, auto-fades, and clears on next send. `hint` is an
+  // optional short context excerpt from the last assistant turn.
+  const [askAtlasResumeGreeting, setAskAtlasResumeGreeting] = useState<{ hint: string | null } | null>(null);
   const askAtlasSurfaceVisible = askAtlasSurfaceOpen && (askAtlasConv.messages.length > 0 || isAskAtlasRestoring || askAtlasNewConvMode);
   // INT-11: live handoff transcript — Ask Atlas owns messages when open (ambient nexusChat is cleared).
   const getHandoffMessages = useCallback((): HomeMessage[] => {
@@ -2438,30 +2441,29 @@ export default function Home() {
           const greetedKey = `atlas-aa-greeted-${askAtlasConversationId}`;
           let alreadyGreeted = false;
           try { alreadyGreeted = sessionStorage.getItem(greetedKey) === "1"; } catch {}
-          // Never inject welcome-back when we already seeded a real transcript from memory
-          // (soft remount / hard reload of an active generation). Cold resume without
-          // local memory may still greet once per session.
+          // Ephemeral resume card — never inserted into messages. Shown once per
+          // session on cold resume of a completed thread; skipped if we already
+          // rehydrated from local memory or the server turn is still in flight.
           const hadLocalTranscript = Boolean(localSnap && localSnap.messages.length > 0);
-          const injectWelcome = !hadLocalTranscript && shouldInjectAskAtlasWelcomeBack({
-            alreadyGreeted,
-            recoveredFromMemory: merged.recoveredFromMemory,
-            awaitingServerAssistant: merged.awaitingServerAssistant,
-            messages: nextMessages,
-          });
-          if (injectWelcome) {
+          const last = nextMessages[nextMessages.length - 1];
+          const eligible =
+            !alreadyGreeted &&
+            !hadLocalTranscript &&
+            !merged.recoveredFromMemory &&
+            !merged.awaitingServerAssistant &&
+            last?.role === "assistant" &&
+            typeof last.content === "string" &&
+            last.content.trim().length > 0;
+          if (eligible) {
             try { sessionStorage.setItem(greetedKey, "1"); } catch {}
-            const lastAssistant = [...nextMessages].reverse().find(m => m.role === "assistant");
-            const contextHint = lastAssistant
-              ? (typeof lastAssistant.content === "string" ? lastAssistant.content : "").slice(0, 80).replace(/\n/g, " ").trim()
-              : null;
-            const greeting = contextHint
-              ? `Welcome back. Picking up where we left off — ${contextHint}… What's next?`
-              : "Welcome back. Ready to continue.";
-            const welcomeMsg = { id: `aa-resume-${Date.now()}`, role: "assistant" as const, content: greeting };
-            askAtlasConv.setMessages([...(nextMessages as any), welcomeMsg]);
-          } else {
-            askAtlasConv.setMessages(nextMessages as any);
+            const hint = (typeof last.content === "string" ? last.content : "")
+              .slice(0, 80)
+              .replace(/\n/g, " ")
+              .trim() || null;
+            setAskAtlasResumeGreeting({ hint });
           }
+          // Preserve the restored transcript exactly — no synthetic assistant.
+          askAtlasConv.setMessages(nextMessages as any);
           askAtlasAwaitingAssistantRef.current = merged.awaitingServerAssistant;
           setAskAtlasThreadMemory({
             conversationId: askAtlasConversationId,
@@ -3486,6 +3488,7 @@ export default function Home() {
       }
       submitInFlightRef.current = true;
       askAtlasSurfaceSendInFlightRef.current = true;
+      setAskAtlasResumeGreeting(null);
       setInput("");
       // Pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
       // Files stay visible as "converting" during async work and are cleared only on confirmed
@@ -6216,6 +6219,8 @@ export default function Home() {
       <AskAtlasSurface
         open={askAtlasSurfaceVisible}
         isRestoring={isAskAtlasRestoring && askAtlasConv.messages.length === 0}
+        resumeGreeting={askAtlasResumeGreeting}
+        onDismissResumeGreeting={() => setAskAtlasResumeGreeting(null)}
         messages={askAtlasConv.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={askAtlasConversationId}
@@ -6240,8 +6245,8 @@ export default function Home() {
         }}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => staged.addFiles(files)}
-        onSketch={(prompt) => { if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text: prompt }); }}
-        onSend={(text) => { if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text }); }}
+        onSketch={(prompt) => { setAskAtlasResumeGreeting(null); if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text: prompt }); }}
+        onSend={(text) => { setAskAtlasResumeGreeting(null); if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text }); }}
         onAction={(id, payload) => {
           if (id === "create-project") {
             const name = typeof payload?.name === "string" ? payload.name : undefined;

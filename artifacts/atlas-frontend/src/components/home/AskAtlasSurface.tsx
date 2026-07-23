@@ -220,6 +220,9 @@ interface Props {
   crystallized?: boolean;
   /** True while the thread restore fetch is in-flight — shows a skeleton instead of blank. */
   isRestoring?: boolean;
+  /** Ephemeral "Welcome back" resume card payload. NEVER inserted into messages. */
+  resumeGreeting?: { hint: string | null } | null;
+  onDismissResumeGreeting?: () => void;
 }
 
 
@@ -258,6 +261,8 @@ export function AskAtlasSurface({
   handoffSignal,
   crystallized = false,
   isRestoring = false,
+  resumeGreeting = null,
+  onDismissResumeGreeting,
 }: Props) {
   // Internal verbs describe model machinery, not user-relevant actions.
   // Only surface steps that answer "what is Atlas doing for me right now?"
@@ -286,6 +291,17 @@ export function AskAtlasSurface({
   }, [awaitingFirstToken, messages.length]);
   const askAtlasPreTokenPhrase =
     preTokenPhase === "loading" ? "Loading context…" : "Atlas is thinking…";
+
+  // Resume greeting auto-fade — mirror handoff-pill cadence (~4.5s).
+  const [resumeVisible, setResumeVisible] = useState(false);
+  useEffect(() => {
+    if (!resumeGreeting) { setResumeVisible(false); return; }
+    setResumeVisible(true);
+    const fade = window.setTimeout(() => setResumeVisible(false), 4200);
+    const clear = window.setTimeout(() => { try { onDismissResumeGreeting?.(); } catch {} }, 4700);
+    return () => { window.clearTimeout(fade); window.clearTimeout(clear); };
+  }, [resumeGreeting, onDismissResumeGreeting]);
+
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -504,7 +520,60 @@ export function AskAtlasSurface({
           }}
         >
 
+        {resumeGreeting && (
+          <div
+            role="status"
+            aria-live="polite"
+            data-testid="ask-atlas-resume-greeting"
+            style={{
+              alignSelf: "center",
+              maxWidth: 520,
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: 12,
+              background: "color-mix(in oklab, var(--atlas-bg) 82%, transparent)",
+              border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
+              boxShadow: "0 8px 24px -12px rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: 13,
+              color: "var(--atlas-fg)",
+              opacity: resumeVisible ? 1 : 0,
+              transform: resumeVisible ? "translateY(0)" : "translateY(-4px)",
+              transition: "opacity 420ms ease, transform 420ms ease",
+              pointerEvents: resumeVisible ? "auto" : "none",
+            }}
+          >
+            <span style={{ fontWeight: 500, letterSpacing: "-0.005em" }}>Welcome back</span>
+            {resumeGreeting.hint && (
+              <span style={{ opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                — {resumeGreeting.hint}
+              </span>
+            )}
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => { setResumeVisible(false); onDismissResumeGreeting?.(); }}
+              style={{
+                marginLeft: "auto",
+                background: "transparent",
+                border: 0,
+                color: "var(--atlas-fg)",
+                opacity: 0.55,
+                cursor: "pointer",
+                fontSize: 14,
+                lineHeight: 1,
+                padding: 2,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <AskAtlasTier1Chip conversationId={conversationId} paused={messages.length === 0} />
+
 
         {isRestoring && messages.length === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
@@ -1002,8 +1071,6 @@ export function AskAtlasSurface({
           for (let i = messages.length - 1; i >= 0; i--) {
             const m = messages[i];
             if (m.role !== "assistant" || m.streaming) continue;
-            // Skip ephemeral "Welcome back" resume greetings so reload keeps real chips.
-            if (String(m.id ?? "").startsWith("aa-resume-")) continue;
             chipMsg = m;
             break;
           }
