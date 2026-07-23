@@ -992,7 +992,7 @@ export function BridgeSection({ onEnter }: { onEnter: () => void }) {
             e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)";
           }}
         >
-          Enter Axiom →
+          Talk with Joy →
         </button>
       </div>
     </section>
