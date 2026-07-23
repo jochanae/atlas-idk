@@ -44,8 +44,18 @@ type Props = {
   paused?: boolean;
 };
 
+/** Dispatch to toggle the chip on Ask Atlas (from the purple header dot). */
+export const ASK_ATLAS_DNA_TOGGLE_EVENT = "axiom:ask-atlas-dna-toggle";
+
 export function AskAtlasTier1Chip({ conversationId, paused = false }: Props) {
   const [data, setData] = useState<BufferResponse | null>(null);
+  const [forceOpen, setForceOpen] = useState(false);
+
+  useEffect(() => {
+    const onToggle = () => setForceOpen((v) => !v);
+    window.addEventListener(ASK_ATLAS_DNA_TOGGLE_EVENT, onToggle);
+    return () => window.removeEventListener(ASK_ATLAS_DNA_TOGGLE_EVENT, onToggle);
+  }, []);
 
   useEffect(() => {
     if (!conversationId || paused) {
@@ -78,17 +88,18 @@ export function AskAtlasTier1Chip({ conversationId, paused = false }: Props) {
     };
   }, [conversationId, paused]);
 
-  if (!data) return null;
-
-  const buffer = data.buffer ?? {};
-  const skipped = Boolean(data.skippedAt);
+  // When user asks to see it (via purple dot), show even before we have data.
+  const buffer = data?.buffer ?? {};
+  const skipped = Boolean(data?.skippedAt);
   const filledKeys = TIER1_QUESTIONS
     .map((q) => q.key)
     .filter((k) => Boolean(buffer[k] && buffer[k]!.trim()));
   const filledCount = filledKeys.length;
 
-  // Hide entirely when nothing captured and user hasn't skipped.
-  if (!skipped && filledCount === 0) return null;
+  // Auto-show when captured or explicitly skipped. Otherwise only render on user recall.
+  const autoShow = skipped || filledCount > 0;
+  if (!autoShow && !forceOpen) return null;
+  if (!data && !forceOpen) return null;
 
   const wrap: CSSProperties = {
     display: "flex",

@@ -193,10 +193,15 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
       <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
         <button
           type="button"
-          onClick={ctx ? restoreWorkspaceChip : undefined}
-          title={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
-          aria-label={ctx ? `Show ${ctx.projectName} workspace chip` : "Ask Atlas"}
-          disabled={!ctx}
+          onClick={() => {
+            if (ctx) {
+              restoreWorkspaceChip();
+            } else {
+              window.dispatchEvent(new CustomEvent("axiom:ask-atlas-dna-toggle"));
+            }
+          }}
+          title={ctx ? `Show ${ctx.projectName} workspace chip` : "Show Project DNA capture"}
+          aria-label={ctx ? `Show ${ctx.projectName} workspace chip` : "Show Project DNA capture"}
           style={{
             position: "relative",
             display: "inline-flex",
@@ -208,7 +213,7 @@ function AskAtlasTitleCarousel(_props: { earnedTitle: string | null }) {
             padding: 0,
             border: 0,
             background: "transparent",
-            cursor: ctx ? "pointer" : "default",
+            cursor: "pointer",
             WebkitTapHighlightColor: "transparent",
           }}
         >
