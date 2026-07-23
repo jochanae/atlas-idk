@@ -551,6 +551,9 @@ export function FilesBrowser({
           onClose={closePreview}
           onPrimary={() => primaryAction(previewFile)}
           isSelected={selectedIds.includes(previewFile.id)}
+          onDeleted={() => {
+            closePreview();
+          }}
         />
       )}
     </div>
