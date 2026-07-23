@@ -168,11 +168,9 @@ function AxiomCenterSVG({ size = 52 }: { size?: number }) {
       </defs>
       <circle cx="256" cy="256" r="256" fill="#0D0B09" />
       <circle cx="256" cy="256" r="256" fill="url(#udockpg)" />
-      {/* Custom J monogram — same bronze/gold SVG treatment as the original A. */}
-      <path
-        d="M190 132 H332 C340 132 346 138 346 146 V154 C346 162 340 168 332 168 H290 L278 314 C271 392 214 418 164 394 C126 376 114 338 128 302 L164 312 C156 338 169 362 194 366 C224 371 244 350 248 306 L260 168 H190 C182 168 176 162 176 154 V146 C176 138 182 132 190 132 Z"
-        fill="url(#udockgs)"
-      />
+      <polygon points="256,130 178,390 216,390 268,188" fill="url(#udockgs)" />
+      <polygon points="256,130 334,390 296,390 244,188" fill="url(#udockgs)" />
+      <rect x="192" y="292" width="128" height="30" rx="5" fill="url(#udockgs)" />
     </svg>
   );
 }
