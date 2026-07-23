@@ -1071,8 +1071,6 @@ export function AskAtlasSurface({
           for (let i = messages.length - 1; i >= 0; i--) {
             const m = messages[i];
             if (m.role !== "assistant" || m.streaming) continue;
-            // Skip ephemeral "Welcome back" resume greetings so reload keeps real chips.
-            if (String(m.id ?? "").startsWith("aa-resume-")) continue;
             chipMsg = m;
             break;
           }
