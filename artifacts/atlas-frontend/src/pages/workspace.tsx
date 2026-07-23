@@ -7629,7 +7629,7 @@ export default function Workspace() {
         return;
       }
       if (!atlasConv.canSend) {
-        toast("Atlas is still working on your last message.");
+        toast("Joy is still working on your last message.");
         return;
       }
       if (staged.isUploading) {
@@ -10268,7 +10268,7 @@ export default function Workspace() {
         onSkip={() => {
           if (tier1ProjectId) markTier1Skipped(tier1ProjectId);
           setTier1SheetOpen(false);
-          toast("Skipped — Atlas will gather this in conversation.", { duration: 2500 });
+          toast("Skipped — Joy will gather this in conversation.", { duration: 2500 });
         }}
       />
 

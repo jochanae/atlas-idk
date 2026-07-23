@@ -39,7 +39,7 @@ export const LIFECYCLE_META: Record<
     label: "Shaping",
     glyph: "🌱",
     color: "rgba(167,201,140,0.95)",
-    description: "Atlas is listening. Themes are emerging.",
+    description: "Joy is listening. Themes are emerging.",
   },
   committed: {
     label: "Committed",

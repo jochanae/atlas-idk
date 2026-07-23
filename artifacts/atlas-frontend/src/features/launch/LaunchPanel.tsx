@@ -18,7 +18,7 @@ type Phase = "idle" | "checking" | "starting" | "running" | "failed" | "no-scaff
 const PHASE_LABEL: Record<Phase, string> = {
   idle: "",
   checking: "Checking project…",
-  starting: "Atlas is launching your project…",
+  starting: "Joy is launching your project…",
   running: "Running",
   failed: "Launch failed",
   "no-scaffold": "No code yet",

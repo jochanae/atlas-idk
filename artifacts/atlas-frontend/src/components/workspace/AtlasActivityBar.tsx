@@ -13,7 +13,7 @@ function atlasActivityStatus(content: string): string {
 }
 
 const AMBIENT_STEPS = [
-  "Atlas is thinking",
+  "Joy is thinking",
   "Mapping architecture",
   "Aligning multi-agent nodes",
   "Synthesizing workspace blueprint",

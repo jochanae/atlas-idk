@@ -116,7 +116,7 @@ const PLACEHOLDERS = [
 /** Legacy home inline pending copy. Ask Atlas surface owns its own
  *  Loading context → Atlas is thinking… transition (see AskAtlasSurface). */
 const HOME_PENDING_PHRASES = [
-  "Atlas is thinking…",
+  "Joy is thinking…",
   "Working on your question…",
   "Gathering an answer…",
   "Pressure testing…",

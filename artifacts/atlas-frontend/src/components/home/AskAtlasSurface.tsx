@@ -270,7 +270,7 @@ export function AskAtlasSurface({
   const visibleLiveStep = liveStep && !SUPPRESS_STEP_VERBS.has(liveStep.verb) ? liveStep : undefined;
 
   // Pre-token status for Ask Atlas: brief "Loading context…" then an active
-  // "Atlas is thinking…" so the panel never feels idle. Trailing StepProgress
+  // "Joy is thinking…" so the panel never feels idle. Trailing StepProgress
   // must NOT prefer liveStep here — backend verbs like "Capturing intent"
   // were overriding pendingPhrase and hiding the active state (PR #205 gap).
   const awaitingFirstToken =
@@ -290,7 +290,7 @@ export function AskAtlasSurface({
     return () => window.clearTimeout(t);
   }, [awaitingFirstToken, messages.length]);
   const askAtlasPreTokenPhrase =
-    preTokenPhase === "loading" ? "Loading context…" : "Atlas is thinking…";
+    preTokenPhase === "loading" ? "Loading context…" : "Joy is thinking…";
 
   // Resume greeting auto-fade — mirror handoff-pill cadence (~4.5s).
   const [resumeVisible, setResumeVisible] = useState(false);
