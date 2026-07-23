@@ -1275,6 +1275,7 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
   letter-spacing: 0.01em;
   font-family: var(--app-font-sans);
   color: var(--atlas-fg);
+  font-weight: 430;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   max-width: 68ch;
