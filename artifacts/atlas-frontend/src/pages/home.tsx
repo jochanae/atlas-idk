@@ -3488,6 +3488,7 @@ export default function Home() {
       }
       submitInFlightRef.current = true;
       askAtlasSurfaceSendInFlightRef.current = true;
+      setAskAtlasResumeGreeting(null);
       setInput("");
       // Pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
       // Files stay visible as "converting" during async work and are cleared only on confirmed
