@@ -879,7 +879,7 @@ function EmptyPane({ title, body }: { title: string; body: string }) {
 // Scrollable body with safe-area padding.
 
 function PreviewPanel({
-  file, mode, isNarrow, onClose, onPrimary, isSelected,
+  file, mode, isNarrow, onClose, onPrimary, isSelected, onDeleted,
 }: {
   file: UnifiedFile;
   mode: "browse" | "attach";
@@ -887,7 +887,12 @@ function PreviewPanel({
   onClose: () => void;
   onPrimary: () => void;
   isSelected: boolean;
+  onDeleted?: () => void;
 }) {
+  const qc = useQueryClient();
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -898,17 +903,41 @@ function PreviewPanel({
     ? (isSelected ? "Remove selection" : "Add to attachments")
     : (file.section === "workspace" ? "Open in workspace" : "Open");
 
+  // Library-backed items (saved / generated) can be deleted from here.
+  const libraryItem = (file.section === "saved" || file.section === "generated")
+    ? (file.raw as LibraryItem | undefined)
+    : undefined;
+  const canDelete = !!libraryItem?.id;
+
+  const handleDelete = async () => {
+    if (!libraryItem) return;
+    if (typeof window !== "undefined" && !window.confirm(`Delete "${file.name}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteLibraryItem(libraryItem);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["files-library-saved"] }),
+        qc.invalidateQueries({ queryKey: ["files-library-generated"] }),
+      ]);
+      onDeleted?.();
+    } catch (err) {
+      setDeleteError((err as Error).message || "Delete failed");
+      setDeleting(false);
+    }
+  };
+
   const containerStyle: React.CSSProperties = isNarrow
     ? {
-        position: "fixed", inset: 0, zIndex: 3000,
+        position: "fixed", inset: 0, zIndex: 10000,
         display: "flex", flexDirection: "column",
         background: "hsl(var(--background))",
         color: "hsl(var(--foreground))",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }
     : {
-        position: "absolute", top: 0, right: 0, bottom: 0,
-        width: "min(380px, 60%)", zIndex: 30,
+        position: "fixed", top: 0, right: 0, bottom: 0,
+        width: "min(420px, 60vw)", zIndex: 10000,
         display: "flex", flexDirection: "column",
         background: "hsl(var(--popover))",
         color: "hsl(var(--popover-foreground))",
@@ -919,12 +948,12 @@ function PreviewPanel({
   const shortName = file.name.split("/").pop() ?? file.name;
   const isImage = file.category === "images";
 
-  return (
+  const node = (
     <>
       {!isNarrow && (
         <div
           onClick={onClose}
-          style={{ position: "absolute", inset: 0, zIndex: 29, background: "hsl(var(--background) / 0.5)" }}
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "hsl(var(--background) / 0.5)" }}
         />
       )}
       <div style={containerStyle} role="dialog" aria-label={`Preview: ${shortName}`}>
