@@ -1,0 +1,60 @@
+{
+  "caseId": "T4",
+  "lens": "designer",
+  "prompt": "Design a weekly group Bible study rhythm inside Reveal\u2019s community.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "session-ui",
+      "label": "Session structure UI",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Weekly rhythm surface shows gather \u2192 read \u2192 share \u2192 close with clear hierarchy and calm pacing.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "reading-afford",
+      "label": "Reading plan affordance",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Reading plan is glanceable on mobile; progress states never shame missed weeks.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "quiet-mode",
+      "label": "Quiet participation mode",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Lurker-friendly participation: listen/read without forced posting.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "a11y-session",
+      "label": "Accessible session flow",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Type size, focus order, and screen-reader labels support longer reflective reading.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "invite-tone-ui",
+      "label": "Invitation not dump UI",
+      "type": "priority",
+      "resolved": true,
+      "meta": "must",
+      "details": "UI must invite into formation rather than dump content modules.",
+      "strategicAnswer": "form people, not dump content. Invitation tone.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

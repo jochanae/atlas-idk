@@ -251,6 +251,48 @@ export function buildExpandNodeOutputContract(perspective: AtlasPerspective): st
   }
 }
 
+/**
+ * Per-lens output contract for live Workspace chat (Nexus).
+ * Prose / tools allowed — but the *job* must match the Constitution.
+ */
+export function buildChatOutputContract(perspective: AtlasPerspective): string {
+  switch (perspective) {
+    case "designer":
+      return `OUTPUT CONTRACT (Designer — live chat):
+- Answer as an experience designer: journeys, states, hierarchy, interaction, emotion, trust/usability.
+- Prefer concrete UI/UX recommendations a designer or PM could act on.
+- Do not lead with API/schema/infra plans. Mention systems only as constraints on the experience.
+- If the user asks for code, you may help — but frame deliverables as experience outcomes first.`;
+    case "builder":
+      return `OUTPUT CONTRACT (Builder — live chat):
+- Answer as an implementation partner: components, APIs, data, authz, dependencies, ship slices, out-of-scope.
+- Prefer checklists, sequences, and constraint-honest plans an engineer could execute.
+- Mention UX only as acceptance criteria, not as the main essay.
+- Stay schema-true. Do not invent stack that contradicts project DNA.`;
+    case "storyteller":
+      return `OUTPUT CONTRACT (Storyteller — live chat):
+- Answer as a meaning / narrative partner: why this matters, who enters, commitment, trust, what would make it hollow.
+- Prefer arcs and grounded purpose over feature dumps or API plans.
+- Do not produce a Builder checklist in prose or a Designer UI audit without meaning.
+- Do not invent lore absent from DNA / conversation.`;
+    default:
+      return "";
+  }
+}
+
+/** Full live-chat Constitution injection (Phase C). */
+export function buildLiveChatConstitutionBlock(
+  perspective: AtlasPerspective,
+  speculate = false,
+): string {
+  const speculateNote = speculate
+    ? `\nSCENARIO MODIFIER (speculate=true): Explore alternate assumptions without converting them into commitments. Keep the active lens identity (${perspective}) — change assumptions, not craft.`
+    : "";
+  return `${buildConstitutionPolicyBlock(perspective)}
+
+${buildChatOutputContract(perspective)}${speculateNote}`;
+}
+
 export type TranscriptLine = { role: string; content: string };
 
 function scoreLine(text: string, pack: LensConstitutionPack): number {

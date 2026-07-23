@@ -1,0 +1,60 @@
+{
+  "caseId": "T5",
+  "lens": "storyteller",
+  "prompt": "Help me plan my next four weeks as founder of Reveal.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "season-meaning",
+      "label": "Meaning of this season",
+      "type": "goal",
+      "resolved": false,
+      "meta": "must",
+      "details": "These four weeks are about making Reveal feel like a home, not proving a feature factory.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "founder-posture",
+      "label": "Founder posture check",
+      "type": "priority",
+      "resolved": false,
+      "meta": "must",
+      "details": "Weekly ask: did we deepen trust and belonging, or only ship chrome?",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "promise-guard",
+      "label": "Guard the access promise",
+      "type": "decision",
+      "resolved": true,
+      "meta": "must",
+      "details": "This month refuses paywall theater while the founding promise still prioritizes access.",
+      "strategicAnswer": "founding promise prioritizes access",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "hollow-hustle",
+      "label": "Hustle without formation",
+      "type": "blocker",
+      "resolved": false,
+      "meta": "must",
+      "details": "A packed calendar that never tastes the member journey makes the mission hollow.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "witness-story",
+      "label": "Collect one witness story",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "End of month: one real story of a woman feeling safer talking about money.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

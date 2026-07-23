@@ -1,0 +1,71 @@
+{
+  "caseId": "T1",
+  "lens": "designer",
+  "prompt": "Build a community page for Reveal.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "empty-invite",
+      "label": "Inviting empty home",
+      "type": "requirement",
+      "resolved": true,
+      "meta": "must",
+      "details": "Empty state must feel like a calm invitation into belonging, not a broken page with missing feed content.",
+      "strategicAnswer": "The community page is the first home. Empty state should feel inviting, not broken.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "join-trust",
+      "label": "Shame-free join path",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "First-run interaction: what she sees, taps, and feels before any money talk \u2014 privacy and no-shame copy at every step.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "hierarchy",
+      "label": "Belonging before tips",
+      "type": "priority",
+      "resolved": false,
+      "meta": "must",
+      "details": "Visual hierarchy puts people and quiet presence above budgeting tips or tool chrome.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "activity-privacy",
+      "label": "Public activity risk UX",
+      "type": "blocker",
+      "resolved": false,
+      "meta": "must",
+      "details": "Trust fails if activity feels too public \u2014 need clear visibility controls before she posts.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "quiet-reply",
+      "label": "Quiet reply feedback",
+      "type": "requirement",
+      "resolved": true,
+      "meta": "should",
+      "details": "When answered, success state should feel received without toast spam; silence remains an option.",
+      "strategicAnswer": "Prefer quiet belonging over engagement spam.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "loading-calm",
+      "label": "Calm loading recovery",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Loading and error states stay mobile-first and emotionally steady \u2014 never shame or urgency language.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

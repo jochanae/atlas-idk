@@ -1,0 +1,60 @@
+{
+  "caseId": "T2",
+  "lens": "builder",
+  "prompt": "Should Reveal charge for community access in v1?",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "entitlements",
+      "label": "Entitlements data model",
+      "type": "decision",
+      "resolved": false,
+      "meta": "must",
+      "details": "Whether free or paid, define entitlements table now so future gating does not require feed rewrite.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "no-enforce-v1",
+      "label": "Defer paywall enforce",
+      "type": "sprint",
+      "resolved": true,
+      "meta": "must",
+      "details": "v1 ship slice: no enforcement middleware; feature-flag entitlements only.",
+      "strategicAnswer": "founding promise prioritizes access",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "analytics-hook",
+      "label": "Access analytics hooks",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Instrument join/activation events so paid decision later is data-backed, not vibes.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "migration-path",
+      "label": "Free-to-paid migration",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Plan migration: grant all existing members entitlement=community_home if pricing turns on later.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "authz-stub",
+      "label": "Authz stub boundary",
+      "type": "priority",
+      "resolved": false,
+      "meta": "must",
+      "details": "Keep authz check points in API now; return allow-all in v1 to avoid retrofit debt.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

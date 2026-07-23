@@ -1,0 +1,32 @@
+Project DNA evidence (builder):
+Stack: react, postgres, node
+Constraints: mobile-first, privacy-sensitive money topics, no shame language
+Protected areas: member trust signals, ledger of commitments
+Stage: Shape
+Open questions: Should v1 charge for access?, How public should member activity be?
+Purpose: Help women build financial confidence through trusted community, not alone.
+Audience: Women seeking financial literacy and peer accountability without shame
+
+Flow graph evidence (builder):
+- [decision] Notifications intensity → Prefer quiet belonging over engagement spam
+- [sprint] Ship member profiles slice
+- [blocker] Trust risk if activity is too public
+- [decision] Paid vs free v1 → Undecided — founding promise prioritizes access
+- [requirement] Weekly study rhythm
+- [requirement] Join without shame
+- [priority] Onboarding calm first
+- [goal] Community home → A place women feel safe talking about money
+
+Transcript (weighted):
+User: Reveal is a women's financial community rooted in faith. Belonging matters more than tips.
+Joy: Purpose locked: help women build financial confidence through trusted community, not alone.
+User: The community page is the first home. Empty state should feel inviting, not broken.
+Joy: Designer note: empty/loading/error/success states and trust UX will matter on join.
+User: We might charge later but v1 access is part of the founding promise. Don't invent a paywall that breaks trust.
+Joy: Stack is react/postgres/node. Member profiles and authz boundaries are the next ship slice.
+User: When someone replies, people should feel answered — but silence can be sacred. No notification spam.
+Joy: Notifications intensity decided: quiet belonging over engagement spam.
+User: Weekly Bible study rhythm should form people, not dump content. Invitation tone.
+Joy: Open questions remain: paid vs free v1, and how public member activity should be.
+User: Build a community page for Reveal — start from what members actually encounter.
+Joy: API routes for members, posts, and entitlements will be needed if we gate access later.

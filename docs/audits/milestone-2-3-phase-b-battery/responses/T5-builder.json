@@ -1,0 +1,59 @@
+{
+  "caseId": "T5",
+  "lens": "builder",
+  "prompt": "Help me plan my next four weeks as founder of Reveal.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "w1-profiles",
+      "label": "Week1 profiles ship",
+      "type": "sprint",
+      "resolved": false,
+      "meta": "must",
+      "details": "Week 1: finish member profiles + authz slice; exit criteria = join\u2192profile\u2192home path works.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "w2-feed",
+      "label": "Week2 community feed",
+      "type": "sprint",
+      "resolved": false,
+      "meta": "must",
+      "details": "Week 2: community home route + empty/feed queries; acceptance includes empty-state contract.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "w3-study",
+      "label": "Week3 study model",
+      "type": "sprint",
+      "resolved": false,
+      "meta": "should",
+      "details": "Week 3: study series schema + facilitator role; no gamification.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "w4-quiet-notif",
+      "label": "Week4 quiet inbox",
+      "type": "sprint",
+      "resolved": false,
+      "meta": "should",
+      "details": "Week 4: notification persistence + prefs (quiet defaults); realtime optional.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "deps",
+      "label": "Decision dependencies",
+      "type": "blocker",
+      "resolved": false,
+      "meta": "must",
+      "details": "Paid-vs-free still open \u2014 do not block on entitlements enforcement this month.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

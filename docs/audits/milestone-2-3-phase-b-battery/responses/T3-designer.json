@@ -1,0 +1,60 @@
+{
+  "caseId": "T3",
+  "lens": "designer",
+  "prompt": "Add real-time notifications when someone replies in the community.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "inbox-vs-toast",
+      "label": "Inbox vs toast choice",
+      "type": "decision",
+      "resolved": false,
+      "meta": "must",
+      "details": "Prefer inbox/quiet badge over interrupting toasts \u2014 reply feedback without hijacking attention.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "mute-controls",
+      "label": "Mute and quiet hours",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Interaction model includes mute/thread mute so she can protect sacred silence.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "answered-state",
+      "label": "Felt-answered state",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Success state when someone replies should feel received \u2014 calm, personal, not gamified.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "noise-blocker",
+      "label": "Engagement noise risk",
+      "type": "blocker",
+      "resolved": true,
+      "meta": "must",
+      "details": "Default-on noisy alerts violate decided notification intensity.",
+      "strategicAnswer": "Prefer quiet belonging over engagement spam.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "a11y-alerts",
+      "label": "Accessible alert copy",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Notification copy and focus order stay accessible; no shame urgency language.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "caseId": "T1",
+  "lens": "builder",
+  "prompt": "Build a community page for Reveal.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "route-home",
+      "label": "Community home route",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Add React route + page shell for /community backed by postgres-backed feed query with empty-result contract.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "members-api",
+      "label": "Members + posts APIs",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Ship members/posts endpoints now; keep entitlements stubbed until paid-vs-free decision lands.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "authz-slice",
+      "label": "Authz for profiles",
+      "type": "sprint",
+      "resolved": false,
+      "meta": "must",
+      "details": "Smallest shippable slice: member profiles + authz boundaries on react/postgres/node stack.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "visibility-model",
+      "label": "Activity visibility model",
+      "type": "decision",
+      "resolved": false,
+      "meta": "must",
+      "details": "Data model must encode public/private activity scopes before feed queries ship \u2014 trust blocker.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "notif-hook",
+      "label": "Quiet notification hook",
+      "type": "requirement",
+      "resolved": true,
+      "meta": "should",
+      "details": "Must support empty/quiet reply acknowledgment as acceptance constraint; no engagement-spam defaults.",
+      "strategicAnswer": "Prefer quiet belonging over engagement spam.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "oos-paywall",
+      "label": "Paywall out of scope",
+      "type": "priority",
+      "resolved": true,
+      "meta": "wont",
+      "details": "Do not implement entitlements enforcement in this slice \u2014 founding promise prioritizes access for v1.",
+      "strategicAnswer": "Undecided \u2014 founding promise prioritizes access",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

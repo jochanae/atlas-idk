@@ -1,0 +1,60 @@
+{
+  "caseId": "T3",
+  "lens": "builder",
+  "prompt": "Add real-time notifications when someone replies in the community.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "transport",
+      "label": "SSE or WS transport",
+      "type": "decision",
+      "resolved": false,
+      "meta": "must",
+      "details": "Choose transport for reply events; document reconnect + backoff failure modes.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "persist",
+      "label": "Notification persistence",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Persist notifications in postgres with read/unread; support inbox fetch without relying on live socket.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "fanout",
+      "label": "Reply fan-out job",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Fan-out on reply create; idempotent delivery keys to prevent duplicate alerts.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "pref-flags",
+      "label": "Preference flags API",
+      "type": "requirement",
+      "resolved": true,
+      "meta": "must",
+      "details": "User prefs must encode quiet mode defaults per product decision.",
+      "strategicAnswer": "Prefer quiet belonging over engagement spam.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ship-slice",
+      "label": "Inbox-first ship slice",
+      "type": "sprint",
+      "resolved": false,
+      "meta": "must",
+      "details": "Smallest slice: persist + inbox poll; realtime transport can follow.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

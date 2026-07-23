@@ -49,6 +49,10 @@ import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
 import { loadConversationLibraryContext } from "../lib/library";
 import { normalizePerspective, perspectiveMetaLine } from "../lib/atlasPerspective";
+import {
+  buildLiveChatConstitutionBlock,
+  formatDnaEvidenceForLens,
+} from "../lib/lensConstitution";
 
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { extractOoxmlText } from "../lib/attachmentExtract";
@@ -3333,6 +3337,11 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // the conversation; the prompt does not branch on focusProjectId, ideaMode,
   // or any legacy surface signal.
   let systemPrompt = `${ATLAS_SYSTEM_PROMPT}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: ${ideaMode ? "true" : "false"}\n--- END SESSION CONTEXT ---`;
+  // Milestone 2.3 Phase C — live Workspace chat uses the same Lens Constitution as Map.
+  // Ask Joy / home keep identity-only plumbing (perspective still echoed on meta).
+  if (surfaceContext === "workspace") {
+    systemPrompt += `\n\n${buildLiveChatConstitutionBlock(perspective, speculate)}\n`;
+  }
   systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;
   // Always-on capability truth, independent of WhisperGate intent. This exists
   // because Joy previously denied having deliverable-generation capability
@@ -3575,14 +3584,20 @@ When the user uses strong or colorful language (including profanity) to describe
           .map(e => `  • ${e.title}${e.summary ? ` — ${e.summary.slice(0, 120)}` : ""}`)
           .join("\n");
 
+        // Phase C: lens-weighted DNA emphasis (same store, different retrieval order).
+        const weightedDna = formatDnaEvidenceForLens(chatGenomeRow, perspective);
         const chatDnaLines: string[] = [];
-        if (chatGenomeRow?.purpose) chatDnaLines.push(`Purpose: ${chatGenomeRow.purpose}`);
-        if (chatGenomeRow?.audience) chatDnaLines.push(`Audience: ${chatGenomeRow.audience}`);
-        if (chatGenomeRow?.wedge) chatDnaLines.push(`Wedge: ${chatGenomeRow.wedge}`);
-        if (chatGenomeRow?.differentiator) chatDnaLines.push(`Differentiator: ${chatGenomeRow.differentiator}`);
-        if (chatGenomeRow?.stage) chatDnaLines.push(`Stage: ${chatGenomeRow.stage}`);
-        if ((chatGenomeRow?.openQuestions ?? []).length > 0) {
-          chatDnaLines.push(`Open questions: ${(chatGenomeRow!.openQuestions ?? []).slice(0, 3).join("; ")}`);
+        if (weightedDna) {
+          chatDnaLines.push(...weightedDna.replace(/^Project DNA evidence \([^)]+\):\n/, "").split("\n").filter(Boolean));
+        } else {
+          if (chatGenomeRow?.purpose) chatDnaLines.push(`Purpose: ${chatGenomeRow.purpose}`);
+          if (chatGenomeRow?.audience) chatDnaLines.push(`Audience: ${chatGenomeRow.audience}`);
+          if (chatGenomeRow?.wedge) chatDnaLines.push(`Wedge: ${chatGenomeRow.wedge}`);
+          if (chatGenomeRow?.differentiator) chatDnaLines.push(`Differentiator: ${chatGenomeRow.differentiator}`);
+          if (chatGenomeRow?.stage) chatDnaLines.push(`Stage: ${chatGenomeRow.stage}`);
+          if ((chatGenomeRow?.openQuestions ?? []).length > 0) {
+            chatDnaLines.push(`Open questions: ${(chatGenomeRow!.openQuestions ?? []).slice(0, 3).join("; ")}`);
+          }
         }
 
         const focusedProjectSurfaceLabel = surfaceContext === "workspace"
@@ -3590,7 +3605,7 @@ When the user uses strong or colorful language (including profanity) to describe
           : `"${focusProject.name}" is loaded as reference context. IMPORTANT: You are currently on Ask Joy — NOT inside this project's workspace. These are completely different surfaces. The user has not entered the Workspace. Never claim otherwise.`;
         systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\n${focusedProjectSurfaceLabel}`;
         if (chatDnaLines.length > 0) {
-          systemPrompt += `\n\nProject DNA:\n${chatDnaLines.join("\n")}`;
+          systemPrompt += `\n\nProject DNA (${perspective}):\n${chatDnaLines.join("\n")}`;
         }
         if (chatLedgerLines) {
           systemPrompt += `\n\nCommitted decisions:\n${chatLedgerLines}`;
@@ -3789,17 +3804,27 @@ When the user uses strong or colorful language (including profanity) to describe
         "Operating": "The project is live and running. Focus on learning from real-world signals, improving, and identifying the next evolution. Ask 'what is the data telling you?' Be reflective and forward-looking.",
       };
 
-      // Build shaping layer string from genome
+      // Build shaping layer string from genome — lens-weighted on Workspace.
+      const weightedShaping = formatDnaEvidenceForLens(focusGenomeRow, perspective);
       const shapingLines: string[] = [];
-      if (focusGenomeRow?.purpose) shapingLines.push(`Purpose: ${focusGenomeRow.purpose}`);
-      if (focusGenomeRow?.audience) shapingLines.push(`Who: ${focusGenomeRow.audience}`);
-      if (focusGenomeRow?.wedge) shapingLines.push(`Wedge: ${focusGenomeRow.wedge}`);
-      if (focusGenomeRow?.differentiator) shapingLines.push(`Differentiator: ${focusGenomeRow.differentiator}`);
-      if ((focusGenomeRow?.openQuestions ?? []).length > 0) {
-        shapingLines.push(`Unresolved: ${(focusGenomeRow!.openQuestions ?? []).slice(0, 3).join("; ")}`);
+      if (surfaceContext === "workspace" && weightedShaping) {
+        shapingLines.push(
+          ...weightedShaping
+            .replace(/^Project DNA evidence \([^)]+\):\n/, "")
+            .split("\n")
+            .filter(Boolean),
+        );
+      } else {
+        if (focusGenomeRow?.purpose) shapingLines.push(`Purpose: ${focusGenomeRow.purpose}`);
+        if (focusGenomeRow?.audience) shapingLines.push(`Who: ${focusGenomeRow.audience}`);
+        if (focusGenomeRow?.wedge) shapingLines.push(`Wedge: ${focusGenomeRow.wedge}`);
+        if (focusGenomeRow?.differentiator) shapingLines.push(`Differentiator: ${focusGenomeRow.differentiator}`);
+        if ((focusGenomeRow?.openQuestions ?? []).length > 0) {
+          shapingLines.push(`Unresolved: ${(focusGenomeRow!.openQuestions ?? []).slice(0, 3).join("; ")}`);
+        }
       }
       const shapingBlock = shapingLines.length > 0
-        ? `\n\nSHAPING LAYER:\n${shapingLines.join("\n")}`
+        ? `\n\nSHAPING LAYER (${perspective}):\n${shapingLines.join("\n")}`
         : "";
 
       systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nThe user has zoomed in on "${focusProject.name}" for this conversation. Prioritize this project's context.`;
@@ -3820,8 +3845,8 @@ When the user uses strong or colorful language (including profanity) to describe
 **Unresolved Tensions** — what's not locked in yet. Be direct about weak spots.
 **Portfolio Pattern** *(optional — only include if you see a cross-project pattern worth naming)* — does this project share a tendency with others in the portfolio? Name it if real.
 
-CLOSING QUESTION RULE: Never end with "What are you trying to figure out or build right now?" — that's too broad inside a project workspace. Instead, after your overview, offer a lens:
-"Which lens? Positioning / Market readiness / UX / Infrastructure / Prioritization / Portfolio patterns"
+CLOSING QUESTION RULE: Never end with "What are you trying to figure out or build right now?" — that's too broad inside a project workspace. Instead, after your overview, offer the active Constitution lenses:
+"Which perspective? Designer (experience) / Builder (construction) / Storyteller (meaning)"
 Or ask ONE narrow question that assumes they already know what they're building and pushes one level deeper.`;
       }
 

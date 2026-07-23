@@ -1,0 +1,60 @@
+{
+  "caseId": "T6",
+  "lens": "storyteller",
+  "prompt": "Write the opening of the community page \u2014 the first thing a new member reads.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "opening-voice",
+      "label": "Opening voice draft",
+      "type": "goal",
+      "resolved": false,
+      "meta": "must",
+      "details": "Draft: You don't have to figure money out alone. Here, faith-rooted women tell the truth \u2014 calmly, without shame \u2014 and belong before any tip.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "first-promise",
+      "label": "First promise spoken",
+      "type": "requirement",
+      "resolved": true,
+      "meta": "must",
+      "details": "First lines must carry purpose: financial confidence through trusted community, not alone.",
+      "strategicAnswer": "Help women build financial confidence through trusted community, not alone.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "wedge-line",
+      "label": "Wedge in one breath",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Name the exclusion she already felt in finance culture; offer safety as the alternative.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "cta-story",
+      "label": "CTA as invitation",
+      "type": "priority",
+      "resolved": false,
+      "meta": "should",
+      "details": "Call to action is an invitation into the house \u2014 not a conversion event.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "hollow-hype",
+      "label": "No hype hollow",
+      "type": "blocker",
+      "resolved": false,
+      "meta": "must",
+      "details": "Reject growth slogans and tip-list openers that erase belonging-first identity.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

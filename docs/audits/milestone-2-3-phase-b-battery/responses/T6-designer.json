@@ -1,0 +1,59 @@
+{
+  "caseId": "T6",
+  "lens": "designer",
+  "prompt": "Write the opening of the community page \u2014 the first thing a new member reads.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "hero-hierarchy",
+      "label": "Opening hierarchy",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "First viewport: brand/home signal, one short promise line, one calm CTA \u2014 no tip carousel.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "scan-pattern",
+      "label": "Mobile scan pattern",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Scanning order: welcome \u2192 what this is \u2192 how to begin; CTA thumb-reachable.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "alt-states",
+      "label": "Opening alternate states",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Empty/returning/error variants of the opening so first read never looks broken.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "cta-label",
+      "label": "CTA label emotion",
+      "type": "decision",
+      "resolved": false,
+      "meta": "should",
+      "details": "CTA language invites belonging (e.g. Enter quietly) rather than growth verbs (Join now!).",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "copy-slot",
+      "label": "Copy slot constraints",
+      "type": "priority",
+      "resolved": false,
+      "meta": "should",
+      "details": "Reserve a short prose slot; Designer specifies placement/length, not the full story voice.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}
