@@ -4447,6 +4447,8 @@ PROSE RULES (enforced — contradiction detection is active):
   let modelStartedAt = performance.now();
   let modelUsage: Partial<NexusRunMetadata> = {};
   let streamDone = false;
+  /** Accumulates streamed model text so a mid-turn client disconnect can still persist. */
+  const streamAccumulator = { text: "" };
   const activeModel = model === "gemini" ? "gemini" : "claude";
   const modelUsed = activeModel === "gemini" ? "gemini-2.5-pro" : "claude-sonnet-4-6";
 
@@ -4473,6 +4475,8 @@ PROSE RULES (enforced — contradiction detection is active):
   const toolsExecutedThisTurn = new Set<string>();
 
   const finishStream = async (rawContentIn: string) => {
+    // Idempotent: client abort may persist a partial, then finalMessage tries again.
+    if (streamDone) return;
     streamDone = true;
     let rawContent = rawContentIn;
 
@@ -6162,6 +6166,12 @@ PROSE RULES (enforced — contradiction detection is active):
       });
     }
 
+    // Client may have disconnected (refresh/remount) — still persist above, but
+    // never throw on a closed SSE socket after the durable write.
+    if (res.writableEnded || res.destroyed) {
+      return;
+    }
+
     res.write(`event: done\ndata: ${JSON.stringify({
       content: visibleContent,
       runId: activeRunId,
@@ -6563,6 +6573,22 @@ Return ONLY a valid JSON object with these exact fields (no explanation, no mark
     res.end();
   };
   req.on("aborted", () => {
+    // Refresh/remount aborts the SSE consumer. If tokens already arrived, do NOT
+    // failStream (that sets streamDone and historically raced the durable write).
+    // Let the model finish so finishStream can persist the complete assistant
+    // turn; the client recovers via thread memory + /thread poll.
+    const partial = streamAccumulator.text.trim();
+    if (partial.length >= 20 && !streamDone) {
+      req.log.info(
+        {
+          conversationId: effectiveConversationId,
+          partialLength: partial.length,
+          focusProjectId,
+        },
+        "nexus: client aborted mid-stream — continuing generation for durable persist",
+      );
+      return;
+    }
     void failStream("Run cancelled by the user.", "cancelled");
   });
 
@@ -6847,6 +6873,7 @@ Do NOT claim to read, see, or describe any file not listed here.
         const text = chunk.text;
         if (text) {
           rawContent += text;
+          streamAccumulator.text = rawContent;
         }
         if ((chunk as any).usageMetadata) usageMetadata = (chunk as any).usageMetadata;
       }
@@ -7822,6 +7849,7 @@ Do NOT claim to read, see, or describe any file not listed here.
 
     stream.on("text", (text) => {
       fullText += text;
+      streamAccumulator.text = fullText;
       flushNexusText();
     });
 

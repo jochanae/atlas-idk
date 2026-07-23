@@ -95,6 +95,14 @@ import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff, resolveConversationDestination, selectHandoffMessages, navigateAfterAskAtlasHandoff } from "@/lib/askAtlasHelpers";
 import { askAtlasSession } from "@/lib/askAtlasSession";
+import {
+  clearAskAtlasThreadMemory,
+  getAskAtlasThreadMemory,
+  mergeAskAtlasThread,
+  setAskAtlasThreadMemory,
+  shouldInjectAskAtlasWelcomeBack,
+  type AskAtlasMemoryMessage,
+} from "@/lib/askAtlasThreadMemory";
 import { clearActiveProjectContext, useActiveProjectContext, buildWorkspaceContextSeed } from "@/lib/activeProjectContext";
 
 
@@ -2370,31 +2378,79 @@ export default function Home() {
   // Restore Ask Atlas thread after hard refresh or navigation return — the surface
   // may be open (from localStorage) but askAtlasChat is empty because the standard
   // thread-load effect populates nexusChat, not askAtlasConv.
+  //
+  // Critical: during/after streaming, React state is wiped by soft remounts while
+  // the server may not yet have persisted the assistant turn. Prefer module/
+  // session thread memory over injecting a synthetic "Welcome back…" prompt.
+  //
+  // Do NOT depend on messages.length — seeding memory would retrigger and cancel
+  // the in-flight /thread fetch via the cleanup cancelled flag.
   const askAtlasRestoreAttemptRef = useRef<string | null>(null);
+  const askAtlasAwaitingAssistantRef = useRef(false);
   useEffect(() => {
     if (!askAtlasSurfaceOpen || !askAtlasConversationId) {
       setIsAskAtlasRestoring(false);
       return;
     }
     if (askAtlasRestoreAttemptRef.current === askAtlasConversationId) return;
+    // Active session already holding messages (not a remount) — don't clobber.
     if (askAtlasConv.messages.length > 0) {
       askAtlasRestoreAttemptRef.current = askAtlasConversationId;
       setIsAskAtlasRestoring(false);
       return;
     }
+
+    // Claim this conversation before any setState so re-renders cannot double-fetch.
+    askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+
+    // Soft-remount fast path: rehydrate from module memory before the network round-trip
+    // so the streamed reply does not flash away into a blank/welcome state.
+    const localSnap = getAskAtlasThreadMemory(askAtlasConversationId);
+    if (localSnap && localSnap.messages.length > 0) {
+      askAtlasConv.setMessages(localSnap.messages.map((m) => ({
+        ...m,
+        streaming: false,
+      })) as any);
+      askAtlasAwaitingAssistantRef.current = localSnap.isStreaming
+        || localSnap.messages[localSnap.messages.length - 1]?.role === "user";
+    }
+
     setIsAskAtlasRestoring(true);
+    let cancelled = false;
     fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(askAtlasConversationId)}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then((msgs: Array<{ role: string; content: string }>) => {
-        const normalized = normalizeLoadedHomeMessages(msgs);
-        if (normalized.length > 0) {
-          // Check if we should add a welcome-back greeting (once per conversation per session).
+        if (cancelled) return;
+        const normalized = normalizeLoadedHomeMessages(msgs) as AskAtlasMemoryMessage[];
+        const snap = getAskAtlasThreadMemory(askAtlasConversationId);
+        const merged = mergeAskAtlasThread(
+          normalized.length > 0 ? normalized : [],
+          snap,
+        );
+        let nextMessages = merged.messages;
+
+        // If memory had content but server returned empty, keep memory.
+        if (nextMessages.length === 0 && snap && snap.messages.length > 0) {
+          nextMessages = snap.messages.map((m) => ({ ...m, streaming: false }));
+        }
+
+        if (nextMessages.length > 0) {
           const greetedKey = `atlas-aa-greeted-${askAtlasConversationId}`;
-          const alreadyGreeted = sessionStorage.getItem(greetedKey) === "1";
-          if (!alreadyGreeted) {
+          let alreadyGreeted = false;
+          try { alreadyGreeted = sessionStorage.getItem(greetedKey) === "1"; } catch {}
+          // Never inject welcome-back when we already seeded a real transcript from memory
+          // (soft remount / hard reload of an active generation). Cold resume without
+          // local memory may still greet once per session.
+          const hadLocalTranscript = Boolean(localSnap && localSnap.messages.length > 0);
+          const injectWelcome = !hadLocalTranscript && shouldInjectAskAtlasWelcomeBack({
+            alreadyGreeted,
+            recoveredFromMemory: merged.recoveredFromMemory,
+            awaitingServerAssistant: merged.awaitingServerAssistant,
+            messages: nextMessages,
+          });
+          if (injectWelcome) {
             try { sessionStorage.setItem(greetedKey, "1"); } catch {}
-            // Find the last assistant message to use as context hint.
-            const lastAssistant = [...normalized].reverse().find(m => m.role === "assistant");
+            const lastAssistant = [...nextMessages].reverse().find(m => m.role === "assistant");
             const contextHint = lastAssistant
               ? (typeof lastAssistant.content === "string" ? lastAssistant.content : "").slice(0, 80).replace(/\n/g, " ").trim()
               : null;
@@ -2402,20 +2458,123 @@ export default function Home() {
               ? `Welcome back. Picking up where we left off — ${contextHint}… What's next?`
               : "Welcome back. Ready to continue.";
             const welcomeMsg = { id: `aa-resume-${Date.now()}`, role: "assistant" as const, content: greeting };
-            askAtlasConv.setMessages([...(normalized as any), welcomeMsg]);
+            askAtlasConv.setMessages([...(nextMessages as any), welcomeMsg]);
           } else {
-            askAtlasConv.setMessages(normalized as any);
+            askAtlasConv.setMessages(nextMessages as any);
           }
+          askAtlasAwaitingAssistantRef.current = merged.awaitingServerAssistant;
+          setAskAtlasThreadMemory({
+            conversationId: askAtlasConversationId,
+            messages: nextMessages,
+            isStreaming: false,
+            activeRunId: snap?.activeRunId ?? null,
+          });
         }
-        askAtlasRestoreAttemptRef.current = askAtlasConversationId;
       })
       .catch(() => {
-        askAtlasRestoreAttemptRef.current = askAtlasConversationId;
+        // Network failed — keep soft-memory messages if we already applied them.
       })
       .finally(() => {
-        setIsAskAtlasRestoring(false);
+        if (!cancelled) setIsAskAtlasRestoring(false);
       });
-  }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasConv.messages.length, askAtlasConv.setMessages]);
+    return () => { cancelled = true; };
+    // intentionally omit messages.length — see comment above
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askAtlasSurfaceOpen, askAtlasConversationId, askAtlasConv.setMessages]);
+
+  // Persist Ask Atlas transcript across soft remounts / hard reloads while generating.
+  useEffect(() => {
+    if (!askAtlasConversationId) return;
+    if (askAtlasConv.messages.length === 0) return;
+    setAskAtlasThreadMemory({
+      conversationId: askAtlasConversationId,
+      messages: askAtlasConv.messages.map((m) => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: typeof m.content === "string" ? m.content : "",
+        createdAt: m.createdAt,
+        streaming: m.streaming === true,
+        nextSuggestions: (m as any).nextSuggestions,
+      })),
+      isStreaming: askAtlasConv.isStreaming || askAtlasConv.isPending,
+      activeRunId: askAtlasConv.activeRunId,
+    });
+  }, [
+    askAtlasConversationId,
+    askAtlasConv.messages,
+    askAtlasConv.isStreaming,
+    askAtlasConv.isPending,
+    askAtlasConv.activeRunId,
+  ]);
+
+  // After remount mid-generation: poll the durable thread until the assistant
+  // turn lands (server finishStream may complete after the client aborted).
+  useEffect(() => {
+    if (!askAtlasSurfaceOpen || !askAtlasConversationId) return;
+    if (!askAtlasAwaitingAssistantRef.current) return;
+    if (askAtlasConv.isStreaming || askAtlasConv.isPending) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 12;
+    const tick = () => {
+      if (cancelled) return;
+      attempts += 1;
+      fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(askAtlasConversationId)}`, { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((msgs: Array<{ role: string; content: string }>) => {
+          if (cancelled) return;
+          const normalized = normalizeLoadedHomeMessages(msgs) as AskAtlasMemoryMessage[];
+          const last = normalized[normalized.length - 1];
+          if (last?.role === "assistant" && last.content.trim()) {
+            askAtlasAwaitingAssistantRef.current = false;
+            const snap = getAskAtlasThreadMemory(askAtlasConversationId);
+            const merged = mergeAskAtlasThread(normalized, snap);
+            askAtlasConv.setMessages(merged.messages as any);
+            setAskAtlasThreadMemory({
+              conversationId: askAtlasConversationId,
+              messages: merged.messages,
+              isStreaming: false,
+              activeRunId: null,
+            });
+            return;
+          }
+          if (attempts < maxAttempts) {
+            window.setTimeout(tick, 1500);
+          } else {
+            askAtlasAwaitingAssistantRef.current = false;
+          }
+        })
+        .catch(() => {
+          if (!cancelled && attempts < maxAttempts) window.setTimeout(tick, 1500);
+          else askAtlasAwaitingAssistantRef.current = false;
+        });
+    };
+    const timer = window.setTimeout(tick, 800);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    askAtlasSurfaceOpen,
+    askAtlasConversationId,
+    askAtlasConv.isStreaming,
+    askAtlasConv.isPending,
+    askAtlasConv.setMessages,
+    askAtlasConv.messages.length,
+  ]);
+
+  // Discourage hard refresh while Ask Atlas is generating — reload aborts SSE
+  // and can race finishStream persistence.
+  useEffect(() => {
+    if (!askAtlasBusy) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [askAtlasBusy]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -3944,6 +4103,8 @@ export default function Home() {
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
     conversationThreadRequestRef.current = null;
     thinkOutLoudInlineRef.current = false;
+    clearAskAtlasThreadMemory(askAtlasConversationId);
+    askAtlasAwaitingAssistantRef.current = false;
     setActiveConversationId(null);
     setAskAtlasConversationId(null);
     askAtlasSession.clearConversationId();
@@ -3954,7 +4115,7 @@ export default function Home() {
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.clearMessages, askAtlasConv.clearMessages]);
+  }, [nexusChat.clearMessages, askAtlasConv.clearMessages, askAtlasConversationId]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
@@ -5664,6 +5825,8 @@ export default function Home() {
                     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
                     conversationThreadRequestRef.current = null;
                     thinkOutLoudInlineRef.current = false;
+                    clearAskAtlasThreadMemory(askAtlasConversationId);
+                    askAtlasAwaitingAssistantRef.current = false;
                     setActiveConversationId(null);
                     setAskAtlasConversationId(null);
                     askAtlasSession.clearConversationId();
