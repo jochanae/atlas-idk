@@ -164,4 +164,11 @@ describe("live chat Constitution (Phase C)", () => {
     expect(block).toContain("builder");
     expect(block).not.toContain("LENS CONSTITUTION: DESIGNER");
   });
+
+  it("requires continuity across perspective switches", () => {
+    const block = buildLiveChatConstitutionBlock("storyteller", false);
+    expect(block).toContain("CONTINUITY");
+    expect(block).toMatch(/same Workspace conversation|same project memory/i);
+    expect(block).toMatch(/do not restart|change only your reasoning/i);
+  });
 });

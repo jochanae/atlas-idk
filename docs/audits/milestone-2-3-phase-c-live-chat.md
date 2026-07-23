@@ -1,22 +1,38 @@
 # Milestone 2.3 Phase C — Constitution on live chat
 
 **Date:** 2026-07-23  
+**Status:** **CLOSED**  
 **Prerequisite:** Phase B CLOSED (Map battery 6/6)  
-**Branch:** `cursor/milestone-2-3-phase-b-eval-2010`
+**Branch:** `cursor/milestone-2-3-phase-c-eval-2010`
 
 ## Objective
 
-Apply the **same** Lens Constitution (§3) to live Workspace chat via Nexus — not a revival of Flow/Build/Look.
+Make live Workspace conversation reason through the **same** Lens Constitution proven in Phase B — one engine, one memory, multiple perspectives.
 
 ## What landed
 
 | Piece | Location |
 |-------|----------|
-| Chat output contracts | `buildChatOutputContract` / `buildLiveChatConstitutionBlock` in `lensConstitution.ts` |
-| Nexus injection | `nexus.ts` — when `surfaceContext === "workspace"` |
-| Lens-weighted DNA | Focused-project CHAT + BUILD shaping layers |
-| Soft lens offer copy | Remapped to Designer / Builder / Storyteller |
+| Chat output contracts | `buildChatOutputContract` / `buildLiveChatConstitutionBlock` |
+| Continuity clause | Same block — no restart on perspective switch |
+| Nexus injection | `nexus.ts` when `surfaceContext === "workspace"` |
+| Lens-weighted DNA | Focused-project CHAT + BUILD shaping |
+| Soft perspective offer | Designer / Builder / Storyteller |
+| Battery + continuity | `docs/audits/milestone-2-3-phase-c-battery/` |
 
-## Still open to close Phase C
+## Acceptance
 
-Re-run **same** T1–T6 battery on **live chat** (≥5/6, T1 mandatory). Prefer a host with `ANTHROPIC_API_KEY` / authenticated Workspace after deploy.
+| Gate | Result |
+|------|--------|
+| T1 Pass | ✅ |
+| ≥5/6 Pass | ✅ 6/6 |
+| Continuity (Designer→Builder→Storyteller) | ✅ |
+| No parallel chat ontology | ✅ |
+
+## Refinements
+
+- Added **CONTINUITY** rules to live-chat Constitution (same thread/memory; change reasoning job only).
+
+## Explicit non-starts
+
+- Milestone **2.4** not begun — gated on full 2.3 close (Phase D/E).

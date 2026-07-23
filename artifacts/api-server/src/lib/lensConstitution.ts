@@ -288,9 +288,17 @@ export function buildLiveChatConstitutionBlock(
   const speculateNote = speculate
     ? `\nSCENARIO MODIFIER (speculate=true): Explore alternate assumptions without converting them into commitments. Keep the active lens identity (${perspective}) — change assumptions, not craft.`
     : "";
+  // Continuity is architectural: one engine, one memory, one thread — only the
+  // reasoning job changes when perspective switches mid-conversation.
+  const continuity = `CONTINUITY (non-negotiable):
+- This is the same Workspace conversation and the same project memory.
+- When the active perspective changes, change only your reasoning job — do not restart, re-greet, re-brief the whole project, or discard prior turns.
+- Carry forward facts, decisions, and open threads already established in this thread.
+- You may say you are now answering as ${perspective} only if the user explicitly asks which lens is active; otherwise just reason in that craft.`;
   return `${buildConstitutionPolicyBlock(perspective)}
 
-${buildChatOutputContract(perspective)}${speculateNote}`;
+${buildChatOutputContract(perspective)}
+${continuity}${speculateNote}`;
 }
 
 export type TranscriptLine = { role: string; content: string };

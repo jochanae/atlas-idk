@@ -1,0 +1,9 @@
+{
+  "caseId": "T1",
+  "lens": "storyteller",
+  "surface": "live-workspace-chat",
+  "prompt": "Build a community page for Reveal.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "The community page isn\u2019t a product surface to \u201cship\u201d \u2014 it\u2019s the first place she feels safe talking about money.\n\nWhat we\u2019re building is the home of Reveal\u2019s promise: financial confidence through trusted community, not alone. The arc for a new arrival is lurker \u2192 witnessed calm \u2192 choose to be known without performing. Belonging before budgeting tips is the wedge; if the page becomes tip chrome, it hollows the founding identity.\n\nv1 access is part of that promise \u2014 charging later can mean stewardship of a house she already belongs in, not a ticket at the door. Quiet presence over engagement spam is already decided; silence can be sacred.\n\nWhen we say \u201cbuild a community page,\u201d the meaning test is: would a woman who felt excluded by finance culture recognize this as her house? If not, we built the wrong thing \u2014 even if every route works."
+}

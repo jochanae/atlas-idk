@@ -1,0 +1,9 @@
+{
+  "caseId": "T4",
+  "lens": "designer",
+  "surface": "live-workspace-chat",
+  "prompt": "Design a weekly group Bible study rhythm inside Reveal\u2019s community.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Session UI as a calm weekly rhythm: gather \u2192 read \u2192 share \u2192 close, with clear hierarchy and mobile pacing.\n\nReading plan should be glanceable; missed weeks never shame. Quiet participation mode for lurkers \u2014 listen/read without forced posting. Accessible type, focus order, longer reflective reading.\n\nTone of the surface is invitation, not a content dump module grid. Formation over syllabus chrome."
+}

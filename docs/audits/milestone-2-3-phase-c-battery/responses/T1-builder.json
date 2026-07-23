@@ -1,0 +1,9 @@
+{
+  "caseId": "T1",
+  "lens": "builder",
+  "surface": "live-workspace-chat",
+  "prompt": "Build a community page for Reveal.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Ship slice for the community page on react/postgres/node:\n\n1. Route + page shell for `/community` with a feed query that returns an explicit empty result (acceptance: empty state renders, not a failed fetch).\n2. Members + posts APIs \u2014 keep entitlements stubbed; do not enforce a paywall this slice (founding promise still prioritizes access).\n3. Authz boundaries for member profiles \u2014 next concrete sprint already on the board.\n4. Activity visibility model in postgres before the feed goes live (public/private scopes) \u2014 this unblocks the trust risk.\n5. Notification prefs hook with quiet defaults; inbox poll is enough for v1, realtime can follow.\n\nOut of scope: paywall enforcement, engagement gamification. UX empty-state is an acceptance constraint, not the engineering essay. Open a PR plan against that checklist."
+}

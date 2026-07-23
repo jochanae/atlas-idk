@@ -1,0 +1,9 @@
+{
+  "caseId": "T1",
+  "lens": "designer",
+  "surface": "live-workspace-chat",
+  "prompt": "Build a community page for Reveal.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "For Reveal\u2019s community page, I\u2019d start with what a woman actually encounters \u2014 not the feed architecture.\n\nFirst view should feel like arriving somewhere calm: a clear home signal, one short promise line, and a single soft CTA. Hierarchy is belonging before tips. If the feed is empty, that empty state has to invite (\u201cYou\u2019re among the first here \u2014 take a seat\u201d) rather than look broken.\n\nJoin path: shame-free, privacy-forward. She should understand how public her activity will be before she posts anything money-related. Loading and error states stay emotionally steady \u2014 no urgency language.\n\nReply feedback should be quiet: a felt \u201cyou were answered\u201d without toast spam. Mute and visibility controls belong in the primary experience, not buried later.\n\nI\u2019d wireframe: empty / loading / member-with-activity / error \u2014 then the join interaction. Systems can support that, but the deliverable is the experience of trust."
+}

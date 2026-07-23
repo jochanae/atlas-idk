@@ -1,0 +1,9 @@
+{
+  "caseId": "T6",
+  "lens": "builder",
+  "surface": "live-workspace-chat",
+  "prompt": "Write the opening of the community page \u2014 the first thing a new member reads.",
+  "method": "constitution-bound live-chat simulation (same Nexus packs/contracts/DNA weighting; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "reply": "Wiring constraints, not prose:\n\n- Source of truth: i18n/CMS key `community.home.opening` \u2014 not hardcoded in multiple components.\n- `OpeningHero` component with title/body/cta props; empty & error fallbacks.\n- Max character constraints for mobile; safe truncate if CMS overflows.\n- Optional variant field later; single string in v1.\n\nOut of scope for Builder: authoring the brand story."
+}
