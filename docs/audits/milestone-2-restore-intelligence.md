@@ -109,3 +109,5 @@ Phase A plumbing complete. Phase B Constitution on Map landing. Do not start 2.4
 | 2026-07-23 | **2.3 planning** — design doc drafted. |
 | 2026-07-23 | **2.3 approvals** — Constitution, eval battery, scope (Map + live chat plumbing → Map Constitution → live chat). |
 | 2026-07-23 | **2.3 naming signed off** — Designer/Builder/Storyteller; Flow → Storyteller; Scenario = speculate modifier; Flow = Map surface; AtlasLens rename; one-sentence contracts. Phase A unblocked. |
+| 2026-07-23 | **2.3 Phase A PASS** — one perspective pipeline (UI → Nexus meta → Map sync). No behavioral differentiation. |
+| 2026-07-23 | **2.3 Phase B landing** — Constitution packs + evidence filters + expand-node output contracts; Map-bound Flow chat constitution. Battery eval still open. |
