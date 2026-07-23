@@ -131,7 +131,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 
 
 // ── Page Transition Spinner ───────────────────────────────────────────────────
-const SKIP_TRANSITION = ["/landing", "/login", "/reset-password"];
+// /files is a utility surface — skip the boot spinner so a quick open of an
+// artifact detail sheet is never covered by the z-index 99999 transition orb.
+const SKIP_TRANSITION = ["/landing", "/login", "/reset-password", "/files"];
 
 function isUnifiedShellPath(pathname: string): boolean {
   return pathname === "/home" || pathname.startsWith("/project/") || pathname.startsWith("/workspace/");

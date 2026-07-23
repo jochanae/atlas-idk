@@ -7,8 +7,9 @@ const ARTIFACTS_DIR = process.env.CURSOR_ARTIFACTS_DIR
 const COMPLETED = {
   id: "11111111-1111-1111-1111-111111111111",
   kind: "document",
-  title: "Women's Decision Framework Community — Product Brief.pdf",
-  preview: "Generated document \"Women's Decision Framework Community — Product Brief\" (6 sections).",
+  // Keep title ASCII-stable for Chromium screenshot compositing at mobile DPR.
+  title: "Product Brief.pdf",
+  preview: "Generated document \"Product Brief\" (6 sections).",
   project: { id: 42, name: "Aura Focus Timer for Indie Developers" },
   origin: { source: "workspace", conversationId: "conv-1" },
   sourceRef: {
@@ -104,11 +105,13 @@ test.describe("Global Files mobile detail presentation", () => {
     await page.goto("/files");
 
     // Wait for list rows
-    await expect(page.getByText("Women's Decision Framework Community — Product Brief.pdf")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Product Brief.pdf")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Incomplete HTML prototype")).toBeVisible();
+    // Guard: page transition orb must not sit above the detail sheet.
+    await expect(page.getByText("thinking strategically")).toHaveCount(0);
 
     // ── Completed artifact ───────────────────────────────────────────────
-    await page.getByText("Women's Decision Framework Community — Product Brief.pdf").click();
+    await page.getByText("Product Brief.pdf").click();
     const completedPanel = page.getByTestId("files-preview-panel");
     await expect(completedPanel).toBeVisible();
     await expect(completedPanel).toHaveAttribute("data-artifact-health", "ok");
@@ -167,20 +170,20 @@ test.describe("Global Files mobile detail presentation", () => {
     await expect(page.getByTestId("files-preview-delete")).toBeVisible();
     await expect(page.getByTestId("files-preview-open")).toBeVisible();
     await expect(page.getByTestId("files-preview-close-btn")).toBeVisible();
+    await expect(page.getByTestId("files-preview-title")).toHaveText("Product Brief.pdf");
+    await page.evaluate(async () => { await document.fonts.ready; });
 
     await completedPanel.screenshot({
       path: path.join(ARTIFACTS_DIR, "completed-artifact-detail-mobile.png"),
-      animations: "disabled",
     });
     await page.screenshot({
       path: path.join(ARTIFACTS_DIR, "completed-artifact-detail-page.png"),
-      animations: "disabled",
     });
 
     // Close returns to list
     await page.getByTestId("files-preview-close-btn").click();
     await expect(completedPanel).toHaveCount(0);
-    await expect(page.getByText("Women's Decision Framework Community — Product Brief.pdf")).toBeVisible();
+    await expect(page.getByText("Product Brief.pdf")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Files" })).toBeVisible();
     const headingExposed = await page.evaluate(() => {
       const h = document.querySelector("h1");
@@ -247,7 +250,7 @@ test.describe("Global Files mobile detail presentation", () => {
     await page.getByTestId("files-preview-delete").click();
     await expect(failedPanel).toHaveCount(0);
     await expect(page.getByText("Incomplete HTML prototype")).toHaveCount(0);
-    await expect(page.getByText("Women's Decision Framework Community — Product Brief.pdf")).toBeVisible();
+    await expect(page.getByText("Product Brief.pdf")).toBeVisible();
 
     await page.screenshot({
       path: path.join(ARTIFACTS_DIR, "after-delete-failed-mobile.png"),
@@ -255,12 +258,12 @@ test.describe("Global Files mobile detail presentation", () => {
     });
 
     // Completed artifact can also be deleted
-    await page.getByText("Women's Decision Framework Community — Product Brief.pdf").click();
+    await page.getByText("Product Brief.pdf").click();
     await expect(page.getByTestId("files-preview-panel")).toBeVisible();
     page.once("dialog", (d) => d.accept());
     await page.getByTestId("files-preview-delete").click();
     await expect(page.getByTestId("files-preview-panel")).toHaveCount(0);
-    await expect(page.getByText("Women's Decision Framework Community — Product Brief.pdf")).toHaveCount(0);
+    await expect(page.getByText("Product Brief.pdf")).toHaveCount(0);
 
     await page.screenshot({
       path: path.join(ARTIFACTS_DIR, "after-delete-completed-mobile.png"),
