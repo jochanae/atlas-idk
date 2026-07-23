@@ -125,7 +125,7 @@ function parseParkEnrichmentJson(raw: string): ParkEnrichment | null {
 // Deep enrichment (options, revisitWhen, alternatives) happens on demand
 // when the detail panel is opened via POST /entries/:id/context.
 async function enrichParkedEntry(entryId: number, title: string, summary: string | null, projectName: string): Promise<void> {
-  const prompt = `You are Atlas — a strategic thinking partner inside Axiom, a product development workspace.
+  const prompt = `You are Joy (internally: Atlas) — a strategic thinking partner inside Axiom, a product development workspace.
 
 A user just parked this thought for later. Return ONLY a JSON object, no markdown, no explanation.
 
@@ -164,7 +164,7 @@ complexity values: Low, Medium, High`;
 // Deep enrichment — runs on demand when the detail panel is opened.
 // Upgrades a lite enrichment to a full one with options, revisitWhen, etc.
 async function deepEnrichParkedEntry(entryId: number, title: string, summary: string | null, projectName: string, lite: ParkEnrichmentLite): Promise<ParkEnrichment | null> {
-  const prompt = `You are Atlas — a strategic thinking partner inside Axiom, a product development workspace.
+  const prompt = `You are Joy (internally: Atlas) — a strategic thinking partner inside Axiom, a product development workspace.
 
 A user parked this thought and is now looking at it more closely. Return ONLY a JSON object, no markdown.
 

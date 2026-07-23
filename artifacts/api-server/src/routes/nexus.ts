@@ -448,7 +448,7 @@ async function generateHomeOpening(projectName: string | null, userType: HomeUse
       max_tokens: 400,
       messages: [{
         role: "user",
-        content: `You are Atlas — a strategic thinking partner for builders and founders.
+        content: `You are Joy (internally: Atlas) — a strategic thinking partner for builders and founders.
 
 The user just created or opened a project named: "${projectName.trim()}"
 
@@ -8711,7 +8711,7 @@ router.post("/nexus/briefing", async (req, res): Promise<void> => {
       max_tokens: 120,
       messages: [{
         role: "user",
-        content: `You are Atlas, a strategic AI partner. Portfolio:\n${projectList}\n\nRecent activity:\n${recentActivity || "No recent activity"}\n\nWrite exactly two sentences. Sentence 1: current state of the portfolio. Sentence 2: one specific next move. Reference real project names. Under 20 words each. No greeting, no labels.`
+        content: `You are Joy (internally: Atlas), a strategic AI partner. Portfolio:\n${projectList}\n\nRecent activity:\n${recentActivity || "No recent activity"}\n\nWrite exactly two sentences. Sentence 1: current state of the portfolio. Sentence 2: one specific next move. Reference real project names. Under 20 words each. No greeting, no labels.`
       }],
     });
 

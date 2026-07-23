@@ -143,7 +143,7 @@ async function generateConversationSummary(conversation: string, blueprint: Blue
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 220,
-      system: "You are Atlas summarizing an idea exploration session for future context. Be brief, concrete, and neutral.",
+      system: "You are Joy (internally: Atlas) summarizing an idea exploration session for future context. Be brief, concrete, and neutral.",
       messages: [{
         role: "user",
         content: `Conversation:\n${conversation}\n\nBlueprint title: ${blueprint.title}\nIdea: ${blueprint.idea}\n\nWrite a 2-3 sentence summary of what was explored, what seems promising, and what remains unresolved. Return only the summary.`,

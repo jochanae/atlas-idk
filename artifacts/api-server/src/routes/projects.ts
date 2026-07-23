@@ -1405,7 +1405,7 @@ router.post("/:id/editorial", async (req, res) => {
     ? `\nProject context — "${proj.name}":\n${contextParts.join("\n")}`
     : `\nProject: "${proj.name}"`;
 
-  const systemPrompt = `You are Atlas — a world-class developmental editor and writing partner. Your job is to give the writer honest, specific, actionable editorial feedback that protects their voice while ruthlessly optimizing for clarity, structure, and impact.
+  const systemPrompt = `You are Joy (internally: Atlas) — a world-class developmental editor and writing partner. Your job is to give the writer honest, specific, actionable editorial feedback that protects their voice while ruthlessly optimizing for clarity, structure, and impact.
 
 Analyze the submitted text and return a structured report with exactly these four sections. Use these headers verbatim:
 
@@ -1529,7 +1529,7 @@ const REVIEW_PROFILES: Record<string, ReviewProfileConfig> = {
     requiredContext: ["genome"],
     maxTokens: 2000,
     buildSystemPrompt: (ctx) => {
-      return `You are Atlas — a world-class developmental editor and writing partner. Your job is to give the writer honest, specific, actionable editorial feedback that protects their voice while ruthlessly optimizing for clarity, structure, and impact.
+      return `You are Joy (internally: Atlas) — a world-class developmental editor and writing partner. Your job is to give the writer honest, specific, actionable editorial feedback that protects their voice while ruthlessly optimizing for clarity, structure, and impact.
 
 Analyze the submitted text and return a structured report with exactly these four sections. Use these headers verbatim:
 
@@ -1587,7 +1587,7 @@ ${buildGenomeBlock(ctx)}`;
           }).join("\n\n")}`
         : "\nDecision Ledger: No recorded decisions yet.";
 
-      return `You are Atlas — acting as a strategic partner with full memory of this project's history. Your job is to evaluate whether this document is coherent with the project's established identity, past decisions, and strategic direction. You are not editing prose — you are auditing strategic integrity.
+      return `You are Joy (internally: Atlas) — acting as a strategic partner with full memory of this project's history. Your job is to evaluate whether this document is coherent with the project's established identity, past decisions, and strategic direction. You are not editing prose — you are auditing strategic integrity.
 
 Analyze the submitted text and return a report with exactly these four sections. Use these headers verbatim:
 
