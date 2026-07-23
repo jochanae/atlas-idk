@@ -220,6 +220,9 @@ interface Props {
   crystallized?: boolean;
   /** True while the thread restore fetch is in-flight — shows a skeleton instead of blank. */
   isRestoring?: boolean;
+  /** Ephemeral "Welcome back" resume card payload. NEVER inserted into messages. */
+  resumeGreeting?: { hint: string | null } | null;
+  onDismissResumeGreeting?: () => void;
 }
 
 
