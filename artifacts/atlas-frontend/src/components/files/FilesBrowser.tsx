@@ -944,7 +944,7 @@ function MetaRow({ label, value }: { label: string; value: string }) {
       }}
     >
       <div style={{
-        flex: "0 0 72px", color: "hsl(var(--muted-foreground))",
+        flex: "0 0 72px", color: "var(--atlas-muted, hsl(var(--muted-foreground)))",
         fontFamily: "var(--app-font-mono)", fontSize: 10,
         letterSpacing: "0.12em", textTransform: "uppercase", paddingTop: 1,
       }}>
@@ -1012,13 +1012,20 @@ function PreviewPanel({
     }
   };
 
+  // Theme aliases set --background/--foreground/--border to hex/rgba (not HSL
+  // components). Wrapping them in hsl() yields an invalid color → transparent
+  // paint, which is what stacked the file list under the detail panel.
+  const surfaceBg = "var(--background, var(--atlas-bg, #0b0a0f))";
+  const surfaceFg = "var(--foreground, var(--atlas-fg, #f5efe0))";
+  const surfaceBorder = "var(--border, var(--atlas-border, rgba(230,198,135,0.15)))";
+
   const containerStyle: React.CSSProperties = isNarrow
     ? {
         position: "fixed", inset: 0, zIndex: 10000,
         display: "flex", flexDirection: "column",
         // Solid opaque fill — never translucent over the file list.
-        background: "hsl(var(--background))",
-        color: "hsl(var(--foreground))",
+        background: surfaceBg,
+        color: surfaceFg,
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
         isolation: "isolate",
       }
@@ -1026,10 +1033,10 @@ function PreviewPanel({
         position: "fixed", top: 0, right: 0, bottom: 0,
         width: "min(420px, 60vw)", zIndex: 10000,
         display: "flex", flexDirection: "column",
-        background: "hsl(var(--popover))",
-        color: "hsl(var(--popover-foreground))",
-        borderLeft: "1px solid hsl(var(--border))",
-        boxShadow: "-16px 0 48px hsl(var(--background) / 0.4)",
+        background: "var(--atlas-surface, hsl(var(--popover)))",
+        color: surfaceFg,
+        borderLeft: `1px solid ${surfaceBorder}`,
+        boxShadow: "-16px 0 48px rgba(0, 0, 0, 0.55)",
         isolation: "isolate",
       };
 
@@ -1044,7 +1051,10 @@ function PreviewPanel({
         onClick={onClose}
         style={{
           position: "fixed", inset: 0, zIndex: 9999,
-          background: isNarrow ? "hsl(var(--background))" : "hsl(var(--background) / 0.72)",
+          // Opaque on mobile so the browser cannot show through; dimmed on desktop drawer.
+          background: isNarrow
+            ? surfaceBg
+            : "color-mix(in srgb, var(--background, #0b0a0f) 72%, transparent)",
         }}
       />
       <div
@@ -1057,11 +1067,11 @@ function PreviewPanel({
       >
         <header style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-          padding: "14px 16px", borderBottom: "1px solid hsl(var(--border))", flexShrink: 0,
+          padding: "14px 16px", borderBottom: `1px solid ${surfaceBorder}`, flexShrink: 0,
           background: "inherit",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <span style={{ color: "hsl(var(--primary))", flexShrink: 0 }}><CategoryGlyph cat={file.category} /></span>
+            <span style={{ color: "var(--atlas-ember, hsl(var(--primary)))", flexShrink: 0 }}><CategoryGlyph cat={file.category} /></span>
             <div style={{ minWidth: 0 }}>
               <div
                 data-testid="files-preview-title"
@@ -1069,7 +1079,7 @@ function PreviewPanel({
               >
                 {shortName}
               </div>
-              <div style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: "var(--atlas-muted, hsl(var(--muted-foreground)))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 2 }}>
                 {file.section}
               </div>
             </div>
@@ -1081,7 +1091,7 @@ function PreviewPanel({
             style={{
               flexShrink: 0, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
               borderRadius: 6, background: "transparent",
-              border: "1px solid hsl(var(--border))", color: "hsl(var(--muted-foreground))", cursor: "pointer",
+              border: `1px solid ${surfaceBorder}`, color: "var(--atlas-muted, hsl(var(--muted-foreground)))", cursor: "pointer",
             }}
           ><X size={14} /></button>
         </header>
@@ -1113,10 +1123,10 @@ function PreviewPanel({
           <div style={{
             aspectRatio: isImage ? "4/3" : "16/9",
             borderRadius: 8,
-            background: "hsl(var(--muted) / 0.5)",
+            background: "var(--atlas-surface-alt, hsl(var(--muted) / 0.5))",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "hsl(var(--primary))", overflow: "hidden",
-            border: "1px solid hsl(var(--border))",
+            color: "var(--atlas-ember, hsl(var(--primary)))", overflow: "hidden",
+            border: `1px solid ${surfaceBorder}`,
             flexShrink: 0,
           }}>
             {file.thumbUrl ? (
@@ -1135,8 +1145,8 @@ function PreviewPanel({
               <span style={{
                 fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase",
                 padding: "2px 6px", borderRadius: 4,
-                border: "1px solid hsl(var(--border))",
-                color: "hsl(var(--muted-foreground))",
+                border: `1px solid ${surfaceBorder}`,
+                color: "var(--atlas-muted, hsl(var(--muted-foreground)))",
                 fontFamily: "var(--app-font-mono)",
                 maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis",
               }}>{file.projectLabel}</span>
@@ -1168,10 +1178,10 @@ function PreviewPanel({
               data-testid="files-preview-summary"
               style={{
                 padding: 12, borderRadius: 8,
-                background: "hsl(var(--muted) / 0.35)",
-                border: "1px solid hsl(var(--border))",
+                background: "var(--atlas-surface-alt, hsl(var(--muted) / 0.35))",
+                border: `1px solid ${surfaceBorder}`,
                 fontSize: 12, lineHeight: 1.55,
-                color: "hsl(var(--popover-foreground) / 0.85)",
+                color: "color-mix(in srgb, var(--foreground, #f5efe0) 85%, transparent)",
                 whiteSpace: "pre-wrap", wordBreak: "break-word",
                 maxHeight: 260, overflowY: "auto", WebkitOverflowScrolling: "touch",
                 position: "relative", zIndex: 1,
@@ -1187,7 +1197,7 @@ function PreviewPanel({
             padding: "8px 16px", fontSize: 12,
             color: "hsl(var(--destructive, 0 84% 60%))",
             background: "hsl(var(--destructive, 0 84% 60%) / 0.08)",
-            borderTop: "1px solid hsl(var(--border))",
+            borderTop: `1px solid ${surfaceBorder}`,
           }}>
             {deleteError}
           </div>
@@ -1196,7 +1206,7 @@ function PreviewPanel({
           data-testid="files-preview-footer"
           style={{
             display: "flex", gap: 8, padding: "12px 16px calc(12px + env(safe-area-inset-bottom, 0px))",
-            borderTop: "1px solid hsl(var(--border))", flexShrink: 0,
+            borderTop: `1px solid ${surfaceBorder}`, flexShrink: 0,
             background: "inherit",
           }}
         >
@@ -1227,8 +1237,8 @@ function PreviewPanel({
             data-testid="files-preview-close-btn"
             style={{
               flex: 1, padding: "10px 14px", borderRadius: 8,
-              background: "transparent", border: "1px solid hsl(var(--border))",
-              color: "hsl(var(--popover-foreground))", cursor: "pointer",
+              background: "transparent", border: `1px solid ${surfaceBorder}`,
+              color: surfaceFg, cursor: "pointer",
               fontSize: 13, fontFamily: "var(--app-font-sans)",
             }}
           >Close</button>
@@ -1237,8 +1247,9 @@ function PreviewPanel({
             data-testid="files-preview-open"
             style={{
               flex: 2, padding: "10px 14px", borderRadius: 8,
-              background: "hsl(var(--primary))", border: "1px solid hsl(var(--primary))",
-              color: "hsl(var(--primary-foreground))", cursor: "pointer",
+              background: "var(--atlas-ember, hsl(var(--primary)))",
+              border: "1px solid var(--atlas-ember, hsl(var(--primary)))",
+              color: "var(--atlas-fg, hsl(var(--primary-foreground)))", cursor: "pointer",
               fontSize: 13, fontWeight: 500, fontFamily: "var(--app-font-sans)",
             }}
           >{primaryLabel}</button>

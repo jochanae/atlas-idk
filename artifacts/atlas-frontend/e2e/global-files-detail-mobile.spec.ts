@@ -42,6 +42,8 @@ const FAILED = {
 };
 
 async function mockApis(page: Page) {
+  let items = [COMPLETED, FAILED];
+
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
@@ -60,9 +62,11 @@ async function mockApis(page: Page) {
       });
     }
     if (url.pathname === "/api/library" && method === "GET") {
-      return route.fulfill({ json: { items: [COMPLETED, FAILED] } });
+      return route.fulfill({ json: { items } });
     }
     if (url.pathname.startsWith("/api/library/") && method === "DELETE") {
+      const id = decodeURIComponent(url.pathname.split("/").pop() ?? "");
+      items = items.filter((it) => it.id !== id);
       return route.fulfill({ json: { ok: true } });
     }
     if (url.pathname.includes("/api/fs/")) {
@@ -82,6 +86,13 @@ function boxesOverlap(
     || a.y + a.height <= b.y
     || b.y + b.height <= a.y
   );
+}
+
+function assertOpaqueFill(color: string) {
+  // Reject transparent / zero-alpha fills that let the list paint through.
+  expect(color).not.toMatch(/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/);
+  const alpha = color.match(/rgba\([^)]+,\s*([0-9.]+)\s*\)/);
+  if (alpha) expect(Number(alpha[1])).toBeGreaterThan(0.95);
 }
 
 test.describe("Global Files mobile detail presentation", () => {
@@ -108,8 +119,31 @@ test.describe("Global Files mobile detail presentation", () => {
     expect(panelBox!.width).toBeGreaterThan(360);
     expect(panelBox!.height).toBeGreaterThan(700);
 
-    // Scrim opaque behind panel — list title "Files" page header should not be interactive under dialog.
-    await expect(page.getByTestId("files-preview-scrim")).toBeVisible();
+    const scrim = page.getByTestId("files-preview-scrim");
+    await expect(scrim).toBeVisible();
+
+    // Opaque paint — this is the actual stacked-list failure mode.
+    const fills = await page.evaluate(() => {
+      const panel = document.querySelector("[data-testid=files-preview-panel]");
+      const s = document.querySelector("[data-testid=files-preview-scrim]");
+      return {
+        panel: getComputedStyle(panel!).backgroundColor,
+        scrim: getComputedStyle(s!).backgroundColor,
+      };
+    });
+    assertOpaqueFill(fills.panel);
+    assertOpaqueFill(fills.scrim);
+
+    // Pixel under the page "Files" heading must be covered by the opaque sheet
+    // (Playwright's toBeHidden ignores occlusion).
+    const headingCovered = await page.evaluate(() => {
+      const h = document.querySelector("h1");
+      if (!h) return false;
+      const r = h.getBoundingClientRect();
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !!el?.closest("[data-testid=files-preview-panel], [data-testid=files-preview-scrim]");
+    });
+    expect(headingCovered).toBe(true);
 
     // Metadata rows must not overlap each other or the title.
     const titleBox = await page.getByTestId("files-preview-title").boundingBox();
@@ -134,19 +168,32 @@ test.describe("Global Files mobile detail presentation", () => {
     await expect(page.getByTestId("files-preview-open")).toBeVisible();
     await expect(page.getByTestId("files-preview-close-btn")).toBeVisible();
 
-    await page.screenshot({
+    await completedPanel.screenshot({
       path: path.join(ARTIFACTS_DIR, "completed-artifact-detail-mobile.png"),
-      fullPage: true,
+      animations: "disabled",
+    });
+    await page.screenshot({
+      path: path.join(ARTIFACTS_DIR, "completed-artifact-detail-page.png"),
+      animations: "disabled",
     });
 
     // Close returns to list
     await page.getByTestId("files-preview-close-btn").click();
     await expect(completedPanel).toHaveCount(0);
     await expect(page.getByText("Women's Decision Framework Community — Product Brief.pdf")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Files" })).toBeVisible();
+    const headingExposed = await page.evaluate(() => {
+      const h = document.querySelector("h1");
+      if (!h) return false;
+      const r = h.getBoundingClientRect();
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return el === h || !!el?.closest("header");
+    });
+    expect(headingExposed).toBe(true);
 
     await page.screenshot({
       path: path.join(ARTIFACTS_DIR, "after-close-completed-mobile.png"),
-      fullPage: true,
+      animations: "disabled",
     });
 
     // ── Failed / partial artifact ────────────────────────────────────────
@@ -156,6 +203,25 @@ test.describe("Global Files mobile detail presentation", () => {
     await expect(failedPanel).toHaveAttribute("data-artifact-health", "partial");
     await expect(page.getByTestId("files-preview-health")).toContainText(/Partial|incomplete/i);
     await expect(page.getByText("Partial", { exact: true })).toBeVisible();
+
+    const failedFills = await page.evaluate(() => {
+      const panel = document.querySelector("[data-testid=files-preview-panel]");
+      const s = document.querySelector("[data-testid=files-preview-scrim]");
+      return {
+        panel: getComputedStyle(panel!).backgroundColor,
+        scrim: getComputedStyle(s!).backgroundColor,
+      };
+    });
+    assertOpaqueFill(failedFills.panel);
+    assertOpaqueFill(failedFills.scrim);
+    const failedHeadingCovered = await page.evaluate(() => {
+      const h = document.querySelector("h1");
+      if (!h) return false;
+      const r = h.getBoundingClientRect();
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !!el?.closest("[data-testid=files-preview-panel], [data-testid=files-preview-scrim]");
+    });
+    expect(failedHeadingCovered).toBe(true);
 
     const failedTitle = await page.getByTestId("files-preview-title").boundingBox();
     const failedHealth = await page.getByTestId("files-preview-health").boundingBox();
@@ -167,19 +233,38 @@ test.describe("Global Files mobile detail presentation", () => {
     await expect(page.getByTestId("files-preview-delete")).toBeVisible();
     await expect(page.getByTestId("files-preview-open")).toBeVisible();
 
-    await page.screenshot({
+    await failedPanel.screenshot({
       path: path.join(ARTIFACTS_DIR, "failed-artifact-detail-mobile.png"),
-      fullPage: true,
+      animations: "disabled",
+    });
+    await page.screenshot({
+      path: path.join(ARTIFACTS_DIR, "failed-artifact-detail-page.png"),
+      animations: "disabled",
     });
 
     // Delete path (confirm dialog)
     page.once("dialog", (d) => d.accept());
     await page.getByTestId("files-preview-delete").click();
     await expect(failedPanel).toHaveCount(0);
+    await expect(page.getByText("Incomplete HTML prototype")).toHaveCount(0);
+    await expect(page.getByText("Women's Decision Framework Community — Product Brief.pdf")).toBeVisible();
 
     await page.screenshot({
       path: path.join(ARTIFACTS_DIR, "after-delete-failed-mobile.png"),
-      fullPage: true,
+      animations: "disabled",
+    });
+
+    // Completed artifact can also be deleted
+    await page.getByText("Women's Decision Framework Community — Product Brief.pdf").click();
+    await expect(page.getByTestId("files-preview-panel")).toBeVisible();
+    page.once("dialog", (d) => d.accept());
+    await page.getByTestId("files-preview-delete").click();
+    await expect(page.getByTestId("files-preview-panel")).toHaveCount(0);
+    await expect(page.getByText("Women's Decision Framework Community — Product Brief.pdf")).toHaveCount(0);
+
+    await page.screenshot({
+      path: path.join(ARTIFACTS_DIR, "after-delete-completed-mobile.png"),
+      animations: "disabled",
     });
   });
 });
