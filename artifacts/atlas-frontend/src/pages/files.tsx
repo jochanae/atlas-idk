@@ -59,12 +59,12 @@ export default function FilesPage() {
 
   return (
     <div style={{
-      height: "100dvh", background: "hsl(var(--background))",
-      color: "hsl(var(--foreground))", display: "flex", flexDirection: "column",
+      height: "100dvh", background: "var(--background, var(--atlas-bg, #0b0a0f))",
+      color: "var(--foreground, var(--atlas-fg, #f5efe0))", display: "flex", flexDirection: "column",
       paddingBottom: "env(safe-area-inset-bottom, 0px)",
     }}>
       <header style={{
-        padding: "14px 16px 12px", borderBottom: "1px solid hsl(var(--border))",
+        padding: "14px 16px 12px", borderBottom: "1px solid var(--border, var(--atlas-border, rgba(230,198,135,0.15)))",
         display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
       }}>
         <button
@@ -73,8 +73,8 @@ export default function FilesPage() {
           aria-label={useCloseX ? "Close Files" : "Back"}
           style={{
             width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center",
-            border: "1px solid hsl(var(--border))", background: "transparent",
-            color: "hsl(var(--muted-foreground))", cursor: "pointer", flexShrink: 0,
+            border: "1px solid var(--border, var(--atlas-border, rgba(230,198,135,0.15)))", background: "transparent",
+            color: "var(--atlas-muted, hsl(var(--muted-foreground)))", cursor: "pointer", flexShrink: 0,
           }}
         >
           {useCloseX ? (

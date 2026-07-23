@@ -28,7 +28,9 @@ import {
 } from "@/components/files/recentAttachments";
 
 // Narrow-screen detector — inline to avoid coupling FilesBrowser to a hook.
-function useIsNarrow(breakpoint = 720): boolean {
+// Use a higher breakpoint so common mobile webviews / Replit previews get the
+// full-screen sheet (not a side drawer that leaves the list stacked underneath).
+function useIsNarrow(breakpoint = 900): boolean {
   const [narrow, setNarrow] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.innerWidth < breakpoint : false,
   );
@@ -36,6 +38,7 @@ function useIsNarrow(breakpoint = 720): boolean {
     const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
     const handler = () => setNarrow(window.innerWidth < breakpoint);
     mql.addEventListener("change", handler);
+    setNarrow(window.innerWidth < breakpoint);
     return () => mql.removeEventListener("change", handler);
   }, [breakpoint]);
   return narrow;
@@ -91,12 +94,49 @@ const CODE_RX = /\.(t|j)sx?$|\.(py|rb|go|rs|java|c|cpp|h|hpp|cs|php|swift|kt|sql
 const ARCHIVE_RX = /\.(zip|tar|gz|rar|7z)$/i;
 const DOC_RX = /\.(pdf|docx?|xlsx?|pptx?|txt|rtf|epub|csv)$/i;
 
-function categoryFor(name: string): FilesTypeFilter {
-  if (IMAGE_RX.test(name)) return "images";
-  if (CODE_RX.test(name)) return "code";
-  if (ARCHIVE_RX.test(name)) return "archives";
-  if (DOC_RX.test(name)) return "documents";
+function categoryFor(name: string, artifactType?: string | null): FilesTypeFilter {
+  const fromName = (() => {
+    if (IMAGE_RX.test(name)) return "images" as const;
+    if (CODE_RX.test(name)) return "code" as const;
+    if (ARCHIVE_RX.test(name)) return "archives" as const;
+    if (DOC_RX.test(name)) return "documents" as const;
+    return null;
+  })();
+  if (fromName) return fromName;
+  const t = (artifactType ?? "").toLowerCase();
+  if (t === "pdf" || t === "docx" || t === "doc" || t === "pptx" || t === "xlsx" || t === "brief") return "documents";
+  if (t === "html" || t === "html-app" || t === "mermaid" || t === "chart") return "images";
   return "any";
+}
+
+/** AI-produced library rows belong in Generated; bookmarks / manual saves in Saved. */
+function isGeneratedLibraryItem(item: LibraryItem): boolean {
+  if (item.kind === "sketch") return true;
+  const sk = item.sourceRef?.sourceKind;
+  if (sk === "project-artifact" || sk === "home-artifact") return true;
+  return false;
+}
+
+function detectArtifactHealth(file: UnifiedFile): "ok" | "partial" | "failed" {
+  const raw = file.raw as LibraryItem | undefined;
+  const blob = `${file.preview ?? ""}\n${raw?.content ?? ""}`.toLowerCase();
+  if (!blob.trim()) return "ok";
+  if (
+    blob.includes("generation may have been cut off")
+    || blob.includes("may be incomplete")
+    || blob.includes("looks cut off")
+    || blob.includes("truncated")
+  ) {
+    return "partial";
+  }
+  if (
+    blob.includes("failed verification")
+    || blob.includes("held for review")
+    || blob.includes("unsafe")
+  ) {
+    return "failed";
+  }
+  return "ok";
 }
 
 // ── Workspace tree (project filesystem) ─────────────────────────────────────
@@ -232,17 +272,23 @@ export function FilesBrowser({
     });
   }, [section, typeFilter, query, workspaceProjectId, pinnedProjectId]);
 
-  const librarySavedQ = useQuery<LibraryItem[]>({
-    queryKey: ["files-library-saved"],
+  // One library fetch — split client-side into Saved vs Generated so PDF/DOCX
+  // deliverables (project-artifact sourceRef) appear under Generated, not only Saved.
+  const libraryQ = useQuery<LibraryItem[]>({
+    queryKey: ["files-library-all"],
     queryFn: () => fetchLibraryItems({ limit: 100 }),
     staleTime: 30_000,
   });
-
-  const generatedQ = useQuery<LibraryItem[]>({
-    queryKey: ["files-library-generated"],
-    queryFn: () => fetchLibraryItems({ kind: "sketch", limit: 100 }),
-    staleTime: 30_000,
-  });
+  const librarySavedQ = {
+    data: (libraryQ.data ?? []).filter((item) => !isGeneratedLibraryItem(item)),
+    isLoading: libraryQ.isLoading,
+    error: libraryQ.error,
+  };
+  const generatedQ = {
+    data: (libraryQ.data ?? []).filter((item) => isGeneratedLibraryItem(item)),
+    isLoading: libraryQ.isLoading,
+    error: libraryQ.error,
+  };
 
   const workspaceTreeQ = useQuery<TreeResponse>({
     queryKey: ["files-workspace-tree", workspaceProjectId],
@@ -261,13 +307,16 @@ export function FilesBrowser({
   const files: UnifiedFile[] = useMemo(() => {
     const out: UnifiedFile[] = [];
 
-    // Saved (library, excluding sketches which live in Generated)
+    // Saved (bookmarks / manual library — not AI deliverables)
     for (const item of librarySavedQ.data ?? []) {
-      if (item.kind === "sketch") continue;
+      const artifactType =
+        item.sourceRef && "artifactType" in item.sourceRef
+          ? item.sourceRef.artifactType
+          : null;
       out.push({
         id: `saved:${item.id}`,
         name: item.title,
-        category: categoryFor(item.title),
+        category: categoryFor(item.title, artifactType),
         section: "saved",
         updatedAt: item.updatedAt ?? item.createdAt,
         projectLabel: item.project?.name ?? projectNameById.get(item.project?.id ?? -1) ?? null,
@@ -277,12 +326,18 @@ export function FilesBrowser({
       });
     }
 
-    // Generated (sketches / artifacts)
+    // Generated (sketches + file-backed deliverables from project/home artifacts)
     for (const item of generatedQ.data ?? []) {
+      const artifactType =
+        item.sourceRef && "artifactType" in item.sourceRef
+          ? item.sourceRef.artifactType
+          : null;
       out.push({
         id: `gen:${item.id}`,
         name: item.title,
-        category: "images",
+        category: item.kind === "sketch"
+          ? "images"
+          : categoryFor(item.title, artifactType),
         section: "generated",
         updatedAt: item.updatedAt ?? item.createdAt,
         projectLabel: item.project?.name ?? projectNameById.get(item.project?.id ?? -1) ?? null,
@@ -311,7 +366,7 @@ export function FilesBrowser({
     }
 
     return out;
-  }, [librarySavedQ.data, generatedQ.data, workspaceTreeQ.data, workspaceProjectId, projectNameById]);
+  }, [libraryQ.data, workspaceTreeQ.data, workspaceProjectId, projectNameById]);
 
   const visible = useMemo(() => {
     let arr = files;
@@ -356,9 +411,9 @@ export function FilesBrowser({
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
-  const isLoading = librarySavedQ.isLoading || generatedQ.isLoading || (workspaceProjectId != null && workspaceTreeQ.isLoading);
-  const anyError = librarySavedQ.error || generatedQ.error || workspaceTreeQ.error;
-  const isNarrow = useIsNarrow(720);
+  const isLoading = libraryQ.isLoading || (workspaceProjectId != null && workspaceTreeQ.isLoading);
+  const anyError = libraryQ.error || workspaceTreeQ.error;
+  const isNarrow = useIsNarrow(900);
   const [, setLocation] = useLocation();
   // Cards vs Tree — inline switch for the workspace project pane.
   const [sourceView, setSourceView] = useState<"cards" | "tree">("cards");
@@ -876,7 +931,34 @@ function EmptyPane({ title, body }: { title: string; body: string }) {
 
 // ── Preview Panel ────────────────────────────────────────────────────────────
 // Full-screen sheet on mobile (isNarrow), right-side drawer on desktop.
-// Scrollable body with safe-area padding.
+// Scrollable body with safe-area padding. Metadata uses flex rows (not <dl>)
+// so UA stylesheet float/margin on dt/dd cannot stack labels over values.
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      data-testid={`files-meta-${label.toLowerCase()}`}
+      style={{
+        display: "flex", gap: 12, alignItems: "flex-start",
+        fontSize: 12, lineHeight: 1.45,
+      }}
+    >
+      <div style={{
+        flex: "0 0 72px", color: "var(--atlas-muted, hsl(var(--muted-foreground)))",
+        fontFamily: "var(--app-font-mono)", fontSize: 10,
+        letterSpacing: "0.12em", textTransform: "uppercase", paddingTop: 1,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        flex: 1, minWidth: 0, wordBreak: "break-word",
+        fontFamily: label === "Path" ? "var(--app-font-mono)" : "inherit",
+      }}>
+        {value}
+      </div>
+    </div>
+  );
+}
 
 function PreviewPanel({
   file, mode, isNarrow, onClose, onPrimary, isSelected, onDeleted,
@@ -892,11 +974,17 @@ function PreviewPanel({
   const qc = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const health = detectArtifactHealth(file);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   const primaryLabel = mode === "attach"
@@ -916,10 +1004,7 @@ function PreviewPanel({
     setDeleteError(null);
     try {
       await deleteLibraryItem(libraryItem);
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["files-library-saved"] }),
-        qc.invalidateQueries({ queryKey: ["files-library-generated"] }),
-      ]);
+      await qc.invalidateQueries({ queryKey: ["files-library-all"] });
       onDeleted?.();
     } catch (err) {
       setDeleteError((err as Error).message || "Delete failed");
@@ -927,22 +1012,32 @@ function PreviewPanel({
     }
   };
 
+  // Theme aliases set --background/--foreground/--border to hex/rgba (not HSL
+  // components). Wrapping them in hsl() yields an invalid color → transparent
+  // paint, which is what stacked the file list under the detail panel.
+  const surfaceBg = "var(--background, var(--atlas-bg, #0b0a0f))";
+  const surfaceFg = "var(--foreground, var(--atlas-fg, #f5efe0))";
+  const surfaceBorder = "var(--border, var(--atlas-border, rgba(230,198,135,0.15)))";
+
   const containerStyle: React.CSSProperties = isNarrow
     ? {
         position: "fixed", inset: 0, zIndex: 10000,
         display: "flex", flexDirection: "column",
-        background: "hsl(var(--background))",
-        color: "hsl(var(--foreground))",
+        // Solid opaque fill — never translucent over the file list.
+        background: surfaceBg,
+        color: surfaceFg,
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        isolation: "isolate",
       }
     : {
         position: "fixed", top: 0, right: 0, bottom: 0,
         width: "min(420px, 60vw)", zIndex: 10000,
         display: "flex", flexDirection: "column",
-        background: "hsl(var(--popover))",
-        color: "hsl(var(--popover-foreground))",
-        borderLeft: "1px solid hsl(var(--border))",
-        boxShadow: "-16px 0 48px hsl(var(--background) / 0.4)",
+        background: "var(--atlas-surface, hsl(var(--popover)))",
+        color: surfaceFg,
+        borderLeft: `1px solid ${surfaceBorder}`,
+        boxShadow: "-16px 0 48px rgba(0, 0, 0, 0.55)",
+        isolation: "isolate",
       };
 
   const shortName = file.name.split("/").pop() ?? file.name;
@@ -950,22 +1045,41 @@ function PreviewPanel({
 
   const node = (
     <>
-      {!isNarrow && (
-        <div
-          onClick={onClose}
-          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "hsl(var(--background) / 0.5)" }}
-        />
-      )}
-      <div style={containerStyle} role="dialog" aria-label={`Preview: ${shortName}`}>
+      {/* Always mount a full-screen scrim so list chrome cannot paint through. */}
+      <div
+        data-testid="files-preview-scrim"
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          // Opaque on mobile so the browser cannot show through; dimmed on desktop drawer.
+          background: isNarrow
+            ? surfaceBg
+            : "color-mix(in srgb, var(--background, #0b0a0f) 72%, transparent)",
+        }}
+      />
+      <div
+        data-testid="files-preview-panel"
+        data-artifact-health={health}
+        style={containerStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Preview: ${shortName}`}
+      >
         <header style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-          padding: "14px 16px", borderBottom: "1px solid hsl(var(--border))", flexShrink: 0,
+          padding: "14px 16px", borderBottom: `1px solid ${surfaceBorder}`, flexShrink: 0,
+          background: "inherit",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <span style={{ color: "hsl(var(--primary))", flexShrink: 0 }}><CategoryGlyph cat={file.category} /></span>
+            <span style={{ color: "var(--atlas-ember, hsl(var(--primary)))", flexShrink: 0 }}><CategoryGlyph cat={file.category} /></span>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{shortName}</div>
-              <div style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 2 }}>
+              <div
+                data-testid="files-preview-title"
+                style={{ fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              >
+                {shortName}
+              </div>
+              <div style={{ fontSize: 10, color: "var(--atlas-muted, hsl(var(--muted-foreground)))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 2 }}>
                 {file.section}
               </div>
             </div>
@@ -973,25 +1087,47 @@ function PreviewPanel({
           <button
             onClick={onClose}
             aria-label="Close preview"
+            data-testid="files-preview-close"
             style={{
               flexShrink: 0, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
               borderRadius: 6, background: "transparent",
-              border: "1px solid hsl(var(--border))", color: "hsl(var(--muted-foreground))", cursor: "pointer",
+              border: `1px solid ${surfaceBorder}`, color: "var(--atlas-muted, hsl(var(--muted-foreground)))", cursor: "pointer",
             }}
           ><X size={14} /></button>
         </header>
 
-        <div style={{
-          flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch",
-          padding: 16, display: "flex", flexDirection: "column", gap: 14,
-        }}>
+        <div
+          data-testid="files-preview-body"
+          style={{
+            flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch",
+            padding: 16, display: "flex", flexDirection: "column", gap: 14,
+            background: "inherit",
+          }}
+        >
+          {(health === "partial" || health === "failed") && (
+            <div
+              data-testid="files-preview-health"
+              style={{
+                padding: "10px 12px", borderRadius: 8, fontSize: 12, lineHeight: 1.45,
+                background: "hsl(var(--destructive, 0 84% 60%) / 0.12)",
+                border: "1px solid hsl(var(--destructive, 0 84% 60%) / 0.45)",
+                color: "hsl(var(--destructive, 0 84% 60%))",
+              }}
+            >
+              {health === "partial"
+                ? "Partial / incomplete generation — content may be cut off. You can still delete this record."
+                : "Generation failed or was held for review. You can delete this record."}
+            </div>
+          )}
+
           <div style={{
             aspectRatio: isImage ? "4/3" : "16/9",
             borderRadius: 8,
-            background: "hsl(var(--muted) / 0.5)",
+            background: "var(--atlas-surface-alt, hsl(var(--muted) / 0.5))",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "hsl(var(--primary))", overflow: "hidden",
-            border: "1px solid hsl(var(--border))",
+            color: "var(--atlas-ember, hsl(var(--primary)))", overflow: "hidden",
+            border: `1px solid ${surfaceBorder}`,
+            flexShrink: 0,
           }}>
             {file.thumbUrl ? (
               // eslint-disable-next-line jsx-a11y/alt-text
@@ -1009,32 +1145,48 @@ function PreviewPanel({
               <span style={{
                 fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase",
                 padding: "2px 6px", borderRadius: 4,
-                border: "1px solid hsl(var(--border))",
-                color: "hsl(var(--muted-foreground))",
+                border: `1px solid ${surfaceBorder}`,
+                color: "var(--atlas-muted, hsl(var(--muted-foreground)))",
                 fontFamily: "var(--app-font-mono)",
+                maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis",
               }}>{file.projectLabel}</span>
+            )}
+            {health !== "ok" && (
+              <span style={{
+                fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase",
+                padding: "2px 6px", borderRadius: 4,
+                border: "1px solid hsl(var(--destructive, 0 84% 60%) / 0.5)",
+                color: "hsl(var(--destructive, 0 84% 60%))",
+                fontFamily: "var(--app-font-mono)",
+              }}>
+                {health === "partial" ? "Partial" : "Failed"}
+              </span>
             )}
           </div>
 
-          <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 12px", fontSize: 12 }}>
-            <dt style={{ color: "hsl(var(--muted-foreground))" }}>Path</dt>
-            <dd style={{ margin: 0, wordBreak: "break-all", fontFamily: "var(--app-font-mono)" }}>{file.name}</dd>
-            <dt style={{ color: "hsl(var(--muted-foreground))" }}>Type</dt>
-            <dd style={{ margin: 0 }}>{file.category}</dd>
-            <dt style={{ color: "hsl(var(--muted-foreground))" }}>Updated</dt>
-            <dd style={{ margin: 0 }}>{new Date(file.updatedAt).toLocaleString()}</dd>
-          </dl>
+          <div
+            data-testid="files-preview-meta"
+            style={{ display: "flex", flexDirection: "column", gap: 10 }}
+          >
+            <MetaRow label="Path" value={file.name} />
+            <MetaRow label="Type" value={file.category} />
+            <MetaRow label="Updated" value={new Date(file.updatedAt).toLocaleString()} />
+          </div>
 
           {file.preview && (
-            <div style={{
-              padding: 12, borderRadius: 8,
-              background: "hsl(var(--muted) / 0.35)",
-              border: "1px solid hsl(var(--border))",
-              fontSize: 12, lineHeight: 1.55,
-              color: "hsl(var(--popover-foreground) / 0.85)",
-              whiteSpace: "pre-wrap", wordBreak: "break-word",
-              maxHeight: 260, overflowY: "auto", WebkitOverflowScrolling: "touch",
-            }}>
+            <div
+              data-testid="files-preview-summary"
+              style={{
+                padding: 12, borderRadius: 8,
+                background: "var(--atlas-surface-alt, hsl(var(--muted) / 0.35))",
+                border: `1px solid ${surfaceBorder}`,
+                fontSize: 12, lineHeight: 1.55,
+                color: "color-mix(in srgb, var(--foreground, #f5efe0) 85%, transparent)",
+                whiteSpace: "pre-wrap", wordBreak: "break-word",
+                maxHeight: 260, overflowY: "auto", WebkitOverflowScrolling: "touch",
+                position: "relative", zIndex: 1,
+              }}
+            >
               {file.preview}
             </div>
           )}
@@ -1045,21 +1197,26 @@ function PreviewPanel({
             padding: "8px 16px", fontSize: 12,
             color: "hsl(var(--destructive, 0 84% 60%))",
             background: "hsl(var(--destructive, 0 84% 60%) / 0.08)",
-            borderTop: "1px solid hsl(var(--border))",
+            borderTop: `1px solid ${surfaceBorder}`,
           }}>
             {deleteError}
           </div>
         )}
-        <footer style={{
-          display: "flex", gap: 8, padding: "12px 16px calc(12px + env(safe-area-inset-bottom, 0px))",
-          borderTop: "1px solid hsl(var(--border))", flexShrink: 0,
-        }}>
+        <footer
+          data-testid="files-preview-footer"
+          style={{
+            display: "flex", gap: 8, padding: "12px 16px calc(12px + env(safe-area-inset-bottom, 0px))",
+            borderTop: `1px solid ${surfaceBorder}`, flexShrink: 0,
+            background: "inherit",
+          }}
+        >
           {canDelete && (
             <button
               onClick={handleDelete}
               disabled={deleting}
               aria-label="Delete file"
               title="Delete"
+              data-testid="files-preview-delete"
               style={{
                 flexShrink: 0, padding: "10px 12px", borderRadius: 8,
                 background: "transparent",
@@ -1077,19 +1234,22 @@ function PreviewPanel({
           )}
           <button
             onClick={onClose}
+            data-testid="files-preview-close-btn"
             style={{
               flex: 1, padding: "10px 14px", borderRadius: 8,
-              background: "transparent", border: "1px solid hsl(var(--border))",
-              color: "hsl(var(--popover-foreground))", cursor: "pointer",
+              background: "transparent", border: `1px solid ${surfaceBorder}`,
+              color: surfaceFg, cursor: "pointer",
               fontSize: 13, fontFamily: "var(--app-font-sans)",
             }}
           >Close</button>
           <button
             onClick={onPrimary}
+            data-testid="files-preview-open"
             style={{
               flex: 2, padding: "10px 14px", borderRadius: 8,
-              background: "hsl(var(--primary))", border: "1px solid hsl(var(--primary))",
-              color: "hsl(var(--primary-foreground))", cursor: "pointer",
+              background: "var(--atlas-ember, hsl(var(--primary)))",
+              border: "1px solid var(--atlas-ember, hsl(var(--primary)))",
+              color: "var(--atlas-fg, hsl(var(--primary-foreground)))", cursor: "pointer",
               fontSize: 13, fontWeight: 500, fontFamily: "var(--app-font-sans)",
             }}
           >{primaryLabel}</button>
