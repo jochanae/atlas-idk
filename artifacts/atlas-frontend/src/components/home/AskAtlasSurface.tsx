@@ -520,7 +520,60 @@ export function AskAtlasSurface({
           }}
         >
 
+        {resumeGreeting && (
+          <div
+            role="status"
+            aria-live="polite"
+            data-testid="ask-atlas-resume-greeting"
+            style={{
+              alignSelf: "center",
+              maxWidth: 520,
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: 12,
+              background: "color-mix(in oklab, var(--atlas-bg) 82%, transparent)",
+              border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
+              boxShadow: "0 8px 24px -12px rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: 13,
+              color: "var(--atlas-fg)",
+              opacity: resumeVisible ? 1 : 0,
+              transform: resumeVisible ? "translateY(0)" : "translateY(-4px)",
+              transition: "opacity 420ms ease, transform 420ms ease",
+              pointerEvents: resumeVisible ? "auto" : "none",
+            }}
+          >
+            <span style={{ fontWeight: 500, letterSpacing: "-0.005em" }}>Welcome back</span>
+            {resumeGreeting.hint && (
+              <span style={{ opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                — {resumeGreeting.hint}
+              </span>
+            )}
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => { setResumeVisible(false); onDismissResumeGreeting?.(); }}
+              style={{
+                marginLeft: "auto",
+                background: "transparent",
+                border: 0,
+                color: "var(--atlas-fg)",
+                opacity: 0.55,
+                cursor: "pointer",
+                fontSize: 14,
+                lineHeight: 1,
+                padding: 2,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <AskAtlasTier1Chip conversationId={conversationId} paused={messages.length === 0} />
+
 
         {isRestoring && messages.length === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
