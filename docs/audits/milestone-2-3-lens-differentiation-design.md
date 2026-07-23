@@ -1,10 +1,11 @@
 # Milestone 2.3 — Lens Differentiation Design
 
-**Phase:** Phase C CLOSED — ready for Phase D/E closeout (not 2.4)  
+**Phase:** Milestone CLOSED  
 **Date:** 2026-07-23  
-**Status:** **PHASE 0 CLOSED** · **Phase A PASS** · **Phase B CLOSED** · **Phase C CLOSED**  
+**Status:** **MILESTONE 2.3 CLOSED** — Phases 0–E complete (prod live-battery deferred ops)  
 **Prerequisite:** Milestone 2.2 CLOSED (intelligence correctness)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
+**Acceptance report:** [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md)  
 **Repo HEAD at commission:** `51acaf50` (`main`, post #217)
 
 ### Approvals (2026-07-23)
@@ -519,17 +520,19 @@ Ordered by leverage for true differentiation:
 **Dependencies:** Phase A + Phase B quality bar (Map proves Constitution works before chat absorbs it).  
 **Status:** **CLOSED** (2026-07-23) — live-chat battery **6/6 Pass**, T1 Pass, continuity Pass. Score sheet: [`milestone-2-3-phase-c-battery/score-sheet.md`](./milestone-2-3-phase-c-battery/score-sheet.md). Refinement: CONTINUITY clause on live-chat Constitution.
 
-### Phase D — Disagreement & compare (thin)  
-**Objective:** Productive conflict (L5) without auto-merge — side-by-side or dissent affordance.  
-**Acceptance:** T2/T3 show documented tension across lenses.  
+### Phase D — Disagreement & compare + production validation ← **CLOSED**  
+**Objective:** Productive conflict (L5) without auto-merge; production live confirmation where possible.  
+**Acceptance:** T2/T3 show documented tension across lenses; production probe logged.  
 **Complexity:** Medium.  
-**Dependencies:** Phase B; Phase C for chat compare.
+**Dependencies:** Phase B; Phase C for chat compare.  
+**Status:** **CLOSED** — T2/T3 L5 Pass; cross-project scenarios documented; **live prod T1–T6 blocked** on deploy lag (`apiProcessStartedAt` pre-#220). See [`milestone-2-3-phase-d-production.md`](./milestone-2-3-phase-d-production.md).
 
-### Phase E — Close 2.3  
+### Phase E — Close 2.3 ← **CLOSED**  
 **Objective:** Milestone closed; deferred UX → 2.4.  
 **Acceptance:** Map + chat both pass battery; parent board → 2.3 CLOSED; 2.4 unblocked.  
 **Complexity:** Low.  
-**Dependencies:** Phase B + Phase C.
+**Dependencies:** Phase B + Phase C.  
+**Status:** **CLOSED** — [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md).
 
 ---
 
@@ -563,7 +566,7 @@ These remain **out of the lens constitution** unless a phase explicitly absorbs 
 | Phased roadmap | ✅ §6 **Approved order** |
 | Naming recommendation | ✅ §9 — **Signed off** (Flow → Storyteller) |
 
-**Next:** Phase D (disagreement/compare, thin) → Phase E close 2.3. **Do not start 2.4** until 2.3 CLOSED.
+**Next:** Milestone **2.4 Natural conversation** may begin (planning unblocked). Ops: redeploy `main` + live T1–T6 protocol before claiming production differentiation.
 
 ---
 
@@ -645,6 +648,8 @@ Two taxonomies guarantee two architectures. 2.3 requires **one**.
 | Doc | Role |
 |-----|------|
 | [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md) | M2 sequence |
+| [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md) | Phase E — milestone acceptance |
+| [`milestone-2-3-phase-d-production.md`](./milestone-2-3-phase-d-production.md) | Phase D — prod probe + scenarios |
 | [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) | Closed; L1–L3 seed criteria |
 | `.agents/memory/flow-lens-architecture.md` | Early Map lens jobs |
 | `.agents/memory/builder-lens-identity.md` | Builder presentation contract |
