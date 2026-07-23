@@ -1040,10 +1040,41 @@ function PreviewPanel({
           )}
         </div>
 
+        {deleteError && (
+          <div style={{
+            padding: "8px 16px", fontSize: 12,
+            color: "hsl(var(--destructive, 0 84% 60%))",
+            background: "hsl(var(--destructive, 0 84% 60%) / 0.08)",
+            borderTop: "1px solid hsl(var(--border))",
+          }}>
+            {deleteError}
+          </div>
+        )}
         <footer style={{
           display: "flex", gap: 8, padding: "12px 16px calc(12px + env(safe-area-inset-bottom, 0px))",
           borderTop: "1px solid hsl(var(--border))", flexShrink: 0,
         }}>
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              aria-label="Delete file"
+              title="Delete"
+              style={{
+                flexShrink: 0, padding: "10px 12px", borderRadius: 8,
+                background: "transparent",
+                border: "1px solid hsl(var(--destructive, 0 84% 60%) / 0.5)",
+                color: "hsl(var(--destructive, 0 84% 60%))",
+                cursor: deleting ? "wait" : "pointer",
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 13, fontFamily: "var(--app-font-sans)",
+                opacity: deleting ? 0.6 : 1,
+              }}
+            >
+              <Trash2 size={14} />
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          )}
           <button
             onClick={onClose}
             style={{
@@ -1066,6 +1097,9 @@ function PreviewPanel({
       </div>
     </>
   );
+
+  if (typeof document === "undefined") return node;
+  return createPortal(node, document.body);
 }
 
 
