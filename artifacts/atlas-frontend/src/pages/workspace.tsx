@@ -7525,25 +7525,30 @@ export default function Workspace() {
   // Smart Anchor: stick to bottom only when user is already near it.
   // If they scrolled up to re-read while Atlas streams, freeze instead of yanking back.
   // A fresh user message (userMsgCount increments) bypasses the freeze.
+  // IMPORTANT: when Nexus owns the visible Workspace transcript, these scroll
+  // dependencies must come from nexusBridge.messages — not the legacy
+  // useChatStream `messages`, or token growth won't move the actual scroller.
+  const displayedChatMessages = useNexusWorkspaceChat ? nexusBridge.messages : messages;
+  const displayedChatPending = useNexusWorkspaceChat ? nexusBridge.chatPending : chatPending;
   const userMsgCount = useMemo(
-    () => messages.filter((m) => m.role === "user").length,
-    [messages],
+    () => displayedChatMessages.filter((m) => m.role === "user").length,
+    [displayedChatMessages],
   );
   const streamingContentLength = useMemo(
-    () => messages.reduce((total, message) => total + (message.streaming ? message.content.length : 0), 0),
-    [messages],
+    () => displayedChatMessages.reduce((total, message) => total + (message.streaming ? message.content.length : 0), 0),
+    [displayedChatMessages],
   );
   // INT-37: prime only on project identity change / mount — not on every tab
   // focus/visibilitychange (that yanked mid-thread readers back to the tail).
-  useSmartAutoScroll(chatPanelScrollRef, [messages.length, chatPending], {
+  useSmartAutoScroll(chatPanelScrollRef, [displayedChatMessages.length, displayedChatPending, streamingContentLength], {
     forceDeps: [userMsgCount],
     behavior: "auto",
     primeKey: `ws:${project?.id ?? "none"}`,
   });
   useEffect(() => {
-    if (!chatPending && streamingContentLength === 0) return;
+    if (!displayedChatPending && streamingContentLength === 0) return;
     followScrollIfNearBottom(chatPanelScrollRef.current, 160);
-  }, [chatPending, streamingContentLength]);
+  }, [displayedChatPending, streamingContentLength]);
 
 
   // Close mobile panel on mobile→desktop resize
