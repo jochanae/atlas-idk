@@ -1,12 +1,17 @@
 import { useState, useCallback } from "react";
+import {
+  type AtlasPerspective,
+  type WorkspaceLens,
+  normalizePerspective,
+} from "@/lib/atlasPerspective";
 
-export type WorkspaceLens = "flow" | "build" | "look" | "scenario";
+export type { WorkspaceLens, AtlasPerspective };
 
 export interface WorkspacePreset {
   id: string;
   name: string;
   model: string;
-  lens: WorkspaceLens;
+  lens: AtlasPerspective;
   createdAt: number;
 }
 
@@ -16,7 +21,8 @@ function loadPresets(): WorkspacePreset[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as WorkspacePreset[];
+    const parsed = JSON.parse(raw) as WorkspacePreset[];
+    return parsed.map((pr) => ({ ...pr, lens: normalizePerspective(pr.lens) }));
   } catch {
     return [];
   }
@@ -31,12 +37,12 @@ function savePresets(presets: WorkspacePreset[]): void {
 export function useWorkspacePresets() {
   const [presets, setPresets] = useState<WorkspacePreset[]>(() => loadPresets());
 
-  const addPreset = useCallback((name: string, model: string, lens: WorkspaceLens): WorkspacePreset => {
+  const addPreset = useCallback((name: string, model: string, lens: AtlasPerspective | string): WorkspacePreset => {
     const preset: WorkspacePreset = {
       id: `preset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: name.trim() || "Unnamed",
       model,
-      lens,
+      lens: normalizePerspective(lens),
       createdAt: Date.now(),
     };
     setPresets((prev) => {
@@ -58,7 +64,7 @@ export function useWorkspacePresets() {
   const applyPreset = useCallback((preset: WorkspacePreset) => {
     window.dispatchEvent(
       new CustomEvent("axiom:apply-preset", {
-        detail: { model: preset.model, lens: preset.lens },
+        detail: { model: preset.model, lens: normalizePerspective(preset.lens) },
       })
     );
   }, []);

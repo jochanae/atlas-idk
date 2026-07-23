@@ -1,9 +1,8 @@
 # Milestone 2 — Restore Intelligence
 
-**Parent:** Milestone track (M1 closed → M2 open)  
-**Status:** OPEN — 2.1 closed; 2.2 implementation landed, awaiting user regression  
-**Branch / PR:** implementation work continues under `cursor/milestone-2-2-intelligence-correctness-df4c` / PR #209  
-**Last updated:** 2026-07-22
+**Parent:** Milestone track (M1 closed → M2 in progress)  
+**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 PLANNING · 2.4 NOT STARTED**  
+**Last updated:** 2026-07-23
 
 ---
 
@@ -35,72 +34,60 @@ Not: Did something render?
 
 ### 2.1 — Artifact Generation & Delivery — ✅ CLOSED
 
-**Closed:** 2026-07-22 (PR #208 → `main` `d0b923d1`)
+**Closed:** 2026-07-22 (PR #208)
 
-Ship and prove the Ask Atlas → generate → Open → Workspace path for PPTX and related deliverables. Conversation-first; no forced project creation for deliverable-only turns.
-
-**What closed it:** generate_deliverable on home + Atlas Files bucket; Open deep-link; PROJECT_READY suppression for deliverable-only; prose honesty; Open forces All Outputs.
+Ship and prove the Ask Atlas → generate → Open → Workspace path for PPTX and related deliverables.
 
 **Evidence:** `docs/audits/milestone-2-1-artifact-generation.md`
 
 ---
 
-### 2.2 — Workspace Intelligence Correctness — 🟡 IMPLEMENTATION LANDED → USER REGRESSION
+### 2.2 — Workspace Intelligence Correctness — ✅ CLOSED
 
+**Closed:** 2026-07-23  
 **Board:** [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md)
 
-**Status after Round 2 + P2/P3 implementation (2026-07-22):**
-
-| Check | Result |
-|-------|--------|
-| Blueprint | ✅ PASS |
-| Ledger | ✅ PASS (engineering noise fixed in P2/P3 — confirm in regression) |
-| Insights | ✅ PASS (synthesis briefing landed — confirm in regression) |
-| Flow (P1) | ✅ PASS — Designer / Builder / Storyteller share project knowledge |
-| Architectural reversal | ✅ PASS |
-| Knowledge Classification (P2) | ✅ Implemented — awaiting regression |
-| Surface Integrity (P3) | ✅ Implemented (Ledger filter, Activity types, desktop Flow tab) — awaiting regression |
-
-**Evaluation complete. Implementation landed.** Remaining:
-
-**One user regression pass** against K1–K6 and S1–S5 closes 2.2.
-
-**Not required to close 2.2:** Ask Atlas existence debates; more Flow verification rounds; infra rabbit holes.
+Knowledge classification (K1–K6), surface integrity (S1–S5), handoff intelligence, Round 3 reasoning, and execution harden (#213–#217) accepted.
 
 ---
 
-### 2.3 — Lens Differentiation — ⬜ NOT STARTED
+### 2.3 — Lens Differentiation — 🟡 PLANNING ← **NOW**
 
-Prove Designer, Builder, and Storyteller produce meaningfully different outputs and reasoning for the same project — not three skins on one answer.
+**Design doc:** [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md)
 
-**Depends on:** 2.2 classification + surface integrity so lenses reason over the right knowledge types.
+Prove Designer, Builder, and Storyteller produce meaningfully different outputs and reasoning for the **same question** on the same project — not three skins on one answer.
+
+**Acceptance intent:** Same question → three different perspectives (experience / execution / meaning).
+
+**Status:** Phase 0 **CLOSED**. Naming signed off (Flow → Storyteller; Scenario = modifier; Flow = Map only). **Next: Phase A plumbing.**
+
+**Depends on:** 2.2 ✅
 
 ---
 
 ### 2.4 — Natural Conversation — ⬜ NOT STARTED
 
-Conversation should feel like working with a capable collaborator, not a procedural assistant. Less “here’s what I did,” more insight, challenge, and synthesis.
+Conversation should feel like working with a capable collaborator, not a procedural assistant.
 
-**Depends on:** 2.2 (correct knowledge) and 2.3 (distinct lenses). Insights quality from 2.2 feeds this directly.
+**Depends on:** 2.2 ✅ and 2.3 (distinct lenses).
 
 ---
 
 ## Sequence (current)
 
 ```
-2.1 Artifact generation     ✅ CLOSED
+1   Unbroken Conversation     ✅ CLOSED
         ↓
-2.2 Intelligence correctness
-        ✅ Evaluation complete (Round 1 + Round 2)
-        ⏳ Implementation: Classification + Surface Integrity (+ Flow desktop discoverability)
-        → then one user regression pass → CLOSE 2.2
+2.1 Artifact generation       ✅ CLOSED
         ↓
-2.3 Lens differentiation
+2.2 Intelligence correctness  ✅ CLOSED
         ↓
-2.4 Natural conversation
+2.3 Lens differentiation      🟡 PLANNING (design doc)  ← NOW
+        ↓
+2.4 Natural conversation      ⬜ NOT STARTED
 ```
 
-Do not start 2.3/2.4 until 2.2 implementation + regression close.
+Do not implement 2.3 behavior until the design doc is accepted. Do not start 2.4 until 2.3 proves distinct lens reasoning.
 
 ---
 
@@ -108,7 +95,6 @@ Do not start 2.3/2.4 until 2.2 implementation + regression close.
 
 - Debating whether Ask Atlas should exist
 - Treating “panel has content” as success
-- More evaluation rounds before Classification / Surface Integrity land
 - Infrastructure rabbit holes unrelated to understanding
 
 ---
@@ -117,7 +103,9 @@ Do not start 2.3/2.4 until 2.2 implementation + regression close.
 
 | Date | Event |
 |------|-------|
-| 2026-07-22 | M2 opened after M1 closed (`95e6f309`). |
-| 2026-07-22 | 2.1 closed via PR #208 (`d0b923d1`). |
-| 2026-07-22 | 2.2 Round 1: Blueprint PASS; Ledger/Insights PARTIAL; Flow discoverability gap; Classification FAIL. |
-| 2026-07-22 | 2.2 Round 2 user evaluation **complete**: Flow PASS; architectural reversal PASS; Classification FAIL; Surface Integrity PARTIAL. Evaluation stops; implementation begins. |
+| 2026-07-22 | M2 opened after M1 closed. 2.1 closed via PR #208. |
+| 2026-07-22–23 | 2.2 evaluation, P2/P3, handoff seed, Round 3, execution PRs #213–#217. |
+| 2026-07-23 | **2.2 CLOSED.** |
+| 2026-07-23 | **2.3 planning** — design doc drafted. |
+| 2026-07-23 | **2.3 approvals** — Constitution, eval battery, scope (Map + live chat plumbing → Map Constitution → live chat). |
+| 2026-07-23 | **2.3 naming signed off** — Designer/Builder/Storyteller; Flow → Storyteller; Scenario = speculate modifier; Flow = Map surface; AtlasLens rename; one-sentence contracts. Phase A unblocked. |

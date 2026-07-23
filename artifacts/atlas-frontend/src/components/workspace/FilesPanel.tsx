@@ -7,6 +7,12 @@ import { useGitHub } from "@/hooks/useGitHub";
 import { Switch } from "@/components/ui/switch";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import {
+  normalizePerspective,
+  readStoredPerspective,
+  PERSPECTIVE_CHANGE_EVENT,
+  type PerspectiveChangeDetail,
+} from "@/lib/atlasPerspective";
+import {
   type LinkedRepo,
   type GhRepo,
   type GhTreeItem,
@@ -457,21 +463,35 @@ export function FilesPanel({
   onSwitchToSource?: () => void;
   wsLens?: WorkspaceLens;
 }) {
-  // Live-subscribed lens: prefer prop, else read localStorage + listen for changes
-  const [lensLocal, setLensLocal] = useState<WorkspaceLens>(() => {
-    try { return (localStorage.getItem(`atlas-ws-lens-v2-${projectId}`) as WorkspaceLens) || "flow"; } catch { return "flow"; }
-  });
+  // Live-subscribed lens: prefer prop, else read shared storage + sync events
+  const [lensLocal, setLensLocal] = useState<WorkspaceLens>(
+    () => readStoredPerspective(projectId).perspective,
+  );
   useEffect(() => {
-    const key = `atlas-ws-lens-v2-${projectId}`;
-    const onStorage = (e: StorageEvent) => { if (e.key === key && e.newValue) setLensLocal(e.newValue as WorkspaceLens); };
-    const onCustom = () => { try { const v = localStorage.getItem(key) as WorkspaceLens | null; if (v) setLensLocal(v); } catch {} };
+    const sync = () => setLensLocal(readStoredPerspective(projectId).perspective);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key?.includes(`atlas-ws-lens-v2-${projectId}`)) sync();
+    };
+    const onPerspective = (e: Event) => {
+      const detail = (e as CustomEvent<PerspectiveChangeDetail>).detail;
+      if (!detail) return;
+      if (detail.projectId != null && String(detail.projectId) !== String(projectId)) return;
+      setLensLocal(detail.perspective);
+    };
     window.addEventListener("storage", onStorage);
-    window.addEventListener("atlas-lens-changed", onCustom);
-    onCustom();
-    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("atlas-lens-changed", onCustom); };
+    window.addEventListener(PERSPECTIVE_CHANGE_EVENT, onPerspective);
+    window.addEventListener("atlas-lens-changed", sync);
+    sync();
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(PERSPECTIVE_CHANGE_EVENT, onPerspective);
+      window.removeEventListener("atlas-lens-changed", sync);
+    };
   }, [projectId]);
   // Also subscribe via the event bus so same-tab lens changes propagate immediately.
-  useWorkspaceEvent("lens-change", ({ lens }) => { setLensLocal(lens as WorkspaceLens); }, []);
+  useWorkspaceEvent("lens-change", ({ lens }) => {
+    setLensLocal(normalizePerspective(lens));
+  }, []);
   const wsLens: WorkspaceLens = wsLensProp ?? lensLocal;
   const updateProject = useUpdateProject();
   const createProject = useCreateProject();
@@ -565,12 +585,12 @@ export function FilesPanel({
     } catch { return null; }
   });
   const [fileSearch, setFileSearch] = useState("");
-  const [treeViewMode, setTreeViewMode] = useState<"tree" | "buckets">(() => (wsLens === "build" ? "tree" : "buckets"));
+  const [treeViewMode, setTreeViewMode] = useState<"tree" | "buckets">(() => (wsLens === "builder" ? "tree" : "buckets"));
   const lastLensRef = useRef<WorkspaceLens>(wsLens);
   useEffect(() => {
     if (lastLensRef.current !== wsLens) {
       lastLensRef.current = wsLens;
-      setTreeViewMode(wsLens === "build" ? "tree" : "buckets");
+      setTreeViewMode(wsLens === "builder" ? "tree" : "buckets");
     }
   }, [wsLens]);
   const [recents, setRecents] = useState<string[]>(() => readRecents(projectId));
@@ -1340,7 +1360,7 @@ export function FilesPanel({
                 branch={repoBranch}
                 selectedPath={selectedPath}
                 onSelect={loadFile}
-                lensIsVisual={wsLens === "look"}
+                lensIsVisual={wsLens === "designer"}
               />
             )
           )}

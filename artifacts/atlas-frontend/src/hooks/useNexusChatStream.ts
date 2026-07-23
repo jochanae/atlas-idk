@@ -283,6 +283,10 @@ export interface UseNexusChatStreamOptions {
    *  capabilities are allowed. Workspace = full execution. Ask Joy / home =
    *  conversation + handoff only. Defaults to "home" on the backend when omitted. */
   surfaceContext?: "workspace" | "ask-atlas" | "home";
+  /** Milestone 2.3 Phase A — canonical perspective (designer|builder|storyteller). */
+  perspective?: "designer" | "builder" | "storyteller";
+  /** Scenario modifier — changes assumptions, not lens identity. */
+  speculate?: boolean;
 }
 
 export interface UseNexusChatStreamReturn {
@@ -324,7 +328,7 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext, askAtlasInProject, conversationMode } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, onConversationId, onThinkingStable, projectContext, askAtlasInProject, conversationMode, perspective, speculate } = options;
   const askAtlasSeedSentRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
@@ -589,6 +593,9 @@ export function useNexusChatStream(
           clientMessageId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
           ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
+          // Active lens — Phase A plumbing (Constitution prompts come in Phase C).
+          perspective: overrideOptions?.perspective ?? perspective ?? "storyteller",
+          speculate: !!(overrideOptions?.speculate ?? speculate),
           ...(resolvedAttachmentIds.length > 0
             ? {
                 // Canonical transport — server resolves + authorizes bytes.
@@ -1093,7 +1100,7 @@ export function useNexusChatStream(
     );
 
     return { clientMessageId, accepted, completed };
-  }, [focusProjectId, isPending, model, mode, conversationMode, onData, onProjectReady, stream, abortStream, resetStreamState]);
+  }, [focusProjectId, isPending, model, mode, conversationMode, perspective, speculate, onData, onProjectReady, stream, abortStream, resetStreamState]);
 
   const authorizeRun = async (runId: string, planVersion: string): Promise<void> => {
     // Step 1: transition the run to executing

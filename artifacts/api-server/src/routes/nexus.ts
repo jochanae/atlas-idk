@@ -48,6 +48,7 @@ import { findSemanticTensionsForProject } from "./tensions";
 import { calculateModelCostUsd } from "../pricing";
 import { logger } from "../lib/logger";
 import { loadConversationLibraryContext } from "../lib/library";
+import { normalizePerspective, perspectiveMetaLine } from "../lib/atlasPerspective";
 
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { extractOoxmlText } from "../lib/attachmentExtract";
@@ -2464,6 +2465,14 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
      *  "home" = same as ask-atlas for build gating purposes.
      *  Omitting this field is treated as "home" (safest default). */
     surfaceContext?: "workspace" | "ask-atlas" | "home";
+    /**
+     * Milestone 2.3 Phase A — canonical perspective
+     * (designer | builder | storyteller). Legacy values are normalized.
+     * Constitution-grade prompt differentiation lands in Phase C.
+     */
+    perspective?: string;
+    /** Scenario modifier — changes assumptions, not perspective identity. */
+    speculate?: boolean;
   };
 
   const userId = (req as any).authUser.id as number;
@@ -2493,6 +2502,10 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
 
   const authUser = (req as any).authUser;
   const resolvedGhToken = await getGithubTokenForUser(userId) ?? process.env.GITHUB_TOKEN ?? null;
+  // Milestone 2.3 Phase A — accept canonical perspective (legacy remapped).
+  // Constitution-grade differentiation is Phase C; Phase A only carries the signal.
+  const perspective = normalizePerspective(body.perspective);
+  const speculate = body.speculate === true;
   // history from the client body is accepted in the schema for API compatibility.
   // The Living Thread in nexus_messages remains authoritative for model context.
   const { userProfile = "", focusProjectId: requestedFocusProjectId = null, mode = "strategic", model = "claude", conversationId } = body;
@@ -4171,8 +4184,16 @@ WHAT YOU SHOULD NOT DO:
   // Emit meta early so the frontend can suppress run cards / Tier1 / timeline
   // on non-BUILD turns before the first text delta arrives.
   // Classification already ran before prompt assembly (see above).
+  // Phase A: echo perspective + speculate so clients can trace the lens pipeline.
   if (!res.writableEnded && !res.destroyed) {
-    res.write(`event: meta\ndata: ${JSON.stringify({ intent, justTalk: !!justTalk, fallback: whisperFallback })}\n\n`);
+    res.write(`event: meta\ndata: ${JSON.stringify({
+      intent,
+      justTalk: !!justTalk,
+      fallback: whisperFallback,
+      perspective,
+      speculate,
+      perspectiveStub: perspectiveMetaLine(perspective, speculate),
+    })}\n\n`);
   }
 
   // ── Run identity spine ──────────────────────────────────────────────────

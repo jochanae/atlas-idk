@@ -12,6 +12,14 @@ import { reportError } from "../../lib/errorReporter";
 import { useStageArtifact } from "@/hooks/useComposerVisibility";
 import { exportFlowSurfacePng, exportFlowJson, exportFlowPdf } from "@/lib/flowExport";
 import { toast } from "sonner";
+import {
+  type AtlasPerspective,
+  readStoredPerspective,
+  writeStoredPerspective,
+  emitPerspectiveChange,
+  PERSPECTIVE_CHANGE_EVENT,
+  type PerspectiveChangeDetail,
+} from "@/lib/atlasPerspective";
 
 const FLOW_NODE_TYPES = new Set<ArchNode["type"]>(["goal", "requirement", "blocker", "priority", "decision", "sprint", "wont"]);
 const FLOW_NODE_META = new Set(["must", "should", "could", "wont"]);
@@ -285,7 +293,30 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   }, [externalForgeNodes, onForgeNodesConsumed]);
   const [nodes, setNodes] = useState<ArchNode[]>([]);
   const [pendingNodes, setPendingNodes] = useState<ArchNode[]>([]);
-  const [lensView, setLensView] = useState<"designer" | "builder" | "storyteller">("designer");
+  // Shared with Workspace chat — same AtlasPerspective storage + event bus.
+  const [lensView, setLensView] = useState<AtlasPerspective>(
+    () => readStoredPerspective(projectId).perspective,
+  );
+  useEffect(() => {
+    setLensView(readStoredPerspective(projectId).perspective);
+  }, [projectId]);
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent<PerspectiveChangeDetail>).detail;
+      if (!detail) return;
+      if (detail.projectId != null && projectId != null
+        && String(detail.projectId) !== String(projectId)) return;
+      setLensView(detail.perspective);
+    };
+    window.addEventListener(PERSPECTIVE_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(PERSPECTIVE_CHANGE_EVENT, onChange);
+  }, [projectId]);
+  const setSharedLensView = useCallback((lens: AtlasPerspective) => {
+    setLensView(lens);
+    const { speculate } = readStoredPerspective(projectId);
+    writeStoredPerspective(projectId, lens, speculate);
+    emitPerspectiveChange({ perspective: lens, speculate, projectId });
+  }, [projectId]);
   const [showChat, setShowChat] = useState(false);
   const [signals, setSignals] = useState<string[]>([""]);
   const [activeSignalIdx, setActiveSignalIdx] = useState(0);
@@ -305,11 +336,11 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   const flowScrollRef = useRef<HTMLDivElement>(null);
 
   const handleBackToFlowChat = useCallback(() => {
-    setLensView("designer");
+    setSharedLensView("designer");
     setShowChat(true);
     setChatFullscreen(false);
     setFlowChatTab("flow");
-  }, []);
+  }, [setSharedLensView]);
 
   const backToFlowChatButton = (
     <button
@@ -643,7 +674,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                 <button
                   key={lens}
                   type="button"
-                  onClick={() => setLensView(lens)}
+                  onClick={() => setSharedLensView(lens)}
                   onMouseDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
                   onTouchEnd={(e) => e.stopPropagation()}

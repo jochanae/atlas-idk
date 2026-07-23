@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, CornerUpLeft, Download, Pencil, Sparkles, X, MoreHorizontal, GitBranch, Share2, Archive, FileOutput } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useAtlasHistory, type AtlasLens } from "@/lib/atlas-history";
+import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useAtlasHistory, type HistoryIntent } from "@/lib/atlas-history";
 
 import { CommitCard } from "../CommitCard";
 import { PlanCard } from "../PlanCard";
@@ -1684,17 +1684,17 @@ function AssistantBubbleImpl({
     if (message.role !== "assistant") return;
     if (!message.id || !projectId) return;
     if (snapshotForMsg) return;
-    const lens: AtlasLens =
-      (message.intentType === "BUILD" && "builder") ||
-      (message.intentType === "DECIDE" && "strategic") ||
-      "minimal";
+    const historyIntent: HistoryIntent =
+      (message.intentType === "BUILD" && "build") ||
+      (message.intentType === "DECIDE" && "decide") ||
+      "chat";
     const codeDelta = activeEdits.length
       ? activeEdits.map((e) => `${e.path}\n${e.content ?? ""}`).join("\n---\n")
       : undefined;
     addSnapshot(projectId, {
       associated_message_id: message.id,
       title: (message.content || "").split("\n")[0].slice(0, 80) || "Joy response",
-      lens,
+      historyIntent,
       payload: {
         code_delta: codeDelta,
         active_file: activeEdits[0]?.path,

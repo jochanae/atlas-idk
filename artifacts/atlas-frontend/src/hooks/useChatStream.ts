@@ -13,6 +13,7 @@ import type {
 } from "@/pages/workspace";
 import type { Plan } from "@/lib/plan";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
+import { normalizePerspective } from "@/lib/atlasPerspective";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
 import { createTextPacer, type TextPacer } from "@/lib/textPacer";
@@ -68,7 +69,12 @@ export interface UseChatStreamOptions {
   fileContext: string | null;
   forgeContext: string | null;
   dbUrl: string | null;
-  sendCtxRef: MutableRefObject<{ wsLens: WorkspaceLens; wsModel: string; githubToken: string | null }>;
+  sendCtxRef: MutableRefObject<{
+    wsLens: WorkspaceLens;
+    speculate?: boolean;
+    wsModel: string;
+    githubToken: string | null;
+  }>;
   setDetectedLens: Dispatch<SetStateAction<WorkspaceLens | null>>;
   setScenarioBuffer: Dispatch<SetStateAction<Array<{ role: string; content: string }>>>;
   setLeftTab: Dispatch<SetStateAction<"chat" | "diff" | "blueprints" | "terminal">>;
@@ -396,7 +402,7 @@ export function useChatStream(
       } catch { /* non-fatal */ }
 
       const lensCtx = sendCtxRef.current;
-      const isScenario = lensCtx.wsLens === "scenario";
+      const isScenario = !!lensCtx.speculate;
       const effectiveModel = lensCtx.wsModel && lensCtx.wsModel !== "multi" ? lensCtx.wsModel : undefined;
       const body = {
         sessionId: sid,
@@ -409,9 +415,12 @@ export function useChatStream(
         ...(options?.conversationMode ? { conversationMode: true } : {}),
         ...(effectiveModel ? { model: effectiveModel } : {}),
         orchestrate: !effectiveModel,
+        // Legacy /api/chat path — still accept workspaceLens; prefer perspective.
+        perspective: lensCtx.wsLens,
         workspaceLens: lensCtx.wsLens,
         ...(prevLensRef.current && prevLensRef.current !== lensCtx.wsLens ? { previousLens: prevLensRef.current } : {}),
         scenarioMode: isScenario,
+        speculate: isScenario,
         history,
         entries: ledgerEntries,
         ...(activeCtx ? { fileContext: activeCtx } : {}),
@@ -484,11 +493,11 @@ export function useChatStream(
               const { content: noWriteFile, path: wfp } = stripWriteFileSignal(res.content);
               jsonWriteFilePath = wfp;
               const { content: stripped } = stripGithubAutoLinkToolCall(noWriteFile);
-              const driftMatch = stripped.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
+              const driftMatch = stripped.match(/LENS_DRIFT:\s*(designer|builder|storyteller|flow|build|look|scenario)/i);
               if (driftMatch) {
-                const drifted = driftMatch[1].toLowerCase();
-                if (drifted !== sendCtxRef.current.wsLens) setDetectedLens(drifted as any);
-                res.content = stripped.replace(/\n?LENS_DRIFT:\s*(flow|build|look|scenario)\s*$/i, "").trim();
+                const drifted = normalizePerspective(driftMatch[1]);
+                if (drifted !== sendCtxRef.current.wsLens) setDetectedLens(drifted);
+                res.content = stripped.replace(/\n?LENS_DRIFT:\s*(designer|builder|storyteller|flow|build|look|scenario)\s*$/i, "").trim();
               } else {
                 setDetectedLens(null);
                 res.content = stripped;
@@ -1069,11 +1078,11 @@ export function useChatStream(
             const { content: noWriteFile, path: wfPath } = stripWriteFileSignal(res.content);
             writeFilePath = wfPath;
             const { content: contentWithoutToolCall } = stripGithubAutoLinkToolCall(noWriteFile);
-            const driftMatch = contentWithoutToolCall.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
+            const driftMatch = contentWithoutToolCall.match(/LENS_DRIFT:\s*(designer|builder|storyteller|flow|build|look|scenario)/i);
             if (driftMatch) {
-              const drifted = driftMatch[1].toLowerCase();
-              if (drifted !== sendCtxRef.current.wsLens) setDetectedLens(drifted as any);
-              res.content = contentWithoutToolCall.replace(/\n?LENS_DRIFT:\s*(flow|build|look|scenario)\s*$/i, "").trim();
+              const drifted = normalizePerspective(driftMatch[1]);
+              if (drifted !== sendCtxRef.current.wsLens) setDetectedLens(drifted);
+              res.content = contentWithoutToolCall.replace(/\n?LENS_DRIFT:\s*(designer|builder|storyteller|flow|build|look|scenario)\s*$/i, "").trim();
             } else {
               setDetectedLens(null);
               res.content = contentWithoutToolCall;
