@@ -1,9 +1,8 @@
 # Milestone 2 — Restore Intelligence
 
-**Parent:** Milestone track (M1 closed → M2 open)  
-**Status:** OPEN — 2.1 closed; **2.2 NOT CLOSED** (intelligence largely met; formal K/S scorecard + live post-#214 redeploy/smoke remain)  
-**Branch / PR:** implementation work continues under `cursor/milestone-2-2-intelligence-correctness-df4c` / PR #209  
-**Last updated:** 2026-07-22
+**Parent:** Milestone track (M1 closed → M2 in progress)  
+**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 NOT STARTED · 2.4 NOT STARTED**  
+**Last updated:** 2026-07-23
 
 ---
 
@@ -45,40 +44,37 @@ Ship and prove the Ask Atlas → generate → Open → Workspace path for PPTX a
 
 ---
 
-### 2.2 — Workspace Intelligence Correctness — 🟡 OPEN (closeout gate)
+### 2.2 — Workspace Intelligence Correctness — ✅ CLOSED
 
+**Closed:** 2026-07-23  
 **Board:** [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md)
-
-**Status after Round 2 + P2/P3 + Round 3 + execution PRs (2026-07-23):**
 
 | Check | Result |
 |-------|--------|
 | Blueprint | ✅ PASS |
-| Ledger | ✅ Implemented Decisions-only — **formal S2 score pending** |
-| Insights | ✅ Synthesis briefing landed — **formal S3 / K3 score pending** |
+| Ledger | ✅ PASS (Decisions-only) |
+| Insights | ✅ PASS (synthesis) |
 | Flow (P1) | ✅ PASS — Designer / Builder / Storyteller share project knowledge |
 | Architectural reversal | ✅ PASS |
-| Knowledge Classification (P2) | ✅ Implemented — **formal K1–K6 score pending** |
-| Surface Integrity (P3) | ✅ Implemented — **formal S1–S5 score pending** |
-| R1 handoff intelligence | ✅ User confirmed DNA / Objects / Decisions / lenses populated (#210) |
+| Knowledge Classification (P2) | ✅ PASS (K1–K6) |
+| Surface Integrity (P3) | ✅ PASS (S1–S5) |
+| R1 handoff intelligence | ✅ PASS (#210) |
 | Round 3 reasoning | ✅ STRONG PASS |
-| Round 3 execution fixes | 🟡 Merged (#213–#217) — **live host still pre-#214** |
+| Round 3 execution | ✅ PASS (#213–#217; live post-#217) |
 
-**Do not tag CLOSED yet.** Remaining close gate (see board § Closeout gate):
-
-1. **G1** — Formal **K1–K6 + S1–S5** scorecard Pass  
-2. **G2** — Redeploy so `apiProcessStartedAt` is after main `#217` (`51acaf50`+)  
-3. **G3** — Post-redeploy smoke: brief file generation, no false ready claim, export UTF-8, PDF readable, Global Files detail
-
-**Not required to close 2.2:** Ask Atlas existence debates; more Flow verification rounds; infra rabbit holes; resume-toast / resend-idempotency / soft handoff UX (deferred to 2.3 / UX).
+**Deferred to 2.3 / UX** (see 2.2 board § Deferred): resume toast, resend idempotency, format-fallback UX, living brief structure, “preserved” copy, soft Continue-in-Workspace, transfer “What’s first?”, **lens differentiation**.
 
 ---
 
-### 2.3 — Lens Differentiation — ⬜ NOT STARTED
+### 2.3 — Lens Differentiation — ⬜ NOT STARTED ← **NEXT**
 
-Prove Designer, Builder, and Storyteller produce meaningfully different outputs and reasoning for the same project — not three skins on one answer.
+Prove Designer, Builder, and Storyteller produce meaningfully different outputs and reasoning for the **same question** on the same project — not three voices on one answer.
 
-**Depends on:** 2.2 classification + surface integrity so lenses reason over the right knowledge types.
+**Acceptance intent (user):** Same question → three different perspectives.
+
+**Depends on:** 2.2 classification + surface integrity (✅ met).
+
+**Carries forward from 2.2:** deeper lens differentiation is the primary work; transfer/resume UX may be scheduled alongside or into 2.4.
 
 ---
 
@@ -86,26 +82,27 @@ Prove Designer, Builder, and Storyteller produce meaningfully different outputs 
 
 Conversation should feel like working with a capable collaborator, not a procedural assistant. Less “here’s what I did,” more insight, challenge, and synthesis.
 
-**Depends on:** 2.2 (correct knowledge) and 2.3 (distinct lenses). Insights quality from 2.2 feeds this directly.
+**Depends on:** 2.2 (correct knowledge) ✅ and 2.3 (distinct lenses).
+
+**Likely absorbs:** living brief structure, softer handoff continuity, truthfulness copy, resume UX.
 
 ---
 
 ## Sequence (current)
 
 ```
-2.1 Artifact generation     ✅ CLOSED
+1   Unbroken Conversation     ✅ CLOSED
         ↓
-2.2 Intelligence correctness
-        ✅ Evaluation complete (Round 1 + Round 2 + Round 3 reasoning)
-        ✅ P2/P3 + handoff seed + Round 3 execution fixes merged
-        ⏳ CLOSE GATE: K1–K6/S1–S5 scorecard + redeploy past #214+ + G3 smoke
+2.1 Artifact generation       ✅ CLOSED
         ↓
-2.3 Lens differentiation   ← same question → three different perspectives
+2.2 Intelligence correctness  ✅ CLOSED  (2026-07-23)
         ↓
-2.4 Natural conversation
+2.3 Lens differentiation      ⬜ NOT STARTED  ← NEXT
+        ↓
+2.4 Natural conversation      ⬜ NOT STARTED
 ```
 
-Do not start 2.3/2.4 until 2.2 close gate (G1–G3) clears.
+Start **2.3** now. Do not start 2.4 until 2.3 proves distinct lens reasoning.
 
 ---
 
@@ -128,4 +125,5 @@ Do not start 2.3/2.4 until 2.2 close gate (G1–G3) clears.
 | 2026-07-22 | 2.2 Round 2 user evaluation **complete**: Flow PASS; architectural reversal PASS; Classification FAIL; Surface Integrity PARTIAL. Evaluation stops; implementation begins. |
 | 2026-07-22 | P2/P3 landed; #210 handoff seed; #211/#212 deliverable-guard harden. |
 | 2026-07-23 | Round 3 Ask Atlas reasoning STRONG PASS; execution MIXED. #213 remount; #214 brief deliverable; #215 honesty/export; #216 PDF theme; #217 Global Files. |
-| 2026-07-23 | **Closeout assessment:** 2.2 **NOT CLOSED**. Open: formal K1–K6/S1–S5 scorecard; live redeploy past #214; G3 smoke. Deferred UX → 2.3 / later. |
+| 2026-07-23 | Live redeployed (`apiProcessStartedAt: 2026-07-23T21:59:52Z`). |
+| 2026-07-23 | **2.2 CLOSED** — acceptance gates passed. Next: **2.3 Lens Differentiation**. |
