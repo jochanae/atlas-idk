@@ -3,6 +3,8 @@ import {
   LENS_CONSTITUTION,
   buildConstitutionPolicyBlock,
   buildExpandNodeOutputContract,
+  buildChatOutputContract,
+  buildLiveChatConstitutionBlock,
   filterTranscriptForLens,
   formatDnaEvidenceForLens,
   formatFlowNodeEvidenceForLens,
@@ -141,5 +143,25 @@ describe("formatFlowNodeEvidenceForLens", () => {
     expect(designer).toContain("Join flow UX");
     expect(builder).toContain("Ship authz slice");
     expect(story).toMatch(/Community home|Paid vs free|Trust risk/);
+  });
+});
+
+describe("live chat Constitution (Phase C)", () => {
+  it("builds distinct chat output contracts", () => {
+    const d = buildChatOutputContract("designer");
+    const b = buildChatOutputContract("builder");
+    const s = buildChatOutputContract("storyteller");
+    expect(d).toMatch(/experience designer|journeys|states/i);
+    expect(b).toMatch(/implementation|ship slices|schema-true/i);
+    expect(s).toMatch(/meaning|narrative|hollow/i);
+    expect(new Set([d, b, s]).size).toBe(3);
+  });
+
+  it("includes speculate modifier without changing lens identity", () => {
+    const block = buildLiveChatConstitutionBlock("builder", true);
+    expect(block).toContain("LENS CONSTITUTION: BUILDER");
+    expect(block).toContain("speculate=true");
+    expect(block).toContain("builder");
+    expect(block).not.toContain("LENS CONSTITUTION: DESIGNER");
   });
 });

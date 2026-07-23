@@ -1,0 +1,59 @@
+{
+  "caseId": "T6",
+  "lens": "builder",
+  "prompt": "Write the opening of the community page \u2014 the first thing a new member reads.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "copy-source",
+      "label": "Copy source of truth",
+      "type": "decision",
+      "resolved": false,
+      "meta": "must",
+      "details": "Opening copy lives in i18n/CMS key community.home.opening \u2014 not hardcoded in multiple components.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "component",
+      "label": "OpeningHero component",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Implement OpeningHero with props for title/body/cta; support empty & error fallbacks.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "variants",
+      "label": "A/B variant hooks",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "could",
+      "details": "Optional variant field for later tests; default single string in v1.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "constraints",
+      "label": "Length constraints",
+      "type": "priority",
+      "resolved": false,
+      "meta": "must",
+      "details": "Enforce max chars for mobile layout; truncate safely server-side if CMS overflows.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "oos-prose",
+      "label": "Prose authoring OOS",
+      "type": "priority",
+      "resolved": false,
+      "meta": "wont",
+      "details": "Builder does not author the brand story \u2014 only wiring and constraints.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

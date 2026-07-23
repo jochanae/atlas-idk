@@ -1,0 +1,60 @@
+{
+  "caseId": "T4",
+  "lens": "storyteller",
+  "prompt": "Design a weekly group Bible study rhythm inside Reveal\u2019s community.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "posture",
+      "label": "Spiritual posture first",
+      "type": "goal",
+      "resolved": false,
+      "meta": "must",
+      "details": "Rhythm exists for communal formation \u2014 hearts oriented together \u2014 not content completion.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "invite-tone",
+      "label": "Invitation vs dump",
+      "type": "requirement",
+      "resolved": true,
+      "meta": "must",
+      "details": "Tone of every week: come as you are; invitation, not a syllabus dump.",
+      "strategicAnswer": "form people, not dump content. Invitation tone.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "money-faith",
+      "label": "Money meets faith story",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Study connects Scripture to honest money courage without prosperity gloss or shame.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "hollow-metrics",
+      "label": "Reject engagement gospel",
+      "type": "blocker",
+      "resolved": false,
+      "meta": "must",
+      "details": "If success becomes attendance metrics, the spiritual posture is hollowed.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "weekly-arc",
+      "label": "Weekly formation arc",
+      "type": "priority",
+      "resolved": false,
+      "meta": "should",
+      "details": "Each week is a chapter in becoming a woman who can talk about money without fear.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

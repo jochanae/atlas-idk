@@ -1,0 +1,46 @@
+{
+  "projectName": "Reveal",
+  "summary": "Women's faith-rooted financial community — belonging, literacy, and trusted peer support.",
+  "dna": {
+    "purpose": "Help women build financial confidence through trusted community, not alone.",
+    "coreEmotion": "calm belonging with honest courage",
+    "audience": "Women seeking financial literacy and peer accountability without shame",
+    "identity": "A faith-rooted community where money conversations become safe",
+    "format": "Community + guided rhythms",
+    "surfaceStrategy": "Conversation-first community home with weekly formation rhythms",
+    "wedge": "Safe money talk for women who feel excluded by traditional finance culture",
+    "differentiator": "Belonging before budgeting tips; trust before tools",
+    "stack": ["react", "postgres", "node"],
+    "protectedAreas": ["member trust signals", "ledger of commitments"],
+    "constraints": ["mobile-first", "privacy-sensitive money topics", "no shame language"],
+    "openQuestions": ["Should v1 charge for access?", "How public should member activity be?"],
+    "stage": "Shape",
+    "confidenceScore": 0.55,
+    "lastEvolvedAt": null,
+    "lastExtractedAt": null
+  },
+  "flowNodes": [
+    { "type": "goal", "label": "Community home", "strategicAnswer": "A place women feel safe talking about money", "resolved": true },
+    { "type": "requirement", "label": "Join without shame" },
+    { "type": "requirement", "label": "Weekly study rhythm" },
+    { "type": "decision", "label": "Paid vs free v1", "strategicAnswer": "Undecided — founding promise prioritizes access", "resolved": false },
+    { "type": "blocker", "label": "Trust risk if activity is too public" },
+    { "type": "sprint", "label": "Ship member profiles slice" },
+    { "type": "priority", "label": "Onboarding calm first", "meta": "must" },
+    { "type": "decision", "label": "Notifications intensity", "strategicAnswer": "Prefer quiet belonging over engagement spam", "resolved": true }
+  ],
+  "transcript": [
+    { "role": "User", "content": "Reveal is a women's financial community rooted in faith. Belonging matters more than tips." },
+    { "role": "Joy", "content": "Purpose locked: help women build financial confidence through trusted community, not alone." },
+    { "role": "User", "content": "The community page is the first home. Empty state should feel inviting, not broken." },
+    { "role": "Joy", "content": "Designer note: empty/loading/error/success states and trust UX will matter on join." },
+    { "role": "User", "content": "We might charge later but v1 access is part of the founding promise. Don't invent a paywall that breaks trust." },
+    { "role": "Joy", "content": "Stack is react/postgres/node. Member profiles and authz boundaries are the next ship slice." },
+    { "role": "User", "content": "When someone replies, people should feel answered — but silence can be sacred. No notification spam." },
+    { "role": "Joy", "content": "Notifications intensity decided: quiet belonging over engagement spam." },
+    { "role": "User", "content": "Weekly Bible study rhythm should form people, not dump content. Invitation tone." },
+    { "role": "Joy", "content": "Open questions remain: paid vs free v1, and how public member activity should be." },
+    { "role": "User", "content": "Build a community page for Reveal — start from what members actually encounter." },
+    { "role": "Joy", "content": "API routes for members, posts, and entitlements will be needed if we gate access later." }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "caseId": "T2",
+  "lens": "designer",
+  "prompt": "Should Reveal charge for community access in v1?",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "fairness-ux",
+      "label": "Perceived fairness UX",
+      "type": "decision",
+      "resolved": false,
+      "meta": "must",
+      "details": "If any gate appears, she must understand why instantly \u2014 no surprise locks mid-join.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "upgrade-moment",
+      "label": "Upgrade without shame",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Upgrade moment (if any) is a calm choice surface, never a blocked empty feed that feels punitive.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "guest-states",
+      "label": "Guest vs member states",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Design distinct empty/preview/member states so permissioning is legible before she invests emotion.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "trust-break",
+      "label": "Paywall trust break",
+      "type": "blocker",
+      "resolved": true,
+      "meta": "must",
+      "details": "A hard paywall on first home risks breaking the no-shame join path the product promised.",
+      "strategicAnswer": "Don't invent a paywall that breaks trust.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "free-default",
+      "label": "Free-first interaction",
+      "type": "priority",
+      "resolved": true,
+      "meta": "must",
+      "details": "Default experience should let her belong first; paid can be a later optional layer in the UI.",
+      "strategicAnswer": "founding promise prioritizes access",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

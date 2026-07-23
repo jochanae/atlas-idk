@@ -1,0 +1,72 @@
+{
+  "caseId": "T1",
+  "lens": "storyteller",
+  "prompt": "Build a community page for Reveal.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "why-home",
+      "label": "Why a home exists",
+      "type": "goal",
+      "resolved": true,
+      "meta": "must",
+      "details": "Community page is not a feed product \u2014 it is the first place she feels safe talking about money.",
+      "strategicAnswer": "A place women feel safe talking about money",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "lurker-arc",
+      "label": "Lurker to member arc",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Opening journey: arrive unsure \u2192 witness calm belonging \u2192 choose to be known without performance.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "promise-access",
+      "label": "Access as promise",
+      "type": "decision",
+      "resolved": true,
+      "meta": "must",
+      "details": "Charging later is allowed; gating v1 would hollow the founding promise of trusted community access.",
+      "strategicAnswer": "Undecided \u2014 founding promise prioritizes access",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "sacred-silence",
+      "label": "Silence can be sacred",
+      "type": "priority",
+      "resolved": true,
+      "meta": "should",
+      "details": "Being answered matters, but the story rejects engagement theater \u2014 quiet presence is part of belonging.",
+      "strategicAnswer": "Prefer quiet belonging over engagement spam.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "hollow-risk",
+      "label": "Tips without belonging",
+      "type": "blocker",
+      "resolved": false,
+      "meta": "must",
+      "details": "If the page becomes budgeting tips without trust, Reveal becomes another finance product and loses its wedge.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "faith-tone",
+      "label": "Faith-rooted invitation",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Voice of the home: calm courage, no shame \u2014 money conversations become safe because identity is belonging-first.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

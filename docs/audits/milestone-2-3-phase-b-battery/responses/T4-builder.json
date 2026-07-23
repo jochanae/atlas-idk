@@ -1,0 +1,59 @@
+{
+  "caseId": "T4",
+  "lens": "builder",
+  "prompt": "Design a weekly group Bible study rhythm inside Reveal\u2019s community.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "content-model",
+      "label": "Passages notes model",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Content model: study series, weekly sessions, passages, member notes, schedule timestamps.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "roles",
+      "label": "Facilitator member roles",
+      "type": "decision",
+      "resolved": false,
+      "meta": "must",
+      "details": "Roles: facilitator vs member; authz on creating sessions and posting prompts.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "reminders",
+      "label": "Reminder job schedule",
+      "type": "sprint",
+      "resolved": false,
+      "meta": "should",
+      "details": "Cron/job for weekly reminders respecting quiet notification prefs.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "series-api",
+      "label": "Study series APIs",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "CRUD for series/sessions on postgres; link to community home feed item type.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "oos-metrics",
+      "label": "Engagement metrics OOS",
+      "type": "priority",
+      "resolved": false,
+      "meta": "wont",
+      "details": "Out of scope this slice: streak gamification and engagement leaderboards.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

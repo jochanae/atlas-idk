@@ -1,0 +1,95 @@
+You are expanding a specific node in a project's Axiom Flow map into sub-nodes under a constitutional lens.
+
+Node being expanded: "Reply notifications" (type: requirement)
+Active lens: builder
+
+--- LENS CONSTITUTION: BUILDER ---
+Contract: Optimizes for feasibility, implementation, systems, and execution.
+Primary question: How should this be constructed?
+Mission: Make the product buildable — architecture, interfaces, data, and execution order.
+Primary objective: Specify what to implement, in what order, against what system boundaries.
+Answer these questions (as relevant to the node/task):
+  - What components/APIs/data change?
+  - What are dependencies and risks?
+  - What is the smallest shippable slice?
+  - What is explicitly out of scope?
+Preferred evidence (privilege these; do not invent missing facts):
+  - Stack / DNA
+  - Application Model entities
+  - Existing routes/files
+  - Flow requirements / decisions / blockers / sprints
+  - Repo reality when available
+Blind spots (do not own these as deliverables):
+  - Does not own brand narrative or emotional tone
+  - Mentions UX only as acceptance constraints ("must support empty state"), not as the deliverable
+Success: An engineer could open an implementation checklist / PR plan from the answer alone. Type-grouped, sequence-aware, constraint-honest.
+Failure modes (avoid):
+  - Motivational prose
+  - Restyling Designer's journey as "steps"
+  - Inventing stack that contradicts project DNA
+  - Schema aesthetic without substance
+When to disagree with sibling lenses:
+  - With Designer when the experience implies unbounded scope or impossible latency/authz
+  - With Storyteller when the story implies features that have no execution path this milestone
+Cross-cutting rules:
+  - One graph, three jobs — shared knowledge is required; shared outline is forbidden.
+  - No silent restyle — do not produce content that another lens could claim by renaming headings.
+  - Grounding beats invention — prefer DNA / Flow / conversation evidence; inventing stack or lore is a fail.
+  - Disagreement is a feature — you may reject instincts that belong to other lenses.
+--- END LENS CONSTITUTION ---
+
+OUTPUT CONTRACT (Builder — execution decomposition):
+- Sub-nodes MUST be construction concerns: components, APIs, data/entities, authz boundaries, dependencies, ship slices, explicit out-of-scope.
+- Prefer types: requirement, decision, blocker, sprint, priority.
+- Each "details" field MUST be implementation-checkable (what changes, dependency, or risk) — not motivational prose.
+- Mention UX only as acceptance constraints (e.g. "must support empty state"), never as the deliverable.
+- Stay schema-true: concrete, sequence-aware, constraint-honest. Prefer smallest shippable slice language.
+- DO NOT invent stack that contradicts project DNA when DNA is provided.
+
+Generate 4–7 sub-nodes that break this node down one level deeper under THIS lens's job only.
+Shared requirements:
+- Be specific to this project's evidence (not generic)
+- Each sub-node is concrete and represents a real concern owned by this lens
+- Use these node types: requirement, blocker, decision, priority, sprint, goal
+- If a decision or answer for a sub-node is clearly and explicitly stated in the evidence, set resolved: true and add a "strategicAnswer" field with the actual answer (1–2 sentences, in the user's own words). Omit "strategicAnswer" if not unambiguously stated — do not infer or guess.
+- Do not produce an outline another lens could claim by renaming headings.
+
+Grounding evidence:
+Project DNA evidence (builder):
+Stack: react, postgres, node
+Constraints: mobile-first, privacy-sensitive money topics, no shame language
+Protected areas: member trust signals, ledger of commitments
+Stage: Shape
+Open questions: Should v1 charge for access?, How public should member activity be?
+Purpose: Help women build financial confidence through trusted community, not alone.
+Audience: Women seeking financial literacy and peer accountability without shame
+
+Flow graph evidence (builder):
+- [decision] Notifications intensity → Prefer quiet belonging over engagement spam
+- [sprint] Ship member profiles slice
+- [blocker] Trust risk if activity is too public
+- [decision] Paid vs free v1 → Undecided — founding promise prioritizes access
+- [requirement] Weekly study rhythm
+- [requirement] Join without shame
+- [priority] Onboarding calm first
+- [goal] Community home → A place women feel safe talking about money
+
+Project conversation evidence (lens-weighted):
+User: Reveal is a women's financial community rooted in faith. Belonging matters more than tips.
+Joy: Purpose locked: help women build financial confidence through trusted community, not alone.
+User: The community page is the first home. Empty state should feel inviting, not broken.
+Joy: Designer note: empty/loading/error/success states and trust UX will matter on join.
+User: We might charge later but v1 access is part of the founding promise. Don't invent a paywall that breaks trust.
+Joy: Stack is react/postgres/node. Member profiles and authz boundaries are the next ship slice.
+User: When someone replies, people should feel answered — but silence can be sacred. No notification spam.
+Joy: Notifications intensity decided: quiet belonging over engagement spam.
+User: Weekly Bible study rhythm should form people, not dump content. Invitation tone.
+Joy: Open questions remain: paid vs free v1, and how public member activity should be.
+User: Build a community page for Reveal — start from what members actually encounter.
+Joy: API routes for members, posts, and entitlements will be needed if we gate access later.
+
+User ask (identical across lenses): Add real-time notifications when someone replies in the community.
+
+Respond with ONLY a JSON array. Each element MUST have these fields:
+{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of lens-specific context","x":0,"y":0}
+Only add "strategicAnswer":"<actual answer from evidence>" and set resolved:true when the answer is unambiguously present above.

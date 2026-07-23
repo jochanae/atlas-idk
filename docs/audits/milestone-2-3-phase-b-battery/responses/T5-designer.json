@@ -1,0 +1,59 @@
+{
+  "caseId": "T5",
+  "lens": "designer",
+  "prompt": "Help me plan my next four weeks as founder of Reveal.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "energy-surfaces",
+      "label": "Energy-aware focus surfaces",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "must",
+      "details": "Plan the month as experienced cadence: deep craft mornings, people conversations, recovery blocks.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "calm-os",
+      "label": "Calm operating ritual",
+      "type": "priority",
+      "resolved": false,
+      "meta": "must",
+      "details": "Weekly personal OS: one review surface that reduces chaos rather than adding dashboards.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "trust-time",
+      "label": "Protect trust-design time",
+      "type": "blocker",
+      "resolved": false,
+      "meta": "must",
+      "details": "If shipping consumes all hours, join/trust UX regresses \u2014 schedule non-negotiable design blocks.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "member-touch",
+      "label": "Member-feeling check-ins",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Each week includes tasting the product as a new member would \u2014 empty states, join friction.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "focus-mode",
+      "label": "Single focus mode UI",
+      "type": "decision",
+      "resolved": false,
+      "meta": "should",
+      "details": "Personal board shows one primary experience goal per week, not a wall of tasks.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

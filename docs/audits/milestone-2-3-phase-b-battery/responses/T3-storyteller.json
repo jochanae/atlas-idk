@@ -1,0 +1,61 @@
+{
+  "caseId": "T3",
+  "lens": "storyteller",
+  "prompt": "Add real-time notifications when someone replies in the community.",
+  "method": "constitution-bound expand simulation (same packs/contracts/evidence as forge expand-node; ANTHROPIC_API_KEY unavailable in eval VM)",
+  "notes": "",
+  "nodes": [
+    {
+      "id": "being-answered",
+      "label": "Meaning of being answered",
+      "type": "goal",
+      "resolved": false,
+      "meta": "must",
+      "details": "A reply is proof she is not alone in the money conversation \u2014 that is the belonging beat.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "sacred-silence",
+      "label": "When silence is sacred",
+      "type": "priority",
+      "resolved": true,
+      "meta": "must",
+      "details": "Not every pause needs a ping; the story protects quiet as part of trust.",
+      "strategicAnswer": "silence can be sacred. No notification spam.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "reject-spam",
+      "label": "Reject engagement theater",
+      "type": "blocker",
+      "resolved": true,
+      "meta": "must",
+      "details": "Growth-style notification spam would hollow the calm courage identity.",
+      "strategicAnswer": "Prefer quiet belonging over engagement spam.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gentle-presence",
+      "label": "Gentle presence signal",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Signal should feel like a hand on the shoulder, not a scoreboard of attention.",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "belonging-arc",
+      "label": "Reply as formation",
+      "type": "requirement",
+      "resolved": false,
+      "meta": "should",
+      "details": "Notifications serve communal formation \u2014 she was heard \u2014 not retention metrics.",
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

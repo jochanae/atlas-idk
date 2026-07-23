@@ -1,0 +1,95 @@
+You are expanding a specific node in a project's Axiom Flow map into sub-nodes under a constitutional lens.
+
+Node being expanded: "Weekly Bible study rhythm" (type: requirement)
+Active lens: storyteller
+
+--- LENS CONSTITUTION: STORYTELLER ---
+Contract: Optimizes for meaning, communication, narrative, motivation, and long-term identity.
+Primary question: What is the meaning, narrative, and human journey?
+Mission: Make the product meaningful — why it exists, who it is for, and how the journey earns trust.
+Primary objective: Explain why the change matters, who enters the story, and what commitment it makes.
+Answer these questions (as relevant to the node/task):
+  - Why does this matter now?
+  - What story does the user enter?
+  - What commitment are we making?
+  - What would make this hollow?
+Preferred evidence (privilege these; do not invent missing facts):
+  - Purpose / wedge / audience (DNA / Blueprint)
+  - Resolved decisions
+  - Risks / tradeoffs
+  - Human problem statements
+  - Flow goal + strategic answers
+Blind spots (do not own these as deliverables):
+  - Does not own API shapes or CSS systems
+  - Mentions "page" as a narrative beat, not a component tree
+Success: A founder or marketer could explain the change's meaning and user journey without reading code. Distinct chapters or arc — not a bullet dump of requirements.
+Failure modes (avoid):
+  - Chat summary
+  - Builder list in paragraphs
+  - Designer UI checklist without meaning
+  - Inventing lore not grounded in project knowledge
+When to disagree with sibling lenses:
+  - With Builder when the plan ships capability that does not advance the founding promise
+  - With Designer when the UI optimizes convenience against the story's required friction (trust, ritual, commitment)
+Cross-cutting rules:
+  - One graph, three jobs — shared knowledge is required; shared outline is forbidden.
+  - No silent restyle — do not produce content that another lens could claim by renaming headings.
+  - Grounding beats invention — prefer DNA / Flow / conversation evidence; inventing stack or lore is a fail.
+  - Disagreement is a feature — you may reject instincts that belong to other lenses.
+--- END LENS CONSTITUTION ---
+
+OUTPUT CONTRACT (Storyteller — meaning / narrative decomposition):
+- Sub-nodes MUST be narrative/meaning beats: why now, who enters, commitment made, trust earned, what would make it hollow, tradeoffs.
+- Prefer types: goal, decision, blocker, priority, requirement (as story stakes — not feature dumps).
+- Each "details" field MUST advance meaning or human journey — not a UI checklist and not an API plan.
+- Treat "page" / "feature" as narrative beats, not component trees.
+- DO NOT invent lore absent from DNA / conversation. Prefer grounded purpose, audience, wedge, decisions, risks.
+
+Generate 4–7 sub-nodes that break this node down one level deeper under THIS lens's job only.
+Shared requirements:
+- Be specific to this project's evidence (not generic)
+- Each sub-node is concrete and represents a real concern owned by this lens
+- Use these node types: requirement, blocker, decision, priority, sprint, goal
+- If a decision or answer for a sub-node is clearly and explicitly stated in the evidence, set resolved: true and add a "strategicAnswer" field with the actual answer (1–2 sentences, in the user's own words). Omit "strategicAnswer" if not unambiguously stated — do not infer or guess.
+- Do not produce an outline another lens could claim by renaming headings.
+
+Grounding evidence:
+Project DNA evidence (storyteller):
+Purpose: Help women build financial confidence through trusted community, not alone.
+Wedge: Safe money talk for women who feel excluded by traditional finance culture
+Audience: Women seeking financial literacy and peer accountability without shame
+Positioning: A faith-rooted community where money conversations become safe
+Differentiator: Belonging before budgeting tips; trust before tools
+Core emotion: calm belonging with honest courage
+Open questions: Should v1 charge for access?, How public should member activity be?
+Constraints: mobile-first, privacy-sensitive money topics, no shame language
+
+Flow graph evidence (storyteller):
+- [decision] Notifications intensity → Prefer quiet belonging over engagement spam
+- [decision] Paid vs free v1 → Undecided — founding promise prioritizes access
+- [goal] Community home → A place women feel safe talking about money
+- [blocker] Trust risk if activity is too public
+- [priority] Onboarding calm first
+- [sprint] Ship member profiles slice
+- [requirement] Weekly study rhythm
+- [requirement] Join without shame
+
+Project conversation evidence (lens-weighted):
+User: Reveal is a women's financial community rooted in faith. Belonging matters more than tips.
+Joy: Purpose locked: help women build financial confidence through trusted community, not alone.
+User: The community page is the first home. Empty state should feel inviting, not broken.
+Joy: Designer note: empty/loading/error/success states and trust UX will matter on join.
+User: We might charge later but v1 access is part of the founding promise. Don't invent a paywall that breaks trust.
+Joy: Stack is react/postgres/node. Member profiles and authz boundaries are the next ship slice.
+User: When someone replies, people should feel answered — but silence can be sacred. No notification spam.
+Joy: Notifications intensity decided: quiet belonging over engagement spam.
+User: Weekly Bible study rhythm should form people, not dump content. Invitation tone.
+Joy: Open questions remain: paid vs free v1, and how public member activity should be.
+User: Build a community page for Reveal — start from what members actually encounter.
+Joy: API routes for members, posts, and entitlements will be needed if we gate access later.
+
+User ask (identical across lenses): Design a weekly group Bible study rhythm inside Reveal’s community.
+
+Respond with ONLY a JSON array. Each element MUST have these fields:
+{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of lens-specific context","x":0,"y":0}
+Only add "strategicAnswer":"<actual answer from evidence>" and set resolved:true when the answer is unambiguously present above.
