@@ -6219,6 +6219,8 @@ export default function Home() {
       <AskAtlasSurface
         open={askAtlasSurfaceVisible}
         isRestoring={isAskAtlasRestoring && askAtlasConv.messages.length === 0}
+        resumeGreeting={askAtlasResumeGreeting}
+        onDismissResumeGreeting={() => setAskAtlasResumeGreeting(null)}
         messages={askAtlasConv.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         conversationId={askAtlasConversationId}
