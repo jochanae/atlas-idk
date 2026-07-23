@@ -406,3 +406,91 @@ const liStyle: React.CSSProperties = {
   fontSize: 12.5, color: "var(--atlas-fg)", opacity: 0.88, lineHeight: 1.45,
   paddingLeft: 12, position: "relative",
 };
+
+const SHORT_LABEL: Record<Tier1FieldKey, string> = {
+  building: "What",
+  audience: "Who",
+  problem: "Why",
+  outOfScope: "Not",
+  successSignal: "Signal",
+  constraints: "Bounds",
+};
+
+function PulseDnaSection({ projectId }: { projectId: number }) {
+  const { memory } = useTier1Memory(projectId);
+  const missing = memory?.missing ?? TIER1_QUESTIONS.map((q) => q.key);
+  const filledKeys = TIER1_QUESTIONS.map((q) => q.key).filter((k) => !missing.includes(k));
+  const filledCount = filledKeys.length;
+  const complete = filledCount >= 6;
+
+  return (
+    <div style={{
+      marginTop: 4, marginBottom: 6, padding: "12px 12px",
+      border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)",
+      borderRadius: 12,
+      background: "color-mix(in oklab, var(--atlas-gold) 4%, transparent)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{
+          width: 5, height: 5, borderRadius: "50%",
+          background: "var(--atlas-gold)", opacity: complete ? 0.9 : 0.75,
+        }} />
+        <span style={{
+          fontFamily: "var(--app-font-mono)", fontSize: 9,
+          letterSpacing: "0.16em", textTransform: "uppercase",
+          color: "var(--atlas-gold)",
+        }}>
+          Project DNA · {filledCount}/6
+        </span>
+        <span style={{
+          fontFamily: "var(--app-font-mono)", fontSize: 9,
+          letterSpacing: "0.16em", textTransform: "uppercase",
+          color: "rgba(var(--atlas-muted-rgb), 0.55)",
+        }}>
+          {complete ? "captured" : "capturing"}
+        </span>
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={openTier1IntakeSheet}
+          style={{
+            padding: "3px 9px", borderRadius: 6,
+            background: "transparent",
+            border: "1px solid rgba(var(--atlas-gold-rgb), 0.3)",
+            color: "var(--atlas-gold)",
+            fontFamily: "var(--app-font-mono)", fontSize: 9,
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            cursor: "pointer",
+          }}
+        >
+          {complete ? "Review" : "Fill"}
+        </button>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+        {TIER1_QUESTIONS.map((q) => {
+          const filled = filledKeys.includes(q.key);
+          return (
+            <span
+              key={q.key}
+              title={filled ? `${q.label} — captured` : `${q.label} — pending`}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "3px 8px", borderRadius: 999,
+                background: filled
+                  ? "rgba(var(--atlas-gold-rgb), 0.14)"
+                  : "rgba(var(--atlas-bg-rgb), 0.5)",
+                border: `1px solid rgba(var(--atlas-gold-rgb), ${filled ? 0.4 : 0.12})`,
+                color: filled ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb), 0.65)",
+                fontFamily: "var(--app-font-mono)", fontSize: 9,
+                letterSpacing: "0.1em", textTransform: "uppercase",
+              }}
+            >
+              {filled ? <Check size={9} strokeWidth={3} /> : null}
+              {SHORT_LABEL[q.key]}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
