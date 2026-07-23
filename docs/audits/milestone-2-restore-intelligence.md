@@ -59,7 +59,7 @@ Prove Designer, Builder, and Storyteller produce meaningfully different outputs 
 
 **Acceptance intent:** Same question → three different perspectives (experience / execution / meaning).
 
-**Status:** Constitution + eval battery + scope **approved**. Naming recommendation pending sign-off (§9), then Phase A (one lens pipeline plumbing).
+**Status:** Phase 0 **CLOSED**. Naming signed off (Flow → Storyteller; Scenario = modifier; Flow = Map only). **Next: Phase A plumbing.**
 
 **Depends on:** 2.2 ✅
 
@@ -107,4 +107,5 @@ Do not implement 2.3 behavior until the design doc is accepted. Do not start 2.4
 | 2026-07-22–23 | 2.2 evaluation, P2/P3, handoff seed, Round 3, execution PRs #213–#217. |
 | 2026-07-23 | **2.2 CLOSED.** |
 | 2026-07-23 | **2.3 planning** — design doc drafted. |
-| 2026-07-23 | **2.3 approvals** — Constitution, eval battery, scope (Map + live chat plumbing → Map Constitution → live chat). Naming §9 pending sign-off. |
+| 2026-07-23 | **2.3 approvals** — Constitution, eval battery, scope (Map + live chat plumbing → Map Constitution → live chat). |
+| 2026-07-23 | **2.3 naming signed off** — Designer/Builder/Storyteller; Flow → Storyteller; Scenario = speculate modifier; Flow = Map surface; AtlasLens rename; one-sentence contracts. Phase A unblocked. |

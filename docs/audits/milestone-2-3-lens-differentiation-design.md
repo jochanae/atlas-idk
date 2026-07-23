@@ -1,8 +1,8 @@
 # Milestone 2.3 — Lens Differentiation Design
 
-**Phase:** Planning — **design approved; implementation not started**  
+**Phase:** Planning complete — **ready for Phase A (plumbing)**  
 **Date:** 2026-07-23  
-**Status:** APPROVED (Constitution · Eval battery · Phase 0 scope) — awaiting naming sign-off, then implementation  
+**Status:** **PHASE 0 CLOSED** — Constitution · Eval · Scope · Naming all signed off  
 **Prerequisite:** Milestone 2.2 CLOSED (intelligence correctness)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Repo HEAD at commission:** `51acaf50` (`main`, post #217)
@@ -11,10 +11,20 @@
 
 | Item | Decision |
 |------|----------|
-| §3 Lens Constitution | **Approved** |
+| §3 Lens Constitution | **Approved** (incl. one-sentence contracts below) |
 | §4 Evaluation battery (T1–T6 + L1–L5) | **Approved** |
-| Phase 0 scope | **Map + live chat plumbing first** — do **not** implement full chat differentiation yet. First carry the active lens through the entire reasoning pipeline so there is **one lens architecture, not two**. Then implement the Constitution on the **Map** path, then **live chat**, and validate **both** with the same evaluation battery. |
-| Naming collisions | Recommendation in **§9** — sign off before implementation begins |
+| Phase 0 scope | **Map + live chat plumbing first** → Constitution on Map → live chat → same battery on both |
+| §9 Naming | **Signed off** — see checklist; Flow → Storyteller confirmed |
+
+### One-sentence contracts (canonical — Constitution, eval, UI tooltips)
+
+| Lens | Primary question | Contract |
+|------|------------------|----------|
+| **Designer** | How should this be experienced? | Optimizes for the user's experience, clarity, usability, and emotional impact. |
+| **Builder** | How should this be constructed? | Optimizes for feasibility, implementation, systems, and execution. |
+| **Storyteller** | What is the meaning, narrative, and human journey? | Optimizes for meaning, communication, narrative, motivation, and long-term identity. |
+
+These three sentences are the shared mental model for users and developers. Implementation must surface them in UI tooltips and keep eval/docs in sync.
 
 ---
 
@@ -220,13 +230,22 @@ A lens is differentiated when, for the **same project**, the **same user questio
 
 > Governing specification — **not prompt text**. Prompts (later) must obey this; this document does not rewrite prompts.
 
-Applies to **Map lenses: Designer · Builder · Storyteller.**  
-Chat lenses may later adopt parallel constitutions; out of scope for the primary 2.3 bar unless Phase work explicitly expands.
+Applies to the **one vocabulary**: Designer · Builder · Storyteller (Map and live chat surfaces).
+
+### 3.0 Canonical contracts (must stay identical everywhere)
+
+| Lens | Primary question | One-sentence contract |
+|------|------------------|----------------------|
+| **Designer** | How should this be experienced? | Optimizes for the user's experience, clarity, usability, and emotional impact. |
+| **Builder** | How should this be constructed? | Optimizes for feasibility, implementation, systems, and execution. |
+| **Storyteller** | What is the meaning, narrative, and human journey? | Optimizes for meaning, communication, narrative, motivation, and long-term identity. |
 
 ### 3.1 Designer
 
 | Field | Specification |
 |-------|----------------|
+| **Contract** | Optimizes for the user's experience, clarity, usability, and emotional impact. |
+| **Primary question** | How should this be experienced? |
 | **Mission** | Make the product *experienceable* — what a human encounters, feels, and can do. |
 | **Primary objective** | Define interaction, hierarchy, emotion, and usability of the proposed change. |
 | **Primary questions** | What does the user see first? Where do they get stuck? What emotion should this surface hold? What is the interaction model? What fails accessibility or trust? |
@@ -240,6 +259,8 @@ Chat lenses may later adopt parallel constitutions; out of scope for the primary
 
 | Field | Specification |
 |-------|----------------|
+| **Contract** | Optimizes for feasibility, implementation, systems, and execution. |
+| **Primary question** | How should this be constructed? |
 | **Mission** | Make the product *buildable* — architecture, interfaces, data, and execution order. |
 | **Primary objective** | Specify what to implement, in what order, against what system boundaries. |
 | **Primary questions** | What components/APIs/data change? What are dependencies and risks? What is the smallest shippable slice? What is explicitly out of scope? |
@@ -253,6 +274,8 @@ Chat lenses may later adopt parallel constitutions; out of scope for the primary
 
 | Field | Specification |
 |-------|----------------|
+| **Contract** | Optimizes for meaning, communication, narrative, motivation, and long-term identity. |
+| **Primary question** | What is the meaning, narrative, and human journey? |
 | **Mission** | Make the product *meaningful* — why it exists, who it is for, and how the journey earns trust. |
 | **Primary questions** | Why does this matter now? What story does the user enter? What commitment are we making? What would make this hollow? |
 | **Preferred evidence** | Purpose/wedge/audience (DNA/Blueprint), resolved decisions, risks/tradeoffs, human problem statements, Flow goal + strategic answers. |
@@ -450,14 +473,14 @@ Ordered by leverage for true differentiation:
 > Complexity is technical (surface area / risk), not calendar time.  
 > **Do not skip plumbing (Phase A) before Constitution work (Phase B).**
 
-### Phase 0 — Design freeze ✅  
+### Phase 0 — Design freeze ✅ **CLOSED**  
 **Objective:** Approve Constitution, eval battery, scope, naming.  
 **Acceptance:** §3 + §4 approved; §0 scope recorded; §9 naming signed off.  
 **Complexity:** Low.  
 **Dependencies:** 2.2 closed ✅.  
-**Status:** Constitution + battery + scope approved; **naming sign-off pending**.
+**Status:** **Complete** — Flow → Storyteller signed off; Scenario = modifier; Flow reserved for Map; AtlasLens rename required; one-sentence contracts locked.
 
-### Phase A — One lens pipeline (plumbing only) ← **FIRST IMPLEMENTATION**  
+### Phase A — One lens pipeline (plumbing only) ← **NEXT / FIRST IMPLEMENTATION**  
 **Objective:** Carry **active lens** end-to-end on Map **and** live Workspace chat so there is one architecture, not two. **No full chat differentiation yet** — signal must be present, typed, logged, and consumed as a stub/policy hook on Nexus (may be no-op or identity-only beyond “lens=X is active”).  
 **In scope:**
 - Canonical lens type shared by Map tabs + composer (post-naming: Designer | Builder | Storyteller)
@@ -535,9 +558,9 @@ These remain **out of the lens constitution** unless a phase explicitly absorbs 
 | Evaluation framework | ✅ §4 **Approved** |
 | Architecture review | ✅ §5 |
 | Phased roadmap | ✅ §6 **Approved order** |
-| Naming recommendation | ✅ §9 — **sign-off before Phase A** |
+| Naming recommendation | ✅ §9 — **Signed off** (Flow → Storyteller) |
 
-**Next human decision before coding:** Approve **§9 Naming** (or amend it). Then start Phase A plumbing.
+**Next:** Begin **Phase A** — one lens pipeline plumbing (no full chat differentiation yet).
 
 ---
 
@@ -582,30 +605,35 @@ Two taxonomies guarantee two architectures. 2.3 requires **one**.
 | **Flow** | **Storyteller** *or* default **Designer** — see choice below |
 | **Scenario** | Modifier `speculate=true` on whichever perspective is active |
 
-**Recommended choice for legacy Flow:** map **Flow → Storyteller** when the user was “thinking it through” in narrative/strategic terms; default new sessions to **Designer** on Map and **Builder** only when entering code-forward tasks. *Alternative (also acceptable):* Flow → Designer as “explore the experience of the problem.” **Pick one in sign-off; default recommendation = Flow → Storyteller** so Look/Designer are not doubled and strategic “think through” lands on meaning/implications.
+**Legacy Flow → Storyteller:** **SIGNED OFF.** Product rationale: keeps three non-overlapping primary questions (experience / construction / meaning). Mapping Flow → Designer would create two design-oriented concepts that overlap in users’ minds. “Think it through” lands on narrative, implications, and human journey — Storyteller’s job.
 
-**History `AtlasLens`:** rename internally to `historyIntent` (`build` / `decide` / `chat`) — **never** call it a lens in UI or types.
+**History `AtlasLens`:** rename internally to `historyIntent` (`build` / `decide` / `chat`) — **never** call it a lens in UI or types. **SIGNED OFF.**
 
-**Flow Map surface:** keep product name **Flow** / **Axiom Flow** for the *graph*; lens tabs remain Designer / Builder / Storyteller. Never label a chat mode “Flow” after migration.
+**Flow Map surface:** product name **Flow** / **Axiom Flow** means the visual conversation/project map only (“Open the Flow”). Lens tabs = Designer / Builder / Storyteller. Never a chat thinking mode named Flow. **SIGNED OFF.**
+
+**Scenario:** toggle/modifier (`speculate`) on the active perspective — e.g. Builder + Scenario = “assume funding is cut in half” while still thinking as Builder. Changes assumptions, not identity. **SIGNED OFF.**
 
 ### 9.3 Migration rules (Phase A)
 
 1. Single shared TypeScript union: `type AtlasPerspective = "designer" | "builder" | "storyteller"`.  
 2. Composer picker shows only those three (+ Scenario as toggle/modifier).  
-3. Persist `atlas-ws-lens-v2-*` values migrated: `look→designer`, `build→builder`, `flow→storyteller` (if that choice approved), `scenario→` keep perspective + set speculate flag.  
+3. Persist `atlas-ws-lens-v2-*` values migrated: `look→designer`, `build→builder`, `flow→storyteller`, `scenario→` keep perspective + set speculate flag.  
 4. Map `lensView` uses the same union (already close).  
 5. Nexus + expand-node accept only the canonical union.  
-6. Docs: deprecate dual wording in `flow-lens-architecture.md`; Builder presentation rules stay in `builder-lens-identity.md` under id `builder`.
+6. UI tooltips use the §3.0 one-sentence contracts verbatim.  
+7. Docs: deprecate dual wording in `flow-lens-architecture.md`; Builder presentation rules stay in `builder-lens-identity.md` under id `builder`.  
+8. Rename `AtlasLens` → `historyIntent` (or equivalent) in types/UI copy.
 
-### 9.4 Sign-off checklist
+### 9.4 Sign-off checklist — **COMPLETE**
 
-- [ ] Canonical ids = `designer` | `builder` | `storyteller`  
-- [ ] Scenario = modifier, not a fourth lens  
-- [ ] Legacy Flow maps to: **Storyteller** (recommended) / Designer (alt)  
-- [ ] History taxonomy renamed away from “lens”  
-- [ ] “Flow” reserved for Map surface name only  
+- [x] Canonical ids = `designer` | `builder` | `storyteller`  
+- [x] Scenario = modifier (`speculate`), not a fourth lens  
+- [x] Legacy Flow maps to **Storyteller**  
+- [x] History taxonomy renamed away from “lens”  
+- [x] “Flow” reserved for Map surface name only  
+- [x] One-sentence contracts locked for Constitution / eval / UI tooltips  
 
-**Implementation must not start Phase A until this checklist is checked.**
+**Phase 0 closed. Phase A (plumbing) may begin.**
 
 ---
 
