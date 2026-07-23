@@ -292,6 +292,17 @@ export function AskAtlasSurface({
   const askAtlasPreTokenPhrase =
     preTokenPhase === "loading" ? "Loading context…" : "Atlas is thinking…";
 
+  // Resume greeting auto-fade — mirror handoff-pill cadence (~4.5s).
+  const [resumeVisible, setResumeVisible] = useState(false);
+  useEffect(() => {
+    if (!resumeGreeting) { setResumeVisible(false); return; }
+    setResumeVisible(true);
+    const fade = window.setTimeout(() => setResumeVisible(false), 4200);
+    const clear = window.setTimeout(() => { try { onDismissResumeGreeting?.(); } catch {} }, 4700);
+    return () => { window.clearTimeout(fade); window.clearTimeout(clear); };
+  }, [resumeGreeting, onDismissResumeGreeting]);
+
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [, setLocation] = useLocation();
