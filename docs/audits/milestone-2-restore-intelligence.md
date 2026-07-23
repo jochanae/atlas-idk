@@ -1,7 +1,7 @@
 # Milestone 2 — Restore Intelligence
 
 **Parent:** Milestone track (M1 closed → M2 in progress)  
-**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 PLANNING · 2.4 NOT STARTED**  
+**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 IN PROGRESS (Phase B) · 2.4 NOT STARTED**  
 **Last updated:** 2026-07-23
 
 ---
@@ -51,7 +51,7 @@ Knowledge classification (K1–K6), surface integrity (S1–S5), handoff intelli
 
 ---
 
-### 2.3 — Lens Differentiation — 🟡 PLANNING ← **NOW**
+### 2.3 — Lens Differentiation — 🟡 IN PROGRESS ← **NOW**
 
 **Design doc:** [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md)
 
@@ -59,7 +59,7 @@ Prove Designer, Builder, and Storyteller produce meaningfully different outputs 
 
 **Acceptance intent:** Same question → three different perspectives (experience / execution / meaning).
 
-**Status:** Phase 0 **CLOSED**. Naming signed off (Flow → Storyteller; Scenario = modifier; Flow = Map only). **Next: Phase A plumbing.**
+**Status:** Phase 0 **CLOSED**. Phase A **PASS** (plumbing). Phase B **landing** — Constitution on Map expand-node + Map-bound Flow chat. **Next:** Map battery T1–T6 → Phase C live chat.
 
 **Depends on:** 2.2 ✅
 
@@ -82,12 +82,12 @@ Conversation should feel like working with a capable collaborator, not a procedu
         ↓
 2.2 Intelligence correctness  ✅ CLOSED
         ↓
-2.3 Lens differentiation      🟡 PLANNING (design doc)  ← NOW
+2.3 Lens differentiation      🟡 IN PROGRESS (Phase B Map Constitution)  ← NOW
         ↓
 2.4 Natural conversation      ⬜ NOT STARTED
 ```
 
-Do not implement 2.3 behavior until the design doc is accepted. Do not start 2.4 until 2.3 proves distinct lens reasoning.
+Phase A plumbing complete. Phase B Constitution on Map landing. Do not start 2.4 until 2.3 proves distinct lens reasoning on Map + live chat.
 
 ---
 
