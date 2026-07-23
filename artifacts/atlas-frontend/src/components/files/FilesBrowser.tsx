@@ -14,11 +14,12 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { createPortal } from "react-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X, FolderTree } from "lucide-react";
+import { LayoutGrid, List, Search, FileText, Image as ImageIcon, Code2, Archive, Folder, Sparkles, Bookmark, File as FileIcon, Eye, X, FolderTree, Trash2 } from "lucide-react";
 import { useListProjects } from "@workspace/api-client-react";
-import { fetchLibraryItems, type LibraryItem } from "@/lib/library";
+import { fetchLibraryItems, deleteLibraryItem, type LibraryItem } from "@/lib/library";
 import {
   getRecentAttachments,
   subscribeRecentAttachments,
@@ -550,6 +551,9 @@ export function FilesBrowser({
           onClose={closePreview}
           onPrimary={() => primaryAction(previewFile)}
           isSelected={selectedIds.includes(previewFile.id)}
+          onDeleted={() => {
+            closePreview();
+          }}
         />
       )}
     </div>
@@ -875,7 +879,7 @@ function EmptyPane({ title, body }: { title: string; body: string }) {
 // Scrollable body with safe-area padding.
 
 function PreviewPanel({
-  file, mode, isNarrow, onClose, onPrimary, isSelected,
+  file, mode, isNarrow, onClose, onPrimary, isSelected, onDeleted,
 }: {
   file: UnifiedFile;
   mode: "browse" | "attach";
@@ -883,7 +887,12 @@ function PreviewPanel({
   onClose: () => void;
   onPrimary: () => void;
   isSelected: boolean;
+  onDeleted?: () => void;
 }) {
+  const qc = useQueryClient();
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -894,17 +903,41 @@ function PreviewPanel({
     ? (isSelected ? "Remove selection" : "Add to attachments")
     : (file.section === "workspace" ? "Open in workspace" : "Open");
 
+  // Library-backed items (saved / generated) can be deleted from here.
+  const libraryItem = (file.section === "saved" || file.section === "generated")
+    ? (file.raw as LibraryItem | undefined)
+    : undefined;
+  const canDelete = !!libraryItem?.id;
+
+  const handleDelete = async () => {
+    if (!libraryItem) return;
+    if (typeof window !== "undefined" && !window.confirm(`Delete "${file.name}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteLibraryItem(libraryItem);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["files-library-saved"] }),
+        qc.invalidateQueries({ queryKey: ["files-library-generated"] }),
+      ]);
+      onDeleted?.();
+    } catch (err) {
+      setDeleteError((err as Error).message || "Delete failed");
+      setDeleting(false);
+    }
+  };
+
   const containerStyle: React.CSSProperties = isNarrow
     ? {
-        position: "fixed", inset: 0, zIndex: 3000,
+        position: "fixed", inset: 0, zIndex: 10000,
         display: "flex", flexDirection: "column",
         background: "hsl(var(--background))",
         color: "hsl(var(--foreground))",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }
     : {
-        position: "absolute", top: 0, right: 0, bottom: 0,
-        width: "min(380px, 60%)", zIndex: 30,
+        position: "fixed", top: 0, right: 0, bottom: 0,
+        width: "min(420px, 60vw)", zIndex: 10000,
         display: "flex", flexDirection: "column",
         background: "hsl(var(--popover))",
         color: "hsl(var(--popover-foreground))",
@@ -915,12 +948,12 @@ function PreviewPanel({
   const shortName = file.name.split("/").pop() ?? file.name;
   const isImage = file.category === "images";
 
-  return (
+  const node = (
     <>
       {!isNarrow && (
         <div
           onClick={onClose}
-          style={{ position: "absolute", inset: 0, zIndex: 29, background: "hsl(var(--background) / 0.5)" }}
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "hsl(var(--background) / 0.5)" }}
         />
       )}
       <div style={containerStyle} role="dialog" aria-label={`Preview: ${shortName}`}>
@@ -1007,10 +1040,41 @@ function PreviewPanel({
           )}
         </div>
 
+        {deleteError && (
+          <div style={{
+            padding: "8px 16px", fontSize: 12,
+            color: "hsl(var(--destructive, 0 84% 60%))",
+            background: "hsl(var(--destructive, 0 84% 60%) / 0.08)",
+            borderTop: "1px solid hsl(var(--border))",
+          }}>
+            {deleteError}
+          </div>
+        )}
         <footer style={{
           display: "flex", gap: 8, padding: "12px 16px calc(12px + env(safe-area-inset-bottom, 0px))",
           borderTop: "1px solid hsl(var(--border))", flexShrink: 0,
         }}>
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              aria-label="Delete file"
+              title="Delete"
+              style={{
+                flexShrink: 0, padding: "10px 12px", borderRadius: 8,
+                background: "transparent",
+                border: "1px solid hsl(var(--destructive, 0 84% 60%) / 0.5)",
+                color: "hsl(var(--destructive, 0 84% 60%))",
+                cursor: deleting ? "wait" : "pointer",
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 13, fontFamily: "var(--app-font-sans)",
+                opacity: deleting ? 0.6 : 1,
+              }}
+            >
+              <Trash2 size={14} />
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          )}
           <button
             onClick={onClose}
             style={{
@@ -1033,6 +1097,9 @@ function PreviewPanel({
       </div>
     </>
   );
+
+  if (typeof document === "undefined") return node;
+  return createPortal(node, document.body);
 }
 
 
