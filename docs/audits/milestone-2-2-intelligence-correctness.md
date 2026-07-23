@@ -3,8 +3,9 @@
 **Phase:** Evaluation audit (quality of understanding — **not** infrastructure)  
 **Date:** 2026-07-22  
 **Repo HEAD at commission:** `d0b923d1` (`main`, post PR #208)  
-**Status:** **OPEN — reasoning PASS (Round 3); execution-layer defects remain**  
-**Checklist:** P1 Verify Flow ✅ PASS · P2/P3 implemented · Round 2 ✅ · R1 intelligence transfer ✅ (user) · Round 3 Ask Atlas reasoning ✅ STRONG PASS · Execution (artifact honesty / export / resume / handoff) 🟡 in progress  
+**Status:** **OPEN — not closed**  
+**Closeout assessment (2026-07-23):** Intelligence / reasoning criteria are substantially met in code + user evidence; **formal K1–K6 / S1–S5 regression scorecard and live post-deploy verification of Round 3 execution fixes remain open.** Do not tag CLOSED until § Closeout gate clears.  
+**Checklist:** P1 Verify Flow ✅ PASS · P2/P3 implemented · Round 2 ✅ · R1 intelligence transfer ✅ (user qualitative) · Round 3 Ask Atlas reasoning ✅ STRONG PASS · Round 3 execution fixes merged (#213–#217) 🟡 **awaiting redeploy + retest** · K1–K6 / S1–S5 formal scorecard ⬜  
 **Board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Prerequisite:** Milestone 2.1 deliverable contract landed (PR #208)
 
@@ -500,7 +501,7 @@ After those land: **one final regression pass** to close Milestone 2.2.
 | **Round 2** validation | Validation | ✅ **COMPLETE** |
 | **P2** Knowledge Classification | Correction / implementation | ✅ **Implemented** — awaiting regression |
 | **P3** Surface Integrity | Correction / implementation | ✅ **Implemented** (incl. desktop Flow tab) — awaiting regression |
-| Final regression | Validation | 🟡 **IN PROGRESS** — R1 FAIL on intelligence seed (fix landing) |
+| Final regression | Validation | 🟡 **OPEN** — user confirmed intelligence transfer; formal K1–K6 / S1–S5 scorecard not recorded; live host pre-#214 |
 
 ### Final regression — Scenario R1 (2026-07-22)
 
@@ -593,8 +594,58 @@ Desktop Flow tab: right-rail no longer filters out `map`.
 3. ~~Round 2 validation (reversal + lens surfaces)~~ — **COMPLETE**.  
 4. ~~Implement P2~~ — Knowledge Classification (K1–K6).  
 5. ~~Implement P3~~ — Surface Integrity (S1–S5) + desktop Flow discoverability.  
-6. **Final regression** — 🟡 R1 FAIL (handoff intelligence seed) — fix in flight; re-test after deploy.  
+6. **Final regression** — 🟡 OPEN (see § Closeout gate).  
 7. After 2.2 closes, deepen lens differentiation under **2.3** only if still needed beyond Round 2 lens passes.
+
+---
+
+## Closeout gate (2026-07-23) — **2.2 NOT CLOSED**
+
+Governing close rule (parent board): **one user regression pass against K1–K6 and S1–S5** closes 2.2.
+
+### Met (do not re-open)
+
+| Item | Evidence |
+|------|----------|
+| P1 Flow | Round 2 PASS — Designer / Builder / Storyteller share project knowledge |
+| Round 2 architectural reversal | PASS |
+| Blueprint / conversation intelligence | Round 1–2 PASS; Round 3 Ask Atlas reasoning **STRONG PASS** |
+| P2 Knowledge Classification (code) | Implemented (typed objects, park Decisions/Questions, explicit promote) |
+| P3 Surface Integrity (code) | Implemented (Ledger = Decisions; Activity = engineering; desktop Flow tab) |
+| R1 handoff intelligence seed | #210; user confirmed DNA / Objects / Decisions / Builder / Story / Map populated |
+| Remount recovery (code) | #213 (live process is post-#213) |
+| Deliverable honesty / export / dupe collapse (code) | #215 |
+| Product-brief → generate_deliverable (code) | #214 |
+| PDF/DOCX dark-page theme (code) | #216 |
+| Global Files mobile detail (code + e2e) | #217 |
+
+### Still open — required before tagging 2.2 CLOSED
+
+| # | Open item | Why it blocks close |
+|---|-----------|---------------------|
+| **G1** | **Formal K1–K6 + S1–S5 scorecard** after P2/P3 | Parent-board close gate. User confirmed panels populated after handoff; no scored Pass/Fail for Ideas-vs-Decisions, Insights synthesis, Ledger purity, Activity ownership, or explicit promotion was recorded post-implementation. |
+| **G2** | **Redeploy live host past #214+** | `GET /api/capabilities` still reports `apiProcessStartedAt: 2026-07-23T14:04:38Z` — **before** #214/#215/#216/#217. Live cannot certify brief generation, honesty strip, PDF readability, or Global Files fix until redeploy. |
+| **G3** | **Post-redeploy smoke of Round 3 execution fixes** | After G2: (a) “build the full product brief” creates a file (not force-create); (b) no false “brief is ready” without a card; (c) export without mojibake; (d) PDF readable; (e) Global Files completed + failed detail usable on mobile. |
+
+### Deferred — **not** required to close 2.2 (track for 2.3 / UX)
+
+| Item | Why deferred |
+|------|----------------|
+| Resume-after-refresh as toast/card (not transcript “Welcome back…”) | Explicitly recorded as UX; not intelligence AC |
+| Resend / interrupt idempotency | Continuity polish; continuityV2 key exists |
+| Quieter multi-format renderer fallback UX | Keep inline brief salvage (#7 keep) |
+| Living Product Strategy Brief section structure | Product writing quality → natural conversation / deliverable craft |
+| “Preserved / full context” truthfulness copy | Honesty copy pass |
+| Soft “Continue in Workspace” with brief + next task | Transfer experience |
+| Workspace kickoff “What’s first?” after promised generation | Transfer experience — not classification failure |
+| Deeper lens differentiation (same question → three perspectives) | **Milestone 2.3** |
+
+### How to close
+
+1. Redeploy so `apiProcessStartedAt` is after `51acaf50` (or later main including #217).  
+2. One Workspace conversation: score **K1–K6** and **S1–S5** (Pass/Fail) on the scorecard.  
+3. Smoke G3 execution checks.  
+4. Then flip this doc + parent board to **CLOSED** and start 2.3.
 
 ---
 
