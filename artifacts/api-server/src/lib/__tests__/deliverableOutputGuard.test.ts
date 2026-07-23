@@ -20,14 +20,25 @@ describe("checkDeliverableClaims", () => {
     expect(result.correction).not.toMatch(/It's in Outputs/i);
   });
 
-  it("does NOT wipe prose when generate_deliverable was never called", () => {
+  it("strips false readiness claims when generate_deliverable was never called", () => {
     const result = checkDeliverableClaims(
-      "I've created a spreadsheet with the pricing options. It's in Outputs.",
+      "I've created a spreadsheet with the pricing options. It's in Outputs.\n\nWe can refine columns next.",
       { generatedArtifactsCount: 0, generateDeliverableAttempted: false },
     );
-    expect(result.clean).toBe(true);
-    expect(result.correction).toMatch(/I've created a spreadsheet/i);
-    expect(result.correction).not.toMatch(/haven't generated a downloadable file/i);
+    expect(result.clean).toBe(false);
+    expect(result.correction).toMatch(/We can refine columns next/i);
+    expect(result.correction).not.toMatch(/It's in Outputs/i);
+    expect(result.correction).toMatch(/No downloadable file was produced/i);
+  });
+
+  it("replaces a short false 'strategy brief is ready' message with no card", () => {
+    const result = checkDeliverableClaims(
+      "Your strategy brief is ready, Jo — download it from the card above.",
+      { generatedArtifactsCount: 0, generateDeliverableAttempted: false },
+    );
+    expect(result.clean).toBe(false);
+    expect(result.correction).toMatch(/haven't generated a downloadable file/i);
+    expect(result.correction).not.toMatch(/download it from the card/i);
   });
 
   it("ignores prose that does not claim a file was produced", () => {
@@ -51,7 +62,7 @@ describe("checkDeliverableClaims", () => {
     expect(result.correction).not.toMatch(/haven't generated a downloadable file/i);
   });
 
-  it("preserves PulseDesk-style kickoff prose (no tool call)", () => {
+  it("preserves PulseDesk-style kickoff prose (no tool call, no download claim)", () => {
     const kickoff = [
       "PulseDesk is a mobile-first live status dashboard for remote engineering leads.",
       "Purpose: high-level deployment visibility without digging through Jira.",
@@ -84,12 +95,12 @@ describe("checkDeliverableClaims", () => {
     ).toBe(false);
   });
 
-  it("does not wipe 'open the file' false positives when no tool was called", () => {
+  it("corrects 'open the file' / download-from-card claims even when no tool was called", () => {
     const result = checkDeliverableClaims(
       "Open the file from the card when you're ready.",
       { generatedArtifactsCount: 0, generateDeliverableAttempted: false },
     );
-    expect(result.clean).toBe(true);
-    expect(result.correction).toContain("Open the file");
+    expect(result.clean).toBe(false);
+    expect(result.correction).not.toMatch(/Open the file from the card/i);
   });
 });

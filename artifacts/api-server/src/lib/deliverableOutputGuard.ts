@@ -4,10 +4,12 @@
  *
  * Mirrors the attachment output-guard pattern (replace + correction SSE).
  *
- * CRITICAL: Full-response replacement is ONLY allowed when the model actually
- * invoked generate_deliverable this turn. Otherwise discovery / DECIDE / BUILD
- * prose gets wiped by false positives (e.g. "open it", "file is ready") and
- * surfaces as the honesty fallback inside BUILD READY cards — blocking R1.
+ * Policy:
+ * - Tool attempted + no artifact → full honesty replace (failed generation).
+ * - Tool NOT attempted + clear readiness/download claims → strip those claims
+ *   (or replace if the message is only a false readiness assertion). Never
+ *   wipe long discovery/DECIDE prose for incidental phrasing.
+ * - Do NOT match bare "open it" — discovery routinely uses that for Workspace.
  */
 
 export interface DeliverableGuardEvidence {
@@ -29,15 +31,17 @@ export interface DeliverableGuardResult {
  * Do NOT match bare "open it" — discovery prose routinely uses that phrase.
  */
 const DELIVERABLE_SUCCESS_PATTERNS: RegExp[] = [
-  /\bI(?:'ve| have)\s+(?:created|generated|made|built|produced|prepared)\s+(?:a\s+|an\s+|your\s+|the\s+)?(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|slides?|presentation|document|docx|pdf|diagram|chart|file|download)\b/i,
-  /\bhere(?:'s| is)\s+your\s+(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|slides?|presentation|document|docx|pdf|diagram|chart|file)\b/i,
-  /\b(?:the\s+)?(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|presentation|document|docx|pdf|diagram|chart|file)\s+(?:is|are)\s+ready\b/i,
+  /\bI(?:'ve| have)\s+(?:created|generated|made|built|produced|prepared)\s+(?:a\s+|an\s+|your\s+|the\s+)?(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|slides?|presentation|document|docx|pdf|diagram|chart|file|download|brief|strategy\s+brief|product\s+brief)\b/i,
+  /\bhere(?:'s| is)\s+your\s+(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|slides?|presentation|document|docx|pdf|diagram|chart|file|brief|strategy\s+brief|product\s+brief)\b/i,
+  /\byour\s+(?:strategy\s+brief|product\s+brief|brief|spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|presentation|document|docx|pdf|diagram|chart|file)\s+is\s+ready\b/i,
+  /\b(?:the\s+)?(?:spreadsheet|excel|xlsx|workbook|powerpoint|pptx|deck|presentation|document|docx|pdf|diagram|chart|file|strategy\s+brief|product\s+brief|brief)\s+(?:is|are)\s+ready\b/i,
   /\bit(?:'s| is)\s+in\s+Outputs\b/i,
-  /\bdownload\s+(?:it|the\s+file|the\s+spreadsheet|the\s+deck|the\s+document)\b/i,
-  /\bopen\s+(?:the\s+)?(?:file|spreadsheet|deck|document|download|pptx|xlsx|docx|pdf)\b/i,
+  /\bdownload\s+(?:it|the\s+file|the\s+spreadsheet|the\s+deck|the\s+document|the\s+brief)\b/i,
+  /\bdownload\s+it\s+from\s+the\s+card\b/i,
+  /\bopen\s+(?:the\s+)?(?:file|spreadsheet|deck|document|download|pptx|xlsx|docx|pdf|brief)\b/i,
   /\bI(?:'ve| have)\s+put\s+(?:it|the\s+file)\s+in\s+(?:Outputs|your\s+workspace|the\s+project)\b/i,
   /\bfile\s+(?:is\s+)?(?:ready|available)\s+(?:to\s+download|in\s+(?:this\s+)?conversation|as\s+a\s+card)\b/i,
-  /\b(?:generated|created)\s+(?:successfully|the\s+(?:xlsx|pptx|docx|pdf))\b/i,
+  /\b(?:generated|created)\s+(?:successfully|the\s+(?:xlsx|pptx|docx|pdf|brief))\b/i,
 ];
 
 function findViolations(content: string): string[] {
@@ -70,10 +74,25 @@ function buildFullReplacement(violations: string[], attempted: boolean): string 
   );
 }
 
+/** Drop sentences/paragraphs that contain a deliverable success claim. */
+function stripClaimSpans(content: string): string {
+  const blocks = content.split(/\n{2,}/);
+  const keptBlocks: string[] = [];
+
+  for (const block of blocks) {
+    const sentences = block.split(/(?<=[.!?])\s+/);
+    const kept = sentences.filter((s) => findViolations(s).length === 0);
+    if (kept.length > 0) keptBlocks.push(kept.join(" "));
+  }
+
+  return keptBlocks.join("\n\n").trim();
+}
+
 /**
  * When prose claims a deliverable is ready but no artifact was produced:
  * - Tool was attempted → full replace (honesty for failed generation)
- * - Tool was NOT attempted → keep original prose (never wipe discovery/DECIDE)
+ * - Tool was NOT attempted → strip claim spans; if nothing useful remains,
+ *   short honesty note. Never leave "download from the card" with no card.
  */
 export function checkDeliverableClaims(
   content: string,
@@ -90,16 +109,39 @@ export function checkDeliverableClaims(
 
   const attempted = evidence.generateDeliverableAttempted === true;
 
-  // No generate_deliverable call this turn → never nuke the response.
-  // False-positive matches on architectural prose were wiping PulseDesk/Aura
-  // discovery turns and poisoning BUILD READY cards.
-  if (!attempted) {
-    return { clean: true, violations: [], correction: content };
+  if (attempted) {
+    return {
+      clean: false,
+      violations,
+      correction: buildFullReplacement(violations, true),
+    };
+  }
+
+  // No tool call — strip false readiness claims without nuking discovery prose.
+  const stripped = stripClaimSpans(content);
+  // If almost nothing remains, the message was only a false readiness claim.
+  if (!stripped || stripped.length < 24) {
+    return {
+      clean: false,
+      violations,
+      correction: buildFullReplacement(violations, false),
+    };
+  }
+
+  if (stripped === content.trim()) {
+    // Patterns matched but sentence split failed to isolate — fall back.
+    return {
+      clean: false,
+      violations,
+      correction: buildFullReplacement(violations, false),
+    };
   }
 
   return {
     clean: false,
     violations,
-    correction: buildFullReplacement(violations, true),
+    correction:
+      stripped +
+      `\n\n*(No downloadable file was produced in this turn — ask if you'd like me to generate one.)*`,
   };
 }
