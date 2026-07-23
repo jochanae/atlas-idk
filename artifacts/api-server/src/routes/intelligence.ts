@@ -92,7 +92,7 @@ function nextActionForStage(stage: string, openQuestions: string[], constraints:
     case "Build":      return "Pick one feature and ship it — learn from real usage";
     case "Operate":    return "Monitor and learn — what is the data telling you?";
     case "Evolve":     return "Identify the next evolution — what would 10x this?";
-    default:           return q ?? "Keep the conversation going — Atlas is listening";
+    default:           return q ?? "Keep the conversation going — Joy is listening";
   }
 }
 

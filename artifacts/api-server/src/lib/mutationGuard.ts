@@ -41,11 +41,11 @@ export interface MutationGuardResult {
 }
 
 /**
- * Check whether an Atlas-initiated mutation is authorized.
+ * Check whether an Joy-initiated mutation is authorized.
  * User and system actors always pass — they are governed by their own
  * route-level auth, not the run lifecycle contract.
  *
- * Call this before executing any guarded verb for an Atlas agent turn.
+ * Call this before executing any guarded verb for an Joy agent turn.
  * If the result is { allowed: false }, reject with 403 and include the reason.
  */
 export async function checkAtlasMutation(
@@ -60,7 +60,7 @@ export async function checkAtlasMutation(
     return {
       allowed: false,
       reason:
-        "Atlas cannot execute a mutation without an active run. The run must be in executing status.",
+        "Joy cannot execute a mutation without an active run. The run must be in executing status.",
       code: "NO_ACTIVE_RUN",
     };
   }
@@ -86,7 +86,7 @@ export async function checkAtlasMutation(
     ) {
       return {
         allowed: false,
-        reason: `Atlas cannot write files while run is in "${row.status}" status. The build plan must be authorized first.`,
+        reason: `Joy cannot write files while run is in "${row.status}" status. The build plan must be authorized first.`,
         code: "PLAN_MODE_BLOCKED",
       };
     }
@@ -95,7 +95,7 @@ export async function checkAtlasMutation(
     if (!executingStatuses.has(row.status)) {
       return {
         allowed: false,
-        reason: `Atlas cannot write files. Run status is "${row.status}" — must be "executing".`,
+        reason: `Joy cannot write files. Run status is "${row.status}" — must be "executing".`,
         code: "RUN_NOT_EXECUTING",
       };
     }
@@ -140,7 +140,7 @@ export function checkAtlasMutationSync(opts: {
   if (!opts.runId) {
     return {
       allowed: false,
-      reason: "No active run ID — Atlas cannot mutate without a run in scope.",
+      reason: "No active run ID — Joy cannot mutate without a run in scope.",
       code: "NO_ACTIVE_RUN",
     };
   }
@@ -149,7 +149,7 @@ export function checkAtlasMutationSync(opts: {
   if (status === "awaiting_confirmation" || status === "planning") {
     return {
       allowed: false,
-      reason: `Atlas cannot write files in "${status}" status. Authorization required.`,
+      reason: `Joy cannot write files in "${status}" status. Authorization required.`,
       code: "PLAN_MODE_BLOCKED",
     };
   }

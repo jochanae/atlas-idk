@@ -9,7 +9,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 /**
  * Conversational Timeline milestones — see docs/handoffs/2026-07-09-timeline-thinking-milestones-backend.md
  *
- * These verbs are conversation-scoped (emitted from Ask Atlas / Nexus chat turns),
+ * These verbs are conversation-scoped (emitted from Ask Joy / Nexus chat turns),
  * distinct from execution-scoped verbs (FILE_EDIT, LINE_PATCH, BUILD_RUN, etc.)
  * written by the codegen runner. A pure-reasoning turn that decides an architecture,
  * designs a schema, or emits a migration inline should show up on the Timeline even
@@ -99,7 +99,7 @@ export async function classifyTurnMilestones(opts: {
       messages: [
         {
           role: "user",
-          content: `You are scanning one turn of a project-building conversation to see whether Atlas (the assistant) moved the project forward in a durable way — not just talked.
+          content: `You are scanning one turn of a project-building conversation to see whether Joy (the assistant) moved the project forward in a durable way — not just talked.
 
 USER: ${opts.userText.slice(0, 1200)}
 
@@ -107,11 +107,11 @@ ASSISTANT: ${assistantText.slice(0, 6000)}
 
 Classify this turn against these milestone types. A turn can produce zero, one, or several:
 
-- MILESTONE_REQUIREMENTS — Atlas confirmed a concrete requirement (primary user, scope, or an explicit non-goal), not just asked a clarifying question.
-- MILESTONE_DECISION — Atlas committed to a specific architectural or product choice (a stack pick, an ownership/permission model, a strategy), not just floated an option.
-- MILESTONE_DESIGN — Atlas produced a schema, data model, permission matrix, or flow description in prose (not code that was written to a file).
-- MILESTONE_PLAN — Atlas produced an ordered plan (numbered milestones, phases, or build order).
-- ARTIFACT_GENERATED — Atlas produced durable content inline in the message itself (e.g. migration SQL, a spec document, a config block) that was not written to disk as a file edit.
+- MILESTONE_REQUIREMENTS — Joy confirmed a concrete requirement (primary user, scope, or an explicit non-goal), not just asked a clarifying question.
+- MILESTONE_DECISION — Joy committed to a specific architectural or product choice (a stack pick, an ownership/permission model, a strategy), not just floated an option.
+- MILESTONE_DESIGN — Joy produced a schema, data model, permission matrix, or flow description in prose (not code that was written to a file).
+- MILESTONE_PLAN — Joy produced an ordered plan (numbered milestones, phases, or build order).
+- ARTIFACT_GENERATED — Joy produced durable content inline in the message itself (e.g. migration SQL, a spec document, a config block) that was not written to disk as a file edit.
 
 Rules:
 - Zero milestones is common and correct — return an empty array for small talk, clarifying questions, or a turn that only restates what the user said.

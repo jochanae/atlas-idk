@@ -108,7 +108,7 @@ export function generateAtlasMd(memory: ProjectMemory): string {
     `     Generated: ${generatedAt}`,
     `     Sources: ${sourceParts.join(", ")} -->`,
     "",
-    `# Atlas Operating Context — ${title}`,
+    `# Joy Operating Context — ${title}`,
     "",
     "## North Star",
     "",
@@ -293,7 +293,7 @@ export function getScaffoldFiles(appName: string, opts: {
   }
   roadmapLines.push("", "## Backlog", "", "*Add items here as the project evolves.*");
 
-  // ── Base files (every Atlas-created repo gets these) ──────────────────────
+  // ── Base files (every Joy-created repo gets these) ──────────────────────
   const files: ScaffoldFile[] = [
     { path: "README.md", content: readmeLines.join("\n") + "\n" },
     { path: "PROJECT.md", content: projectLines.join("\n") + "\n" },
@@ -432,7 +432,7 @@ createRoot(document.getElementById('root')!).render(
       <div className="text-center space-y-4 max-w-lg">
         <h1 className="text-4xl font-bold tracking-tight">${title}</h1>
         <p className="text-gray-400 text-lg">
-          Your project is ready. Start building with Atlas.
+          Your project is ready. Start building with Joy.
         </p>
       </div>
     </div>
@@ -523,11 +523,11 @@ export async function bootstrapGitHubRepo(opts: {
       projectMemory: opts.projectMemory,
     });
     const commitMessage = opts.isCodeProject === false
-      ? "Initial Atlas scaffold — docs project"
-      : "Initial Atlas scaffold — app project";
+      ? "Initial Joy scaffold — docs project"
+      : "Initial Joy scaffold — app project";
 
     if (!existingRepoLinked) {
-      // Atlas just created this repo via the API — git backend is initialized,
+      // Joy just created this repo via the API — git backend is initialized,
       // Git Data API works. Use blobs → tree → commit → ref for a single clean commit.
       const blobResults = await Promise.all(
         files.map(async (f) => {

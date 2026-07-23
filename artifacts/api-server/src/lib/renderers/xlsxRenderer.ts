@@ -69,7 +69,7 @@ ${formulaRule}`;
 
 function buildXlsxBuffer(plan: XlsxContentPlan): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Atlas";
+  workbook.creator = "Joy";
   workbook.created = new Date();
 
   for (const sheetPlan of plan.sheets) {

@@ -89,7 +89,7 @@ export async function pushAtlasMdToRepo(
       method: "PUT",
       headers: ghHeaders(token),
       body: JSON.stringify({
-        message: "Refresh Atlas Memory",
+        message: "Refresh Joy Memory",
         content: Buffer.from(content).toString("base64"),
         ...(sha ? { sha } : {}),
       }),

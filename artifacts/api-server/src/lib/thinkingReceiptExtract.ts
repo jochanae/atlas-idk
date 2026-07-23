@@ -120,7 +120,7 @@ export async function maybeExtractThinkingReceipts(opts: {
   turnIndex: number;
   userMessage: string;
   atlasResponse: string;
-  /** True when Atlas emitted THINKING_STABLE — use more aggressive extraction. */
+  /** True when Joy emitted THINKING_STABLE — use more aggressive extraction. */
   stable?: boolean;
   /** When provided, high-confidence Decision receipts (≥90) are auto-promoted to the Ledger. */
   projectId?: number;
@@ -137,7 +137,7 @@ export async function maybeExtractThinkingReceipts(opts: {
       const isStable = opts.stable === true;
 
       const stabilityNote = isStable
-        ? `\n\nNOTE: Atlas flagged this exchange as a crystallization moment (THINKING_STABLE) — the thinking advanced meaningfully. Extract up to 5 receipts. Lower the confidence threshold to 55.`
+        ? `\n\nNOTE: Joy flagged this exchange as a crystallization moment (THINKING_STABLE) — the thinking advanced meaningfully. Extract up to 5 receipts. Lower the confidence threshold to 55.`
         : "";
 
       const response = await anthropic.messages.create({
@@ -145,7 +145,7 @@ export async function maybeExtractThinkingReceipts(opts: {
         max_tokens: 800,
         messages: [{
           role: "user",
-          content: `You are analyzing a conversational exchange between a person and Atlas (a strategic thinking partner). Extract "thinking receipts" — moments of genuine insight, named tensions, surfaced assumptions, forming commitments, or open questions that emerged.
+          content: `You are analyzing a conversational exchange between a person and Joy (a strategic thinking partner). Extract "thinking receipts" — moments of genuine insight, named tensions, surfaced assumptions, forming commitments, or open questions that emerged.
 
 EXCHANGE:
 ${exchange}
@@ -228,10 +228,10 @@ Rules:
 }
 
 // ── Global Narrative Memory ───────────────────────────────────────────────────
-// After each substantive Ask Atlas turn, synthesize a living 2–3 sentence
+// After each substantive Ask Joy turn, synthesize a living 2–3 sentence
 // narrative of what's been discussed across all threads. Stored on the user
-// record and injected into every conversation start — both Ask Atlas and
-// workspace. This gives Atlas cross-thread continuity: it knows what you've
+// record and injected into every conversation start — both Ask Joy and
+// workspace. This gives Joy cross-thread continuity: it knows what you've
 // been working through, not just what it extracted from individual turns.
 
 const globalNarrativeInFlight = new Set<number>(); // userId gate — one at a time per user
@@ -273,7 +273,7 @@ export async function synthesizeGlobalNarrative(opts: {
         .catch(() => [] as Array<{ role: string; content: string }>);
 
       const recentExchange = recentRows.reverse()
-        .map(m => `${m.role === "user" ? "You" : "Atlas"}: ${String(m.content).slice(0, 400)}`)
+        .map(m => `${m.role === "user" ? "You" : "Joy"}: ${String(m.content).slice(0, 400)}`)
         .join("\n");
 
       const resp = await anthropic.messages.create({
@@ -281,7 +281,7 @@ export async function synthesizeGlobalNarrative(opts: {
         max_tokens: 200,
         messages: [{
           role: "user",
-          content: `You are writing a private living memory note for an AI assistant called Atlas. It will be read at the start of future conversations to give Atlas genuine cross-thread continuity — the user should feel like Atlas picks up where things left off, not like they're starting over.
+          content: `You are writing a private living memory note for an AI assistant called Joy. It will be read at the start of future conversations to give Joy genuine cross-thread continuity — the user should feel like Joy picks up where things left off, not like they're starting over.
 
 Write 2–3 sentences. No bullets, no headers. Capture:
 - What the person has been working through or thinking about recently
@@ -320,7 +320,7 @@ Living memory (2–3 sentences, no preamble):`,
 // Builds a durable personality + work-style profile from conversation history.
 // Lives in users.user_identity (separate from global_narrative which is
 // working-context). Updated at most once every 30 minutes per user.
-// The output is injected at the TOP of every Atlas system prompt so the model
+// The output is injected at the TOP of every Joy system prompt so the model
 // knows the person before anything else.
 
 const USER_IDENTITY_COOLDOWN_MS = 30 * 60 * 1000; // 30 min
@@ -366,7 +366,7 @@ export async function synthesizeUserIdentity(opts: {
       if (recentRows.length < 4) return; // not enough signal yet
 
       const recentExchange = recentRows.reverse()
-        .map(m => `${m.role === "user" ? "User" : "Atlas"}: ${String(m.content).slice(0, 500)}`)
+        .map(m => `${m.role === "user" ? "User" : "Joy"}: ${String(m.content).slice(0, 500)}`)
         .join("\n");
 
       const nameHint = opts.userName ? `The user's registered name is "${opts.userName}".` : "";
@@ -575,7 +575,7 @@ Return exactly: { ${missingKeys.map(k => `"${k}": null`).join(", ")} }`,
 }
 
 /**
- * Generates a single grounded sentence Atlas can use when surfacing a Tier 1
+ * Generates a single grounded sentence Joy can use when surfacing a Tier 1
  * gap — references actual transcript detail so the question feels contextual,
  * not generic. Used by GET /api/projects/:id/tier1-gaps.
  * Returns null when the transcript contains no anchor for the requested slot.
@@ -600,9 +600,9 @@ export async function generateTier1AtlasContext(opts: {
       max_tokens: 120,
       messages: [{
         role: "user",
-        content: `Based on this conversation, write ONE sentence Atlas could use when asking: "${opts.nextGapQuestion}"
+        content: `Based on this conversation, write ONE sentence Joy could use when asking: "${opts.nextGapQuestion}"
 
-The sentence MUST reference a specific concrete detail already mentioned in the transcript (a product name, feature, user type, goal, constraint, etc.). Frame it as Atlas showing it was paying attention — e.g. "You've described building X for Y — who specifically would use it first?"
+The sentence MUST reference a specific concrete detail already mentioned in the transcript (a product name, feature, user type, goal, constraint, etc.). Frame it as Joy showing it was paying attention — e.g. "You've described building X for Y — who specifically would use it first?"
 
 If the transcript contains no useful anchor detail for this specific question, reply with exactly: null
 

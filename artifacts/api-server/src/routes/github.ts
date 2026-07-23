@@ -615,7 +615,7 @@ router.put("/github/commit", async (req, res): Promise<void> => {
     await createBranch(token, repo, pullBranch, baseSha);
     const commit = await commitFile(token, repo, pullBranch, filePath, content, message);
     const prBody = [
-      "This was an Atlas-proposed change awaiting review.",
+      "This was an Joy-proposed change awaiting review.",
       "",
       "**Files changed:**",
       `- \`${filePath}\``,
@@ -818,7 +818,7 @@ ${fileBlock}`;
       totalFiles: blobPaths.length,
     };
 
-    // Write analysis to project memory so Atlas has permanent context.
+    // Write analysis to project memory so Joy has permanent context.
     // Find the project by userId + linkedRepo containing this repo name.
     const userId = (req as any).authUser?.id as number | undefined;
     if (userId) {
@@ -1022,7 +1022,7 @@ router.post("/github/full-import", async (req, res): Promise<void> => {
 
   // 8. Deep Claude prompt — extract identity, decisions, open questions
   const importPrompt = `You are doing a deep architectural import of a software project from its GitHub repository.
-Your goal is to extract durable facts that a strategic AI partner (Atlas) needs to know permanently — especially locked architectural decisions already made.
+Your goal is to extract durable facts that a strategic AI partner (Joy) needs to know permanently — especially locked architectural decisions already made.
 
 Return ONLY a valid JSON object — no markdown fences, no explanation — with exactly this shape:
 {
@@ -1101,7 +1101,7 @@ ${fileBlock}`;
   const tables = Array.isArray(importData.tables) ? importData.tables : [];
   const openQuestions = Array.isArray(importData.openQuestions) ? importData.openQuestions : [];
 
-  // 10. Build v2 memory store — write with proper tiers so Atlas scores them correctly
+  // 10. Build v2 memory store — write with proper tiers so Joy scores them correctly
   type MemEntry = { tier: 1|2|3|4|5; text: string; createdAt: string; retrievalCount: number; lastRetrievedAt: string | null };
 
   const newEntries: MemEntry[] = [];

@@ -17,7 +17,7 @@ export interface PptxGenerationInput {
   context: string;
   title?: string;
   docType?: string;
-  /** Owning project — used to infer a project theme (Phase 3B.2). Falls back to the Atlas default theme when absent. */
+  /** Owning project — used to infer a project theme (Phase 3B.2). Falls back to the Joy default theme when absent. */
   projectId?: number;
   /** Explicit user instruction on visual style, e.g. "make it look playful and colorful". Wins over the inferred project theme. */
   styleOverride?: string;
@@ -117,7 +117,7 @@ registerArtifactRenderer({
     if (input.title) plan.title = input.title;
     const theme = await resolveDeliverableTheme(themeSignals);
 
-    const buffer = await buildPptxBuffer(plan, "Atlas", theme);
+    const buffer = await buildPptxBuffer(plan, "Joy", theme);
 
     return {
       buffer,

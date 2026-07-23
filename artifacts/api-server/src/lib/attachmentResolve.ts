@@ -215,7 +215,7 @@ export async function resolveAttachmentIdsForModel(params: {
           userId: params.userId,
           projectId: activityProjectId(row.projectId),
           filename: row.filename,
-          reason: "stored but not readable by Atlas yet",
+          reason: "stored but not readable by Joy yet",
           attachmentId: id,
         });
       }

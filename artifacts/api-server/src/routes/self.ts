@@ -44,7 +44,7 @@ const recentlyWritten = new Set<string>();
 
 const router: IRouter = Router();
 
-// GET /api/self/tree — list Atlas's own source tree
+// GET /api/self/tree — list Joy's own source tree
 // (mounted at /self, so route path is /tree → full path /api/self/tree)
 router.get("/tree", (_req, res) => {
   const tree = [
@@ -146,7 +146,7 @@ router.post("/push", async (req, res) => {
 
   if (filesToPush.length === 0) {
     res.status(400).json({
-      error: "No files to push. Either pass a files[] array or make edits via Atlas first.",
+      error: "No files to push. Either pass a files[] array or make edits via Joy first.",
     });
     return;
   }
@@ -243,7 +243,7 @@ router.post("/push", async (req, res) => {
         tree: newTreeData.sha,
         parents: [headSha],
         author: {
-          name: "Atlas",
+          name: "Joy",
           email: "atlas@axiomsystem.app",
           date: new Date().toISOString(),
         },
