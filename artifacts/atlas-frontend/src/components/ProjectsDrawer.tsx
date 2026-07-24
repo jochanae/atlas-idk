@@ -233,7 +233,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           {atlasExpanded && (
             <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 8 }}>
               {atlasConversations && atlasConversations.length > 0 ? (
-                atlasConversations.slice(0, 8).map((conv) => {
+                <>
+                  {atlasConversations.slice(0, atlasVisibleCount).map((conv) => {
                   const isActive = conv.id === activeAtlasSessionId;
                   const dest = resolveConversationDestination({
                     id: conv.id,
@@ -296,7 +297,26 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                       </span>
                     </button>
                   );
-                })
+                  })}
+                  {atlasConversations.length > atlasVisibleCount && (
+                    <button
+                      type="button"
+                      onClick={() => setAtlasVisibleCount((n) => n + ATLAS_PAGE_SIZE)}
+                      style={{ ...linkBtn, padding: "4px 14px" }}
+                    >
+                      +{atlasConversations.length - atlasVisibleCount} more conversation{atlasConversations.length - atlasVisibleCount === 1 ? "" : "s"}
+                    </button>
+                  )}
+                  {atlasVisibleCount > ATLAS_PAGE_SIZE && atlasConversations.length > ATLAS_PAGE_SIZE && (
+                    <button
+                      type="button"
+                      onClick={() => setAtlasVisibleCount(ATLAS_PAGE_SIZE)}
+                      style={{ ...linkBtn, padding: "4px 14px", opacity: 0.6 }}
+                    >
+                      Show less
+                    </button>
+                  )}
+                </>
               ) : (atlasConversations && atlasConversations.length === 0) ? (
                 <div style={{ padding: "4px 14px", fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.5, fontStyle: "italic" }}>No conversations yet.</div>
               ) : null}
