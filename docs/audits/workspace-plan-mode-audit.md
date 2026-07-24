@@ -1,228 +1,229 @@
 # Workspace Plan Mode — End-to-End Audit
 
 > Read-only audit. Repository evidence only; no product/code changes.
-> Date: 2026-07-24. Scope: Workspace composer “Plan Mode”, legacy `/api/chat` `planMode`, Nexus Conversation/Build posture, related dead Plan/Build remnants.
+> Date: 2026-07-24 (revised same day with corrected product intent).
+> Scope: Workspace composer “Plan Mode”, Plan Card artifact pipeline, legacy `/api/chat` `planMode`, Nexus Conversation/Build posture, related remnants.
 >
-> Spot-checked against: `ChatComposer.tsx`, `workspace.tsx`, `useAtlasConversation.ts`, `useNexusChatStream.ts`, `ConversationViewSwitcher.tsx`, `nexus.ts`, `chat.ts`, `ActiveRuns.tsx`, `mutationGuard.ts`, prior audits in `docs/audits/` and `docs/architecture/`.
+> Spot-checked against: `ChatComposer.tsx`, `workspace.tsx`, `PlanCard.tsx`, `AssistantBubble.tsx`, `lib/plan.ts`, `useChatStream.ts`, `useNexusChatStream.ts`, `ConversationViewSwitcher.tsx`, `nexus.ts`, `chat.ts`, `ActiveRuns.tsx`, `mutationGuard.ts`.
 
 ---
 
-## Verdict
+## Verdict (corrected framing)
 
-**On live Workspace, composer Plan Mode is UI-only.** Sends go through Nexus (`useNexusWorkspaceChat = true` → `atlasConv.submit()` → `/api/nexus/chat`) and **drop** `plan`/`build` mode. Prompt, tools, and side effects are unchanged by the checklist toggle.
+**Composer Plan Mode was never meant as a Conversation/Build posture switch.**
 
-The real Workspace posture control is **Conversation Mode vs Build Mode** (`conversationMode`), plus WhisperGate intent (CHAT / DECIDE / BUILD). Legacy `planMode` still exists on `/api/chat` (prompt + Haiku plan extraction) but is **not** driven by the Workspace composer anymore.
+Original product intent: a **signal to Joy that this strategic conversation should culminate in a Plan Card** — a dedicated presentation artifact summarizing the plan (steps, confidence, MoSCoW, approve/skip/review) for the user. Optional related deliverables (ARTIFACT blocks) were allowed; the distinctive output was the **Plan Card**, not a mode change.
+
+| Layer | Status on live Workspace (Nexus) |
+|-------|----------------------------------|
+| Composer checklist “Plan Mode” | **Cosmetic only** — mode flag never reaches Nexus |
+| Signal → PLAN prompt → Haiku extract → SSE Plan Card | **Dead** on Nexus; **alive** only on legacy `/api/chat` |
+| Plan Card UI (`PlanCard`, Review/Approve/Skip) | **Still mounted** in Workspace bubbles |
+| How a card can still appear without Plan Mode | Prose heuristic `detectPlanFromText`, restored history `runArtifacts`, home handoff seed |
+| Real posture switch today | Conversation Mode vs Build Mode (`conversationMode`) — **different product** |
 
 ---
 
-## 1. What happens internally when Plan Mode is enabled?
+## 0. What “Plan” actually meant
 
-### 1.1 Composer toggle (what the user sees)
+### Artifact signal, not agent mode
 
-| Step | Behavior |
-|------|----------|
-| Default | `composerMode = "build"` (`defaultComposerMode: "build"` in `workspace.tsx`) |
-| Toggle | Local React state only (`ChatComposer.togglePlanMode`) |
-| Chrome | Gold accent, “Plan Mode · Active/Strategizing” banner (~1.5s), checklist button pressed state |
-| Send click | `handleSend({ mode: composerMode })` |
+```
+User toggles Plan (checklist)  →  “this thread should produce a plan presentation”
+     ↓
+Joy responds strategically (structure, sequence — not FILE_EDIT by default)
+     ↓
+Server Haiku pass extracts structured plan JSON from the reply
+     ↓
+SSE plan_start (“Structuring plan…”) → SSE type:"plan"
+     ↓
+PlanCard: title, confidence, numbered steps, Review / Skip / Approve
+```
 
-### 1.2 Live send path (Nexus) — mode is discarded
+That is an **output contract**: end the strategic turn with a reviewable plan artifact. It is closer to “generate a Plan Card” than to Conversation Mode (“don’t use tools”).
+
+### Right verbiage
+
+Yes — **artifact** is the right word in this codebase:
+
+- Persisted as `runArtifacts` entry `{ type: "plan", meta: JSON }` and often `project_artifacts` type `"plan"`
+- Client field `message.planArtifact` / `StructuredPlanArtifact`
+- Rendered as the dedicated `PlanCard` component (not generic chat prose)
+
+Related but **not the same**:
+
+| Thing | What it is |
+|-------|------------|
+| **Plan Card** | Strategic plan presentation + Approve/Skip/Review |
+| **Conversation Mode** | Hard no-tools / no-build posture |
+| **DECIDE cards** | CLARIFY / TRADEOFF / DECISION_ARTIFACT — strategic cousins, different UI |
+| **`generate_deliverable`** | File deliverables (docx/pptx/xlsx/…) as output cards |
+| **Design Plan panel** | Product-design AM brief — name collision only |
+| **Billing PlanCard** | Subscription tier UI — unrelated |
+
+---
+
+## 1. Original pipeline (legacy `/api/chat`)
+
+### 1.1 Composer signal
+
+- Local `composerMode: "plan" | "build"` in `ChatComposer`
+- Send: `handleSend({ mode: composerMode })` → legacy body `{ planMode: true }`
+- Chrome: gold banner “Plan Mode · Strategizing / Active”
+
+### 1.2 Server
+
+```4723:4757:artifacts/api-server/src/routes/chat.ts
+  const activeMode = buildMode ? "build" : body.planMode ? "plan" : (body.mode ?? "think").toLowerCase();
+  // PLAN: structure/architecture/sequence; no FILE_EDIT unless asked; ARTIFACT still allowed
+```
+
+Post-response (the Plan Card factory):
+
+```6257:6295:artifacts/api-server/src/routes/chat.ts
+  const isPlanMode = activeMode === "plan" || Boolean(body.planMode);
+  if (isPlanMode && displayContent && displayContent.length > 40) {
+    res.write(`data: ${JSON.stringify({ type: "plan_start" })}\n\n`);
+    // Haiku extracts JSON → emit only if ≥2 steps and (estimatedChanges > 0 OR edit/push steps)
+```
+
+### 1.3 Client → Plan Card
+
+- `useChatStream`: `plan_start` → `awaitingPlan` (“Structuring plan…”); `plan` → `message.planArtifact`
+- `AssistantBubble`: maps `planArtifact` → `Plan` → `<PlanCard />` with Review / Skip / Approve
+- Approve with no FILE_EDITs → `onExecuteHomePlan` (resubmit plan as build instruction)
+- Approve with code edits → GitHub push flow
+
+**Env-gated v2:** `USE_STRUCTURED_PLAN` + `propose_plan` → `PlanArtifactCardV2` — still `/api/chat` only; Nexus sets `structuredPlanEnabled: false`.
+
+---
+
+## 2. What happens on live Workspace today
+
+### 2.1 Composer toggle still looks like a signal
+
+Banner, gold checklist, “Strategizing…” — product language still implies “we’re producing a plan.”
+
+### 2.2 Nexus drops the signal
 
 ```7708:7767:artifacts/atlas-frontend/src/pages/workspace.tsx
-  const handleSend = async (opts?: { mode: "plan" | "build" }) => {
-    if (useNexusWorkspaceChat) {
-      // ...
-      atlasConv.submit({
-        text,
-        stagedAttachments: staged.readyFiles,
-        // lifecycle callbacks only — no mode / planMode
-      })
-      // ...
-      return;
-    }
-    // legacy branch below sets planMode/buildMode — unreachable while flag is true
+  // useNexusWorkspaceChat === true → atlasConv.submit({ text, stagedAttachments, ... })
+  // no mode / planMode — return before legacy planMode/buildMode branch
 ```
 
-`useNexusWorkspaceChat` is hardcoded `true` (~4872). `AtlasConversationSubmission` has no plan/build fields. Nexus body accepts `conversationMode`, not `planMode`.
+`useNexusChatStream` has **no** `plan` / `plan_start` handlers. Nexus never runs the Haiku Plan Card extraction.
 
-**Net effect of enabling Plan Mode on current Workspace:** cosmetic only.
+**Net:** the checklist still *looks* like the old artifact signal, but it no longer triggers Plan Card generation.
 
-### 1.3 Legacy path (`POST /api/chat`) — if `planMode: true` ever arrives
+### 2.3 Residual Plan Card appearances (without Plan Mode)
 
-Still implemented in `chat.ts`:
+| Path | How |
+|------|-----|
+| `detectPlanFromText` | If Joy’s prose looks like a numbered plan, Workspace bubble may still show a Plan Card (heuristic, no SSE) |
+| History restore | Old `/api/chat` messages with `runArtifacts` type `plan` hydrate `planArtifact` |
+| Home handoff | Can seed a message with a `Plan` via sessionStorage |
 
-1. **Prompt:** appends `--- ACTIVE MODE: PLAN ---` — structure/architecture/sequence; no `FILE_EDIT` unless user asks; ARTIFACT still allowed.
-2. **Mode resolution:** `activeMode = buildMode ? "build" : planMode ? "plan" : (mode ?? "think")`.
-3. **No hard tool denylist** on classic chat for plan — gating is prompt-level + confidence/confirmation for writes.
-4. **Post-response:** if plan mode and reply length > 40 → SSE `plan_start` → Haiku extracts structured plan JSON → SSE `{ type: "plan", ... }` when estimatedChanges/edit steps qualify → persisted in `runArtifacts` → client `PlanCard`.
-
-Agent-loop structured tools (`propose_plan` / `revise_plan` / `commit_plan`) are env-gated (`USE_STRUCTURED_PLAN`) on `/api/chat` only; Nexus sets `structuredPlanEnabled: false`.
+None of these are driven by the composer Plan toggle on Nexus.
 
 ---
 
-## 2. How does it change the prompt, tools, agent behavior, or output?
+## 3. Prompt / tools / behavior — corrected reading
 
-### Composer Plan Mode on live Workspace
+### What Plan Mode originally changed (when wired)
 
-| Layer | Change when Plan Mode ON |
-|-------|--------------------------|
-| Prompt | None |
-| Tools | None |
-| Agent loop / WhisperGate | None |
-| Output / PlanCard extraction | None (`useNexusChatStream` has no `plan` / `plan_start` handlers) |
-| UI chrome | Banner, gold styling, placeholder copy |
-
-### What actually changes posture on Workspace
-
-**Conversation Mode** (`conversationMode: true` via `ConversationViewSwitcher`):
-
-```3997:3998:artifacts/api-server/src/routes/nexus.ts
-  } else if (conversationModeActive) {
-    systemPrompt += `\n\n--- CONVERSATION MODE ACTIVE ---
-... Do not call any tools, propose file edits, or take build actions...`;
-```
-
-- `allowBuildSideEffects = false`
-- `allowToolAccess = false`
-- Chat stream suppresses run cards / write proposals / terminal-style build UI
-
-**Build Mode** in the switcher = `conversationMode === false` (normal Nexus + WhisperGate).
-
-**WhisperGate** still classifies CHAT / DECIDE / BUILD from the message when not forced into Conversation Mode. DECIDE is the semantic cousin of “plan/decide with me” (options, tradeoffs, read tools allowed, no writes).
-
-### Legacy `/api/chat` `planMode` (not Workspace composer)
-
-| Layer | Change |
+| Layer | Effect |
 |-------|--------|
-| Prompt | PLAN instructions (structure, no FILE_EDIT by default) |
-| Tools | Soft (prompt); not a Nexus-style hard gate |
-| Output | Haiku → structured PlanCard SSE |
-| vs `buildMode` | Build forces FILE_EDIT expectation, readiness preflight, lens often forced to build |
+| Prompt | Bias toward strategic structure; discourage FILE_EDIT |
+| Tools | Soft (prompt), not a hard Nexus-style denylist |
+| Output | **The distinctive change:** Haiku → structured Plan Card artifact |
+| User actions | Review / Approve / Skip on that card |
+
+### What Conversation Mode changes (live, different feature)
+
+Hard `allowToolAccess = false`, `allowBuildSideEffects = false`, “thinking partner only” prompt. **Does not** manufacture a Plan Card.
+
+### What DECIDE / deliverables do on Nexus (live cousins)
+
+- **DECIDE:** CLARIFY / TRADEOFF / DECISION_ARTIFACT cards — strategic conversation artifacts, not Plan Cards
+- **`generate_deliverable`:** downloadable file cards (including “project plan” as docx/xlsx) — different shape and UX
 
 ---
 
-## 3. Is there any runtime behavior that differs from normal chat?
-
-### Live Workspace
-
-**No.** Same `atlasConv.submit` payload whether the checklist is on or off. Conversation Mode is the only explicit user posture switch that changes runtime.
-
-Enter key calls `handleSend()` without `{ mode }` even on the legacy branch; only the send-button path passed `composerMode` — another sign the mode wiring is half-migrated.
-
-### Legacy `/api/chat` with `planMode: true`
-
-Yes: PLAN prompt + optional PlanCard extraction. Callers today:
-
-- Dead Workspace `handleSend` legacy branch (unreachable while Nexus flag is true)
-- `ActiveRuns.intentToModeFlags("decide") → { planMode: true }` — but ActiveRuns form hardcodes `intent: "build"`, so decide→planMode is unused by the current UI
-- Any direct API callers still posting `planMode`
-
----
-
-## 4. Intentional or leftover from previous Plan/Build?
+## 4. Intentional vs leftover (reframed)
 
 | Piece | Assessment |
 |-------|------------|
-| Composer Plan Mode button + banner | **Leftover UI.** Wired for `/api/chat`; Nexus never receives mode. Misleading chrome. |
-| `defaultComposerMode: "build"` | **Remnant.** “Build” here no longer means `buildMode` on Nexus. |
-| Conversation / Build switcher | **Intentional successor.** File comment: Ask Joy removed; this owns Conversation vs Build in-place. |
-| `/api/chat` `ACTIVE MODE: PLAN` + Haiku extraction | **Intentional on legacy path**; orphaned from Workspace composer. |
-| Spec→Build handoff modal (`showHandoffModal`) | **Dead leftover.** `setShowHandoffModal(true)` never called; milestone 2.4 still lists “Plan→Build modal”. |
-| `onBuildAnyway` | **Dead leftover.** Prop threaded workspace → ChatStream → AssistantBubble; never invoked in bubble body. |
-| ActiveRuns `decide → planMode` | **Unused remnant** (form is BUILD-only). |
-| `mutationGuard` code `PLAN_MODE_BLOCKED` | **Intentional, different meaning** — blocks writes while run status is `planning` / `awaiting_confirmation`, unrelated to composer Plan Mode. |
-| Structured `propose_plan` tools | **Intentional** behind flags; not driven by composer Plan Mode; not on Nexus. |
-
-### Architecture (current)
-
-```
-[Composer Plan Mode toggle] ──opts.mode──► handleSend
-                                              │
-                    useNexusWorkspaceChat=true │
-                                              ▼
-                                    atlasConv.submit()  ──► /api/nexus/chat
-                                    (mode DROPPED)         WhisperGate + conversationMode
-
-[Conversation | Build switcher] ──conversationMode──► Nexus (LIVE posture)
-
-[Legacy /api/chat] ◄── planMode/buildMode ◄── ActiveRuns (build only) / dead handleSend branch
-                       PLAN prompt + Haiku PlanCard
-```
+| Composer Plan checklist as **artifact signal** | **Original intent**; **orphaned** from Nexus send path |
+| Haiku → Plan Card on `/api/chat` | **Intentional pipeline**; no longer reachable from Workspace composer |
+| Plan Card UI still in `AssistantBubble` | **Intentional shell**; fed mainly by prose detect / history / handoff |
+| Conversation / Build switcher | **Intentional posture** — not a replacement for Plan Cards |
+| Spec→Build modal | Dead leftover (`setShowHandoffModal(true)` never called) |
+| `onBuildAnyway` | Dead leftover |
+| Treating Plan Mode as “mode switch like Conversation Mode” | **Misread** — product intent was signal → plan presentation artifact |
 
 ---
 
-## 5. Dead or unreachable after Build Mode redesign?
+## 5. Dead / unreachable after Nexus migration
 
 | Item | Status |
 |------|--------|
-| Composer `mode` → Nexus submit | Dropped; no server effect |
-| `handleSend` legacy `planMode`/`buildMode` branch | Unreachable while `useNexusWorkspaceChat === true` |
-| Spec→Build modal | Never opened |
-| `onBuildAnyway` | Never called from bubble |
-| ActiveRuns `decide` → `planMode` | Intent fixed to `"build"` |
-| Enter-key without mode on legacy path | Would have ignored composer mode even if Nexus were off |
-| Milestone doc “Plan→Build modal” ceremony | Matches dead modal; Conversation/Build is the quiet replacement |
-
-**Not dead (live, separate concepts):**
-
-- Conversation/Build switcher + Nexus `conversationMode`
-- WhisperGate DECIDE / BUILD / CHAT
-- Plan artifact UI (`PlanCard`, prose detect, home→workspace plan handoff, Review tab)
-- Design Plan panel (product design AM — name collision only)
-- `PLAN_MODE_BLOCKED` mutation guard (run lifecycle)
+| Composer Plan → Plan Card pipeline | **Broken on Workspace** (signal dropped) |
+| Legacy `handleSend` `planMode` branch | Unreachable while `useNexusWorkspaceChat === true` |
+| Nexus Plan Card SSE | Never implemented (`structuredPlanEnabled: false`) |
+| Spec→Build modal / `onBuildAnyway` | Dead |
+| ActiveRuns `decide → planMode` | Unused (form hardcoded `intent: "build"`) |
 
 ---
 
-## 6. If Plan Mode were removed tomorrow, what would actually be lost?
+## 6. If composer Plan Mode were removed tomorrow
 
-### A. Remove only composer Plan Mode toggle / `planMode` flag plumbing
+### Lost
 
-**On live Workspace: almost nothing functional.** Users lose:
+1. Misleading “Plan Mode · Strategizing” chrome (already non-functional)
+2. Legacy `/api/chat` ability for callers that still set `planMode: true` to force Haiku Plan Cards
+3. The **named user affordance** that meant “this conversation should produce a Plan Card”
 
-1. Visual Plan Mode chrome (banner, gold checklist, “Strategizing…”)
-2. Legacy `/api/chat` `planMode` prompt + Haiku PlanCards for remaining `/api/chat` callers
-3. Unused ActiveRuns `decide → planMode` mapping
-4. Docs/comments that describe Plan Mode as a send-time Workspace mode
+### Not lost (unless you also delete them)
 
-**Kept:** Conversation/Build switcher, WhisperGate, PlanCard from other sources, Design Plan, mutationGuard.
+- Plan Card **component** and Approve/Skip/Review UX
+- Prose `detectPlanFromText` Plan Cards
+- Home handoff / Review-tab plans
+- DECIDE structured cards
+- `generate_deliverable`
+- Conversation Mode
 
-### B. Also remove Conversation Mode / Build Mode
+### What would actually be lost vs original intent
 
-Large regression: no explicit no-tools talk posture; tools/build side effects always available when WhisperGate allows BUILD.
-
-### C. Also remove all plan-artifact machinery
-
-Independent of the toggle: PlanCard review/approve, home handoff plans, structured plan DB/tools, Review-tab plans.
-
----
-
-## 7. If Plan Mode remains, what unique user value cannot Joy infer naturally?
-
-**Composer Plan Mode today has no unique runtime value.** Joy already:
-
-- Infers CHAT vs DECIDE vs BUILD via WhisperGate from the user’s words
-- Can be forced into pure talk via Conversation Mode (harder guarantee than “please just plan”)
-- Surfaces clarifications / tradeoffs on DECIDE without a Plan Mode flag
-- Can produce plan-like prose and (on legacy path) PlanCards without the composer toggle affecting Nexus
-
-| Capability | Needs composer Plan Mode? | Provided by |
-|------------|---------------------------|-------------|
-| “Don’t write code yet — think with me” | No | Conversation Mode (hard) or WhisperGate CHAT/DECIDE (soft) |
-| Structured options / tradeoffs | No | DECIDE |
-| Explicit no-tools guarantee | No | Conversation Mode / Just Talk |
-| PlanCard approve/execute UX | No | Legacy extraction / prose detect / agent-loop / home handoff |
-| Gold “I’m planning” affordance | Yes — but cosmetic only | Composer toggle |
-
-**Conclusion:** The only thing the Plan Mode button uniquely provides on Workspace is **a visible planning affordance that does not change behavior**. That is leftover from dual Plan/Build composer design, superseded by Conversation/Build + WhisperGate. Keeping it as-is risks teaching users that toggling Plan Mode changes Joy when it does not.
+The **user-controllable signal** “make this turn produce a Plan Card.” That capability is already gone on live Workspace; removing the button mainly removes the false promise. Restoring the original value requires **re-wiring** the signal into Nexus (or an equivalent Plan Card emission path), not keeping the dead toggle.
 
 ---
 
-## Recommendations (audit only — not implemented)
+## 7. Unique user value — corrected
 
-1. **Treat composer Plan Mode as deletion-candidate** (or re-wire into Nexus as an explicit posture if product still wants a planning-only mode distinct from Conversation Mode).
-2. **Do not conflate** composer Plan Mode with Conversation Mode, Design Plan, or `PLAN_MODE_BLOCKED`.
-3. **Clean up dead companions** in the same pass if removing the toggle: Spec→Build modal, unused `onBuildAnyway` wiring, ActiveRuns decide→planMode if decide UI stays gone.
-4. **Preserve** Conversation/Build + WhisperGate as the real posture system; preserve plan *artifacts* independently of the mode flag.
+**Original unique value (when wired):** an explicit user signal that the strategic turn should end in a **reviewable Plan Card artifact** (structured steps + approve path), not merely “talk strategically” or “don’t build yet.”
+
+Joy can often *infer* planning from language (WhisperGate DECIDE), and Conversation Mode can force no-tools talk — but neither is the same as:
+
+> “Summarize this strategy as a Plan Card I can approve.”
+
+**Today on Workspace:** that unique value is **not delivered** by the composer toggle. Closest living substitutes:
+
+1. DECIDE cards (strategic structure, different card types)
+2. Occasional prose-detected Plan Cards (unreliable, no forced Haiku pass)
+3. `generate_deliverable` for file “plans” (docx/xlsx) — different artifact class
+
+**If Plan Mode remains without re-wiring:** unique *runtime* value is none; unique *perceived* value is a broken promise.
+
+**If Plan Mode remains with re-wiring into Nexus:** unique value returns as the explicit “produce Plan Card” signal — something WhisperGate inference and Conversation Mode do not guarantee.
+
+---
+
+## Recommendations (audit only)
+
+1. **Product decision:** restore Plan-as-artifact-signal on Nexus, or remove the checklist so it stops implying Plan Cards.
+2. **Do not** conflate Plan Mode with Conversation Mode when deciding.
+3. If restoring: wire a Nexus equivalent of `planMode` → plan extraction (or model-emitted plan block) → SSE / bridge fields → existing `PlanCard`.
+4. Keep Plan Card UI and DECIDE/deliverable paths unless separately scoped for removal.
 
 ---
 
@@ -230,12 +231,11 @@ Independent of the toggle: PlanCard review/approve, home handoff plans, structur
 
 | Claim | Evidence |
 |-------|----------|
-| Nexus always on | `workspace.tsx` ~4872 `const useNexusWorkspaceChat = true` |
-| Mode dropped on send | `workspace.tsx` 7708–7767 |
-| PLAN prompt + Haiku | `chat.ts` 4723–4757, 6257–6295 |
-| Conversation Mode gates tools | `nexus.ts` 2971–2983, 3997–3998 |
-| Conversation/Build is successor | `ConversationViewSwitcher.tsx` header comment |
-| Handoff modal never opens | `rg setShowHandoffModal\(true\)` → zero matches |
-| ActiveRuns build-only | `ActiveRuns.tsx` ~556 `const intent: Intent = "build"` |
-| Nexus no structured plan | `nexus.ts` `structuredPlanEnabled: false` |
-| planMode is `/api/chat`-only | `docs/audits/atlas-runtime-dead-code-inventory.md` §3 / handler notes |
+| Plan Mode → Haiku Plan Card | `chat.ts` ~6257–6295 |
+| PLAN prompt biases strategy, allows ARTIFACT | `chat.ts` ~4750–4757 |
+| Client “Structuring plan…” + PlanCard | `useChatStream.ts` ~835–845; `AssistantBubble.tsx` ~2441–2482 |
+| PlanCard is approve/review artifact UI | `PlanCard.tsx` |
+| Nexus drops composer mode | `workspace.tsx` ~7708–7767 |
+| Nexus no plan SSE | `useNexusChatStream` (no handlers); `nexus.ts` `structuredPlanEnabled: false` |
+| Prose fallback Plan Card | `lib/plan.ts` `detectPlanFromText`; `AssistantBubble` ~1671–1674 |
+| Conversation Mode ≠ Plan Card | `ConversationViewSwitcher.tsx`; `nexus.ts` ~3997–3998 |
