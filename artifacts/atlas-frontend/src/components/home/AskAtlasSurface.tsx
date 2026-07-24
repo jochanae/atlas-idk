@@ -11,6 +11,7 @@
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { toast } from "sonner";
 import { AttachmentStrip } from "@/components/shared/AttachmentStrip";
 import { InterruptedStatusPill } from "@/components/composer/InterruptedStatusPill";
 
@@ -771,11 +772,16 @@ export function AskAtlasSurface({
                           artifact={artifact}
                           projectId={artifact.projectId ?? 0}
                           onOpen={(opened) => {
+                            // PDF Open is handled in-card (native viewer). This callback
+                            // is for non-viewable types that deep-link into Outputs.
+                            // Always use /project/:id — Ask Joy conversationIds are not
+                            // project conversations and bounce Workspace back to /home.
                             const pid = opened.projectId ?? artifact.projectId ?? 0;
-                            if (!pid) return;
-                            navigateToProjectOutput(pid, opened.artifactId, setLocation, {
-                              conversationId: conversationId ?? null,
-                            });
+                            if (!pid) {
+                              toast.error("This file isn’t linked to a project yet.");
+                              return;
+                            }
+                            navigateToProjectOutput(pid, opened.artifactId, setLocation);
                           }}
                         />
                       ))}

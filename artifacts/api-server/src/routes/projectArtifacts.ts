@@ -934,7 +934,14 @@ router.get("/projects/:id/artifacts/:artifactId/download", async (req, res): Pro
     response.headers.forEach((value, key) => res.setHeader(key, value));
     res.setHeader("Content-Type", found.mimeType);
     const safeTitle = found.row.title.replace(/[^a-z0-9-_ ]/gi, "").trim() || "deliverable";
-    res.setHeader("Content-Disposition", `attachment; filename="${safeTitle}.${found.extension}"`);
+    // Open (inline viewer) vs Download: `?inline=1` keeps bytes identical but lets
+    // the browser/native PDF viewer display instead of forcing a save dialog.
+    const inline =
+      req.query.inline === "1" ||
+      req.query.inline === "true" ||
+      String(req.query.disposition || "").toLowerCase() === "inline";
+    const disposition = inline ? "inline" : "attachment";
+    res.setHeader("Content-Disposition", `${disposition}; filename="${safeTitle}.${found.extension}"`);
     // F6A — download must still work for an artifact that failed verification
     // (nothing the user asked for should become inaccessible); this header
     // just lets the client show a "may be incomplete" affordance.

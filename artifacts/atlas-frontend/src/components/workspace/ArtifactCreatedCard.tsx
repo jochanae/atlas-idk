@@ -1,5 +1,7 @@
 import { type CSSProperties, useState, useEffect, useCallback } from "react";
 import { Download, FileOutput, Maximize2, Minimize2, Copy, Check, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import { openGeneratedArtifact } from "@/lib/openGeneratedArtifact";
 
 export interface GeneratedArtifactMeta {
   artifactId: number | string;
@@ -198,22 +200,33 @@ function HtmlAppCard({ artifact, projectId, onOpen }: Props) {
   );
 }
 
-export function ArtifactCreatedCard({ artifact, projectId, onOpen }: Props) {
-  const isHtmlApp = artifact.type === "html-app" || artifact.type === "html" || artifact.type === "html_preview" || artifact.extension === "html";
-
-  if (isHtmlApp) {
-    return <HtmlAppCard artifact={artifact} projectId={projectId} onOpen={onOpen} />;
-  }
-
+function FileDeliverableCard({ artifact, projectId, onOpen }: Props) {
   const label = typeLabel(artifact.type, artifact.extension);
+  const [opening, setOpening] = useState(false);
 
   const handleOpen = () => {
-    window.dispatchEvent(
-      new CustomEvent("axiom:open-output", {
-        detail: { artifactId: artifact.artifactId, projectId },
-      }),
-    );
-    onOpen?.(artifact);
+    if (opening) return;
+    setOpening(true);
+    void (async () => {
+      try {
+        const result = await openGeneratedArtifact(artifact, {
+          onOpenWorkspaceOutput: () => {
+            // Workspace surfaces listen for this; Ask Joy relies on onOpen navigation.
+            window.dispatchEvent(
+              new CustomEvent("axiom:open-output", {
+                detail: { artifactId: artifact.artifactId, projectId },
+              }),
+            );
+            onOpen?.(artifact);
+          },
+        });
+        if (!result.ok) {
+          toast.error(result.message);
+        }
+      } finally {
+        setOpening(false);
+      }
+    })();
   };
 
   return (
@@ -252,8 +265,14 @@ export function ArtifactCreatedCard({ artifact, projectId, onOpen }: Props) {
       </div>
 
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-        <button type="button" onClick={handleOpen} style={btnPrimary}>
-          Open
+        <button
+          type="button"
+          onClick={handleOpen}
+          disabled={opening}
+          aria-busy={opening}
+          style={{ ...btnPrimary, opacity: opening ? 0.7 : 1, cursor: opening ? "wait" : "pointer" }}
+        >
+          {opening ? "Opening…" : "Open"}
         </button>
         <a
           href={artifact.downloadUrl}
@@ -266,6 +285,16 @@ export function ArtifactCreatedCard({ artifact, projectId, onOpen }: Props) {
       </div>
     </div>
   );
+}
+
+export function ArtifactCreatedCard({ artifact, projectId, onOpen }: Props) {
+  const isHtmlApp = artifact.type === "html-app" || artifact.type === "html" || artifact.type === "html_preview" || artifact.extension === "html";
+
+  if (isHtmlApp) {
+    return <HtmlAppCard artifact={artifact} projectId={projectId} onOpen={onOpen} />;
+  }
+
+  return <FileDeliverableCard artifact={artifact} projectId={projectId} onOpen={onOpen} />;
 }
 
 const iconBtn: CSSProperties = {
