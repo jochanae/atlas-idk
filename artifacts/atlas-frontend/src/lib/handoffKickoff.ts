@@ -41,9 +41,34 @@ export function isHandoffContinuationMessage(content: string | null | undefined)
   if (!content) return false;
   const trimmed = content.trim();
   if (trimmed === HANDOFF_CONTINUATION_MESSAGE) return true;
-  // Tolerate minor wording drift from backup primes.
+  const lower = trimmed.toLowerCase();
+  // Current contract (P9).
+  if (
+    lower.startsWith("continue the prior thread") &&
+    lower.includes("do not acknowledge the handoff")
+  ) {
+    return true;
+  }
+  // Brief / named-project continuation primes (still hidden from UI).
+  if (
+    lower.includes("do not acknowledge") &&
+    (lower.includes("ask what is first") ||
+      lower.includes("ask what we are building") ||
+      lower.includes("ask what's first"))
+  ) {
+    return true;
+  }
+  // Named-project continue primes without the acknowledge clause.
+  if (
+    lower.startsWith("continue in ") &&
+    (lower.includes("do not ask what is first") ||
+      lower.includes("do not ask what we are building"))
+  ) {
+    return true;
+  }
+  // Legacy wording (pre–2.4 Phase A) — still hide if replayed from storage.
   return (
-    trimmed.startsWith("Continue from where we left off") &&
-    trimmed.includes("acknowledge the handoff")
+    lower.startsWith("continue from where we left off") &&
+    lower.includes("acknowledge the handoff")
   );
 }

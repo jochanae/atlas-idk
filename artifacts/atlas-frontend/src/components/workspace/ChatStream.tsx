@@ -1108,7 +1108,7 @@ export function ChatStream(props: ChatStreamProps) {
           <CommitGreetingBubble
             text={
               commitCarryover.greeting?.trim() ||
-              "Okay — this is a project now. Where do you want to take it first?"
+              "Let's continue from here."
             }
           />
         </>
