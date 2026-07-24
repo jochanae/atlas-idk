@@ -30,6 +30,7 @@ import {
   processTurnIdempotencyStore,
 } from "../lib/attachmentTurnIdempotency";
 import { draftCaptureLedgerDecision } from "../lib/ledgerAutoCapture";
+import { detectDeferralParkCandidates } from "../lib/detectDeferralParkCandidates";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { vectorSearch, buildRagBlock } from "../lib/embeddings";
@@ -5918,6 +5919,13 @@ PROSE RULES (enforced — contradiction detection is active):
       return;
     }
 
+    const parkCandidates = focusProjectId
+      ? detectDeferralParkCandidates({
+          userMessage: body.message ?? "",
+          assistantResponse: visibleContent,
+        })
+      : [];
+
     res.write(`event: done\ndata: ${JSON.stringify({
       content: visibleContent,
       runId: activeRunId,
@@ -5941,6 +5949,7 @@ PROSE RULES (enforced — contradiction detection is active):
       ...(runtimeCard ? { runtimeCard } : {}),
       ...(decisionDraft ? { decisionDraft } : {}),
       ...(nextSuggestions ? { nextSuggestions } : {}),
+      ...(parkCandidates.length > 0 ? { parkCandidates } : {}),
       ...(thinkingStable ? { thinkingStable: true } : {}),
       ...(pendingNavProjectId !== null
         ? {

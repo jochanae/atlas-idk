@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db, entriesTable, projectTier1MemoryTable, getTier1MissingFields, TIER1_FIELD_KEYS, type Tier1FieldKey, type Tier1Answers } from "@workspace/db";
 import { sql, eq } from "drizzle-orm";
 import { logger } from "./logger";
-import { shouldAutoPark } from "./parkingConfidence";
+import { shouldAutoPark, parkActionForConfidence } from "./parkingConfidence";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -123,7 +123,7 @@ export async function maybeExtractThinkingReceipts(opts: {
   atlasResponse: string;
   /** True when Joy emitted THINKING_STABLE — use more aggressive extraction. */
   stable?: boolean;
-  /** When provided, high-confidence Decision receipts (≥90) are auto-promoted to the Ledger. */
+  /** When provided, Decision receipts ≥95 auto-park; 80–94 never silent-park (consent card path). */
   projectId?: number;
   /** Chat message ID to attribute auto-promoted ledger entries to. */
   messageId?: number | null;
@@ -189,10 +189,28 @@ Rules:
       // High-confidence Decision receipts stay as receipts until the user
       // explicitly promotes via WorkspaceReceiptsBar / promote endpoint.
       if (opts.projectId) {
-        // Contract: only silent-park at ≥95 confidence (parkingConfidence.ts)
+      // Contract: only silent-park at ≥95 confidence (parkingConfidence.ts).
+        // Mid-band (80–94) is handled by detectDeferralParkCandidates → Park this? consent card.
+        // Do not silent-park ask-band receipts.
         const parkedCandidates = receipts.filter(
           (r) => r.category === "Decision" && shouldAutoPark(r.confidence),
         );
+        const askBand = receipts.filter((r) => {
+          if (r.category !== "Decision") return false;
+          const action = parkActionForConfidence(r.confidence);
+          return action === "ask";
+        });
+        if (askBand.length > 0) {
+          logger.info(
+            {
+              userId: opts.userId,
+              projectId: opts.projectId,
+              count: askBand.length,
+              headlines: askBand.map((r) => r.headline),
+            },
+            "thinking receipt mid-band Decision — defer to Park this? consent (not silent-parked)",
+          );
+        }
         for (const r of parkedCandidates) {
           try {
             await db.insert(entriesTable).values({

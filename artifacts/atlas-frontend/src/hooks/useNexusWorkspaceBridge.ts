@@ -130,6 +130,8 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     costUsd: nm.costUsd ?? undefined,
     ...(nm.clarify ? { clarify: nm.clarify as ChatMessage["clarify"] } : {}),
     ...(nm.tradeoffMatrix ? { tradeoffMatrix: nm.tradeoffMatrix as ChatMessage["tradeoffMatrix"] } : {}),
+    ...(nm.decisionDraft ? { decisionDraft: nm.decisionDraft as ChatMessage["decisionDraft"] } : {}),
+    ...(nm.parkCandidates?.length ? { parkCandidates: nm.parkCandidates as ChatMessage["parkCandidates"] } : {}),
     ...(nm.decisionArtifacts?.length ? { decisionArtifacts: nm.decisionArtifacts as ChatMessage["decisionArtifacts"] } : {}),
     ...(nm.generatedArtifacts?.length ? { generatedArtifacts: nm.generatedArtifacts as ChatMessage["generatedArtifacts"] } : {}),
     ...(nm.runtimeCard ? { runtimeCard: nm.runtimeCard as ChatMessage["runtimeCard"] } : {}),

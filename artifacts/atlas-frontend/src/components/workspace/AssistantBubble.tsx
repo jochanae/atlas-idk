@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useAtlasHistory, type HistoryIntent } from "@/lib/atlas-history";
 
 import { CommitCard } from "../CommitCard";
+import { ParkConsentCard } from "../ParkConsentCard";
 import { PlanCard } from "../PlanCard";
 import { MarkdownProse } from "../MessageRenderer";
 import { AtlasActionRow } from "../home/AtlasActionRow";
@@ -1644,6 +1645,7 @@ function AssistantBubbleImpl({
   const [selfApplyStatus, setSelfApplyStatus] = useState<"idle" | "applying" | "done" | "error">("idle");
   const [selfApplyMsg, setSelfApplyMsg] = useState("");
   const [commitCardDone, setCommitCardDone] = useState(false);
+  const [parkConsentDone, setParkConsentDone] = useState(false);
   const [imageExpanded, setImageExpanded] = useState(false);
   const activeEdits = message.fileEdits ?? (message.fileEdit ? [message.fileEdit] : []);
   const planMessageId = message.id ?? 0;
@@ -2830,6 +2832,20 @@ function AssistantBubbleImpl({
                   projectId={projectId}
                 />
               )}
+
+              {!message.streaming &&
+                !parkConsentDone &&
+                projectId &&
+                Array.isArray(message.parkCandidates) &&
+                message.parkCandidates.length > 0 && (
+                  <ParkConsentCard
+                    candidate={message.parkCandidates[0]!}
+                    projectId={projectId}
+                    sessionId={sessionId}
+                    sourceMessageId={typeof message.id === "number" ? message.id : undefined}
+                    onDone={() => setParkConsentDone(true)}
+                  />
+                )}
             </>
           );
         })()}

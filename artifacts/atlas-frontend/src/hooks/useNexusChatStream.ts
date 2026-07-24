@@ -168,6 +168,17 @@ export interface NexusMessage {
   extractionQueued?: boolean;
   /** Structured clarification card emitted by Joy on DECIDE turns when target is ambiguous. */
   clarify?: { steps: Array<{ question: string; options: string[]; allowFreeText?: boolean; reason?: string }> } | null;
+  /** Ledger decision draft awaiting confirm-to-commit. */
+  decisionDraft?: { entryId: number; title: string } | null;
+  /** Mid-band park consent — create parked entry only on user confirm. */
+  parkCandidates?: Array<{
+    title: string;
+    summary: string;
+    confidence: number;
+    category?: string;
+    suggestedType?: string;
+    source?: string;
+  }> | null;
   /** Structured tradeoff matrix emitted by Joy on DECIDE turns for binary/multi-way choices. */
   tradeoffMatrix?: { question: string; options: Array<{ label: string; pros: string[]; cons: string[]; atlas_leans?: boolean }>; context?: string } | null;
   /** Decision Intelligence artifacts (Tradeoff Matrix / Decision Tree / Deviation Log) generated this turn. */
@@ -1001,6 +1012,10 @@ export function useNexusChatStream(
                     githubPush: ((meta as any).githubPush ?? null) as NexusMessage["githubPush"],
                     awaitingAuthorization: ((meta as any).awaitingConfirmation ?? null) as NexusMessage["awaitingAuthorization"],
                     attachmentContinuity: ((meta as any).attachmentContinuity ?? null) as NexusMessage["attachmentContinuity"],
+                    decisionDraft: ((meta as any).decisionDraft ?? null) as NexusMessage["decisionDraft"],
+                    parkCandidates: (Array.isArray((meta as any).parkCandidates)
+                      ? (meta as any).parkCandidates
+                      : null) as NexusMessage["parkCandidates"],
                   };
             }));
             const continuity = (meta as any).attachmentContinuity as NexusMessage["attachmentContinuity"];

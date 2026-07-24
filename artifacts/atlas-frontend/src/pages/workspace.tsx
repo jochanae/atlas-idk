@@ -361,6 +361,15 @@ export interface ChatMessage {
     createdAt: string;
   }> | null;
   decisionDraft?: { entryId: number; title: string } | null;
+  /** Mid-band (80–94) park consent candidates — create only on user confirm. */
+  parkCandidates?: Array<{
+    title: string;
+    summary: string;
+    confidence: number;
+    category?: string;
+    suggestedType?: string;
+    source?: string;
+  }> | null;
   fileEdit?: FileEdit;
   fileEdits?: FileEdit[];
   linePatches?: LinePatch[];
