@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useLocation } from "wouter";
+import { JoyEmblem } from "@/components/landing/JoyEmblem";
 
 const mono: CSSProperties = {
   fontFamily: "Inter, sans-serif",
