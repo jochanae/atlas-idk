@@ -79,7 +79,7 @@ Conversation should feel like working with a capable collaborator already inside
 
 **Governing rule (P9):** One arrival experience — continue the work — across refresh, handoff, Workspace open, return, and resume.
 
-**Status:** Phases 0–E **CLOSED** (`#224`–`#227` + D/E closeout). Production validation: **T1–T5 PASS** (preserve); **T6 FAIL** ([evidence](./milestone-2-4-phase-e-t6-pivot-fail.md)). Remaining ops: T6 retest + Flow-surface arrival + T7–T11.
+**Status:** Phases 0–E **CLOSED** (`#224`–`#227` + D/E closeout + `#231` T6 fix). Production validation: **T1–T7 PASS** (T6 verified after `#231`). Remaining ops: Flow-surface arrival + T8–T11.
 
 **Depends on:** 2.2 ✅ and 2.3 ✅ (distinct lenses).
 
@@ -101,7 +101,7 @@ Conversation should feel like working with a capable collaborator already inside
 2.4 Natural conversation      ✅ CLOSED
 ```
 
-**M2 intelligence sub-track CLOSED** (2.1–2.4). Ops: finish 2.4 live battery (T1–T5 PASS; **T6 FAIL open**; Flow + T7–T11) before launch / pivot-trust claims.
+**M2 intelligence sub-track CLOSED** (2.1–2.4). Ops: finish 2.4 live battery (**T1–T7 PASS**; Flow + T8–T11 open) before full launch claims.
 ---
 
 ## Explicit non-goals for M2
@@ -134,3 +134,4 @@ Conversation should feel like working with a capable collaborator already inside
 | 2026-07-24 | **2.4 Phase A CLOSED** (`#225`). Phase B thesis locked (work language / delete process language + Blind Read Test); Phase B started. |
 | 2026-07-24 | **2.4 Phase B CLOSED** (`#226`). Phase C Honest Execution started. |
 | 2026-07-24 | **2.4 Phase C CLOSED** (`#227`). Phase D subtractive prompt posture + Phase E closeout. **Milestone 2.4 CLOSED.** |
+| 2026-07-24 | **2.4 Phase E production** — **T1–T7 PASS** (T6 fail → `#231` → retest PASS). Evidence: [rollup](./milestone-2-4-phase-e-production-validation.md). Flow + T8–T11 remain. |

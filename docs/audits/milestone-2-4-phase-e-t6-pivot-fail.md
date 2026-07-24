@@ -1,10 +1,13 @@
-# Production Validation — T6 Failed
+# Production Validation — T6 Failed → Verified PASS
 
 **Date:** 2026-07-24  
 **Workspace:** SanctumIQ → Reveal (rename accepted mid-thread)  
-**Result:** T6 — Mid-conversation pivot ❌ **FAIL**  
+**Initial result:** T6 — Mid-conversation pivot ❌ **FAIL**  
+**Resolution:** Fixed in `#231`; **re-verified ✅ PASS** on production  
 **Parent evidence:** [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md)  
 **Design-battery map:** Production T6 ≈ design **T11** (interrupt/pivot); related to T7 mind-change
+
+> **Status:** Historical fail record. Do not treat as still open. Current tally: T6 PASS after `#231`.
 
 ---
 
@@ -92,3 +95,14 @@ After a conversational pivot:
 ## Preserve from the same thread
 
 The rename exchange was good: Joy noticed “Reveal” did not match workspace identity, accepted the correction, and carried the rename forward. Do not regress that.
+
+---
+
+## Resolution
+
+| | |
+|--|--|
+| Fix PR | `#231` |
+| Change | Quiet-strip unsupported claims; continue streaming after skip; remove `I started to claim…`; tighten INT-39 |
+| Production retest | ✅ **PASS** (founder-confirmed, 2026-07-24) |
+| Current tally | T6 PASS — see [Phase E rollup](./milestone-2-4-phase-e-production-validation.md) |

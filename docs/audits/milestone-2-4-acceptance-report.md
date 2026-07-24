@@ -45,9 +45,9 @@
 | Roadmap A→E | ✅ | Complete |
 
 **Engineering / design acceptance:** **MET** (A–D).  
-**Live production battery:** **T1–T5 PASS · T6 FAIL** (2026-07-24). Flow-surface arrival + T7–T11 remain ops follow-up.
+**Live production battery:** **T1–T7 PASS** (2026-07-24; T6 verified after `#231`). Flow-surface arrival + T8–T11 remain ops follow-up.
 
-Evidence: [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md) · T6: [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
+Evidence: [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md) · T6 history: [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
 
 ---
 
@@ -60,11 +60,12 @@ Evidence: [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-pha
 | T3 Stage Theater | ✅ PASS — pricing prompt stayed on work; no planning/shaping/“Joy still needs…” | **Preserve** |
 | T4 | ✅ PASS (founder-confirmed) | **Preserve** |
 | T5 | ✅ PASS (founder-confirmed) | **Preserve** |
-| T6 Mid-conversation pivot | ❌ FAIL — Stripe Connect pivot replaced by attachment diagnostic + “I started to claim…” | **Fix** — current intent must outrank stale attachment guard |
+| T6 Mid-conversation pivot | ✅ PASS — verified after `#231` (initial fail documented) | **Preserve** quiet-strip + no mechanics dump |
+| T7 | ✅ PASS (founder-confirmed) | **Preserve** |
 
-**Soft bias (not T3):** Opening mentioned stale attachments (“Both files came through…”) before pricing — see [prioritization audit](./milestone-2-4-conversation-prioritization-audit.md).
+**Soft bias (not a tally fail):** Opening mentioned stale attachments (“Both files came through…”) before pricing — see [prioritization audit](./milestone-2-4-conversation-prioritization-audit.md).
 
-**Still open:** Axiom Flow surface arrival; T6 fix verify on prod; T7–T11.
+**Still open:** Axiom Flow surface arrival; T8–T11.
 
 ---
 
@@ -94,9 +95,8 @@ Evidence: [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-pha
 
 | Item | Owner | Notes |
 |------|-------|-------|
-| T6 pivot / attachment-guard override | Eng | **Production FAIL** — quiet-strip + no mechanics dump; see [T6](./milestone-2-4-phase-e-t6-pivot-fail.md) |
-| Live T7–T11 + Flow-surface arrival | Ops / founder | T1–T5 PASS; T6 fail open; Flow surface not yet verified |
-| Conversation prioritization (weighted context) | Eng / product | Soft opening bias + T6 family; see [audit](./milestone-2-4-conversation-prioritization-audit.md) |
+| Live T8–T11 + Flow-surface arrival | Ops / founder | T1–T7 PASS; Flow surface not yet verified |
+| Conversation prioritization (weighted context) | Eng / product | Soft opening bias only; T6 hard fail resolved via `#231`; see [audit](./milestone-2-4-conversation-prioritization-audit.md) |
 | Server continue-pending for in-flight interrupt (full B4) | Eng | Client truncate landed; server attach-to-pending remains |
 | Soft Continue threshold unification (detectHomeHandoff heuristics) | Eng | Prompt soft-bridge deleted; detector heuristics optional follow-up |
 | Side-by-side lens compare UI | Product | Out of 2.4 |
@@ -126,7 +126,7 @@ Phase E adds **no new product behavior**. It confirms:
 2. Prompt Independence Test documented Pass  
 3. Deferred list explicit  
 4. Parent board marks **2.4 CLOSED**  
-5. **2026-07-24 production update:** T1–T5 PASS (preserve); **T6 FAIL** — attachment guard overrode clear pivot; fix required before pivot-trust claims
+5. **2026-07-24 production update:** **T1–T7 PASS** (T6 verified after `#231`); preserve; Flow + T8–T11 remain
 
 ---
 
@@ -134,7 +134,7 @@ Phase E adds **no new product behavior**. It confirms:
 
 | Role | Decision |
 |------|----------|
-| Engineering (this report) | **Milestone 2.4 CLOSED** (A–D); Phase E live battery partial |
-| Live prod battery | T1–T5 PASS; **T6 FAIL**; T7–T11 + Flow remaining |
-| T6 / prioritization | Fix attachment-guard override; do not reopen arrival/stage theater |
-| Start next track | Unblocked for planning; do not claim pivot trust until T6 retest PASS |
+| Engineering (this report) | **Milestone 2.4 CLOSED** (A–D); Phase E live battery **T1–T7 PASS** |
+| Live prod battery | T1–T7 PASS; T8–T11 + Flow remaining |
+| T6 / prioritization | T6 resolved (`#231`); soft opening bias optional |
+| Start next track | Unblocked; pivot trust supported by T6 retest PASS |

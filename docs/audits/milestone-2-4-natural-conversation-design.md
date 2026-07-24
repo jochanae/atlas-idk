@@ -633,7 +633,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 - Side-by-side lens compare UI (2.3 Phase D deferral)  
 - Full disagreement synthesis mode  
 - 2.3 production live T1–T6 (ops redeploy — track separately)  
-- Conversation prioritization / weighted context (stale attachments vs current intent) — [audit](./milestone-2-4-conversation-prioritization-audit.md); T6 production FAIL documented in [t6](./milestone-2-4-phase-e-t6-pivot-fail.md)
+- Conversation prioritization / weighted context (soft opening bias) — [audit](./milestone-2-4-conversation-prioritization-audit.md); T6 hard fail resolved `#231` ([history](./milestone-2-4-phase-e-t6-pivot-fail.md))
 
 ---
 
@@ -649,7 +649,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | Phased roadmap | ✅ §5 (A→E approved) |
 | Human design freeze | ✅ Approved 2026-07-23 |
 
-**Next:** Milestone closed. Production T1–T5 PASS (preserve); **T6 FAIL** (fix + retest). Remaining: Flow-surface arrival, T7–T11.
+**Next:** Milestone closed. Production **T1–T7 PASS** (T6 verified after `#231`). Remaining: Flow-surface arrival, T8–T11.
 
 ---
 
@@ -664,7 +664,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | 2026-07-24 | Phase C **CLOSED** (`#227`). Phase D thesis locked (subtractive + Prompt Independence Test). |
 | 2026-07-24 | Phase D **CLOSED** — subtractive prompt pass. Phase E validation closeout. **Milestone 2.4 CLOSED.** |
 | 2026-07-24 | Phase E production update — T1–T3 **PASS** on live host. Conversation prioritization deferred (not T3 fail / not attachment bug). |
-| 2026-07-24 | Phase E update — T4–T5 **PASS**; **T6 FAIL** (pivot → attachment diagnostic + “I started to claim…”). Guard quiet-strip fix. |
+| 2026-07-24 | Phase E update — T4–T5 **PASS**; **T6 FAIL** then `#231` fix + retest **PASS**; **T7 PASS**. Running tally **T1–T7 PASS**. |
 
 ---
 
@@ -678,8 +678,8 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | [`milestone-2-4-phase-c-honest-execution.md`](./milestone-2-4-phase-c-honest-execution.md) | Phase C Honest Execution landing |
 | [`milestone-2-4-phase-d-prompt-posture.md`](./milestone-2-4-phase-d-prompt-posture.md) | Phase D subtractive prompt posture |
 | [`milestone-2-4-acceptance-report.md`](./milestone-2-4-acceptance-report.md) | Phase E — milestone acceptance |
-| [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md) | Live T1–T5 PASS + T6 FAIL rollup |
-| [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md) | T6 pivot fail evidence + acceptance |
+| [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md) | Live T1–T7 PASS rollup |
+| [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md) | T6 fail → verified PASS after `#231` |
 | [`milestone-2-4-conversation-prioritization-audit.md`](./milestone-2-4-conversation-prioritization-audit.md) | Weighted context / current-intent ranking |
 | [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md) | Prior close; deferred UX → 2.4 |
 | [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md) | Perspective without performance baseline |

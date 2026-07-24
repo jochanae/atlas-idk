@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-24  
 **Source:** Phase E production validation  
-**Class:** Current-intent ranking — spans soft opening bias **and** hard T6 fail  
-**Blocks launch claims?** T6 fail must be fixed before claiming pivot trust  
+**Class:** Current-intent ranking — soft opening bias remains; hard T6 fail **resolved** (`#231`, retest PASS)  
+**Blocks launch claims?** No longer blocked on T6; soft opening polish optional  
 **Related:** [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md) · [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
 
 ---
@@ -77,6 +77,7 @@ Humans do not begin a new design discussion by mentioning unrelated documents re
 |----|--------|
 | Context prioritization / current-intent routing | Broken file storage / upload pipeline |
 | Weighted memory + quieter attachment guard | Stage-theater failure (T3 still PASS) |
-| T6 production defect with clear acceptance criteria | Reason to reopen arrival / stage theater |
+| Soft opening-weight polish (optional) | Reason to reopen arrival / stage theater |
+| T6 resolved via `#231` + production retest PASS | Open hard fail (closed) |
 
-**Engineering note:** `attachmentOutputGuard` must quiet-strip unsupported claims and must not replace a whole non-attachment answer with attachment recovery copy. Never expose `I started to claim…`.
+**Engineering note (shipped in `#231`):** `attachmentOutputGuard` quiet-strips unsupported claims and must not replace a whole non-attachment answer with attachment recovery copy. Never expose `I started to claim…`. Preserve that behavior.
