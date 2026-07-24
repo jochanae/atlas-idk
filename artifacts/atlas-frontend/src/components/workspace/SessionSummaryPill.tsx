@@ -282,7 +282,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
               </div>
               <div style={{ padding: "8px 12px 10px", borderTop: "1px solid color-mix(in oklab, var(--atlas-border, #2a2a36) 60%, transparent)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <Clock size={10} strokeWidth={2} aria-hidden />
+                  <Brain size={10} strokeWidth={2} aria-hidden />
                   {timeAgo(data!.summaryAt!)}
                 </span>
                 <button
@@ -304,7 +304,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
             </>
           ) : (
             <div style={{ padding: "18px 14px", textAlign: "center", fontFamily: "var(--app-font-sans)" }}>
-              <Clock size={18} strokeWidth={1.5} aria-hidden style={{ color: "color-mix(in oklab, var(--atlas-gold) 55%, transparent)", opacity: 0.7 }} />
+              <Brain size={18} strokeWidth={1.5} aria-hidden style={{ color: "color-mix(in oklab, var(--atlas-gold) 55%, transparent)", opacity: 0.7 }} />
               <p style={{ margin: "8px 0 0", fontSize: 12.5, lineHeight: 1.5, color: "var(--atlas-muted)" }}>
                 Nothing to remember yet.<br />Joy will hold onto what matters as you work.
               </p>
