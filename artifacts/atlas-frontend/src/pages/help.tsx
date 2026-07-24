@@ -33,11 +33,11 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What is the Master Map?",
-    a: "The Master Map (/map) is the satellite view of your entire Axiom ecosystem. The home space sits at the center as the anchor hub, and all your projects orbit around it as satellite nodes. Node glow intensity reflects recent activity — bright means actively worked on, dim means dormant. Tap any node to open its workspace or jump directly to its local System Map. Access it from the Projects drawer or the side menu.",
+    a: "The Master Map (/map) is the satellite view of your entire Axiom ecosystem. The center hub opens Ask Joy with portfolio-wide context. Committed projects orbit as satellites — tap one to drill into its Architecture layer (ledger-derived nodes), then Assets. From a project you can open Axiom Flow, the Workspace, /code, or the Ledger. Access it from the Projects drawer or the side menu.",
   },
   {
     q: "What is the System Map?",
-    a: "The System Map is the street view — a technical blueprint for a single project. It shows the architecture of your project (auth, database, API routes, state, UI, and business logic) as interconnected nodes. It lives inside each Joy workspace under the Map tab. The Master Map is your satellite view of all projects; the System Map is your ground-level view of one.",
+    a: "The System Map is the technical architecture strip (auth, database, API, state, UI, logic) shown under Axiom Flow on desktop. Axiom Flow is the primary strategic map — Joy's living understanding of goals, requirements, blockers, and decisions. The Master Map is your satellite view of all projects; Axiom Flow is the ground-level strategic view of one.",
   },
   {
     q: "How do I link a GitHub repository?",

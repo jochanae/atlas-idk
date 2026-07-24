@@ -4,8 +4,38 @@ import { useLocation } from "wouter";
 import * as THREE from "three";
 import { haptics } from "@/lib/haptics";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
-import { useMapStore, type MapNode } from "@/lib/master-map-store";
+import { useMapStore, type MapNode, SUBTYPE_COLORS, type SubComponentType } from "@/lib/master-map-store";
 import { LayerStack, type LayerNodeRecord } from "@/lib/master-map-layers";
+
+/** Normalize GET /map-nodes — API returns `{ projectId, entityType, nodes }`, not a bare array. */
+function normalizeMapNodesResponse(raw: unknown): MapNode[] {
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : (raw && typeof raw === "object" && Array.isArray((raw as { nodes?: unknown }).nodes))
+      ? (raw as { nodes: unknown[] }).nodes
+      : [];
+  return list
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+    .map((n) => {
+      const subType = typeof n.subType === "string" ? (n.subType as SubComponentType) : undefined;
+      return {
+        id: String(n.id ?? ""),
+        label: typeof n.label === "string" ? n.label : "Untitled",
+        type: "COMPONENT" as const,
+        subType,
+        description: typeof n.description === "string" ? n.description : undefined,
+        status: (typeof n.status === "string"
+          && ["active", "paused", "completed", "backlog"].includes(n.status))
+          ? (n.status as MapNode["status"])
+          : undefined,
+        position: [0, 0, 0] as [number, number, number],
+        color: typeof n.color === "string"
+          ? n.color
+          : (subType && SUBTYPE_COLORS[subType]) || "#C9A24C",
+      };
+    })
+    .filter((n) => n.id.length > 0);
+}
 
 // ── Theme palette for the 3D scene + HUD ─────────────────────────────────────
 type ScenePalette = {
@@ -137,16 +167,10 @@ type Project = {
 };
 type Connection = { a: number; b: number; strength: number };
 type DecisionStats = { committed: number; tension: number };
-type PeekEntry = { id: number; title: string };
-type PeekState = {
+/** Flow canvas summary for Layer 2 empty-card CTAs (replaces orphaned peek). */
+type Layer2FlowSummary = {
   projectId: number;
-  nodeIdx: number;
-  name: string;
-  score: number;
-  overallLabel?: string;
-  entries: PeekEntry[];
-  loading: boolean;
-  hasFlow?: boolean;
+  hasFlow: boolean;
   flowStats?: { resolved: number; total: number };
 };
 type Tension = {
@@ -235,7 +259,7 @@ export default function MasterMap() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [warping, setWarping] = useState(false);
   const [statsVersion, setStatsVersion] = useState(0);
-  const [peek, setPeek] = useState<PeekState | null>(null);
+  const [layer2Flow, setLayer2Flow] = useState<Layer2FlowSummary | null>(null);
   const [tensions, setTensions] = useState<Tension[]>([]);
   const [tensionsVersion, setTensionsVersion] = useState(0);
   const [hoveredTension, setHoveredTension] = useState<HoveredTension | null>(null);
@@ -255,15 +279,12 @@ export default function MasterMap() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
-  const peekElRef = useRef<HTMLDivElement | null>(null);
-  const peekRef = useRef<PeekState | null>(null);
   const readinessCacheRef = useRef<Map<number, { score: number; label: string }>>(new Map());
   const tensionTooltipElRef = useRef<HTMLDivElement | null>(null);
 
   const panRef = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
   const warpFnRef = useRef<((destId: number) => void) | null>(null);
-  const openPeekRef = useRef<((idx: number) => void) | null>(null);
   const recenterFnRef = useRef<(() => void) | null>(null);
   const layerStackRef = useRef<LayerStack | null>(null);
   const layer2TooltipRef = useRef<{ rec: LayerNodeRecord } | null>(null);
@@ -322,7 +343,6 @@ export default function MasterMap() {
       try { (navigator as any).vibrate?.([40]); } catch {}
     }
   }, [projects]);
-  useEffect(() => { peekRef.current = peek; }, [peek]);
   useEffect(() => { tensionsRef.current = tensions; }, [tensions]);
   useEffect(() => { hoveredTensionRef.current = hoveredTension; }, [hoveredTension]);
 
@@ -339,6 +359,7 @@ export default function MasterMap() {
       layer2TooltipRef.current = null;
       setLayer2Empty(false);
       setLayer2Loading(false);
+      setLayer2Flow(null);
       return;
     }
     const target = mapState.cameraTarget;
@@ -347,11 +368,31 @@ export default function MasterMap() {
     (async () => {
       try {
         if (currentLayer === 2 && context.projectId) {
-          const r = await fetch(`${BASE_URL}/api/projects/${context.projectId}/map-nodes`, { credentials: "include" });
-          const list: MapNode[] = r.ok ? await r.json() : [];
+          const projectId = context.projectId;
+          const [mapRes, flowRes] = await Promise.all([
+            fetch(`${BASE_URL}/api/projects/${projectId}/map-nodes`, { credentials: "include" }),
+            fetch(`${BASE_URL}/api/projects/${projectId}/flow`, { credentials: "include" }),
+          ]);
+          const list = mapRes.ok ? normalizeMapNodesResponse(await mapRes.json()) : [];
           if (cancelled) return;
           ls.populate(2, target, list);
           setLayer2Empty(list.length === 0);
+
+          // Flow summary for empty-card CTAs (Generate vs open)
+          let hasFlow = false;
+          let flowStats: { resolved: number; total: number } | undefined;
+          if (flowRes.ok) {
+            try {
+              const fd = await flowRes.json() as { nodes?: Array<{ strategicAnswer?: string }> };
+              if (Array.isArray(fd?.nodes) && fd.nodes.length > 0) {
+                hasFlow = true;
+                const total = fd.nodes.length;
+                const resolved = fd.nodes.filter(n => typeof n.strategicAnswer === "string" && n.strategicAnswer.trim().length > 0).length;
+                flowStats = { resolved, total };
+              }
+            } catch { /* silent */ }
+          }
+          if (!cancelled) setLayer2Flow({ projectId, hasFlow, flowStats });
         } else if (currentLayer === 3 && context.projectId && context.parentLabel) {
           const r = await fetch(`${BASE_URL}/api/projects/${context.projectId}/entries`, { credentials: "include" });
           const raw = r.ok ? await r.json() : [];
@@ -843,59 +884,6 @@ export default function MasterMap() {
       }, 950);
     };
 
-    const openPeek = async (idx: number) => {
-      const proj = projectsRef.current[idx];
-      if (!proj) return;
-      const cached = readinessCacheRef.current.get(proj.id);
-      setPeek({
-        projectId: proj.id,
-        nodeIdx: idx,
-        name: proj.name,
-        score: cached?.score ?? Math.round(proj.latestSnapshotScore ?? 0),
-        overallLabel: cached?.label,
-        entries: [],
-        loading: true,
-      });
-      try {
-        const [entriesRes, readinessRes, flowRes] = await Promise.allSettled([
-          fetch(`${BASE_URL}/api/projects/${proj.id}/entries?status=committed`, { credentials: "include" }),
-          fetch(`${BASE_URL}/api/projects/${proj.id}/readiness`, { credentials: "include" }),
-          fetch(`${BASE_URL}/api/projects/${proj.id}/flow`, { credentials: "include" }),
-        ]);
-        const list = entriesRes.status === "fulfilled" && entriesRes.value.ok
-          ? (await entriesRes.value.json()) as Array<{ id: number; title: string }>
-          : [];
-        const top3 = list.slice(0, 3).map(e => ({ id: e.id, title: e.title }));
-        type FlowNode = { strategicAnswer?: string };
-        type FlowData = { nodes?: FlowNode[] };
-        let hasFlow = false;
-        let flowStats: { resolved: number; total: number } | undefined;
-        if (flowRes.status === "fulfilled" && flowRes.value.ok) {
-          try {
-            const fd = await flowRes.value.json() as FlowData;
-            if (Array.isArray(fd?.nodes) && fd.nodes.length > 0) {
-              hasFlow = true;
-              const total = fd.nodes.length;
-              const resolved = fd.nodes.filter(n => typeof n.strategicAnswer === "string" && n.strategicAnswer.trim().length > 0).length;
-              flowStats = { resolved, total };
-            }
-          } catch {}
-        }
-        if (readinessRes.status === "fulfilled" && readinessRes.value.ok) {
-          const rd = await readinessRes.value.json() as { overallScore: number; overallLabel: string };
-          readinessCacheRef.current.set(proj.id, { score: rd.overallScore, label: rd.overallLabel });
-          setPeek(prev => prev && prev.projectId === proj.id
-            ? { ...prev, score: rd.overallScore, overallLabel: rd.overallLabel, entries: top3, hasFlow, flowStats, loading: false }
-            : prev);
-        } else {
-          setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, entries: top3, hasFlow, flowStats, loading: false } : prev);
-        }
-      } catch {
-        setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, loading: false } : prev);
-      }
-    };
-    openPeekRef.current = openPeek;
-
     const handleLayer23Click = (cx: number, cy: number): boolean => {
       // Layer 1 project taps are handled by the outer hitTest → dive to Layer 2.
       if (currentLayerRef.current === 1) return false;
@@ -926,7 +914,9 @@ export default function MasterMap() {
           return true;
         }
         if (hit.subType === "DECISION") {
-          setLocation(`/entry/${hit.id}`);
+          // map-nodes ids are prefixed ("decision-123"); strip for entry routes.
+          const entryId = hit.id.replace(/^decision-/, "");
+          setLocation(`/entry/${entryId}`);
           return true;
         }
         // Default: show glassmorphic tooltip
@@ -951,21 +941,19 @@ export default function MasterMap() {
       if (handleLayer23Click(cx, cy)) return;
       const hits = hitTest(cx, cy);
       if (!hits.length) {
-        // Tap on a tension filament shows tooltip; else dismiss peek/tension
+        // Tap on a tension filament shows tooltip; else dismiss tension
         const th = tensionHitTest();
         if (th) {
           haptics.tap();
           setHoveredTension(th);
           return;
         }
-        if (peekRef.current) { haptics.tap(); setPeek(null); }
         if (hoveredTensionRef.current) setHoveredTension(null);
         return;
       }
       const obj = hits[0].object as THREE.Mesh;
       haptics.tap();
       if (obj === nexMesh || obj === nexWire) {
-        setPeek(null);
         setWarping(true);
         setTimeout(() => {
           try { sessionStorage.setItem("atlas-open-ask", "1"); } catch {}
@@ -978,16 +966,12 @@ export default function MasterMap() {
       if (idx < 0) return;
       // Layer 1: tap a project node → dive straight to Layer 2 (Architecture).
       const proj = projectsRef.current[idx];
-      if (proj) {
-        const pos = nodePos3D(idx, projectsRef.current.length);
-        setPeek(null);
-        navigateToNode(String(proj.id), [pos.x, pos.y, pos.z], 2, {
-          projectId: proj.id,
-          projectName: proj.name,
-        });
-        return;
-      }
-      openPeek(idx);
+      if (!proj) return;
+      const pos = nodePos3D(idx, projectsRef.current.length);
+      navigateToNode(String(proj.id), [pos.x, pos.y, pos.z], 2, {
+        projectId: proj.id,
+        projectName: proj.name,
+      });
     };
 
     // ── Mouse drag + click ────────────────────────────────────────────────
@@ -1324,60 +1308,6 @@ export default function MasterMap() {
         el.style.top = `${sp.y + NODE_R * (baseScales[i] ?? 1) + 7}px`;
       });
 
-      // ── Peek panel positioning (smart anchor: above/below/side, always clamped) ──
-      const pk = peekRef.current;
-      const pkEl = peekElRef.current;
-      if (pk && pkEl && nodeMeshes[pk.nodeIdx]) {
-        const sp = toScreen(nodeMeshes[pk.nodeIdx].position);
-        const bs = baseScales[pk.nodeIdx] ?? 1;
-        const vw = canvas.clientWidth;
-        const vh = canvas.clientHeight;
-        const rect = pkEl.getBoundingClientRect();
-        const cardW = rect.width || 240;
-        const cardH = rect.height || 200;
-        const margin = 12;
-        const gap = 12 + NODE_R * bs;
-        const safeRight = currentLayerRef.current === 1 ? 112 : 0;
-        const safeBottom = currentLayerRef.current === 1 ? 104 : 0;
-        const maxX = Math.max(margin, vw - margin - safeRight);
-        const maxY = Math.max(margin, vh - margin - safeBottom);
-
-        // Score each of 4 placements by how much the card would overflow the viewport.
-        // The placement with least overflow wins. Preference order on ties: above, below, right, left.
-        type Placement = { name: "above" | "below" | "right" | "left"; tx: number; ty: number; transform: string };
-        const candidates: Placement[] = [
-          { name: "above", tx: sp.x - cardW / 2, ty: sp.y - gap - cardH, transform: "translate(-50%, -100%)" },
-          { name: "below", tx: sp.x - cardW / 2, ty: sp.y + gap,         transform: "translate(-50%, 0)" },
-          { name: "right", tx: sp.x + gap,       ty: sp.y - cardH / 2,   transform: "translate(0, -50%)" },
-          { name: "left",  tx: sp.x - gap - cardW, ty: sp.y - cardH / 2, transform: "translate(-100%, -50%)" },
-        ];
-        const overflow = (p: Placement) =>
-          Math.max(0, margin - p.tx) +
-          Math.max(0, p.tx + cardW - (vw - margin)) +
-          Math.max(0, margin - p.ty) +
-          Math.max(0, p.ty + cardH - (vh - margin));
-        const best = candidates.reduce((a, b) => (overflow(b) < overflow(a) ? b : a));
-
-        // Clamp into viewport as a final safety net (handles cards larger than viewport).
-        const dx =
-          Math.max(margin - best.tx, 0) +
-          Math.min(0, maxX - (best.tx + cardW));
-        const dy =
-          Math.max(margin - best.ty, 0) +
-          Math.min(0, maxY - (best.ty + cardH));
-
-        // Anchor pos is the pre-transform reference point; reconstruct from tx/ty + transform.
-        const anchorX = best.transform.includes("-50%,") ? best.tx + cardW / 2
-          : best.transform.includes("-100%,") ? best.tx + cardW : best.tx;
-        const anchorY = best.transform.includes(", -50%)") ? best.ty + cardH / 2
-          : best.transform.includes(", -100%)") ? best.ty + cardH : best.ty;
-
-        pkEl.style.left = `${anchorX + dx}px`;
-        pkEl.style.top = `${anchorY + dy}px`;
-        pkEl.style.transform = best.transform;
-        pkEl.dataset.placement = best.name;
-      }
-
       // ── Tension tooltip positioning (anchored at curve midpoint) ──
       const ht = hoveredTensionRef.current;
       const htEl = tensionTooltipElRef.current;
@@ -1589,24 +1519,6 @@ export default function MasterMap() {
                 }}>
                   {context.projectName ?? "Project"}
                 </span>
-                {peek && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); openPeekRef.current?.(peek.nodeIdx); }}
-                    title="Refresh"
-                    style={{
-                      background: "transparent", border: "none", padding: 3, cursor: "pointer",
-                      color: palette.goldText, opacity: 0.6, lineHeight: 1,
-                      display: "flex", alignItems: "center", flexShrink: 0,
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-                      <path d="M21 3v5h-5" />
-                      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-                      <path d="M3 21v-5h5" />
-                    </svg>
-                  </button>
-                )}
               </div>
               {(() => {
                 const proj = projects.find(p => p.id === context.projectId);
@@ -1620,7 +1532,9 @@ export default function MasterMap() {
                 const tension = stats?.tension ?? 0;
                 const entryCount = proj?.entryCount ?? 0;
                 const projectId = context.projectId;
-                const flowStats = peek?.projectId === projectId ? peek?.flowStats : undefined;
+                const flowForProject = layer2Flow?.projectId === projectId ? layer2Flow : null;
+                const flowStats = flowForProject?.flowStats;
+                const needsSuggest = flowForProject != null && flowForProject.hasFlow === false;
                 return (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                     {(score != null || lastActive) && (
@@ -1714,7 +1628,7 @@ export default function MasterMap() {
                           e.stopPropagation();
                           if (!projectId) return;
                           try { sessionStorage.setItem("atlas-open-tab", "map"); } catch {}
-                          if (peek?.hasFlow === false) {
+                          if (needsSuggest) {
                             setLocation(`/project/${projectId}?view=flow&autogenerate=1`);
                           } else {
                             setLocation(`/project/${projectId}?view=flow`);
@@ -1722,7 +1636,7 @@ export default function MasterMap() {
                         }}
                         style={{
                           padding: "6px 14px",
-                          background: peek?.hasFlow === false ? "rgba(201,162,76,0.22)" : "rgba(201,162,76,0.12)",
+                          background: needsSuggest ? "rgba(201,162,76,0.22)" : "rgba(201,162,76,0.12)",
                           border: `1px solid ${palette.goldText}`,
                           borderRadius: 6,
                           color: palette.goldTextStrong,
@@ -1734,7 +1648,7 @@ export default function MasterMap() {
                           pointerEvents: "auto",
                         }}
                       >
-                        {peek?.hasFlow === false ? "Generate Flow Map →" : "Flow Map →"}
+                        {needsSuggest ? "Suggest Flow Map →" : "Flow Map →"}
                       </button>
 
                       {/* Open Workspace */}
@@ -1833,119 +1747,6 @@ export default function MasterMap() {
             background: palette.warpConic,
             animation: "warp-conic 900ms ease both",
           }} />
-        </div>
-      )}
-
-      {/* Peek panel — tooltip above tapped node; positioned by animation loop */}
-      {peek && (
-        <div
-          ref={peekElRef}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "absolute",
-            transform: "translate(-50%, -100%)",
-            zIndex: 60,
-            minWidth: 200,
-            width: "min(260px, calc(100vw - 32px))",
-            maxWidth: 260,
-            padding: "10px 12px 11px",
-            background: palette.panelBg,
-            border: `1px solid ${palette.panelBorder}`,
-            borderRadius: 10,
-            boxShadow: palette.panelShadow,
-            backdropFilter: "blur(18px)",
-            fontFamily: "var(--app-font-sans)",
-            color: palette.labelText,
-            pointerEvents: "auto",
-            animation: "picker-in 140ms cubic-bezier(0.22,1,0.36,1) both",
-          }}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); setPeek(null); }}
-            aria-label="Dismiss"
-            style={{
-              position: "absolute", top: 4, right: 6,
-              width: 18, height: 18, padding: 0,
-              background: "transparent", border: "none",
-              color: palette.mutedText, fontSize: 14, lineHeight: 1, cursor: "pointer",
-            }}
-          >×</button>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: palette.goldTextStrong, letterSpacing: "0.01em", paddingRight: 16, lineHeight: 1.25 }}>
-            {peek.name}
-          </div>
-          <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: palette.mutedText, letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>
-            {peek.overallLabel ? `${peek.overallLabel} · ${peek.score}%` : `Readiness · ${peek.score}%`}
-          </div>
-          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-            {peek.loading ? (
-              <div style={{ fontSize: 10.5, color: palette.mutedText, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em" }}>
-                Loading committed…
-              </div>
-            ) : peek.entries.length === 0 ? (
-              <div style={{ fontSize: 10.5, color: palette.mutedText, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em", fontStyle: "italic" }}>
-                No committed entries yet
-              </div>
-            ) : (
-              peek.entries.map(e => (
-                <div key={e.id} style={{
-                  fontSize: 11, color: palette.labelText, lineHeight: 1.35,
-                  overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
-                  WebkitLineClamp: 1, WebkitBoxOrient: "vertical",
-                }}>
-                  <span style={{ color: palette.goldText, marginRight: 6 }}>◆</span>
-                  {e.title}
-                </div>
-              ))
-            )}
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const id = peek.projectId;
-              setPeek(null);
-              warpFnRef.current?.(id);
-            }}
-            style={{
-              marginTop: 10, width: "100%",
-              padding: "7px 10px",
-              background: theme === "parchment" ? "rgba(180,83,9,0.14)" : "rgba(201,162,76,0.14)",
-              border: `1px solid ${palette.panelBorder}`,
-              borderRadius: 7,
-              color: palette.goldTextStrong,
-              fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
-              fontFamily: "var(--app-font-mono)", cursor: "pointer",
-            }}
-          >
-            Open Project →
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              haptics.tap();
-              const proj = projectsRef.current[peek.nodeIdx];
-              if (!proj) return;
-              const pos = nodePos3D(peek.nodeIdx, projectsRef.current.length);
-              setPeek(null);
-              navigateToNode(String(proj.id), [pos.x, pos.y, pos.z], 2, {
-                projectId: proj.id,
-                projectName: proj.name,
-              });
-            }}
-            style={{
-              marginTop: 6, width: "100%",
-              padding: "7px 10px",
-              background: "transparent",
-              border: `1px solid ${palette.panelBorder}`,
-              borderRadius: 7,
-              color: palette.goldTextStrong,
-              fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
-              fontFamily: "var(--app-font-mono)", cursor: "pointer",
-            }}
-          >
-            Explore →
-          </button>
-          {/* Tail intentionally omitted — placement is dynamic (above/below/left/right);
-              a fixed-bottom tail would point into space when the card flips. */}
         </div>
       )}
 

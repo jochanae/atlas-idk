@@ -15,9 +15,17 @@ Flow is Atlas's living understanding of the project — not a diagram editor or 
 4. Designer/Builder/Storyteller = perspectives on one canonical graph, not separate datasets
 5. Atlas owns canonical layout; users may temporarily reposition during a session
 6. Aura layer order: graph → aura → bottom sheet (aura hides under the panel)
-7. Never feels empty — nodes bloom from history; conversational empty state if none
+7. Honesty over fullness — truthful empty when Atlas knows nothing; seed/candidate nodes must read as **Suggested** (not facts). Suggested → Confirmed/Observed/Inferred as evidence grows
 8. Direction is subtraction — remove anything that feels like a planning board
 9. Every tap answers a question: what do we know / why / where from / what's uncertain / what depends / what changed
+
+## Knowledge states (honesty contract)
+| State | Meaning |
+|---|---|
+| Suggested | Candidate / worth exploring — insufficient evidence to treat as project knowledge |
+| Inferred | Synthesized from conversations / DNA |
+| Observed | Grounded in captured evidence (answers, ledger, artifacts) |
+| Confirmed | User accepted or locked an answer |
 
 ## What this is NOT
 Not a task. The standard tasks are measured against.
