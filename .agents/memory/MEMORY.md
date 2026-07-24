@@ -40,7 +40,8 @@
 - [Atlas Constitution](atlas-constitution.md) — soul document; Atlas DNA, borrowing framework, three buckets, quality charter, what not to do; full doc at .local/atlas-constitution.md
 - [Data Spine Audit](data-spine-audit.md) — traced every %, node, and shaping pipeline; Master Map (entries table) ≠ Axiom Flow (node_state JSONB); 5 different health % formulas; NAVIGATE_TO root cause found in nexus.ts; full doc at .local/data-spine-audit.md
 - [_workspace api-client-react sync pattern](workspace-api-client-sync.md) — codegen writes to lib/; frontend tsconfig resolves @workspace/api-client-react to _workspace/ first; append new types/hooks to both
-- [Axiom Flow Vision](axiom-flow-vision.md) — foundational philosophy; graph = Atlas's memory, not user-built canvas; measure every Flow task against this; full doc at .local/axiom-flow-vision.md
+- [Axiom Flow Vision](axiom-flow-vision.md) — foundational philosophy; graph = Atlas's memory, not user-built canvas; honesty over fullness (Suggested ≠ fact); full doc at .local/axiom-flow-vision.md
+- [Flow Projection Simplification](flow-projection-simplification.md) — DEFERRED: `project_flow_canvas` = graph SoT; `projects.nodeState` = oversized projection (readiness/Nexus/scoring); audit min fields before deleting anything; not a production fire
 - [Axiom Flow Lens Architecture](flow-lens-architecture.md) — three lenses are genuinely different perspectives, not layouts; Builder=engineering board, Storyteller=narrative chapters, Designer=AxiomFlow canvas
 - [Builder Lens Identity](builder-lens-identity.md) — Builder must stay clinical/schema-aesthetic; status-grouped flat lists erode its identity vs Storyteller
 - [Project DNA Table](project-dna-table.md) — creative_principles/experience_intent/visual_sketches graduated from application_models to project_dna; status: guessed→inferred→confirmed→committed
