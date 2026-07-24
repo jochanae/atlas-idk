@@ -767,10 +767,6 @@ export function ChatStream(props: ChatStreamProps) {
     // Disable browser scroll anchoring so progressive markdown height changes
     // during token streaming don't fight our bottom-follow scrollTop writes.
     overflowAnchor: "none",
-    // Column + top spacer bottom-anchors short threads so the latest assistant
-    // turn stays visually stacked with chips / Thinking Thread / composer.
-    display: "flex",
-    flexDirection: "column",
     padding: isMobile
       ? `32px 14px ${bottomPadding} 14px`
       : `56px 104px ${bottomPadding} 24px`,
@@ -784,8 +780,7 @@ export function ChatStream(props: ChatStreamProps) {
 
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-    <style>{`.atlas-chat-timeline > * + * { margin-top: 10px; }
-.atlas-chat-timeline > [data-atlas-thread-spacer] + * { margin-top: 0; }`}</style>
+    <style>{`.atlas-chat-timeline-stack > * + * { margin-top: 10px; }`}</style>
     <div
 
       ref={scrollRef}
@@ -796,10 +791,19 @@ export function ChatStream(props: ChatStreamProps) {
       style={containerStyle}
       className="scrollbar-none atlas-chat-timeline"
     >
-      {/* Grows when the thread is shorter than the viewport so the latest turn
-          packs toward chips / Thinking Thread / composer instead of leaving a
-          void under the assistant response. Shrinks to 0 once content overflows. */}
-      <div aria-hidden="true" data-atlas-thread-spacer style={{ flex: "1 1 auto", minHeight: 0 }} />
+      {/* minHeight 100% + flex-end packs short threads toward chips / Thinking
+          Thread / composer. When content overflows, the inner column grows with
+          the messages (no extra spacer scroll). Keep atlas-chat-timeline on the
+          scroller — TimelineRail and workspace chrome target that class. */}
+      <div
+        className="atlas-chat-timeline-stack"
+        style={{
+          minHeight: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
+        }}
+      >
       {messages.length === 0 && !chatPending && priorLoaded !== false && isHomeHandoff && resumeBrief && (
         <div style={{ padding: "36px 4px 16px", display: "flex", flexDirection: "column", gap: 0 }}>
           <div style={{ maxWidth: 560 }}>
@@ -1197,6 +1201,7 @@ export function ChatStream(props: ChatStreamProps) {
       )}
 
       <div ref={bottomRef} />
+      </div>
 
     </div>
 
