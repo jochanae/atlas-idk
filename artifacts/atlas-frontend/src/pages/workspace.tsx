@@ -6140,6 +6140,7 @@ export default function Workspace() {
   const { detectedUrl: urlDetected, data: urlData, loading: urlLoading, error: urlError, dismiss: dismissUrl } = useUrlIntelligence(input);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [showParkSheet, setShowParkSheet] = useState(false);
+  const [parkPrefill, setParkPrefill] = useState("");
   const [showDeepDive, setShowDeepDive] = useState(false);
   
   const [cloningProject, setCloningProject] = useState(false);
@@ -9681,7 +9682,13 @@ export default function Workspace() {
                 setInput((prev: string) => prev ? `${prev} ${text}` : text);
                 setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
               },
-              onSuggestionPark: (text: string) => handlePark(text),
+              onSuggestionPark: (text: string) => {
+                // Match Ask Joy: open ParkSheet with the chip prefilled so the
+                // user can confirm/edit. Direct handlePark silently no-ops when
+                // sessionId is missing and gives no parking-lot UI.
+                setParkPrefill(text);
+                setShowParkSheet(true);
+              },
               execLatestRun,
               execRuns,
               // Option 2: Nexus is the transport, ChatStream stays the shell.
@@ -9906,8 +9913,9 @@ export default function Workspace() {
           <ParkSheet
             projectId={id}
             projects={[{ id, name: project?.name ?? "This project" }]}
-            onClose={() => setShowParkSheet(false)}
-            onOpenFull={() => { setShowParkSheet(false); setLocation(`/parking?project=${id}`); }}
+            initialContent={parkPrefill || undefined}
+            onClose={() => { setShowParkSheet(false); setParkPrefill(""); }}
+            onOpenFull={() => { setShowParkSheet(false); setParkPrefill(""); setLocation(`/parking?project=${id}`); }}
             onParked={() => { void refreshParkedEntries(); }}
           />
         )}
