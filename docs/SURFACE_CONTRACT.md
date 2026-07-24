@@ -76,6 +76,24 @@ Before building any new UI component or surface, answer all five:
 
 ---
 
+## 🅿️ Parking Lot — Unresolved Cognitive Work
+
+**Purpose:** Hold unfinished thinking that still deserves another conversation — Joy's working memory with the user's permission.
+
+**One-sentence contract:** Only unresolved ideas, decisions, clarifications, risks, and research — not finished outputs, committed facts, or chat residue.
+
+**Canonical product contract:** [`docs/PARKING_LOT_CONTRACT.md`](./PARKING_LOT_CONTRACT.md)  
+**Audit:** [`docs/audits/parking-lot-product-audit.md`](./audits/parking-lot-product-audit.md)
+
+**Object model:** Same `entries` as the Ledger; deferred via `status` (`parked` / `draft`). Status change moves items — do not duplicate.
+
+**Parking Lot answers three questions:**
+1. What unfinished thinking still deserves another conversation?
+2. How did this get set aside (User / Joy / Auto)?
+3. Resume, Clarify, Promote, or Delete — what next?
+
+---
+
 ## Provenance Layer (planned — not yet built)
 
 When memory architecture is fully stable, add a lightweight `ⓘ` affordance beside memory-backed claims.
