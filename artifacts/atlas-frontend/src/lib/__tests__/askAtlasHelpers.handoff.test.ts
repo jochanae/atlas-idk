@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   HANDOFF_CONTINUATION_MESSAGE,
+  buildHandoffLuggageMessage,
   navigateAfterAskAtlasHandoff,
   navigateToProjectOutput,
   redirectAfterHandoff,
@@ -25,6 +26,18 @@ function clearHandoffKeys() {
  *
  * These unit tests lock the seed contract the Workspace opening pipeline needs.
  */
+describe("buildHandoffLuggageMessage (M2.4 Phase C E6)", () => {
+  it("includes brief luggage when summary is present", () => {
+    const msg = buildHandoffLuggageMessage({ threadSummary: "Reveal community brief" });
+    expect(msg).toContain("Brief so far: Reveal community brief");
+    expect(msg).toContain("Do not acknowledge the handoff");
+  });
+
+  it("falls back to default continuation when empty", () => {
+    expect(buildHandoffLuggageMessage()).toBe(HANDOFF_CONTINUATION_MESSAGE);
+  });
+});
+
 describe("INT-13 handoff continuation seed", () => {
   afterEach(() => {
     clearHandoffKeys();

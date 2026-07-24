@@ -52,4 +52,4 @@ Remove conversational ceremony that exists to explain the application's internal
 
 ## Status
 
-**IN PROGRESS** — landing Phase B implementation.
+**CLOSED** — merged `#226`.

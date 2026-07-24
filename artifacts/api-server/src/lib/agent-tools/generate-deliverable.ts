@@ -255,7 +255,12 @@ export function generateDeliverableTool(ctx: AgentToolContext) {
           stage: "Ready",
           validationIssues: [],
         });
-        return { ok: false, error: String(err) };
+        // Phase C E3: short failure code — do not dump raw exception into the model loop.
+        return {
+          ok: false,
+          error: "generation_failed",
+          message: "Could not finish that file.",
+        };
       }
     },
   });

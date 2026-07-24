@@ -119,6 +119,7 @@ import { reportError } from "../lib/errorReporter";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { shouldFireHandoffKickoff } from "@/lib/handoffKickoff";
 import { HANDOFF_CONTINUATION_MESSAGE } from "@/lib/askAtlasHelpers";
+import { truncateMessagesForResend } from "@/lib/threadResend";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
 import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../lib/plan";
@@ -1240,7 +1241,7 @@ function ConnectionsTab({
                 letterSpacing: "0.04em",
               }}
             >
-              All connections active - Joy has full context.
+              Connections active — repo and tools linked.
             </div>
           ) : (
             <div
@@ -9556,7 +9557,11 @@ export default function Workspace() {
               wsLens,
               speculate,
               onSwitchToGemini: () => { setWsModel("gemini"); },
-              onEditUserMessage: (content) => {
+              onEditUserMessage: (content, messageIndex) => {
+                // Phase C B4: truncate at edited user turn before resend.
+                atlasConv.setMessages((prev) =>
+                  truncateMessagesForResend(prev, messageIndex) as typeof prev,
+                );
                 setInput(content);
                 setTimeout(() => textareaRef.current?.focus(), 50);
               },

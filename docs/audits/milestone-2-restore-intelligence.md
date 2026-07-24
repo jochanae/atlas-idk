@@ -1,7 +1,7 @@
 # Milestone 2 — Restore Intelligence
 
 **Parent:** Milestone track (M1 closed → M2 in progress)  
-**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 CLOSED · 2.4 PHASE B**  
+**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 CLOSED · 2.4 PHASE C**  
 **Last updated:** 2026-07-24
 
 ---
@@ -67,7 +67,7 @@ Prove Designer, Builder, and Storyteller produce meaningfully different outputs 
 
 ---
 
-### 2.4 — Natural Conversation — 🟡 PHASE B ← **NOW**
+### 2.4 — Natural Conversation — 🟡 PHASE C ← **NOW**
 
 **Design doc:** [`milestone-2-4-natural-conversation-design.md`](./milestone-2-4-natural-conversation-design.md)
 
@@ -77,7 +77,7 @@ Conversation should feel like working with a capable collaborator already inside
 
 **Governing rule (P9):** One arrival experience — continue the work — across refresh, handoff, Workspace open, return, and resume.
 
-**Status:** Design **APPROVED**. Phase A **CLOSED** (`#225`). Phase B (Kill Stage Theater) in progress — preserve work language; delete process language.
+**Status:** Design **APPROVED**. Phase A **CLOSED** (`#225`). Phase B **CLOSED** (`#226`). Phase C (Honest Execution) in progress.
 
 **Depends on:** 2.2 ✅ and 2.3 ✅ (distinct lenses). Ops caveat from 2.3: do not market production as Constitution-differentiated until post-redeploy live battery passes.
 
@@ -94,10 +94,10 @@ Conversation should feel like working with a capable collaborator already inside
         ↓
 2.3 Lens differentiation      ✅ CLOSED
         ↓
-2.4 Natural conversation      🟡 PHASE B (Kill Stage Theater)  ← NOW
+2.4 Natural conversation      🟡 PHASE C (Honest Execution)  ← NOW
 ```
 
-**2.3 CLOSED.** Milestone **2.4** Phase A closed; Phase B stage theater in progress. Ops caveat: redeploy `main` + live T1–T6 before claiming production differentiation.
+**2.3 CLOSED.** Milestone **2.4** Phases A–B closed; Phase C honest execution in progress. Ops caveat: redeploy `main` + live T1–T6 before claiming production differentiation.
 ---
 
 ## Explicit non-goals for M2
@@ -128,3 +128,4 @@ Conversation should feel like working with a capable collaborator already inside
 | 2026-07-23 | **2.4 design draft** — [natural conversation design](./milestone-2-4-natural-conversation-design.md): principles, audit, inventory, battery, phased roadmap. Awaiting approval; no implementation yet. |
 | 2026-07-23 | **2.4 design APPROVED** — P1–P10 (P9 governing, P10 Invisible Mechanics); T1–T11; roadmap A→E. Phase A unblocked. |
 | 2026-07-24 | **2.4 Phase A CLOSED** (`#225`). Phase B thesis locked (work language / delete process language + Blind Read Test); Phase B started. |
+| 2026-07-24 | **2.4 Phase B CLOSED** (`#226`). Phase C Honest Execution started. |
