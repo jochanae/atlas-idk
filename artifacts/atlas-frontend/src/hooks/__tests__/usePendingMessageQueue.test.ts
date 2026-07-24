@@ -107,7 +107,7 @@ describe("usePendingMessageQueue", () => {
     act(() => {
       result.current.sendNow(second);
     });
-    expect(abort).toHaveBeenCalled();
+    expect(abort).toHaveBeenCalledWith({ reason: "newer_request" });
     expect(result.current.items[0]?.text).toBe("b");
 
     await act(async () => {

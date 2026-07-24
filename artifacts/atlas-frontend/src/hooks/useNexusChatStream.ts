@@ -3,6 +3,7 @@ import { logEvent as _adbgLog } from "@/lib/attachDebugLog";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
+import { softenInterruptedContent } from "@/components/composer/InterruptedStatusPill";
 
 import { pushHudEvent } from "@/lib/hudBus";
 
@@ -126,6 +127,10 @@ export interface NexusMessage {
   fileDeletes?: Array<{ path: string }> | null;
   githubPush?: unknown;
   runStatus?: string;
+  /** True when this assistant turn was stopped mid-stream (Stop or queued Send now). */
+  interrupted?: boolean;
+  /** Why the turn was interrupted — drives the status pill copy. */
+  interruptReason?: "newer_request" | "user_stop";
   runSummary?: string | null;
   runActions?: unknown[] | null;
   runArtifacts?: unknown[] | null;
@@ -315,7 +320,7 @@ export interface UseNexusChatStreamReturn {
      *  such as _resumeRunId and _approvedPlanVersion. */
     extraBody?: Record<string, unknown>;
   }) => { clientMessageId: string; accepted: Promise<void>; completed: Promise<void> } | undefined;
-  abort: () => void;
+  abort: (opts?: { reason?: "newer_request" | "user_stop" }) => void;
   clearMessages: () => void;
   /** Build plan awaiting authorization. Set when the server emits awaitingConfirmation
    *  in the done event after validating a BUILD_CONTRACT block. */
@@ -387,8 +392,30 @@ export function useNexusChatStream(
     sendInFlightRef.current = false;
   }, []);
 
-  const abort = useCallback(() => {
+  const abort = useCallback((opts?: { reason?: "newer_request" | "user_stop" }) => {
+    const reason = opts?.reason ?? "user_stop";
+    const streamingId = streamingIdRef.current;
     abortStream();
+    if (streamingId) {
+      // Mark the in-flight assistant bubble before stream finally/cleanup runs,
+      // so the timeline never looks like the old turn is still generating.
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== streamingId || m.role !== "assistant") return m;
+          if (m.interrupted) return m;
+          return {
+            ...m,
+            content: softenInterruptedContent(m.content ?? ""),
+            streaming: false,
+            interrupted: true,
+            interruptReason: reason,
+            runStatus: "cancelled",
+            pendingSketch: false,
+            visualLoading: false,
+          };
+        }),
+      );
+    }
     resetStreamState();
   }, [abortStream, resetStreamState]);
 
@@ -1065,6 +1092,8 @@ export function useNexusChatStream(
       const capturedId = streamingId;
       setMessages(prev => prev.map(m => {
         if ((m as any).id !== capturedId || m.role !== "assistant") return m;
+        // Abort already finalized this turn with an interrupted status — leave it alone.
+        if (m.interrupted) return m;
         const hasImage = !!(m as any).imageB64
           || !!((m as any).imageGen?.images?.length)
           || !!(m as any).imageUrl;
@@ -1083,6 +1112,11 @@ export function useNexusChatStream(
             streaming: false,
             runStatus: "failed" as const,
           };
+        }
+        // Stream closed mid-turn without an explicit abort mark (e.g. race) —
+        // still clear the streaming cursor so the bubble doesn't look live.
+        if (m.streaming) {
+          return { ...m, streaming: false };
         }
         return m;
       }));

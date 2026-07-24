@@ -12,6 +12,7 @@
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AttachmentStrip } from "@/components/shared/AttachmentStrip";
+import { InterruptedStatusPill } from "@/components/composer/InterruptedStatusPill";
 
 // Strips the most visually jarring raw-markdown syntax during streaming so the
 // user doesn't see **asterisks** and ## hashes for the full response duration.
@@ -134,6 +135,9 @@ export type AskAtlasMessage = {
   kind?: "genesis";
   genesisData?: { projectName: string; timestamp: string };
   streaming?: boolean;
+  /** True when this assistant turn was stopped mid-stream (Stop or queued Send now). */
+  interrupted?: boolean;
+  interruptReason?: "newer_request" | "user_stop";
   createdAt?: string;
   imageUrl?: string;
   /** Base64 payload from async `event: image` (preferred over imageUrl). */
@@ -740,15 +744,22 @@ export function AskAtlasSurface({
                       )}
                     </>
                   ) : (
-                    <AskAtlasRenderer
-                      content={displayContent}
-                      projects={projects}
-                      onNavigate={(id) => void handleProjectOpen(id)}
-                      isParchment={isParchment}
-                      onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
-                      onSend={onSend}
-                      onAction={onAction}
-                    />
+                    <>
+                      {(displayContent.trim().length > 0 || !msg.interrupted) && (
+                        <AskAtlasRenderer
+                          content={displayContent}
+                          projects={projects}
+                          onNavigate={(id) => void handleProjectOpen(id)}
+                          isParchment={isParchment}
+                          onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
+                          onSend={onSend}
+                          onAction={onAction}
+                        />
+                      )}
+                      {msg.interrupted && (
+                        <InterruptedStatusPill reason={msg.interruptReason} />
+                      )}
+                    </>
                   )}
 
                   {msg.role === "assistant" && !msg.streaming &&
