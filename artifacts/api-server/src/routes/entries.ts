@@ -385,6 +385,7 @@ router.post("/projects/:projectId/entries", async (req, res): Promise<void> => {
       committedEntryId: entry.id,
       title: entry.title,
       reason: "created-committed",
+      type: entry.type,
     });
   }
 });
@@ -523,6 +524,7 @@ router.patch("/entries/:id", async (req, res): Promise<void> => {
       committedEntryId: entry.id,
       title: entry.title,
       reason: "committed",
+      type: entry.type,
     });
   }
 });
@@ -584,6 +586,7 @@ router.post("/entries/:id/promote", async (req, res): Promise<void> => {
     committedEntryId: entry.id,
     title: entry.title,
     reason: `promoted:${toType}`,
+    type: toType,
   });
 });
 

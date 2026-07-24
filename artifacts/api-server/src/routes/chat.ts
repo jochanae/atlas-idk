@@ -6,6 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable, projectDnaTable, projectArtifactsTable, projectZipImportsTable, nexusConversationsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { maybeExtractThinkingReceipts, maybeExtractTier1Slots, MEMORY_QUERY_RE, searchThinkingReceipts } from "../lib/thinkingReceiptExtract";
+import { detectDeferralParkCandidates } from "../lib/detectDeferralParkCandidates";
 import { loadTier2Block, loadTier3Block, synthesizeTier2Patterns, synthesizeTier3Signals, synthesizeGlobalNarrative } from "../lib/tierMemory";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
 import { checkBuildReadiness } from "../lib/buildReadiness";
@@ -7492,7 +7493,12 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       idempotencyKey: `response_generated:${chatTurnActivityKeyRef.key}`,
     });
   }
-  res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), ...(recordedRunId ? { runId: recordedRunId } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
+  const parkCandidates =
+    projectId && !isFoundationMode && !isFlowMode && fullText.length > 40
+      ? detectDeferralParkCandidates({ userMessage: message, assistantResponse: fullText })
+      : [];
+
+  res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), ...(recordedRunId ? { runId: recordedRunId } : {}), ...(parkCandidates.length > 0 ? { parkCandidates } : {}), developerLens: { routing: { activeModel, provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
   res.end();
 
   // ── Workspace thinking receipt extraction ─────────────────────────────────

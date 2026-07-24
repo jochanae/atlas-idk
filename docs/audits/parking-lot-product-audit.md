@@ -2,12 +2,12 @@
 
 **Date:** 2026-07-24  
 **Mindset:** Product contract, not bug hunt  
-**Status:** Architecture settled (2026-07-24). Remaining work is implementation — see contract backlog.  
-**Companion contract:** [`docs/PARKING_LOT_CONTRACT.md`](../PARKING_LOT_CONTRACT.md) (v0.2)  
+**Status:** Architecture settled (2026-07-24). Implementation complete — see [`parking-lot-milestone-freeze.md`](./parking-lot-milestone-freeze.md).  
+**Companion contract:** [`docs/PARKING_LOT_CONTRACT.md`](../PARKING_LOT_CONTRACT.md) (v0.3)  
 **Governing question (six-month rule):** If someone returned in six months, would the lot hold only unresolved cognitive work that still deserves attention?  
 **Related:** Ledger / entries share one object model (`status`); Ask Atlas vs Workspace surface contract; `.agents/memory/parking-lot-enrichment.md`
 
-**Architecture verdict:** Settled as a **decision queue** (not storage). Implementation in progress: home handoff no longer auto-parks; Dump→Later on Park; category persist + filters; promote destinations persist type; confidence ≥95 auto-park; matching parked items auto-resolve on commit/promote.
+**Architecture verdict:** Settled as a **decision queue** (not storage). Milestone frozen after mid-band consent, precision-first resolve, and usability pass.
 
 ---
 

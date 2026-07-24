@@ -357,8 +357,8 @@ export default function ParkingLot() {
             </h1>
             <p style={{ margin: "5px 0 0", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.55, fontStyle: "italic", fontFamily: "var(--app-font-sans)" }}>
               {totalCount > 0
-                ? `${totalCount} idea${totalCount === 1 ? "" : "s"} waiting — Resume to continue any thread.`
-                : "When Joy delivers a thought you're not ready to commit, park it here."}
+                ? `${totalCount} item${totalCount === 1 ? "" : "s"} waiting — Resume, Clarify, Promote, or Delete.`
+                : "A decision queue for unfinished thinking — not an inbox."}
             </p>
           </div>
 
@@ -723,10 +723,10 @@ function EmptyParked() {
         <div style={{ width: 8, height: 8, borderRadius: 2, background: "rgba(201,162,76,0.5)" }} />
       </div>
       <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)", opacity: 0.5 }}>
-        Nothing parked.
+        No unresolved thinking here.
       </p>
-      <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.4, maxWidth: 280, marginInline: "auto" }}>
-        Tap the tray icon on any Joy response to save a thought without breaking your flow.
+      <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.55, maxWidth: 320, marginInline: "auto", lineHeight: 1.5 }}>
+        The Parking Lot is a decision queue — only intentionally deferred work belongs here. Park from chat, or when Joy asks.
       </p>
     </div>
   );

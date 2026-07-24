@@ -248,15 +248,20 @@ These are closed unless implementation reveals a bug:
 
 ---
 
-## Implementation backlog (build, not redesign)
+## Implementation backlog
 
-1. **Home handoff** — stop unconditional auto-park; only park if intentionally deferred and confidence ≥ auto threshold (default: park nothing on handoff)  
-2. **Confidence behavior** — enforce 95 / 80 thresholds on auto paths; ask path for mid band  
-3. **Auto-resolution** — resolve matching parked items when answered elsewhere  
-4. **Promote destinations** — always ask where; persist chosen type  
-5. **Filter chips** — persist category on park; chips filter the list  
-6. **Clarify ≠ Resume** — distinct questioning prefill / loop  
-7. Usability pass after end-to-end behavior works  
+| Item | Status |
+|---|---|
+| Home handoff must not auto-park | Done |
+| Confidence ≥95 / 80–94 ask / &lt;80 skip | Done (ask via ParkConsentCard) |
+| Auto-resolution (precision-first) | Done |
+| Promote destinations persist type | Done |
+| Filter chips + category persist | Done |
+| Clarify ≠ Resume | Done |
+| Dump → Later on Park | Done |
+| Usability pass (empty states, copy, consent card) | Done |
+
+**Milestone status:** COMPLETE — freeze further redesign. Validate in real use; only bugfixes thereafter unless the six-month rule fails.
 
 ---
 
@@ -292,3 +297,4 @@ If any answer is missing, do not ship the change yet.
 |---|---|---|
 | 0.1 | 2026-07-24 | Proposed from product audit |
 | 0.2 | 2026-07-24 | Architecture settled: six-month rule, decision-queue philosophy, confidence thresholds, promote graduation, resolve triggers, home-handoff forbid, no Assumption category, implementation backlog |
+| 0.3 | 2026-07-24 | Milestone complete: mid-band Park this? consent, precision-first auto-resolve, usability pass — freeze redesign |
