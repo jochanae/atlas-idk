@@ -1,175 +1,189 @@
 # Requested-Artifact Family — Expansion (not Plan restore gaps)
 
 > Product architecture. Complements `requested-artifacts.md` and the Plan → Plan Card restore.
-> Date: 2026-07-24.
+> Date: 2026-07-24 (revised: Approve ≠ Consume).
 >
 > **Classification rule:** Anything below that is *not* required for “Tap Plan → Plan Card → Review/Approve/Revise/Skip” is a **new capability**, not unfinished Plan restore.
+>
+> **Architectural stop line:** Protect the principle below. Do not overload Approve into a destination menu.
+
+---
+
+## Core principle (protect this)
+
+> The composer doesn’t tell Joy how to think.  
+> It tells Joy **what kind of artifact** the user wants to leave with.
+
+Orthogonal layers stay separate:
+
+| Layer | Answers |
+|-------|---------|
+| Posture | How may Joy behave? (Conversation / Build / WhisperGate) |
+| Intent | What did the user ask? (natural language) |
+| Requested artifact | What should Joy leave them with? |
 
 ---
 
 ## What Plan restore already closed
 
-The Plan → Plan Card contract is a **requested-artifact** pipeline:
-
 ```
 Tap Plan → requestedArtifact:"plan" → converse → Plan Card → Review / Approve / Revise / Skip
 ```
 
-Approve today has a **real** destination: re-submit an execute turn on Nexus (+ Plan Card persisted on emission). That completes the restore.
+That contract is restored. Calling Plan “done” does not depend on Flow, Tasks, or sibling composer buttons.
+
+**Note on today’s Approve:** Plan Card Approve currently kicks a Nexus execute turn. Treat that as a **transitional single consume path**, not the long-term meaning of Approve. Expansion should split **acceptance** from **application** (below)—not grow Approve into a chooser.
 
 ---
 
 ## What is *not* a Plan gap
 
-These were easy to mislabel as “remaining gaps.” They are **expansion**:
-
-| Idea | Why it’s expansion |
-|------|--------------------|
-| Flow consumes approved Plan Cards | New consume surface — Flow becomes a Plan Card *destination* |
-| Tasks consume approved Plan Cards | New consume surface — Tasks/Parking become a destination |
-| Decide composer button | New requested-artifact affordance |
-| Research composer button | New requested-artifact affordance |
-| Compare composer button | New requested-artifact affordance |
-| Timeline composer button | New requested-artifact affordance |
-
-Same family as Plan. Different products. Do not block calling Plan “restored” on their absence.
+| Idea | Class |
+|------|--------|
+| Flow consumes approved Plan Cards | **Expansion** — consume destination |
+| Tasks consume approved Plan Cards | **Expansion** — consume destination |
+| Decide / Research / Compare / Timeline buttons | **Expansion** — sibling requested artifacts |
 
 ---
 
-## Shared contract (one philosophy, many instances)
+## Approve ≠ Consume (locked)
 
-Every composer artifact request answers:
+Two user decisions. Keep them separate so the system scales.
 
-> When we’re done, leave me with **this** reviewable deliverable.
+| Decision | Meaning | UI moment |
+|----------|---------|-----------|
+| **Approve** | “This artifact is accepted as truth.” | On the Artifact Card |
+| **Consume** | “Apply that accepted artifact here.” | Later — from Artifact Library / available destinations |
 
-Orthogonal to:
+### Correct shape
 
-1. **Posture** — Conversation / Build / WhisperGate  
-2. **Intent** — what the user asked in natural language  
+```
+Conversation
+      ↓
+Requested Artifact
+      ↓
+Artifact Card
+      ↓
+Approve          ← acceptance only
+      ↓
+Artifact Library (accepted truth)
+      ↓
+Available Destinations   ← separate decision
+   · Build
+   · Flow
+   · Tasks
+   · Save / share
+   · …
+```
+
+### Avoid
+
+```
+Approve
+   ├── Build
+   ├── Flow
+   ├── Tasks
+   ├── Save
+   └── …
+```
+
+That overloads one button with two decisions. The same approved Plan should later be able to be saved only, sent to Flow, turned into Tasks, used by Build, or shared—**without** re-deciding “is this the plan?”
+
+**Approve** = acceptance of the artifact.  
+**Consume** = where that accepted artifact is applied.
+
+---
+
+## Shared contract (family)
 
 ```
 Composer action
   → requestedArtifact: "<kind>"
   → conversation continues under normal posture + intent
-  → culmination: structured card / brief
-  → Review · Approve · Revise · Skip  (shape per artifact)
-  → if approved: one or more *consume destinations*
-  → artifact stays in project history
+  → culmination: structured Artifact Card
+  → Review · Approve · Revise · Skip
+  → if Approved: artifact enters accepted library / project history
+  → Consume (optional, later): apply to a destination
 ```
-
-Plan is instance zero. The table below is the family.
 
 ---
 
 ## Family map
 
-| Affordance | `requestedArtifact` | Culminating artifact | Mature cousins today | Primary consume destinations (expansion) |
-|------------|---------------------|----------------------|----------------------|------------------------------------------|
-| **Plan** | `"plan"` | Plan Card | Restored on Nexus; Haiku extract; PlanCard UI | Build execute (wired) · **Flow** · **Tasks** · Workspace history |
-| **Decide** | `"decide"` | Decision Card | CLARIFY / TRADEOFF / `DECISION_ARTIFACT` (tradeoff_matrix, decision_tree, deviation_log) — **inferred**, not composer-requested | Ledger / project memory · override logging |
-| **Research** | `"research"` | Research Brief | Closest: `generate_deliverable` docx/pdf — file, not brief card | Library / Outputs · citation trail |
-| **Compare** | `"compare"` | Comparison Matrix | Largely overlaps `tradeoff_matrix` | Decision record · Ledger |
-| **Timeline** | `"timeline"` | Timeline Artifact | Partial Outputs / activity linking | Project Timeline · milestones |
+| Affordance | `requestedArtifact` | Culminating artifact | Mature cousins today | Consume destinations (later) |
+|------------|---------------------|----------------------|----------------------|------------------------------|
+| **Plan** | `"plan"` | Plan Card | Restored on Nexus | Build · Flow · Tasks · share |
+| **Decide** | `"decide"` | Decision Card | CLARIFY / TRADEOFF / `DECISION_ARTIFACT` (inferred today) | Ledger / memory |
+| **Compare** | `"compare"` | Comparison Matrix | `tradeoff_matrix` | Ledger / decision record |
+| **Research** | `"research"` | Research Brief | `generate_deliverable` files (different shape) | Library / Outputs |
+| **Timeline** | `"timeline"` | Timeline Artifact | Partial activity linking | Project Timeline / milestones |
 
-WhisperGate `DECIDE` ≠ composer Decide. Same word, different layer (intent vs requested artifact).
+WhisperGate `DECIDE` ≠ composer Decide (intent vs requested artifact).
 
 ---
 
-## If we consider expansion now — what it would feel like
+## Expansion — what it would feel like
 
-### 1. Composer as an output-type palette (not a mode row)
+### 1. Composer as output-type palette
 
-Plan already sits as a checklist. Expansion would add sibling **request** controls (not personality switches):
+Sibling **request** controls (not personality switches): Plan · Decide · Compare · Research · Timeline.  
+Mental model: *Generate X*, never *X Mode*.
 
-- Plan · Decide · Research · Compare · Timeline  
-- At most one requested artifact per send (or explicit multi-request later)  
-- UI resets after submit; sticky pending until that artifact culminates (same pattern as Plan)
+### 2. Decide / Compare next (cousins of Plan)
 
-Mental model stays: *Generate X*, never *X Mode*.
+Structured thinking artifacts; reuse decision intelligence; **guarantee** the card when requested instead of hoping WhisperGate emits one.
 
-### 2. Approve becomes a destination picker when destinations exist
+### 3. Consume adapters (after acceptance exists)
 
-For Plan today: Approve → execute on Nexus.
+Flow / Tasks / Build / share read from the **accepted** artifact library—not from the Approve click itself.
 
-With expansion, Approve on a Plan Card could offer:
+### 4. Research / Timeline later
 
-| Destination | Meaning |
-|-------------|---------|
-| **Build** | Execute in Workspace (current) |
-| **Flow** | Materialize steps as Flow nodes / sequence |
-| **Tasks** | Spawn task / parking items from must/should steps |
-| **Save only** | Keep in history / Outputs without acting |
+New schemas (brief card; milestone artifact)—same bus, new shapes.
 
-That picker is the product of *consume expansion*, not a missing Plan Card button.
-
-### 3. Decide / Compare lean on existing decision intelligence
-
-Lowest-cost expansion after Plan:
-
-1. Composer Decide → `requestedArtifact: "decide"` → guarantee Decision Card culmination (reuse CLARIFY/TRADEOFF/`DECISION_ARTIFACT` factories, force emission when actionable).  
-2. Composer Compare → `requestedArtifact: "compare"` → force `tradeoff_matrix` (or a dedicated Comparison Matrix card).  
-
-Difference from today: **guarantee** the card when the user asked for it, instead of hoping WhisperGate DECIDE emits one.
-
-### 4. Research and Timeline need new shapes
-
-- **Research Brief** — structured card (question, findings, sources, open questions) distinct from a downloadable docx; may *also* offer “Export to Outputs.”  
-- **Timeline Artifact** — ordered milestones / dependencies consumable by project Timeline, not only chat prose.
-
-These are greenfield artifact types under the same `requestedArtifact` bus.
-
-### 5. Consume graph (Plan Card as hub)
+### 5. Consume graph (after Approve)
 
 ```
-                    ┌─────────────┐
-                    │  Plan Card  │
-                    │  (approved) │
-                    └──────┬──────┘
-           ┌───────────────┼───────────────┐
-           ▼               ▼               ▼
-        Build           Flow            Tasks
-     (execute)     (node graph)    (work items)
-           │               │               │
-           └───────────────┴───────────────┘
-                           ▼
-                  Project history / Outputs
+         Artifact Card ──Approve──► Accepted in Artifact Library
+                                            │
+                    ┌───────────────────────┼───────────────────────┐
+                    ▼                       ▼                       ▼
+                 Build                    Flow                    Tasks
+              (optional)              (optional)               (optional)
 ```
 
-Decide / Compare cards feed **Ledger / memory**.  
-Research feeds **Library / Outputs**.  
-Timeline feeds **Timeline / milestones**.
-
-One bus (`requestedArtifact`), many cards, many destinations.
+Destinations are available **because** the artifact was approved—not chosen *as* approval.
 
 ---
 
-## Suggested sequencing (if expanding now)
+## Suggested sequencing
 
-| Order | Capability | Why this order |
-|-------|------------|----------------|
-| 0 | Plan → Plan Card | **Done** (restore) |
-| 1 | Plan Approve → destination chooser (Build + Save) | Tiny UX; teaches “consume” without Flow/Tasks yet |
-| 2 | Decide + Compare composer requests | Reuse decision artifact pipeline; prove family beyond Plan |
-| 3 | Flow consumes approved Plan | High product leverage; Plan steps → Flow nodes |
-| 4 | Tasks consume approved Plan | MoSCoW → work items |
-| 5 | Research Brief + Timeline Artifact | New schemas + UI |
+| Order | Capability | Why |
+|-------|------------|-----|
+| ✅ 0 | Plan → Plan Card | **Done** (restore) |
+| 1 | Decide + Compare composer requests | Closest cousins; structured thinking; reuse existing decision cards |
+| 2 | Artifact Library + accepted status | Makes Approve = acceptance durable without destination UI |
+| 3 | Flow consumes **approved** artifacts | Apply accepted Plans (and later others) |
+| 4 | Tasks consume **approved** artifacts | MoSCoW → work items |
+| 5 | Research Brief | New shape |
+| 6 | Timeline Artifact | New shape |
 
-Do not wait on 3–5 to call Plan restored. Do not ship Decide/Research/Compare/Timeline buttons inside a “finish Plan” PR.
+**Do not** insert “Approve → destination chooser” into this sequence.  
+**Do not** ship sibling buttons inside a “finish Plan” PR.
 
 ---
 
-## Engineering spine (shared, once)
+## Engineering spine
 
-Already established by Plan restore — reuse for the family:
+Reuse from Plan restore:
 
-1. `requestedArtifact` on Nexus submit (first-class field)  
-2. Soft side-effect policy per kind (Plan: no writes; Research: read-heavy; etc.)  
-3. Structuring pass or model-emitted block → SSE → bridge → card  
-4. Persist on `nexus_messages.metadata` (+ `project_artifacts` when project-scoped)  
+1. `requestedArtifact` on Nexus submit  
+2. Soft side-effect policy per kind  
+3. Structuring / emission → SSE → bridge → card  
+4. Persist on message metadata + project artifacts  
 5. Card actions: Review / Approve / Revise / Skip  
-6. Approve → pluggable **consume handlers** registered by destination  
-
-Expansion work is mostly: new `kind` handlers + card UIs + consume adapters — not a second architecture.
+6. **Approve** → mark accepted (library / status)—not invoke destinations  
+7. **Consume adapters** (separate) — Flow / Tasks / Build / share subscribe to accepted artifacts  
 
 ---
 

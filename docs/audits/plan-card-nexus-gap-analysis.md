@@ -115,12 +115,13 @@ Do **not** treat these as unfinished Plan restore. They belong to the requested-
 
 | Capability | Class |
 |------------|--------|
-| Flow consumes approved Plan Cards | **Expansion** — new consume destination |
-| Tasks consume approved Plan Cards | **Expansion** — new consume destination |
+| Flow consumes approved Plan Cards | **Expansion** — consume destination (after Approve) |
+| Tasks consume approved Plan Cards | **Expansion** — consume destination (after Approve) |
 | Decide / Research / Compare / Timeline composer buttons | **Expansion** — sibling requested artifacts |
-| Durable PlanCard “committed” row (agent-loop v2) | Optional later hardening, not required for restore |
+| Approve → destination chooser | **Rejected architecture** — overloads Approve; see expansion note |
+| Durable accepted status / Artifact Library | **Expansion** — makes Approve = acceptance durable |
 
-See `docs/architecture/requested-artifact-family-expansion.md` for how that family would feel if designed now.
+See `docs/architecture/requested-artifact-family-expansion.md` (**Approve ≠ Consume**).
 
 ## Phase 2 implementation status
 

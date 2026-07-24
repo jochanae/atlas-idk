@@ -127,8 +127,9 @@ The composer is not changing Joy’s personality. It is saying:
 1. **Preserve** the Plan composer control (copy may evolve toward Create Plan / Plan Card).
 2. **Pass** a requested-artifact signal through the Nexus submit path (distinct from `conversationMode` / WhisperGate intent).
 3. **Restore** culmination on Nexus: plan extraction or model-emitted plan block → stream/bridge fields → existing `PlanCard` UI.
-4. **Wire** Approve into existing consume paths (execute / Flow / Build / Tasks as product defines).
-5. **Extend** later with Decide / Research / Compare / Timeline under the same contract.
+4. **Approve** means acceptance of the artifact as truth (not a destination menu). Today’s execute-on-Approve is a transitional single consume path.
+5. **Expand** the family later (Decide / Compare first; then Flow / Tasks *consume* of approved artifacts; then Research / Timeline) — see `requested-artifact-family-expansion.md`. Those are new capabilities, not Plan restore gaps.
+6. Keep **Approve** (acceptance) separate from **Consume** (where an accepted artifact is applied).
 
 ## Implementation status (2026-07-24)
 
