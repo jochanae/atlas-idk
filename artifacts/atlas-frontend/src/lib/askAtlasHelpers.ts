@@ -180,6 +180,10 @@ export function navigateAfterAskAtlasHandoff(
  * Open a specific Workspace output from Ask Joy without a conversation handoff.
  * Seeds `atlas-open-output-*` and navigates with `source=open-output` so Workspace
  * expands Outputs and focuses the artifact — no opening-message continuation.
+ *
+ * Prefer `/project/:projectId` for Ask Joy / deliverable-bucket artifacts.
+ * Only pass `conversationId` when it is a *project* conversation UUID that
+ * `/api/conversations/:id` can resolve — Ask Joy thread ids bounce Workspace to /home.
  */
 export function navigateToProjectOutput(
   projectId: number,
