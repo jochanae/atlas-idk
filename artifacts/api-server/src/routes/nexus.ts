@@ -728,11 +728,12 @@ When something conflicts with a committed decision, surface it: "This conflicts 
 
 ## Memory
 When something worth keeping surfaces, write at the END of your response:
-MEMORY_T1: [core principle — permanent]
+MEMORY_T1: [core principle — durable when saved]
 MEMORY_T2: [how she thinks — 180 days]
 MEMORY_T3: [insight or pivot — 90 days]
 MEMORY_T4: [current state — 30 days]
 MEMORY_T5: [passing note — 7 days]
+Do not tell the user that "full context is preserved" or that every prior turn is permanently available — be honest about thread vs saved memory.
 
 Up to 3 lines per response, only when genuinely significant.
 
@@ -3377,7 +3378,7 @@ If the user asks for a deliverable: say you'll generate it, then actually call g
 Do not substitute a text-only outline or script for the user to run themselves — call the tool and produce the real artifact.
 If tools are not enabled on this specific turn, say plainly that you'll generate it on the next turn and follow through.
 If generate_deliverable is called and returns an error, report the actual failure honestly — never reinterpret a tool failure as "I don't have this capability at all."
-HARD RULE — NEVER CLAIM READY BEFORE SUCCESS: Do not say a brief/file/deck "is ready", "download it from the card", or similar until generate_deliverable has returned ok:true with a real artifact in THIS turn. Progressive "generating…" is fine. False completion claims are not.
+HARD RULE — NEVER CLAIM READY BEFORE SUCCESS: Do not say a brief/file/deck "is ready", "download it from the card", or similar until generate_deliverable has returned ok:true with a real artifact in THIS turn. Progressive "generating…" is only allowed while the tool is in flight — do not leave it in the final reply without ok:true. Prefer one format attempt; on failure, one calm recovery (do not thrash across formats). False completion claims are not.
 --- END DELIVERABLE GENERATION CAPABILITY ---`;
 
   // Always-on capability truth for run_browser_flow. This exists because Joy
@@ -3535,7 +3536,7 @@ RULES for atlas-action:
 
 When the user uses strong or colorful language (including profanity) to describe what's broken, frustrating, or wrong: acknowledge the charge, don't sanitize it away, and don't lecture. Name the friction in their words when it fits — "yeah, that flow is fucked" or "the refresh loop is genuinely broken" — then move to the fix. Do not perform anger back at them and do not mirror every swear; a single well-placed word that matches their framing lands, a stream of them sounds like caricature. Never scold the user for how they talk. If the situation is neutral and the user is neutral, stay clean. The goal is a conversation that feels two-sided — you heard what they said and how they said it — not a policy voice pretending nothing was said.`
   );
-  systemPrompt = `--- WHO YOU ARE TALKING WITH (persistent — loaded from long-term memory, survives across sessions) ---\nThis information was NOT provided in this conversation. It was learned over time and stored. Do not say you have no persistent memory — you do. This is it.\n\nWhen someone asks "what do you know about me?" — recognize the intent. They are not requesting a database readout. They are checking whether you have genuinely been paying attention. Engage with that. Show the knowledge through how you respond, not by enumerating the profile. A good opening is one that demonstrates you already know who you're talking to, not one that lists what you've filed away.\n\n${identityLines.join("\n\n")}\n--- END IDENTITY ---\n\n` + systemPrompt;
+  systemPrompt = `--- WHO YOU ARE TALKING WITH (from saved profile memory when available) ---\nThis information was NOT typed in this turn — it was learned earlier and stored when available. Use it when relevant. Do not claim every detail of every past chat is fully preserved; distinguish what you know from this profile vs what is only in the current thread.\n\nWhen someone asks "what do you know about me?" — recognize the intent. They are not requesting a database readout. They are checking whether you have genuinely been paying attention. Engage with that. Show the knowledge through how you respond, not by enumerating the profile. A good opening is one that demonstrates you already know who you're talking to, not one that lists what you've filed away.\n\n${identityLines.join("\n\n")}\n--- END IDENTITY ---\n\n` + systemPrompt;
 
   if (userGlobalNarrative) {
     systemPrompt += `\n\n--- WHAT WE'VE BEEN WORKING THROUGH ---\n${userGlobalNarrative}\n--- END LIVING MEMORY ---`;
@@ -7970,7 +7971,8 @@ Do NOT claim to read, see, or describe any file not listed here.
           // hops (still gated by the original BUILD/DECIDE allowToolAccess
           // check via options.tools), capped so a stuck loop can't run away.
           const nextHop = (options.toolHopCount ?? 0) + 1;
-          const MAX_TOOL_HOPS = 6;
+          // Phase C E3: tighter hop cap — reduce multi-format thrash after failures.
+          const MAX_TOOL_HOPS = 4;
           streamClaude(continuationMessages, {
             ...options,
             tools: options.tools && nextHop < MAX_TOOL_HOPS,

@@ -93,7 +93,8 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { hasBuildIntent, seedHandoffContinuation, triggerNexusHandoff, resolveConversationDestination, selectHandoffMessages, navigateAfterAskAtlasHandoff } from "@/lib/askAtlasHelpers";
+import { hasBuildIntent, seedHandoffContinuation, buildHandoffLuggageMessage, triggerNexusHandoff, resolveConversationDestination, selectHandoffMessages, navigateAfterAskAtlasHandoff } from "@/lib/askAtlasHelpers";
+import { truncateMessagesForResend } from "@/lib/threadResend";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import {
   clearAskAtlasThreadMemory,
@@ -3760,7 +3761,11 @@ export default function Home() {
       // effect only fires when the last assistant reply is a short ack (≤150
       // chars); full Ask Joy threads need this path. Clear the short-ack
       // carryover key so we don't double-send when both would apply.
-      seedHandoffContinuation(projectId);
+      // Phase C E6: carry brief luggage when threadSummary is available.
+      seedHandoffContinuation(
+        projectId,
+        buildHandoffLuggageMessage({ threadSummary: resumeGreeting }),
+      );
       try {
         const adoptedForClear = sessionStorage.getItem(`atlas-adopted-conv-${projectId}`);
         if (adoptedForClear) sessionStorage.removeItem(`atlas-conv-carryover-${adoptedForClear}`);
@@ -3980,7 +3985,18 @@ export default function Home() {
         // Kick Joy on arrival: transcript transfer alone leaves the workspace
         // quiet because the bridge already has messages and suppresses auto-send
         // unless atlas-handoff-continuation=1 is set (see workspace opening pipeline).
-        seedHandoffContinuation(projectId);
+        // Phase C E6: luggage from last assistant substance when present.
+        const lastAssist = [...conversationMessagesLive]
+          .reverse()
+          .find((m) => m.role === "assistant" && typeof m.content === "string" && m.content.trim());
+        const luggageSummary =
+          typeof lastAssist?.content === "string"
+            ? lastAssist.content.trim().slice(0, 320)
+            : null;
+        seedHandoffContinuation(
+          projectId,
+          buildHandoffLuggageMessage({ threadSummary: luggageSummary }),
+        );
       } catch {}
 
       // Await adoption so Workspace can pin /workspace/{cid} with history ready.
@@ -5374,6 +5390,11 @@ export default function Home() {
                               title="Edit & resend"
                               aria-label="Edit message"
                               onClick={() => {
+                                // Phase C B4: this list is nexusChat.messages —
+                                // truncate here so resend does not duplicate.
+                                nexusChat.setMessages((prev) =>
+                                  truncateMessagesForResend(prev, i) as typeof prev,
+                                );
                                 setInput(msg.content);
                                 try {
                                   const ta = document.querySelector<HTMLTextAreaElement>('textarea[data-atlas-composer], textarea');

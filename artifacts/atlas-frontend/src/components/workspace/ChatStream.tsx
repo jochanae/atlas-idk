@@ -283,7 +283,7 @@ export interface ChatStreamProps {
   onSwitchToGemini: () => void;
 
   // user bubble
-  onEditUserMessage: (content: string) => void;
+  onEditUserMessage: (content: string, messageIndex: number) => void;
 
   // assistant bubble — context
   projectId: number;
@@ -983,7 +983,7 @@ export function ChatStream(props: ChatStreamProps) {
                   imageMimeType={msg.imageMimeType}
                   attachments={msg.attachments}
                   onCopy={() => {}}
-                  onEdit={() => onEditUserMessage(msg.content)}
+                  onEdit={() => onEditUserMessage(msg.content, i)}
                 />
               )}
             </div>

@@ -917,7 +917,7 @@ function TradeoffMatrixCard({ matrix }: { matrix: TradeoffMatrix }) {
           fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.5,
         }}>
           <span style={{ color: "var(--atlas-gold)", fontWeight: 600 }}>Joy leans toward {lean.label}.</span>
-          {" "}You have full context — override as needed.
+          {" "}Override any lean if it doesn't fit.
         </div>
       )}
     </div>

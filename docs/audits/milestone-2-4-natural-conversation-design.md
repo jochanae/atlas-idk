@@ -1,8 +1,8 @@
 # Milestone 2.4 — Natural Conversation Design
 
-**Phase:** Phase B IN PROGRESS (design freeze approved · Phase A CLOSED)  
+**Phase:** Phase C IN PROGRESS (design freeze approved · Phase A–B CLOSED)  
 **Date:** 2026-07-24  
-**Status:** **DESIGN APPROVED** — Phase B (Kill Stage Theater) in progress  
+**Status:** **DESIGN APPROVED** — Phase C (Honest Execution) in progress  
 **Prerequisite:** Milestone 2.3 CLOSED (lens differentiation)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Repo HEAD at commission:** `a3e4460e` (`main`, post #223)  
@@ -572,14 +572,15 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 - N5 + N7: no unsolicited stage/mode/pipeline vocabulary  
 - **Blind Read Test (required qualitative):** A reviewer who does not know Atlas’s architecture reads the surface copy (Genome, Portfolio, Manifest, Insights, Memory HUD, DecisionGate, Files lens chrome). They must be able to understand the **work** without inferring stages, pipelines, modes, or internal process. If they can reconstruct a workflow engine from the copy, Phase B fails.
 
-**Status:** **IN PROGRESS.**
+**Status:** **CLOSED** — merged `#226` (`4660c322`). Notes: [`milestone-2-4-phase-b-stage-theater.md`](./milestone-2-4-phase-b-stage-theater.md).
 
-### Phase C — Honest execution (interrupt, outputs, renderer)
+### Phase C — Honest execution (interrupt, outputs, renderer) ← **IN PROGRESS**
 
 **Objective:** Idempotent interrupt/resend (B4); generation claims ↔ Outputs truth (E2/E6); quieter renderer fallback (E3); guard voice restraint (E1); persistence copy honesty (E4).  
-**Dependencies:** Phase A for handoff luggage; after or lightly parallel to B (not blocked on prompt posture).  
+**Dependencies:** Phase A ✅ · Phase B ✅.  
 **Acceptance:** T4, T5, T8, T10 Pass on N4/N6; zero false ready/generated claims in battery.  
-**Boundary:** Not stage-copy work — honesty/recovery only.
+**Boundary:** Not stage-copy work — honesty/recovery only. Do not rewrite Idea Mode / CONV_STATE / ATLAS STATE (Phase D).  
+**Status:** **IN PROGRESS** — [`milestone-2-4-phase-c-honest-execution.md`](./milestone-2-4-phase-c-honest-execution.md).
 
 ### Phase D — Prompt posture alignment (no new ontology)
 
@@ -650,6 +651,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | 2026-07-23 | Design draft created from product definition + codebase audit. |
 | 2026-07-23 | Design **APPROVED** — P1–P10 (P9 governing); T1–T11; roadmap A→E. Phase A unblocked. |
 | 2026-07-24 | Phase A **CLOSED** (`#225`). Phase B thesis locked + replacement rule + Blind Read Test; Phase B implementation started. |
+| 2026-07-24 | Phase B **CLOSED** (`#226`). Phase C Honest Execution started. |
 
 ---
 
@@ -660,6 +662,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md) | M2 sequence |
 | [`milestone-2-4-phase-a-arrival.md`](./milestone-2-4-phase-a-arrival.md) | Phase A arrival-contract landing |
 | [`milestone-2-4-phase-b-stage-theater.md`](./milestone-2-4-phase-b-stage-theater.md) | Phase B Kill Stage Theater landing |
+| [`milestone-2-4-phase-c-honest-execution.md`](./milestone-2-4-phase-c-honest-execution.md) | Phase C Honest Execution landing |
 | [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md) | Prior close; deferred UX → 2.4 |
 | [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md) | Perspective without performance baseline |
 | [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) | Round 3 execution UX seed list |

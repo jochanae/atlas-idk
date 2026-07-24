@@ -235,6 +235,28 @@ export const HANDOFF_CONTINUATION_MESSAGE =
   "Continue the prior thread. Pick up the last concrete task. Do not acknowledge the handoff, welcome the user, or ask what we are building.";
 
 /**
+ * Milestone 2.4 Phase C E6 — Open Workspace carries luggage (brief + next task),
+ * not just a door. Falls back to HANDOFF_CONTINUATION_MESSAGE when empty.
+ */
+export function buildHandoffLuggageMessage(opts?: {
+  threadSummary?: string | null;
+  nextTask?: string | null;
+}): string {
+  const summary = opts?.threadSummary?.trim();
+  const next = opts?.nextTask?.trim();
+  if (summary && next) {
+    return `Continue the prior thread. Brief so far: ${summary}. Next concrete task: ${next}. Do not acknowledge the handoff, welcome the user, or ask what we are building.`;
+  }
+  if (summary) {
+    return `Continue the prior thread. Brief so far: ${summary}. Pick up the next concrete task from that work. Do not acknowledge the handoff, welcome the user, or ask what we are building.`;
+  }
+  if (next) {
+    return `Continue the prior thread. Next concrete task: ${next}. Do not acknowledge the handoff, welcome the user, or ask what we are building.`;
+  }
+  return HANDOFF_CONTINUATION_MESSAGE;
+}
+
+/**
  * Seed the workspace opening-message pipeline so Joy auto-responds after
  * a homepage / Ask Joy → workspace handoff.
  *
