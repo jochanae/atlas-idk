@@ -9,16 +9,6 @@ const GREEN = "#4ade80";
 const AMBER = "#f59e0b";
 const RED = "#f87171";
 
-type AtlasState = "Discovering" | "Pressure Testing" | "Structuring" | "Building" | "Operating";
-
-const STATE_COLOR: Record<AtlasState, string> = {
-  "Discovering":      "rgba(99,212,221,0.8)",
-  "Pressure Testing": AMBER,
-  "Structuring":      "rgba(167,139,250,0.85)",
-  "Building":         GREEN,
-  "Operating":        GOLD,
-};
-
 function momentumColor(m: string): string {
   if (m === "High") return GREEN;
   if (m === "Medium") return AMBER;
@@ -60,7 +50,7 @@ type ProjectIntelligence = {
     clarity: number;
     momentum: "Low" | "Medium" | "High";
     confidence: "Low" | "Medium" | "High";
-    atlasState: AtlasState;
+    atlasState?: string;
     risk: string | null;
     nextAction: string;
     evidence: { conversationsLast7Days: number; openBlockers: number };
@@ -103,7 +93,6 @@ function ProjectHealthCard({
   p: ProjectIntelligence;
   onOpen: (id: number) => void;
 }) {
-  const stateColor = STATE_COLOR[p.health.atlasState] ?? GOLD;
   const mColor = momentumColor(p.health.momentum);
   const blockerCount = p.entries.blockers.length;
   const decisionCount = p.entries.decisions.length;
@@ -147,20 +136,8 @@ function ProjectHealthCard({
         </span>
       </div>
 
-      {/* Row 2: state + momentum + clarity */}
+      {/* Row 2: momentum + clarity (Phase B: no atlasState stage label) */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{
-            width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
-            background: stateColor, boxShadow: `0 0 5px ${stateColor}`,
-          }} />
-          <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.07em", color: stateColor, fontWeight: 600 }}>
-            {p.health.atlasState}
-          </span>
-        </div>
-
-        <div style={{ width: 1, height: 10, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: MUTED, opacity: 0.4 }}>
             Momentum
@@ -211,26 +188,28 @@ function ProjectHealthCard({
         )}
       </div>
 
-      {/* Row 4: next action */}
-      <div style={{
-        display: "flex", alignItems: "flex-start", gap: 6,
-        paddingTop: 4,
-        borderTop: "1px solid rgba(255,255,255,0.04)",
-      }}>
-        <span style={{
-          fontFamily: MONO, fontSize: 8.5, color: GOLD, opacity: 0.5,
-          flexShrink: 0, paddingTop: 1, letterSpacing: "0.04em",
+      {/* Row 4: open tension — work language only; omit when empty (Phase B) */}
+      {p.health.nextAction?.trim() ? (
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 6,
+          paddingTop: 4,
+          borderTop: "1px solid rgba(255,255,255,0.04)",
         }}>
-          →
-        </span>
-        <span style={{
-          fontSize: 11.5, color: FG, opacity: 0.7, lineHeight: 1.45,
-          overflow: "hidden", display: "-webkit-box",
-          WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-        }}>
-          {p.health.nextAction}
-        </span>
-      </div>
+          <span style={{
+            fontFamily: MONO, fontSize: 8.5, color: GOLD, opacity: 0.5,
+            flexShrink: 0, paddingTop: 1, letterSpacing: "0.04em",
+          }}>
+            →
+          </span>
+          <span style={{
+            fontSize: 11.5, color: FG, opacity: 0.7, lineHeight: 1.45,
+            overflow: "hidden", display: "-webkit-box",
+            WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+          }}>
+            {p.health.nextAction}
+          </span>
+        </div>
+      ) : null}
     </button>
   );
 }

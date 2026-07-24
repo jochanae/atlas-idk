@@ -56,4 +56,4 @@ Unit coverage: `handoffKickoff.test.ts`, `askAtlasHelpers.handoff.test.ts` (seed
 
 ## Status
 
-**IN PROGRESS** — landing arrival-contract code + design freeze amendments (P10, T11, approvals).
+**CLOSED** — merged `#225`.

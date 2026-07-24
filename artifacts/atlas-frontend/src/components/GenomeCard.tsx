@@ -29,8 +29,6 @@ export type ProjectGenome = {
   health: ProjectHealth;
 };
 
-const STAGES = ["Think", "Shape", "Decide", "Workspace", "Strategize", "Build", "Operate", "Evolve"] as const;
-
 const GOLD = "var(--atlas-gold)";
 const MUTED = "var(--atlas-muted)";
 const FG = "var(--atlas-fg)";
@@ -55,71 +53,6 @@ function clarityColor(pct: number): string {
   if (pct >= 70) return GREEN;
   if (pct >= 35) return AMBER;
   return "rgba(255,255,255,0.3)";
-}
-
-const ATLAS_STATES: AtlasState[] = ["Discovering", "Pressure Testing", "Structuring", "Building", "Operating"];
-
-function AtlasStateTrack({ state }: { state: AtlasState | undefined }) {
-  const activeIdx = state ? ATLAS_STATES.indexOf(state) : -1;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      <span style={{
-        fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em",
-        textTransform: "uppercase", color: MUTED, opacity: 0.4,
-      }}>
-        Joy State
-      </span>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {ATLAS_STATES.map((s, i) => {
-          const isPast = i < activeIdx;
-          const isCurrent = i === activeIdx;
-          const isFuture = i > activeIdx;
-          return (
-            <div key={s} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              {/* dot */}
-              <div style={{
-                width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
-                background: isCurrent ? GOLD : isPast ? "rgba(201,162,76,0.35)" : "transparent",
-                border: isFuture ? "1px solid rgba(255,255,255,0.12)" : "none",
-                boxShadow: isCurrent ? `0 0 6px ${GOLD}` : "none",
-                transition: "all 300ms",
-              }} />
-              {/* label */}
-              <span style={{
-                fontFamily: MONO,
-                fontSize: isCurrent ? 9.5 : 9,
-                letterSpacing: "0.06em",
-                color: isCurrent ? GOLD : isPast ? "rgba(201,162,76,0.5)" : "rgba(255,255,255,0.18)",
-                fontWeight: isCurrent ? 600 : 400,
-                transition: "all 300ms",
-              }}>
-                {s}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function StageBar({ stage }: { stage: string }) {
-  const idx = STAGES.indexOf(stage as (typeof STAGES)[number]);
-  const active = idx >= 0 ? idx : 0;
-  return (
-    <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-      {STAGES.map((s, i) => (
-        <div key={s} title={s} style={{
-          height: 2,
-          flex: 1,
-          borderRadius: 2,
-          background: i <= active ? GOLD : "rgba(201,162,76,0.1)",
-          opacity: i === active ? 1 : i < active ? 0.55 : 0.25,
-          transition: "background 300ms",
-        }} />
-      ))}
-    </div>
-  );
 }
 
 function HealthMetric({
@@ -148,38 +81,17 @@ function HealthMetric({
   );
 }
 
-function HealthPanel({ health, stage }: { health: ProjectHealth; stage: string }) {
+function HealthPanel({ health }: { health: ProjectHealth }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Joy State track + metrics side-by-side */}
-      <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-        {/* Joy State track — left column */}
-        <div style={{ flexShrink: 0 }}>
-          <AtlasStateTrack state={health.atlasState} />
-        </div>
-
-        {/* Metrics — right column */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-          <HealthMetric label="Clarity" value={`${health.clarity}%`} color={clarityColor(health.clarity)} />
-          <HealthMetric label="Momentum" value={health.momentum} color={momentumColor(health.momentum)} />
-          <HealthMetric label="Confidence" value={health.confidence} color={confidenceColor(health.confidence)} />
-        </div>
+      {/* Metrics only — Phase B: no Joy State / Stage track (process theater) */}
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <HealthMetric label="Clarity" value={`${health.clarity}%`} color={clarityColor(health.clarity)} />
+        <HealthMetric label="Momentum" value={health.momentum} color={momentumColor(health.momentum)} />
+        <HealthMetric label="Confidence" value={health.confidence} color={confidenceColor(health.confidence)} />
       </div>
 
-      {/* Stage row */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <StageBar stage={stage} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: MONO, fontSize: 8.5, color: MUTED, opacity: 0.4, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-            Stage
-          </span>
-          <span style={{ fontFamily: MONO, fontSize: 8.5, color: GOLD, opacity: 0.75, letterSpacing: "0.08em" }}>
-            {stage}
-          </span>
-        </div>
-      </div>
-
-      {/* Risk */}
+      {/* Risk — work language only */}
       {health.risk && (
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: MUTED, opacity: 0.4, flexShrink: 0 }}>
@@ -191,21 +103,23 @@ function HealthPanel({ health, stage }: { health: ProjectHealth; stage: string }
         </div>
       )}
 
-      {/* Next Action */}
-      <div style={{
-        padding: "8px 10px",
-        borderRadius: 6,
-        border: "1px solid rgba(201,162,76,0.2)",
-        background: "rgba(201,162,76,0.04)",
-        display: "flex", flexDirection: "column", gap: 4,
-      }}>
-        <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: GOLD, opacity: 0.55 }}>
-          Next Action
-        </span>
-        <span style={{ fontSize: 11.5, color: FG, lineHeight: 1.5, opacity: 0.9 }}>
-          {health.nextAction}
-        </span>
-      </div>
+      {/* Open tension — real work observation only; omit when empty (no Mad Lib homework) */}
+      {health.nextAction?.trim() ? (
+        <div style={{
+          padding: "8px 10px",
+          borderRadius: 6,
+          border: "1px solid rgba(201,162,76,0.2)",
+          background: "rgba(201,162,76,0.04)",
+          display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: GOLD, opacity: 0.55 }}>
+            Open
+          </span>
+          <span style={{ fontSize: 11.5, color: FG, lineHeight: 1.5, opacity: 0.9 }}>
+            {health.nextAction}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -418,7 +332,7 @@ export function GenomeCard({
 
         {!loading && !error && hasHealth && genome && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <HealthPanel health={genome.health} stage={genome.stage} />
+            <HealthPanel health={genome.health} />
 
             {showDetails && (genome.purpose || genome.audience || genome.coreEmotion || genome.openQuestions.length > 0) && (
               <div style={{

@@ -1,8 +1,8 @@
 # Milestone 2.4 — Natural Conversation Design
 
-**Phase:** Phase A IN PROGRESS (design freeze approved)  
-**Date:** 2026-07-23  
-**Status:** **DESIGN APPROVED** — Phase A (Arrival Contract) may begin  
+**Phase:** Phase B IN PROGRESS (design freeze approved · Phase A CLOSED)  
+**Date:** 2026-07-24  
+**Status:** **DESIGN APPROVED** — Phase B (Kill Stage Theater) in progress  
 **Prerequisite:** Milestone 2.3 CLOSED (lens differentiation)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
 **Repo HEAD at commission:** `a3e4460e` (`main`, post #223)  
@@ -542,30 +542,51 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 **Acceptance:** Human sign-off on §1 principles (P1–P10; P9 governing), §4 battery bar (T1–T11), §5 phase order, §6 non-goals.  
 **Status:** **Approved 2026-07-23.**
 
-### Phase A — Arrival contract (handoff + greeting + resume) ← **IN PROGRESS**
+### Phase A — Arrival contract (handoff + greeting + resume) ✅ **CLOSED**
 
 **Objective:** One arrival posture: continue the work. Kill acknowledge / what’s-first / banned reopeners at control points A1–A6, B1, C10, F1–F3.  
 **Dependencies:** Phase 0 ✅.  
 **Acceptance:** T2, T3, T9 Pass (N1/N2/N6). Trace matrix shows no split-brain between client seeds and server continuity.  
-**Status:** **Unblocked** — implementation may begin.
+**Status:** **CLOSED** — merged `#225` (`62ebc16f`). Notes: [`milestone-2-4-phase-a-arrival.md`](./milestone-2-4-phase-a-arrival.md).
 
-### Phase B — Kill procedural scaffolding (stage Mad Libs + status theater)
+### Phase B — Kill Stage Theater ← **IN PROGRESS**
 
-**Objective:** Remove or reframe `nextActionForStage`, Genome/Portfolio next-action assignment voice, Memory HUD stage narration, Manifest-as-driver, unsolicited perspective menus (C1–C5, C9/D1, G1–G2).  
-**Dependencies:** Phase A preferred (so scaffolding isn’t the only “next step” after a clean arrival).  
-**Acceptance:** S2 Pass; Insights/health never emit `"Answer: …"` Mad Libs; T6 Pass on N5.
+**Thesis (locked):** Remove conversational ceremony that exists to explain the application's internal process. Preserve only language that helps the user understand the work itself. The conversation should feel like collaborating with someone who simply continues the task — not like operating a workflow engine.
+
+**Replacement rule (locked):** Preserve work language; delete process language.  
+- Bad: “You’re in Shape phase. Answer this next.”  
+- Good: “The open tension is still who this is for.” / silence  
+
+**In scope:** User-facing stage/checklist/mode theater — `nextActionForStage` Mad Libs, Genome/Portfolio Next Action assignment voice, Memory HUD stage narration, Manifest “Joy still needs” as driver, DecisionGate process chrome, Insights capture-checklist empties, unsolicited perspective menus / lens badges (C1–C5, C9/D1/D2, C11, G1–G2). CommitPill phase labels as easy stretch.
+
+**Out of scope (boundaries locked):**  
+- **Phase C** — interrupt/resend, renderer, false “generating”, outputs honesty  
+- **Phase D** — Idea Mode / CONV_STATE / ATLAS STATE / focused briefing prompt posture (C6–C8, A9–A10)  
+- Full Tier-1 intake redesign; arrival reopeners (Phase A)
+
+**Dependencies:** Phase A ✅.  
+**Acceptance:**  
+- S2 Pass; Insights/health never emit `"Answer: …"` / Shape-phase homework  
+- No user-visible stage track as conversational driver  
+- T6/T7: mid-plan pivot doesn’t reopen stage checklist  
+- N5 + N7: no unsolicited stage/mode/pipeline vocabulary  
+- **Blind Read Test (required qualitative):** A reviewer who does not know Atlas’s architecture reads the surface copy (Genome, Portfolio, Manifest, Insights, Memory HUD, DecisionGate, Files lens chrome). They must be able to understand the **work** without inferring stages, pipelines, modes, or internal process. If they can reconstruct a workflow engine from the copy, Phase B fails.
+
+**Status:** **IN PROGRESS.**
 
 ### Phase C — Honest execution (interrupt, outputs, renderer)
 
 **Objective:** Idempotent interrupt/resend (B4); generation claims ↔ Outputs truth (E2/E6); quieter renderer fallback (E3); guard voice restraint (E1); persistence copy honesty (E4).  
-**Dependencies:** Phase A for handoff luggage; can parallelize parts of B.  
-**Acceptance:** T4, T5, T8, T10 Pass on N4/N6; zero false ready/generated claims in battery.
+**Dependencies:** Phase A for handoff luggage; after or lightly parallel to B (not blocked on prompt posture).  
+**Acceptance:** T4, T5, T8, T10 Pass on N4/N6; zero false ready/generated claims in battery.  
+**Boundary:** Not stage-copy work — honesty/recovery only.
 
 ### Phase D — Prompt posture alignment (no new ontology)
 
 **Objective:** Align Idea Mode / CONV_STATE / ATLAS STATE / focused briefing / soft bridge (C6–C8, A9–A10, F4–F5) with principles — **restraint and continuity**, not a new personality pack.  
-**Dependencies:** Phase A contract language; Phase B so prompts aren’t fighting Mad Libs.  
-**Acceptance:** T1, T7, S1 Pass on N3/N5/N7; identity and kickoffs no longer contradict.
+**Dependencies:** Phase A contract language; Phase B so prompts aren’t compensating for Mad Libs still shipping.  
+**Acceptance:** T1, T7, S1 Pass on N3/N5/N7; identity and kickoffs no longer contradict.  
+**Boundary:** Do not start until B lands — otherwise prompts paper over architecture.
 
 ### Phase E — Close 2.4
 
@@ -628,6 +649,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 |------|------|
 | 2026-07-23 | Design draft created from product definition + codebase audit. |
 | 2026-07-23 | Design **APPROVED** — P1–P10 (P9 governing); T1–T11; roadmap A→E. Phase A unblocked. |
+| 2026-07-24 | Phase A **CLOSED** (`#225`). Phase B thesis locked + replacement rule + Blind Read Test; Phase B implementation started. |
 
 ---
 
@@ -636,6 +658,8 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | Doc | Role |
 |-----|------|
 | [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md) | M2 sequence |
+| [`milestone-2-4-phase-a-arrival.md`](./milestone-2-4-phase-a-arrival.md) | Phase A arrival-contract landing |
+| [`milestone-2-4-phase-b-stage-theater.md`](./milestone-2-4-phase-b-stage-theater.md) | Phase B Kill Stage Theater landing |
 | [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md) | Prior close; deferred UX → 2.4 |
 | [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md) | Perspective without performance baseline |
 | [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) | Round 3 execution UX seed list |

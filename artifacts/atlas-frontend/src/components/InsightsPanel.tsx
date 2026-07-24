@@ -147,9 +147,7 @@ function briefingLines(intel: Intelligence): string[] {
   }
 
   // Fallback when DNA is empty — one orientation line, not a procedure script
-  if (lines.length === 0) {
-    lines.push("Joy is still forming a read on this project — keep the architectural conversation going.");
-  }
+  // Quiet empty — Phase B: no procedure coach line
 
   return lines.slice(0, 6);
 }
@@ -235,7 +233,7 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
         }}>
           {briefing.length === 0 ? (
             <p style={{ color: MUTED, fontSize: 13, fontFamily: SANS, margin: 0 }}>
-              Not enough context yet — keep the conversation going.
+              —
             </p>
           ) : (
             briefing.map((line, i) => (
@@ -511,25 +509,25 @@ function DnaGrid({ dna }: { dna: Intelligence["dna"] }) {
       label: "Purpose",
       value: dna.purpose,
       help: "The core reason this project exists — the problem it solves and why it matters.",
-      missingHint: "Tell Joy what problem this solves and who feels it most.",
+      missingHint: "",
     },
     {
       label: "Audience",
       value: dna.audience,
       help: "Who this is built for — the specific person or group who benefits most.",
-      missingHint: "Name the audience out loud in a conversation with Joy.",
+      missingHint: "",
     },
     {
       label: "Identity",
       value: dna.identity,
       help: "What kind of product this is — the category, tone, or archetype it embodies.",
-      missingHint: "Describe how you'd introduce this project in one sentence.",
+      missingHint: "",
     },
     {
       label: "Wedge",
       value: dna.wedge,
       help: "The sharp angle or insight that makes this different from anything else.",
-      missingHint: "Talk through what only you can build here, or what others get wrong.",
+      missingHint: "",
     },
   ];
   return (
@@ -562,8 +560,8 @@ function FieldBlock({
         {help && <HelpDot label={label} help={help} missingHint={isEmpty ? missingHint : undefined} />}
       </div>
       {isEmpty ? (
-        <div style={{ fontSize: 13, color: MUTED, fontFamily: SANS, lineHeight: 1.5, fontStyle: "italic" }}>
-          Not captured yet
+        <div style={{ fontSize: 13, color: MUTED, fontFamily: SANS, lineHeight: 1.5 }}>
+          —
         </div>
       ) : (
         <div style={{ fontSize: 13, color: FG, fontFamily: SANS, lineHeight: 1.5 }}>{value}</div>
@@ -634,13 +632,13 @@ function HelpDot({ label, help, missingHint }: { label: string; help: string; mi
 
 function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
   const rows: { label: string; value: string | null; help: string; missingHint: string }[] = [
-    { label: "Frontend", value: stack?.frontend ?? null, help: "The UI framework and language the frontend is built with.", missingHint: "Tell Joy what the frontend uses (e.g. React + Vite + TypeScript)." },
-    { label: "Backend", value: stack?.backend ?? null, help: "The server runtime, framework, and where it runs.", missingHint: "Describe the backend runtime and framework (e.g. Node/Express on Cloud Run)." },
-    { label: "Database", value: stack?.database ?? null, help: "The primary datastore for the project.", missingHint: "Name the database and provider (e.g. Supabase Postgres)." },
-    { label: "Hosting", value: stack?.hosting ?? null, help: "Where the frontend and backend are deployed.", missingHint: "Say where each piece runs (e.g. Vercel frontend, Cloud Run backend)." },
-    { label: "Auth", value: stack?.auth ?? null, help: "How users are authenticated.", missingHint: "Describe how auth works (provider, token/cookie strategy)." },
-    { label: "Language", value: stack?.language ?? null, help: "The dominant language across the codebase.", missingHint: "Set the primary language in Joy (e.g. TypeScript)." },
-    { label: "Package manager", value: stack?.packageManager ?? null, help: "The package manager used to install and lock dependencies.", missingHint: "Note the package manager (pnpm, npm, bun)." },
+    { label: "Frontend", value: stack?.frontend ?? null, help: "The UI framework and language the frontend is built with.", missingHint: "" },
+    { label: "Backend", value: stack?.backend ?? null, help: "The server runtime, framework, and where it runs.", missingHint: "" },
+    { label: "Database", value: stack?.database ?? null, help: "The primary datastore for the project.", missingHint: "" },
+    { label: "Hosting", value: stack?.hosting ?? null, help: "Where the frontend and backend are deployed.", missingHint: "" },
+    { label: "Auth", value: stack?.auth ?? null, help: "How users are authenticated.", missingHint: "" },
+    { label: "Language", value: stack?.language ?? null, help: "The dominant language across the codebase.", missingHint: "" },
+    { label: "Package manager", value: stack?.packageManager ?? null, help: "The package manager used to install and lock dependencies.", missingHint: "" },
   ];
 
   const hasIntegrations = !!stack?.integrations && stack.integrations.length > 0;
@@ -649,9 +647,6 @@ function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
   if (!stack) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ fontSize: 12.5, color: MUTED, fontFamily: SANS, fontStyle: "italic", lineHeight: 1.5 }}>
-          Not captured yet — Joy hasn't seen this project's stack.
-        </div>
         {rows.map((r) => (
           <FieldBlock key={r.label} label={r.label} value="" help={r.help} missingHint={r.missingHint} />
         ))}
