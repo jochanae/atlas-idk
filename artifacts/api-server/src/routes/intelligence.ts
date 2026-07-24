@@ -25,6 +25,7 @@ import {
 import { computeProjectReadiness } from "./readiness";
 import type { AtlasState } from "./genome";
 import { getProjectDNA } from "../lib/projectDNA";
+import { workLanguageNextAction } from "../lib/workLanguageNextAction";
 
 const router: IRouter = Router();
 
@@ -80,20 +81,12 @@ function computeAtlasState(
   return "Discovering";
 }
 
-function nextActionForStage(stage: string, openQuestions: string[], constraints: string[]): string {
-  const q = openQuestions[0] ?? null;
-  const c = constraints[0] ?? null;
-  switch (stage) {
-    case "Think":      return q ?? "Start shaping your core idea — what problem are you solving?";
-    case "Shape":      return q ? `Answer: ${q}` : "Define who needs this most and why it matters to them";
-    case "Decide":     return c ? `Pressure-test: ${c}` : "Commit to your biggest assumption and test it";
-    case "Workspace":  return q ?? "Set up your execution environment and define what 'done' means";
-    case "Strategize": return q ?? "Define the phased approach — what comes first?";
-    case "Build":      return "Pick one feature and ship it — learn from real usage";
-    case "Operate":    return "Monitor and learn — what is the data telling you?";
-    case "Evolve":     return "Identify the next evolution — what would 10x this?";
-    default:           return q ?? "Keep the conversation going — Joy is listening";
-  }
+function nextActionForStage(
+  _stage: string,
+  openQuestions: string[],
+  constraints: string[],
+): string {
+  return workLanguageNextAction(openQuestions, constraints);
 }
 
 export async function computeProjectIntelligence(projectId: number) {
@@ -347,7 +340,7 @@ router.get("/portfolio/intelligence", async (req, res): Promise<void> => {
             projectDescription: null,
             projectStatus: null,
             dna: { purpose: null, coreEmotion: null, audience: null, identity: null, wedge: null, differentiator: null, stage: "Think", constraints: [], openQuestions: [], confidenceScore: 0, lastExtractedAt: null },
-            health: { clarity: 0, confidence: "Low" as const, momentum: "Low" as const, atlasState: "Discovering" as AtlasState, risk: null, nextAction: "Start shaping your core idea", evidence: { conversationsLast7Days: 0, openBlockers: 0, openConstraints: 0, openQuestions: 0, confidenceScore: 0 } },
+            health: { clarity: 0, confidence: "Low" as const, momentum: "Low" as const, atlasState: "Discovering" as AtlasState, risk: null, nextAction: "", evidence: { conversationsLast7Days: 0, openBlockers: 0, openConstraints: 0, openQuestions: 0, confidenceScore: 0 } },
             readiness: { overall: 0, label: "Getting started", projectKind: "general" as const, dimensions: {}, warnings: [], sourceBreakdown: null },
             entries: { decisions: [], blockers: [], goals: [], ideas: [], features: [], risks: [], openQuestionEntries: [] },
             analysis: { hasAnalysis: false, lastAnalyzedAt: null, analyzedAt: null, analysisVersion: null },

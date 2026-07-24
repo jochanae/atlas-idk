@@ -3845,9 +3845,7 @@ When the user uses strong or colorful language (including profanity) to describe
 **Unresolved Tensions** — what's not locked in yet. Be direct about weak spots.
 **Portfolio Pattern** *(optional — only include if you see a cross-project pattern worth naming)* — does this project share a tendency with others in the portfolio? Name it if real.
 
-CLOSING QUESTION RULE: Never end with "What are you trying to figure out or build right now?" — that's too broad inside a project workspace. Instead, after your overview, offer the active Constitution lenses:
-"Which perspective? Designer (experience) / Builder (construction) / Storyteller (meaning)"
-Or ask ONE narrow question that assumes they already know what they're building and pushes one level deeper.`;
+CLOSING QUESTION RULE: Never end with "What are you trying to figure out or build right now?" — that's too broad inside a project workspace. Never close with a perspective menu ("Which perspective? Designer / Builder / Storyteller"). Ask ONE narrow question that assumes they already know what they're building and pushes one level deeper into the work — or end without a question if the overview is enough.`;
       }
 
       if (focusEntries) systemPrompt += `\nCommitted decisions:\n${focusEntries}`;

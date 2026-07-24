@@ -217,17 +217,13 @@ export function ManifestPanel({
   const anchors = deriveAnchors(genome);
   const targets = deriveTargets(genome);
   const known = anchors.filter(a => a.value);
-  const missing = anchors.filter(a => !a.value);
   const openQuestions = genome?.openQuestions ?? [];
 
   const hasSelected = Boolean(selectedTarget);
   const selectedIsAvailable = targets.find(t => t.id === selectedTarget)?.status === "available";
 
-  const nextAction = known.length === 0
-    ? "Tell Joy what you're building. Start with the problem it solves."
-    : missing.some(a => a.label === "Core audience")
-    ? "Define who this is for — their situation before and after your product exists."
-    : "Keep going. Joy is building a clearer picture with every exchange.";
+  // Phase B: work observation only — real open question or silence; no field-checklist homework.
+  const nextAction = openQuestions[0]?.trim() || "";
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--atlas-surface-alt)" }}>
@@ -271,7 +267,7 @@ export function ManifestPanel({
                 )}
                 {known.length === 0 && (
                   <div style={{ fontFamily: SANS, fontSize: 12, color: MUTED, opacity: 0.65, lineHeight: 1.5, paddingLeft: 2 }}>
-                    Keep talking with Joy — understanding builds with every message.
+                    —
                   </div>
                 )}
                 {known.map(a => (
@@ -283,17 +279,11 @@ export function ManifestPanel({
               </div>
             </div>
 
-            {/* Joy still needs */}
-            {(missing.length > 0 || openQuestions.length > 0) && (
+            {/* Open tensions — work language only (Phase B: not a capture checklist) */}
+            {openQuestions.length > 0 && (
               <div>
-                <SectionLabel>Joy still needs</SectionLabel>
+                <SectionLabel>Open</SectionLabel>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {missing.map(a => (
-                    <div key={a.label} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                      <span style={{ color: CIRCLE_EMPTY, fontSize: 11, flexShrink: 0, lineHeight: 1 }}>○</span>
-                      <div style={{ fontFamily: SANS, fontSize: 12, color: MUTED, opacity: 0.82 }}>{a.label}</div>
-                    </div>
-                  ))}
                   {openQuestions.slice(0, 3).map((q, i) => (
                     <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                       <span style={{ color: CIRCLE_EMPTY, fontSize: 11, flexShrink: 0, lineHeight: 1, marginTop: 1 }}>○</span>
@@ -319,8 +309,8 @@ export function ManifestPanel({
               </div>
             </div>
 
-            {/* Recommended next action — shown only below threshold */}
-            {!isReady && (
+            {/* Open tension cue — only when we have real work language */}
+            {!isReady && nextAction.trim() && (
               <div style={{
                 padding: "11px 13px",
                 borderRadius: 8,
@@ -328,7 +318,7 @@ export function ManifestPanel({
                 border: `1px solid ${BORDER}`,
               }}>
                 <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: MUTED, opacity: 0.6, marginBottom: 5 }}>
-                  Next
+                  Open
                 </div>
                 <div style={{ fontFamily: SANS, fontSize: 12, color: FG, opacity: 0.82, lineHeight: 1.55 }}>
                   {nextAction}

@@ -12,6 +12,7 @@ import {
   getMultipleProjectDNA,
   updateProjectDNA,
 } from "../lib/projectDNA";
+import { workLanguageNextAction } from "../lib/workLanguageNextAction";
 
 const router: IRouter = Router();
 
@@ -73,20 +74,12 @@ function computeAtlasState(
   return "Discovering";
 }
 
-function nextActionForStage(stage: string, openQuestions: string[], constraints: string[]): string {
-  const q = openQuestions[0] ?? null;
-  const c = constraints[0] ?? null;
-  switch (stage) {
-    case "Think":      return q ?? "Start shaping your core idea — what problem are you solving?";
-    case "Shape":      return q ? `Answer: ${q}` : "Define who needs this most and why it matters to them";
-    case "Decide":     return c ? `Pressure-test: ${c}` : "Commit to your biggest assumption and test it";
-    case "Workspace":  return q ?? "Set up your execution environment and define what 'done' means";
-    case "Strategize": return q ?? "Define the phased approach — what comes first?";
-    case "Build":      return "Pick one feature and ship it — learn from real usage";
-    case "Operate":    return "Monitor and learn — what is the data telling you?";
-    case "Evolve":     return "Identify the next evolution — what would 10x this?";
-    default:           return q ?? "Keep the conversation going — Joy is listening";
-  }
+function nextActionForStage(
+  _stage: string,
+  openQuestions: string[],
+  constraints: string[],
+): string {
+  return workLanguageNextAction(openQuestions, constraints);
 }
 
 async function computeProjectHealth(projectId: number, dna: ProjectDNA) {
@@ -416,7 +409,7 @@ router.get("/portfolio/health", async (req, res): Promise<void> => {
           clarity: 0,
           confidence: "Low" as const,
           risk: null,
-          nextAction: "Start shaping your core idea — what problem are you solving?",
+          nextAction: "",
         };
       }
       const health = await computeProjectHealth(p.id, dna);

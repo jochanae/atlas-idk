@@ -1264,9 +1264,6 @@ export function FilesPanel({
                     </button>
                   );
                 })}
-                <span style={{ marginLeft: "auto", fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                  {wsLens} lens
-                </span>
               </div>
             )}
           </div>

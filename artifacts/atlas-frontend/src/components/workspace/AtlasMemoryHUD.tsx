@@ -85,12 +85,6 @@ function deriveSnapshot(events: HudEvent[]): SnapshotRow[] {
   return rows;
 }
 
-function deriveStage(count: number): string {
-  if (count < 3) return "Exploration";
-  if (count < 7) return "Shaping";
-  return "Forming";
-}
-
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 function VioletPulse() {
@@ -122,12 +116,10 @@ function IBtn({ label, onClick, children }: { label: string; onClick: () => void
 
 function SnapshotPanel({
   rows,
-  stage,
   status,
   isRestored,
 }: {
   rows: SnapshotRow[];
-  stage: string;
   status: string;
   isRestored: boolean;
 }) {
@@ -146,16 +138,8 @@ function SnapshotPanel({
         </div>
       ))}
 
-      {/* Stage + Status */}
+      {/* Quiet status only — Phase B: no Stage labels (Exploration/Shaping/Forming) */}
       <div style={{ marginTop: rows.length > 0 ? 10 : 0, paddingTop: rows.length > 0 ? 8 : 0, borderTop: rows.length > 0 ? "1px solid rgba(255,255,255,0.05)" : "none", display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>
-            Stage
-          </span>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: AMBER, opacity: 0.7, letterSpacing: "0.06em" }}>
-            {stage}
-          </span>
-        </div>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
           {isRestored
             ? <span style={{ color: AMBER, opacity: 0.45, fontSize: 10, flexShrink: 0, marginTop: 1 }}>↺</span>
@@ -236,9 +220,8 @@ export function AtlasMemoryHUD({
   const isRestored = wasRestored && !hasNewLiveEvents;
 
   const snapshot = deriveSnapshot(shapingEvents);
-  const stage    = deriveStage(shapingEvents.length);
   const status   = isRestored
-    ? "Resumed context — continuing to track signals."
+    ? "Picking up the thread."
     : "Listening…";
 
   if (docked || shapingEvents.length === 0) return null;
@@ -332,7 +315,6 @@ export function AtlasMemoryHUD({
         {/* Snapshot */}
         <SnapshotPanel
           rows={snapshot}
-          stage={stage}
           status={status}
           isRestored={isRestored}
         />

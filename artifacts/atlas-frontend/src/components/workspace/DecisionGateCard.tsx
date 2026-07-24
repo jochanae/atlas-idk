@@ -89,7 +89,7 @@ export function DecisionGateCard({ gate, resolved, selectedValue, onSelect }: De
               opacity: 0.85,
             }}
           >
-            Joy needs one decision before continuing
+            One choice to unlock the next move
           </span>
           <span
             style={{
@@ -189,7 +189,7 @@ export function DecisionGateCard({ gate, resolved, selectedValue, onSelect }: De
           color: "var(--atlas-muted, rgba(255,255,255,0.3))",
         }}
       >
-        Joy is waiting for your direction
+        Pick one to continue
       </span>
     </div>
   );
