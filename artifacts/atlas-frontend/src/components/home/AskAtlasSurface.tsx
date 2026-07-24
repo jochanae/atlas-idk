@@ -223,6 +223,10 @@ interface Props {
   /** Ephemeral "Welcome back" resume card payload. NEVER inserted into messages. */
   resumeGreeting?: { hint: string | null } | null;
   onDismissResumeGreeting?: () => void;
+  /** Pending follow-up message queue (above composer). */
+  queueSlot?: ReactNode;
+  /** Abort current run — shown beside Queue while streaming with a draft. */
+  onAbort?: () => void;
 }
 
 
@@ -263,6 +267,8 @@ export function AskAtlasSurface({
   isRestoring = false,
   resumeGreeting = null,
   onDismissResumeGreeting,
+  queueSlot,
+  onAbort,
 }: Props) {
   // Internal verbs describe model machinery, not user-relevant actions.
   // Only surface steps that answer "what is Joy doing for me right now?"
@@ -402,7 +408,9 @@ export function AskAtlasSurface({
 
   if (!open) return null;
 
-  const canSubmit = (input.trim().length > 0 || hasAttachments) && !isSending;
+  // Allow submit while streaming so follow-ups enqueue (parent handles queue).
+  const canSubmit = input.trim().length > 0 || hasAttachments;
+  const willQueue = canSubmit && (isSending || isStreaming);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -1267,6 +1275,7 @@ export function AskAtlasSurface({
             </button>
           </>
         )}
+        {queueSlot}
         <div
           className="atlas-composer-live"
           style={{
@@ -1470,6 +1479,36 @@ export function AskAtlasSurface({
                   <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               </AskAtlasUtilityButton>
+              {willQueue && onAbort && (
+                <button
+                  type="button"
+                  aria-label="Stop generation"
+                  title="Stop"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAbort();
+                  }}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    flexShrink: 0,
+                    borderRadius: 999,
+                    border: "1px solid color-mix(in oklab, var(--atlas-ember) 45%, transparent)",
+                    background: "color-mix(in oklab, var(--atlas-ember) 16%, transparent)",
+                    color: "var(--atlas-ember)",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 0,
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 14 14" fill="currentColor">
+                    <rect x="2" y="2" width="10" height="10" rx="1.5" />
+                  </svg>
+                </button>
+              )}
               <button
                 type="button"
                 onPointerDown={(e) => {
@@ -1490,7 +1529,8 @@ export function AskAtlasSurface({
                   if (canSubmit) handleSubmit();
                 }}
                 disabled={!canSubmit}
-                aria-label="Send"
+                aria-label={willQueue ? "Queue message" : "Send"}
+                title={willQueue ? "Queue" : "Send"}
                 style={{
                   width: 38,
                   height: 38,
@@ -1506,7 +1546,7 @@ export function AskAtlasSurface({
                   alignItems: "center",
                   justifyContent: "center",
                   padding: 0,
-                  opacity: isSending ? 0.55 : 1,
+                  opacity: 1,
                   boxShadow: canSubmit ? "0 0 18px -4px color-mix(in oklab, var(--atlas-gold) 45%, transparent)" : "none",
                   transition: "background 200ms ease, border-color 200ms ease, box-shadow 200ms ease",
                   touchAction: "manipulation",

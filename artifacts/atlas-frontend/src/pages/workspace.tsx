@@ -151,6 +151,8 @@ import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer, type ChatComposerProps } from "@/components/workspace/ChatComposer";
 import { useNexusWorkspaceBridge, deriveConversationId } from "@/hooks/useNexusWorkspaceBridge";
 import { useAtlasConversation } from "@/hooks/useAtlasConversation";
+import { usePendingMessageQueue } from "@/hooks/usePendingMessageQueue";
+import { PendingMessageQueue } from "@/components/composer/PendingMessageQueue";
 import { useStagedAttachments } from "@/hooks/useStagedAttachments";
 
 import { ComposerDeepDive } from "@/components/composer/ComposerDeepDive";
@@ -4901,6 +4903,21 @@ export default function Workspace() {
     perspective: wsLens,
     speculate,
   });
+
+  const workspaceBusy = !atlasConv.canSend;
+  const pendingMessageQueue = usePendingMessageQueue({
+    canSend: atlasConv.canSend,
+    busy: workspaceBusy,
+    abort: () => atlasConv.abort(),
+    submit: async ({ text, attachmentIds }) => {
+      const result = await atlasConv.submit({
+        text,
+        attachmentIds,
+      });
+      return { ok: result.ok };
+    },
+  });
+
   // ── CANONICAL NEXUS BRIDGE ───────────────────────────────────────────────────
   // useNexusWorkspaceBridge is the CANONICAL adapter: NexusMessage[] → ChatMessage[],
   // WRITE_FILE side-effects, history load, conversationId storage.  It never sends.
@@ -7683,16 +7700,30 @@ export default function Workspace() {
       if (workspaceSendInFlightRef.current) {
         return;
       }
-      if (!atlasConv.canSend) {
-        toast("Joy is still working on your last message.");
-        return;
-      }
       if (staged.isUploading) {
         workspaceSendAfterUploadRef.current = true;
         toast("Attachment is still uploading — sending when ready.");
         return;
       }
       if (!text && staged.readyFiles.length === 0) return;
+
+      // Busy → enqueue follow-up (Cursor-style message queue).
+      if (!atlasConv.canSend) {
+        const ready = staged.readyFiles;
+        const queued = pendingMessageQueue.enqueue({
+          text,
+          attachmentIds: ready.map((sf) => sf.attachmentId!).filter(Boolean),
+          attachmentNames: ready.map((sf) => sf.file.name),
+        });
+        if (!queued) return;
+        staged.clearSent(ready.map((sf) => sf.id));
+        setInput("");
+        if (textareaRef.current) { textareaRef.current.style.height = ""; textareaRef.current.blur(); }
+        setInputFocused(false);
+        toast("Queued — will send when Joy finishes");
+        return;
+      }
+
       workspaceSendInFlightRef.current = true;
       if (atlasGreeting) setAtlasGreeting(null);
       setShowHomeHandoffBanner(false);
@@ -9743,6 +9774,16 @@ export default function Workspace() {
               wsModel,
               onOpenModelSheet: () => setShowWsModelSheet(true),
               onOpenSessionsHistory: () => setSessionsSheetOpen(true),
+              queueSlot: useNexusWorkspaceChat ? (
+                <PendingMessageQueue
+                  items={pendingMessageQueue.items}
+                  onRemove={pendingMessageQueue.remove}
+                  onMoveUp={pendingMessageQueue.moveUp}
+                  onMoveDown={pendingMessageQueue.moveDown}
+                  onSendNow={pendingMessageQueue.sendNow}
+                  busy={workspaceBusy}
+                />
+              ) : undefined,
               onSketch: (prompt) => {
                 if (!sessionId) { toast("Open or start a session first"); return; }
                 doSendFromComposer(prompt, sessionId, messagesRef.current ?? messages);
