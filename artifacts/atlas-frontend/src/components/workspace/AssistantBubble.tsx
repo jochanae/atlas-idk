@@ -1951,7 +1951,9 @@ function AssistantBubbleImpl({
       style={{
         display: "flex",
         justifyContent: "flex-start",
-        marginBottom: 32,
+        // Latest turn keeps a tighter trail so contextual chips / Thinking
+        // Thread sit in the same vertical rhythm instead of floating away.
+        marginBottom: isLatestAssistant ? 10 : 32,
         opacity: isReverted ? 0.42 : 1,
         filter: isReverted ? "grayscale(0.6)" : undefined,
         transition: "opacity 220ms ease, filter 220ms ease",

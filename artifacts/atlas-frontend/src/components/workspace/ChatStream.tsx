@@ -331,8 +331,9 @@ export interface ChatStreamProps {
   // Interleaved between messages by timestamp. Quiet events are batched on mobile.
   activityEvents?: WorkspaceActivityItem[];
 
-  // Suggestion chip rail handlers. Rail appears below the last assistant
-  // message only when the stream is idle (chatPending=false, not streaming).
+  // Suggestion chip rail handlers. Rail pins under the scroller (above
+  // Thinking Thread / composer) when the stream is idle and the last message
+  // is a completed assistant turn.
   onSuggestionTap?: (text: string) => void;
   onSuggestionPark?: (text: string) => void;
 
@@ -747,22 +748,29 @@ export function ChatStream(props: ChatStreamProps) {
 
 
   // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
-  // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
+  // Bottom padding: small resting rhythm so the last assistant turn sits close to
+  // contextual chips / Thinking Thread / composer. Full --atlas-composer-clearance
+  // is only published while the composer is a fixed overlay sheet.
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
   const composerVisibility = useComposerVisibility();
   const dockedExtraPad = composerVisibility === "docked" ? 72 : 0;
   // Mobile shell already reserves dock + safe-area on the outer workspace
   // container. ChatStream only needs composer clearance so dock toggles don't
   // double-move the scroll surface.
+  const restingBottomPad = showSuggestionChips ? 8 : 12;
   const bottomPadding = isMobile
-    ? `calc(var(--atlas-composer-clearance, 52px) + 24px + ${dockedExtraPad}px)`
-    : `calc(var(--atlas-composer-clearance, 0px) + ${28 + dockedExtraPad}px)`;
+    ? `calc(var(--atlas-composer-clearance, 0px) + ${restingBottomPad + dockedExtraPad}px)`
+    : `calc(var(--atlas-composer-clearance, 0px) + ${restingBottomPad + dockedExtraPad}px)`;
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
     overscrollBehaviorY: "contain",
     // Disable browser scroll anchoring so progressive markdown height changes
     // during token streaming don't fight our bottom-follow scrollTop writes.
     overflowAnchor: "none",
+    // Column + top spacer bottom-anchors short threads so the latest assistant
+    // turn stays visually stacked with chips / Thinking Thread / composer.
+    display: "flex",
+    flexDirection: "column",
     padding: isMobile
       ? `32px 14px ${bottomPadding} 14px`
       : `56px 104px ${bottomPadding} 24px`,
@@ -776,7 +784,8 @@ export function ChatStream(props: ChatStreamProps) {
 
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-    <style>{`.atlas-chat-timeline > * + * { margin-top: 10px; }`}</style>
+    <style>{`.atlas-chat-timeline > * + * { margin-top: 10px; }
+.atlas-chat-timeline > [data-atlas-thread-spacer] + * { margin-top: 0; }`}</style>
     <div
 
       ref={scrollRef}
@@ -787,6 +796,10 @@ export function ChatStream(props: ChatStreamProps) {
       style={containerStyle}
       className="scrollbar-none atlas-chat-timeline"
     >
+      {/* Grows when the thread is shorter than the viewport so the latest turn
+          packs toward chips / Thinking Thread / composer instead of leaving a
+          void under the assistant response. Shrinks to 0 once content overflows. */}
+      <div aria-hidden="true" data-atlas-thread-spacer style={{ flex: "1 1 auto", minHeight: 0 }} />
       {messages.length === 0 && !chatPending && priorLoaded !== false && isHomeHandoff && resumeBrief && (
         <div style={{ padding: "36px 4px 16px", display: "flex", flexDirection: "column", gap: 0 }}>
           <div style={{ maxWidth: 560 }}>
@@ -1183,22 +1196,29 @@ export function ChatStream(props: ChatStreamProps) {
         />
       )}
 
-      {showSuggestionChips && onSuggestionTap && (
-        <SuggestionChipRail
-          lastAssistantText={lastAssistantText}
-          nextSuggestions={lastMsg?.nextSuggestions}
-          onTap={onSuggestionTap}
-          onLongPress={onSuggestionPark ?? onSuggestionTap}
-        />
-      )}
-
-
       <div ref={bottomRef} />
 
-
-
-
     </div>
+
+      {/* Contextual chips sit outside the scroller so Thinking Thread can expand
+          below without covering them, while staying stacked under the latest
+          assistant turn (bottom-anchored above) and above the composer. */}
+      {showSuggestionChips && onSuggestionTap && (
+        <div
+          style={{
+            flexShrink: 0,
+            padding: isMobile ? "0 14px" : "0 104px 0 24px",
+          }}
+        >
+          <SuggestionChipRail
+            lastAssistantText={lastAssistantText}
+            nextSuggestions={lastMsg?.nextSuggestions}
+            onTap={onSuggestionTap}
+            onLongPress={onSuggestionPark ?? onSuggestionTap}
+          />
+        </div>
+      )}
+
       {showScrollBtn && (
         <button
           onPointerDown={(e) => {
@@ -1213,7 +1233,8 @@ export function ChatStream(props: ChatStreamProps) {
           aria-label="Scroll to latest"
           style={{
             position: "absolute",
-            bottom: 14,
+            // Sit above the chip rail when it is pinned under the scroller.
+            bottom: showSuggestionChips && onSuggestionTap ? 56 : 14,
             right: 14,
             width: 34,
             height: 34,
