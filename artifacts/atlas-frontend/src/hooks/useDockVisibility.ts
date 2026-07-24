@@ -58,6 +58,14 @@ function onScroll(e: Event) {
   const target = e.target as (HTMLElement | Document | null);
   if (!target) return;
 
+  // Ignore programmatic auto-scroll writes (e.g. streaming auto-follow).
+  // Those pin scrollTop each frame; treating them as user scroll would
+  // toggle the dock every token and reflow the workspace mid-stream.
+  if (target instanceof HTMLElement) {
+    const stamp = Number(target.dataset.atlasProgScroll ?? 0);
+    if (stamp && performance.now() - stamp < 120) return;
+  }
+
   let y = 0;
   if (target === document || target === document.documentElement || target === document.body) {
     y = window.scrollY || document.documentElement.scrollTop || 0;
@@ -66,6 +74,7 @@ function onScroll(e: Event) {
   } else {
     return;
   }
+
 
   // Reset lastY when scroll source changes so we don't compare across containers.
   if (target !== lastTarget) {
