@@ -429,7 +429,14 @@ export function ChatComposer(props: ChatComposerProps) {
     }
     const apply = () => {
       const el = composerShellRef.current;
-      const height = composerActive && !isDocked && el ? Math.ceil(el.getBoundingClientRect().height) : 0;
+      // Only reserve scroll clearance while the composer is a fixed overlay
+      // sheet. Resting sticky mode already lives in the flex column below
+      // ChatStream / Thinking Thread — publishing height there double-counts
+      // space and leaves a large void above the footer stack.
+      const height =
+        composerActive && !isDocked && sheetVisible && el
+          ? Math.ceil(el.getBoundingClientRect().height)
+          : 0;
       root.style.setProperty("--atlas-composer-clearance", `${height}px`);
     };
     apply();

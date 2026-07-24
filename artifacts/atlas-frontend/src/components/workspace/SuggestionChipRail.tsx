@@ -106,7 +106,9 @@ export function SuggestionChipRail({ lastAssistantText, nextSuggestions, onTap, 
     <div
       style={{
         position: "relative",
-        margin: "8px 0 4px",
+        // Tight rhythm: belong to the assistant turn above, sit close to
+        // Thinking Thread / composer below.
+        margin: "2px 0 0",
         // Right-edge fade signals horizontal overflow so users know to scroll.
         WebkitMaskImage:
           chips.length > 1
@@ -123,7 +125,7 @@ export function SuggestionChipRail({ lastAssistantText, nextSuggestions, onTap, 
           display: "flex",
           gap: 8,
           overflowX: "auto",
-          padding: "4px 20px 10px 2px",
+          padding: "2px 20px 6px 2px",
           scrollbarWidth: "none",
           scrollSnapType: "x proximity",
         }}

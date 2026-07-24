@@ -331,16 +331,19 @@ export function WorkspaceReceiptsBar({ projectId }: Props) {
   return (
     <div
       style={{
-        padding: "6px 16px 8px",
+        // Keep Thinking Thread in the same vertical rhythm as contextual chips
+        // above and the composer below; expand independently without stealing
+        // chip space (chips live outside the scroll stream).
+        padding: "4px 16px 6px",
         display: "flex",
         flexDirection: "column",
-        gap: 8,
+        gap: 6,
         flexShrink: 0,
         alignItems: "stretch",
       }}
     >
-      {/* Divider — separates stream/content above from the bottom-anchored thread */}
-      <div style={{ height: 1, background: "rgba(255,255,255,0.05)", marginBottom: 2 }} />
+      {/* Divider — separates stream/chips above from the bottom-anchored thread */}
+      <div style={{ height: 1, background: "rgba(255,255,255,0.05)", marginBottom: 0 }} />
 
       {/* Header row — bottom-left, above composer / mobile footer */}
       <button
