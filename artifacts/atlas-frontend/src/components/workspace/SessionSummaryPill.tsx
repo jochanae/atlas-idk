@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, X, RotateCcw } from "lucide-react";
+import { Brain, X, RotateCcw } from "lucide-react";
 
 type SessionSummaryData = {
   summary: string | null;
@@ -128,8 +128,8 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
     <button
       type="button"
       onClick={() => setOpen((v) => !v)}
-      aria-label={hasSummary ? "Last session memory" : "No session memory yet"}
-      title={hasSummary ? "What Joy remembers from your last session" : "No session memory yet"}
+      aria-label={hasSummary ? "Joy memory from last session" : "No Joy memory yet"}
+      title={hasSummary ? "Joy memory — what was kept from your last session" : "Joy memory — nothing saved yet"}
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: 32, height: 32, borderRadius: 999,
@@ -144,7 +144,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
         position: "relative",
       }}
     >
-      <Clock size={15} strokeWidth={1.7} aria-hidden />
+      <Brain size={15} strokeWidth={1.7} aria-hidden />
       {hasSummary && (
         <span style={{ position: "absolute", top: 4, right: 4, width: 6, height: 6, borderRadius: 999, background: "var(--atlas-gold)" }} />
       )}
@@ -177,7 +177,7 @@ export function SessionSummaryPill({ projectId, onSummaryCleared, compact = fals
         whiteSpace: "nowrap",
       }}
     >
-      <Clock size={10} strokeWidth={2} aria-hidden />
+      <Brain size={10} strokeWidth={2} aria-hidden />
       Last session: {data?.summaryAt ? timeAgo(data.summaryAt) : ""}
     </button>
   );

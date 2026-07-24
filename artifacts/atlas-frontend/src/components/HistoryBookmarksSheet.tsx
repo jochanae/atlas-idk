@@ -1,7 +1,7 @@
 /**
  * History | Checkpoints | Bookmarks bottom sheet.
  *
- * Surfaced from the composer's More menu → "History" item.
+ * Surfaced from the composer's More menu → "Checkpoints" item.
  *
  * History tab operates on the localStorage `AtlasHistoryItem` ledger (session-ephemeral).
  * Bookmarks tab reads from the server-backed `project_bookmarks` table — survives

@@ -832,8 +832,35 @@ export function ChatComposer(props: ChatComposerProps) {
           <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: isCompact ? 2 : 20, flexWrap: "nowrap", gap: 4 }}>
 
 
-            {/* Universal composer actions: [clock] + [+] + [...] */}
+            {/* Universal composer actions: [sessions clock] + [memory] + [+] + [...] */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
+              {onOpenSessionsHistory && (
+                <button
+                  type="button"
+                  aria-label="Where were we"
+                  title="Project sessions — resume or start a conversation"
+                  onClick={() => onOpenSessionsHistory()}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 32,
+                    height: 32,
+                    borderRadius: 999,
+                    background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+                    border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                    color: "var(--atlas-gold)",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    padding: 0,
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <circle cx="12" cy="12" r="9" />
+                    <polyline points="12 7 12 12 15 14" />
+                  </svg>
+                </button>
+              )}
               {projectId != null && (
                 <SessionSummaryPill projectId={projectId} compact />
               )}
@@ -848,7 +875,15 @@ export function ChatComposer(props: ChatComposerProps) {
                 }}
                 onSketch={props.onSketch}
                 parkedCount={parkedCount}
-                onMenuAction={(action) => onComposerMenuAction?.(action)}
+                onMenuAction={(action) => {
+                  // More → History should open the conversation/session queue,
+                  // not in-thread checkpoints (those remain available elsewhere).
+                  if (action === "history" && onOpenSessionsHistory) {
+                    onOpenSessionsHistory();
+                    return;
+                  }
+                  onComposerMenuAction?.(action);
+                }}
               />
 
             </div>

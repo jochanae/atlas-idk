@@ -2,8 +2,8 @@
  * SessionHistorySheet — unified "sessions / threads" surface.
  *
  * Single bottom-sheet used by:
- *   • Ask Joy composer's gold-clock  →  ASK ATLAS · HISTORY
- *   • Workspace composer's gold-clock       →  [PROJECT] · SESSIONS
+ *   • Ask Joy composer's gold-clock / More → Conversations  →  ASK JOY HISTORY
+ *   • Workspace composer's gold-clock / More → Conversations →  PROJECT SESSIONS
  *
  * One mental model: time = "where was I." New + Resume + Delete all live
  * here. Caller owns the data shape; this component is pure presentation.

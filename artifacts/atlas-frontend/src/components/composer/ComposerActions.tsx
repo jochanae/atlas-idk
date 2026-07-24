@@ -13,6 +13,7 @@ import {
   Rocket,
   Settings,
   Layers,
+  Milestone,
   Flame,
   MoreHorizontal,
   Plus,
@@ -46,6 +47,7 @@ export type ComposerMenuAction =
   | "connectors"
   | "code"
   | "history"
+  | "checkpoints"
   | "share"
   | "publish"
   | "settings"
@@ -106,7 +108,10 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
   { id: "mcp", label: "MCP", icon: <Layers size={18} strokeWidth={1.6} /> },
   { id: "connectors", label: "Connectors", icon: <Plug size={18} strokeWidth={1.6} /> },
   { id: "code", label: "Code", icon: <Code2 size={18} strokeWidth={1.6} />, projectOnly: true },
-  { id: "history", label: "History", icon: <History size={18} strokeWidth={1.6} /> },
+  // Conversation / session queue (Ask Joy threads or Workspace project sessions).
+  { id: "history", label: "Conversations", icon: <History size={18} strokeWidth={1.6} /> },
+  // In-thread checkpoints / bookmarks — workspace-oriented restore points.
+  { id: "checkpoints", label: "Checkpoints", icon: <Milestone size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "share", label: "Share", icon: <Share2 size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "publish", label: "Publish", icon: <Rocket size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "settings", label: "Settings", icon: <Settings size={18} strokeWidth={1.6} />, projectOnly: true },
