@@ -97,10 +97,18 @@ export function useSmartAutoScroll(
         }
       }
       if (stickRef.current) {
-        node.scrollTo({ top: node.scrollHeight, behavior });
-        requestAnimationFrame(scrollToEnd);
-        window.setTimeout(scrollToEnd, 90);
-        window.setTimeout(scrollToEnd, 240);
+        // "auto"/instant stick: one write + one rAF settle. Avoid the 90/240ms
+        // re-pin cascade — during assistant token growth those late pins fight
+        // progressive markdown reflow and read as timeline jitter.
+        if (behavior === "smooth") {
+          node.scrollTo({ top: node.scrollHeight, behavior });
+          requestAnimationFrame(scrollToEnd);
+          window.setTimeout(scrollToEnd, 90);
+          window.setTimeout(scrollToEnd, 240);
+        } else {
+          scrollToEnd();
+          requestAnimationFrame(scrollToEnd);
+        }
       }
     };
     jump();

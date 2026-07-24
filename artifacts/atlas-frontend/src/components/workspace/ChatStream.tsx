@@ -760,6 +760,9 @@ export function ChatStream(props: ChatStreamProps) {
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
     overscrollBehaviorY: "contain",
+    // Disable browser scroll anchoring so progressive markdown height changes
+    // during token streaming don't fight our bottom-follow scrollTop writes.
+    overflowAnchor: "none",
     padding: isMobile
       ? `32px 14px ${bottomPadding} 14px`
       : `56px 104px ${bottomPadding} 24px`,

@@ -1329,6 +1329,12 @@ body[data-axiom-ask-atlas="true"] .atlas-input-shell input {
 /* ── Chat timeline — vertical gold thread on the right side ─────────────────── */
 .atlas-chat-timeline {
   position: relative;
+  /* Opt the scroller out of browser scroll anchoring — streaming markdown
+     reflow + intentional bottom-follow otherwise fight and jitter the view. */
+  overflow-anchor: none;
+}
+.atlas-chat-timeline > * {
+  overflow-anchor: none;
 }
 .atlas-chat-timeline::before {
   content: "";
