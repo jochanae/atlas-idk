@@ -1087,7 +1087,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   cursor: chatPending ? "pointer" : ((hasInput || hasAttachments) ? "pointer" : "default"),
                 }}
               >
-                {chatPending ? (
+                {chatPending && !(hasInput || hasAttachments) ? (
                   <svg viewBox="0 0 16 16" width={13} height={13} aria-hidden>
                     <rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="var(--atlas-fg)" />
                   </svg>
