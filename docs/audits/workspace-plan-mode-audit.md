@@ -22,6 +22,8 @@ Original product intent: a **signal to Joy that this strategic conversation shou
 | How a card can still appear without Plan Mode | Prose heuristic `detectPlanFromText`, restored history `runArtifacts`, home handoff seed |
 | Real posture switch today | Conversation Mode vs Build Mode (`conversationMode`) — **different product** |
 
+**Locked product recommendation:** keep the Plan affordance; restore the requested-artifact → Plan Card pipeline on Nexus. Do not delete the button. Treat Plan as an **output type** in the same family as Decision Cards and file deliverables — orthogonal to posture and inferred intent. See §Recommendations and `docs/architecture/requested-artifacts.md`.
+
 ---
 
 ## 0. What “Plan” actually meant
