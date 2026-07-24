@@ -187,7 +187,7 @@ export type AtlasConversation = {
   shapingHeld: boolean;
   setShapingHeld: React.Dispatch<React.SetStateAction<boolean>>;
   handoffSignal: NexusHandoffSignal | null;
-  abort: () => void;
+  abort: (opts?: { reason?: "newer_request" | "user_stop" }) => void;
   clearMessages: () => void;
   pendingAuthorization: Record<string, unknown> | null;
   authorizeRun: (runId: string, planVersion: string) => Promise<void>;

@@ -318,6 +318,8 @@ type HomeMessage = {
   isNew?: boolean;
   id?: string;
   streaming?: boolean;
+  interrupted?: boolean;
+  interruptReason?: "newer_request" | "user_stop";
   handoffSignal?: HomeHandoffSignal;
   focusSuggestion?: { projectId: number; projectName: string };
   plan?: Plan;
@@ -2246,7 +2248,7 @@ export default function Home() {
   const askAtlasPendingQueue = usePendingMessageQueue({
     canSend: askAtlasConv.canSend,
     busy: askAtlasBusy,
-    abort: () => askAtlasConv.abort(),
+    abort: (opts) => askAtlasConv.abort(opts),
     submit: async ({ text, attachmentIds }) => {
       const result = await askAtlasConv.submit({ text, attachmentIds });
       return { ok: result.ok };
@@ -6299,7 +6301,7 @@ export default function Home() {
         }}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => staged.addFiles(files)}
-        onAbort={() => askAtlasConv.abort()}
+        onAbort={() => askAtlasConv.abort({ reason: "user_stop" })}
         queueSlot={
           <PendingMessageQueue
             items={askAtlasPendingQueue.items}

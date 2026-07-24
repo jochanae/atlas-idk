@@ -13,6 +13,7 @@ import { AtlasActionRow } from "../home/AtlasActionRow";
 import { parseAtlasAction } from "../home/AtlasActionParser";
 import { ResearchCard } from "../ResearchCard";
 import { ThoughtForBadge } from "../ThoughtForBadge";
+import { InterruptedStatusPill } from "@/components/composer/InterruptedStatusPill";
 
 import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
@@ -2314,6 +2315,9 @@ function AssistantBubbleImpl({
             ) : null
           )}
         </div>
+        )}
+        {message.interrupted && !message.streaming && (
+          <InterruptedStatusPill reason={message.interruptReason} />
         )}
         {/* Sketch failed — image generation did not produce a result */}
         {message.sketchFailed && !message.imageB64 && !imageGenDataUrl && !(message.imageGen?.images?.length) && (

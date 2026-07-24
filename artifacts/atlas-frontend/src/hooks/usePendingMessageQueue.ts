@@ -34,7 +34,7 @@ type Options = {
   /** Canonical submit used for auto-dequeue and Send now. */
   submit: (args: PendingQueueSubmitArgs) => Promise<{ ok: boolean }>;
   /** Interrupt the current run (Send now). */
-  abort: () => void;
+  abort: (opts?: { reason?: "newer_request" | "user_stop" }) => void;
 };
 
 function newId(): string {
@@ -173,7 +173,7 @@ export function usePendingMessageQueue(options: Options) {
       skipAutoIdRef.current = null;
       promoteToFront(id);
       if (busy) {
-        abortRef.current();
+        abortRef.current({ reason: "newer_request" });
       }
       // Force drain — abort clears busy on next render; don't wait on stale refs.
       window.setTimeout(() => {

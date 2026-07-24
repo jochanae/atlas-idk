@@ -317,6 +317,9 @@ export interface ChatMessage {
   researchResult?: { type: "research"; url: string; title: string; summary: string | null; headings: string[] } | null;
   displayAs?: "autoVerify";
   streaming?: boolean;
+  /** True when this assistant turn was stopped mid-stream (Stop or queued Send now). */
+  interrupted?: boolean;
+  interruptReason?: "newer_request" | "user_stop";
   terminalCmd?: unknown;
   terminalResult?: unknown;
   browserResult?: BrowserResult | null;
@@ -4908,7 +4911,7 @@ export default function Workspace() {
   const pendingMessageQueue = usePendingMessageQueue({
     canSend: atlasConv.canSend,
     busy: workspaceBusy,
-    abort: () => atlasConv.abort(),
+    abort: (opts) => atlasConv.abort(opts),
     submit: async ({ text, attachmentIds }) => {
       const result = await atlasConv.submit({
         text,
@@ -9839,7 +9842,7 @@ export default function Workspace() {
                 chatPending: nexusBridge.chatPending,
                 liveStep: nexusBridge.liveStep,
                 messages: nexusBridge.messages,
-                onAbort: () => nexusBridge.abort(),
+                onAbort: () => nexusBridge.abort({ reason: "user_stop" }),
               } : {}),
             }}
 

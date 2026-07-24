@@ -118,6 +118,7 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     role: nm.role,
     content: cleaned,
     streaming: nm.streaming ?? false,
+    ...(nm.interrupted ? { interrupted: true, interruptReason: nm.interruptReason ?? "newer_request" } : {}),
     ...(nm.nextSuggestions?.length ? { nextSuggestions: nm.nextSuggestions } : {}),
     ...(nm.extractionQueued ? { extractionQueued: true } : {}),
     imageGen: nm.imageGen as ChatMessage["imageGen"] ?? undefined,
@@ -153,7 +154,7 @@ export type NexusChatStreamSlice = {
   isPending: boolean;
   liveStep: NexusLiveStep | null;
   activeRunId: string | null;
-  abort: () => void;
+  abort: (opts?: { reason?: "newer_request" | "user_stop" }) => void;
   authorizeRun: (runId: string, decision: "approve" | "reject") => void;
 };
 
@@ -162,7 +163,7 @@ export interface NexusWorkspaceBridge {
   chatPending: boolean;
   liveStep: NexusLiveStep | null;
   activeRunId: string | null;
-  abort: () => void;
+  abort: (opts?: { reason?: "newer_request" | "user_stop" }) => void;
   authorizeRun: (runId: string, decision: "approve" | "reject") => void;
   /**
    * INT-13: true after the Nexus thread fetch for the current conversationId
