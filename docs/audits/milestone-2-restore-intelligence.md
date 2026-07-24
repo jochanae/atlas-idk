@@ -1,7 +1,7 @@
 # Milestone 2 — Restore Intelligence
 
-**Parent:** Milestone track (M1 closed → M2 in progress)  
-**Status:** OPEN — **2.1 CLOSED · 2.2 CLOSED · 2.3 CLOSED · 2.4 PHASE C**  
+**Parent:** Milestone track (M1 closed → M2 closed for intelligence sub-track)  
+**Status:** **M2 SUB-TRACK CLOSED** — **2.1 CLOSED · 2.2 CLOSED · 2.3 CLOSED · 2.4 CLOSED**  
 **Last updated:** 2026-07-24
 
 ---
@@ -67,9 +67,11 @@ Prove Designer, Builder, and Storyteller produce meaningfully different outputs 
 
 ---
 
-### 2.4 — Natural Conversation — 🟡 PHASE C ← **NOW**
+### 2.4 — Natural Conversation — ✅ CLOSED
 
-**Design doc:** [`milestone-2-4-natural-conversation-design.md`](./milestone-2-4-natural-conversation-design.md)
+**Closed:** 2026-07-24  
+**Design doc:** [`milestone-2-4-natural-conversation-design.md`](./milestone-2-4-natural-conversation-design.md)  
+**Acceptance:** [`milestone-2-4-acceptance-report.md`](./milestone-2-4-acceptance-report.md)
 
 Conversation should feel like working with a capable collaborator already inside the work — not a workflow engine, wizard, checklist, or phase coach.
 
@@ -77,9 +79,9 @@ Conversation should feel like working with a capable collaborator already inside
 
 **Governing rule (P9):** One arrival experience — continue the work — across refresh, handoff, Workspace open, return, and resume.
 
-**Status:** Design **APPROVED**. Phase A **CLOSED** (`#225`). Phase B **CLOSED** (`#226`). Phase C (Honest Execution) in progress.
+**Status:** Phases 0–E **CLOSED** (`#224`–`#227` + D/E closeout). Live T1–T11 on production deferred to ops.
 
-**Depends on:** 2.2 ✅ and 2.3 ✅ (distinct lenses). Ops caveat from 2.3: do not market production as Constitution-differentiated until post-redeploy live battery passes.
+**Depends on:** 2.2 ✅ and 2.3 ✅ (distinct lenses).
 
 ---
 
@@ -94,10 +96,10 @@ Conversation should feel like working with a capable collaborator already inside
         ↓
 2.3 Lens differentiation      ✅ CLOSED
         ↓
-2.4 Natural conversation      🟡 PHASE C (Honest Execution)  ← NOW
+2.4 Natural conversation      ✅ CLOSED
 ```
 
-**2.3 CLOSED.** Milestone **2.4** Phases A–B closed; Phase C honest execution in progress. Ops caveat: redeploy `main` + live T1–T6 before claiming production differentiation.
+**M2 intelligence sub-track CLOSED** (2.1–2.4). Ops: redeploy + live batteries (2.3 lenses + 2.4 T1–T11) before launch claims.
 ---
 
 ## Explicit non-goals for M2
@@ -129,3 +131,4 @@ Conversation should feel like working with a capable collaborator already inside
 | 2026-07-23 | **2.4 design APPROVED** — P1–P10 (P9 governing, P10 Invisible Mechanics); T1–T11; roadmap A→E. Phase A unblocked. |
 | 2026-07-24 | **2.4 Phase A CLOSED** (`#225`). Phase B thesis locked (work language / delete process language + Blind Read Test); Phase B started. |
 | 2026-07-24 | **2.4 Phase B CLOSED** (`#226`). Phase C Honest Execution started. |
+| 2026-07-24 | **2.4 Phase C CLOSED** (`#227`). Phase D subtractive prompt posture + Phase E closeout. **Milestone 2.4 CLOSED.** |

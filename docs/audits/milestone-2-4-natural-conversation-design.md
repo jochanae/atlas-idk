@@ -1,10 +1,11 @@
 # Milestone 2.4 — Natural Conversation Design
 
-**Phase:** Phase C IN PROGRESS (design freeze approved · Phase A–B CLOSED)  
+**Phase:** Milestone CLOSED  
 **Date:** 2026-07-24  
-**Status:** **DESIGN APPROVED** — Phase C (Honest Execution) in progress  
+**Status:** **MILESTONE 2.4 CLOSED** — Phases 0–E complete  
 **Prerequisite:** Milestone 2.3 CLOSED (lens differentiation)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
+**Acceptance report:** [`milestone-2-4-acceptance-report.md`](./milestone-2-4-acceptance-report.md)  
 **Repo HEAD at commission:** `a3e4460e` (`main`, post #223)  
 **Design merge:** `#224` / `fc3cf245`
 
@@ -574,26 +575,33 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 
 **Status:** **CLOSED** — merged `#226` (`4660c322`). Notes: [`milestone-2-4-phase-b-stage-theater.md`](./milestone-2-4-phase-b-stage-theater.md).
 
-### Phase C — Honest execution (interrupt, outputs, renderer) ← **IN PROGRESS**
+### Phase C — Honest execution (interrupt, outputs, renderer) ✅ **CLOSED**
 
 **Objective:** Idempotent interrupt/resend (B4); generation claims ↔ Outputs truth (E2/E6); quieter renderer fallback (E3); guard voice restraint (E1); persistence copy honesty (E4).  
 **Dependencies:** Phase A ✅ · Phase B ✅.  
 **Acceptance:** T4, T5, T8, T10 Pass on N4/N6; zero false ready/generated claims in battery.  
-**Boundary:** Not stage-copy work — honesty/recovery only. Do not rewrite Idea Mode / CONV_STATE / ATLAS STATE (Phase D).  
-**Status:** **IN PROGRESS** — [`milestone-2-4-phase-c-honest-execution.md`](./milestone-2-4-phase-c-honest-execution.md).
+**Status:** **CLOSED** — merged `#227` (`ee6ad165`). Notes: [`milestone-2-4-phase-c-honest-execution.md`](./milestone-2-4-phase-c-honest-execution.md).
 
-### Phase D — Prompt posture alignment (no new ontology)
+### Phase D — Prompt posture (subtractive) ✅ **CLOSED**
 
-**Objective:** Align Idea Mode / CONV_STATE / ATLAS STATE / focused briefing / soft bridge (C6–C8, A9–A10, F4–F5) with principles — **restraint and continuity**, not a new personality pack.  
-**Dependencies:** Phase A contract language; Phase B so prompts aren’t compensating for Mad Libs still shipping.  
-**Acceptance:** T1, T7, S1 Pass on N3/N5/N7; identity and kickoffs no longer contradict.  
-**Boundary:** Do not start until B lands — otherwise prompts paper over architecture.
+**Thesis (locked):** After A–C fixed arrival, stage theater, and honesty in the product, do the prompts teach the same posture — so the model defaults to collaborative work language without needing constant anti-workflow reminders?
 
-### Phase E — Close 2.4
+**Method:** Subtractive prompt pass only (C6–C8, A9–A10, F5). Delete instructions wherever A–C already enforce behavior. Do not replace ceremony with new essays.
 
-**Objective:** Full battery; parent board → 2.4 CLOSED; deferred leftovers listed; readiness for whatever follows M2.  
-**Dependencies:** A–D.  
-**Acceptance:** Critical T1–T11 meet bar; supporting S1–S5 reported; acceptance report published.
+**Six locked posture principles:** Continue the work · Don’t narrate internals · Work language > process language · Proportionate · Honest about uncertainty · Avoid unnecessary ceremony.
+
+**Prompt Independence Test (required):** Architecture (A–C) must carry arrival / no Mad Libs / claim honesty / resend truncate / luggage. Prompts must not reintroduce phase arcs, soft-bridge Mad Libs, ATLAS STATE theater, or concierge scripts. Remaining prompt = gates + evidence + principles.
+
+**Dependencies:** A–C ✅.  
+**Acceptance:** T1, T7, T11, S1 on N3/N5/N7; Prompt Independence Test Pass.  
+**Status:** **CLOSED** — [`milestone-2-4-phase-d-prompt-posture.md`](./milestone-2-4-phase-d-prompt-posture.md).
+
+### Phase E — Validation & closeout ✅ **CLOSED**
+
+**Objective:** Validation and closeout only — **not a feature phase**. Confirm A–D evidence, Prompt Independence Test, deferred list, parent board → 2.4 CLOSED.  
+**Dependencies:** A–D ✅.  
+**Acceptance:** Acceptance report published; milestone marked CLOSED.  
+**Status:** **CLOSED** — [`milestone-2-4-acceptance-report.md`](./milestone-2-4-acceptance-report.md).
 
 ---
 
@@ -640,7 +648,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | Phased roadmap | ✅ §5 (A→E approved) |
 | Human design freeze | ✅ Approved 2026-07-23 |
 
-**Next:** Phase A implementation — arrival contract only. Do not begin Phase D prompt rewrites before A/B land.
+**Next:** Milestone closed. Live T1–T11 on production remains ops follow-up.
 
 ---
 
@@ -652,6 +660,8 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | 2026-07-23 | Design **APPROVED** — P1–P10 (P9 governing); T1–T11; roadmap A→E. Phase A unblocked. |
 | 2026-07-24 | Phase A **CLOSED** (`#225`). Phase B thesis locked + replacement rule + Blind Read Test; Phase B implementation started. |
 | 2026-07-24 | Phase B **CLOSED** (`#226`). Phase C Honest Execution started. |
+| 2026-07-24 | Phase C **CLOSED** (`#227`). Phase D thesis locked (subtractive + Prompt Independence Test). |
+| 2026-07-24 | Phase D **CLOSED** — subtractive prompt pass. Phase E validation closeout. **Milestone 2.4 CLOSED.** |
 
 ---
 
@@ -663,6 +673,8 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | [`milestone-2-4-phase-a-arrival.md`](./milestone-2-4-phase-a-arrival.md) | Phase A arrival-contract landing |
 | [`milestone-2-4-phase-b-stage-theater.md`](./milestone-2-4-phase-b-stage-theater.md) | Phase B Kill Stage Theater landing |
 | [`milestone-2-4-phase-c-honest-execution.md`](./milestone-2-4-phase-c-honest-execution.md) | Phase C Honest Execution landing |
+| [`milestone-2-4-phase-d-prompt-posture.md`](./milestone-2-4-phase-d-prompt-posture.md) | Phase D subtractive prompt posture |
+| [`milestone-2-4-acceptance-report.md`](./milestone-2-4-acceptance-report.md) | Phase E — milestone acceptance |
 | [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md) | Prior close; deferred UX → 2.4 |
 | [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md) | Perspective without performance baseline |
 | [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) | Round 3 execution UX seed list |
