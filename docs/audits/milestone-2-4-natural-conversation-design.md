@@ -632,7 +632,8 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 
 - Side-by-side lens compare UI (2.3 Phase D deferral)  
 - Full disagreement synthesis mode  
-- 2.3 production live T1–T6 (ops redeploy — track separately)
+- 2.3 production live T1–T6 (ops redeploy — track separately)  
+- Conversation prioritization / weighted context (stale attachments vs current intent) — [audit](./milestone-2-4-conversation-prioritization-audit.md); not an attachment-pipeline bug
 
 ---
 
@@ -648,7 +649,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | Phased roadmap | ✅ §5 (A→E approved) |
 | Human design freeze | ✅ Approved 2026-07-23 |
 
-**Next:** Milestone closed. Live T1–T11 on production remains ops follow-up.
+**Next:** Milestone closed. Production T1–T3 PASS (preserve). Remaining: Flow-surface arrival, T4–T11, conversation prioritization refinement.
 
 ---
 
@@ -662,6 +663,7 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | 2026-07-24 | Phase B **CLOSED** (`#226`). Phase C Honest Execution started. |
 | 2026-07-24 | Phase C **CLOSED** (`#227`). Phase D thesis locked (subtractive + Prompt Independence Test). |
 | 2026-07-24 | Phase D **CLOSED** — subtractive prompt pass. Phase E validation closeout. **Milestone 2.4 CLOSED.** |
+| 2026-07-24 | Phase E production update — T1–T3 **PASS** on live host. Conversation prioritization deferred (not T3 fail / not attachment bug). |
 
 ---
 
@@ -675,6 +677,8 @@ Humans interrupt and change direction constantly. Collaborative feel requires si
 | [`milestone-2-4-phase-c-honest-execution.md`](./milestone-2-4-phase-c-honest-execution.md) | Phase C Honest Execution landing |
 | [`milestone-2-4-phase-d-prompt-posture.md`](./milestone-2-4-phase-d-prompt-posture.md) | Phase D subtractive prompt posture |
 | [`milestone-2-4-acceptance-report.md`](./milestone-2-4-acceptance-report.md) | Phase E — milestone acceptance |
+| [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md) | Live T1–T3 PASS evidence (preserve) |
+| [`milestone-2-4-conversation-prioritization-audit.md`](./milestone-2-4-conversation-prioritization-audit.md) | Weighted context refinement (deferred) |
 | [`milestone-2-3-acceptance-report.md`](./milestone-2-3-acceptance-report.md) | Prior close; deferred UX → 2.4 |
 | [`milestone-2-3-lens-differentiation-design.md`](./milestone-2-3-lens-differentiation-design.md) | Perspective without performance baseline |
 | [`milestone-2-2-intelligence-correctness.md`](./milestone-2-2-intelligence-correctness.md) | Round 3 execution UX seed list |
