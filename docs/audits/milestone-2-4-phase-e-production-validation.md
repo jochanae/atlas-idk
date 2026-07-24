@@ -1,22 +1,22 @@
 # Milestone 2.4 Phase E — Production Validation Update
 
 **Date:** 2026-07-24  
-**Host:** live production (Community Bridge / Obsidian Ledger workspaces)  
-**Status:** Partial live battery — **T1–T3 PASS**  
-**Milestone:** 2.4 remains **CLOSED** (engineering acceptance unchanged)  
+**Host:** live production (Community Bridge / Obsidian Ledger / Reveal)  
+**Status:** Partial live battery — **T1–T5 PASS · T6 FAIL**  
+**Milestone:** 2.4 engineering close remains; T6 is a production defect to fix  
 **Parent:** [`milestone-2-4-acceptance-report.md`](./milestone-2-4-acceptance-report.md)
 
 ---
 
 ## Verdict
 
-Milestone 2.4 arrival + stage-theater changes are working in production.
+Arrival + stage-theater changes are working in production (**preserve T1–T5**).
 
-Preserve the current behavior on T1–T3. Do not “fix” continuity, arrival, or stage theater based on these results.
+**T6 mid-conversation pivot FAILED:** stale attachment-handling / claim-guard logic overrode a clear text pivot (Stripe Connect for ministries) and exposed internal correction language.
 
-One refinement was observed under a pricing prompt. It is **not** a T3 failure, **not** an attachment pipeline bug, and **not** a reason to reopen 2.4 architecture. See:
+Evidence for the fail: [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
 
-→ [`milestone-2-4-conversation-prioritization-audit.md`](./milestone-2-4-conversation-prioritization-audit.md)
+Related prioritization framing: [`milestone-2-4-conversation-prioritization-audit.md`](./milestone-2-4-conversation-prioritization-audit.md)
 
 ---
 
@@ -65,20 +65,42 @@ One refinement was observed under a pricing prompt. It is **not** a T3 failure, 
 
 ---
 
-## Refinement (not a failure)
+### T4 ✅ PASS
 
-Joy opened the pricing discussion by mentioning older attachment context (“Both files came through…”) before addressing the active project.
+Production validation: **PASS** (founder-confirmed). Preserve current interrupt / recovery behavior under test; no fail evidence recorded.
 
-| Classification | |
-|----------------|--|
-| Stage theater? | **No** |
-| Attachment pipeline broken? | **No** — reference was accurate |
-| Arrival regression? | **No** |
-| Correct frame | Conversation context prioritization / response planning |
+---
 
-Active workspace/project and current user intent should outrank stale but accurate attachment context.
+### T5 ✅ PASS
 
-No architectural changes required for 2.4 closeout.
+Production validation: **PASS** (founder-confirmed). Preserve current renderer / recovery behavior under test; no fail evidence recorded.
+
+---
+
+### T6 — Mid-conversation pivot ❌ FAIL
+
+**Pivot used:**
+
+> Actually, forget moderation for a second… How should Stripe Connect work with ministries?
+
+| | |
+|--|--|
+| Expected | Drop moderation; answer Stripe Connect for ministries |
+| Actual | Attachment diagnostic: “I don't have access to any attachment…” |
+| Also exposed | “I started to claim…” (Invisible Mechanics violation) |
+| Classification | Current-intent routing / stale attachment-context override — **not** a Stripe knowledge fail |
+
+**Same thread — preserve:** Rename exchange (SanctumIQ → Reveal) was good; Joy noticed mismatch, accepted correction, carried rename forward.
+
+Full write-up: [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
+
+---
+
+## Earlier refinement (still valid; now joined by T6 fail)
+
+Joy opened a pricing discussion by mentioning older attachment context (“Both files came through…”) before the active project.
+
+That was framed as weighted context / response planning. **T6 elevates the same family into a hard fail:** attachment diagnostics must not replace a complete current text request.
 
 ---
 
@@ -87,7 +109,8 @@ No architectural changes required for 2.4 closeout.
 | Item | Notes |
 |------|-------|
 | T2 Flow surface | Confirm Axiom Flow arrival matches Joy + Workspace |
-| T4–T11 live battery | Remainder of design battery still ops follow-up |
+| T6 fix verification | Re-run pivot on production after guard fix deploys |
+| T7–T11 live battery | Remainder of design battery still ops follow-up |
 
 ---
 
@@ -95,6 +118,7 @@ No architectural changes required for 2.4 closeout.
 
 | Do | Don’t |
 |----|-------|
-| Preserve T1–T3 production behavior | Treat prioritization note as T3 fail |
-| Rank current intent above stale attachments | Frame as attachment-pipeline bug |
-| Keep 2.4 CLOSED | Reopen arrival / stage theater unless new fail evidence |
+| Preserve T1–T5 production behavior | Treat T6 as a knowledge / Stripe bug |
+| Fix attachment guard so current intent wins | Reopen arrival / stage theater |
+| Remove “I started to claim…” from user-facing copy | Frame T6 as attachment-pipeline storage failure |
+| Keep rename-awareness behavior | Replace whole pivot answers with attachment warnings |

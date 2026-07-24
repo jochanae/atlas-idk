@@ -140,14 +140,30 @@ describe("zero current-turn attachments", () => {
     expect(result.clean).toBe(false);
   });
 
-  it("includes the violating snippet in the correction", () => {
+  it("uses quiet recovery without exposing internal claim mechanics", () => {
     const result = checkAttachmentClaims(
       "The screenshot shows a dark theme with a sidebar.",
       noEvidence,
     );
     expect(result.clean).toBe(false);
-    expect(result.correction).toMatch(/I started to claim:|I said:/i);
-    expect(result.correction).toMatch(/screenshot/i);
+    expect(result.correction).toMatch(/don't have access to any attachment/i);
+    expect(result.correction).not.toMatch(/I started to claim:|I said:/i);
+  });
+
+  it("T6: preserves pivot answer when an unsupported claim sentence is mixed in", () => {
+    const result = checkAttachmentClaims(
+      [
+        "Looking at the screenshot, the old moderation notes are still there.",
+        "For ministries, Stripe Connect should let each organization connect its own Stripe account so donations go directly to that ministry.",
+      ].join(" "),
+      noEvidence,
+    );
+    expect(result.clean).toBe(false);
+    expect(result.correction).toMatch(/Stripe Connect/i);
+    expect(result.correction).toMatch(/ministries/i);
+    expect(result.correction).not.toMatch(/don't have access to any attachment/i);
+    expect(result.correction).not.toMatch(/I started to claim/i);
+    expect(result.correction).not.toMatch(/Looking at the screenshot/i);
   });
 
   it("passes clean prose with no attachment claims", () => {
@@ -606,7 +622,7 @@ describe("streaming claim gate — StreamingClaimGate", () => {
     expect(total).toBe(fullText);
   });
 
-  it("fires a correction and never emits the claim when no readable file exists", () => {
+  it("quietly skips an unsupported claim and does not mid-stream replace the turn", () => {
     const evidence = makeEvidence([
       makeStorageOnly("deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
     ]);
@@ -619,32 +635,38 @@ describe("streaming claim gate — StreamingClaimGate", () => {
     const r1 = gate.process(fullText, 0, safeEnd);
     const r2 = gate.flush(fullText, r1.newEmitPtr);
 
-    const correctionContent = r1.correctionContent ?? r2.correctionContent;
-    expect(correctionContent).not.toBeNull();
+    // Mid-stream must not snap the bubble to an attachment diagnostic (T6).
+    expect(r1.correctionContent).toBeNull();
+    expect(r2.correctionContent).toBeNull();
     // The claim sentence itself should never appear in emitted text
     const emitted = r1.toEmit + r2.toEmit;
     expect(emitted).not.toMatch(/screenshot shows a dark/i);
     expect(gate.hasFired).toBe(true);
   });
 
-  it("emits text before the trigger, suppresses only the claim sentence", () => {
+  it("emits text before the trigger, suppresses only the claim sentence, continues after", () => {
     const evidence = makeEvidence([]);
     const gate = new StreamingClaimGate(evidence);
     const prefix = "Here is a summary of our strategy. ";
-    const claim = "The screenshot shows a dashboard with four cards.\n";
-    const fullText = prefix + claim;
+    const claim = "The screenshot shows a dashboard with four cards. ";
+    const pivot =
+      "For ministries, Stripe Connect should let each org connect its own account.\n";
+    const fullText = prefix + claim + pivot;
     const safeEnd = fullText.length;
 
     const r1 = gate.process(fullText, 0, safeEnd);
     const r2 = gate.flush(fullText, r1.newEmitPtr);
 
     const emitted = r1.toEmit + r2.toEmit;
-    const correctionContent = r1.correctionContent ?? r2.correctionContent;
+    expect(r1.correctionContent).toBeNull();
+    expect(r2.correctionContent).toBeNull();
     // The prefix (before the trigger) should be emitted
     expect(emitted).toContain("Here is a summary of our strategy.");
+    // Pivot prose after the claim must still stream (T6)
+    expect(emitted).toMatch(/Stripe Connect/i);
     // The claim sentence should not appear
     expect(emitted).not.toMatch(/screenshot shows a dashboard/i);
-    expect(correctionContent).not.toBeNull();
+    expect(gate.hasFired).toBe(true);
   });
 
   it("hasFired stays false when all claims are clean", () => {
@@ -654,24 +676,6 @@ describe("streaming claim gate — StreamingClaimGate", () => {
     gate.process(fullText, 0, fullText.length);
     gate.flush(fullText, 0);
     expect(gate.hasFired).toBe(false);
-  });
-
-  it("swallows all tokens after a correction fires (hasFired guard)", () => {
-    const evidence = makeEvidence([]);
-    const gate = new StreamingClaimGate(evidence);
-    const fullText = "The attached file contains sensitive data.\nMore text after.\n";
-    gate.process(fullText, 0, fullText.length);
-    const r2 = gate.flush(fullText, 0);
-
-    // Any subsequent process call after firing should emit nothing
-    const r3 = gate.process(fullText + " extra", 0, fullText.length + 6);
-    expect(r3.toEmit).toBe("");
-    expect(r3.correctionContent).toBeNull();
-    // hasFired should remain true
-    expect(gate.hasFired).toBe(true);
-
-    // r2 result should also be clean (correction fired in process or flush)
-    void r2;
   });
 });
 
@@ -686,9 +690,9 @@ describe("INT-39 slide-order claims require reopened deck content", () => {
     contentAvailableThisTurn: false,
   };
 
-  it("blocks pricing-after-challenge claim without reopen", () => {
+  it("blocks pricing-after-challenge claim without reopen when tied to deck vocabulary", () => {
     const result = checkAttachmentClaims(
-      "Pricing comes after the challenge, then the journey.",
+      "In the deck, pricing comes after the challenge, then the journey.",
       {
         attachments: [],
         priorAttachments: [priorDeck],
@@ -698,13 +702,25 @@ describe("INT-39 slide-order claims require reopened deck content", () => {
     expect(result.clean).toBe(false);
   });
 
-  it("allows the same claim when content was reopened", () => {
+  it("allows the same deck-order claim when content was reopened", () => {
     const result = checkAttachmentClaims(
-      "Pricing comes after the challenge, then the journey.",
+      "In the deck, pricing comes after the challenge, then the journey.",
       {
         attachments: [],
         priorAttachments: [{ ...priorDeck, contentAvailableThisTurn: true }],
         contentReopenedAttachmentIds: new Set(["att-deck"]),
+        toolsExecutedThisTurn: new Set(),
+      },
+    );
+    expect(result.clean).toBe(true);
+  });
+
+  it("does not treat bare product pricing language as a slide-order claim", () => {
+    const result = checkAttachmentClaims(
+      "For ministries, pricing comes after the challenge of compliance — then Stripe Connect.",
+      {
+        attachments: [],
+        priorAttachments: [priorDeck],
         toolsExecutedThisTurn: new Set(),
       },
     );
