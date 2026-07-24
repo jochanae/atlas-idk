@@ -82,6 +82,7 @@ export default function LandingPage() {
       <WhyAxiomExists />
       <ContinuityThread />
       <MeetJoy />
+      <SeeJoyInAction />
       <StrategicManifest />
       <StructuralOutputs />
       <ParchmentAside />
