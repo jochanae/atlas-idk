@@ -130,6 +130,11 @@ export type AtlasConversationSubmission = {
    */
   attachmentIds?: string[];
   /**
+   * Requested output artifact for this submission (composer Plan → "plan").
+   * Orthogonal to conversationMode / WhisperGate.
+   */
+  requestedArtifact?: "plan";
+  /**
    * Display-only passthrough for optimistic chips (opening-message handoff).
    * Never sent as inline base64 to the server when attachmentIds are present.
    */
@@ -302,6 +307,9 @@ export function useAtlasConversation(config: AtlasConversationConfig): AtlasConv
         attachments:
           displayAttachments.length > 0 ? displayAttachments : undefined,
         hiddenFromUi: submission.hiddenFromUi === true,
+        ...(submission.requestedArtifact
+          ? { requestedArtifact: submission.requestedArtifact }
+          : {}),
       });
 
       if (sendResult === undefined) {

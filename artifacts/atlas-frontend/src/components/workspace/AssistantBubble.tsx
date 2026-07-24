@@ -1596,6 +1596,7 @@ function AssistantBubbleImpl({
   onPlanStateChange,
   onPlanExecutionChange,
   onExecuteHomePlan,
+  onRevisePlan,
   onBuildAnyway,
   buildGroupInfo,
 }: {
@@ -1628,6 +1629,7 @@ function AssistantBubbleImpl({
   onPlanStateChange?: (messageId: number, state: PlanState) => void;
   onPlanExecutionChange?: (messageId: number, execution: PlanExecution | null) => void;
   onExecuteHomePlan?: (plan: Plan) => void;
+  onRevisePlan?: (plan: Plan) => void;
   onBuildAnyway?: (message: string) => void;
   buildGroupInfo?: BuildGroupInfo | null;
 }) {
@@ -1668,8 +1670,10 @@ function AssistantBubbleImpl({
         reversible: message.planArtifact.reversible ?? false,
       }
     : null;
-  // Fallback: detect plan from prose for old messages that pre-date structured planArtifact.
-  const planFromText: Plan | null = planFromArtifact ? null : detectPlanFromText(message.content);
+  // Fallback: detect plan from prose only when no structured Plan Card exists.
+  // Suppress heuristic cards when awaiting structured extraction to avoid duplicates.
+  const planFromText: Plan | null =
+    planFromArtifact || message.awaitingPlan ? null : detectPlanFromText(message.content);
   // Single effective plan used throughout — structured artifact takes priority.
   const effectivePlan: Plan | null = planFromArtifact ?? planFromText;
   const { data: planProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
@@ -2479,6 +2483,14 @@ function AssistantBubbleImpl({
             onReview={() => setPlanStatus(planState === "reviewing" ? "pending" : "reviewing")}
             onSkip={() => setPlanStatus("skipped")}
             onApprove={() => void handlePlanApprove()}
+            onRevise={
+              onRevisePlan
+                ? () => {
+                    setPlanStatus("skipped");
+                    onRevisePlan(effectivePlan);
+                  }
+                : undefined
+            }
           />
         )}
 

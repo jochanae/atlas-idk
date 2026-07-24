@@ -199,7 +199,7 @@ export interface ChatComposerProps {
 
   // Send
   chatPending: boolean;
-  handleSend: (opts?: { mode: "plan" | "build" }) => void;
+  handleSend: (opts?: { mode?: "plan" | "build"; requestedArtifact?: "plan" }) => void;
   createSessionPending: boolean;
   onAbort?: () => void;
 
@@ -232,10 +232,12 @@ export interface ChatComposerProps {
    *  Receives the composed `[SKETCH:<preset>] …` prompt — wire to doSend. */
   onSketch?: (prompt: string) => void;
 
-  /** Seed the initial composer mode. Defaults to "plan" when omitted.
-   *  For local (no-GitHub) project workspaces pass "build" so Joy emits
-   *  FILE_EDIT blocks by default. User can still toggle to Plan freely. */
+  /** Seed the initial Plan checklist (requested artifact). Defaults to off ("build").
+   *  Plan is a requested-artifact signal, not an AI personality mode. */
   defaultComposerMode?: "plan" | "build";
+
+  /** Called after Plan is submitted so the parent can clear sticky pending when needed. */
+  onPlanArtifactRequested?: () => void;
 
   /** Pending follow-up message queue (rendered above the composer body). */
   queueSlot?: ReactNode;
@@ -312,6 +314,7 @@ export function ChatComposer(props: ChatComposerProps) {
     onComposerMenuAction,
     onOpenSessionsHistory,
     defaultComposerMode,
+    onPlanArtifactRequested,
     queueSlot,
   } = props;
 
@@ -339,6 +342,19 @@ export function ChatComposer(props: ChatComposerProps) {
       try { (navigator as any).vibrate?.(10); } catch {}
       return next;
     });
+  };
+  const requestPlanFromComposer = () => {
+    const requestingPlan = composerMode === "plan";
+    handleSend(
+      requestingPlan
+        ? { requestedArtifact: "plan", mode: "plan" }
+        : { mode: "build" },
+    );
+    if (requestingPlan) {
+      setComposerMode("build");
+      setPlanBannerVisible(false);
+      onPlanArtifactRequested?.();
+    }
   };
   const composerModeIsPlan = composerMode === "plan";
   const composerModeAccent = composerModeIsPlan ? "var(--atlas-gold)" : "var(--atlas-muted)";
@@ -733,7 +749,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 background: composerModeAccent,
                 boxShadow: `0 0 6px ${composerModeShadow}`,
               }} />
-              {`Plan Mode · ${chatPending ? "Strategizing" : "Active"}`}
+              {`Plan Card · ${chatPending ? "Structuring" : "Requested"}`}
             </div>
           );
         })()}
@@ -763,7 +779,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     fontStyle: "italic",
                   }}
                 >
-                  {chatPending ? "Strategizing…" : "Ready to strategize…"}
+                  {chatPending ? "Structuring Plan Card…" : "Ask for a Plan Card…"}
                 </div>
               ) : (
                 !hasInput && !inputFocused && (
@@ -799,7 +815,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     window.matchMedia?.("(pointer: coarse)").matches;
                   if (!isTouch && e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    handleSend({ mode: composerMode });
+                    requestPlanFromComposer();
                     // Send collapses the composer: blur drops inputFocused →
                     // sheet closes so the user can read the response.
                     textareaRef.current?.blur();
@@ -949,8 +965,8 @@ export function ChatComposer(props: ChatComposerProps) {
               <button
                 onClick={togglePlanMode}
                 disabled={chatPending}
-                title="Plan mode"
-                aria-label={composerModeIsPlan ? "Exit plan mode" : "Switch to plan mode"}
+                title={composerModeIsPlan ? "Plan Card requested for next send" : "Ask Joy to leave a Plan Card"}
+                aria-label={composerModeIsPlan ? "Cancel Plan Card request" : "Request Plan Card"}
                 aria-pressed={composerModeIsPlan}
                 style={{
                   minWidth: isCompact ? 32 : 44, minHeight: isCompact ? 32 : 44, padding: isCompact ? 5 : 7, borderRadius: 8,
@@ -1054,7 +1070,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   }
                   // Sending returns the composer to its default full state.
                   setUserComposerPreference(null);
-                  handleSend({ mode: composerMode });
+                  requestPlanFromComposer();
                   // Collapse the expand-on-focus sheet after send so the
                   // conversation and streaming response become the focus.
                   textareaRef.current?.blur();

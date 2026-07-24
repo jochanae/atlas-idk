@@ -130,14 +130,17 @@ The composer is not changing Joy’s personality. It is saying:
 4. **Wire** Approve into existing consume paths (execute / Flow / Build / Tasks as product defines).
 5. **Extend** later with Decide / Research / Compare / Timeline under the same contract.
 
-Do not solve this by folding Plan into Conversation Mode or by relying on intent inference alone.
+## Implementation status (2026-07-24)
 
----
+Workspace Plan → Plan Card path restored on Nexus:
 
-## Related
+- Composer Plan sends `requestedArtifact: "plan"` (not a posture mode)
+- Soft no-build for that turn; read tools allowed
+- Haiku structuring via shared `planCardExtract.ts`
+- SSE `plan_start` / `plan` + `nexus_messages.metadata.planArtifact`
+- PlanCard Review / Approve / Revise / Skip on live Workspace
+- Approve executes via Nexus submit (not legacy `/api/chat`)
 
-- Audit (evidence + history): `docs/audits/workspace-plan-mode-audit.md`
-- Live posture UI: `ConversationViewSwitcher.tsx`
-- Plan Card UI: `components/PlanCard.tsx`
-- Legacy Plan Card factory (to re-home on Nexus): `routes/chat.ts` Haiku plan extraction
-- Deliverable cousins: `generate_deliverable`, DECIDE CLARIFY/TRADEOFF/DECISION_ARTIFACT
+Sibling composer artifacts (Decide / Research / Compare / Timeline) remain future work under the same philosophy.
+
+See `docs/audits/plan-card-nexus-gap-analysis.md` for the Phase 1 map and remaining consume gaps (Flow / Tasks).

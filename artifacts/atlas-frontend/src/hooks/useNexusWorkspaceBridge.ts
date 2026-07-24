@@ -33,6 +33,7 @@ type ThreadMessage = {
   imageGen?: NexusMessage["imageGen"] | null;
   decisionArtifacts?: NexusMessage["decisionArtifacts"] | null;
   generatedArtifacts?: NexusMessage["generatedArtifacts"] | null;
+  planArtifact?: NexusMessage["planArtifact"] | null;
   runtimeCard?: NexusMessage["runtimeCard"] | null;
   nextSuggestions?: string[] | null;
   attachments?: Array<{ id: string; contentUrl: string; mediaType: string; name?: string; messagePosition: number }>;
@@ -54,6 +55,7 @@ function threadMessageToNexus(m: ThreadMessage): NexusMessage {
     imageGen: m.imageGen ?? null,
     decisionArtifacts: m.decisionArtifacts ?? null,
     generatedArtifacts: m.generatedArtifacts ?? null,
+    planArtifact: m.planArtifact ?? null,
     runtimeCard: m.runtimeCard ?? null,
     ...(m.nextSuggestions?.length ? { nextSuggestions: m.nextSuggestions } : {}),
     ...(m.attachments && m.attachments.length > 0 ? { attachments: m.attachments } : {}),
@@ -134,6 +136,8 @@ function toChatMessage(nm: NexusMessage, idx: number): ChatMessage {
     ...(nm.parkCandidates?.length ? { parkCandidates: nm.parkCandidates as ChatMessage["parkCandidates"] } : {}),
     ...(nm.decisionArtifacts?.length ? { decisionArtifacts: nm.decisionArtifacts as ChatMessage["decisionArtifacts"] } : {}),
     ...(nm.generatedArtifacts?.length ? { generatedArtifacts: nm.generatedArtifacts as ChatMessage["generatedArtifacts"] } : {}),
+    ...(nm.planArtifact ? { planArtifact: nm.planArtifact as ChatMessage["planArtifact"] } : {}),
+    ...(nm.awaitingPlan ? { awaitingPlan: true } : {}),
     ...(nm.runtimeCard ? { runtimeCard: nm.runtimeCard as ChatMessage["runtimeCard"] } : {}),
     sentAt: nm.createdAt ?? undefined,
     ...(nm.executionOutcome ? { executionOutcome: nm.executionOutcome } : {}),

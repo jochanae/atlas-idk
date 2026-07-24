@@ -35,6 +35,7 @@ import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } fr
 import { loadVaultContext } from "../lib/vaultContext";
 import { vectorSearch, buildRagBlock } from "../lib/embeddings";
 import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
+import { extractPlanCardFromAssistantText, type StructuredPlanArtifact } from "../lib/planCardExtract";
 import { detectDecisionCatch } from "../lib/decisionCatch";
 import { getGithubTokenForUser, bootstrapGitHubRepo } from "../lib/githubBootstrap";
 import { extractPageUrls, screenshotUrlsToBlocks, buildUrlNote } from "../lib/urlScreenshot";
@@ -1973,6 +1974,8 @@ router.get("/nexus/thread", async (req, res): Promise<void> => {
         imageGen: (m.metadata as any)?.imageGen ?? null,
         // Restore persisted decisionArtifacts so Decision Intelligence cards survive reload
         decisionArtifacts: (m.metadata as any)?.decisionArtifacts ?? null,
+        // Restore Plan Card structured artifact (requestedArtifact: "plan")
+        planArtifact: (m.metadata as any)?.planArtifact ?? null,
         runtimeCard: (m.metadata as any)?.runtimeCard ?? null,
         // Restore generated artifact cards (ArtifactCreatedCard) so they survive reload
         generatedArtifacts: (m.metadata as any)?.generatedArtifacts ?? null,
@@ -2203,6 +2206,13 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     userType?: HomeUserType;
     conversationMode?: boolean;
     justTalk?: boolean;
+    /**
+     * Requested output artifact for this turn (composer Plan = "plan").
+     * Orthogonal to conversationMode and WhisperGate intent — does not switch
+     * Joy's personality; asks that the exchange culminate in a Plan Card when
+     * enough context exists.
+     */
+    requestedArtifact?: "plan" | string;
     /** Stable client-minted run identifier. When present, the backend
      *  pre-inserts an execution_runs row in `running` status and reuses the
      *  same id for the terminal update — giving Timeline/Changes a single
@@ -2883,6 +2893,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // Must run before project-state briefing injection so greetings stay silent.
   const justTalk = body.justTalk === true;
   const conversationModeActive = body.conversationMode === true;
+  const planArtifactRequested = body.requestedArtifact === "plan";
   let intent: WhisperIntent = "DECIDE";
   let whisperFallback = false;
   let whisperConfidence = 0;
@@ -2969,7 +2980,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     : body.surfaceContext === "ask-atlas" ? "ask-atlas"
     : "home";
   const allowBuildSideEffects =
-    surfaceContext === "workspace" && (intent === "BUILD" || isResuming) && !justTalk && !conversationModeActive;
+    surfaceContext === "workspace" && (intent === "BUILD" || isResuming) && !justTalk && !conversationModeActive && !planArtifactRequested;
   // The shared agent-tools registry (search_all_projects, architecture_diff,
   // generate_deliverable, read_file, etc.) is read/generate-only — none of it
   // edits files, so it does not need the same guard as allowBuildSideEffects.
@@ -2980,6 +2991,8 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   // DECIDE's own system-prompt block forbade tool calls outright. Widening
   // this to include DECIDE lets Joy actually ground its answer/recommendation
   // in real project data instead of promising to look and then not looking.
+  // Plan Card requests still allow read tools so Joy can clarify with evidence,
+  // but writes stay off via allowBuildSideEffects above.
   const allowToolAccess = !justTalk && !conversationModeActive;
   // CHAT turns emit nothing except the reply + meta. DECIDE may surface memory
   // read-only, but capture cards fire only on Commit.
@@ -3994,6 +4007,15 @@ WHAT YOU SHOULD NOT DO:
 
   if (justTalk) {
     systemPrompt += `\n\n--- JUST TALK MODE ACTIVE ---\nJUST TALK MODE ACTIVE — the user has explicitly disabled build actions. Do not build, edit, run, create, deploy, or modify anything. Do not call tools. Do not propose file writes. Respond conversationally only. If the user asks for a build action, acknowledge and ask them to turn Just Talk off first.\n--- END JUST TALK MODE ---`;
+  } else if (planArtifactRequested) {
+    systemPrompt += `\n\n--- REQUESTED ARTIFACT: PLAN CARD ---
+The user asked that this exchange culminate in a Plan Card — a reviewable planning artifact (not a mode switch).
+• Converse normally. Ask clarifying questions when the target or scope is ambiguous.
+• When you have enough context, leave a clear structured plan in prose: title-worthy summary, numbered steps, what changes, what stays.
+• Do NOT emit FILE_EDIT_START, LINE_PATCH_START, or GITHUB_PUSH on this turn — the Plan Card is the deliverable.
+• Do not claim a Plan Card already exists; the server will structure one from your reply when the plan is actionable.
+• Read/lookup tools are allowed to ground the plan. Build/write side effects are not.
+--- END REQUESTED ARTIFACT ---`;
   } else if (conversationModeActive) {
     systemPrompt += `\n\n--- CONVERSATION MODE ACTIVE ---\nThe user has switched this thread to Conversation Mode. Do not call any tools, propose file edits, or take build actions — none are available this turn. Respond as a thinking partner only: discuss, brainstorm, question, and reason in prose. If the user asks you to build or change something, say you're in Conversation Mode and ask them to switch to Build Mode to proceed.\n--- END CONVERSATION MODE ---`;
   } else if (intent === "CHAT") {
@@ -5353,6 +5375,22 @@ PROSE RULES (enforced — contradiction detection is active):
       }
     }
 
+    // ── Plan Card structuring (requestedArtifact: "plan") ───────────────────
+    // Orthogonal to WhisperGate / Conversation Mode. Soft-blocks writes via
+    // allowBuildSideEffects; Haiku extracts a Plan Card when the reply is an
+    // actionable plan. Clarify-only replies return null (no hollow card).
+    let structuredPlanArtifact: StructuredPlanArtifact | null = null;
+    if (planArtifactRequested && visibleContent.trim().length > 40) {
+      writeStep({ verb: "Structuring", target: "plan", detail: "Building Plan Card" });
+      if (!res.writableEnded && !res.destroyed) {
+        res.write(`event: plan_start\ndata: ${JSON.stringify({ type: "plan_start" })}\n\n`);
+      }
+      structuredPlanArtifact = await extractPlanCardFromAssistantText(anthropic, visibleContent);
+      if (structuredPlanArtifact && !res.writableEnded && !res.destroyed) {
+        res.write(`event: plan\ndata: ${JSON.stringify(structuredPlanArtifact)}\n\n`);
+      }
+    }
+
     writeStep({ verb: "Saved", target: "response", detail: "Thread updated" });
 
     // Execute BROWSER_VISIT if Joy emitted one — emit visiting step so UI shows the globe indicator
@@ -5562,10 +5600,51 @@ PROSE RULES (enforced — contradiction detection is active):
         sessionId,
         conversationId: effectiveConversationId,
         ...(hasMessageType ? { messageType: "message" } : {}),
-        // Persist suggestion pills so they survive refresh (Ask Joy + workspace).
-        ...(nextSuggestions?.length ? { metadata: { nextSuggestions } } : {}),
+        // Persist suggestion pills + Plan Card so they survive refresh.
+        ...((nextSuggestions?.length || structuredPlanArtifact)
+          ? {
+              metadata: {
+                ...(nextSuggestions?.length ? { nextSuggestions } : {}),
+                ...(structuredPlanArtifact ? { planArtifact: structuredPlanArtifact } : {}),
+              },
+            }
+          : {}),
       }).returning({ id: nexusMessagesTable.id });
       nexusMsgId = nexusMsg?.id ?? null;
+      // Persist Plan Card to project_artifacts for Outputs / cross-session query.
+      if (structuredPlanArtifact && focusProjectId && nexusMsgId) {
+        const plan = structuredPlanArtifact;
+        const msgId = nexusMsgId;
+        const projectIdForPlan = focusProjectId;
+        setImmediate(async () => {
+          try {
+            const existing = await db
+              .select({ id: projectArtifactsTable.id })
+              .from(projectArtifactsTable)
+              .where(
+                and(
+                  eq(projectArtifactsTable.projectId, projectIdForPlan),
+                  eq(projectArtifactsTable.type, "plan"),
+                ),
+              );
+            await db.insert(projectArtifactsTable).values({
+              projectId: projectIdForPlan,
+              type: "plan",
+              version: existing.length + 1,
+              title: plan.title,
+              metadata: {
+                messageId: msgId,
+                confidence: plan.confidence,
+                amFields: plan.amFields ?? [],
+                source: "nexus",
+              } as Record<string, unknown>,
+              payload: plan as unknown as Record<string, unknown>,
+            });
+          } catch (planErr) {
+            logger.warn({ err: planErr }, "nexus plan artifact persist failed — non-fatal");
+          }
+        });
+      }
     } catch (dbErr: any) {
       const errMsg = dbErr?.message ?? "";
       const isMissingColumn = errMsg.includes("column") && errMsg.includes("does not exist");
@@ -5943,6 +6022,7 @@ PROSE RULES (enforced — contradiction detection is active):
       ...(clarify ? { clarify } : {}),
       ...(tradeoff ? { tradeoff } : {}),
       ...(decisionArtifactResults.length > 0 ? { decisionArtifacts: decisionArtifactResults } : {}),
+      ...(structuredPlanArtifact ? { planArtifact: structuredPlanArtifact } : {}),
       ...(sharedSideEffects.generatedArtifacts.length > 0
         ? { generatedArtifacts: sharedSideEffects.generatedArtifacts }
         : {}),

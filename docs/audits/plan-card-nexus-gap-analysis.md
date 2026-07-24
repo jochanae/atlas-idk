@@ -99,4 +99,26 @@ Plan = **requested artifact**, not posture, not WhisperGate intent.
 
 **Out of scope:** Decide/Compare/Research/Timeline composer controls; Conversation/Build redesign; dual Workspace `/api/chat` send path; agent-loop PlanArtifactCardV2.
 
-**Known remaining gaps after Phase 2 (report, don’t fake):** Flow / Tasks / dedicated Build consume destinations if not already wired — Approve will re-submit an execute request via Nexus (real destination) and optionally record `project_artifacts`; Flow/Tasks remain reported gaps unless an existing API is found.
+## Remaining gaps after Phase 2 (do not fake)
+
+| Destination | Status |
+|-------------|--------|
+| Approve → Nexus execute turn | **Wired** (`atlasConv.submit` execute prompt) |
+| Approve → `project_artifacts` type plan | **Wired** on Plan Card emission |
+| Flow nodes / Tasks / Parking consume | **Not wired** — report only |
+| Dedicated “Build from Plan” surface | **Not wired** — Approve re-submits execute via Nexus |
+| Plan approval durable row (committed status) | PlanCard Approve does not write a commit row (v2 `plan_artifacts` deferred) |
+
+## Phase 2 implementation status
+
+Restored on branch `cursor/plan-card-nexus-restore-1294`:
+
+- `requestedArtifact: "plan"` through composer → atlasConv → Nexus
+- Soft no-build when plan requested
+- Shared Haiku extract (`lib/planCardExtract.ts`)
+- SSE `plan_start` / `plan` + done `planArtifact`
+- Bridge + thread hydrate `planArtifact`
+- PlanCard Review / Skip / Approve / **Revise**
+- Approve uses Nexus submit (not legacy doSend)
+- Sticky pending until card arrives; UI checklist resets on send
+

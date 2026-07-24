@@ -6251,6 +6251,17 @@ export default function Workspace() {
   // Subscribers (WorkspaceRunCard, ViewChangesPanel) invalidate their own queries.
   const chatPendingRef = useRef(chatPending);
   const workspaceSendInFlightRef = useRef(false);
+  /** Sticky Plan Card request until a structured planArtifact arrives (UI resets on send). */
+  const pendingPlanArtifactRef = useRef(false);
+
+  // Clear sticky Plan request once a structured Plan Card lands on an assistant turn.
+  useEffect(() => {
+    if (!pendingPlanArtifactRef.current) return;
+    const hasCard = nexusBridge.messages.some(
+      (m) => m.role === "assistant" && !!m.planArtifact && !m.streaming,
+    );
+    if (hasCard) pendingPlanArtifactRef.current = false;
+  }, [nexusBridge.messages]);
   const workspaceSendAfterUploadRef = useRef(false);
   useEffect(() => {
     const prev = chatPendingRef.current;
@@ -6960,17 +6971,57 @@ export default function Workspace() {
   }, []);
 
   const executeHomePlan = useCallback((plan: Plan) => {
-    if (!sessionId || chatPending) return;
     const planText = [
-      `Approved plan from home: ${plan.title}`,
+      `Approved plan: ${plan.title}`,
       ...plan.steps.map((step) => `${step.order}. [${step.type}] ${step.file ? `${step.file} - ` : ""}${step.description}`),
     ].join("\n");
-    doSend(
-      `${planText}\n\nExecute this plan in this workspace. Read the relevant files first if needed, then return FILE_EDIT or LINE_PATCH blocks for any code changes so I can review and push them.`,
-      sessionId,
-      messages
-    );
-  }, [chatPending, doSend, messages, sessionId]);
+    const executePrompt =
+      `${planText}\n\nExecute this plan in this workspace. Read the relevant files first if needed, then return FILE_EDIT or LINE_PATCH blocks for any code changes so I can review and push them.`;
+
+    // Live Workspace uses Nexus — never fall back to legacy /api/chat doSend.
+    if (useNexusWorkspaceChat) {
+      if (!atlasConv.canSend) {
+        toast("Joy is still working — try Approve again in a moment.");
+        return;
+      }
+      void atlasConv.submit({ text: executePrompt }).then((result) => {
+        if (!result.ok && result.error?.code !== "STREAM_BUSY") {
+          toast.error(result.error?.message ?? "Couldn't start plan execution.");
+        }
+      });
+      return;
+    }
+
+    if (!sessionId || chatPending) return;
+    doSend(executePrompt, sessionId, messages);
+  }, [atlasConv, chatPending, doSend, messages, sessionId, useNexusWorkspaceChat]);
+
+  const revisePlanCard = useCallback((plan: Plan) => {
+    const planText = [
+      `Please revise this plan: ${plan.title}`,
+      ...plan.steps.map((step) => `${step.order}. [${step.type}] ${step.file ? `${step.file} - ` : ""}${step.description}`),
+      "",
+      "Revise the plan based on my next message and the conversation so far. Leave an updated Plan Card when ready.",
+    ].join("\n");
+    pendingPlanArtifactRef.current = true;
+    if (useNexusWorkspaceChat) {
+      if (!atlasConv.canSend) {
+        toast("Joy is still working — try Revise again in a moment.");
+        return;
+      }
+      void atlasConv.submit({
+        text: planText,
+        requestedArtifact: "plan",
+      }).then((result) => {
+        if (!result.ok && result.error?.code !== "STREAM_BUSY") {
+          toast.error(result.error?.message ?? "Couldn't start plan revision.");
+        }
+      });
+      return;
+    }
+    if (!sessionId || chatPending) return;
+    doSend(planText, sessionId, messages, undefined, undefined, { planMode: true });
+  }, [atlasConv, chatPending, doSend, messages, sessionId, useNexusWorkspaceChat]);
 
   const reviewMessages = useMemo(
     () => messages.filter((message) =>
@@ -7705,7 +7756,7 @@ export default function Workspace() {
 
   const sendPreparingSession = !sessionId && (sessionsLoading || createSession.isPending);
 
-  const handleSend = async (opts?: { mode: "plan" | "build" }) => {
+  const handleSend = async (opts?: { mode?: "plan" | "build"; requestedArtifact?: "plan" }) => {
     if (useNexusWorkspaceChat) {
       const text = input.trim();
       // Gate checked against canSend — draft is only cleared after this passes.
@@ -7744,6 +7795,13 @@ export default function Workspace() {
       if (textareaRef.current) { textareaRef.current.style.height = ""; textareaRef.current.blur(); }
       setInputFocused(false);
       try { useShellStore.getState().setUserComposerPreference('compact'); } catch {}
+
+      const wantsPlan =
+        opts?.requestedArtifact === "plan" ||
+        opts?.mode === "plan" ||
+        pendingPlanArtifactRef.current;
+      if (wantsPlan) pendingPlanArtifactRef.current = true;
+
       // Pass lifecycle callbacks — submit() manages staged state based on actual outcomes.
       // Files remain "converting" during async work; transition to "sending" once send() returns
       // (optimistic message owns the data), then cleared on confirmed stream success (onClearSent)
@@ -7756,6 +7814,7 @@ export default function Workspace() {
         onMarkFailed: staged.markFailed,
         onRestoreToReady: staged.restoreToReady,
         onClearSent: staged.clearSent,
+        ...(wantsPlan ? { requestedArtifact: "plan" as const } : {}),
       }).then((result) => {
         if (!result.ok && result.error?.code !== "STREAM_BUSY") {
           const msg = result.error?.message ?? "Couldn't send — tap again to retry.";
@@ -9675,6 +9734,7 @@ export default function Workspace() {
               onPlanStateChange: updatePlanState,
               onPlanExecutionChange: updatePlanExecution,
               onExecuteHomePlan: executeHomePlan,
+              onRevisePlan: revisePlanCard,
               onPushSuccess: handleReviewPushSuccess,
               commitCarryover,
               onBuildAnyway: (msg: string) => doSend(msg, sessionId ?? 0, messagesRef.current, undefined, undefined, { buildMode: true, skipReadiness: true, conversationMode }),

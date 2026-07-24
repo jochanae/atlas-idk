@@ -9,6 +9,8 @@ type PlanCardProps = {
   onApprove: () => void;
   onSkip: () => void;
   onReview: () => void;
+  /** Return the plan to conversation for revision (requestedArtifact: plan). */
+  onRevise?: () => void;
   isExecuting: boolean;
   execution?: PlanExecution;
   isExpanded?: boolean;
@@ -99,6 +101,7 @@ export function PlanCard({
   onApprove,
   onSkip,
   onReview,
+  onRevise,
   isExecuting,
   execution,
   isExpanded = false,
@@ -411,6 +414,27 @@ export function PlanCard({
           >
             Skip
           </button>
+          {onRevise && (
+            <button
+              type="button"
+              onClick={onRevise}
+              style={{
+                flex: 1,
+                padding: "7px 10px",
+                borderRadius: 7,
+                background: "transparent",
+                border: "1px solid var(--atlas-border)",
+                color: "var(--atlas-muted)",
+                cursor: "pointer",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Revise
+            </button>
+          )}
           <button
             type="button"
             onClick={onApprove}
