@@ -141,6 +141,13 @@ Workspace Plan → Plan Card path restored on Nexus:
 - PlanCard Review / Approve / Revise / Skip on live Workspace
 - Approve executes via Nexus submit (not legacy `/api/chat`)
 
-Sibling composer artifacts (Decide / Research / Compare / Timeline) remain future work under the same philosophy.
+**Sibling composer artifacts and Flow/Tasks consume are expansion**, not unfinished Plan restore.  
+See `docs/architecture/requested-artifact-family-expansion.md`.
 
-See `docs/audits/plan-card-nexus-gap-analysis.md` for the Phase 1 map and remaining consume gaps (Flow / Tasks).
+---
+
+## Related
+
+- Expansion family: `docs/architecture/requested-artifact-family-expansion.md`
+- Plan restore map: `docs/audits/plan-card-nexus-gap-analysis.md`
+- Audit history: `docs/audits/workspace-plan-mode-audit.md`
