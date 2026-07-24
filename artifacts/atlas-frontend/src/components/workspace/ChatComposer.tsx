@@ -1,4 +1,5 @@
 import type React from "react";
+import type { ReactNode } from "react";
 import { Message } from "@workspace/api-client-react";
 import { useEffect, useRef, useState } from "react";
 import { ZipPanel } from "../ZipImport";
@@ -235,6 +236,9 @@ export interface ChatComposerProps {
    *  For local (no-GitHub) project workspaces pass "build" so Joy emits
    *  FILE_EDIT blocks by default. User can still toggle to Plan freely. */
   defaultComposerMode?: "plan" | "build";
+
+  /** Pending follow-up message queue (rendered above the composer body). */
+  queueSlot?: ReactNode;
 }
 
 
@@ -308,6 +312,7 @@ export function ChatComposer(props: ChatComposerProps) {
     onComposerMenuAction,
     onOpenSessionsHistory,
     defaultComposerMode,
+    queueSlot,
   } = props;
 
 
@@ -663,6 +668,8 @@ export function ChatComposer(props: ChatComposerProps) {
               • "+" menu → "Forge intake" (ComposerActions)
             This restores the composer to its lightweight resting state on mobile. */}
 
+        {queueSlot}
+
         {/* ZIP panel — shows when a ZIP is loaded */}
         {zipFiles.length > 0 && (
           <ZipPanel
@@ -996,6 +1003,34 @@ export function ChatComposer(props: ChatComposerProps) {
               )}
 
 
+              {chatPending && onAbort && (hasInput || hasAttachments) && (
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => onAbort()}
+                  aria-label="Stop generation"
+                  title="Stop"
+                  style={{
+                    minWidth: isCompact ? 30 : 40,
+                    minHeight: isCompact ? 30 : 40,
+                    padding: 3,
+                    borderRadius: 10,
+                    border: "1px solid color-mix(in oklab, var(--atlas-ember) 45%, transparent)",
+                    background: "color-mix(in oklab, var(--atlas-ember) 18%, transparent)",
+                    color: "var(--atlas-ember)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor">
+                    <rect x="2" y="2" width="10" height="10" rx="1.5" />
+                  </svg>
+                </button>
+              )}
+
               <button
                 className="atlas-send-btn"
                 onPointerDown={(e) => {
@@ -1005,7 +1040,11 @@ export function ChatComposer(props: ChatComposerProps) {
                   e.preventDefault();
                 }}
                 onClick={() => {
-                  if (chatPending && onAbort) { onAbort(); return; }
+                  // While Joy is running: draft → queue; empty → stop.
+                  if (chatPending && !(hasInput || hasAttachments)) {
+                    onAbort?.();
+                    return;
+                  }
                   // Sending returns the composer to its default full state.
                   setUserComposerPreference(null);
                   handleSend({ mode: composerMode });
@@ -1013,13 +1052,33 @@ export function ChatComposer(props: ChatComposerProps) {
                   // conversation and streaming response become the focus.
                   textareaRef.current?.blur();
                 }}
-                disabled={chatPending ? !onAbort : (!(hasInput || hasAttachments) || createSessionPending)}
-                aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}
-                title={chatPending ? "Stop" : "Send"}
+                disabled={
+                  chatPending
+                    ? (!(hasInput || hasAttachments) && !onAbort)
+                    : (!(hasInput || hasAttachments) || createSessionPending)
+                }
+                aria-label={
+                  chatPending
+                    ? (hasInput || hasAttachments)
+                      ? "Queue message"
+                      : "Stop generation"
+                    : sendPreparingSession
+                      ? "Preparing session"
+                      : "Send message"
+                }
+                title={
+                  chatPending
+                    ? (hasInput || hasAttachments)
+                      ? "Queue"
+                      : "Stop"
+                    : "Send"
+                }
                 style={{
                   minWidth: isCompact ? 30 : 44, minHeight: isCompact ? 30 : 44, padding: 3,
-                  background: chatPending
-                    ? "var(--atlas-ember)"
+                  background: chatPending && (hasInput || hasAttachments)
+                    ? "color-mix(in oklab, var(--atlas-gold) 28%, transparent)"
+                    : chatPending
+                      ? "var(--atlas-ember)"
                     : ((hasInput || hasAttachments) && !sendPreparingSession ? "var(--atlas-ember)" : "transparent"),
                   border: (chatPending || hasInput || hasAttachments) ? "none" : "1px solid transparent",
                   boxShadow: (chatPending || hasInput || hasAttachments) ? "0 0 16px -3px rgba(146,64,14,0.5)" : "none",

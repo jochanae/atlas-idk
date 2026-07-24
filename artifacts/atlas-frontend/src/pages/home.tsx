@@ -34,6 +34,8 @@ import { ComposerActions } from "../components/composer/ComposerActions";
 import { AskAtlasSurface } from "@/components/home/AskAtlasSurface";
 import { CrystallizeSheet } from "@/components/home/CrystallizeSheet";
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
+import { PendingMessageQueue } from "@/components/composer/PendingMessageQueue";
+import { usePendingMessageQueue } from "@/hooks/usePendingMessageQueue";
 import { FocusModeAura } from "@/components/FocusModeAura";
 
 import { VisualVault } from "../components/VisualVault";
@@ -2241,6 +2243,15 @@ export default function Home() {
   });
   const askAtlasConversationActive = askAtlasConv.messages.length > 0;
   const askAtlasBusy = askAtlasConv.isStreaming || askAtlasConv.isPending;
+  const askAtlasPendingQueue = usePendingMessageQueue({
+    canSend: askAtlasConv.canSend,
+    busy: askAtlasBusy,
+    abort: () => askAtlasConv.abort(),
+    submit: async ({ text, attachmentIds }) => {
+      const result = await askAtlasConv.submit({ text, attachmentIds });
+      return { ok: result.ok };
+    },
+  });
   // (Clear-nexus-on-ask-atlas-open effect declared below, after
   //  askAtlasSurfaceOpen state is created.)
   // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
@@ -3484,14 +3495,29 @@ export default function Home() {
     // eliminates the old split where entry point determined data source.
     const hasAskAtlasContent = !!text || readyStagedFiles.length > 0;
     if (askAtlasSurfaceOpen && hasAskAtlasContent) {
+      if (staged.isUploading) return;
+
+      // Busy → enqueue follow-up (Cursor-style message queue).
       if (
         askAtlasSurfaceSendInFlightRef.current ||
         askAtlasConv.isStreaming ||
-        askAtlasConv.isPending ||
-        staged.isUploading
+        askAtlasConv.isPending
       ) {
+        const queued = askAtlasPendingQueue.enqueue({
+          text,
+          attachmentIds: readyStagedFiles.map((sf) => sf.attachmentId!).filter(Boolean),
+          attachmentNames: readyStagedFiles.map((sf) => sf.file.name),
+        });
+        if (!queued) return;
+        staged.clearSent(readyIds);
+        setAskAtlasResumeGreeting(null);
+        setInput("");
+        clearAskAtlasComposerDraft();
+        textareaRef.current?.blur();
+        toast("Queued — will send when Joy finishes");
         return;
       }
+
       submitInFlightRef.current = true;
       askAtlasSurfaceSendInFlightRef.current = true;
       setAskAtlasResumeGreeting(null);
@@ -3654,6 +3680,7 @@ export default function Home() {
     askAtlasConv.submit,
     askAtlasConv.isStreaming,
     askAtlasConv.isPending,
+    askAtlasPendingQueue.enqueue,
     resolveFocusProjectIdForTurn,
     setActiveProjectId,
     setLocation,
@@ -6272,8 +6299,35 @@ export default function Home() {
         }}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => staged.addFiles(files)}
-        onSketch={(prompt) => { setAskAtlasResumeGreeting(null); if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text: prompt }); }}
-        onSend={(text) => { setAskAtlasResumeGreeting(null); if (!askAtlasSurfaceSendInFlightRef.current) void askAtlasConv.submit({ text }); }}
+        onAbort={() => askAtlasConv.abort()}
+        queueSlot={
+          <PendingMessageQueue
+            items={askAtlasPendingQueue.items}
+            onRemove={askAtlasPendingQueue.remove}
+            onMoveUp={askAtlasPendingQueue.moveUp}
+            onMoveDown={askAtlasPendingQueue.moveDown}
+            onSendNow={askAtlasPendingQueue.sendNow}
+            busy={askAtlasBusy}
+          />
+        }
+        onSketch={(prompt) => {
+          setAskAtlasResumeGreeting(null);
+          if (askAtlasBusy || askAtlasSurfaceSendInFlightRef.current) {
+            askAtlasPendingQueue.enqueue({ text: prompt });
+            toast("Queued — will send when Joy finishes");
+            return;
+          }
+          void askAtlasConv.submit({ text: prompt });
+        }}
+        onSend={(text) => {
+          setAskAtlasResumeGreeting(null);
+          if (askAtlasBusy || askAtlasSurfaceSendInFlightRef.current) {
+            askAtlasPendingQueue.enqueue({ text });
+            toast("Queued — will send when Joy finishes");
+            return;
+          }
+          void askAtlasConv.submit({ text });
+        }}
         onAction={(id, payload) => {
           if (id === "create-project") {
             const name = typeof payload?.name === "string" ? payload.name : undefined;
