@@ -871,18 +871,18 @@ router.get("/projects/:id/greeting", async (req, res): Promise<void> => {
 
   let message: string;
 
+  // Milestone 2.4 P9 — Single Arrival Contract: continue the work; never emit
+  // banned reopeners ("What are we building today?", etc.) when context exists.
   if (isFreshBootstrap) {
-    message = `Scaffold's live. I pushed a React + Vite + Tailwind base to \`${repoName}\` — \`src/App.tsx\`, \`vite.config.ts\`, \`tailwind.config.js\`, and 7 more files. Open the StackBlitz tab to see it.\n\nWhat are we building?`;
-  } else if (repoName && hasShaping) {
-    message = `What are we working on today?`;
-  } else if (repoName) {
-    message = `What are we working on today?`;
+    message = `Scaffold's live. I pushed a React + Vite + Tailwind base to \`${repoName}\` — \`src/App.tsx\`, \`vite.config.ts\`, \`tailwind.config.js\`, and 7 more files. Open the StackBlitz tab to see it.\n\nPoint me at the first screen or flow when you're ready.`;
   } else if (hasShaping) {
-    message = `${project.name}.\n\n${shapingLines.join("\n")}\n\nWhat are we building today?`;
+    message = `${project.name}.\n\n${shapingLines.join("\n")}\n\nLet's continue.`;
+  } else if (repoName) {
+    message = `${project.name} — continuing from where we left off.`;
   } else if (!repoName && ageMs < 2 * 60 * 60 * 1000 && sessionCount <= 1) {
-    message = `${project.name} is ready. What are we building?`;
+    message = `${project.name} is ready. Let's continue.`;
   } else {
-    message = `${project.name} — what are we working on?`;
+    message = `${project.name} — let's continue.`;
   }
 
   res.json({ message });

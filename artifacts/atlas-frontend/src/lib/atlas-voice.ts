@@ -60,10 +60,10 @@ const POOLS: Record<VoiceCategory, Phrase[]> = {
   ],
   soft: [
     { head: "Good to see you.", sub: "What's pulling your attention lately?" },
-    { head: "Welcome back.", sub: "What are we exploring today?" },
+    { head: "Ready when you are.", sub: "Pick up wherever you'd like." },
     { head: "There you are.", sub: "What's the current obsession?" },
     { head: "You've got the floor.", sub: "What's taking shape?" },
-    { head: "Welcome back, {name}.", sub: "What are we exploring today?", named: true },
+    { head: "Ready when you are, {name}.", sub: "Pick up wherever you'd like.", named: true },
     { head: "Good to see you, {name}.", sub: "What's pulling your attention lately?", named: true },
   ],
 };

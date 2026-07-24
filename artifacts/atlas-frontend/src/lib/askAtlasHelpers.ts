@@ -48,13 +48,9 @@ export function buildAskAtlasHandoffSeed(
     lines.push(`${m.role === "user" ? "Me" : "Joy"}: ${m.content.trim()}`);
   }
   if (!lines.length) return draftFallback.trim();
-  return [
-    "Continuing from an Ask Joy thread:",
-    "",
-    ...lines,
-    "",
-    "Let's move this into the workspace and build.",
-  ].join("\n");
+  // P9 Single Arrival Contract: pass prior work without announcing the transfer
+  // or forcing a "build" ceremony.
+  return ["Prior thread — continue this work:", "", ...lines].join("\n");
 }
 
 /**
@@ -230,9 +226,13 @@ export function selectHandoffMessages<T>(opts: {
     : opts.askAtlasMessages;
 }
 
-/** Default kickoff Joy receives on workspace arrival after a home/Ask Joy handoff. */
+/**
+ * Default kickoff Joy receives on workspace arrival after a home/Ask Joy handoff.
+ * Milestone 2.4 P9 — Single Arrival Contract: continue the work; never acknowledge
+ * the handoff, welcome the user, or re-ask what we are building.
+ */
 export const HANDOFF_CONTINUATION_MESSAGE =
-  "Continue from where we left off — acknowledge the handoff and propose the next concrete step.";
+  "Continue the prior thread. Pick up the last concrete task. Do not acknowledge the handoff, welcome the user, or ask what we are building.";
 
 /**
  * Seed the workspace opening-message pipeline so Joy auto-responds after

@@ -1,11 +1,26 @@
 # Milestone 2.4 — Natural Conversation Design
 
-**Phase:** Design freeze (awaiting approval)  
+**Phase:** Phase A IN PROGRESS (design freeze approved)  
 **Date:** 2026-07-23  
-**Status:** **DESIGN DRAFT** — no implementation  
+**Status:** **DESIGN APPROVED** — Phase A (Arrival Contract) may begin  
 **Prerequisite:** Milestone 2.3 CLOSED (lens differentiation)  
 **Parent board:** [`milestone-2-restore-intelligence.md`](./milestone-2-restore-intelligence.md)  
-**Repo HEAD at commission:** `a3e4460e` (`main`, post #223)
+**Repo HEAD at commission:** `a3e4460e` (`main`, post #223)  
+**Design merge:** `#224` / `fc3cf245`
+
+### Approvals (2026-07-23)
+
+| Item | Decision |
+|------|----------|
+| P1–P8 | **Approved** |
+| P9 — Single Arrival Contract | **Approved** — **governing rule for the milestone** |
+| P10 — Invisible Mechanics | **Approved** (added at sign-off) |
+| Battery T1–T10 | **Approved** |
+| T11 — Conversation interruption / pivot | **Approved** (required) |
+| Roadmap A→E | **Approved** — Phase A first (highest ROI) |
+| Phase A start | **Unblocked** |
+
+**Milestone character:** Earlier milestones made Joy more capable. This one should make Joy **less noticeable**. Success is not “a great conversational feature” — it is staying in the flow of the work.
 
 ---
 
@@ -13,9 +28,12 @@
 
 > Does this feel like continuing work with someone who already understands the project — or like operating a procedure?
 
+**Governing rule (P9):** There is **one arrival experience** — continue the work — whether the user refreshes, hands off, opens a Workspace, returns later, or resumes after generation.  
+“Continue the work” and “Welcome back / What are we building today?” **cannot coexist**.
+
 **Natural Conversation** means Atlas (Joy) behaves like a capable collaborator already inside the work — not like a workflow engine, wizard, checklist, or phase coach.
 
-Intelligence already exists (M1–2.3). This milestone governs **feel and flow**: how that intelligence shows up in interaction without ceremony, restart, or procedural scaffolding.
+Intelligence already exists (M1–2.3). This milestone governs **feel and flow**: how that intelligence shows up in interaction without ceremony, restart, or procedural scaffolding. When successful, users will not praise a feature — they will simply never leave the work.
 
 ---
 
@@ -210,20 +228,51 @@ Each principle has: **objective**, **examples**, **anti-patterns**, **acceptance
 
 ---
 
-### Recommended addition — P9 — Single arrival contract
+### P9 — Single arrival contract ← **governing rule**
 
-**Objective:** Exactly one arrival posture across Ask Atlas → Workspace, greeting API, chat continuity blocks, and client seeds: **continue the work**.
+**Objective:** Exactly one arrival posture across Ask Atlas → Workspace, greeting API, chat continuity blocks, resume, and client seeds: **continue the work**.
+
+Applies to every entry path:
+- refresh mid-thread  
+- Ask Atlas → Workspace handoff  
+- open / cold Workspace  
+- return after hours  
+- resume after generation  
 
 **Examples:**
 - Server handoff context and client opening message agree: no re-probe.
 - Greeting endpoint never emits banned reopeners when PROJECT CONTEXT exists.
+- Resume restores the transcript without a welcome ritual.
 
 **Anti-patterns:**
 - `chat.ts` SESSION CONTINUITY bans `"What are we building today?"` while `projects.ts` greeting still emits it
 - Nexus handoff says don’t re-probe; workspace fallback asks what’s first
+- One path continues; another says “Welcome back”
 
 **Acceptance:**
-- Trace matrix (Ask Atlas handoff, home handoff, cold Workspace open, resume): all paths share one arrival contract document; contradictions = fail.
+- Trace matrix (Ask Atlas handoff, home handoff, cold Workspace open, resume, post-generation resume): all paths share one arrival contract; contradictions = fail.
+
+---
+
+### P10 — Invisible mechanics
+
+**Objective:** Users should not need to understand Atlas’s internal architecture to collaborate effectively. Mechanics disappear behind the work.
+
+**Examples:**
+- “Here’s the brief.”
+- “I’ll save it once rendering finishes.”
+- “Let’s continue.”
+- “I’ve updated the roadmap.”
+
+**Anti-patterns (exposing machinery):**
+- “Renderer…” / “Pipeline…” / “Stage…” / “Prompt…”
+- “Perspective changed”
+- “Workspace activated”
+- Narrating CONV_STATE, ATLAS STATE, handoff packaging, or mode switches
+
+**Acceptance:**
+- Battery transcripts contain no user-facing internal architecture vocabulary unless the user asked how the system works.
+- Recovery and progress lines name the **work artifact or next move**, not the subsystem.
 
 ---
 
@@ -372,8 +421,9 @@ Objective tests. Score **Pass / Fail**. A scenario fails if any listed failure c
 | N4 | Honesty | Claims match system state |
 | N5 | No performance | No unsolicited lens/phase/mode theater |
 | N6 | Trust | ≤1 recovery action; luggage carried on handoff |
+| N7 | Invisible mechanics | No user-facing architecture vocabulary (renderer/pipeline/stage/prompt…) unless asked |
 
-**Milestone bar (proposed):** All critical scenarios Pass; no N1 or N4 fails on critical set.
+**Milestone bar (approved):** All critical scenarios **T1–T11** Pass; no N1, N4, N5, or N7 fails on the critical set. T11 is required.
 
 ### Critical scenarios
 
@@ -457,6 +507,16 @@ Objective tests. Score **Pass / Fail**. A scenario fails if any listed failure c
 | **Expected** | Natural offer in user’s language; Open carries brief + next task |
 | **Failure** | Awkward early/late offer from conflicting thresholds; empty Workspace kickoff |
 
+#### T11 — Conversation interruption / pivot (required)
+
+| | |
+|--|--|
+| **Setup** | Mid-plan, user says e.g. “Wait. Actually… Never mind. Let’s go another direction.” |
+| **Expected** | Joy pivots naturally onto the new direction and continues the work |
+| **Failure** | Restarts intake; apologizes performatively; explains what it was doing; narrates a mode/stage change; asks what’s first |
+
+Humans interrupt and change direction constantly. Collaborative feel requires silent pivot — not ceremony.
+
 ### Supporting scenarios (non-blocking but scored)
 
 | ID | Scenario | Expected | Failure |
@@ -475,17 +535,19 @@ Objective tests. Score **Pass / Fail**. A scenario fails if any listed failure c
 > **Do not rewrite prompts until Phase 0 contracts are approved and Phase A inventory locks owners.**  
 > **No implementation in this design deliverable.**
 
-### Phase 0 — Design freeze ✅ (this document)
+### Phase 0 — Design freeze ✅ **APPROVED**
 
 **Objective:** Approve principles, inventory, battery, phase order.  
 **Dependencies:** 2.3 CLOSED.  
-**Acceptance:** Human sign-off on §1 principles (incl. P9), §4 battery bar, §5 phase order, §6 non-goals.
+**Acceptance:** Human sign-off on §1 principles (P1–P10; P9 governing), §4 battery bar (T1–T11), §5 phase order, §6 non-goals.  
+**Status:** **Approved 2026-07-23.**
 
-### Phase A — Arrival contract (handoff + greeting + resume)
+### Phase A — Arrival contract (handoff + greeting + resume) ← **IN PROGRESS**
 
 **Objective:** One arrival posture: continue the work. Kill acknowledge / what’s-first / banned reopeners at control points A1–A6, B1, C10, F1–F3.  
-**Dependencies:** Phase 0.  
-**Acceptance:** T2, T3, T9 Pass (N1/N2/N6). Trace matrix shows no split-brain between client seeds and server continuity.
+**Dependencies:** Phase 0 ✅.  
+**Acceptance:** T2, T3, T9 Pass (N1/N2/N6). Trace matrix shows no split-brain between client seeds and server continuity.  
+**Status:** **Unblocked** — implementation may begin.
 
 ### Phase B — Kill procedural scaffolding (stage Mad Libs + status theater)
 
@@ -509,7 +571,7 @@ Objective tests. Score **Pass / Fail**. A scenario fails if any listed failure c
 
 **Objective:** Full battery; parent board → 2.4 CLOSED; deferred leftovers listed; readiness for whatever follows M2.  
 **Dependencies:** A–D.  
-**Acceptance:** Critical T1–T10 meet bar; supporting S1–S5 reported; acceptance report published.
+**Acceptance:** Critical T1–T11 meet bar; supporting S1–S5 reported; acceptance report published.
 
 ---
 
@@ -548,17 +610,15 @@ Objective tests. Score **Pass / Fail**. A scenario fails if any listed failure c
 
 | Requirement | Status |
 |-------------|--------|
-| Design document only | ✅ This file |
-| No implementation code | ✅ |
-| No prompt rewrites | ✅ |
-| No UI redesign | ✅ |
-| Governing definition expanded to principles | ✅ §1 |
+| Design document | ✅ This file |
+| Governing definition expanded to principles | ✅ §1 (P1–P10) |
 | Audit of procedural interruptions | ✅ §2 |
 | Current-state inventory with owners/complexity | ✅ §3 |
-| Evaluation battery | ✅ §4 |
-| Phased roadmap | ✅ §5 |
+| Evaluation battery | ✅ §4 (T1–T11) |
+| Phased roadmap | ✅ §5 (A→E approved) |
+| Human design freeze | ✅ Approved 2026-07-23 |
 
-**Next (after approval):** Phase A implementation — arrival contract only. Do not begin Phase D prompt rewrites before A/B land.
+**Next:** Phase A implementation — arrival contract only. Do not begin Phase D prompt rewrites before A/B land.
 
 ---
 
@@ -566,7 +626,8 @@ Objective tests. Score **Pass / Fail**. A scenario fails if any listed failure c
 
 | Date | Note |
 |------|------|
-| 2026-07-23 | Design draft created from product definition + codebase audit. Awaiting approval. |
+| 2026-07-23 | Design draft created from product definition + codebase audit. |
+| 2026-07-23 | Design **APPROVED** — P1–P10 (P9 governing); T1–T11; roadmap A→E. Phase A unblocked. |
 
 ---
 

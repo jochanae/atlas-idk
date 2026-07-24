@@ -72,4 +72,20 @@ describe("INT-13 handoff kickoff gate", () => {
     expect(isHandoffContinuationMessage(HANDOFF_CONTINUATION_MESSAGE)).toBe(true);
     expect(isHandoffContinuationMessage("hello")).toBe(false);
   });
+
+  it("recognizes legacy acknowledge-handoff kickoff text (pre–2.4 Phase A)", () => {
+    expect(
+      isHandoffContinuationMessage(
+        "Continue from where we left off — acknowledge the handoff and propose the next concrete step.",
+      ),
+    ).toBe(true);
+  });
+
+  it("recognizes brief-continuation primes that must stay hidden", () => {
+    expect(
+      isHandoffContinuationMessage(
+        'Continue our prior conversation. Project brief: "Reveal community". Pick up the next concrete move on that work — do not acknowledge arrival or ask what is first.',
+      ),
+    ).toBe(true);
+  });
 });

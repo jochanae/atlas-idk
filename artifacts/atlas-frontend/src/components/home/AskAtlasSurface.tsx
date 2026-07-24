@@ -545,7 +545,9 @@ export function AskAtlasSurface({
               pointerEvents: resumeVisible ? "auto" : "none",
             }}
           >
-            <span style={{ fontWeight: 500, letterSpacing: "-0.005em" }}>Welcome back</span>
+            <span style={{ fontWeight: 500, letterSpacing: "-0.005em" }}>
+              {resumeGreeting.hint ? "Continuing" : "Picking up where we left off"}
+            </span>
             {resumeGreeting.hint && (
               <span style={{ opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                 — {resumeGreeting.hint}

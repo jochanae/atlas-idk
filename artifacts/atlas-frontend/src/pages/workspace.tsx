@@ -118,6 +118,7 @@ import { getAuthHeaders } from "@/lib/api";
 import { reportError } from "../lib/errorReporter";
 import { askAtlasSession } from "@/lib/askAtlasSession";
 import { shouldFireHandoffKickoff } from "@/lib/handoffKickoff";
+import { HANDOFF_CONTINUATION_MESSAGE } from "@/lib/askAtlasHelpers";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
 import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGate } from "../lib/plan";
@@ -4183,7 +4184,11 @@ function buildIntakeGreeting(answers: IntakeAnswers): string {
   const lead = `${parts.join(" ")}.`.replace(/\s+\./g, ".");
   const workingLine = working ? ` What's already working: ${working}.` : "";
   const tensionLine = openQuestion ? ` The live tension is ${openQuestion}.` : "";
-  return `${lead}${workingLine}${tensionLine} Where do you want to push first?`;
+  // After intake, continue the work — open tension if known; no "what's first" ritual.
+  const next = openQuestion
+    ? ` Let's keep going on ${openQuestion}.`
+    : " Let's continue from here.";
+  return `${lead}${workingLine}${tensionLine}${next}`;
 }
 
 function buildIntakeEntries(answers: IntakeAnswers): Array<{ title: string; summary: string }> {
@@ -5926,7 +5931,11 @@ export default function Workspace() {
     if (lastContent.length > 150) return;
     commitContinuationFiredRef.current = true;
     try { if (convKey) sessionStorage.removeItem(convKey); } catch {}
-    void atlasConv.submit({ text: "Please continue — I'm ready to see the initial build structure and your full plan." });
+    // P9: continue the prior ask — do not inject a scripted "build structure" ceremony.
+    void atlasConv.submit({
+      text: "Continue the prior request from where you left off. Do not restart or ask what is first.",
+      hiddenFromUi: true,
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nexusBridge.messages, atlasConv.submit, useNexusWorkspaceChat, conversationId, openingMessage]);
 
@@ -7214,16 +7223,16 @@ export default function Workspace() {
         });
         if (!gate.ok) return;
       }
-      primeHomeHandoff(
-        "Continue from where we left off — acknowledge the handoff and propose the next concrete step.",
-        { hiddenFromUi: true },
-      );
+      // P9 Single Arrival Contract — same seed as seedHandoffContinuation.
+      primeHomeHandoff(HANDOFF_CONTINUATION_MESSAGE, { hiddenFromUi: true });
       return;
     }
 
-    const fallbackPrompt = `I've just arrived in the ${project.name} workspace. ${project.description ? `Here's what we're building: ${project.description}. ` : ""}Acknowledge we're starting and ask what's first.`;
+    const fallbackPrompt = project.description
+      ? `Continue in ${project.name}. Known so far: ${project.description}. Pick up the next concrete move — do not ask what is first or what we are building.`
+      : `Continue in ${project.name}. Pick up from project memory and the next concrete move — do not ask what we are building or what is first.`;
     if (!project.memory) {
-      primeHomeHandoff(fallbackPrompt);
+      primeHomeHandoff(fallbackPrompt, { hiddenFromUi: true });
       return;
     }
     try {
@@ -7232,12 +7241,15 @@ export default function Workspace() {
         e.tier === 1 && typeof e.text === "string" && e.text.startsWith("Project brief from home conversation:")
       );
       if (!briefEntry) {
-        primeHomeHandoff(fallbackPrompt);
+        primeHomeHandoff(fallbackPrompt, { hiddenFromUi: true });
         return;
       }
       const briefText = (briefEntry.text as string).replace("Project brief from home conversation: ", "");
-      primeHomeHandoff(`I've just arrived from our home conversation. You have my project brief in memory: "${briefText}". Acknowledge what we discussed and where we're starting — then ask what's first.`);
-    } catch { primeHomeHandoff(fallbackPrompt); }
+      primeHomeHandoff(
+        `Continue our prior conversation. Project brief: "${briefText}". Pick up the next concrete move on that work — do not acknowledge arrival or ask what is first.`,
+        { hiddenFromUi: true },
+      );
+    } catch { primeHomeHandoff(fallbackPrompt, { hiddenFromUi: true }); }
   }, [sessionId, messages.length, project, doSend, openingMessage, useNexusWorkspaceChat, nexusBridge.messages.length, nexusBridge.historyReady, nexusConversationId, atlasConv.submit, messagesRef, id]);
 
   // Auto-generate blueprint on handoff — ONLY when the source conversation
@@ -9128,7 +9140,7 @@ export default function Workspace() {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
               <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
-                {isEmpty ? `${projectLabel} — nothing mapped yet` : "Here's what Joy mapped from your conversation"}
+                {isEmpty ? `${projectLabel} — nothing mapped yet` : `${projectLabel} — carried over`}
               </span>
               <button
                 type="button"
