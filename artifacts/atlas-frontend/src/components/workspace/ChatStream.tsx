@@ -313,6 +313,7 @@ export interface ChatStreamProps {
   onPlanStateChange: (messageId: number, state: PlanState) => void;
   onPlanExecutionChange: (messageId: number, execution: PlanExecutionLike) => void;
   onExecuteHomePlan: (plan: Plan) => void;
+  onRevisePlan?: (plan: Plan) => void;
 
   // push
   onPushSuccess: (records: PushRecordLike[]) => void;
@@ -382,6 +383,7 @@ export function ChatStream(props: ChatStreamProps) {
     onEditDeclined, onAlertDismiss, onStreamActivityUpdate, onStreamActivityComplete,
     onCommitCardDone,
     planStates, planExecutions, onPlanStateChange, onPlanExecutionChange, onExecuteHomePlan,
+    onRevisePlan,
     onPushSuccess,
     onWriteFile,
     commitCarryover,
@@ -1038,6 +1040,7 @@ export function ChatStream(props: ChatStreamProps) {
                 onPlanStateChange={onPlanStateChange}
                 onPlanExecutionChange={onPlanExecutionChange}
                 onExecuteHomePlan={onExecuteHomePlan}
+                onRevisePlan={onRevisePlan}
                 onPushSuccess={onPushSuccess}
                 onBuildAnyway={onBuildAnyway}
                 buildGroupInfo={buildGroupMap.get(i)}

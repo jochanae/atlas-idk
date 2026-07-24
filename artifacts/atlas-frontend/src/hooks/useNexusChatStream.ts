@@ -186,6 +186,20 @@ export interface NexusMessage {
   /** Runtime decision card — populated when classify_repository tool runs. Shows target info, env config form, and progress. */
   runtimeCard?: import("../components/workspace/RuntimeDecisionCard").RuntimeCardData | null;
   /**
+   * Structured Plan Card from requestedArtifact: "plan" (Haiku extract / done meta).
+   */
+  planArtifact?: {
+    type: "plan";
+    title: string;
+    confidence: "high" | "medium" | "low";
+    steps: Array<{ label: string; stepType: string; moscow: string; file?: string }>;
+    estimatedChanges?: number;
+    reversible?: boolean;
+    amFields?: string[];
+  } | null;
+  /** True while the server is structuring a Plan Card (plan_start → plan). */
+  awaitingPlan?: boolean;
+  /**
    * Stable run ID for this turn — matches execution_runs.id.
    * Set from the backend done event so the Plan card can PATCH the run to
    * "succeeded" after a GitHub push completes.
@@ -448,6 +462,7 @@ export function useNexusChatStream(
     overrideOptions,
     extraBody,
     hiddenFromUi,
+    requestedArtifact,
   }: {
     text: string;
     imageBase64?: string;
@@ -468,6 +483,8 @@ export function useNexusChatStream(
     extraBody?: Record<string, unknown>;
     /** INT-13: hide internal handoff kickoff from the chat transcript UI. */
     hiddenFromUi?: boolean;
+    /** Requested output artifact — e.g. "plan" for Plan Card culmination. */
+    requestedArtifact?: "plan";
   }): { clientMessageId: string; accepted: Promise<void>; completed: Promise<void> } | undefined => {
     const resolvedAttachmentIds = [
       ...new Set((attachmentIds ?? []).filter((id): id is string => typeof id === "string" && id.length > 0)),
@@ -630,6 +647,7 @@ export function useNexusChatStream(
           // Lifecycle idempotency key (user persist → link → run → assistant → done).
           clientMessageId,
           ...(resolvedConversationMode ? { conversationMode: true } : {}),
+          ...(requestedArtifact ? { requestedArtifact } : {}),
           ...(options.surfaceContext ? { surfaceContext: options.surfaceContext } : {}),
           // Active lens — Phase A plumbing (Constitution prompts come in Phase C).
           perspective: overrideOptions?.perspective ?? perspective ?? "storyteller",
@@ -716,6 +734,20 @@ export function useNexusChatStream(
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, pendingSketch: true }
+                : m
+            ));
+          },
+          onPlanStart: () => {
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? { ...m, awaitingPlan: true }
+                : m
+            ));
+          },
+          onPlan: (planPayload) => {
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? { ...m, planArtifact: planPayload, awaitingPlan: false }
                 : m
             ));
           },
@@ -982,6 +1014,8 @@ export function useNexusChatStream(
                     sketchFailed: false,
                     imageGen: (metaImageGen ?? (m as any).imageGen ?? null) as NexusMessage["imageGen"],
                     decisionArtifacts: ((meta as any).decisionArtifacts ?? null) as NexusMessage["decisionArtifacts"],
+                    planArtifact: ((meta as any).planArtifact ?? (m as any).planArtifact ?? null) as NexusMessage["planArtifact"],
+                    awaitingPlan: false,
                     streaming: false,
                     handoffSignal: handoff ?? null,
                     focusSuggestion,

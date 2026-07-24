@@ -64,6 +64,22 @@ export interface AtlasStreamCallbacks {
    * snap the already-streamed message to the corrected text immediately.
    */
   onCorrection?: (correctedContent: string) => void;
+  /**
+   * Called when Plan Card structuring begins (requestedArtifact: "plan").
+   */
+  onPlanStart?: () => void;
+  /**
+   * Called when a structured Plan Card payload arrives from the server.
+   */
+  onPlan?: (plan: {
+    type: "plan";
+    title: string;
+    confidence: "high" | "medium" | "low";
+    steps: Array<{ label: string; stepType: string; moscow: string; file?: string }>;
+    estimatedChanges?: number;
+    reversible?: boolean;
+    amFields?: string[];
+  }) => void;
   /** Called on stream error */
   onError?: (message: string) => void;
 }
@@ -272,6 +288,10 @@ export function useAtlasStream(): UseAtlasStreamReturn {
               } else if (evtName === "attachment_ack") {
                 const ack = JSON.parse(evtData) as { id: string; clientAttachmentId: string | null; status: string; errorCode?: string };
                 callbacks.onAttachmentAck?.(ack);
+              } else if (evtName === "plan_start") {
+                callbacks.onPlanStart?.();
+              } else if (evtName === "plan") {
+                callbacks.onPlan?.(JSON.parse(evtData));
               } else if (evtName === "error") {
                 const parsed = JSON.parse(evtData) as unknown;
                 const errMsg = typeof parsed === "string"

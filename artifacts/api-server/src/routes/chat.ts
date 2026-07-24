@@ -36,6 +36,7 @@ import { runAgentLoop } from "../lib/agent-loop/runner";
 import { toLegacyPlanArtifact } from "../lib/agent-tools/schemas/plan";
 import { buildTier1StatusBlock, loadTier1ForProject, flushNexusTier1BufferToProject, runWorkspaceTier1Extraction } from "../services/tier1";
 import { classifyIntent, type WhisperIntent } from "../lib/whisperGate";
+import { extractPlanCardFromAssistantText } from "../lib/planCardExtract";
 import { detectDecisionCatch } from "../lib/decisionCatch";
 import { maybeEmitMilestones } from "../lib/milestoneClassifier";
 import {
@@ -6245,58 +6246,14 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     linePatches: fileChangesAllowed ? linePatches : [],
   });
 
-  // ── Structured plan extraction — declare now, extract after displayContent is final ──
-  type StructuredPlanArtifact = {
-    type: "plan"; title: string; confidence: "high" | "medium" | "low";
-    steps: Array<{ label: string; stepType: string; moscow: string; file?: string }>;
-    estimatedChanges?: number; reversible?: boolean;
-    /** AM fields this plan proposes to change */
-    amFields?: string[];
-  };
-  let structuredPlanArtifact: StructuredPlanArtifact | null = null;
+  // ── Structured plan extraction — shared helper (also used by Nexus requestedArtifact) ──
+  let structuredPlanArtifact: Awaited<ReturnType<typeof extractPlanCardFromAssistantText>> = null;
   const isPlanMode = activeMode === "plan" || Boolean(body.planMode);
   if (isPlanMode && displayContent && displayContent.length > 40) {
-    // Signal to the client that plan JSON extraction is starting (Haiku pass ~1-2s).
     res.write(`data: ${JSON.stringify({ type: "plan_start" })}\n\n`);
-    try {
-      const planExtrResp = await anthropic.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 700,
-        messages: [{
-          role: "user",
-          content: `Extract a structured plan from this assistant response. Return ONLY a JSON object — no markdown fences, no explanation.\n\nJSON shape:\n{"title":"concise plan title","confidence":"high"|"medium"|"low","steps":[{"label":"short action phrase","stepType":"analysis"|"edit"|"push"|"read"|"other","moscow":"must"|"should"|"could"|"wont","file":"optional/path.ts"}],"estimatedChanges":0,"reversible":true,"amFields":["intent","pages","data","data.entities","components","logic","buildState","identity"]}\n\namFields must be an array of zero or more strings chosen from this vocabulary only: "identity", "intent", "intent.purpose", "pages", "components", "data", "data.entities", "logic", "buildState". Include only fields this plan proposes to change.\n\nAssistant response:\n${displayContent.slice(0, 3000)}`,
-        }],
-      });
-      const rawPlan = planExtrResp.content[0]?.type === "text" ? planExtrResp.content[0].text.trim() : "";
-      const jsonMatch = rawPlan.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-        // Only surface a plan card when Joy is actually proposing changes.
-        // Conversational/explanatory responses (estimatedChanges === 0) must not
-        // produce a plan card — it adds noise with no actionable content.
-        const estimatedChanges = Number(parsed.estimatedChanges ?? 0);
-        const hasEditSteps = Array.isArray(parsed.steps) && (parsed.steps as Array<{ stepType?: string }>).some((s) => s.stepType === "edit" || s.stepType === "push");
-        if (parsed.title && Array.isArray(parsed.steps) && (parsed.steps as unknown[]).length >= 2 && (estimatedChanges > 0 || hasEditSteps)) {
-          const { type: _t, ...planRest } = parsed as Record<string, unknown>;
-          const validAmFields = ["identity", "intent", "intent.purpose", "pages", "components", "data", "data.entities", "logic", "buildState"];
-          const rawAmFields = Array.isArray(planRest.amFields) ? planRest.amFields as unknown[] : [];
-          const amFields = rawAmFields.filter((f): f is string => typeof f === "string" && validAmFields.includes(f));
-          structuredPlanArtifact = {
-            type: "plan",
-            title: String(planRest.title ?? ""),
-            confidence: (planRest.confidence as "high" | "medium" | "low") ?? "medium",
-            steps: (planRest.steps as StructuredPlanArtifact["steps"]) ?? [],
-            ...(planRest.estimatedChanges != null ? { estimatedChanges: Number(planRest.estimatedChanges) } : {}),
-            ...(planRest.reversible != null ? { reversible: Boolean(planRest.reversible) } : {}),
-            ...(amFields.length > 0 ? { amFields } : {}),
-          };
-          // Emit the plan as a dedicated SSE event so the client renders it
-          // immediately — before the larger "done" payload arrives.
-          res.write(`data: ${JSON.stringify(structuredPlanArtifact)}\n\n`);
-        }
-      }
-    } catch (planErr) {
-      logger.warn({ err: planErr }, "plan extraction failed — non-fatal");
+    structuredPlanArtifact = await extractPlanCardFromAssistantText(anthropic, displayContent);
+    if (structuredPlanArtifact) {
+      res.write(`data: ${JSON.stringify(structuredPlanArtifact)}\n\n`);
     }
   }
 
