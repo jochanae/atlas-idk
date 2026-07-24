@@ -151,7 +151,7 @@ export function MeetJoy() {
               marginTop: 14,
             }}
           >
-            — Joy, in the middle of a build
+            — Joy, protecting your intent
           </figcaption>
         </figure>
 
