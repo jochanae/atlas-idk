@@ -140,6 +140,9 @@ function AnalyzeChecklist({ goldRgb, mutedText }: { goldRgb: string; mutedText: 
 
 export type FlowNodeMeta = "must" | "should" | "could" | "wont";
 
+/** How Atlas knows about this node — honesty contract for the canvas. */
+export type KnowledgeState = "suggested" | "inferred" | "observed" | "confirmed";
+
 export interface ArchNode {
   id: string;
   label: string;
@@ -157,6 +160,11 @@ export interface ArchNode {
   confidence?: number;
   /** Optional analyzer-supplied reasoning bullets. Rendered if present. */
   reasons?: string[];
+  /**
+   * Provenance of this node. Suggested = candidate / not yet project knowledge.
+   * Confirmed = user accepted or answered. Observed/Inferred = derived from evidence.
+   */
+  knowledgeState?: KnowledgeState;
 }
 
 export function isNodeDefined(node: ArchNode): boolean {
@@ -404,11 +412,10 @@ const RADIAL_CENTER_Y = 250;
 const RADIAL_RADIUS = 180;
 const BASE_STORAGE_KEY = "axiom-flow-nodes";
 
-// Seeded radial mission map — replaces the lonely-goal default so the canvas
-// reads as "populated" the moment a user opens a new project. Positions orbit
-// the goal at (300, 250); fitMap() auto-zooms to fit on mount and resize.
-// The goal label/details are project-aware so the canvas reads as a real
-// goal ("Ship <project>") instead of the generic placeholder "The Goal".
+// Seeded radial mission map — candidate strategic nodes Joy suggests when the
+// user asks to start a map before hydrate has project-specific evidence.
+// These are knowledgeState:"suggested" — not facts. Positions orbit the goal
+// at (300, 250); fitMap() auto-zooms to fit on mount and resize.
 function goalLabelFor(projectName?: string): string {
   const trimmed = (projectName ?? "").trim();
   if (!trimmed || /^untitled/i.test(trimmed)) return "Name the goal";
@@ -417,19 +424,22 @@ function goalLabelFor(projectName?: string): string {
 function goalDetailsFor(projectName?: string): string {
   const trimmed = (projectName ?? "").trim();
   if (!trimmed || /^untitled/i.test(trimmed)) {
-    return "Tap to state the outcome — what does winning look like?";
+    return "Suggested starting point — what does winning look like? Not confirmed yet.";
   }
-  return `What does shipping ${trimmed} actually look like? Tap to sharpen the outcome.`;
+  return `Suggested outcome for ${trimmed}. Confirm or rewrite once Joy has more from your conversations.`;
 }
+const SUGGESTED_DETAIL =
+  "Suggested by Joy as a starting lens — not yet confirmed project knowledge. Tap to refine or confirm.";
+
 function buildInitialNodes(projectName?: string): ArchNode[] {
   return [
-    { id: "goal",        label: goalLabelFor(projectName),  type: "goal",        resolved: false, x: 300, y: 250, details: goalDetailsFor(projectName) },
-    { id: "must-1",      label: "Core requirement", type: "requirement", resolved: false, x: 300, y:  80, meta: "must",  details: "Tap to define the must-have that makes v1 real." },
-    { id: "blocker-1",   label: "Open blocker",     type: "blocker",     resolved: false, x: 520, y: 160, details: "Tap to name a blocker that's slowing the goal down." },
-    { id: "decision-1",  label: "Open decision",    type: "decision",    resolved: false, x: 520, y: 340, details: "Tap to capture a decision that's still in tension." },
-    { id: "sprint-1",    label: "Initial Milestone", type: "sprint",      resolved: false, x:  80, y: 160, details: "What single deliverable closes this milestone?" },
-    { id: "should-1",    label: "Should-have",      type: "priority",    resolved: false, x:  80, y: 340, meta: "should", details: "What's the cost of deferring this?" },
-    { id: "must-2",      label: "Foundation",       type: "requirement", resolved: false, x: 300, y: 420, meta: "must",  details: "What has to be true before everything else?" },
+    { id: "goal",        label: goalLabelFor(projectName),  type: "goal",        resolved: false, x: 300, y: 250, details: goalDetailsFor(projectName), knowledgeState: "suggested" },
+    { id: "must-1",      label: "Possible requirement", type: "requirement", resolved: false, x: 300, y:  80, meta: "must",  details: SUGGESTED_DETAIL, knowledgeState: "suggested" },
+    { id: "blocker-1",   label: "Possible blocker",     type: "blocker",     resolved: false, x: 520, y: 160, details: SUGGESTED_DETAIL, knowledgeState: "suggested" },
+    { id: "decision-1",  label: "Question worth answering", type: "decision",    resolved: false, x: 520, y: 340, details: SUGGESTED_DETAIL, knowledgeState: "suggested" },
+    { id: "sprint-1",    label: "Likely next milestone", type: "sprint",      resolved: false, x:  80, y: 160, details: SUGGESTED_DETAIL, knowledgeState: "suggested" },
+    { id: "should-1",    label: "Possible should-have", type: "priority",    resolved: false, x:  80, y: 340, meta: "should", details: SUGGESTED_DETAIL, knowledgeState: "suggested" },
+    { id: "must-2",      label: "Possible foundation",  type: "requirement", resolved: false, x: 300, y: 420, meta: "must",  details: SUGGESTED_DETAIL, knowledgeState: "suggested" },
   ];
 }
 
@@ -588,28 +598,54 @@ const LEGACY_GOAL_DEFAULT = {
   details: "What does winning look like for this project?",
 };
 
-// Labels that come from the generic template seed — before any real project
-// knowledge is extracted. A canvas is a "generic shell" when ALL nodes carry
-// these labels AND none have been answered or detailed by the user.
 const GENERIC_SHELL_NODE_LABELS = new Set([
   "foundation", "core requirement", "initial milestone", "open decision",
   "open blocker", "should-have", "should have", "nice to have",
   "won't have", "wont have", "key decision", "milestone",
+  // Suggested-candidate labels (post-honesty reframing)
+  "possible requirement", "possible blocker", "question worth answering",
+  "likely next milestone", "possible should-have", "possible foundation",
 ]);
 
-// Returns true when the canvas contains only machine-generated placeholder nodes
-// with no real user content. Goal nodes are always template-generated so they
-// are always treated as shells for this check.
+/** Stamp honesty provenance on loaded nodes that predate knowledgeState. */
+export function normalizeKnowledgeStates(nodes: ArchNode[]): ArchNode[] {
+  return nodes.map(n => {
+    if (n.knowledgeState) {
+      if (isNodeDefined(n) && n.knowledgeState === "suggested") {
+        return { ...n, knowledgeState: "confirmed" as const };
+      }
+      return n;
+    }
+    if (isNodeDefined(n)) return { ...n, knowledgeState: "confirmed" as const };
+    const label = (n.label ?? "").toLowerCase();
+    if (
+      GENERIC_SHELL_NODE_LABELS.has(label)
+      || n.id.startsWith("must-")
+      || n.id.startsWith("should-")
+      || n.id === "blocker-1"
+      || n.id === "decision-1"
+      || n.id === "sprint-1"
+      || label === "the goal"
+      || label === "name the goal"
+    ) {
+      return { ...n, knowledgeState: "suggested" as const };
+    }
+    return { ...n, knowledgeState: "inferred" as const };
+  });
+}
+
+// Returns true when the canvas contains only machine-generated suggested /
+// template nodes with no confirmed user knowledge. Goal nodes are always
+// treated as shells for this check when still suggested/unanswered.
 function isGenericShell(nodes: ArchNode[]): boolean {
   if (nodes.length === 0) return false;
   return nodes.every(n => {
-    // Any answered or detailed node means a human touched this canvas
-    const hasRealContent = !!(
-      (n.strategicAnswer && n.strategicAnswer.trim().length > 0) ||
-      (n.details && n.details.trim().length > 0)
-    );
-    if (hasRealContent) return false;
-    if (n.type === "goal") return true; // goal label is always machine-generated
+    if (isNodeDefined(n) || n.knowledgeState === "confirmed" || n.knowledgeState === "observed") {
+      return false;
+    }
+    // Explicit suggested shell — ignore template details text
+    if (n.knowledgeState === "suggested") return true;
+    if (n.type === "goal") return true;
     return GENERIC_SHELL_NODE_LABELS.has(n.label?.toLowerCase() ?? "");
   });
 }
@@ -833,8 +869,8 @@ export function AxiomFlow({
       .then(r => (r.ok ? r.json() : null))
       .then((data: { nodes: ArchNode[]; edges: ArchEdge[] } | null) => {
         if (data && Array.isArray(data.nodes) && data.nodes.length > 0) {
-          // DB has real data — sanitize against stray positions
-          const sanitized = sanitizeNodePositions(data.nodes);
+          // DB has real data — sanitize against stray positions + stamp honesty
+          const sanitized = normalizeKnowledgeStates(sanitizeNodePositions(data.nodes));
           setNodes(sanitized);
           setEdges(data.edges ?? []);
           dbLoadedRef.current = true;
@@ -876,7 +912,7 @@ export function AxiomFlow({
               const parsed = JSON.parse(raw) as ArchNode[];
               const parsedEdges = edgesRaw ? (JSON.parse(edgesRaw) as ArchEdge[]) : [];
               if (Array.isArray(parsed) && parsed.length > 0 && !isLegacyDefault(parsed, parsedEdges)) {
-                const sanitized = sanitizeNodePositions(parsed);
+                const sanitized = normalizeKnowledgeStates(sanitizeNodePositions(parsed));
                 setNodes(sanitized);
                 setEdges(parsedEdges);
                 dbLoadedRef.current = true;
@@ -912,7 +948,7 @@ export function AxiomFlow({
             const parsed = JSON.parse(raw) as ArchNode[];
             const parsedEdges = edgesRaw ? (JSON.parse(edgesRaw) as ArchEdge[]) : [];
             if (Array.isArray(parsed) && parsed.length > 0 && !isLegacyDefault(parsed, parsedEdges)) {
-              setNodes(sanitizeNodePositions(parsed));
+              setNodes(normalizeKnowledgeStates(sanitizeNodePositions(parsed)));
               setEdges(parsedEdges);
               setFlowLoading(false);
               return;
@@ -1004,18 +1040,27 @@ export function AxiomFlow({
     // (unresolved, no strategicAnswer, label still default). Preserve the goal.
     const SEED_IDS = new Set(["must-1", "must-2", "should-1", "sprint-1", "blocker-1", "decision-1"]);
     const SEED_DEFAULT_LABELS: Record<string, string> = {
-      "must-1": "Core requirement",
-      "must-2": "Foundation",
-      "should-1": "Should-have",
-      "sprint-1": "Initial Milestone",
-      "blocker-1": "Open blocker",
-      "decision-1": "Open decision",
+      "must-1": "Possible requirement",
+      "must-2": "Possible foundation",
+      "should-1": "Possible should-have",
+      "sprint-1": "Likely next milestone",
+      "blocker-1": "Possible blocker",
+      "decision-1": "Question worth answering",
     };
+    // Also drop legacy placeholder labels from older canvases
+    const LEGACY_SEED_LABELS = new Set([
+      "core requirement", "foundation", "should-have", "initial milestone",
+      "open blocker", "open decision",
+    ]);
     let nextNodes = nodes.filter(n => {
       if (!SEED_IDS.has(n.id)) return true;
       const untouched = !n.resolved
         && !n.strategicAnswer
-        && n.label === SEED_DEFAULT_LABELS[n.id];
+        && (
+          n.knowledgeState === "suggested"
+          || n.label === SEED_DEFAULT_LABELS[n.id]
+          || LEGACY_SEED_LABELS.has((n.label ?? "").toLowerCase())
+        );
       return !untouched;
     });
     const survivorIds = new Set(nextNodes.map(n => n.id));
@@ -1031,11 +1076,23 @@ export function AxiomFlow({
       if (existingGoal) {
         nextNodes = nextNodes.map(n =>
           n.id === existingGoal.id
-            ? { ...n, label: incomingGoal.label, details: incomingGoal.details }
+            ? {
+                ...n,
+                label: incomingGoal.label,
+                details: incomingGoal.details,
+                knowledgeState: incomingGoal.knowledgeState
+                  ?? (isNodeDefined(incomingGoal) ? "observed" : "inferred"),
+              }
             : n
         );
       } else {
-        nextNodes = [{ ...incomingGoal, x: RADIAL_CENTER_X, y: RADIAL_CENTER_Y }, ...nextNodes];
+        nextNodes = [{
+          ...incomingGoal,
+          x: RADIAL_CENTER_X,
+          y: RADIAL_CENTER_Y,
+          knowledgeState: incomingGoal.knowledgeState
+            ?? (isNodeDefined(incomingGoal) ? "observed" : "inferred"),
+        }, ...nextNodes];
       }
     }
 
@@ -1043,24 +1100,29 @@ export function AxiomFlow({
     const newlyAdded: string[] = [];
     for (const newNode of pendingNodes) {
       if (newNode.type === "goal") continue;
-      const existingNode = nextNodes.find(n => n.id === newNode.id);
+      const stamped: ArchNode = {
+        ...newNode,
+        knowledgeState: newNode.knowledgeState
+          ?? (isNodeDefined(newNode) ? "observed" : "inferred"),
+      };
+      const existingNode = nextNodes.find(n => n.id === stamped.id);
       if (existingNode) {
         nextNodes = nextNodes.map(n => {
-          if (n.id !== newNode.id) return n;
+          if (n.id !== stamped.id) return n;
           const merged = {
             ...n,
-            ...newNode,
-            strategicAnswer: newNode.strategicAnswer ?? n.strategicAnswer,
+            ...stamped,
+            strategicAnswer: stamped.strategicAnswer ?? n.strategicAnswer,
             moved: n.moved,
           };
           return n.moved ? { ...merged, x: n.x, y: n.y } : merged;
         });
       } else {
-        nextNodes = [...nextNodes, newNode];
-        newlyAdded.push(newNode.id);
+        nextNodes = [...nextNodes, stamped];
+        newlyAdded.push(stamped.id);
       }
       if (goalNode) {
-        nextEdges = addEdgeIfMissing(nextEdges, goalNode.id, newNode.id);
+        nextEdges = addEdgeIfMissing(nextEdges, goalNode.id, stamped.id);
       }
     }
 
@@ -1244,7 +1306,17 @@ export function AxiomFlow({
       // Normalize `resolved` so every surface reading nodeState agrees with
       // AxiomFlow's strategicAnswer-based definition. Fixes the "I hydrated
       // but the header ring / pulse didn't update" bug.
-      const positioned = laidOut.map(n => ({ ...n, resolved: isNodeDefined(n) }));
+      // Stamp knowledgeState from evidence: answered → observed; else inferred
+      // from conversation/DNA (never "suggested" once hydrate has run).
+      const positioned = laidOut.map(n => {
+        const defined = isNodeDefined(n);
+        return {
+          ...n,
+          resolved: defined,
+          knowledgeState: (n.knowledgeState
+            ?? (defined ? "observed" : "inferred")) as KnowledgeState,
+        };
+      });
       const hydratedEdges = data.edges ?? [];
       setNodes(positioned);
       setEdges(hydratedEdges);
@@ -1593,7 +1665,7 @@ export function AxiomFlow({
     setNodes(prev => prev.map(n => {
       if (n.id !== nodeId) return n;
       lockedLabel = n.label;
-      return { ...n, strategicAnswer: trimmed, resolved: true };
+      return { ...n, strategicAnswer: trimmed, resolved: true, knowledgeState: "confirmed" };
     }));
     haptics.nodeResolved();
     sounds.nodeResolved();
@@ -1924,7 +1996,7 @@ export function AxiomFlow({
             </button>
           )}
 
-          {/* Secondary: start from the generic template */}
+          {/* Secondary: start with suggested candidate nodes (not facts) */}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); generateFlowMap(); }}
@@ -1945,7 +2017,7 @@ export function AxiomFlow({
               opacity: hydrateLoading ? 0.4 : 1,
             }}
           >
-            {projectId ? "Start with template instead" : "Generate Flow Map"}
+            {projectId ? "Suggest starting nodes" : "Suggest Flow Map"}
           </button>
 
           {(onNodeFocus || onSendToAtlas) && !hydrateLoading && (
@@ -2265,10 +2337,40 @@ export function AxiomFlow({
           <div style={{ fontSize: 12, fontWeight: 700, color: palette.goldText, marginBottom: 4, paddingRight: 24 }}>
             {activeCardNode.label}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 9, color: palette.mutedText, fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
               {activeCardNode.type}
             </span>
+            {(() => {
+              const ks = activeCardNode.knowledgeState
+                ?? (isNodeDefined(activeCardNode) ? "confirmed" : undefined);
+              if (!ks) return null;
+              const label =
+                ks === "suggested" ? "Suggested"
+                : ks === "inferred" ? "Inferred"
+                : ks === "observed" ? "Observed"
+                : "Confirmed";
+              const hint =
+                ks === "suggested" ? "Candidate — not yet project knowledge"
+                : ks === "inferred" ? "Synthesized from conversations / DNA"
+                : ks === "observed" ? "Grounded in captured evidence"
+                : "You confirmed this";
+              return (
+                <span
+                  title={hint}
+                  style={{
+                    fontSize: 8.5, fontWeight: 700, letterSpacing: "0.1em",
+                    padding: "2px 6px", borderRadius: 4, textTransform: "uppercase",
+                    fontFamily: "var(--app-font-mono)",
+                    color: ks === "suggested" ? palette.mutedText : `rgba(${palette.goldRgb},0.85)`,
+                    background: ks === "suggested" ? `rgba(${palette.mutedRgb},0.12)` : `rgba(${palette.goldRgb},0.10)`,
+                    border: `1px dashed ${ks === "suggested" ? `rgba(${palette.mutedRgb},0.35)` : `rgba(${palette.goldRgb},0.28)`}`,
+                  }}
+                >
+                  {label}
+                </span>
+              );
+            })()}
             {activeCardMoscow && (
               <span style={{
                 fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
@@ -2655,21 +2757,22 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette, lens: "designer" | 
   // ember-static regardless of answer.
   const defined = isNodeDefined(node);
   const resolved = defined;
+  const suggested = node.knowledgeState === "suggested" && !defined;
 
   if (node.type === "goal") {
     return {
       size: 72,
       borderRadius: "50%",
       borderWidth: 2,
-      borderStyle: "solid",
-      borderColor: resolved ? `rgba(${G},0.95)` : `rgba(${G},0.65)`,
+      borderStyle: suggested ? "dashed" : "solid",
+      borderColor: resolved ? `rgba(${G},0.95)` : suggested ? `rgba(${G},0.42)` : `rgba(${G},0.65)`,
       bgColor: resolved ? `rgba(${G},0.18)` : `rgba(${G},0.06)`,
       textColor: goldText,
       textDecoration: "none",
       shadow: resolved ? `0 0 36px rgba(${G},0.40), 0 0 14px rgba(${G},0.22)`
-        : `0 0 26px rgba(${G},0.20), 0 0 10px rgba(${G},0.12)`,
-      opacity: 1,
-      pulse: !resolved,
+        : suggested ? "none" : `0 0 26px rgba(${G},0.20), 0 0 10px rgba(${G},0.12)`,
+      opacity: suggested ? 0.78 : 1,
+      pulse: !resolved && !suggested,
       labelSize: 10,
       labelWeight: 700,
     };
@@ -2680,14 +2783,14 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette, lens: "designer" | 
       size: 56,
       borderRadius: 14,
       borderWidth: 1.5,
-      borderStyle: "solid",
-      borderColor: resolved ? `rgba(${G},0.65)` : `rgba(${G},0.38)`,
+      borderStyle: suggested ? "dashed" : "solid",
+      borderColor: resolved ? `rgba(${G},0.65)` : suggested ? `rgba(${M},0.45)` : `rgba(${G},0.38)`,
       bgColor: resolved ? `rgba(${G},0.14)` : `rgba(${G},0.04)`,
-      textColor: resolved ? goldText : fgSoft,
+      textColor: resolved ? goldText : suggested ? `rgba(${M},0.85)` : fgSoft,
       textDecoration: "none",
       shadow: resolved ? `0 0 12px rgba(${G},0.22)` : "none",
-      opacity: 1,
-      pulse: !resolved,
+      opacity: suggested ? 0.72 : 1,
+      pulse: !resolved && !suggested,
       labelSize: 8.5,
       labelWeight: 500,
     };
@@ -2696,19 +2799,20 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette, lens: "designer" | 
   if (node.type === "blocker") {
     // Designer lens: open blockers get a stronger red glow to draw attention.
     // Blockers stay static (no pulse) — they represent persistent open risks.
+    // Suggested blockers stay muted + dashed so they don't read as known risks.
     return {
       size: 56,
       borderRadius: 4,
       borderWidth: 1.5,
-      borderStyle: "solid",
-      borderColor: `rgba(${E},0.65)`,
+      borderStyle: suggested ? "dashed" : "solid",
+      borderColor: suggested ? `rgba(${E},0.35)` : `rgba(${E},0.65)`,
       bgColor: `rgba(${E},0.07)`,
-      textColor: emberLabel,
+      textColor: suggested ? `rgba(${M},0.8)` : emberLabel,
       textDecoration: "none",
-      shadow: lens === "designer"
+      shadow: suggested ? "none" : lens === "designer"
         ? `0 0 14px rgba(${E},0.38), 0 0 6px rgba(${E},0.20)`
         : `0 0 10px rgba(${E},0.20)`,
-      opacity: 1,
+      opacity: suggested ? 0.7 : 1,
       pulse: false,
       labelSize: 8.5,
       labelWeight: 500,
@@ -2913,7 +3017,17 @@ function FlowNodeComponent({
   lens?: "designer" | "builder" | "storyteller";
   zoom?: number;
 }) {
-  const v = getNodeVisual(node, palette, lens);
+  const vRaw = getNodeVisual(node, palette, lens);
+  const suggested = node.knowledgeState === "suggested" && !isNodeDefined(node);
+  const v: NodeVisual = suggested
+    ? {
+        ...vRaw,
+        borderStyle: "dashed",
+        opacity: Math.min(vRaw.opacity, 0.72),
+        shadow: "none",
+        pulse: false,
+      }
+    : vRaw;
   const icon = getNodeIcon(node);
   const defined = isNodeDefined(node);
   const moscow = getMoscow(node);
@@ -2966,10 +3080,32 @@ function FlowNodeComponent({
             : v.pulse ? `${amberPulseName} 2s ease-in-out infinite` : undefined,
       }}>
         {icon}
+        {suggested && (
+          <span style={{
+            position: "absolute",
+            top: -6,
+            left: "50%",
+            transform: "translateX(-50%)",
+            fontSize: 6.5,
+            fontWeight: 800,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            fontFamily: "var(--app-font-mono)",
+            color: `rgba(${palette.mutedRgb},0.85)`,
+            background: palette.rootBg,
+            border: `1px solid rgba(${palette.mutedRgb},0.28)`,
+            borderRadius: 3,
+            padding: "1px 4px",
+            whiteSpace: "nowrap",
+            zIndex: 2,
+          }}>
+            Suggested
+          </span>
+        )}
       </div>
       {moscow && <MoscowBadge value={moscow} palette={palette} />}
       <span
-        title={node.label}
+        title={suggested ? `${node.label} (suggested — not confirmed)` : node.label}
         style={{
           // Label size auto-scales with zoom so labels stay legible when
           // zoomed out and don't balloon when zoomed in. Target on-screen
@@ -2990,6 +3126,7 @@ function FlowNodeComponent({
           WebkitLineClamp: 2,
           WebkitBoxOrient: "vertical",
           letterSpacing: node.type === "goal" ? "0.04em" : 0,
+          fontStyle: suggested ? "italic" : "normal",
         }}
       >
         {node.label}
