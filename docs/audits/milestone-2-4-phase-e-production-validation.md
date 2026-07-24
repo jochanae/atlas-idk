@@ -2,21 +2,39 @@
 
 **Date:** 2026-07-24  
 **Host:** live production (Community Bridge / Obsidian Ledger / Reveal)  
-**Status:** Partial live battery — **T1–T5 PASS · T6 FAIL**  
-**Milestone:** 2.4 engineering close remains; T6 is a production defect to fix  
+**Status:** Partial live battery — **T1–T7 PASS**  
+**Milestone:** 2.4 remains **CLOSED**; preserve T1–T7 behavior  
 **Parent:** [`milestone-2-4-acceptance-report.md`](./milestone-2-4-acceptance-report.md)
+
+---
+
+## Running tally
+
+| ID | Scenario | Result |
+|----|----------|--------|
+| T1 | Continue the work | ✅ PASS |
+| T2 | Arrival Contract (Joy + Workspace) | ✅ PASS |
+| T3 | Stage Theater | ✅ PASS |
+| T4 | (founder-confirmed) | ✅ PASS |
+| T5 | (founder-confirmed) | ✅ PASS |
+| T6 | Mid-conversation pivot | ✅ PASS — verified after `#231` |
+| T7 | (founder-confirmed) | ✅ PASS |
+
+**Still open:** Axiom Flow surface arrival (T2 follow-up); live T8–T11.
 
 ---
 
 ## Verdict
 
-Arrival + stage-theater changes are working in production (**preserve T1–T5**).
+Arrival, stage theater, interrupt/recovery, and mid-conversation pivot are working in production.
 
-**T6 mid-conversation pivot FAILED:** stale attachment-handling / claim-guard logic overrode a clear text pivot (Stripe Connect for ministries) and exposed internal correction language.
+**Preserve T1–T7.** Do not reopen those paths without new fail evidence.
 
-Evidence for the fail: [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
+T6 initially failed (attachment guard overrode a Stripe Connect pivot). Fixed in `#231`; **re-verified PASS** on production.
 
-Related prioritization framing: [`milestone-2-4-conversation-prioritization-audit.md`](./milestone-2-4-conversation-prioritization-audit.md)
+Soft opening bias (stale attachments mentioned before pricing) remains a weighted-context refinement — not a tally fail. See [`milestone-2-4-conversation-prioritization-audit.md`](./milestone-2-4-conversation-prioritization-audit.md).
+
+Historical T6 fail write-up (kept for provenance): [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
 
 ---
 
@@ -67,40 +85,39 @@ Related prioritization framing: [`milestone-2-4-conversation-prioritization-audi
 
 ### T4 ✅ PASS
 
-Production validation: **PASS** (founder-confirmed). Preserve current interrupt / recovery behavior under test; no fail evidence recorded.
+Production validation: **PASS** (founder-confirmed). Preserve current interrupt / recovery behavior under test.
 
 ---
 
 ### T5 ✅ PASS
 
-Production validation: **PASS** (founder-confirmed). Preserve current renderer / recovery behavior under test; no fail evidence recorded.
+Production validation: **PASS** (founder-confirmed). Preserve current renderer / recovery behavior under test.
 
 ---
 
-### T6 — Mid-conversation pivot ❌ FAIL
+### T6 — Mid-conversation pivot ✅ PASS (verified after `#231`)
 
-**Pivot used:**
+**Initial fail** (pre-fix): clear pivot to Stripe Connect for ministries was replaced by attachment diagnostic + “I started to claim…”. See [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md).
 
-> Actually, forget moderation for a second… How should Stripe Connect work with ministries?
+**Fix:** `#231` — quiet-strip attachment claims; no mid-stream full-turn replacement; no mechanics dump; tighter INT-39.
 
-| | |
-|--|--|
-| Expected | Drop moderation; answer Stripe Connect for ministries |
-| Actual | Attachment diagnostic: “I don't have access to any attachment…” |
-| Also exposed | “I started to claim…” (Invisible Mechanics violation) |
-| Classification | Current-intent routing / stale attachment-context override — **not** a Stripe knowledge fail |
+**Retest:** ✅ **PASS** on production after `#231` merged.
 
-**Same thread — preserve:** Rename exchange (SanctumIQ → Reveal) was good; Joy noticed mismatch, accepted correction, carried rename forward.
-
-Full write-up: [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
+**Preserve:** Current text intent outranks stale attachment diagnostics. Rename awareness (SanctumIQ → Reveal) from the same thread also preserve.
 
 ---
 
-## Earlier refinement (still valid; now joined by T6 fail)
+### T7 ✅ PASS
 
-Joy opened a pricing discussion by mentioning older attachment context (“Both files came through…”) before the active project.
+Production validation: **PASS** (founder-confirmed). Preserve mind-change / plan-update behavior under test; no fail evidence recorded.
 
-That was framed as weighted context / response planning. **T6 elevates the same family into a hard fail:** attachment diagnostics must not replace a complete current text request.
+---
+
+## Soft refinement (not a tally fail)
+
+Joy once opened a pricing discussion by mentioning older attachment context (“Both files came through…”) before the active project.
+
+Accurate memory, wrong weight. Frame as conversation prioritization — not T3 fail, not attachment-pipeline break.
 
 ---
 
@@ -109,8 +126,8 @@ That was framed as weighted context / response planning. **T6 elevates the same 
 | Item | Notes |
 |------|-------|
 | T2 Flow surface | Confirm Axiom Flow arrival matches Joy + Workspace |
-| T6 fix verification | Re-run pivot on production after guard fix deploys |
-| T7–T11 live battery | Remainder of design battery still ops follow-up |
+| T8–T11 live battery | Remainder of design battery still ops follow-up |
+| Soft prioritization | Optional weighted-context opening polish |
 
 ---
 
@@ -118,7 +135,6 @@ That was framed as weighted context / response planning. **T6 elevates the same 
 
 | Do | Don’t |
 |----|-------|
-| Preserve T1–T5 production behavior | Treat T6 as a knowledge / Stripe bug |
-| Fix attachment guard so current intent wins | Reopen arrival / stage theater |
-| Remove “I started to claim…” from user-facing copy | Frame T6 as attachment-pipeline storage failure |
-| Keep rename-awareness behavior | Replace whole pivot answers with attachment warnings |
+| Preserve T1–T7 production behavior | Reopen arrival / stage theater / T6 guard without new fail evidence |
+| Keep T6 quiet-strip + no “I started to claim…” | Treat historical T6 fail as still open |
+| Finish Flow + T8–T11 | Regress rename-awareness or pivot trust |
