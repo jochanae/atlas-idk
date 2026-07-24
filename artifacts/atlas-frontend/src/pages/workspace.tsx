@@ -7591,7 +7591,11 @@ export default function Workspace() {
   );
   // INT-37: prime only on project identity change / mount — not on every tab
   // focus/visibilitychange (that yanked mid-thread readers back to the tail).
-  useSmartAutoScroll(chatPanelScrollRef, [displayedChatMessages.length, displayedChatPending, streamingContentLength], {
+  // Token growth must NOT key this hook — useSmartAutoScroll schedules rAF +
+  // delayed bottom pins on every dep change, which fights progressive markdown
+  // reflow and makes the timeline jump while letters stream in. Match Ask Joy:
+  // boundary deps here, followScrollIfNearBottom for per-token tracking.
+  useSmartAutoScroll(chatPanelScrollRef, [displayedChatMessages.length, displayedChatPending], {
     forceDeps: [userMsgCount],
     behavior: "auto",
     primeKey: `ws:${project?.id ?? "none"}`,

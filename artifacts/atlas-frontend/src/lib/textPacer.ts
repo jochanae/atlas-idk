@@ -196,20 +196,30 @@ export function createTextPacer(opts: TextPacerOptions): TextPacer {
  * `threshold` px of the bottom, snap the container to the bottom instantly
  * (rAF-paced renders make instant jumps look smooth). If they've scrolled up,
  * leave them alone.
+ *
+ * Coalesces to one correction per frame per container so React effects +
+ * token ticks in the same paint don't stack competing scrollTop writes.
  */
+const followScrollRaf = new WeakMap<HTMLElement, number>();
+
 export function followScrollIfNearBottom(
   container: HTMLElement | null | undefined,
   threshold = 120,
 ): void {
   if (!container) return;
-  const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-  if (distance <= threshold) {
-    // B: instant bottom alignment while auto-follow is active. rAF-paced
-    // token releases produce many follow ticks per second; chained smooth
-    // scrolls fight each other and produce visible jitter/lag. An instant
-    // `scrollTop = scrollHeight` per tick reads as smooth because the
-    // content growth itself is smooth. Manual upward scroll still releases
-    // stick via the caller (useSmartAutoScroll / bounds check above).
-    container.scrollTop = container.scrollHeight;
-  }
+  if (followScrollRaf.has(container)) return;
+  const id = requestAnimationFrame(() => {
+    followScrollRaf.delete(container);
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distance <= threshold) {
+      // Instant bottom alignment while auto-follow is active. rAF-paced token
+      // releases produce many follow ticks per second; chained smooth scrolls
+      // fight each other and produce visible jitter/lag. One clamped scrollTop
+      // write per frame reads as smooth because the content growth itself is
+      // smooth. Manual upward scroll still releases stick via the caller
+      // (useSmartAutoScroll / bounds check above).
+      container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    }
+  });
+  followScrollRaf.set(container, id);
 }
