@@ -7,23 +7,21 @@ import {
   shouldForceCreateProject,
 } from "../askAtlasHandoffContract";
 
-describe("ASK_ATLAS_HANDOFF_SURFACE_CONTRACT (INT-35)", () => {
-  it("forbids false creation / opening claims", () => {
-    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/I'll create/i);
-    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/Creating the workspace/i);
-    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/Opening the Workspace now/i);
-    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/does NOT create a project by itself/i);
+describe("ASK_ATLAS_HANDOFF_SURFACE_CONTRACT (INT-35 / M2.4 Phase D)", () => {
+  it("keeps execution gates (no false create, PROJECT_READY required)", () => {
+    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/Prefer PROJECT_READY/i);
     expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/PROJECT_READY/);
+    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/Do NOT[\s\S]*Claim a workspace\/project was created/i);
     expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).not.toMatch(
       /The server creates the project and handles navigation/i,
     );
-    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).not.toMatch(
-      /A new project will be created server-side/i,
-    );
   });
 
-  it("coaches tap-to-open phrasing instead of I'll-create", () => {
-    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/ready when you want the workspace/i);
+  it("does not coach concierge / two-sentence door-attendant ceremony", () => {
+    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).not.toMatch(/concierge/i);
+    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).not.toMatch(/TWO sentences maximum/i);
+    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).not.toMatch(/ready when you want the workspace/i);
+    expect(ASK_ATLAS_HANDOFF_SURFACE_CONTRACT).toMatch(/Continue the work/i);
   });
 });
 
@@ -147,10 +145,11 @@ describe("messageHasExplicitCreateSignal", () => {
 });
 
 describe("CREATE_PROJECT_SUCCESS_INSTRUCTION", () => {
-  it("confirms create without claiming auto-navigation", () => {
+  it("confirms create without claiming auto-navigation or tap Mad Lib", () => {
     const text = CREATE_PROJECT_SUCCESS_INSTRUCTION("Demo", 7, "");
-    expect(text).toMatch(/tap Open Workspace/i);
+    expect(text).toMatch(/Open Workspace/i);
     expect(text).not.toMatch(/opening the workspace now/i);
+    expect(text).not.toMatch(/tap Open Workspace to continue/i);
     expect(text).toMatch(/Do NOT claim the workspace is already open/i);
   });
 });

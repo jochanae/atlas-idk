@@ -54,4 +54,4 @@ Words match system state. Interrupt/resend does not duplicate. Failures recover 
 
 ## Status
 
-**IN PROGRESS** — landing Phase C.
+**CLOSED** — merged `#227`.
