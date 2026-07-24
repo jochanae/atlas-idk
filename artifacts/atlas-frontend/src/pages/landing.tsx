@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { Session, Project } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import { MeetJoy } from "@/components/landing/MeetJoy";
 import {
   InterrogationFragments,
   WhyAxiomExists,
@@ -79,6 +80,7 @@ export default function LandingPage() {
       <InterrogationFragments />
       <WhyAxiomExists />
       <ContinuityThread />
+      <MeetJoy />
       <StrategicManifest />
       <StructuralOutputs />
       <ParchmentAside />
