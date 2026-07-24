@@ -5,6 +5,14 @@ import { logger } from "./logger";
 import { GENOME_STAGES, OBJECT_TYPES } from "@workspace/db";
 import type { GenomeStage, ObjectType } from "@workspace/db";
 import { updateProjectDNA, getOrCreateProjectDNA } from "./projectDNA";
+import {
+  normalizeDecisionCandidates,
+  normalizeExtractedQuestions,
+  openQuestionTextsForDna,
+  provenanceToEnrichment,
+  type ExtractionProvenance,
+  type NormalizedQuestion,
+} from "./intelligenceExtractionNormalize";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -170,7 +178,13 @@ async function countProjectMessages(projectId: number): Promise<number> {
 
 async function upsertObjects(
   projectId: number,
-  objects: Array<{ type: string; title: string; summary?: string }>,
+  objects: Array<{
+    type: string;
+    title: string;
+    summary?: string;
+    provenance?: ExtractionProvenance;
+    resolution?: NormalizedQuestion["resolution"];
+  }>,
   sourceMessageId?: number | null,
 ): Promise<void> {
   for (const obj of objects) {
@@ -183,10 +197,16 @@ async function upsertObjects(
     // K1/K2: Decisions & Questions stay parked until explicit commit/promote
     const status = objType === "Decision" || objType === "Question" ? "parked" : "committed";
     const severity = status === "parked" ? "parked" : "committed";
+    const enrichmentJson = obj.provenance
+      ? provenanceToEnrichment(obj.provenance, {
+          resolution: obj.resolution ?? (objType === "Question" ? "open" : undefined),
+          extractedBy: "genomeExtract",
+        })
+      : null;
 
     // Check for existing entry with same type + title (case-insensitive)
     const [existing] = await db
-      .select({ id: entriesTable.id })
+      .select({ id: entriesTable.id, enrichmentJson: entriesTable.enrichmentJson })
       .from(entriesTable)
       .where(and(
         eq(entriesTable.projectId, projectId),
@@ -196,8 +216,14 @@ async function upsertObjects(
       .limit(1);
 
     if (existing) {
-      if (summary) {
-        await db.update(entriesTable).set({ summary }).where(eq(entriesTable.id, existing.id));
+      const patch: { summary?: string; enrichmentJson?: string; sourceMessageId?: number } = {};
+      if (summary) patch.summary = summary;
+      if (enrichmentJson) patch.enrichmentJson = enrichmentJson;
+      if (sourceMessageId != null && !existing.enrichmentJson) {
+        patch.sourceMessageId = sourceMessageId;
+      }
+      if (Object.keys(patch).length > 0) {
+        await db.update(entriesTable).set(patch).where(eq(entriesTable.id, existing.id));
       }
     } else {
       await db.insert(entriesTable).values({
@@ -209,8 +235,40 @@ async function upsertObjects(
         severity,
         mode: "auto",
         ...(sourceMessageId != null ? { sourceMessageId } : {}),
+        ...(enrichmentJson ? { enrichmentJson } : {}),
       });
     }
+  }
+}
+
+/** Persist structured question ledger alongside DNA string list (AM intent jsonb). */
+async function persistQuestionLedger(
+  projectId: number,
+  questions: NormalizedQuestion[],
+): Promise<void> {
+  try {
+    const { applicationModelsTable } = await import("@workspace/db");
+    const [current] = await db
+      .select({ intent: applicationModelsTable.intent })
+      .from(applicationModelsTable)
+      .where(eq(applicationModelsTable.projectId, projectId))
+      .limit(1);
+    if (!current) return;
+    const prevIt = (current.intent as Record<string, unknown>) ?? {};
+    const questionLedger = questions.map((q) => ({
+      text: q.text,
+      resolution: q.resolution,
+      residual: q.residual ?? null,
+      provenance: q.provenance,
+    }));
+    await db
+      .update(applicationModelsTable)
+      .set({
+        intent: { ...prevIt, questionLedger },
+      })
+      .where(eq(applicationModelsTable.projectId, projectId));
+  } catch (err) {
+    logger.warn({ err, projectId }, "genome extraction: questionLedger persist failed — non-fatal");
   }
 }
 
@@ -264,8 +322,14 @@ Rules:
 - wedge: this is the irreducible core — not a feature list, not the product category — the one thing that would make someone choose this over nothing
 - differentiator: be specific, not generic ("the only X that does Y" not "better UX")
 - objects: extract 3-8 distinct objects not already in the committed objects list. Skip duplicates.
-- Knowledge classification: Idea = hypothesis/concept; Decision = only if the user explicitly committed; Insight = synthesized non-obvious understanding; Question = unresolved uncertainty. Do NOT invent Decisions from brainstorming. Do NOT use EngineeringEvent.
-- constraints and openQuestions: max 5 each, only real ones from the conversation — also emit matching Question objects when unresolved
+- Knowledge classification: Idea = hypothesis/concept; Decision = only if the PERSON explicitly committed in their own words; Insight = synthesized non-obvious understanding; Question = unresolved uncertainty raised by PERSON or clearly left open by PERSON. Do NOT invent Decisions from brainstorming. Do NOT use EngineeringEvent.
+- constraints and openQuestions: max 5 each, only real ones from THIS project's conversation — also emit matching Question objects when unresolved
+- PROJECT SCOPE: Extract only from this project's sources above. Ignore portfolio chatter, other projects, and slide-order decisions that are not present in THIS conversation (e.g. do not import "Pricing after Journey Ahead" from elsewhere).
+- NO SPECULATION PROMOTION: Do NOT convert ATLAS speculative suggestions ("you could", "one option", "later you might expand") into openQuestions or Decisions unless PERSON explicitly adopted them.
+- DEDUPE: Do not emit semantically equivalent openQuestions (e.g. "replication model for other cities" / "geographic expansion structure" / "post-launch replication model" are one question — and only if PERSON raised expansion).
+- PARTIAL ANSWERS: If PERSON already answered part of a question (counts, timing, strategy), write the residual remaining question — not the broad original (e.g. after guest counts/timing are set, ask about prospect list / outreach / cadence / booking workflow — not "guest sourcing and booking pipeline").
+- RESOLVED: Do not list questions PERSON already answered as still open (audience, lead strategy, etc. become Decisions/Insights, not openQuestions).
+- PROVENANCE DISCIPLINE: Every openQuestion and Decision must be supportable by a PERSON utterance in the conversation block. If you cannot point to PERSON support, omit it.
 - All string values must be concise (under 200 chars)
 - Return null for fields that cannot be extracted confidently`,
     }],
@@ -280,6 +344,64 @@ Rules:
 
   const now = new Date();
 
+  // CityHub audit hardening: ground / dedupe / classify questions & decisions
+  // against THIS project's conversation only — never promote Atlas speculation
+  // or cross-project signals into the manifest.
+  const rawOpenQuestions = Array.isArray(parsed.openQuestions)
+    ? (parsed.openQuestions as unknown[]).filter((q): q is string => typeof q === "string" && !!q.trim())
+    : null;
+  const normalizedQuestions = rawOpenQuestions
+    ? normalizeExtractedQuestions({
+        questions: rawOpenQuestions,
+        conversationText,
+        sourceMessageId,
+      })
+    : [];
+  const dnaOpenQuestions = rawOpenQuestions ? openQuestionTextsForDna(normalizedQuestions) : null;
+
+  const rawObjects = Array.isArray(parsed.objects) ? parsed.objects : [];
+  // Also emit Question objects for normalized open/partial questions
+  const questionObjectsFromLedger = normalizedQuestions
+    .filter((q) => q.resolution === "open" || q.resolution === "partial")
+    .map((q) => ({
+      type: "Question",
+      title: q.text,
+      summary: q.resolution === "partial" ? `Partially answered — residual: ${q.text}` : "Unresolved",
+    }));
+
+  const mergedObjectInputs = [
+    ...rawObjects.filter((o): o is { type: string; title: string; summary?: string } =>
+      !!o && typeof o === "object" && typeof (o as { title?: unknown }).title === "string",
+    ),
+    ...questionObjectsFromLedger,
+  ];
+
+  const normalizedObjects = normalizeDecisionCandidates({
+    objects: mergedObjectInputs,
+    conversationText,
+    sourceMessageId,
+  });
+  const acceptedObjects = normalizedObjects
+    .filter((o) => o.accepted)
+    .map((o) => ({
+      type: o.type,
+      title: o.title,
+      summary: o.summary,
+      provenance: o.provenance,
+      resolution: normalizedQuestions.find((q) => q.text === o.title)?.resolution,
+    }));
+
+  const rejected = normalizedObjects.filter((o) => !o.accepted);
+  if (rejected.length > 0) {
+    logger.info(
+      {
+        projectId,
+        rejected: rejected.map((r) => ({ title: r.title, type: r.type, reason: r.rejectReason })),
+      },
+      "genome extraction: rejected ungrounded/duplicate/cross-project objects",
+    );
+  }
+
   const dnaUpdate: Parameters<typeof updateProjectDNA>[1] = {
     ...(typeof parsed.purpose === "string" ? { purpose: parsed.purpose || null } : {}),
     ...(typeof parsed.coreEmotion === "string" ? { coreEmotion: parsed.coreEmotion || null } : {}),
@@ -288,7 +410,7 @@ Rules:
     ...(typeof parsed.wedge === "string" ? { wedge: parsed.wedge || null } : {}),
     ...(typeof parsed.differentiator === "string" ? { differentiator: parsed.differentiator || null } : {}),
     ...(Array.isArray(parsed.constraints) ? { constraints: (parsed.constraints as unknown[]).filter(Boolean).slice(0, 5) as string[] } : {}),
-    ...(Array.isArray(parsed.openQuestions) ? { openQuestions: (parsed.openQuestions as unknown[]).filter(Boolean).slice(0, 5) as string[] } : {}),
+    ...(dnaOpenQuestions != null ? { openQuestions: dnaOpenQuestions } : {}),
     ...(parsed.stage ? { stage: validStage(parsed.stage) } : {}),
     confidenceScore: clampConfidence(parsed.confidenceScore),
     lastEvolvedAt: now,
@@ -298,13 +420,27 @@ Rules:
   // Ensure the Application Model row exists, then write DNA into it
   await getOrCreateProjectDNA(projectId);
   await updateProjectDNA(projectId, dnaUpdate);
+  if (normalizedQuestions.length > 0) {
+    await persistQuestionLedger(projectId, normalizedQuestions);
+  }
 
-  if (Array.isArray(parsed.objects) && parsed.objects.length > 0) {
-    await upsertObjects(projectId, parsed.objects, sourceMessageId);
+  if (acceptedObjects.length > 0) {
+    await upsertObjects(projectId, acceptedObjects, sourceMessageId);
   }
 
   setCooldown(projectId);
-  logger.info({ projectId, stage: parsed.stage, confidence: parsed.confidenceScore }, "genome extraction complete");
+  logger.info(
+    {
+      projectId,
+      stage: parsed.stage,
+      confidence: parsed.confidenceScore,
+      openQuestions: dnaOpenQuestions?.length ?? null,
+      questionLedger: normalizedQuestions.length,
+      acceptedObjects: acceptedObjects.length,
+      rejectedObjects: rejected.length,
+    },
+    "genome extraction complete",
+  );
 }
 
 export async function maybeExtractGenome(projectId: number | null | undefined, sourceMessageId?: number | null): Promise<void> {

@@ -68,10 +68,46 @@ interface Intelligence {
     }>>;
   };
   entries: {
-    decisions: { id: number; title: string; summary: string | null; status: string; createdAt: string }[];
+    decisions: {
+      id: number;
+      title: string;
+      summary: string | null;
+      status: string;
+      createdAt: string;
+      provenance?: {
+        sourceRole: string;
+        sourceExcerpt: string | null;
+        projectScoped: boolean;
+        resolution: string | null;
+      } | null;
+    }[];
     insights?: { id: number; title: string; summary: string | null; status: string; createdAt: string }[];
-    openQuestionEntries: { id: number; title: string; summary: string | null; type: string; createdAt: string }[];
+    openQuestionEntries: {
+      id: number;
+      title: string;
+      summary: string | null;
+      type: string;
+      createdAt: string;
+      resolution?: string;
+      provenance?: {
+        sourceRole: string;
+        sourceExcerpt: string | null;
+        projectScoped: boolean;
+        resolution: string | null;
+      } | null;
+    }[];
   };
+  questionLedger?: {
+    text: string;
+    resolution: string;
+    residual: string | null;
+    provenance: {
+      sourceRole: string;
+      sourceExcerpt: string | null;
+      projectScoped: boolean;
+      sourceMessageId: number | null;
+    } | null;
+  }[];
   hasFlow: boolean;
   stack?: ProjectStackSummary | null;
 }
@@ -292,7 +328,13 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
             {entries.decisions.slice(0, 6).map((d) => (
-              <EntryRow key={d.id} title={d.title} summary={d.summary} status={d.status} />
+              <EntryRow
+                key={d.id}
+                title={d.title}
+                summary={d.summary}
+                status={d.status}
+                provenance={d.provenance ?? null}
+              />
             ))}
           </ul>
         )}
@@ -300,18 +342,48 @@ export function InsightsPanel({ projectId, onOpenFlow }: { projectId: number | n
 
       {/* Open Questions / In Tension */}
       <Section title="Open questions">
-        {dna.openQuestions.length === 0 && entries.openQuestionEntries.length === 0 ? (
-          <EmptyLine>Nothing unresolved.</EmptyLine>
-        ) : (
-          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-            {dna.openQuestions.map((q, i) => (
-              <QuestionRow key={`g-${i}`} text={q} />
-            ))}
-            {entries.openQuestionEntries.slice(0, 6).map((e) => (
-              <QuestionRow key={`e-${e.id}`} text={e.title} />
-            ))}
-          </ul>
-        )}
+        {(() => {
+          const ledgerQs = (intel.questionLedger ?? []).filter((q) => q.resolution !== "resolved");
+          const dnaQs = dna.openQuestions.map((text) => ({
+            text,
+            resolution: "open" as string,
+            provenance: null as null | { sourceRole: string; sourceExcerpt: string | null },
+          }));
+          const entryQs = entries.openQuestionEntries.map((e) => ({
+            text: e.title,
+            resolution: e.resolution ?? "open",
+            provenance: e.provenance ?? null,
+          }));
+          // Prefer structured ledger; fall back to DNA + entries
+          const preferred = ledgerQs.length > 0
+            ? ledgerQs.map((q) => ({
+                text: q.text,
+                resolution: q.resolution,
+                provenance: q.provenance,
+              }))
+            : [...dnaQs, ...entryQs];
+          // Dedupe by text
+          const seen = new Set<string>();
+          const questions = preferred.filter((q) => {
+            const key = q.text.trim().toLowerCase();
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          if (questions.length === 0) return <EmptyLine>Nothing unresolved.</EmptyLine>;
+          return (
+            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+              {questions.slice(0, 8).map((q, i) => (
+                <QuestionRow
+                  key={`q-${i}`}
+                  text={q.text}
+                  resolution={q.resolution}
+                  provenance={q.provenance}
+                />
+              ))}
+            </ul>
+          );
+        })()}
       </Section>
 
       {/* Affects — Flow Map link */}
@@ -721,7 +793,17 @@ function StackBlock({ stack }: { stack: ProjectStackSummary | null }) {
 }
 
 
-function EntryRow({ title, summary, status }: { title: string; summary: string | null; status: string }) {
+function EntryRow({
+  title,
+  summary,
+  status,
+  provenance,
+}: {
+  title: string;
+  summary: string | null;
+  status: string;
+  provenance?: { sourceRole: string; sourceExcerpt: string | null; projectScoped?: boolean } | null;
+}) {
   return (
     <li style={{
       padding: "10px 12px",
@@ -738,23 +820,56 @@ function EntryRow({ title, summary, status }: { title: string; summary: string |
       {summary && (
         <div style={{ fontSize: 12, color: MUTED, fontFamily: SANS, marginTop: 4, lineHeight: 1.5 }}>{summary}</div>
       )}
+      {provenance?.sourceExcerpt && (
+        <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 6, lineHeight: 1.45, opacity: 0.85 }}>
+          Source ({provenance.sourceRole}): “{provenance.sourceExcerpt.slice(0, 140)}{provenance.sourceExcerpt.length > 140 ? "…" : ""}”
+        </div>
+      )}
     </li>
   );
 }
 
-function QuestionRow({ text }: { text: string }) {
+function QuestionRow({
+  text,
+  resolution,
+  provenance,
+}: {
+  text: string;
+  resolution?: string;
+  provenance?: { sourceRole: string; sourceExcerpt: string | null } | null;
+}) {
+  const badge = resolution === "partial" ? "partial" : null;
   return (
     <li style={{
       display: "flex",
-      alignItems: "flex-start",
-      gap: 8,
+      flexDirection: "column",
+      gap: 4,
       fontSize: 12.5,
       color: FG,
       fontFamily: SANS,
       lineHeight: 1.5,
     }}>
-      <span style={{ color: GOLD, marginTop: 2 }}>?</span>
-      <span>{text}</span>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <span style={{ color: GOLD, marginTop: 2 }}>?</span>
+        <span style={{ flex: 1 }}>{text}</span>
+        {badge && (
+          <span style={{
+            fontSize: 9,
+            color: MUTED,
+            fontFamily: MONO,
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+            marginTop: 3,
+          }}>
+            {badge}
+          </span>
+        )}
+      </div>
+      {provenance?.sourceExcerpt && (
+        <div style={{ paddingLeft: 16, fontSize: 11, color: MUTED, opacity: 0.85, lineHeight: 1.4 }}>
+          Source ({provenance.sourceRole}): “{provenance.sourceExcerpt.slice(0, 120)}{provenance.sourceExcerpt.length > 120 ? "…" : ""}”
+        </div>
+      )}
     </li>
   );
 }
