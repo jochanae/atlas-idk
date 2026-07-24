@@ -1,4 +1,5 @@
 import { useState, useEffect, type CSSProperties } from "react";
+import { JoyEmblem } from "@/components/landing/JoyEmblem";
 
 const smallUiText: CSSProperties = {
   fontFamily: "Inter, sans-serif",
@@ -117,14 +118,16 @@ export function LandingHeader({ onSignIn }: { onSignIn?: () => void }) {
         </button>
         <button onClick={onSignIn} style={{
           ...smallUiText,
-          padding: "8px 20px", borderRadius: 8, background: "#D4AF37", color: "#0D0B09",
+          padding: "6px 18px 6px 6px", borderRadius: 999, background: "#D4AF37", color: "#0D0B09",
           fontSize: 12, border: "none",
           cursor: "pointer", marginLeft: 12, transition: "background 200ms",
+          display: "inline-flex", alignItems: "center", gap: 10,
         }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,175,55,0.9)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "#D4AF37")}
         >
-          Talk with Joy →
+          <JoyEmblem size={24} />
+          <span>Talk with Joy →</span>
         </button>
       </div>
 

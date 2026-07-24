@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { JoyEmblem } from "@/components/landing/JoyEmblem";
 
 const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
 const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
@@ -975,13 +976,16 @@ export function BridgeSection({ onEnter }: { onEnter: () => void }) {
             fontWeight: 500,
             letterSpacing: "0.28em",
             color: "#e8dcc8",
-            padding: "16px 32px",
+            padding: "12px 28px 12px 12px",
             border: "1px solid rgba(212,175,55,0.55)",
             background: "transparent",
             cursor: "pointer",
             transition: "background 220ms, border-color 220ms",
             opacity: visible ? 1 : 0,
             transform: visible ? "translateY(0)" : "translateY(12px)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 14,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = "rgba(212,175,55,0.07)";
@@ -992,7 +996,8 @@ export function BridgeSection({ onEnter }: { onEnter: () => void }) {
             e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)";
           }}
         >
-          Talk with Joy →
+          <JoyEmblem size={32} glow />
+          <span>Talk with Joy →</span>
         </button>
       </div>
     </section>

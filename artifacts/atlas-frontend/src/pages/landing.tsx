@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { MeetJoy } from "@/components/landing/MeetJoy";
 import { SeeJoyInAction } from "@/components/landing/SeeJoyInAction";
+import { JoyEmblem } from "@/components/landing/JoyEmblem";
 import {
   InterrogationFragments,
   WhyAxiomExists,
@@ -168,8 +169,11 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
             color: "#e8dcc8",
             border: "1px solid rgba(212,175,55,0.5)",
             background: "transparent",
-            padding: "14px 32px",
-            display: "inline-block",
+            padding: "18px 32px 16px",
+            display: "inline-flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
             opacity: btnOpacity,
             transform: `scale(${btnScale})`,
             transition: "background 200ms, border-color 200ms",
@@ -184,7 +188,8 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
             e.currentTarget.style.borderColor = "rgba(212,175,55,0.5)";
           }}
         >
-          Talk with Joy →
+          <JoyEmblem size={40} glow />
+          <span>Talk with Joy →</span>
         </button>
 
         {/* Scroll hint — sits below the button with breathing room */}
