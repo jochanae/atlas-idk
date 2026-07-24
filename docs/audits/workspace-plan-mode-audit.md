@@ -218,12 +218,62 @@ Joy can often *infer* planning from language (WhisperGate DECIDE), and Conversat
 
 ---
 
-## Recommendations (audit only)
+## Recommendations (locked direction)
 
-1. **Product decision:** restore Plan-as-artifact-signal on Nexus, or remove the checklist so it stops implying Plan Cards.
-2. **Do not** conflate Plan Mode with Conversation Mode when deciding.
-3. If restoring: wire a Nexus equivalent of `planMode` → plan extraction (or model-emitted plan block) → SSE / bridge fields → existing `PlanCard`.
-4. Keep Plan Card UI and DECIDE/deliverable paths unless separately scoped for removal.
+**Do not remove the Plan button.** Preserve it and restore the Plan Card pipeline.
+
+The precise problem is not “Plan is useless.” It is:
+
+> The runtime lost the connection between an explicit planning request and the Plan Card artifact.
+
+### Three distinct concepts (do not collapse)
+
+| Concept | Answers | Examples |
+|---------|---------|----------|
+| **1. Conversation posture** | How should Joy behave? | Conversation Mode · Build Mode · WhisperGate CHAT/DECIDE/BUILD |
+| **2. User intent** | What is the user asking right now? | “Help me think” · “Help me decide” · “Build this” — inferred from natural language |
+| **3. Requested artifact** | What should Joy leave the user with? | **Plan Card** · Decision Card · deliverable file · (future: Research Brief, Comparison Matrix, Timeline) |
+
+Plan belongs in **(3)**. It is compatible with Conversation posture and with inferred intent. “Let’s think” and “leave me with a Plan Card” are not the same question.
+
+### Mental rename
+
+Prefer **Generate Plan / Create Plan / Plan Card** over “Plan Mode.” The composer is not switching Joy’s personality; it is requesting a specific deliverable in the same family as Decision Cards, PDFs, DOCX, PPTX, HTML, images.
+
+Lovable (and Joy) often plan even when Plan is off — that is expected. Planning is AI behavior. The button’s value is the **guarantee**: when this conversation concludes, leave a reviewable planning artifact.
+
+### Target contract
+
+```
+Tap Plan
+  → conversation continues normally (posture + intent unchanged)
+  → Joy plans naturally
+  → turn/conversation culminates in a Plan Card
+  → user: Review · Approve · Revise · Skip
+  → if approved: Flow / Build / Tasks / Workspace can consume it
+```
+
+### Composer artifact family (same philosophy)
+
+| Affordance | Culminating artifact |
+|------------|----------------------|
+| Plan | Plan Card |
+| Decide | Decision Card |
+| Research | Research Brief |
+| Compare | Comparison Matrix |
+| Timeline | Timeline Artifact |
+
+Pattern: composer actions request **output types**, not mode switches.
+
+### Implementation fix (precise)
+
+1. Keep the Plan affordance in the composer (rename/copy toward “Plan Card” / “Create Plan” when UX allows).
+2. Re-wire the signal through Nexus (`requestedArtifact: "plan"` or equivalent — not a posture flag).
+3. Restore culmination: extraction or model-emitted plan block → SSE/bridge → existing `PlanCard` (Review / Approve / Revise / Skip).
+4. Do not conflate with Conversation Mode; do not rely on WhisperGate alone to guarantee the card.
+5. Optionally extend the same contract to Decide / Research / Compare / Timeline as sibling requested artifacts.
+
+See also: `docs/architecture/requested-artifacts.md`.
 
 ---
 
