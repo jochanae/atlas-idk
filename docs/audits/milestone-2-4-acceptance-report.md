@@ -45,7 +45,23 @@
 | Roadmap A→E | ✅ | Complete |
 
 **Engineering / design acceptance:** **MET.**  
-**Live production battery (all T1–T11 on redeployed host):** **Deferred ops** — same class as 2.3 live confirm.
+**Live production battery:** **Partial PASS** — T1–T3 confirmed in production (2026-07-24). T4–T11 + Flow-surface arrival remain ops follow-up.
+
+Evidence: [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md)
+
+---
+
+## 3b. Production evidence (Phase E update) — preserve
+
+| Scenario | Result | Preserve |
+|----------|--------|----------|
+| T1 Continue the work | ✅ PASS — Community Bridge resume; no restart / reintro / “What are we building today?” | Resume = continue the work |
+| T2 Arrival Contract | ✅ PASS — Joy + Workspace surfaces; no new-session greetings | Single Arrival Contract |
+| T3 Stage Theater | ✅ PASS — pricing prompt stayed on work; no planning/shaping/“Joy still needs…” | Work language, no process theater |
+
+**Not a failure:** Opening mentioned stale attachments (“Both files came through…”) before pricing. Accurate, but wrong priority. Frame as conversation prioritization — see [`milestone-2-4-conversation-prioritization-audit.md`](./milestone-2-4-conversation-prioritization-audit.md).
+
+**Still open:** Axiom Flow surface arrival; remainder T4–T11.
 
 ---
 
@@ -75,7 +91,8 @@
 
 | Item | Owner | Notes |
 |------|-------|-------|
-| Live authenticated T1–T11 on production | Ops / founder | After Constitution + 2.4 deploys |
+| Live T4–T11 + Flow-surface arrival | Ops / founder | T1–T3 already PASS in prod; Flow surface not yet verified |
+| Conversation prioritization (weighted context) | Eng / product | Response-planning refinement — **not** attachment bug; see [audit](./milestone-2-4-conversation-prioritization-audit.md) |
 | Server continue-pending for in-flight interrupt (full B4) | Eng | Client truncate landed; server attach-to-pending remains |
 | Soft Continue threshold unification (detectHomeHandoff heuristics) | Eng | Prompt soft-bridge deleted; detector heuristics optional follow-up |
 | Side-by-side lens compare UI | Product | Out of 2.4 |
@@ -105,6 +122,7 @@ Phase E adds **no new product behavior**. It confirms:
 2. Prompt Independence Test documented Pass  
 3. Deferred list explicit  
 4. Parent board marks **2.4 CLOSED**  
+5. **2026-07-24 production update:** T1–T3 PASS — preserve arrival + stage-theater behavior; prioritization refinement deferred (not a regression)
 
 ---
 
@@ -113,5 +131,6 @@ Phase E adds **no new product behavior**. It confirms:
 | Role | Decision |
 |------|----------|
 | Engineering (this report) | **Milestone 2.4 CLOSED** |
-| Live prod battery | Deferred to founder/ops |
+| Live prod battery | T1–T3 PASS; T4–T11 + Flow surface remaining |
+| Conversation prioritization | Deferred refinement — does not reopen 2.4 |
 | Start next track | Unblocked for planning |
