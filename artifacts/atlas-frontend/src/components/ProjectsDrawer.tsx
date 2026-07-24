@@ -58,6 +58,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [filter, setFilter] = useState<ProjectFilter>("recent");
+  const ATLAS_PAGE_SIZE = 5;
+  const [atlasVisibleCount, setAtlasVisibleCount] = useState(ATLAS_PAGE_SIZE);
 
   const userPhoto: string = (() => {
     try { const r = localStorage.getItem("atlas-user-profile"); return r ? (JSON.parse(r).photoUrl ?? "") : ""; } catch { return ""; }
