@@ -99,19 +99,33 @@ Plan = **requested artifact**, not posture, not WhisperGate intent.
 
 **Out of scope:** Decide/Compare/Research/Timeline composer controls; Conversation/Build redesign; dual Workspace `/api/chat` send path; agent-loop PlanArtifactCardV2.
 
-## Remaining gaps after Phase 2 (do not fake)
+## After Phase 2 — restore vs expansion
+
+### Plan restore (complete for the Plan → Plan Card contract)
 
 | Destination | Status |
 |-------------|--------|
 | Approve → Nexus execute turn | **Wired** (`atlasConv.submit` execute prompt) |
 | Approve → `project_artifacts` type plan | **Wired** on Plan Card emission |
-| Flow nodes / Tasks / Parking consume | **Not wired** — report only |
-| Dedicated “Build from Plan” surface | **Not wired** — Approve re-submits execute via Nexus |
-| Plan approval durable row (committed status) | PlanCard Approve does not write a commit row (v2 `plan_artifacts` deferred) |
+| Review / Revise / Skip | **Wired** on PlanCard |
+
+### Expansion (new capabilities — not missing Plan implementation)
+
+Do **not** treat these as unfinished Plan restore. They belong to the requested-artifact *family* and consume graph:
+
+| Capability | Class |
+|------------|--------|
+| Flow consumes approved Plan Cards | **Expansion** — consume destination (after Approve) |
+| Tasks consume approved Plan Cards | **Expansion** — consume destination (after Approve) |
+| Decide / Research / Compare / Timeline composer buttons | **Expansion** — sibling requested artifacts |
+| Approve → destination chooser | **Rejected architecture** — overloads Approve; see expansion note |
+| Durable accepted status / Artifact Library | **Expansion** — makes Approve = acceptance durable |
+
+See `docs/architecture/requested-artifact-family-expansion.md` (**Approve ≠ Consume**).
 
 ## Phase 2 implementation status
 
-Restored on branch `cursor/plan-card-nexus-restore-1294`:
+Restored on branch `cursor/plan-card-nexus-restore-1294` (merged):
 
 - `requestedArtifact: "plan"` through composer → atlasConv → Nexus
 - Soft no-build when plan requested

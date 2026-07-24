@@ -127,8 +127,9 @@ The composer is not changing Joy’s personality. It is saying:
 1. **Preserve** the Plan composer control (copy may evolve toward Create Plan / Plan Card).
 2. **Pass** a requested-artifact signal through the Nexus submit path (distinct from `conversationMode` / WhisperGate intent).
 3. **Restore** culmination on Nexus: plan extraction or model-emitted plan block → stream/bridge fields → existing `PlanCard` UI.
-4. **Wire** Approve into existing consume paths (execute / Flow / Build / Tasks as product defines).
-5. **Extend** later with Decide / Research / Compare / Timeline under the same contract.
+4. **Approve** means acceptance of the artifact as truth (not a destination menu). Today’s execute-on-Approve is a transitional single consume path.
+5. **Expand** the family later (Decide / Compare first; then Flow / Tasks *consume* of approved artifacts; then Research / Timeline) — see `requested-artifact-family-expansion.md`. Those are new capabilities, not Plan restore gaps.
+6. Keep **Approve** (acceptance) separate from **Consume** (where an accepted artifact is applied).
 
 ## Implementation status (2026-07-24)
 
@@ -141,6 +142,13 @@ Workspace Plan → Plan Card path restored on Nexus:
 - PlanCard Review / Approve / Revise / Skip on live Workspace
 - Approve executes via Nexus submit (not legacy `/api/chat`)
 
-Sibling composer artifacts (Decide / Research / Compare / Timeline) remain future work under the same philosophy.
+**Sibling composer artifacts and Flow/Tasks consume are expansion**, not unfinished Plan restore.  
+See `docs/architecture/requested-artifact-family-expansion.md`.
 
-See `docs/audits/plan-card-nexus-gap-analysis.md` for the Phase 1 map and remaining consume gaps (Flow / Tasks).
+---
+
+## Related
+
+- Expansion family: `docs/architecture/requested-artifact-family-expansion.md`
+- Plan restore map: `docs/audits/plan-card-nexus-gap-analysis.md`
+- Audit history: `docs/audits/workspace-plan-mode-audit.md`
