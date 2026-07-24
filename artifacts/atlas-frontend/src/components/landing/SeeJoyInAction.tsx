@@ -298,11 +298,15 @@ export function SeeJoyInAction() {
                     padding: "6px 2px",
                     cursor: "pointer",
                     letterSpacing: "0.18em",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 10,
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = "#F5D97A"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "#D4AF37"; }}
                 >
-                  Continue this conversation with Joy →
+                  <JoyEmblem size={22} />
+                  <span>Talk with Joy →</span>
                 </button>
               </div>
             </>
