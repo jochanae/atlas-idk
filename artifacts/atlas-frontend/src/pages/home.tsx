@@ -5769,7 +5769,7 @@ export default function Home() {
               <button
                 type="button"
                 aria-label="Where were we"
-                title="Conversation history"
+                title="Conversations — where were we?"
                 onPointerDown={(e) => e.preventDefault()}
                 onClick={() => void handleOpenHistory()}
                 style={{
@@ -5815,7 +5815,8 @@ export default function Home() {
                 onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
                 onMenuAction={(action) => {
                   if (action === "park") { setShowParkSheet(true); return; }
-                  if (action === "history") { setShowTimeTravel(true); return; }
+                  if (action === "history") { void handleOpenHistory(); return; }
+                  if (action === "checkpoints") { setShowTimeTravel(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
                   if (action === "code") { setLocation("/code"); return; }
                   if (action === "connectors") { setLocation("/connectors"); return; }
@@ -6347,7 +6348,8 @@ export default function Home() {
         }
         handoffSignal={askAtlasConv.handoffSignal}
         onMenuAction={(action) => {
-          if (action === "history") { setShowTimeTravel(true); return; }
+          if (action === "history") { void handleOpenHistory(); return; }
+          if (action === "checkpoints") { setShowTimeTravel(true); return; }
           if (action === "settings") { setLocation("/account"); return; }
           if (action === "code") { setLocation("/code"); return; }
           if (action === "connectors") { setLocation("/connectors"); return; }

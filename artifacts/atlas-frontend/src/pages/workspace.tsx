@@ -9752,7 +9752,8 @@ export default function Workspace() {
                 if (action === "park") { setShowParkSheet(true); return; }
                 if (action === "settings") { setShowProjectSettings(true); return; }
                 if (action === "forge-intake") { setForgeIntakeSheetOpen(true); return; }
-                if (action === "history") { setShowHistorySheet(true); return; }
+                if (action === "history") { setSessionsSheetOpen(true); return; }
+                if (action === "checkpoints") { setShowHistorySheet(true); return; }
                 if (action === "mcp") {
                   if (isMobile) { setMobileTab("mcp"); setRightOpen(true); }
                   else { setDesktopForceTab("mcp" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
