@@ -9283,7 +9283,7 @@ export default function Workspace() {
                       {title}
                     </div>
                   )) : (
-                    <div style={{ color: "var(--atlas-muted)", fontSize: "var(--ts-label)", lineHeight: 1.5 }}>No parked ideas were saved for this handoff.</div>
+                    <div style={{ color: "var(--atlas-muted)", fontSize: "var(--ts-label)", lineHeight: 1.5 }}>Nothing auto-parked — only intentionally deferred work belongs in the Parking Lot.</div>
                   )}
                 </div>
               </section>

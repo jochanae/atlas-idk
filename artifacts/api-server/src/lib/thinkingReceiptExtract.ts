@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db, entriesTable, projectTier1MemoryTable, getTier1MissingFields, TIER1_FIELD_KEYS, type Tier1FieldKey, type Tier1Answers } from "@workspace/db";
 import { sql, eq } from "drizzle-orm";
 import { logger } from "./logger";
+import { shouldAutoPark } from "./parkingConfidence";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -188,7 +189,10 @@ Rules:
       // High-confidence Decision receipts stay as receipts until the user
       // explicitly promotes via WorkspaceReceiptsBar / promote endpoint.
       if (opts.projectId) {
-        const parkedCandidates = receipts.filter(r => r.category === "Decision" && r.confidence >= 90);
+        // Contract: only silent-park at ≥95 confidence (parkingConfidence.ts)
+        const parkedCandidates = receipts.filter(
+          (r) => r.category === "Decision" && shouldAutoPark(r.confidence),
+        );
         for (const r of parkedCandidates) {
           try {
             await db.insert(entriesTable).values({

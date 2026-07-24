@@ -1,25 +1,18 @@
 import { useState } from "react";
-import { Entry, useUpdateEntry, useDeleteEntry, getListEntriesQueryKey } from "@workspace/api-client-react";
+import { Entry, useDeleteEntry, getListEntriesQueryKey } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { timeAgo } from "@/lib/formatters";
 import { haptic } from "@/lib/long-press-tip";
-
-const PROMOTE_TYPES = [
-  { label: "Decision", value: "Decision" },
-  { label: "Goal", value: "Goal" },
-  { label: "Build", value: "Feature" },
-  { label: "Risk", value: "Risk" },
-  { label: "Question", value: "Question" },
-];
+import { PROMOTE_DESTINATIONS, resolveParkCategory, type PromoteDestination } from "@/lib/parking";
 
 export function ParkingLotEntry({ entry, projectName }: { entry: Entry; projectName?: string }) {
   const queryClient = useQueryClient();
-  const updateEntry = useUpdateEntry();
   const [done, setDone] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [showPromote, setShowPromote] = useState(false);
+  const [promoting, setPromoting] = useState(false);
 
   const [, navigate] = useLocation();
   const deleteEntry = useDeleteEntry();
@@ -29,29 +22,24 @@ export function ParkingLotEntry({ entry, projectName }: { entry: Entry; projectN
     navigate(`/project/${entry.projectId}`);
   };
 
-  const handlePromote = (toType: string) => {
-    if (done) return;
+  const handlePromote = (toType: PromoteDestination) => {
+    if (done || promoting) return;
     haptic.short();
     setShowPromote(false);
-    const onSuccess = () => {
-      setDone(true);
-      queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) });
-    };
-    // M2.2 K6: Decision promotion must go through the explicit promote path
-    if (toType === "Decision") {
-      void fetch(`/api/entries/${entry.id}/promote`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toType: "Decision" }),
-      }).then((res) => { if (res.ok) onSuccess(); });
-      return;
-    }
-    // Non-Decision commit keeps existing type (type changes only via promote)
-    updateEntry.mutate(
-      { id: entry.id, data: { status: "committed", severity: "committed" } },
-      { onSuccess },
-    );
+    setPromoting(true);
+    void fetch(`/api/entries/${entry.id}/promote`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toType }),
+    })
+      .then((res) => {
+        if (res.ok) {
+          setDone(true);
+          queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) });
+        }
+      })
+      .finally(() => setPromoting(false));
   };
 
   const handleDelete = () => {
@@ -63,8 +51,8 @@ export function ParkingLotEntry({ entry, projectName }: { entry: Entry; projectN
   };
 
   const modeLabel = entry.mode ? entry.mode.toUpperCase() : "NOTE";
-  const typeLabel = entry.verb ? entry.verb.toUpperCase() : "INSIGHT";
-  const entryTypeBadge = (entry.mode ?? "NOTE").toUpperCase();
+  const typeLabel = resolveParkCategory(entry).toUpperCase();
+  const entryTypeBadge = typeLabel;
   const summary = entry.summary || "";
   const sentences = summary.split(/(?<=[.!?])\s+/);
   const shortDef = sentences.slice(0, 2).join(" ") || summary;
@@ -235,7 +223,7 @@ export function ParkingLotEntry({ entry, projectName }: { entry: Entry; projectN
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setShowPromote(v => !v)}
-                disabled={done || updateEntry.isPending}
+                disabled={done || promoting}
                 style={{ padding: "5px 10px", borderRadius: 6, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "var(--atlas-gold)", cursor: done ? "default" : "pointer", transition: "all 150ms ease", display: "flex", alignItems: "center", gap: 4 }}
                 onMouseEnter={(e) => { if (!done) e.currentTarget.style.background = "rgba(201,162,76,0.15)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
@@ -247,7 +235,10 @@ export function ParkingLotEntry({ entry, projectName }: { entry: Entry; projectN
               </button>
               {showPromote && (
                 <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, background: "var(--atlas-surface-alt)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)", borderRadius: 8, padding: 4, zIndex: 50, boxShadow: "0 4px 20px rgba(0,0,0,0.35)", minWidth: 130 }}>
-                  {PROMOTE_TYPES.map(pt => (
+                  <div style={{ padding: "4px 12px 2px", fontSize: "var(--ts-tiny)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(var(--atlas-muted-rgb),0.5)" }}>
+                    Promote to what?
+                  </div>
+                  {PROMOTE_DESTINATIONS.map(pt => (
                     <button key={pt.value} onClick={() => handlePromote(pt.value)}
                       style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 12px", background: "transparent", border: "none", color: "var(--atlas-fg)", fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", cursor: "pointer", borderRadius: 5, textTransform: "uppercase" as const }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.1)"; e.currentTarget.style.color = "var(--atlas-gold)"; }}

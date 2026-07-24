@@ -16,6 +16,19 @@ import {
   PromoteEntryParams,
 } from "@workspace/api-zod";
 import { isPromotableToDecision } from "../lib/knowledgeClassification";
+import { resolveMatchingParkedEntries } from "../lib/parkingResolve";
+import { OBJECT_TYPES, type ObjectType } from "@workspace/db/schema";
+
+const PARK_PROMOTE_TYPES = ["Decision", "Goal", "Feature", "Risk", "Question", "Insight"] as const;
+type ParkPromoteType = (typeof PARK_PROMOTE_TYPES)[number];
+
+function isParkPromoteType(value: unknown): value is ParkPromoteType {
+  return typeof value === "string" && (PARK_PROMOTE_TYPES as readonly string[]).includes(value);
+}
+
+function isObjectType(value: unknown): value is ObjectType {
+  return typeof value === "string" && (OBJECT_TYPES as readonly string[]).includes(value);
+}
 
 const router: IRouter = Router();
 
@@ -364,6 +377,16 @@ router.post("/projects/:projectId/entries", async (req, res): Promise<void> => {
       )
       .catch(() => { /* silent */ });
   }
+
+  // Decision queue: committing directly can resolve matching parked work
+  if (entry.status === "committed") {
+    void resolveMatchingParkedEntries({
+      projectId: entry.projectId,
+      committedEntryId: entry.id,
+      title: entry.title,
+      reason: "created-committed",
+    });
+  }
 });
 
 router.get("/entries/:id", async (req, res): Promise<void> => {
@@ -492,9 +515,19 @@ router.patch("/entries/:id", async (req, res): Promise<void> => {
   if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
   await touchProjectActivity(entry.projectId);
   res.json(serializeEntry(entry));
+
+  // Decision queue: when something graduates/commits, resolve matching parked work
+  if (parsed.data.status === "committed") {
+    void resolveMatchingParkedEntries({
+      projectId: entry.projectId,
+      committedEntryId: entry.id,
+      title: entry.title,
+      reason: "committed",
+    });
+  }
 });
 
-/** Explicit knowledge promotion (M2.2 K6) — e.g. Idea → Decision. */
+/** Explicit promotion / graduation from Parking Lot — ask "Promote to what?" then persist type. */
 router.post("/entries/:id/promote", async (req, res): Promise<void> => {
   const params = PromoteEntryParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
@@ -506,14 +539,24 @@ router.post("/entries/:id/promote", async (req, res): Promise<void> => {
   }
   const [original] = await db.select().from(entriesTable).where(eq(entriesTable.id, params.data.id));
   if (!original) { res.status(404).json({ error: "Entry not found" }); return; }
-  if (original.type === "Decision" && original.status === "committed") {
-    res.status(409).json({ error: "Already a committed Decision" }); return;
+
+  const toType = parsed.data.toType;
+  if (!isParkPromoteType(toType) || !isObjectType(toType)) {
+    res.status(400).json({ error: `Unsupported promote destination: ${String(toType)}` }); return;
   }
-  if (original.type === "EngineeringEvent") {
-    res.status(409).json({ error: "Engineering events cannot be promoted to Decisions" }); return;
-  }
-  if (original.type !== "Decision" && !isPromotableToDecision(original.type)) {
-    res.status(409).json({ error: `Cannot promote ${original.type} to Decision` }); return;
+
+  if (toType === "Decision") {
+    if (original.type === "Decision" && original.status === "committed") {
+      res.status(409).json({ error: "Already a committed Decision" }); return;
+    }
+    if (original.type === "EngineeringEvent") {
+      res.status(409).json({ error: "Engineering events cannot be promoted to Decisions" }); return;
+    }
+    if (original.type !== "Decision" && !isPromotableToDecision(original.type)) {
+      res.status(409).json({ error: `Cannot promote ${original.type} to Decision` }); return;
+    }
+  } else if (original.status === "committed" && original.type === toType) {
+    res.status(409).json({ error: `Already a committed ${toType}` }); return;
   }
 
   let enrichment: Record<string, unknown> = {};
@@ -523,9 +566,10 @@ router.post("/entries/:id/promote", async (req, res): Promise<void> => {
   enrichment.promotedFrom = original.type;
   enrichment.promotedAt = new Date().toISOString();
   enrichment.promotedBy = "explicit";
+  enrichment.promotedTo = toType;
 
   const [entry] = await db.update(entriesTable).set({
-    type: "Decision",
+    type: toType,
     status: "committed",
     severity: "committed",
     lockedAt: new Date(),
@@ -534,6 +578,13 @@ router.post("/entries/:id/promote", async (req, res): Promise<void> => {
   if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
   await touchProjectActivity(entry.projectId);
   res.json(serializeEntry(entry));
+
+  void resolveMatchingParkedEntries({
+    projectId: entry.projectId,
+    committedEntryId: entry.id,
+    title: entry.title,
+    reason: `promoted:${toType}`,
+  });
 });
 
 router.delete("/entries/:id", async (req, res): Promise<void> => {

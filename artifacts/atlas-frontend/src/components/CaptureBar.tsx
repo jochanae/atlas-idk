@@ -12,22 +12,21 @@
  * Form factor: resting single-line → expanded multi-line composer
  *   • ⌘↵ submits to the active destination
  *   • Esc collapses (unless context="modal")
- *   • Intent tags bias the Forge payload
+ *   • Intent tags bias Forge / park category
+ *   • Park: Idea · Decision · Build · Later (Dump is Forge/Intake only)
  *   • Voice-to-text via SpeechRecognition where supported
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Mic, MicOff, CornerDownLeft, X } from "lucide-react";
+import {
+  FORGE_CAPTURE_INTENTS,
+  PARK_CAPTURE_INTENTS,
+  type CaptureIntent,
+} from "@/lib/parking";
 
-type Intent = "idea" | "decision" | "build" | "dump";
+export type Intent = CaptureIntent;
 export type CaptureDestination = "park" | "forge" | "intake";
-
-const INTENTS: Array<{ id: Intent; label: string; hint: string }> = [
-  { id: "idea",     label: "Idea",     hint: "loose thought" },
-  { id: "decision", label: "Decision", hint: "commit this" },
-  { id: "build",    label: "Build",    hint: "make it real" },
-  { id: "dump",     label: "Dump",     hint: "raw brain" },
-];
 
 type Props = {
   context?: "home" | "modal" | "flow";
@@ -84,6 +83,15 @@ export function CaptureBar({
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const recogRef = useRef<any>(null);
+
+  const intents = useMemo(
+    () => (destination === "park" ? PARK_CAPTURE_INTENTS : FORGE_CAPTURE_INTENTS),
+    [destination],
+  );
+
+  useEffect(() => {
+    if (!intents.some((t) => t.id === intent)) setIntent("idea");
+  }, [destination, intents, intent]);
 
   const restingPlaceholder =
     placeholder ??
@@ -375,13 +383,13 @@ export function CaptureBar({
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 4, flex: 1, minWidth: 0, flexWrap: "wrap" }}>
-              {INTENTS.map(t => {
+              {intents.map(t => {
                 const active = intent === t.id;
                 return (
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setIntent(t.id)}
+                    onClick={() => setIntent(t.id as Intent)}
                     title={t.hint}
                     style={{
                       padding: "5px 10px",

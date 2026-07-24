@@ -17,22 +17,25 @@ import type { Entry, Project } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { CaptureBar } from "@/components/CaptureBar";
-import { buildParkedEntryPayload } from "@/lib/parking";
+import {
+  buildParkedEntryPayload,
+  buildClarifyPrefill,
+  buildResumePrefill,
+  PROMOTE_DESTINATIONS,
+  PARK_FILTER_CHIPS,
+  resolveParkCategory,
+  type ParkCategory,
+  type PromoteDestination,
+} from "@/lib/parking";
 
 // ── Architectural note (locked rule from original Joy) ──────────────────────
 // "Ledger and Parking Lot are the same object, rendered differently based on
 //  state. Moving between them is NOT duplication. It is a status change on
 //  the same object."
 // Resume = navigate back to the source project workspace (not a status change).
+// Clarify = questioning loop prefill (distinct from Resume).
+// Promote = graduation — ask "Promote to what?" and persist the type.
 // Commit = status flip from 'parked' → 'committed' on the same row.
-
-const PROMOTE_TYPES = [
-  { label: "Decision", value: "Decision" },
-  { label: "Goal", value: "Goal" },
-  { label: "Build", value: "Feature" },
-  { label: "Risk", value: "Risk" },
-  { label: "Question", value: "Question" },
-];
 
 type AllProjectGroup = { project: Project; entries: Entry[] };
 
@@ -70,6 +73,7 @@ export default function ParkingLot() {
   const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({});
   const [allProjectsData, setAllProjectsData] = useState<AllProjectGroup[]>([]);
   const [loadingAll, setLoadingAll] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<ParkCategory | "all">("all");
 
   // Single-project mode — queries disabled when showing All Projects
   const queryProjectId = selectedProjectId ?? 0;
@@ -92,10 +96,18 @@ export default function ParkingLot() {
   );
   const isSingleLoading = loadingParked || loadingDraft || loadingCommitted;
 
-  const singleEntries: Entry[] = [...parkedEntries, ...draftEntries].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const singleEntries: Entry[] = [...parkedEntries, ...draftEntries]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .filter((e) => categoryFilter === "all" || resolveParkCategory(e) === categoryFilter);
   const activeDetailEntry = detailEntry ? singleEntries.find(e => e.id === detailEntry.id) ?? detailEntry : null;
+
+  const filterEntries = useCallback(
+    (entries: Entry[]) =>
+      categoryFilter === "all"
+        ? entries
+        : entries.filter((e) => resolveParkCategory(e) === categoryFilter),
+    [categoryFilter],
+  );
 
   // All-projects fetch
   useEffect(() => {
@@ -144,22 +156,22 @@ export default function ParkingLot() {
   const deleteEntry = useDeleteEntry({ mutation: { onSuccess: invalidateAll } });
   const createEntry = useCreateEntry({ mutation: { onSuccess: invalidateAll } });
 
-  const handleCapture = (content: string) => {
+  const handleCapture = (content: string, intent?: string) => {
     const target = selectedProjectId ?? projects[0]?.id;
     if (!target) return;
     createEntry.mutate({
       projectId: target,
-      data: buildParkedEntryPayload(content),
+      data: buildParkedEntryPayload(content, null, null, null, null, intent),
     });
   };
 
   const handleResume = (entry: Entry) => {
     if (entry.projectId) {
       try {
-        const prefill = entry.contextWhat
-          ? `${entry.title} (${entry.contextWhat})`
-          : entry.title;
-        sessionStorage.setItem(`atlas-resume-fill-${entry.projectId}`, prefill);
+        sessionStorage.setItem(
+          `atlas-resume-fill-${entry.projectId}`,
+          buildResumePrefill(entry.title, entry.contextWhat),
+        );
       } catch {}
       setLocation(`/project/${entry.projectId}`);
     } else {
@@ -167,12 +179,32 @@ export default function ParkingLot() {
     }
   };
 
-  const handlePromote = (entry: Entry) => {
+  const handleClarify = (entry: Entry) => {
+    if (entry.projectId) {
+      try {
+        sessionStorage.setItem(
+          `atlas-resume-fill-${entry.projectId}`,
+          buildClarifyPrefill(entry.title, entry.contextWhat),
+        );
+      } catch {}
+      setLocation(`/project/${entry.projectId}`);
+    } else {
+      setLocation("/home");
+    }
+  };
+
+  const handlePromote = (entry: Entry, toType: PromoteDestination) => {
     setBusyId(entry.id);
-    updateEntry.mutate(
-      { id: entry.id, data: { status: "committed", severity: "committed" } },
-      { onSettled: () => setBusyId(null) }
-    );
+    void fetch(`/api/entries/${entry.id}/promote`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toType }),
+    })
+      .then((res) => {
+        if (res.ok) invalidateAll();
+      })
+      .finally(() => setBusyId(null));
   };
 
   const handleDelete = (entry: Entry) => {
@@ -213,7 +245,8 @@ export default function ParkingLot() {
     noteValue: noteDrafts[entry.id] ?? entry.details ?? "",
     onOpen: () => setDetailEntry(entry),
     onResume: () => handleResume(entry),
-    onPromote: () => handlePromote(entry),
+    onClarify: () => handleClarify(entry),
+    onPromote: (toType: PromoteDestination) => handlePromote(entry, toType),
     onDelete: () => handleDelete(entry),
     onNoteOpen: () => {
       setNoteDrafts(prev => ({ ...prev, [entry.id]: prev[entry.id] ?? entry.details ?? "" }));
@@ -342,6 +375,34 @@ export default function ParkingLot() {
             </div>
           )}
 
+          {/* Category filters — persist on park via verb; chips filter the list */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>
+            {PARK_FILTER_CHIPS.map((chip) => {
+              const active = categoryFilter === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(chip.id)}
+                  style={{
+                    padding: "5px 10px",
+                    borderRadius: 999,
+                    border: `1px solid ${active ? "rgba(201,162,76,0.55)" : "rgba(201,162,76,0.14)"}`,
+                    background: active ? "rgba(201,162,76,0.14)" : "transparent",
+                    color: active ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb), 0.7)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                  }}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Content */}
           {selectedProjectId === null ? (
             loadingAll ? (
@@ -352,13 +413,16 @@ export default function ParkingLot() {
               <EmptyParked />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                {allProjectsData.map(({ project, entries: groupEntries }) => (
+                {allProjectsData.map(({ project, entries: groupEntries }) => {
+                  const filtered = filterEntries(groupEntries);
+                  if (filtered.length === 0) return null;
+                  return (
                   <div key={project.id}>
                     {/* Project group header */}
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: "var(--atlas-fg)", letterSpacing: "-0.01em" }}>{project.name}</span>
                       <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "rgba(201,162,76,0.65)", padding: "1px 7px", borderRadius: 20 }}>
-                        {groupEntries.length} {groupEntries.length === 1 ? "item" : "items"}
+                        {filtered.length} {filtered.length === 1 ? "item" : "items"}
                       </span>
                       <button
                         type="button"
@@ -369,12 +433,13 @@ export default function ParkingLot() {
                       </button>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {groupEntries.map(entry => (
+                      {filtered.map(entry => (
                         <ParkingLotRow key={entry.id} {...rowProps(entry)} />
                       ))}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )
           ) : !captureTarget ? (
@@ -435,6 +500,7 @@ function ParkingLotRow({
   noteValue,
   onOpen,
   onResume,
+  onClarify,
   onPromote,
   onDelete,
   onNoteOpen,
@@ -447,7 +513,8 @@ function ParkingLotRow({
   noteValue: string;
   onOpen: () => void;
   onResume: () => void;
-  onPromote: () => void;
+  onClarify: () => void;
+  onPromote: (toType: PromoteDestination) => void;
   onDelete: () => void;
   onNoteOpen: () => void;
   onNoteChange: (value: string) => void;
@@ -456,7 +523,8 @@ function ParkingLotRow({
   const [showPromoteMenu, setShowPromoteMenu] = useState(false);
   const [menuRect, setMenuRect] = useState<{ bottom: number; right: number } | null>(null);
   const promoteAnchorRef = useRef<HTMLDivElement>(null);
-  const entryTypeBadge = (entry.mode ?? "NOTE").toUpperCase();
+  const category = resolveParkCategory(entry);
+  const entryTypeBadge = category.toUpperCase();
   const summary = entry.summary || entry.title;
 
   const openPromoteMenu = useCallback(() => {
@@ -536,9 +604,9 @@ function ParkingLotRow({
 
         <footer onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 7, padding: "8px 14px", flexWrap: "wrap" }}>
           <ParkingLotButton disabled={busy} onClick={onResume}>Resume</ParkingLotButton>
-          <ParkingLotButton disabled={busy} onClick={onResume}>Clarify</ParkingLotButton>
+          <ParkingLotButton disabled={busy} onClick={onClarify}>Clarify</ParkingLotButton>
 
-          {/* Promote… — portal-based to escape overflow:hidden */}
+          {/* Promote… — ask "Promote to what?" and persist chosen type */}
           <div ref={promoteAnchorRef}>
             <ParkingLotButton disabled={busy} tone="gold" onClick={() => showPromoteMenu ? setShowPromoteMenu(false) : openPromoteMenu()}>
               Promote…
@@ -560,10 +628,24 @@ function ParkingLotRow({
                 boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
                 minWidth: 150,
               }}>
-                {PROMOTE_TYPES.map(pt => (
+                <div style={{
+                  padding: "6px 14px 4px",
+                  fontSize: 9,
+                  fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "rgba(var(--atlas-muted-rgb),0.55)",
+                }}>
+                  Promote to what?
+                </div>
+                {PROMOTE_DESTINATIONS.map(pt => (
                   <button
                     key={pt.value}
-                    onClick={(e) => { e.stopPropagation(); setShowPromoteMenu(false); onPromote(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPromoteMenu(false);
+                      onPromote(pt.value);
+                    }}
                     style={{
                       display: "block", width: "100%", textAlign: "left",
                       padding: "8px 14px", background: "transparent", border: "none",
