@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { JoyEmblem } from "@/components/landing/JoyEmblem";
 
 const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
 const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };

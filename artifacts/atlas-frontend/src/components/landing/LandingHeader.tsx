@@ -1,4 +1,5 @@
 import { useState, useEffect, type CSSProperties } from "react";
+import { JoyEmblem } from "@/components/landing/JoyEmblem";
 
 const smallUiText: CSSProperties = {
   fontFamily: "Inter, sans-serif",
