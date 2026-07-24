@@ -4,7 +4,7 @@
 > It sits beside the Ask Atlas / Workspace surface contract and the Ledger object model.
 > When implementation and this document disagree, update the document deliberately — do not silently drift.
 
-**Status:** Proposed (2026-07-24)  
+**Status:** Architecture settled (2026-07-24) — remaining work is implementation  
 **Audit:** [`docs/audits/parking-lot-product-audit.md`](./audits/parking-lot-product-audit.md)  
 **Object model:** Parking Lot items are `entries` with deferred status (`parked`, and `draft` when shown on the lot). Same object as the Ledger — status changes move them; do not duplicate.
 
@@ -16,11 +16,38 @@ The Parking Lot holds a project's **unresolved cognitive work** — ideas, decis
 
 ---
 
-## Governing test
+## Six-month rule (north star)
 
-> If someone returned to this project six months later, would the Parking Lot contain only the unresolved questions that genuinely deserve another conversation?
+> If the user returns to this project in six months, the Parking Lot should contain only unresolved cognitive work that still deserves attention.
 
-If the answer is no, the surface has failed — even if storage and UI "work."
+This is not a soft aspiration. It is the pass/fail test for the surface. If the answer is no, the Parking Lot has failed — even if storage and UI "work."
+
+Every intake path, action, and exit rule exists to make the six-month rule true.
+
+---
+
+## Philosophy: decision queue, not storage
+
+Do not think of the Parking Lot as storage. Think of it as a **decision queue**.
+
+Everything inside it should eventually have one of four outcomes:
+
+| Outcome | Meaning |
+|---|---|
+| **Resolved** | Answered elsewhere (auto or marked) — leaves open work |
+| **Promoted** | Graduated into the project as a typed commitment / object |
+| **Deleted** | No longer matters |
+| **Kept** | Genuinely still unresolved and worth another conversation |
+
+Nothing should simply sit forever. The lot is an active workspace for unresolved thinking — conversations → structured knowledge → decisions.
+
+### Membership litmus
+
+Every item must answer:
+
+> Was this intentionally deferred?
+
+If no, it probably should not be parked.
 
 ---
 
@@ -41,7 +68,7 @@ Framing language should sound like **"things worth thinking about later"** (seed
 
 ## 1. What belongs here
 
-### In
+### Product categories (settled — five + Later)
 
 | Category | Meaning | Example |
 |---|---|---|
@@ -50,8 +77,9 @@ Framing language should sound like **"things worth thinking about later"** (seed
 | **Clarification** | Ambiguity blocking progress | "What exactly is the editorial identity?" |
 | **Risk** | Threat worth revisiting before commit | "Launching before the identity sentence is locked." |
 | **Research** | Investigation owed later | "Investigate sponsorship pricing." |
+| **Later** | User-parked catch-all that still passes the governing test | Something worth another conversation, not yet typed |
 
-Optional catch-all for user-parked miscellany that still passes the governing test: **Later** (not Dump).
+**Do not add Assumption as a parking category.** Assumptions are metadata on a Decision, Risk, or Research item until validated — not a separate parking type.
 
 ### Out
 
@@ -59,12 +87,12 @@ Optional catch-all for user-parked miscellany that still passes the governing te
 - Generated PDFs / finished deliverables  
 - Facts and decisions already committed to the Ledger  
 - Every random question asked in chat  
-- Home handoff residue that was not explicitly parked  
+- Home handoff residue that was not intentionally deferred  
 - Raw "brain dump" material whose home is Forge / Intake, not Parking  
 
 ### Membership rule
 
-An item may enter the Parking Lot only if it is **unfinished cognitive work** the project may need to resume. Interesting ≠ parked.
+An item may enter the Parking Lot only if it is **unfinished cognitive work** the project may need to resume. Interesting ≠ parked. Intentionally deferred = parked.
 
 ---
 
@@ -82,7 +110,7 @@ Explicit actions only:
 
 User intent is enough. Persist the category they chose (or a clear default).
 
-### B. Joy recommends parking (high confidence after consent)
+### B. Joy recommends parking (consent)
 
 Joy may notice unresolved work:
 
@@ -90,19 +118,25 @@ Joy may notice unresolved work:
 
 Creation requires **user confirmation**. Do not silently park recommendations.
 
-### C. Automatic extraction (high bar only)
+### C. Automatic extraction (confidence-gated)
 
-Allowed only when confidence is high and the signal is deferral or a typed open object, for example:
+Auto-park behavior is gated by confidence:
 
-- "We'll decide later."  
-- "We haven't answered…"  
-- "Open question…"  
-- "Come back to this."  
-- Genome / receipt paths that already treat Decisions and Questions as parked until explicit promote  
+| Confidence | Behavior |
+|---|---|
+| **95–100** | Auto-park without asking (rare) |
+| **80–94** | Joy asks: "This seems unresolved. Park it?" — do **not** silent-park |
+| **Below 80** | Do not park automatically |
 
-Auto-created items must mark **Auto** provenance and a confidence score. Prefer over-asking (path B) to silent parking of weak signals.
+Good auto *candidates* (still subject to the table above): *"We'll decide later."* / *"We haven't answered…"* / *"Open question…"* / *"Come back to this."* / high-confidence Decision receipts / typed open Questions.
 
-**Forbidden auto paths:** parking arbitrary recent user messages on handoff; parking finished outputs; parking committed facts.
+Auto-created items must mark **Auto** provenance and a confidence score.
+
+### Forbidden auto paths
+
+- **Home handoff must not auto-park** recent user messages (or any content) unless unresolved-work confidence passes the auto-park threshold (≥95) **and** the membership litmus ("intentionally deferred?") is true. Default: handoff does not park.
+- Parking finished outputs  
+- Parking committed facts  
 
 ---
 
@@ -114,27 +148,54 @@ Every parked card exposes these actions with distinct behavior:
 |---|---|
 | **Resume** | Return to the source conversation / project thread and continue the discussion. Does not resolve the item by itself. |
 | **Clarify** | Open a questioning loop until the item is actionable (enough clarity to Promote, Resume with intent, or Delete). Not a synonym for Resume. |
-| **Promote** | Move into the project as a real typed object (Decision, Goal, Feature/Build, Risk, Question, etc.) and leave the Parking Lot (`status → committed` or the appropriate Ledger posture). The chosen type **must** be written. |
-| **Delete** | Explicit discard — not worth tracking. Hard remove from the lot. |
+| **Promote** | Graduate into the project. Always ask **Promote to what?** when there is ambiguity. Write the chosen destination type and leave the Parking Lot. |
+| **Delete** | Explicit discard — not worth tracking. |
+
+### Promote destinations (graduation)
+
+Promote is graduation from a staging area, not card removal alone. Destinations:
+
+| Destination | Meaning |
+|---|---|
+| **Decision** | Lock as a project Decision (Ledger) |
+| **Goal** | Project goal |
+| **Build** | Feature / build work |
+| **Risk** | Tracked risk |
+| **Question** | First-class open question (if still open but elevated) |
+
+"Ledger" is the committed posture of promoted Decisions (and related committed types) — not a separate duplicate store. Flow-node graduation may be added later; do not fake it.
+
+The chosen type **must** be persisted. Cosmetic menus that ignore the selection violate this contract.
 
 Secondary: notes, enrichment detail, open source conversation. These must not replace the four primary verbs.
 
 ---
 
-## 4. What removes it
+## 4. What removes it (exit rules)
 
-Parking Lot items must not live forever. Exit paths:
+Parking Lot items must not live forever.
 
-| Exit | Trigger |
+| Exit | What counts as answered / done |
 |---|---|
-| **Promote / Commit** | User promotes or commits the item |
-| **Delete** | User discards |
-| **Resolved (auto or marked)** | The underlying question is answered elsewhere — e.g. editorial identity committed, audience decided, budget locked — matching parked item should leave the lot or become **Resolved ✓** and stop counting as open work |
-| **Supersede** | A newer parked or committed entry replaces it |
+| **Promoted** | User promotes to a destination above |
+| **Deleted** | User discards |
+| **Resolved automatically** | Underlying question answered elsewhere — e.g. user (or Joy) commits a matching Decision; related commitment lands; item superseded |
+| **Kept** | Still genuinely unresolved — remains open with honest last-touched |
 
 Resume alone does **not** remove an item.
 
-Stale open items without touch should become visible as stale (last touched) so trust does not erode silently. Exact age policy is an implementation choice; having **no** resolve path is not allowed by this contract.
+### Auto-resolution triggers (implementation)
+
+Treat as resolved when any of:
+
+1. User explicitly commits a matching Decision / related commitment  
+2. The parked item itself is Promoted  
+3. User Deletes it  
+4. A newer entry supersedes it (`supersedesId` / equivalent)  
+
+Project-milestone close may resolve linked parked work once linkage exists; until then, prefer explicit commit/promote/delete/supersede.
+
+Stale open items without touch should show last-touched so trust does not erode silently.
 
 ---
 
@@ -145,21 +206,21 @@ Required, visible or one tap away:
 | Field | Values / source |
 |---|---|
 | **Source conversation** | Session / message / context pointer for Resume |
-| **Confidence** | Numeric or band; required for Auto; optional for User |
+| **Confidence** | Numeric; required for Auto; drives intake behavior |
 | **Origin** | `User` \| `Joy` \| `Auto` |
-| **Category** | Idea / Decision / Clarification / Risk / Research / Later (product taxonomy) |
+| **Category** | Idea / Decision / Clarification / Risk / Research / Later |
 | **Date parked** | Created |
 | **Last touched** | Updated or last Resume/Clarify/Note |
 
-Enrichment (`whyItMatters`, options, `revisitWhen`, etc.) may deepen the card but does not replace these six fields.
+### Capture intents vs categories
 
-### Category vs capture intents
+- Park destination chips: **Idea · Decision · Build · Later** (map Build → build work; Later = catch-all).  
+- **Dump is not a Parking Lot intent.** Dump / raw brain belongs on **Forge Intake** only.  
+- Once something reaches the Parking Lot, it has survived one level of processing — it deserves another conversation, not a dump label.
 
-- **Product categories** (above) are first-class for browse, filter, and Promote.  
-- Capture chips on the Park destination must map onto those categories.  
-- Do **not** use **Dump** as a Parking Lot category or Park-destination intent. Prefer **Later** / **Inbox** / omit. Raw dumps belong on Forge Intake.
+Category chips on the lot must **filter** real persisted categories.
 
-AI `atlasCategory` (`Opportunity`, `Decision`, `Improvement`, `Question`, `Future Build`) may continue as enrichment labels but must not silently diverge from the product taxonomy without a documented mapping.
+AI `atlasCategory` may continue as enrichment but must map deliberately to the product taxonomy when used for browse.
 
 ---
 
@@ -167,10 +228,35 @@ AI `atlasCategory` (`Opportunity`, `Decision`, `Improvement`, `Question`, `Futur
 
 | Surface | Boundary |
 |---|---|
-| **Ledger** | Committed (and tension/override) record. Parking → Ledger is a status/type promotion, not a copy. |
-| **Ask Joy / Workspace chat** | Where Resume and Clarify continue; where Joy may ask to park. Chat history is not the Parking Lot. |
-| **Forge / Intake** | Raw brain-dump and structuring. May produce candidates; only high-confidence unresolved work parks, preferably with consent. |
-| **Home** | Portfolio awareness may *surface* parked items; handoff must not auto-fill the lot with recent messages. |
+| **Ledger** | Committed record. Parking → Ledger is promotion/status, not a copy. |
+| **Ask Joy / Workspace chat** | Where Resume and Clarify continue; where Joy asks to park. |
+| **Forge / Intake** | Raw brain-dump. Dump language lives here. |
+| **Home** | May surface parked items; **must not** auto-fill the lot on handoff. |
+
+---
+
+## Settled architectural decisions
+
+These are closed unless implementation reveals a bug:
+
+1. Dump → Later on Park; Dump stays on Forge Intake  
+2. Membership = unfinished / intentionally deferred cognitive work  
+3. Intake sources are known and tiered (User / Joy+consent / Auto)  
+4. Resume / Clarify / Promote / Delete are the four verbs  
+5. Card metadata set above is enough  
+6. One `entries` object + status; two-tier enrichment stays  
+
+---
+
+## Implementation backlog (build, not redesign)
+
+1. **Home handoff** — stop unconditional auto-park; only park if intentionally deferred and confidence ≥ auto threshold (default: park nothing on handoff)  
+2. **Confidence behavior** — enforce 95 / 80 thresholds on auto paths; ask path for mid band  
+3. **Auto-resolution** — resolve matching parked items when answered elsewhere  
+4. **Promote destinations** — always ask where; persist chosen type  
+5. **Filter chips** — persist category on park; chips filter the list  
+6. **Clarify ≠ Resume** — distinct questioning prefill / loop  
+7. Usability pass after end-to-end behavior works  
 
 ---
 
@@ -180,7 +266,8 @@ AI `atlasCategory` (`Opportunity`, `Decision`, `Improvement`, `Question`, `Futur
 2. **Consent over cleverness** — prefer asking to park over silent capture when unsure.  
 3. **Exit over endless intake** — every intake path needs a resolve story.  
 4. **Honest labels** — if the UI offers Clarify or a Promote type, the behavior must match.  
-5. **Seeds, not dumps** — naming and empty states reinforce unfinished thinking worth returning to.
+5. **Seeds, not dumps** — naming and empty states reinforce unfinished thinking worth returning to.  
+6. **Decision queue** — every item is headed toward Resolved, Promoted, Deleted, or consciously Kept.
 
 ---
 
@@ -188,11 +275,12 @@ AI `atlasCategory` (`Opportunity`, `Decision`, `Improvement`, `Question`, `Futur
 
 Before adding an intake path, action, or UI chrome to the Parking Lot, answer:
 
-1. Does this item / path pass the **membership** rule?  
-2. Which **intake tier** (User / Joy+consent / Auto high-bar) owns it?  
+1. Does this item / path pass the **membership** rule and litmus ("intentionally deferred?")?  
+2. Which **intake tier** (User / Joy+consent / Auto) owns it, and does confidence behavior apply?  
 3. Which **action** or **exit** does this change affect?  
 4. What **removes** items created or touched by this change?  
-5. Which of the **six metadata fields** does the user gain or lose?
+5. Which of the **six metadata fields** does the user gain or lose?  
+6. Does this still pass the **six-month rule**?
 
 If any answer is missing, do not ship the change yet.
 
@@ -202,4 +290,5 @@ If any answer is missing, do not ship the change yet.
 
 | Version | Date | Notes |
 |---|---|---|
-| 0.1 | 2026-07-24 | Proposed from product audit; not yet implementation-complete |
+| 0.1 | 2026-07-24 | Proposed from product audit |
+| 0.2 | 2026-07-24 | Architecture settled: six-month rule, decision-queue philosophy, confidence thresholds, promote graduation, resolve triggers, home-handoff forbid, no Assumption category, implementation backlog |

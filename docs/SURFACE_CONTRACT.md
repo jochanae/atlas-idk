@@ -82,6 +82,10 @@ Before building any new UI component or surface, answer all five:
 
 **One-sentence contract:** Only unresolved ideas, decisions, clarifications, risks, and research — not finished outputs, committed facts, or chat residue.
 
+**Six-month rule:** If the user returns in six months, the lot should contain only unresolved cognitive work that still deserves attention.
+
+**Philosophy:** Decision queue — every item ends Resolved, Promoted, Deleted, or consciously Kept.
+
 **Canonical product contract:** [`docs/PARKING_LOT_CONTRACT.md`](./PARKING_LOT_CONTRACT.md)  
 **Audit:** [`docs/audits/parking-lot-product-audit.md`](./audits/parking-lot-product-audit.md)
 

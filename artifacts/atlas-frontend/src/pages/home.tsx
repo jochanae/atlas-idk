@@ -3979,28 +3979,19 @@ export default function Home() {
         .filter(m => m.role === "user" && m.content.trim().length > 20)
         .slice(-4)
         .map(m => m.content.replace(/\s+/g, " ").trim());
-      await Promise.all(ideaTexts.map((idea, idx) => fetch(`/api/projects/${projectId}/entries`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          title: idea.slice(0, 80),
-          summary: idea.slice(0, 500),
-          status: "parked",
-          severity: "parked",
-          mode: "home",
-          verb: idx === 0 ? "home_handoff" : "idea",
-        }),
-      }).catch(() => null)));
+      // Parking Lot contract: home handoff must not auto-park recent messages.
+      // Only intentionally deferred work belongs in the lot. Handoff still
+      // carries conversation + Flow; parking requires explicit park or high-confidence deferral.
+      const parkedTitles: string[] = [];
 
       setHandoffStage("Ready.");
       try {
         sessionStorage.setItem(`atlas-home-handoff-${projectId}`, JSON.stringify({
-          parkedCount: ideaTexts.length,
+          parkedCount: parkedTitles.length,
           flowNodeCount: nodes.length,
           goalLabel: goal?.label ?? "your goal",
           nodes: nodes.map(n => ({ id: n.id, label: n.label, type: n.type, details: n.details, meta: n.meta, moscow: n.moscow, resolved: n.resolved })),
-          parkedTitles: ideaTexts.map(idea => idea.slice(0, 80)),
+          parkedTitles,
         }));
         sessionStorage.setItem("atlas-open-tab", "map");
         if (plan) {

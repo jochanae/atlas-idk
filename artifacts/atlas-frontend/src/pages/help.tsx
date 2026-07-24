@@ -21,7 +21,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What is the Parking Lot?",
-    a: "The Parking Lot holds ideas and decisions that aren't ready to commit to yet. You can park something from a log card or manually from the Ledger. Parked items can be resumed (moved back to chat), committed directly, or deleted.",
+    a: "The Parking Lot is a decision queue for unfinished thinking — ideas, decisions, clarifications, risks, and research that still deserve another conversation. Park something explicitly when you want to defer it. Resume to continue, Clarify until it's actionable, Promote into the project, or Delete. It should not fill with finished outputs or random chat residue.",
   },
   {
     q: "What is the Home space?",

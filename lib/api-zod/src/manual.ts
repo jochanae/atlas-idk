@@ -97,9 +97,9 @@ export const UpdateEntryBody = z.object({
   context_why: z.string().optional(),
 }).passthrough();
 
-/** Explicit knowledge promotion (M2.2 K6) — Idea/Insight/Question → Decision. */
+/** Explicit knowledge promotion from Parking Lot / Objects — graduate to a typed commitment. */
 export const PromoteEntryBody = z.object({
-  toType: z.literal("Decision"),
+  toType: z.enum(["Decision", "Goal", "Feature", "Risk", "Question", "Insight"]),
 });
 
 export const CreateEntryParams = z.object({ projectId: numericId });
