@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
 
 /**
  * SuggestionChipRail — tappable next-step chips.
@@ -11,6 +11,9 @@ import { useMemo, useRef } from "react";
 
 const MAX_CHIPS = 3;
 const MAX_LEN = 64;
+const LONG_PRESS_MS = 500;
+/** Ignore tiny finger jitter so long-press isn't cancelled mid-hold. */
+const MOVE_CANCEL_PX = 12;
 
 function cleanLine(s: string): string {
   return s
@@ -84,22 +87,44 @@ export function SuggestionChipRail({ lastAssistantText, nextSuggestions, onTap, 
   );
   const timerRef = useRef<number | null>(null);
   const firedLongRef = useRef(false);
+  const startPosRef = useRef<{ x: number; y: number } | null>(null);
 
   if (chips.length === 0) return null;
 
-  const startPress = (text: string) => {
-    firedLongRef.current = false;
-    timerRef.current = window.setTimeout(() => {
-      firedLongRef.current = true;
-      onLongPress(text);
-    }, 500);
-  };
-  const endPress = (text: string, cancelled: boolean) => {
+  const clearTimer = () => {
     if (timerRef.current != null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+  };
+
+  const startPress = (text: string, e: ReactPointerEvent<HTMLButtonElement>) => {
+    // Keep the gesture on this chip; small drifts shouldn't cancel via leave.
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    firedLongRef.current = false;
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      firedLongRef.current = true;
+      onLongPress(text);
+    }, LONG_PRESS_MS);
+  };
+
+  const endPress = (text: string, cancelled: boolean) => {
+    clearTimer();
+    startPosRef.current = null;
     if (!cancelled && !firedLongRef.current) onTap(text);
+  };
+
+  const onMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const start = startPosRef.current;
+    if (!start || timerRef.current == null) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (dx * dx + dy * dy > MOVE_CANCEL_PX * MOVE_CANCEL_PX) {
+      // Treat as scroll/drag — cancel without tapping.
+      endPress("", true);
+    }
   };
 
   return (
@@ -137,10 +162,15 @@ export function SuggestionChipRail({ lastAssistantText, nextSuggestions, onTap, 
           <button
             key={c}
             type="button"
-            onPointerDown={() => startPress(c)}
+            onPointerDown={(e) => {
+              // Avoid text-selection / native callout fighting the long-press.
+              if (e.pointerType !== "mouse") e.preventDefault();
+              startPress(c, e);
+            }}
+            onPointerMove={onMove}
             onPointerUp={() => endPress(c, false)}
-            onPointerLeave={() => endPress(c, true)}
             onPointerCancel={() => endPress(c, true)}
+            onContextMenu={(e) => e.preventDefault()}
             style={{
               flexShrink: 0,
               padding: "7px 12px",
@@ -155,6 +185,8 @@ export function SuggestionChipRail({ lastAssistantText, nextSuggestions, onTap, 
               overflow: "hidden",
               textOverflow: "ellipsis",
               touchAction: "manipulation",
+              userSelect: "none",
+              WebkitUserSelect: "none",
               scrollSnapAlign: "start",
             }}
             title="Tap to use · long-press to park"
