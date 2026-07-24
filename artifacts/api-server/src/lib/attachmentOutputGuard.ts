@@ -7,17 +7,22 @@
  *   1. StreamingClaimGate — intercepts token emission in real-time.
  *      When the in-progress sentence begins matching a trigger prefix, the gate
  *      holds that sentence until it completes, then validates it.  If the claim
- *      is unsupported the sentence is replaced by a correction SSE; otherwise
- *      it is released normally.  Normal (non-claim) text streams immediately
- *      after a CLAIM_LOOKAHEAD holdback window.
+ *      is unsupported the sentence is skipped quietly and streaming continues
+ *      (so a later pivot answer is not swallowed).  Normal (non-claim) text
+ *      streams immediately after a CLAIM_LOOKAHEAD holdback window.
  *
  *   2. checkAttachmentClaims (post-stream) — runs in finishStream on the full
- *      response.  Catches anything the streaming gate missed (e.g. a sentence
- *      that straddled the end of the stream without a boundary, or a turn that
- *      skipped the streaming path).
+ *      response.  Prefers quiet strip of unsupported claim spans (same posture
+ *      as deliverableOutputGuard).  Full attachment recovery copy is used only
+ *      when nothing useful remains.  Never exposes internal correction language
+ *      ("I started to claim…").
  *
  * Per-attachment granularity: a readable PDF cannot authorize claims about a
  * storage-only PPTX in the same message.
+ *
+ * Milestone 2.4 Phase E / T6: current text intent outranks stale attachment
+ * diagnostics. Do not replace a complete non-attachment answer with an
+ * attachment warning.
  */
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -110,12 +115,16 @@ const PERCEPTION_PATTERNS: RegExp[] = [
 /**
  * INT-39: slide-index / deck-section order claims require reopened (or current-turn)
  * deck content. Freeform order prose often never matches PERCEPTION_PATTERNS.
+ *
+ * Section-name order claims must be tied to deck vocabulary — bare
+ * "pricing comes after the challenge" is normal product language and must not
+ * fire when a prior deck merely exists in the thread (T6 false-positive).
  */
 const SLIDE_ORDER_CLAIM_PATTERNS: RegExp[] = [
   /\bslide\s*\d+\b.{0,80}\b(?:before|after|follows?|precedes?)\b/i,
   /\b(?:before|after|follows?|precedes?)\b.{0,80}\bslide\s*\d+\b/i,
-  /\b(?:pricing|takeaway|challenge|journey|closing)\b.{0,60}\b(?:comes?\s+)?(?:before|after)\b.{0,60}\b(?:pricing|takeaway|challenge|journey|closing|slide)\b/i,
-  /\b(?:pricing|takeaway|challenge|journey|closing)\b.{0,40}\bis\s+(?:before|after)\b/i,
+  /\b(?:deck|presentation|powerpoint|pptx|slides?)\b.{0,120}\b(?:pricing|takeaway|challenge|journey|closing)\b.{0,60}\b(?:comes?\s+)?(?:before|after)\b/i,
+  /\b(?:pricing|takeaway|challenge|journey|closing)\b.{0,60}\b(?:comes?\s+)?(?:before|after)\b.{0,80}\b(?:deck|presentation|powerpoint|pptx|slides?)\b/i,
   /\b(?:deck|presentation|powerpoint|pptx)\b.{0,80}\b(?:order|sequence|before|after)\b/i,
 ];
 
@@ -214,8 +223,8 @@ export class StreamingClaimGate {
   private holdFrom = -1;
   /** Start of the current sentence in fullText (for full-sentence validation). */
   private sentenceStart = 0;
-  /** True once a mid-stream correction has been emitted. */
-  private correctionFired = false;
+  /** True when at least one unsupported claim sentence was quietly skipped. */
+  private suppressedClaim = false;
 
   private readonly evidence: AttachmentEvidence;
 
@@ -223,22 +232,18 @@ export class StreamingClaimGate {
     this.evidence = evidence;
   }
 
+  /** True when a claim sentence was suppressed (compat name for tests). */
   get hasFired(): boolean {
-    return this.correctionFired;
+    return this.suppressedClaim;
   }
 
   /**
    * Process the current fullText against the IMAGE_GEN-safe window [emitPtr, safeEnd).
    *
    * NOT holding → scan for trigger phrases; hold from earliest trigger.
-   * Holding → wait for sentence boundary; validate; release or correct.
+   * Holding → wait for sentence boundary; validate; release or quiet-skip.
    */
   process(fullText: string, emitPtr: number, safeEnd: number): StreamingGateOutput {
-    // Once a correction has fired, swallow all remaining tokens silently.
-    if (this.correctionFired) {
-      return { newEmitPtr: safeEnd, toEmit: "", correctionContent: null };
-    }
-
     // ── Not holding ──────────────────────────────────────────────────────────
     if (this.holdFrom === -1) {
       // Search the full unprocessed window (including IMAGE_GEN lookahead) for
@@ -281,13 +286,13 @@ export class StreamingClaimGate {
 
     const sentenceEnd = this.holdFrom + boundaryOffset;
     const fullSentence = fullText.slice(this.sentenceStart, sentenceEnd);
-    const guardResult = checkAttachmentClaims(fullSentence, this.evidence);
+    const unsupported = scanUnsupportedClaims(fullSentence, this.evidence);
 
     const prevEmitPtr = emitPtr;
     this.holdFrom = -1;
     this.sentenceStart = sentenceEnd;
 
-    if (guardResult.clean) {
+    if (!unsupported) {
       return {
         newEmitPtr: sentenceEnd,
         toEmit: fullText.slice(prevEmitPtr, sentenceEnd),
@@ -295,11 +300,13 @@ export class StreamingClaimGate {
       };
     }
 
-    this.correctionFired = true;
+    // Quiet skip — do not replace the whole turn with an attachment diagnostic
+    // (T6: later pivot prose must still stream). finishStream re-validates.
+    this.suppressedClaim = true;
     return {
       newEmitPtr: sentenceEnd,
       toEmit: "",
-      correctionContent: guardResult.correction,
+      correctionContent: null,
     };
   }
 
@@ -308,31 +315,35 @@ export class StreamingClaimGate {
    * finishStream re-validates the complete response independently.
    */
   flush(fullText: string, emitPtr: number): StreamingGateOutput {
-    if (this.correctionFired) {
-      return { newEmitPtr: fullText.length, toEmit: "", correctionContent: null };
-    }
     if (this.holdFrom === -1) {
       // Emit the IMAGE_GEN-lookahead tail (no trigger was active).
       const tail = fullText.slice(emitPtr);
       return { newEmitPtr: fullText.length, toEmit: tail, correctionContent: null };
     }
-    // There is held text; treat stream end as a sentence boundary and validate.
+
+    // Held text at stream end — validate, then either release or quiet-skip the
+    // claim sentence and still emit any trailing prose after it (T6 pivots).
+    const heldFrom = this.holdFrom;
     const fullSentence = fullText.slice(this.sentenceStart);
-    const guardResult = checkAttachmentClaims(fullSentence, this.evidence);
+    const unsupported = scanUnsupportedClaims(fullSentence, this.evidence);
     this.holdFrom = -1;
 
-    if (guardResult.clean) {
+    if (!unsupported) {
       return {
         newEmitPtr: fullText.length,
         toEmit: fullText.slice(emitPtr),
         correctionContent: null,
       };
     }
-    this.correctionFired = true;
+
+    this.suppressedClaim = true;
+    const heldText = fullText.slice(heldFrom);
+    const boundary = findSentenceBoundary(heldText);
+    const resumeAt = boundary === -1 ? fullText.length : heldFrom + boundary;
     return {
       newEmitPtr: fullText.length,
-      toEmit: "",
-      correctionContent: guardResult.correction,
+      toEmit: fullText.slice(Math.max(emitPtr, resumeAt)),
+      correctionContent: null,
     };
   }
 }
@@ -423,13 +434,16 @@ function findTargetedAttachment(
   return null;
 }
 
+/**
+ * Quiet recovery when the whole turn was only an unsupported attachment claim.
+ * Never quotes the model's false claim or exposes internal correction mechanics.
+ */
 function buildCorrection(
-  violations: string[],
+  _violations: string[],
   blockedFiles: string[],
   readableFiles: string[],
   priorAttachments: PriorAttachmentGuardInfo[],
 ): string {
-  const firstViolation = violations[0];
   const followUp = `\n\nIf you'd like me to read the content, please re-attach the file in a new message and I'll work with it directly.`;
   const priorNames = priorAttachments
     .filter((p) => p.existed)
@@ -443,9 +457,6 @@ function buildCorrection(
     const named = blockedFiles.map((f) => `**${f}**`).join(", ");
     const isAre = blockedFiles.length === 1 ? "was" : "were";
     const itThem = blockedFiles.length === 1 ? "it" : "them";
-    const violationNote = firstViolation
-      ? `\n\n*(I started to claim: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — that file's content is not available to me in this turn.)*`
-      : "";
     const readableNote =
       readableFiles.length > 0
         ? ` I can see ${readableFiles.map((f) => `**${f}**`).join(", ")} in this message.`
@@ -455,29 +466,20 @@ function buildCorrection(
       readableNote +
       ` I can't make claims about what's inside ${itThem}.` +
       priorNote +
-      violationNote +
       followUp
     );
   }
 
   if (priorNames.length > 0) {
-    const violationNote = firstViolation
-      ? `\n\n*(I started to claim: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — I cannot reopen that file's contents in this turn.)*`
-      : "";
     return (
       `I cannot reopen the original file contents in this turn.` +
       priorNote +
-      violationNote +
       followUp
     );
   }
 
-  const violationNote = firstViolation
-    ? `\n\n*(I started to claim: "${firstViolation}${firstViolation.length >= 120 ? "…" : ""}" — but no attachment was present or readable in this message.)*`
-    : "";
   return (
     `I don't have access to any attachment in this message — nothing was attached or readable in this turn.` +
-    violationNote +
     `\n\nIf you meant to include a file, please drop it into the next message and I'll work with it directly.`
   );
 }
@@ -509,20 +511,22 @@ function isAllowedProvenanceClaim(
 
 // ── Main post-stream validator ────────────────────────────────────────────────
 
+interface UnsupportedClaimScan {
+  violations: string[];
+  blockedFiles: string[];
+}
+
 /**
- * Check model output for unsupported attachment perception or retrieval claims.
- *
- * Per-attachment: when the claim names a specific file (by filename or MIME
- * keyword), only that file's evidence is checked.  A readable PDF does NOT
- * authorise claims about a storage-only PPTX in the same message.
+ * Scan text for unsupported attachment perception / retrieval / slide-order claims.
+ * Returns null when clean (or when a file-read tool already ran).
  */
-export function checkAttachmentClaims(
+function scanUnsupportedClaims(
   text: string,
   evidence: AttachmentEvidence,
-): GuardResult {
+): UnsupportedClaimScan | null {
   // Fast path: any file-reading tool ran → all claims are supportable.
   if (hasFileReadEvidence(evidence.toolsExecutedThisTurn)) {
-    return { clean: true, violations: [], correction: "" };
+    return null;
   }
 
   const priorAttachments = evidence.priorAttachments ?? [];
@@ -530,26 +534,16 @@ export function checkAttachmentClaims(
 
   // Provenance / non-reopen disclosures are allowed when prior rows exist.
   if (isAllowedProvenanceClaim(text, priorAttachments)) {
-    return { clean: true, violations: [], correction: "" };
+    return null;
   }
 
   // Explicit false analysis-recall: file existed but was never model-ingested.
   if (
     /\bI\s+analyzed\b/i.test(text) &&
     priorAttachments.some((p) => p.existed) &&
-    !priorAttachments.some((p) => p.priorAttachmentWasModelReceived) &&
-    !hasFileReadEvidence(evidence.toolsExecutedThisTurn)
+    !priorAttachments.some((p) => p.priorAttachmentWasModelReceived)
   ) {
-    return {
-      clean: false,
-      violations: ["I analyzed"],
-      correction: buildCorrection(
-        ["I analyzed"],
-        [],
-        [],
-        priorAttachments,
-      ),
-    };
+    return { violations: ["I analyzed"], blockedFiles: [] };
   }
 
   const violations: string[] = [];
@@ -565,7 +559,7 @@ export function checkAttachmentClaims(
       p.existed &&
       (/\.pptx?$/i.test(p.filename) ||
         /presentation|powerpoint/i.test(p.mimeType) ||
-        /\b(slide|deck|pricing|challenge)\b/i.test(p.filename)),
+        /\b(slide|deck)\b/i.test(p.filename)),
   );
 
   for (const pattern of PERCEPTION_PATTERNS) {
@@ -602,8 +596,56 @@ export function checkAttachmentClaims(
     }
   }
 
-  if (violations.length === 0) {
+  if (violations.length === 0) return null;
+  return { violations, blockedFiles };
+}
+
+/** Drop sentences/paragraphs that contain unsupported attachment claims. */
+function stripUnsupportedClaimSpans(
+  content: string,
+  evidence: AttachmentEvidence,
+): string {
+  const blocks = content.split(/\n{2,}/);
+  const keptBlocks: string[] = [];
+
+  for (const block of blocks) {
+    const sentences = block.split(/(?<=[.!?])\s+/);
+    const kept = sentences.filter((s) => scanUnsupportedClaims(s, evidence) === null);
+    if (kept.length > 0) keptBlocks.push(kept.join(" "));
+  }
+
+  return keptBlocks.join("\n\n").trim();
+}
+
+/**
+ * Check model output for unsupported attachment perception or retrieval claims.
+ *
+ * Per-attachment: when the claim names a specific file (by filename or MIME
+ * keyword), only that file's evidence is checked.  A readable PDF does NOT
+ * authorise claims about a storage-only PPTX in the same message.
+ *
+ * Prefer quiet strip of claim spans so non-attachment answers (e.g. a mid-thread
+ * pivot) survive. Full attachment recovery copy only when nothing useful remains.
+ */
+export function checkAttachmentClaims(
+  text: string,
+  evidence: AttachmentEvidence,
+): GuardResult {
+  const scan = scanUnsupportedClaims(text, evidence);
+  if (!scan) {
     return { clean: true, violations: [], correction: "" };
+  }
+
+  const priorAttachments = evidence.priorAttachments ?? [];
+  const stripped = stripUnsupportedClaimSpans(text, evidence);
+
+  // Substantial non-claim prose remains — keep it (T6 pivot / mixed answers).
+  if (stripped && stripped.length >= 24 && stripped !== text.trim()) {
+    return {
+      clean: false,
+      violations: scan.violations,
+      correction: stripped,
+    };
   }
 
   const readableFiles = evidence.attachments
@@ -611,16 +653,16 @@ export function checkAttachmentClaims(
       (a) =>
         a.contentSuppliedToModel &&
         !a.filename.match(/^vault_image_|^url_screenshot_/) &&
-        !blockedFiles.includes(a.filename),
+        !scan.blockedFiles.includes(a.filename),
     )
     .map((a) => a.filename);
 
   return {
     clean: false,
-    violations,
+    violations: scan.violations,
     correction: buildCorrection(
-      violations,
-      blockedFiles,
+      scan.violations,
+      scan.blockedFiles,
       readableFiles,
       priorAttachments,
     ),

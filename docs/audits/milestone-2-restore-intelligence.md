@@ -79,7 +79,7 @@ Conversation should feel like working with a capable collaborator already inside
 
 **Governing rule (P9):** One arrival experience — continue the work — across refresh, handoff, Workspace open, return, and resume.
 
-**Status:** Phases 0–E **CLOSED** (`#224`–`#227` + D/E closeout). Production validation: **T1–T3 PASS** (preserve). Remaining ops: Flow-surface arrival + T4–T11. Deferred refinement: [conversation prioritization](./milestone-2-4-conversation-prioritization-audit.md) (not an attachment bug).
+**Status:** Phases 0–E **CLOSED** (`#224`–`#227` + D/E closeout). Production validation: **T1–T5 PASS** (preserve); **T6 FAIL** ([evidence](./milestone-2-4-phase-e-t6-pivot-fail.md)). Remaining ops: T6 retest + Flow-surface arrival + T7–T11.
 
 **Depends on:** 2.2 ✅ and 2.3 ✅ (distinct lenses).
 
@@ -101,7 +101,7 @@ Conversation should feel like working with a capable collaborator already inside
 2.4 Natural conversation      ✅ CLOSED
 ```
 
-**M2 intelligence sub-track CLOSED** (2.1–2.4). Ops: finish 2.4 live battery (T1–T3 already PASS; Flow + T4–T11 open) before launch claims.
+**M2 intelligence sub-track CLOSED** (2.1–2.4). Ops: finish 2.4 live battery (T1–T5 PASS; **T6 FAIL open**; Flow + T7–T11) before launch / pivot-trust claims.
 ---
 
 ## Explicit non-goals for M2

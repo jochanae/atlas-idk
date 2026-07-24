@@ -1,16 +1,16 @@
 # Conversation Prioritization Audit
 
 **Date:** 2026-07-24  
-**Source:** Phase E production validation (pricing prompt)  
-**Class:** Response-planning refinement — **not** an attachment pipeline issue  
-**Blocks 2.4?** **No**  
-**Related:** [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md)
+**Source:** Phase E production validation  
+**Class:** Current-intent ranking — spans soft opening bias **and** hard T6 fail  
+**Blocks launch claims?** T6 fail must be fixed before claiming pivot trust  
+**Related:** [`milestone-2-4-phase-e-production-validation.md`](./milestone-2-4-phase-e-production-validation.md) · [`milestone-2-4-phase-e-t6-pivot-fail.md`](./milestone-2-4-phase-e-t6-pivot-fail.md)
 
 ---
 
-## Observation
+## Observations
 
-During production testing, Joy referenced older attachment context before responding to the user’s current intent.
+### Soft — opening bias (pricing resume)
 
 | Fact | Detail |
 |------|--------|
@@ -20,7 +20,15 @@ During production testing, Joy referenced older attachment context before respon
 | Accuracy | Attachment reference was correct |
 | Problem | It was no longer the highest-priority context |
 
-The model was not confused. It remembered too much **equally**. Needed: **weighted memory** — active project and current intent outrank stale but accurate details.
+### Hard — T6 pivot fail (Stripe Connect)
+
+| Fact | Detail |
+|------|--------|
+| Pivot | “Actually, forget moderation… How should Stripe Connect work with ministries?” |
+| Actual | “I don't have access to any attachment…” + “I started to claim…” |
+| Problem | Stale attachment diagnostics replaced a complete current text request |
+
+The model / guard path was not “wrong about files” — it **over-weighted** attachment state relative to current intent. Needed: **weighted memory** — active project and current intent outrank stale attachment context and attachment recovery copy.
 
 ---
 
@@ -67,8 +75,8 @@ Humans do not begin a new design discussion by mentioning unrelated documents re
 
 | Is | Is not |
 |----|--------|
-| Context prioritization / response planning | Attachment pipeline bug |
-| Weighted memory refinement | Stage-theater failure (T3 still PASS) |
-| Fit for a later conversational-experience pass | Reason to reopen 2.4 architecture |
+| Context prioritization / current-intent routing | Broken file storage / upload pipeline |
+| Weighted memory + quieter attachment guard | Stage-theater failure (T3 still PASS) |
+| T6 production defect with clear acceptance criteria | Reason to reopen arrival / stage theater |
 
-**No architectural changes required** to close Milestone 2.4.
+**Engineering note:** `attachmentOutputGuard` must quiet-strip unsupported claims and must not replace a whole non-attachment answer with attachment recovery copy. Never expose `I started to claim…`.
