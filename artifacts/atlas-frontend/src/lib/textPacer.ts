@@ -212,14 +212,15 @@ export function followScrollIfNearBottom(
     followScrollRaf.delete(container);
     const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
     if (distance <= threshold) {
-      // Instant bottom alignment while auto-follow is active. rAF-paced token
-      // releases produce many follow ticks per second; chained smooth scrolls
-      // fight each other and produce visible jitter/lag. One clamped scrollTop
-      // write per frame reads as smooth because the content growth itself is
-      // smooth. Manual upward scroll still releases stick via the caller
-      // (useSmartAutoScroll / bounds check above).
+      // Mark this write as programmatic so global scroll listeners (e.g.
+      // useDockVisibility) don't misread streaming auto-pin as a user
+      // scroll and start hiding/showing the dock — that oscillation
+      // resizes --atlas-dock-reserved mid-stream and makes the timeline
+      // jump around while tokens arrive.
+      try { container.dataset.atlasProgScroll = String(performance.now()); } catch { /* noop */ }
       container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
     }
   });
   followScrollRaf.set(container, id);
 }
+
